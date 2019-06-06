@@ -37,7 +37,7 @@
 	  *generate-all-adt-axioms* *generate-tccs*
 	  *integer* *naturalnumber* *number* *number_field* *odd_int* *odd_posnat* *odd_negint*
 	  *posint* *negint* *posrat* *negrat* *prelude* *pvs-directories*
-	  *pvs-modules* *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
+	  *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
 	  *true* *typechecking-module* *prelude-context*))
 
 (export '(all none))
@@ -103,13 +103,7 @@ in util.lisp")
 
 (defvar *adt-type-name-pending*)
 
-(defvar *pvs-context* nil)
-
-(defvar *pvs-context-path* nil
-  "The current context path - this can change when loading libraries")
-
 (defvar *pvs-initialized* nil)
-(defvar *pvs-files* nil)
 
 (defvar *pvs-tmp-file* nil
   "Used to send large amounts of information to/from emacs")
@@ -165,24 +159,9 @@ parsing or typechecking - used by pvs-error.")
 (defvar *prelude-theories* nil
   "A list of the prelude theories; more useful than *prelude* when the
 order is important")
-  
-(defvar *prelude-library-context* nil
-  "Provides the context associated with the current prelude libraries")
 
-(defvar *prelude-libraries* nil
-  "The pathnames of the prelude libraries that have been loaded.
-Given a pathname, returns a hash-table")
-
-(defvar *imported-libraries* nil)
-
-(defvar *prelude-libraries-uselist* nil)
-
-(defvar *prelude-libraries-files* nil)
-
-(defvar *pvs-library-ref-paths* nil)
-
-(defvar *pvs-modules* nil
-  "The hash-table of modules known to the system in this session")
+(defvar *all-workspace-sessions* nil
+  "List of all workspace-session instances, see classes-decl.lisp for details.")
 
 (defvar *current-system* 'pvs
   "Used to indicate which system is being parsed, etc. e.g., PVS, DC, ...")
@@ -242,6 +221,9 @@ Given a pathname, returns a hash-table")
   "A flag indicating that a library is being loaded.")
 
 (defvar *tc-theories* nil "Used to check for IMPORT circularities.")
+
+(defvar *workspace-session* nil)
+
 (defvar *current-context* nil
   "The default context used when creating expressions")
 

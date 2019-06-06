@@ -39,12 +39,9 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((mod module) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Theory ~a>" (id mod))))
-
-(defmethod print-object ((mod library-theory) stream)
-  (if *debugging-print-object*
-      (call-next-method)
-      (format stream "#<Library-theory ~a@~a>" (lib-ref mod) (id mod))))
+      (if (lib-datatype-or-theory? mod)
+	  (format stream "#<Theory ~a/~a>" (context-path mod) (id mod))
+	  (format stream "#<Theory ~a>" (id mod)))))
 
 (defmethod print-object ((dt datatype) stream)
   (if *debugging-print-object*
@@ -55,11 +52,6 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream "#<CoDatatype ~a>" (id dt))))
-
-(defmethod print-object ((mod library-datatype) stream)
-  (if *debugging-print-object*
-      (call-next-method)
-      (format stream "#<Library-datatype ~a>" (id mod))))
 
 (defmethod print-object ((decl declaration) stream)
   (if *debugging-print-object*
@@ -132,7 +124,7 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (let ((*print-escape* nil))
 	(format stream "~@<#<context ~w@~w.~w>~:>"
-	  *pvs-context-path*
+	  *default-pathname-defaults*
 	  (when (theory ctx)
 	    (id (theory ctx)))
 	  (when (declaration ctx)
@@ -320,6 +312,11 @@ print object produces an error, and won't allow inspection of the object.")
 	     (ndecl (declaration (name jdg))))
 	(format stream "#<application-judgements ~a.~a>"
 	  (when (module ndecl) (id (module ndecl))) (id ndecl)))))
+
+(defmethod print-object ((ws workspace-session) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<workspace ~a>" (path ws))))
   
 
 (defmethod pp* ((pt store-print-type))

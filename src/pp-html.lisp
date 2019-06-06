@@ -42,7 +42,7 @@
 (defun html-pvs-file (file-name
 		      &optional include-prelude-operators? all? force?)
     (cond ((and (null *pvs-url-mapping*)
-		(not *pvs-context-writable*))
+		(not (write-permission?)))
 	   (pvs-message "You do not have write permission in this context"))
 	  ((typechecked-file? file-name)
 	   (check-pvs-url-mapping)
@@ -141,32 +141,24 @@
 	(html-theories "prelude" pvs-file)))))
 
 (defun html-prelude-libraries (&optional include-prelude-operators? force?)
-  (unless (zerop (hash-table-count *prelude-libraries*))
-    (let ((*include-prelude-operators* include-prelude-operators?))
-      (maphash
-       #'(lambda (lib-ref files&theories)
-	   (with-pvs-context lib-ref
-	     (restore-context)
-	     (let* ((*pvs-files* (car files&theories))
-		    (*pvs-modules* (cadr files&theories))
-		    ;;(dir (libref-to-pathname lib-ref))
-		    )
-	       (maphash
-		#'(lambda (file theories)
-		    (let ((html-file (make-htmlpath file))
-			  (pvs-file (make-specpath file))
-			  (*html-theories* (cdr theories)))
-		      (assert (file-exists-p pvs-file))
-		      (when (or force?
-				(not (file-exists-p html-file))
-				(file-older html-file pvs-file))
-			(with-open-file (*html-out* html-file
-						    :direction :output
-						    :if-exists :supersede)
-			  (html-theories file pvs-file))
-			(pvs-message "~a generated" html-file))))
-		*pvs-files*))))
-       *prelude-libraries*))))
+  (let ((*include-prelude-operators* include-prelude-operators?))
+    (dolist (path (current-prelude-libraries))
+      (with-workspace path
+	(maphash
+	 #'(lambda (file theories)
+	     (let ((html-file (make-htmlpath file))
+		   (pvs-file (make-specpath file))
+		   (*html-theories* (cdr theories)))
+	       (assert (file-exists-p pvs-file))
+	       (when (or force?
+			 (not (file-exists-p html-file))
+			 (file-older html-file pvs-file))
+		 (with-open-file (*html-out* html-file
+					     :direction :output
+					     :if-exists :supersede)
+		   (html-theories file pvs-file))
+		 (pvs-message "~a generated" html-file))))
+	 (current-pvs-files))))))
 
 (defvar *html-out* nil)
 
@@ -178,29 +170,23 @@
 (defun html-pvs-file* (file-name force?)
   (let ((pos (position #\/ file-name :from-end t)))
     (if pos
-	(let ((libref (subseq file-name 0 (1+ pos)))
-	      (orig-context-path *pvs-context-path*))
-	  (with-pvs-context libref
-	    (restore-context)
-	    (multiple-value-bind (*pvs-files* *pvs-modules*)
-		(get-imported-files-and-theories libref)
-	      (relativize-imported-libraries
-	       libref orig-context-path
-	       (let* ((dir (libref-to-pathname libref))
-		      (file (subseq file-name (1+ pos)))
-		      (html-file (make-htmlpath file dir))
-		      (pvs-file (let ((*pvs-context-path* dir))
-				  (make-specpath file))))
-		 (assert (file-exists-p pvs-file))
-		 (when (or force?
-			   (not (file-exists-p html-file))
-			   (file-older html-file pvs-file))
-		   (let ((*html-theories* (get-theories file)))
-		     (with-open-file (*html-out* html-file
-						 :direction :output
-						 :if-exists :supersede)
-		       (html-theories file-name pvs-file))
-		     (pvs-message "~a generated" html-file))))))))
+	(let ((libref (subseq file-name 0 (1+ pos))))
+	  (with-workspace libref
+	    (let* ((dir (get-library-reference libref))
+		   (file (subseq file-name (1+ pos)))
+		   (html-file (make-htmlpath file dir))
+		   (pvs-file (let ((*default-pathname-defaults* dir))
+			       (make-specpath file))))
+	      (assert (file-exists-p pvs-file))
+	      (when (or force?
+			(not (file-exists-p html-file))
+			(file-older html-file pvs-file))
+		(let ((*html-theories* (get-theories file)))
+		  (with-open-file (*html-out* html-file
+					      :direction :output
+					      :if-exists :supersede)
+		    (html-theories file-name pvs-file))
+		  (pvs-message "~a generated" html-file))))))
 	(let ((html-file (make-htmlpath file-name))
 	      (pvs-file (make-specpath file-name)))
 	  (when (or force?
@@ -362,9 +348,9 @@
 	    (setf (gethash theory *pvs-html-hrefs*)
 		  (concatenate 'string
 		    (html-relative-reference
-		     (if (library-datatype-or-theory? theory)
-			 (libref-to-pathname (lib-ref theory))
-			 *pvs-context-path*))
+		     (if (lib-datatype-or-theory? theory)
+			 (context-path theory)
+			 *default-pathname-defaults*))
 		    fname))))))
   
 
@@ -518,14 +504,14 @@
   (declare (ignore ex))
   nil)
 
-(defun make-htmlpath (name &optional (pvs-dir *pvs-context-path*))
+(defun make-htmlpath (name &optional (pvs-dir *default-pathname-defaults*))
   (make-pathname :directory (html-directory pvs-dir)
 		 :name name
 		 :type "html"))
 
 ;;; This walks through the mappings looking for the place to put something
 ;;; in the 
-(defun html-directory (&optional (pvs-dir *pvs-context-path*))
+(defun html-directory (&optional (pvs-dir *default-pathname-defaults*))
   (or (gethash pvs-dir *pvs-html-dirs*)
       (setf (gethash pvs-dir *pvs-html-dirs*)
 	    (if (null *pvs-url-mapping*)
@@ -544,8 +530,8 @@
 		 (ensure-trailing-slash (namestring pvs-dir))
 		 (ensure-trailing-slash (cadr *pvs-url-mapping*)))))))
 
-;;; Checks to see if the *pvs-context-path* is a subdirectory of one of the
-;;; mappings, returning it if so.  Otherwise returns the *pvs-context-path*
+;;; Checks to see if the *default-pathname-defaults* is a subdirectory of one of the
+;;; mappings, returning it if so.  Otherwise returns the *default-pathname-defaults*
 ;;; concatenated with "pvshtml".
 (defun html-directory* (mappings pvs-dir base-html-dir)
   (if (null mappings)
@@ -617,12 +603,12 @@
 	    (t (html-pvs-error "Directory ~a not created" dir))))))
 
 (defun pvshtml-url-and-directory ()
-  (let ((entry (assoc *pvs-context-path* *pvs-url-mapping*
+  (let ((entry (assoc *default-pathname-defaults* *pvs-url-mapping*
 		      :test #'subdirectoryp)))
     (if entry
 	(values (cadr entry) (caddr entry))
 	(values ""
-		(append (pathname-directory *pvs-context-path*)
+		(append (pathname-directory *default-pathname-defaults*)
 			    (list "pvshtml"))))))
 
 (defun html-pvs-error (err &rest args)

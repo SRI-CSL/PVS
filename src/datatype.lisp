@@ -79,6 +79,7 @@ generated")
 	    (*generating-adt* ,vadt)
 	    (*current-theory* (make-instance 'rectype-theory
 				:id ,vtid
+				:context-path *default-pathname-defaults*
 				:exporting (make-instance 'exporting
 					     :kind 'default)))
 	    (*current-context* (make-new-context *current-theory*))
@@ -88,7 +89,7 @@ generated")
 	    (*exprs-generating-actual-tccs* nil))
        (setf (gethash ,vtid (if (from-prelude? ,vadt)
 				*prelude*
-				*pvs-modules*))
+				(current-pvs-theories)))
 	     *current-theory*)
        ,@forms
        (setf (generated-by *current-theory*) (id ,vadt))
@@ -267,11 +268,11 @@ generated")
       (push 'typechecked (status adt))
       (dolist (th adt-theories)
 	(setf (filename th) adt-file))
-      (setf (gethash adt-file *pvs-files*)
+      (setf (gethash adt-file (current-pvs-files))
 	    (cons fdate (adt-generated-theories adt)))
       (cond (ce2
 	     (setf (ce-write-date ce2) fdate)
-	     (setq *pvs-context-changed* t))
+	     (setf (pvs-context-changed *workspace-session*) t))
 	    (t (update-context adt-file))))))
 
 
@@ -1089,7 +1090,7 @@ generated")
   ;;                       ((adtdecl range-type freevars new-acc-decl) adtdecl ...) ...)
   ;; where each element reflects a different, but compatible, range type.
   (let* ((acc-decl (cadddr (caar entry)))
-	 (dfmls (decl-formals acc-decl))
+	 ;;(dfmls (decl-formals acc-decl))
 	 (acc-decls (cdar entry)))
     (with-current-decl acc-decl
       (let* ((domain (get-accessor-domain-type entry adt))
@@ -1299,9 +1300,9 @@ generated")
 	 (tpred (make!-application epred tvar)))
     (if (null (cdr entry))
 	tpred
-	(let* ((adtype ;;(get-accessor-domain-type (list (car entry)) adt)
-		(cadr (caar entry)))
-	       (dtype (if (dep-binding? adtype) (type adtype) adtype))
+	(let* (;;(adtype ;;(get-accessor-domain-type (list (car entry)) adt)
+		;;(cadr (caar entry)))
+	       ;;(dtype (if (dep-binding? adtype) (type adtype) adtype))
 	       (pred ;;(predicate dtype)
 		     (typecheck (mk-name-expr (rec-decl (fifth (caar entry))))))
 	       (cond (make!-application pred dvar))
@@ -4053,7 +4054,7 @@ generated")
 (defun acc-reduce-selections (adt red fname bindings vars fdom adtinst &optional args)
   (if (null vars)
       (nreverse args)
-      (let* ((bd (car bindings))
+      (let* (;;(bd (car bindings))
 	     (v (car vars))
 	     (fd (car fdom))
 	     (arg (acc-reduce-selection

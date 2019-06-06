@@ -43,10 +43,9 @@
   (let ((reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
 		 (resolve name 'expr nil))))
-    (when ;;(let ((*ignored-conversions*
-		;; (cons "K_conversion" *ignored-conversions*)))
-	    (argument-conversions (mapcar #'type reses) arguments)
-	    ;; )
+    (when (let ((*ignored-conversions*
+		 (cons "K_conversion" *ignored-conversions*)))
+	    (argument-conversions (mapcar #'type reses) arguments))
       (resolve name 'expr arguments))))
 
 ;;; Called by typecheck* (name)
@@ -56,8 +55,8 @@
 		 (resolve name 'expr nil))))
     (unless (member "K_conversion" *ignored-conversions* :test #'string=)
       (let ((*only-use-conversions* (list "K_conversion")))
-	(when (argument-conversions (mapcar #'type reses) arguments)
-	  (resolve name 'expr arguments))))))
+	(when (argument-conversions (mapcar #'type (reverse reses)) arguments)
+	  (reverse (resolve name 'expr arguments)))))))
 
 ;; Returns list of args for which conversions were added
 (defun argument-conversions (optypes arguments &optional conv-args)
@@ -1408,7 +1407,8 @@ that are not the K_covnersion."
 (defun compatible-tupletype-conversion* (types conversion ex index)
   (when types
     (let* ((theory (module conversion))
-	   (lib (when (library-datatype-or-theory? theory) (lib-ref theory)))
+	   (lib (when (lib-datatype-or-theory? theory)
+		  (get-library-id (context-path theory))))
 	   (ctype (find-supertype (type (expr conversion))))
 	   (fmls (formals-sans-usings theory))
 	   (dfmls (decl-formals conversion))

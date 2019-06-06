@@ -171,6 +171,9 @@
   (filename :type (or null string)
 	    :documentation "The filename sans directory or extension"
 	    :restore-as nil)
+  (context-path :type pathname
+		:restore-as nil
+		:documentation "Full pathname of the context for this theory")
   (status :type list
 	  :documentation "A list containing the completed actions"
 	  :restore-as nil)
@@ -236,21 +239,7 @@
 
 (defcl datatype-with-subtypes (recursive-type-with-subtypes datatype))
 
-;;; Library classes
-
-(defcl library-datatype-or-theory (datatype-or-module)
-  (lib-ref :documentation
-	   "The canonical form of the library path - if relative, then it is
-            relative to the current context"
-	   :restore-as nil))
-
-(defcl library-recursive-type (library-datatype-or-theory))
-
-(defcl library-datatype (datatype library-recursive-type))
-
 (defcl inline-datatype-with-subtypes (inline-datatype datatype-with-subtypes))
-
-(defcl library-datatype-with-subtypes (library-datatype datatype-with-subtypes))
 
 ;;; Codatatypes
 
@@ -260,11 +249,7 @@
 
 (defcl codatatype-with-subtypes (codatatype recursive-type-with-subtypes))
 
-(defcl library-codatatype (codatatype library-recursive-type))
-
 (defcl inline-codatatype-with-subtypes (inline-codatatype codatatype-with-subtypes))
-
-(defcl library-codatatype-with-subtypes (library-codatatype codatatype-with-subtypes))
 
 (defcl adt-constructor (syntax)
   (recognizer :type symbol :parse t)
@@ -314,10 +299,6 @@
                  ; properly with store-print-types
   single-constructor?)
 
-
-(defcl library-theory (module library-datatype-or-theory))
-
-(defcl library-rectype-theory (library-theory rectype-theory))
 
 (defcl exporting (theory-element)
   (names :documentation "a list of names and absexpnames" :parse t)
@@ -1047,3 +1028,59 @@ restored, the TCCs are checked")
   theory-id
   library)
 )
+
+;; *all-workspace-sessions* is a list of workspace-session instances, which are used
+;; by with-pvs-context to execute a given expression under a different
+;; context.
+(defcl workspace-session ()
+  (path :documentation "An absolute pathname")
+  (pvs-files :initform (make-hash-table :test #'equal))
+  (pvs-theories :initform (make-hash-table :test #'eq :size 20 :rehash-size 10))
+  (prelude-libs :initform nil :documentation "list of abspaths")
+  (prelude-context :initform nil
+		   :documentation
+		   "the context that includes the prelude and all prelude-libraries")
+  (lisp-files :initform nil :documentation "list of loaded lisp-files")
+  (pvs-context :initform nil :documentation "the contents of .pvscontext")
+  (pvs-context-changed :initform nil
+		       :documentation "if t, .pvscontext needs to be saved"))
+
+
+;; (defcl context-info ()
+;;   pvs-files-list
+;;   pvs-version-string
+;;   pvs-path
+;;   lisp-version
+;;   emacs-version
+;;   lisp-exec
+;;   lisp-patches
+;;   strategies-files)
+
+;; (defcl pvs-file-info ()
+;;   pvs-file-name
+;;   write-date
+;;   proofs-date
+;;   object-date
+;;   dependencies
+;;   theories
+;;   extension
+;;   sha1)
+
+;; (defcl theory-info ()
+;;   id
+;;   status
+;;   dependencies
+;;   theory-elements-info)
+
+;; importings, judgements, conversions, auto-rewrites, assumptions,
+;; lib-decl, theory-decl, type-decl, units-decl, var-decl,
+;; const-decl, macro-decl, def-decl, ind-decl, corec-decl,
+;; coind-decl, formula-decl, datatype
+;; (defcl theory-element-info ()
+;;   kind
+;;   place)
+
+;; (defcl declaration-info (theory-element-info)
+;;   id)
+
+  

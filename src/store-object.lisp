@@ -485,8 +485,20 @@
       (setf (char str i) (code-char (stored-word (+ 2 i)))))
     str))
 
-;; (defmethod store-object* ((obj pathname))
-;;   (store-object* (namestring obj)))
+(defmethod store-object* ((obj pathname))
+  (let* ((pstr (namestring obj))
+	 (len (push-string-length pstr)))
+    (reserve-space (1+ len)
+      (push-word (store-obj 'pathname))
+      (push-string pstr))))
+
+(setf (get 'pathname 'fetcher) 'fetch-pathname)
+(defun fetch-pathname ()
+  (let* ((len (stored-word 1))
+	 (str (make-string len)))
+    (dotimes (i len)
+      (setf (char str i) (code-char (stored-word (+ 2 i)))))
+    (pathname str)))
 
 ;; It would be easy to reduce the storage required for integers
 ;; by storing them with a radix higher than 10.

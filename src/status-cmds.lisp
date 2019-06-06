@@ -400,7 +400,7 @@
 ;;; Module Formula Status
 
 (defun proofchain-status-at (filename declname line &optional (origin "pvs"))
-  (if (or (gethash filename *pvs-files*)
+  (if (or (gethash filename (current-pvs-files))
 	  (and (member origin '("ppe" "tccs") :test #'string=)
 	       (get-theory filename)))
       (let ((fdecl (formula-decl-to-prove filename declname line origin))
@@ -571,7 +571,7 @@
 			 all-proofs
 			 (proofs-with-associated-decls file all-proofs))
 		     (collect-theories-proofs
-		      (cdr (gethash file *pvs-files*))))))
+		      (cdr (gethash file (current-pvs-files)))))))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -601,7 +601,7 @@
     (nreverse aproofs)))
 
 (defun theory-formula-alist (file)
-  (let* ((theories (cdr (gethash file *pvs-files*)))
+  (let* ((theories (cdr (gethash file (current-pvs-files))))
 	 (ce (unless theories (context-entry-of file))))
     (cond (theories
 	   (mapcar #'(lambda (th)
@@ -672,7 +672,7 @@
 			      proofs
 			      (proofs-with-associated-decls file proofs))
 			  (collect-theories-proofs
-			   (cdr (gethash file *pvs-files*))))))
+			   (cdr (gethash file (current-pvs-files)))))))
 	(setq all-proofs
 	      (nconc all-proofs
 		     (remove-if-not #'(lambda (pr)
@@ -916,7 +916,7 @@
 				(adt-map-theory prevp)
 				(adt-theory prevp))
 			    prevp))))
-		    (t (or *prelude-library-context*
+		    (t (or (prelude-context *workspace-session*)
 			   *prelude-context*))))
 	 (ctx-jdecls (judgement-declarations (judgements ctx))))
     (append rem-jdecls ctx-jdecls)))
@@ -1036,9 +1036,12 @@
     (when udecl
       (let ((decls (declaration-used-by-proofs-of udecl)))
 	(if decls
-	    (mapcar #'(lambda (d)
-			(format-decl-list d (ptype-of d) (module d)))
-	      decls)
+	    (let* ((flist (mapcar #'(lambda (d)
+				      (format-decl-list d (ptype-of d) (module d)))
+			    decls))
+		   (json:*lisp-identifier-name-to-json* #'identity)
+		   (fdecl-string (json:encode-json-to-string flist)))
+	      fdecl-string)
 	    (pvs-message "No proofs use ~a" (id udecl)))))))
 
 (defun get-decl-at-origin (bufname origin line &optional libpath)
@@ -1076,13 +1079,10 @@
 				(namestring (make-pathname
 					     :directory
 					     (pathname-directory bufname)))))
-			(files&theories
-			 (or (gethash lpath *prelude-libraries*)
-			     (gethash lpath *imported-libraries*))))
-		   (if files&theories
+			(ws (when lpath (get-workspace-session lpath))))
+		   (if ws
 		       (let* ((name (pathname-name bufname))
-			      (theories (cdr (gethash name
-						      (car files&theories))))
+			      (theories (cdr (gethash name (pvs-files ws))))
 			      (decl (get-decl-at line t theories)))
 			 (values decl (when decl (place decl))))
 		       (pvs-message "Library ~a is not imported" bufname)))
@@ -1409,11 +1409,13 @@
 	 (unused (unused-by-proofs-of fdecls)))
     (unless (some #'null fdecls)
       (if unused
-	  (let ((flist (mapcar #'(lambda (d)
-				   (format-decl-list
-				    d (ptype-of d) (module d)))
-			 unused)))
-	    (write-declaration-info flist))
+	  (let* ((flist (mapcar #'(lambda (d)
+				    (format-decl-list
+				     d (ptype-of d) (module d)))
+			  unused))
+		 (json:*lisp-identifier-name-to-json* #'identity)
+		 (fdecl-string (json:encode-json-to-string flist)))
+	    fdecl-string)
 	  (pvs-message "No unused declarations found for ~a" formularefs)))))
 
 (defun unused-by-proofs-of (fdecls)
@@ -1424,7 +1426,7 @@
 			     (let ((th (module d)))
 			       (assert th)
 			       (unless (or (from-prelude? th)
-					   (library-datatype-or-theory? th)
+					   (lib-datatype-or-theory? th)
 					   (memq d used))
 				 (pushnew d unused)))))
     (sort unused #'(lambda (x y)
@@ -1438,11 +1440,13 @@
     (when udecl
       (let ((decls (unused-by-proof-of udecl)))
 	(if decls
-	    (let ((flist (mapcar #'(lambda (d)
-				     (format-decl-list
-				      d (ptype-of d) (module d)))
-			   decls)))
-	      (write-declaration-info flist))
+	    (let* ((flist (mapcar #'(lambda (d)
+				      (format-decl-list
+				       d (ptype-of d) (module d)))
+			    decls))
+		   (json:*lisp-identifier-name-to-json* #'identity)
+		   (fdecl-string (json:encode-json-to-string flist)))
+	      fdecl-string)
 	    (pvs-message "No unused declarations found for ~a" (id udecl)))))))
 
 (defun unused-by-proof-of (decl)
@@ -1455,13 +1459,13 @@
 			     (let ((th (module d)))
 			       (assert th)
 			       (unless (or (from-prelude? th)
-					   (library-datatype-or-theory? th)
+					   (lib-datatype-or-theory? th)
 					   (memq d used))
 				 (pushnew d unused)))))
     (dolist (ar (auto-rewrites *current-context*))
       (let ((th (module ar)))
 	(unless (or (from-prelude? th)
-		    (library-datatype-or-theory? th)
+		    (lib-datatype-or-theory? th)
 		    (memq ar used-rewrites))
 	  (push ar unused))))
     (sort unused #'(lambda (x y)

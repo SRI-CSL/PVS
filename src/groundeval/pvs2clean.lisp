@@ -750,7 +750,7 @@ FunnyId is not currently used, just documented here just in case."
 
 (defun generate-clean-for-pvs-file (filename &optional force?)
   (when force? (clear-clean-hash))
-  (let ((theories (cdr (gethash filename *pvs-files*))))
+  (let ((theories (cdr (gethash filename (current-pvs-files)))))
     ;; Sets the hash-tables
     (dolist (theory theories)
       (pvs2clean-theory theory))

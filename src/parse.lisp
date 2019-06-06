@@ -61,6 +61,12 @@
 			     *current-file*))
 	 (start-time (when *current-file* (get-internal-real-time))))
     (init-parser)
+    (when *current-file*
+      (let ((pdir (pathname-directory *current-file*)))
+	(unless (or (null pdir)
+		    (file-equal (make-pathname :directory pdir)
+				*default-pathname-defaults*))
+	  (break "check this"))))
     (multiple-value-bind (term error? place msg args)
 	(apply #'pvs-parse :return-errors t keys)
       (when error?
@@ -167,6 +173,7 @@
                  ~%Remember that the backslash character must be doubled ~
                  in strings~%E.g., (expand \"/\\\\\")"
 	  *escaped-operators-used*)))
+    (setf (context-path aorm) *default-pathname-defaults*)
     aorm))
 
 (defun xt-datatypes (class datatype &optional id inline)
@@ -3064,7 +3071,8 @@
 	       (if (zerop frac-value)
 		   (make-instance 'decimal-integer
 		     :number int-part
-		     :fractional-length frac-length)
+		     :fractional-length frac-length
+		     :place (term-place name))
 		   (let* ((denom (expt 10 frac-length))
 			  (num (+ (* denom int-part) frac-value)))
 		     (make-instance 'decimal
@@ -3073,7 +3081,8 @@
 				  (make-instance 'number-expr
 				    :number num)
 				  (make-instance 'number-expr
-				    :number denom)))))))
+				    :number denom))
+		       :place (term-place name))))))
 	    ((and maybe-num? (null length))
 	     (multiple-value-bind (num radix)
 		 (if (is-number (term-arg0 idop))

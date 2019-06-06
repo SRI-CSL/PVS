@@ -60,11 +60,11 @@
 ;	       (untypecheck (used-by omod))
 ;	       (dolist (use (all-usings omod))
 ;		 (setf (used-by (car use)) (remove omod (used-by (car use)))))
-;	       (setf (gethash (id omod) *pvs-modules*) nmod)
+;	       (setf (gethash (id omod) (current-pvs-theories)) nmod)
 ;	       nmod)
 ;	      (t (progress-msg "Updating theory")
 ;		 (update omod nmod diffs))))
-;      (progn (setf (gethash (id nmod) *pvs-modules*) nmod)
+;      (progn (setf (gethash (id nmod) (current-pvs-theories)) nmod)
 ;	     nmod)))
 ;
 ;(defun module-differences? (diffs)

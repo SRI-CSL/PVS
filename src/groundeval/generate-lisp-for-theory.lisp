@@ -41,7 +41,7 @@
 	  (write-decl-defns decl output))))))
 
 (defun generate-lisp-for-pvs-file (filename)
-  (let ((theories (cdr (gethash filename *pvs-files*))))
+  (let ((theories (cdr (gethash filename (current-pvs-files)))))
     (with-open-file (output (format nil "~a.lisp" filename)
 			    :direction :output
 			    :if-exists :supersede

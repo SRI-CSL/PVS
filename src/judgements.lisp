@@ -1157,13 +1157,7 @@
 						(subtype-of? jty jrange))
 					    jtypes)))
 		       (rtypes nil)
-		       (rdecls nil)
-		       (otypes (if dont-add?
-				   jtypes
-				   (cons jrange
-					 (remove-if #'(lambda (jty)
-							(subtype-of? jrange jty))
-					   jtypes)))))
+		       (rdecls nil))
 		  (if dont-add?
 		      (setq rtypes jtypes
 			    rdecls jdecls)
@@ -1175,7 +1169,6 @@
 			      jtypes jdecls)
 			(push jrange rtypes)
 			(push rjdecl rdecls)))
-		  #+pvsdebug (assert (length= rtypes otypes))
 		  #+pvsdebug (assert (length= rtypes rdecls))
 		  (generic-application-judgement-types
 		   ex
@@ -1215,9 +1208,10 @@
 				   bindings1)))))
     (when (and bindings (every #'cdr bindings))
       (let* ((th (module judgement))
-	     (lib-id (when (library-datatype-or-theory? th)
-		       (car (rassoc (lib-ref th) (current-library-alist)
-				    :test #'equal))))
+	     (need-lib? (lib-datatype-or-theory? th))
+	     (lib-id (when need-lib?
+		       (or (get-library-id (context-path th))
+			   (break "no lib-id?"))))
 	     (jthinst (mk-modname (id th)
 			(mapcar #'(lambda (a) (mk-actual (cdr a)))
 			  bindings)
@@ -1311,12 +1305,7 @@
 				(some #'(lambda (r) (subtype-of? r range))
 				      jtypes)))
 		 (rtypes nil)
-		 (rdecls nil)
-		 (otypes (if dont-add?
-			     jtypes
-			     (cons range
-				   (remove-if #'(lambda (r) (subtype-of? range r))
-				     jtypes)))))
+		 (rdecls nil))
 	    #+pvsdebug (assert (length= jtypes jdecls))
 	    (if dont-add?
 		(setq rtypes jtypes
@@ -1329,7 +1318,6 @@
 			jtypes jdecls)
 		  (push range rtypes)
 		  (push rjdecl rdecls)))
-	    #+pvsdebug (assert (length= otypes rtypes))
 	    (assert (or rtypes (null jtypes)))
 	    #+pvsdebug (assert (length= rtypes rdecls))
 	    (compute-appl-judgement-types
@@ -3440,7 +3428,7 @@
 
 (defun subst-theory-inst-from-free-params (th bindings)
   (when (and bindings (every #'cdr bindings))
-    (let* ((libid (get-lib-id th))
+    (let* ((libid (get-library-id (context-path th)))
 	   (nbindings (mapcar #'(lambda (elt)
 				  (cons (car elt)
 					(if (actual? (cdr elt))

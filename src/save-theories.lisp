@@ -51,9 +51,10 @@
 (defmethod get-theories-to-save ((adt datatype))
   (append (adt-generated-theories adt) (list adt)))
 
+(defvar *ignore-binfile-errors* t)
 
 ;;; Called from restore-theory in context.lisp
-(defun get-theory-from-binfile (filename &optional (dont-ignore-errors nil))
+(defun get-theory-from-binfile (filename)
   "Gets a theory from the binfile, by fetching, then restoring.  Fetching
 basically creates the instances, and fills in some slots.  Restoring fills
 in the remaining slots, in particular, those that may reference other
@@ -62,9 +63,9 @@ instances, e.g., other declarations within the theory, or self-references."
 	(start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
     (multiple-value-bind (vtheory fetch-error)
-	(if dont-ignore-errors
-	    (fetch-object-from-file file)
-	    (ignore-lisp-errors (fetch-object-from-file file)))
+	(if *ignore-binfile-errors*
+	    (ignore-lisp-errors (fetch-object-from-file file))
+	    (fetch-object-from-file file))
       (let ((load-time (get-internal-real-time)))
 	(cond ((and (consp vtheory)
 		    (integerp (car vtheory))
@@ -82,6 +83,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		 (assert (module? (current-theory)))
 		 (assert (judgement-types-hash (current-judgements)))
 		 (restore-object theory)
+		 (setf (context-path theory) (working-directory))
 		 ;;(assert (eq (current-theory) theory))
 		 ;;(assert (datatype-or-module? theory))
 		 (restore-saved-context (saved-context theory))
@@ -96,13 +98,13 @@ instances, e.g., other declarations within the theory, or self-references."
 	       (pvs-message "~I~<Error in fetching ~a -~_ ~a~:>" filename fetch-error)
 	       (ignore-lisp-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
-		 (remhash thid *pvs-modules*))
+		 (remhash thid (current-pvs-theories)))
 	       nil)
 	      (t (pvs-message "Bin file version for ~a is out of date"
 		   filename)
 		 (ignore-lisp-errors (delete-file file))
 		 (dolist (thid *bin-theories-set*)
-		   (remhash thid *pvs-modules*))
+		   (remhash thid (current-pvs-theories)))
 		 nil))))))
 
 (defun list-of-modules ()
@@ -111,7 +113,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		 (declare (ignore id))
 		 (when (typechecked? mod)
 		   (push mod theory-list)))
-	     *pvs-modules*)
+	     (current-pvs-theories))
     theory-list))
 
 (defvar *stored-mod-depend* (make-hash-table :test #'eq))
@@ -146,10 +148,12 @@ instances, e.g., other declarations within the theory, or self-references."
   (if (typep obj '(not (or inline-recursive-type enumtype)))
       (if *saving-theory*
 	  (if (external-library-reference? obj)
-	      (reserve-space 3
+	      (reserve-space 4
 		(push-word (store-obj 'modulelibref))
 		(push-word (store-obj (id obj)))
-		(push-word (store-obj (lib-ref obj))))
+		;; Take out the car/cdr, because fetch postpones conses
+		(push-word (store-obj (get-library-id (context-path obj))))
+		(push-word (store-obj (context-path obj))))
 	      (reserve-space 2
 		(push-word (store-obj 'moduleref))
 		(push-word (store-obj (id obj)))))
@@ -166,12 +170,13 @@ instances, e.g., other declarations within the theory, or self-references."
 	  (restore-adt-slot obj))
 	(call-next-method (copy obj
 			    'adt (if (external-library-reference? (adt obj))
-				     (cons (lib-ref (adt obj))
+				     (cons (context-path (adt obj))
 					   (id (adt obj)))
 				     (id (adt obj))))))))
 
-(defmethod external-library-reference? ((obj library-datatype-or-theory))
-  (not (eq obj (gethash (id obj) *pvs-modules*))))
+(defmethod external-library-reference? ((obj datatype-or-module))
+  (and (not (file-equal (context-path obj) *default-pathname-defaults*))
+       (not (from-prelude? obj))))
 
 (defmethod external-library-reference? (obj)
   (declare (ignore obj))
@@ -183,7 +188,7 @@ instances, e.g., other declarations within the theory, or self-references."
 
 ;; (defmethod store-object* :around ((obj resolution))
 ;;   (assert (not (and (null (library (module-instance obj)))
-;; 		    (library-datatype-or-theory?
+;; 		    (lib-datatype-or-theory?
 ;; 		     (module (declaration obj))))))
 ;;   (call-next-method))
 
@@ -338,12 +343,15 @@ instances, e.g., other declarations within the theory, or self-references."
 (setf (get 'modulelibref 'fetcher) 'fetch-modulelibref)
 (defun fetch-modulelibref ()
   (let* ((mod-name (fetch-obj (stored-word 1)))
-	 (lib-ref (fetch-obj (stored-word 2)))
-	 (theory (or (get-theory* mod-name lib-ref)
+	 (lib-id (fetch-obj (stored-word 2)))
+	 (lib-path (fetch-obj (stored-word 3)))
+	 (theory (or (get-theory* mod-name lib-id)
 		     (get-theory* mod-name nil))))
     (unless theory
-      (error "Attempt to fetch unknown library theory ~s from ~s"
-	     mod-name lib-ref))
+      (error "Attempt to fetch unknown library theory ~s from lib-id ~s~%~
+              Was associated with ~:[non~;~]existing path ~a"
+	     mod-name lib-id
+	     (file-exists-p lib-path) lib-path))
     theory))
 
 (defmethod update-fetched :around ((obj datatype-or-module))
@@ -359,7 +367,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		 (delete atns *adt-type-name-pending*))))
        ;;(assert (listp *bin-theories-set*))
        (pushnew (id obj) *bin-theories-set*)
-       (setf (gethash (id obj) *pvs-modules*) obj))))
+       (setf (gethash (id obj) (current-pvs-theories)) obj))))
 
 (defmethod store-object* :around ((obj formula-decl))
   (dolist (proof (proofs obj))
@@ -380,9 +388,10 @@ instances, e.g., other declarations within the theory, or self-references."
 	     (not (typep obj '(or skolem-const-decl decl-formal)))
 	     (not (and (judgement? obj) (generated-by obj))))
 	(if (external-library-reference? module)
-	    (reserve-space 4
+	    (reserve-space 5
 	      (push-word (store-obj 'decllibref))
-	      (push-word (store-obj (lib-ref module)))
+	      (push-word (store-obj (get-library-id (context-path module))))
+	      (push-word (store-obj (context-path module)))
 	      (push-word (store-obj (id module)))
 	      (push-word (position obj (all-decls module))))
 	    (store-declref obj))
@@ -432,9 +441,10 @@ instances, e.g., other declarations within the theory, or self-references."
     (assert (position obj (all-decls theory)))
     (if (not (eq theory *saving-theory*))
 	(if (external-library-reference? theory)
-	    (reserve-space 4
+	    (reserve-space 5
 	      (push-word (store-obj 'decllibref))
-	      (push-word (store-obj (lib-ref theory)))
+	      (push-word (store-obj (get-library-id (context-path theory))))
+	      (push-word (store-obj (context-path theory)))
 	      (push-word (store-obj (id theory)))
 	      (push-word (position obj (all-decls theory))))
 	    (reserve-space 3
@@ -511,7 +521,6 @@ instances, e.g., other declarations within the theory, or self-references."
 (defmethod store-object* :around ((obj context))
   (with-slots (theory theory-name declaration
 		      declarations-hash using-hash
-		      library-alist
 		      judgements known-subtypes
 		      conversions disabled-conversions
 		      auto-rewrites disabled-auto-rewrites)
@@ -521,7 +530,6 @@ instances, e.g., other declarations within the theory, or self-references."
       (push-word (store-obj theory))
       (push-word (store-obj theory-name))
       (push-word (store-obj declaration))
-      (push-word (store-obj library-alist))
       (let ((decl-hash (create-store-declarations-hash
 			declarations-hash)))
 	(push-word (store-obj decl-hash)))
@@ -693,13 +701,13 @@ instances, e.g., other declarations within the theory, or self-references."
 
 (setf (get 'decllibref 'fetcher) 'fetch-decllibref)
 (defun fetch-decllibref ()
-  (let* ((lib-ref (fetch-obj (stored-word 1)))
-	 (mod-name (fetch-obj (stored-word 2)))
-	 (theory (or (get-theory* mod-name lib-ref)
+  (let* ((lib-id (fetch-obj (stored-word 1)))
+	 (mod-name (fetch-obj (stored-word 3)))
+	 (theory (or (get-theory* mod-name lib-id)
 		     (get-theory* mod-name nil))))
     (unless theory
       (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
-    (let* ((decl-pos (stored-word 3))
+    (let* ((decl-pos (stored-word 4))
 	   (decl (nth decl-pos (all-decls theory))))
       (assert decl () "Declaration was not found")
       decl)))
@@ -875,19 +883,26 @@ instances, e.g., other declarations within the theory, or self-references."
 (defmethod restore-object* :around ((obj adt-type-name))
   (call-next-method)
   (when (consp (adt obj))
-    (if (gethash (car (adt obj)) *prelude-libraries*)
+    ;; (lib-path . adt-id)
+    (if (get-prelude-library-theory (car (adt obj)))
 	(let ((adt (get-theory (cdr (adt obj)))))
 	  (assert adt)
 	  (setf (adt obj) adt))
 	(let ((adt (get-theory* (cdr (adt obj)) (car (adt obj)))))
 	  (if adt
 	      (setf (adt obj) adt)
-	      (let ((lib (car (rassoc (car (adt obj)) (current-library-alist)
-				      :test #'equal))))
-		(assert lib)
-		(let ((adt (get-theory* (cdr (adt obj)) lib)))
+	      (let ((lib-id (get-library-id (car (adt obj)))))
+		(assert lib-id)
+		(let ((adt (get-theory* (cdr (adt obj)) lib-id)))
 		  (assert adt)
 		  (setf (adt obj) adt))))))))
+
+(defun get-prelude-library-theory (id)
+  (find-if #'(lambda (path)
+	       (let ((ws (get-workspace-session path)))
+		 (gethash id (pvs-theories ws))))
+    (current-prelude-libraries)))
+
 
 (defmethod restore-object* :around ((obj importing-entity))
   (call-next-method)
@@ -1363,6 +1378,9 @@ instances, e.g., other declarations within the theory, or self-references."
   obj)
 
 (defmethod restore-object* ((obj string))
+  obj)
+
+(defmethod restore-object* ((obj pathname))
   obj)
 
 (defmethod restore-object* ((obj number))

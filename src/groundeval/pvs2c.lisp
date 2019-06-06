@@ -825,7 +825,7 @@
   (setq *C-record-defns* nil)
   (clrhash *C-nondestructive-hash*)
   (clrhash *C-destructive-hash*)
-  (let ((theories (cdr (gethash filename *pvs-files*))))
+  (let ((theories (cdr (gethash filename (current-pvs-files)))))
     (dolist (theory theories)
       (pvs2C-theory theory))  ;; Fill the hash-tables with definitions
     (with-open-file (outputH (format nil "~a.h" filename)

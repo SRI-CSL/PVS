@@ -209,76 +209,52 @@
 ;;; with-pvs-context is a macro that temporarily changes the context,
 ;;; restoring everything to the previous state on exiting.
 
-(defmacro with-pvs-context (lib-ref &rest forms)
+(defmacro with-workspace (lib-ref &rest forms)
+  (let ((lib-path (gentemp))
+	(ws (gentemp))
+	(shortdir (gentemp))
+	(orig-dir (gentemp)))
+    `(let ((,lib-path (get-library-path ,lib-ref)))
+       (if (directory-p ,lib-path)
+	   (let* ((,orig-dir (working-directory))
+		  (,shortdir (shortpath ,lib-path))
+		  (*default-pathname-defaults* ,shortdir)
+		  (*current-context* nil)
+		  (*current-theory* nil)
+		  (*all-subst-mod-params-caches* nil)
+		  (*workspace-session*
+		   (or (get-workspace-session ,lib-path)
+		       (let ((,ws (make-instance 'workspace-session
+				    :path ,lib-path)))
+			 (push ,ws *all-workspace-sessions*)
+			 ,ws))))
+	     (unwind-protect 
+		  (prog1 (progn (set-working-directory ,shortdir)
+				(unless (pvs-context *workspace-session*)
+				  (restore-context))
+				,@forms)
+		    (when (pvs-context-changed *workspace-session*)
+		      (save-context)))
+	       (set-working-directory ,orig-dir)))
+	   (error "Library ~a does not exist" ,lib-path)))))
+
+(defmacro with-directory (dirstr &rest forms)
+  "This has the effect of cd, by creating a context in which
+*default-pathname-defaults* and (working-directory) are set to dir, making
+it the default."
   (let ((dir (gentemp))
 	(shortdir (gentemp))
 	(orig-dir (gentemp)))
-    `(let ((,dir (directory-p (libref-to-pathname ,lib-ref))))
-       (if (pathnamep ,dir)
+    `(let ((,dir (directory-p ,dirstr)))
+       (if ,dir
 	   (let* ((,orig-dir (working-directory))
 		  (,shortdir (shortpath ,dir))
-		  (*pvs-context-path* ,shortdir)
-		  (*default-pathname-defaults* ,shortdir)
-		  (*pvs-context-writable* (write-permission? ,shortdir))
-		  (*pvs-context* nil)
-		  (*pvs-context-changed* nil)
-		  (*current-context* nil)
-		  (*current-theory* nil)
-		  (*all-subst-mod-params-caches* nil))
-	     (unwind-protect 
+		  (*default-pathname-defaults* ,shortdir))
+	     (unwind-protect
 		  (progn (set-working-directory ,shortdir)
 			 ,@forms)
 	       (set-working-directory ,orig-dir)))
-	   (pvs-message "Library ~a does not exist" ,dir)))))
-
-
-;;; The *imported libraries* hash table and (library-alist *current-context*)
-;;; are indexed from a relative reference.  They use this because the lib-ref
-;;; may ultimately be part of the .pvscontext, which should be portable if no
-;;; absolute pathnames are involved.
-;;;       
-;;; This macro temporarily changes the *imported-libraries* hash table,
-;;; allowing nested library references to work, then puts the new information
-;;; into the original hash table.
-;;; Note that the lib-ref slots of existing library-theories may be modified;
-;;; unwind-protect is used to ensure that they are put back correctly.
-;;; This macro is used by load-imported-library and
-;;; restore-imported-library-files - it is not needed for prelude-libraries.
-;;;
-;;; On entry, existing imported libraries need to be relativized, and on exit,
-;;; the changed ones need to be put back, and any new ones need to be
-;;; relativized.  So we copy the original, then make modifications to any
-;;; relative lib-refs (which are strings beginning with a '.').  The lib-ref
-;;; that is passed in may be one of the entries; it is removed.  Thus this
-;;; macro must be used AFTER the call to get-imported-files-and-theories.
-;;; *pvs-context-path* has thus already been modified.
-(defmacro relativize-imported-libraries (lib-ref orig-context-path &rest forms)
-  (let ((mods (gentemp))
-	(entry (gentemp))
-	(lref (gentemp))
-	(cpath (gentemp)))
-    `(let ((,lref ,lib-ref)
-	   (,cpath ,orig-context-path)
-	   (,mods nil)
-	   (,entry nil))
-       (unwind-protect
-	    (progn
-	      (setq ,entry (gethash ,lref *imported-libraries*))
-	      (remhash ,lref *imported-libraries*)
-	      (setq ,mods
-		    (relativize-imported-library ,cpath *pvs-context-path*))
-	      (maphash #'(lambda (id th)
-			   (declare (ignore id))
-			   (change-from-library-class th))
-		       (cadr ,entry))
-	      ,@forms)
-	 (revert-relativized-imported-library
-	  *pvs-context-path* ,cpath ,mods)
-	 (maphash #'(lambda (id th)
-		      (declare (ignore id))
-		      (change-to-library-class th ,lref))
-		  (cadr ,entry))
-	 (setf (gethash ,lref *imported-libraries*) ,entry)))))
+	   (error "Directory ~a does not exist" ,dirstr)))))
 
 (defmacro add-to-alist (key entry alist)
   (let ((vkey (gentemp))
@@ -392,24 +368,17 @@
 	   (setq ,var nil))))))
 
 (defmacro do-all-theories (fn)
+  "Goes through all known (e.g., parsed) theories of the current context,
+and all *all-workspace-sessions* applying fn to each theory."
   `(progn (maphash #'(lambda (mid theory)
 		       (declare (ignore mid))
 		       (funcall ,fn theory))
-		   *pvs-modules*)
-	  (maphash #'(lambda (lib ht)
-		       (declare (ignore lib))
-		       (maphash #'(lambda (mid theory)
-				    (declare (ignore mid))
-				    (funcall ,fn theory))
-				(cadr ht)))
-		   *imported-libraries*)
-	  (maphash #'(lambda (lib ht)
-		       (declare (ignore lib))
-		       (maphash #'(lambda (mid theory)
-				    (declare (ignore mid))
-				    (funcall ,fn theory))
-				(cadr ht)))
-		   *prelude-libraries*)
+		   (current-pvs-theories))
+	  (dolist (ws *all-workspace-sessions*)
+	    (maphash #'(lambda (mid theory)
+			 (declare (ignore mid))
+			 (funcall ,fn theory))
+		     (pvs-theories ws)))
 	  (maphash #'(lambda (mid theory)
 		       (declare (ignore mid))
 		       (funcall ,fn theory))
@@ -473,9 +442,10 @@
 
 (defmacro with-added-decls (decls &rest body)
   (let ((gdecls (gensym))
-	(gdecl (gensym))
-	(assoc-decls (gensym))
-	(dfmls (gensym)))
+	;;(gdecl (gensym))
+	;;(assoc-decls (gensym))
+	;;(dfmls (gensym))
+	)
     `(let ((,gdecls ,decls))
        ;; We want to push new decl-formals into the current-declarations-hash
        ;; But there may already be some there (recursively)
@@ -490,13 +460,19 @@
 	     (remove-decl-formals-from-declarations-hash ,gdecls))))))
 
 (defun remove-decl-formals-from-declarations-hash (dfmls)
-  (dolist (dfml dfmls)
-    ;; Don't use get-declarations - it appends the lhash values
-    ;; Just take the lhash-table
-    (let* ((ht (lhash-table (current-declarations-hash)))
-	   (assoc-decls (gethash (id dfml) ht)))
-      (when (memq dfml assoc-decls)
-	(setf (gethash (id dfml) ht) (remove dfml assoc-decls))))))
+  "Tries to remove the dfmls from the declarations-hash, returining the list
+of those actually removed."
+  (let ((remdecls nil))
+    (dolist (dfml dfmls)
+      ;; Don't use get-declarations - it appends the lhash values
+      ;; Just take the lhash-table
+      (let* ((ht (lhash-table (current-declarations-hash)))
+	     (assoc-decls (gethash (id dfml) ht)))
+	(when (memq dfml assoc-decls)
+	  (setf (gethash (id dfml) ht) (remove dfml assoc-decls))
+	  (push dfml remdecls))
+	(assert (not (memq dfml (get-declarations (id dfml)))))))
+    remdecls))
 
 (defun add-decl-formals-to-declarations-hash (dfmls)
   (dolist (dfml dfmls)
@@ -510,7 +486,6 @@
 
 (defmacro with-default-context (&rest body)
   (let ((theory (gensym))
-	(decl (gensym))
 	(id (gensym)))
     `(progn
        (unless (boundp '*default-context*)
@@ -539,7 +514,8 @@ obj may be of type:
                   otherwise uses the main generated theory
   importing: same as a declaration
   :prelude uses the prelude context."
-  `(let ((*current-context* (if (eq ,obj :prelude) *prelude-context* (context ,obj)))
+  `(let ((*current-context* (if (eq ,obj :prelude)
+				*prelude-context* (context ,obj)))
 	 (*generate-tccs* 'all))
      ,@body))
 
@@ -555,21 +531,24 @@ obj may be of type:
 
 (defmacro with-current-decl (decl &rest body)
   (let ((cdecl (gensym))
-	(gdecl (gensym)))
+	(gdecl (gensym))
+	(remdecls (gensym)))
     `(let* ((,cdecl (current-declaration))
 	    (*current-declaration-stack* (cons ,cdecl *current-declaration-stack*))
 	    (*current-top-declaration* (or *current-top-declaration* ,cdecl))
-	    (,gdecl ,decl))
+	    (,gdecl ,decl)
+	    (,remdecls nil))
        (unwind-protect
 	    (progn (setf (current-declaration) ,gdecl)
 		   (when ,cdecl
-		     (remove-decl-formals-from-declarations-hash (decl-formals ,cdecl)))
+		     (setq ,remdecls
+			   (remove-decl-formals-from-declarations-hash (decl-formals ,cdecl))))
 		   (add-decl-formals-to-declarations-hash (decl-formals ,gdecl))
 		   ,@body)
 	 (remove-decl-formals-from-declarations-hash (decl-formals ,gdecl))
 	 (setf (current-declaration) ,cdecl)
 	 (when ,cdecl
-	   (add-decl-formals-to-declarations-hash (decl-formals ,cdecl)))))))
+	   (add-decl-formals-to-declarations-hash ,remdecls))))))
 
 (defmacro with-bound-declparams (decls &rest body)
   (let ((gdecls (gensym)))
@@ -599,7 +578,6 @@ obj may be of type:
 		   (declare (ignore id))
 		   (mapc function decls))
 	       lht)))
-
 
 (defmacro get-importings (theory &optional using-hash)
   (if using-hash
@@ -664,12 +642,14 @@ obj may be of type:
 		    body))))
 
 (defmacro update-alist (akey value alist &key overwrite test test-not key)
+  "A common pattern implemented by this is:
+    (let ((entry (assoc akey alist)))
+      (if entry
+          (setf (cdr entry) value)
+          (acons akey value alist)))"
   (let ((%elt (gentemp))
 	(%akey (gentemp))
-	(%alist (gentemp))
-	(%test (gentemp))
-	(%test-not (gentemp))
-	(%key (gentemp)))
+	(%alist (gentemp)))
     (format t "~%test: ~a" test)
     `(let* ((,%alist ,alist)
 	    (,%akey ,akey)

@@ -188,16 +188,16 @@
 (defun get-resolutions (name kind args)
   (let* ((adecls (get-declarations (id name)))
 	 (ldecls (if (library name)
-		     (let ((libref (get-library-reference (library name))))
-		       (if libref
+		     (let ((libpath (get-library-reference (library name))))
+		       (if libpath
 			   (if (eq kind 'module)
 			       (let ((th (get-typechecked-theory name)))
 				 (assert th)
 				 (list th))
 			       (remove-if-not
 				   #'(lambda (d)
-				       (and (library-theory? (module d))
-					    (string= libref (lib-ref (module d)))))
+				       (and (lib-datatype-or-theory? (module d))
+					    (file-equal libpath (context-path (module d)))))
 				 adecls))
 			   (type-error name "~a is an unknown library"
 				       (library name))))
@@ -220,7 +220,8 @@
 		      (null dreses)
 		      (null args)
 		      (symbolp (id name))
-		      (visible-theory? (id name))
+		      (or (importing-entity? (current-declaration))
+			  (visible-theory? (id name)))
 		      (or (null *typechecking-actual*)
 			  (some #'(lambda (th)
 				    (some #'formal-theory-decl?
@@ -231,7 +232,8 @@
 					(library name) (mappings name)))
 		    (theory (with-no-type-errors (get-typechecked-theory thname nil t))))
 	       (when theory
-		 (list (mk-resolution theory thname nil)))))
+		 (setf (resolutions thname)
+		       (list (mk-resolution theory thname nil))))))
 	   (get-theory-alias-decls-resolutions theory-aliases name adecls
 					       kind args))))
 
@@ -411,11 +413,13 @@
   (declare (ignore kind args))
   (when (mod-id name)
     (if (find (id name) (mappings name) :key #'(lambda (m) (id (lhs m))))
-	(let* (;;(theory (get-theory (mod-id name)))
+	(let* ((theory (get-theory (mod-id name)))
 	       (mapping (find (id name) (mappings name)
 			      :key #'(lambda (m) (id (lhs m)))))
 	       (thinst (mk-modname (mod-id name)
-			 (actuals name) (library name) (mappings name))))
+			 (actuals name) (library name) (mappings name)))
+	       (res (mk-resolution theory thinst nil)))
+	  (setf (resolutions thinst) (list res))
 	  (list (make-instance 'mapping-resolution
 		  :declaration mapping
 		  :module-instance thinst
@@ -500,13 +504,15 @@
 	      (let* ((usings (unless (eq dth (current-theory))
 			       (get-importings dth)))
 		     (thname (mk-modname (id (module decl))
-			       nil (when usings (library (car usings))) nil)))
+			       nil (when usings (library (car usings))) nil))
+		     (res (mk-resolution (module decl) thname nil)))
+		(setf (resolutions thname) (list res))
 		(when (and (visible-to-mapped-tcc? decl thname dth)
 			   ;;(or (null (decl-formals decl))
 			   ;;  (eq decl (current-declaration)))
 			   )
 		  #+pvsdebug
-		  (assert (or (not (library-datatype-or-theory? dth))
+		  (assert (or (not (lib-datatype-or-theory? dth))
 			      (and (library (car usings))
 				   (every #'(lambda (mi)
 					      (eq (library mi)
@@ -613,11 +619,14 @@
 	       (dthi (if (eq (current-theory) dth)
 			 (copy (current-theory-name))
 			 (when nacts
-			   (let ((libid
-				  (when (library-datatype-or-theory? dth)
-				    (libref-to-libid (lib-ref dth)))))
-			     (mk-modname-no-tccs
-			      (id dth) nacts libid)))))
+			   (let* ((libid
+				   (when (lib-datatype-or-theory? dth)
+				     (get-library-id (context-path dth))))
+				  (thname (mk-modname-no-tccs
+					   (id dth) nacts libid))
+				  (res (mk-resolution dth thname nil)))
+			     (setf (resolutions thname) (list res))
+			     thname))))
 	       (*generate-tccs* 'none))
 	  (when dthi
 	    (when dacts
@@ -630,7 +639,9 @@
 	      (compatible-arguments? decl dthi args (current-theory)))))
 	(let* ((cinsts (decl-args-compatible? decl args mappings))
 	       (modinsts (mapcar #'(lambda (thinst)
-				     (if (actuals thinst)
+				     (if (or (actuals thinst)
+					     (and (null dacts)
+						  (dactuals thinst)))
 					 thinst
 					 (copy thinst :actuals acts)))
 			   cinsts))
@@ -1066,7 +1077,9 @@ decl, args, and mappings."
 			 #'(lambda (ex)
 			     (and (name? ex)
 				  (assq (declaration ex) bindings)))))
-	     (thinst (mk-modname (id theory) sactuals)))
+	     (thinst (mk-modname (id theory) sactuals))
+	     (res (mk-resolution theory thinst nil)))
+	(setf (resolutions thinst) (list res))
 	(with-no-type-errors
 	    (typecheck* (pc-parse (unparse thinst :string t) 'modname)
 			nil nil nil))))))
@@ -1093,7 +1106,10 @@ decl, args, and mappings."
 		 (if (typep nfml 'formal-type-decl)
 		     (compatible-parameters?*
 		      (cdr actuals) (cdr formals)
-		      (cons (copy-all (car actuals)) nacts) nalist)
+		      (let ((nact (copy-all (car actuals))))
+			(setf (place nact) (place (car actuals)))
+			(cons nact nacts))
+		      nalist)
 		     (compatible-parameters?**
 		      actuals (cons nfml (cdr formals)) type nacts nalist))))))))
 
@@ -1621,7 +1637,7 @@ decl, args, and mappings."
 (defmethod compatible-arguments? (decl modinst args mod)
   (declare (type list args))
   (declare (ignore mod))
-  #+pvsdebug (assert (or (not (library-datatype-or-theory? (module decl)))
+  #+pvsdebug (assert (or (not (lib-datatype-or-theory? (module decl)))
 			 (library modinst)))
   (if (null args)
       (list modinst)
@@ -1814,13 +1830,15 @@ decl, args, and mappings."
 		    (acts (mapcar #'(lambda (a) (mk-res-actual (cdr a) modinst))
 			    mbindings))
 		    (dacts (mapcar #'(lambda (a) (mk-actual (cdr a)))
-			     dbindings)))
-	       (cons (if dacts
-			 (mk-modname (id modinst)
-			   acts (library modinst) (mappings modinst)
-			   dacts decl)
-			 (copy modinst 'actuals acts))
-		     result))
+			     dbindings))
+		    (thinst (if dacts
+				(mk-modname (id modinst)
+				  acts (library modinst) (mappings modinst)
+				  dacts decl)
+				(copy modinst 'actuals acts)))
+		    (res (mk-resolution (module decl) thinst nil)))
+	       (setf (resolutions thinst) (list res))
+	       (cons thinst result))
 	     (cons (copy modinst) result))))))
 
 (defun matching-decl-formals-bindings (bindings)
@@ -2216,7 +2234,7 @@ This forms a lattice, and we return the top ones."
 	   1)
 	  ((from-prelude? module)
 	   4)
-	  ((typep module '(or library-theory library-datatype))
+	  ((lib-datatype-or-theory? module)
 	   3)
 	  (t 2))))
 
@@ -2384,12 +2402,12 @@ This forms a lattice, and we return the top ones."
 	    "Theory instance ~a is ambiguous - include the library~%  ~
                one of ~{~a~^ ~}"
 	    modname
-	    (mapcar #'(lambda (th) (libref-to-libid (lib-ref th))) iths)))
+	    (mapcar #'(lambda (th) (get-library-id (context-path th))) iths)))
 	(if (or gth iths)
 	    (let* ((th (or gth (car iths)))
 		   (nmodname (if iths
 				 (copy modname
-				   'library (libref-to-libid (lib-ref th)))
+				   'library (get-library-id (context-path th)))
 				 modname)))
 	      (typecheck* nmodname nil nil nil)
 	      (let* ((importings (get-importings th)))

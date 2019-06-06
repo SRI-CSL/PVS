@@ -266,16 +266,20 @@
 (defmethod typecheck* ((use importing) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck-using (theory-name use))
+  ;; This may make restoring binfiles faster, but has problems otherwise
+  ;; (let ((follows (cadr (memq use (all-decls (current-theory))))))
+  ;;   (unless (or (null follows) (importing-entity? follows))
+  ;;     (setf (saved-context use) (copy-context *current-context*))))
   (setf (saved-context use) (copy-context *current-context*))
   use)
 
 (defun typecheck-using (theory-inst)
   (let ((lib-id (library theory-inst)))
     (when lib-id
-      (let ((lib-ref (get-library-reference lib-id)))
-	(unless lib-ref
+      (let ((libpath (get-library-reference lib-id)))
+	(unless libpath
 	  (type-error theory-inst "Cannot find library ~a" lib-id))
-	(when (file-equal (libref-to-pathname lib-ref) *pvs-context-path*)
+	(when (file-equal libpath *default-pathname-defaults*)
 	  (type-error theory-inst
 	    "Library \"~a\" refers to the current PVS context - it must be external"
 	    lib-id)))))
@@ -292,8 +296,9 @@
 	 ;; something changed underneath
 	 (*tc-theories* (acons (current-theory) (current-declaration)
 			       *tc-theories*))
-	 (plib-context *prelude-library-context*)
+	 (plib-context (prelude-context *workspace-session*))
 	 (mod (get-typechecked-theory theory-inst)))
+    (assert mod)
     ;; (let* ((*generate-tccs* 'none)
     ;; 	   (thname (if (recursive-type? mod)
     ;; 		       (copy theory-inst :id (id (adt-theory mod)))
@@ -308,11 +313,11 @@
     ;; we need to update the current context.
     (assert (saved-context mod))
     ;;(assert (or (null mod) (eq (id mod) (id (declaration theory-inst)))))
-    (when (context-difference? plib-context *prelude-library-context*)
+    (when (context-difference? plib-context (prelude-context *workspace-session*))
       (setf (lhash-next (using-hash *current-context*))
-	    (using-hash *prelude-library-context*))
+	    (using-hash (prelude-context *workspace-session*)))
       (setf (lhash-next (declarations-hash *current-context*))
-	    (declarations-hash *prelude-library-context*)))
+	    (declarations-hash (prelude-context *workspace-session*))))
     (when (and *tc-add-decl*
 	       ;; Check for circularities
 	       (memq (current-theory) (all-importings mod)))
@@ -377,7 +382,7 @@ TCCs are generated, and finally exportings are updated."
     (add-to-using nthinst th)
     (unless (eq nthinst inst)
       (let ((theory (get-theory inst)))
-	(assert (or (not (library-datatype-or-theory? theory))
+	(assert (or (not (lib-datatype-or-theory? theory))
 		    (library inst)))
 	(put-importing inst theory)
 	(setf (resolutions inst) (list (make-resolution th nthinst)))))
@@ -406,11 +411,12 @@ TCCs are generated, and finally exportings are updated."
 	      (when (and (formal-theory-decl? fm)
 			 (not (typep (declaration (expr act))
 				     '(or theory-abbreviation-decl mod-decl))))
-		(add-to-using (mk-modname (id (expr act))
+		(let* ((th (get-theory (expr act)))
+		       (ninst (make-theoryname th
 				(actuals (expr act))
 				(library (expr act))
-				(mappings (expr act)))
-			      (get-theory (expr act)))))
+				(mappings (expr act)))))
+		  (add-to-using ninst th))))
 	  (formals-sans-usings theory)
 	  (actuals inst))))
 
@@ -421,16 +427,17 @@ TCCs are generated, and finally exportings are updated."
 		       (mod-decl? (declaration (lhs map))))
 	      (let* ((thname (theory-ref (expr (rhs map))))
 		     (rth (target-mapped-theory (declaration (expr (rhs map)))))
-		     (mtheory rth))
-		(assert (same-id (get-theory thname) mtheory))
-		(add-to-using (mk-modname (id thname)
-				(or (actuals (expr (rhs map)))
-				    (actuals thname))
-				(or (library (expr (rhs map)))
-				    (library thname))
-				(or (mappings (expr (rhs map)))
-				    (mappings thname)))
-			      mtheory))))
+		     (mtheory rth)
+		     (ninst (make-theoryname
+			     mtheory
+			     (or (actuals (expr (rhs map)))
+				 (actuals thname))
+			     (or (library (expr (rhs map)))
+				 (library thname))
+			     (or (mappings (expr (rhs map)))
+				 (mappings thname)))))
+		#+pvsdebug (assert (same-id (get-theory thname) mtheory))
+		(add-to-using ninst mtheory))))
 	(mappings inst)))
 
 (defmethod typecheck-using* ((adt recursive-type) inst)
@@ -476,21 +483,22 @@ TCCs are generated, and finally exportings are updated."
 (defun add-exporting-with-theories (theory inst &optional skip-add-to-using?)
   (when (exporting theory)
     (dolist (entry (the list (closure (exporting theory))))
-      (let* ((itheory (cdr entry))
-	     (ename (if (and (library-datatype-or-theory? (cdr entry))
-			     (null (library (car entry))))
-			(copy (car entry)
-			  :library (libref-to-libid (lib-ref (cdr entry))))
-			(car entry)))
+      (let* ((thname (car entry))
+	     (itheory (cdr entry))
+	     (ename (if (and (lib-datatype-or-theory? itheory)
+			     (null (library thname)))
+			(copy thname
+			  :library (get-library-id (context-path itheory)))
+			thname))
 	     (iname (if (or (actuals inst)
 			    (mappings inst))
 			(subst-mod-params ename inst theory)
 			(remove-indirect-formals-of-name ename))))
 	(assert itheory)
-	(assert (or (not (library-datatype-or-theory? itheory))
+	(assert (or (not (lib-datatype-or-theory? itheory))
 		    (library iname)
 		    (from-prelude-library? itheory)
-		    (file-equal (lib-ref itheory) *pvs-context-path*)))
+		    (file-equal (context-path itheory) *default-pathname-defaults*)))
 	#+pvsdebug (assert (or (null (actuals iname))
 			       (fully-instantiated? iname)))
 	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
@@ -520,26 +528,36 @@ TCCs are generated, and finally exportings are updated."
 (defmethod get-immediate-usings ((theory module))
   (with-slots (immediate-usings formals assuming (theory-part theory)) theory
     (if (eq immediate-usings 'unbound)
-	(let* ((usings (mapcar #'theory-name
-			 (remove-if-not #'mod-or-using?
-			   (all-decls theory))))
-	       (all-there? t)
-	       (imm-usings (mapcan #'(lambda (thname)
-				       (let ((th (or (and (resolutions thname)
-							  (declaration thname))
-						     (get-theory thname))))
-					 (unless th (setq all-there? nil))
-					 (append
-					  (when (target thname)
-					    (list (target thname)))
-					  (or (and (typep th 'datatype)
-						   (datatype-instances thname))
-					      (list thname)))))
-			     usings)))
-	  (if all-there?
-	      (setf immediate-usings imm-usings)
-	      imm-usings))
+	(get-immediate-usings* theory)
 	immediate-usings)))
+
+(defun get-immediate-usings* (theory)
+  (let* ((alldecls (all-decls theory))
+	 (usings (mapcar #'theory-name
+		   (remove-if-not #'importing-entity? alldecls)))
+	 (all-there? t)
+	 (imm-usings
+	  (mapcan #'(lambda (thname)
+		      (let ((th (or (and (resolutions thname)
+					 (declaration thname))
+				    (get-theory thname))))
+			(unless th (setq all-there? nil))
+			(append
+			 (when (target thname)
+			   (list (target thname)))
+			 (or (and (typep th 'datatype)
+				  (datatype-instances thname))
+			     (list thname)))))
+	    usings)))
+    ;; Would like to have the following invariant
+    ;; (assert (or (not all-there?)
+    ;; 		(every #'resolution imm-usings)))
+    ;; But if the theory is currently being typechecked, this is only true
+    ;; for importings preceding the current-declaration
+    ;; Keep unbound if get-theory returns nil for some thname
+    (if all-there?
+	(setf (immediate-usings theory) imm-usings)
+	imm-usings)))
 
 (defmethod get-immediate-using-names ((theory module))
   (with-slots (immediate-usings formals assuming (theory-part theory)) theory
@@ -571,16 +589,16 @@ TCCs are generated, and finally exportings are updated."
 	 (th2 (adt-map-theory adt))
 	 (th3 (adt-reduce-theory adt)))
     (when th1
-      (nconc (list (mk-modname (id th1)
+      (nconc (list (make-theoryname th1
 		     (when (actuals imported-adt)
 		       (ldiff (actuals imported-adt)
 			      (nthcdr (length (formals-sans-usings adt))
 				      (actuals imported-adt))))
 		     (library imported-adt)))
 	     (when th2
-	       (list (mk-modname (id th2) nil (library imported-adt))))
+	       (list (make-theoryname th2 nil (library imported-adt))))
 	     (when th3
-	       (list (mk-modname (id th3) nil (library imported-adt))))))))
+	       (list (make-theoryname th3 nil (library imported-adt))))))))
 
 (defmethod get-immediate-usings ((adt recursive-type))
   (append (mapcar #'theory-name
@@ -616,14 +634,17 @@ TCCs are generated, and finally exportings are updated."
 ;;; (m1[t,c] #m1 m2[s]) and return m2[t].
 
 (defun subst-actuals (inst theory target-inst)
+  (assert (resolution inst))
+  (assert (resolution target-inst))
   (let* ((etheory (subst-mod-params target-inst inst theory))
 	 (actuals (subst-actuals* inst
 				  (formals-sans-usings theory)
 				  (actuals etheory)
 				  nil)))
+    (assert (resolution etheory))
     (if (equal actuals (actuals etheory))
 	etheory
-	(mk-modname (id etheory) actuals))))
+	(make-theoryname etheory actuals))))
 
 (defun subst-actuals* (inst formals actuals result)
   (if (null actuals)
@@ -643,11 +664,12 @@ TCCs are generated, and finally exportings are updated."
 
 (defun add-to-using (theoryname &optional itheory)
   (assert *current-context*)
+  (assert (resolution theoryname))
   #+pvsdebug (assert (valid-importing-entry? theoryname))
   (let ((theory (or itheory (get-typechecked-theory theoryname))))
     (unless theory
       (type-error theoryname "Theory ~a not found" (id theoryname)))
-    ;; Need to update using-hash, declarations-hash, library-alist,
+    ;; Need to update using-hash, declarations-hash, 
     ;; known-subtypes, judgements, conversions, auto-rewrites, and
     ;; named-theories of current context from saved-context of theory.
     ;; Also need to update assuming-instances of current theory.
@@ -659,7 +681,7 @@ TCCs are generated, and finally exportings are updated."
 (defun update-current-context (theory theoryname)
   (assert (saved-context theory))
   (assert (fully-typed? theoryname))
-  (update-library-alist theory)
+  (assert (resolution theoryname))
   (update-usings-hash theory theoryname)
   (update-declarations-hash theory theoryname)
   (update-known-subtypes theory theoryname)
@@ -671,7 +693,11 @@ TCCs are generated, and finally exportings are updated."
   (let ((thimps (get-importings theory)))
     (setf (get-importings theory)
 	  (append thimps (list theoryname))))
+  (assert (saved-context theory))
   (maphash #'(lambda (th ithinsts)
+	       (dolist (ith ithinsts)
+		 (unless (resolution ith)
+		   (setf (resolutions ith) (list (mk-resolution th ith nil)))))
 	       (unless (or (eq th theory)
 			   (unimported-mapped-theory? th theory theoryname))
 		 (let* ((thinsts (exportable-theory-instances ithinsts theory))
@@ -687,7 +713,11 @@ TCCs are generated, and finally exportings are updated."
 		   #+pvsdebug
 		   (assert (or (not (fully-instantiated? theoryname))
 			       (valid-importing-entries? newinsts)))
+		   (assert (every #'resolution curimps))
 		   (when newinsts
+		     (dolist (ith newinsts)
+		       (unless (resolution ith)
+			 (setf (resolutions ith) (list (mk-resolution th ith nil)))))
 		     (setf (get-importings th) (append curimps newinsts))))))
 	   (lhash-table (using-hash (saved-context theory)))))
 
@@ -728,6 +758,7 @@ TCCs are generated, and finally exportings are updated."
 (defun subst-theory-importings (th thinsts theoryname theory)
   (let* ((mthinsts (if (mappings theoryname)
 		       (mapcan #'(lambda (thinst)
+				   (assert (resolution thinst))
 				   (if (and (eq (id theoryname) (id thinst))
 					    (eq (library theoryname)
 						(library thinst))
@@ -739,10 +770,7 @@ TCCs are generated, and finally exportings are updated."
 					 (list thinst))))
 			 thinsts)
 		       thinsts))
-;; 	 (lib-id (when (library-datatype-or-theory? th)
-;; 		   (car (rassoc (lib-ref th) (current-library-alist)
-;; 				:test #'equal))))
-	 (lthinsts (if (library-datatype-or-theory? th)
+	 (lthinsts (if (lib-datatype-or-theory? th)
 		       (mapcar #'(lambda (thinst)
 				   (if (library thinst)
 				       thinst
@@ -960,7 +988,7 @@ TCCs are generated, and finally exportings are updated."
   (let ((lib-ref (lib-ref decl)))
     (dolist (d (get-declarations (id decl)))
       (when (and (lib-decl? d)
-		 (not (string= lib-ref (lib-ref d))))
+		 (not (equal lib-ref (lib-ref d))))
 	(if (= (locality d) (locality decl))
 	    (pvs-warning
 		"Library id ~a declared in imported theory ~a and ~a ~
@@ -979,10 +1007,6 @@ TCCs are generated, and finally exportings are updated."
 (defmethod check-for-importing-conflicts (decl)
   (declare (ignore decl))
   nil)
-
-(defun update-library-alist (theory)
-  (dolist (elt (reverse (library-alist (saved-context theory))))
-    (pushnew elt (library-alist *current-context*) :test #'equal)))
 
 (defun update-conversions-of-current-context (theory theoryname)
   (unless (and (not *loading-prelude*)
@@ -1212,6 +1236,8 @@ TCCs are generated, and finally exportings are updated."
 		   (with-current-decl (declaration (lhs mapping))
 		     (typecheck-mapping-rhs mapping)))
 		  ((mapping-lhs? (lhs mapping))
+		   ;; Using generated-by slot to keep (current-declaration)
+		   (setf (generated-by (lhs mapping)) (current-declaration))
 		   (with-current-decl (lhs mapping)
 		     ;; Notice that this will use the lhs decl-formals,
 		     ;; As we don't yet know which lhs resolution we'll use
@@ -1277,7 +1303,8 @@ be typechecked when set-type selects a resolution."
 				  (id (lhs mapping))
 				  (parse-integer
 				   (string (id (lhs mapping))))))
-			   (mk-modname '|numbers|) *number*)))))
+			   (make-theoryname (module (declaration *number*)))
+			   *number*)))))
 	 (thres (unless (and (kind mapping)
 			     (not (eq (kind mapping) 'theory)))
 		  (delete-if-not
@@ -1685,6 +1712,7 @@ be typechecked when set-type selects a resolution."
      (setf (closure exporting)
 	   (mapcan #'(lambda (imp)
 		       (mapcar #'(lambda (inst)
+				   (assert (resolution inst))
 				   (cons inst (car imp)))
 			 (cdr imp)))
 	     (all-usings (current-theory)))))
@@ -1733,16 +1761,18 @@ be typechecked when set-type selects a resolution."
 	collected)))
 
 (defmethod collect-all-exporting-with-theories* (thinst (theory module))
-  (assert (or (not (library-datatype-or-theory? theory))
+  (assert (or (not (lib-datatype-or-theory? theory))
 	      (library thinst)
-	      (file-equal (lib-ref theory) *pvs-context-path*)))
+	      (file-equal (context-path theory) *default-pathname-defaults*)))
+  (unless (resolution thinst)
+    (setf (resolutions thinst) (list (mk-resolution theory thinst nil))))
   (let ((closure (if (library thinst)
 		     (mapcar #'(lambda (entry)
-				 (if (and (library-datatype-or-theory?
+				 (if (and (lib-datatype-or-theory?
 					   (cdr entry))
 					  (null (library (car entry)))
-					  (string= (lib-ref (cdr entry))
-						   (lib-ref theory)))
+					  (file-equal (context-path (cdr entry))
+						      (context-path theory)))
 				     (cons (copy (car entry)
 					     :library (library thinst))
 					   (cdr entry))
@@ -1756,6 +1786,7 @@ be typechecked when set-type selects a resolution."
 					     thinst2 thinst theory)))
 			     (assert (or (null (actuals nthinst2))
 					 (fully-instantiated? nthinst2)))
+			     (assert (resolution nthinst2))
 			     (if (eq thinst2 nthinst2)
 				 entry
 				 (cons nthinst2 (cdr entry)))))
@@ -1766,6 +1797,7 @@ be typechecked when set-type selects a resolution."
 					     thinst2)))
 			     (assert (or (null (actuals nthinst2))
 					 (fully-instantiated? nthinst2)))
+			     (assert (resolution nthinst2))
 			     (if (eq thinst2 nthinst2 )
 				 entry
 				 (cons nthinst2 (cdr entry)))))
@@ -1777,14 +1809,14 @@ be typechecked when set-type selects a resolution."
 	(th2 (adt-map-theory adt))
 	(th3 (adt-reduce-theory adt)))
     (nconc (collect-all-exporting-with-theories*
-	    (mk-modname (id th1)
+	    (make-theoryname th1
 	      (actuals thinst))
 	    th1)
 	   (when th2
 	     (collect-all-exporting-with-theories*
-	      (mk-modname (id th2)) th2))
+	      (make-theoryname th2) th2))
 	   (collect-all-exporting-with-theories*
-	    (mk-modname (id th3)) th3))))
+	    (make-theoryname th3) th3))))
 
 (defmethod exporting ((adt recursive-type))
   (exporting (adt-theory adt)))

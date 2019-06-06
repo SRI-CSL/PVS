@@ -176,9 +176,9 @@
   (initialize-decision-procedures)
   ;;(initialize-prelude-attachments)
   ;;(register-manip-type *number_field* 'pvs-type-real)
-  (unless *pvs-context-path*
+  (unless *default-pathname-defaults*
     ;; Need to make sure this is set to something
-    (setq *pvs-context-path* (shortpath (working-directory))))
+    (setq *default-pathname-defaults* (shortpath (working-directory))))
   ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
@@ -187,7 +187,7 @@
 	(declare (ignore ignore))
 	(when error
 	  (pvs-message "Error executing ~a:~% ~a" evalload error)))))
-  ;; Fix ASDF absolute pathnames
+  ;; Fix ASDF absolute pathnames - see src/asdf-patch.lisp for details
   (let ((uname #+allegro (sys:user-name)
 	       #+sbcl (tools:user-name)))
     (unless (string= uname "owre")
@@ -195,7 +195,14 @@
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
-      (pvs-xml-rpc:pvs-server :port (parse-integer port)))))
+      (pvs-xml-rpc:pvs-server :port (parse-integer port))))
+  #+allegro
+  ;; Add a newline to the beginning of *prompt*.  The prompt actually has
+  ;; ~&, which is supposed to add a newline unless it "knows" it's already
+  ;; at the beginning of the line, but sometimes this fails.  Just replacing
+  ;; this with the unconditional newline ~%.
+  (when (string= (subseq top-level:*prompt* 0 2) "~&")
+    (setf (char top-level:*prompt* 1) #\%)))
 
 (defparameter *pvs-env-variables*
   '("PVSDEFAULTDP"
@@ -218,17 +225,11 @@
     *pvs-env-variables*))
 
 (defun pvs-init-globals ()
-  (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
-  (setq *pvs-files* (make-hash-table :test #'equal))
-  (setq *imported-libraries* (make-hash-table :test #'equal))
-  (setq *prelude-libraries* (make-hash-table :test #'equal))
-  (setq *prelude-library-context* nil)
+  (initialize-workspaces)
   (reset-typecheck-caches)
-  (setq *pvs-context-changed* nil)
   (setq *current-theory* nil)
   (setq *last-proof* nil)
   (clrnumhash)
-  (setq *pvs-context-writable* (write-permission? (working-directory)))
   ;; Prover hash tables
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
   (setq *translate-id-hash* (make-pvs-hash-table))
@@ -270,21 +271,16 @@
 
 (defun clear-theories (&optional all? cc?)
   (reset-typecheck-caches)
-  (clrhash *pvs-modules*)
-  (clrhash *pvs-files*)
+  (clrhash (current-pvs-theories))
+  (clrhash (current-pvs-files))
   (setq *circular-file-dependencies* nil)
   (when all?
-    (clrhash *prelude-libraries*)
-    (clrhash *imported-libraries*)
-    (setq *pvs-library-ref-paths* nil)
-    (setq *prelude-libraries-uselist* nil)
-    (setq *prelude-library-context* nil)
-    (setq *prelude-libraries-files* nil)
+    (initialize-workspaces)
     (when (and (not cc?)
-	       *pvs-context*
-	       (consp (cadr *pvs-context*))
-	       (every #'stringp (cadr *pvs-context*)))
-      (load-prelude-libraries (cadr *pvs-context*))))
+	       (current-pvs-context)
+	       (consp (cadr (current-pvs-context)))
+	       (every #'stringp (cadr (current-pvs-context))))
+      (load-prelude-libraries (cadr (current-pvs-context)))))
   (restore-context))
 
 (defun get-pvs-library-path ()
@@ -309,6 +305,31 @@
 	    (if pvs-path-lib-entry
 		(nreverse libs)
 		(nreverse (cons pvs-path-lib libs)))))))
+
+;;; id to abspath
+(defvar *library-path-alist*)
+
+(defun library-path-alist ()
+  (if (and (boundp '*library-path-alist*) *library-path-alist*)
+      *library-path-alist*
+      (setq *library-path-alist* (get-library-path-alist))))
+
+(defun get-library-path-alist ()
+  (let ((alist nil))
+    (dolist (path *pvs-library-path*)
+      (assert (directory-p path))
+      (dolist (subdir (uiop:subdirectories path))
+	(let ((dname (or (pathname-name subdir)
+			 (car (last (pathname-directory subdir))))))
+	  (when (valid-pvs-id* dname)
+	    (push (cons (intern dname :pvs) subdir) alist)))))
+    alist))
+
+(defun library-path-to-id (abspath)
+  (car (rassoc abspath (library-path-alist) :test #'file-equal)))
+
+(defun lirary-id-to-path (lib-id)
+  (cdr (assoc lib-id (library-path-alist))))
 
 ;;; Called by Emacs function pvs-add-library-path
 (defun add-library-path (dir)
@@ -528,7 +549,7 @@
 	   (unless no-message?
 	     (pvs-message "PVS file ~a is not in the current context" filename)))
 	  ((and (not forced?)
-		(gethash filename *pvs-files*)
+		(gethash filename (current-pvs-files))
 		(parsed-file? file))
 	   (unless no-message?
 	     (pvs-message "~a is already parsed" filename))
@@ -685,7 +706,7 @@
 			   :test #'string=))
 	  (dolist (clth (get-theories clfname))
 	    (delete-theory clth))
-	  (remhash clfname *pvs-files*)
+	  (remhash clfname (current-pvs-files))
 	  (delete-file-from-context clfname))
 	(reset-typecheck-caches)))))
 
@@ -707,7 +728,7 @@
                 ~%  ~{~a~^ -> ~}"
 	       (length dchain)
 	       (mapcar #'id (nreverse dchain)))))
-	  (t (unless (or (library-theory? (car theories))
+	  (t (unless (or (lib-datatype-or-theory? (car theories))
 			 (memq (car theories) *modules-visited*))
 	       (push (car theories) *modules-visited*)
 	       (let* ((imp-names (get-immediate-using-ids (car theories)))
@@ -734,7 +755,7 @@
 (defmethod all-importings ((theory datatype-or-module))
   (assert (not *saving-theory*))
   (if (eq (all-imported-theories theory) 'unbound)
-      (let* ((*current-context* (or (and (not (library-datatype-or-theory?
+      (let* ((*current-context* (or (and (not (lib-datatype-or-theory?
 					       theory))
 					 (saved-context theory))
 				    *current-context*))
@@ -797,10 +818,10 @@
 			    (cons (car iths1) iths2)
 			    (cons (car inms1) inms2)))))
 
-(defun all-importings* (theory)
+(defun all-importings* (theory &optional imimps)
   (let* ((imp-theories nil)
 	 (imp-names nil)
-	 (imps (get-immediate-usings theory))
+	 (imps (or imimps (get-immediate-usings theory)))
 	 ;; Note that adt-generated theories are not importings
 	 )
     #+pvsdebug (assert (or (null (get-immediate-usings theory)) imps))
@@ -809,8 +830,8 @@
       (let* ((gtheory (get-theory ith))
 	     (lib (or (library ith)
 		      (and (null gtheory)
-			   (library-datatype-or-theory? theory)
-			   (libref-to-libid (lib-ref theory)))))
+			   (lib-datatype-or-theory? theory)
+			   (get-library-id (context-path theory)))))
 	     (itheory (or gtheory
 			  (and lib (get-theory* (id ith) lib))))
 	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
@@ -841,11 +862,11 @@
 	    (loop for th in (reverse i-theories)
 		  as nm in (reverse i-names)
 		  do (progn
-		       #+pvsdebug (assert (or (not (library-datatype-or-theory?
+		       #+pvsdebug (assert (or (not (lib-datatype-or-theory?
 						    th))
 					      (library nm)
 					      lib))
-		       (when (and (library-datatype-or-theory? th)
+		       (when (and (lib-datatype-or-theory? th)
 				  (not (library nm)))
 			 (setq nm
 			       (lcopy nm
@@ -899,7 +920,7 @@
 (defun immediate-importings (theory &optional lib)
   (declare (ignore lib))
   (assert (not *saving-theory*))
-  (let* ((*current-context* (or (and (not (library-datatype-or-theory?
+  (let* ((*current-context* (or (and (not (lib-datatype-or-theory?
 					   theory))
 				     (saved-context theory))
 				*current-context*))
@@ -913,8 +934,8 @@
       (let* ((ith-nolib (get-theory (id ith)))
 	     (lib (unless ith-nolib
 		    (or (library ith)
-			(and (library-datatype-or-theory? theory)
-			     (libref-to-libid (lib-ref theory))))))
+			(and (lib-datatype-or-theory? theory)
+			     (get-library-id (context-path theory))))))
 	     (itheory (or ith-nolib
 			  (and lib
 			       (get-theory* (id ith) lib))))
@@ -934,7 +955,7 @@
     (reset-typecheck-caches))
   (multiple-value-bind (mth changed)
       (update-parsed-theories filename file theories new-theories forced?)
-    (setf (gethash filename *pvs-files*)
+    (setf (gethash filename (current-pvs-files))
 	  (cons (file-write-date file) mth))
     (update-context filename)
     changed))
@@ -958,6 +979,9 @@
 		     (copy-lex oth nth))
 		    ((and (consp diff)
 			  (memq (car diff) (all-decls oth)))
+		     ;; Copies lexical info from new to old, up to diff.
+		     ;; This is info that can't change the meaning, like
+		     ;; place info, and keywords FORMULA vs LEMMA
 		     (copy-lex-upto diff oth nth)
 		     (let ((replaced (append (generated (car diff))
 					     (memq (car diff)
@@ -973,9 +997,6 @@
 		       	       (setf (assuming-instances oth) nil))))
 		       (setf (all-declarations oth) nil)
 		       (setf (saved-context oth) nil)
-		       ;; formals-sans-usings
-		       (setf (formals-sans-usings oth)
-			     (remove-if #'importing-param? (formals oth)))
 		       (setf (tccs-tried? oth) nil)
 		       ;; tcc-comments
 		       (dolist (d replaced)
@@ -1013,6 +1034,8 @@
 		       (setf (immediate-usings oth) 'unbound)
 		       ;; instances-used
 		       (when (instances-used oth) (break "instances-used"))
+		       ;; Now apply the diffs - modifies the old theory,
+		       ;; keeping everything above the
 		       (cond ((memq (car diff) (formals oth))
 			      (setf (formals oth)
 				    (append (ldiff (formals oth)
@@ -1050,6 +1073,9 @@
 					    (memq (cdr diff) (theory nth))))
 			      (dolist (d (generated (car diff)))
 				(setf (theory oth) (delete d (theory oth)))))))
+		     ;; formals-sans-usings
+		     (setf (formals-sans-usings oth)
+			   (remove-if #'importing-param? (formals oth)))
 		     (reset-typecheck-caches)
 		     (when (recursive-type? oth)
 		       (break "recursive-type"))
@@ -1070,13 +1096,13 @@
 			       (chmod "a+w" (namestring gen)))
 			     (ignore-file-errors
 			      (delete-file (namestring gen))))))
-		       (setf (gethash (id nth) *pvs-modules*) nth)
+		       (setf (gethash (id nth) (current-pvs-theories)) nth)
 		       (untypecheck-usedbys oth)
 		       (setq changed? t)))))
 	;; Don't need to do anything here, since oth was never typechecked.
 	(unless kept?
-	  (setf (gethash (id nth) *pvs-modules*) nth))
-	(assert (gethash (id nth) *pvs-modules*))
+	  (setf (gethash (id nth) (current-pvs-theories)) nth))
+	(assert (gethash (id nth) (current-pvs-theories)))
 	(update-parsed-theories filename file
 				(remove oth oldtheories) (cdr new-theories)
 				forced?
@@ -1199,7 +1225,8 @@
 			#+pvsdebug (assert (every #'typechecked? theories))
 			;; .pvscontext
 			(update-context filename)
-			(update-info-file filename theories)))
+			;;(update-info-file filename theories)
+			))
 	       (when prove-tccs?
 		 (if *in-checker*
 		     (pvs-message
@@ -1222,10 +1249,10 @@
 
 ;; This is intended to create a JSON file with information for external use.
 ;; Mostly a list of theories, which have declarations and place information.
-(defun update-info-file (filename theories)
-  ;; (let* ((info-file (make-infopath filename)))
-  ;;   (break))
-  )
+;; (defun update-info-file (filename theories)
+;;   ;; (let* ((info-file (make-infopath filename)))
+;;   ;;   (break))
+;;   )
     
 
 (defvar *etb-typechecked-theories*)
@@ -1550,8 +1577,7 @@
 		(*current-theory* root-theory)
 		(imports (remove-if #'(lambda (th)
 				       (or (from-prelude? th)
-					   (typep th '(or library-datatype
-							  library-theory))))
+					   (lib-datatype-or-theory? th)))
 			   (collect-theory-usings theoryname exclude)))
 		(total-tried 0)
 		(total-proved 0))
@@ -1726,7 +1752,7 @@ Note that even proved ones get overwritten"
 	(pvs-message "~a has not been typechecked" theoryname))))
 
 (defun sizeof-proofs-pvs-file (filename)
-  (let ((theories (cdr (gethash filename *pvs-files*))))
+  (let ((theories (cdr (gethash filename (current-pvs-files)))))
     (if theories
 	(pvs-buffer "Proof Sizes"
 	  (with-output-to-string (out)
@@ -1744,8 +1770,7 @@ Note that even proved ones get overwritten"
     (if theory
 	(let ((imports (remove-if #'(lambda (th)
 				      (or (from-prelude? th)
-					  (typep th '(or library-datatype
-							 library-theory))))
+					  (lib-datatype-or-theory? th)))
 			 (collect-theory-usings theoryname)))
 	      (total 0))
 	  (pvs-buffer "Proof Sizes"
@@ -1760,7 +1785,7 @@ Note that even proved ones get overwritten"
 
 (defun sizeof-proofs-proofchain-at (filename declname line
 					     &optional (origin "pvs"))
-  (if (or (gethash filename *pvs-files*)
+  (if (or (gethash filename (current-pvs-files))
 	  (and (member origin '("ppe" "tccs") :test #'string=)
 	       (get-theory filename)))
       (let ((fdecl (formula-decl-to-prove filename declname line origin)))
@@ -1841,7 +1866,7 @@ Note that even proved ones get overwritten"
 	 (dstr (unpindent d indent :string t))
          (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr))
 	 (*ppmacros* t))
-    (pvs-modify-buffer (shortname *pvs-context-path*)
+    (pvs-modify-buffer (shortname *default-pathname-defaults*)
                        (filename theory)
                        place dfinal)))
 
@@ -1859,7 +1884,7 @@ Note that even proved ones get overwritten"
       (let ((string (unparse theory
 		      :string t
 		      :char-width *default-char-width*)))
-	(pvs-modify-buffer (shortname *pvs-context-path*)
+	(pvs-modify-buffer (shortname *default-pathname-defaults*)
 			   (filename theory)
 			   (place theory)
 			   (string-right-trim '(#\space #\tab #\newline)
@@ -2061,26 +2086,25 @@ Note that even proved ones get overwritten"
 	 (eql pdate (file-write-date file)))))
 
 (defmethod parsed? ((mod datatype-or-module))
-  (parsed?* mod))
+  (let ((*theories-seen* *theories-seen*))
+    (parsed?* mod)))
 
 (defmethod parsed? ((modref modname))
   (parsed?* (get-theory modref)))
 
 (defmethod parsed?* ((mod datatype-or-module))
-  (or (from-prelude? mod)
-      (if (generated-by mod)
-	  (let ((gth (get-theory (generated-by mod))))
-	    (and gth
-		 (parsed?* gth)))
-	  (and (filename mod)
-	       (eql (car (gethash (filename mod) *pvs-files*))
-		    (file-write-date (make-specpath (filename mod))))))))
-
-(defmethod parsed?* ((mod library-theory))
-  (parsed-library-file? mod))
-
-(defmethod parsed?* ((mod library-datatype))
-  (parsed-library-file? mod))
+  (or (memq mod *theories-seen*)
+      (progn (push mod *theories-seen*) nil)
+      (from-prelude? mod)
+      (if (lib-datatype-or-theory? mod)
+	  (parsed-library-file? mod)
+	  (if (generated-by mod)
+	      (let ((gth (get-theory (generated-by mod))))
+		(and gth
+		     (parsed?* gth)))
+	      (and (filename mod)
+		   (eql (car (gethash (filename mod) (current-pvs-files)))
+			(file-write-date (make-specpath (filename mod)))))))))
 
 
 #-gcl
@@ -2112,17 +2136,24 @@ Note that even proved ones get overwritten"
 
 ;;; Must be a method, since the slot exists for declarations.
 
+(defvar *theories-seen* nil)
+
 (defmethod typechecked? ((theory module))
-  (and (parsed? theory)
-       (memq 'typechecked (status theory))
-       (saved-context theory)
-       (let* ((*current-context* (saved-context theory))
-	      (*current-theory* theory)
-	      (importings (all-importings theory)))
-	 (every #'(lambda (th)
-		    (and (parsed? th)
-			 (memq 'typechecked (status th))))
-		importings))))
+  (let ((*theories-seen* nil))
+    (typechecked*? theory)))
+
+(defun typechecked*? (theory)
+  (or (memq theory *theories-seen*)
+      (and (push theory *theories-seen*) 
+	   (parsed? theory)
+	   (memq 'typechecked (status theory))
+	   (saved-context theory)
+	   (let* ((*current-context* (saved-context theory))
+		  (importings (all-importings theory)))
+	     (every #'(lambda (th)
+			(and (parsed? th)
+			     (memq 'typechecked (status th))))
+		    importings)))))
 
 (defmethod typechecked? ((theory datatype-or-module))
   (or *in-checker*
@@ -2156,16 +2187,15 @@ Note that even proved ones get overwritten"
 
 (defun get-theories (filename &optional libref)
   (if libref
-      (let ((nlibref (get-library-reference libref)))
-	(and nlibref
-	     (let* ((imphash (car (gethash nlibref *imported-libraries*)))
-		    (prehash (car (gethash nlibref *prelude-libraries*))))
-	       (or (and imphash (cdr (gethash filename imphash)))
-		   (and prehash (cdr (gethash filename prehash)))))))
+      (let ((lib-path (get-library-path libref)))
+	(and lib-path
+	     (let* ((ws (get-workspace-session lib-path)))
+	       (and ws
+		    (cdr (gethash filename (pvs-files ws)))))))
       (let ((fn (if (pathnamep filename)
 		    (pathname-name filename)
 		    filename)))
-	(or (cdr (gethash fn *pvs-files*))
+	(or (cdr (gethash fn (current-pvs-files)))
 	    (and (equal fn "prelude")
 		 *prelude-theories*)))))
 
@@ -2331,17 +2361,17 @@ Note that even proved ones get overwritten"
 			 (all-decls theory))))
 	   (values fdecl (vector line 0 line 0))))
 	(t (if (pathname-directory name)
-	       (let* ((lpath (get-library-reference
-			      (namestring (make-pathname
-					   :directory
-					   (pathname-directory name)))))
-		      (files&theories
-		       (or (gethash lpath *prelude-libraries*)
-			   (gethash lpath *imported-libraries*))))
-		 (if files&theories
+	       (let* ((ldir (namestring (make-pathname
+					 :directory
+					 (pathname-directory name))))
+		      (lib-path (get-library-reference ldir))
+		      (fileshash
+		       (let ((ws (get-workspace-session lib-path)))
+			 (and ws
+			      (pvs-files ws)))))
+		 (if fileshash
 		     (let* ((name (pathname-name name))
-			    (theories (cdr (gethash name
-						    (car files&theories))))
+			    (theories (cdr (gethash name fileshash)))
 			    (typespec (formula-typespec unproved?))
 			    (decl (get-decl-at line typespec theories)))
 		       (values decl (when decl (place decl))))
@@ -2429,7 +2459,7 @@ formname is nil, then formref should resolve to a unique name."
 	      (if fdecl
 		  (prove formname :strategy strat)
 		  (pvs-message "Formula ~a not found" formname)))
-	    (pvs-message "No such theory: ~a" theoryname)))
+	    (pvs-message "No such theory: ~a" formref)))
       (with-context formref
 	(if (formula-decl? (current-declaration))
 	    (let ((strat (when rerun? '(rerun)))
@@ -2492,8 +2522,7 @@ formname is nil, then formref should resolve to a unique name."
 	(prove-theories theoryname
 			(remove-if #'(lambda (th)
 				       (or (from-prelude? th)
-					   (typep th '(or library-datatype
-							  library-theory))))
+					   (lib-datatype-or-theory? th)))
 			  (collect-theory-usings theoryname exclude))
 			retry?
 			use-default-dp?
@@ -2904,11 +2933,11 @@ formname is nil, then formref should resolve to a unique name."
 (defun new-theory (modname)
   ;;(save-some-modules)
   (let ((id (if (stringp modname) (intern modname :pvs) modname)))
-    (if (gethash id *pvs-modules*)
+    (if (gethash id (current-pvs-theories))
 	(progn ;(pvs-message "Theory already exists")
 	       nil)
 	(namestring (make-pathname :name modname :type "pvs"
-				   :defaults *pvs-context-path*)))))
+				   :defaults *default-pathname-defaults*)))))
 
 
 ;;; Delete Theory
@@ -2922,8 +2951,8 @@ formname is nil, then formref should resolve to a unique name."
 	(when theory
 	  (when (typechecked? theory)
 	    (untypecheck-theory theory))
-	  (remhash tid *pvs-modules*))))
-    (remhash filename *pvs-files*)
+	  (remhash tid (current-pvs-theories)))))
+    (remhash filename (current-pvs-files))
     (delete-file-from-context filename))
   (when delete-file?
     (delete-file (make-specpath filename)))
@@ -2932,13 +2961,13 @@ formname is nil, then formref should resolve to a unique name."
       (pvs-message "~a has been removed from the context" filename)))
 
 (defun delete-theory (theoryref)
-  (let ((theory (gethash (ref-to-id theoryref) *pvs-modules*)))
+  (let ((theory (gethash (ref-to-id theoryref) (current-pvs-theories))))
     (when theory
       (copy-theory-proofs-to-orphan-file theoryref)
       (untypecheck-usedbys theory)
-      (remhash (id theory) *pvs-modules*)
-      (setf (gethash (filename theory) *pvs-files*)
-	    (remove theory (gethash (filename theory) *pvs-files*))))))
+      (remhash (id theory) (current-pvs-theories))
+      (setf (gethash (filename theory) (current-pvs-files))
+	    (remove theory (gethash (filename theory) (current-pvs-files)))))))
 
 
 ;;; List Theories
@@ -2948,12 +2977,12 @@ formname is nil, then formref should resolve to a unique name."
 
 (defun list-theories (&optional context)
   (if (or (null context)
-	  (file-equal context *pvs-context-path*))
+	  (file-equal context *default-pathname-defaults*))
       (let ((theories nil))
 	(maphash #'(lambda (id mod)
 		     (declare (ignore mod))
 		     (push (string id) theories))
-		 *pvs-modules*)
+		 (current-pvs-theories))
 	(sort theories #'string<))
       (let ((path (make-pathname :defaults context
 				 :name "context" :type "cxt")))
@@ -3023,27 +3052,34 @@ formname is nil, then formref should resolve to a unique name."
 ;;; (last argument to parse-file)
 
 (defun get-parsed-theory (theoryref &optional quiet?)
+  "Get a parsed theory corresponding to the theoryref.  First checks if the
+theory is already parsed, and returns it if so.  Then tries to find a unique
+file containing a theory matching theoryref, parses it, and returns the
+contained theory.  If quiet? is nil then errors are signaled, otherwise
+errors are quietly ignored, and nil is returned in that case."
   (let ((mod (get-theory theoryref)))
     (when (and mod
 	       (filename mod)
-	       (gethash (filename mod) *pvs-files*)
+	       (gethash (filename mod) (current-pvs-files))
 	       (not (file-exists-p (make-specpath (filename mod)))))
       (pvs-message "File ~a.pvs has disappeared!" (filename mod))
-      (remhash (filename mod) *pvs-files*)
-      (remhash (id mod) *pvs-modules*)
+      (remhash (filename mod) (current-pvs-files))
+      (remhash (id mod) (current-pvs-theories))
       (delete-file-from-context (filename mod))
       (setq mod nil))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
 	  ((and mod
 		(parsed? mod)
-		(or (not (library-datatype-or-theory? mod))
+		(or (not (lib-datatype-or-theory? mod))
 		    (and (name? theoryref)
 			 (library theoryref))))
 	   mod)
 	  ((and (name? theoryref)
 		(library theoryref))
-	   (get-parsed-library-theory theoryref))
+	   (let ((lth (get-parsed-library-theory theoryref)))
+	     (unless lth (break "no lth?"))
+	     lth))
 	  ((and mod (filename mod))
 	   (parse-file (filename mod) nil t)
 	   (get-theory theoryref))
@@ -3059,8 +3095,9 @@ formname is nil, then formref should resolve to a unique name."
 			     (parse-file theoryref nil quiet?)))))
 	       (let ((pmod (get-theory theoryref)))
 		 (or pmod
-		     (type-error theoryref
-		       "Can't find file for theory ~a" theoryref))))))))
+		     (unless quiet?
+		       (type-error theoryref
+			 "Can't find file for theory ~a" theoryref)))))))))
 
 (defun look-for-theory-in-directory-files (theoryref)
   (let* ((thname (ref-to-id theoryref))
@@ -3087,7 +3124,7 @@ formname is nil, then formref should resolve to a unique name."
 		  ;;       file2 has theories th2 and th3
 		  ;; and we're looking for th3 from file1.
 		  (if (some #'(lambda (th)
-				(let ((cth (gethash (id th) *pvs-modules*)))
+				(let ((cth (gethash (id th) (current-pvs-theories))))
 				  (and cth
 				       (filename cth)
 				       (not (string= fname (filename cth))))))
@@ -3138,6 +3175,8 @@ formname is nil, then formref should resolve to a unique name."
 		(unless (or *in-checker*
 			    (typechecked? theory)
 			    (memq theory theories))
+		  (assert (not (library theoryname)) ()
+			  "~a should have been already typechecked" theoryref)
 		  (let ((*generating-adt* nil)
 			(*insert-add-decl* t))
 		    (if (library theoryname)
@@ -3147,12 +3186,12 @@ formname is nil, then formref should resolve to a unique name."
 	      theory)))))
 
 (defun parsed-date (filename)
-  (car (gethash (pathname-name filename) *pvs-files*)))
+  (car (gethash (pathname-name filename) (current-pvs-files))))
 
 (defun reset-parsed-date (filename)
   (let ((path (make-specpath filename)))
-    (when (gethash filename *pvs-files*)
-      (setf (car (gethash filename *pvs-files*))
+    (when (gethash filename (current-pvs-files))
+      (setf (car (gethash filename (current-pvs-files)))
 	    (file-write-time path)))
     nil))
 
@@ -3203,7 +3242,7 @@ formname is nil, then formref should resolve to a unique name."
 					      (eq (id d) (ref-to-id ref))))
 				   (all-decls mod))
 				 decls))))
-	     *pvs-modules*)
+	     (current-pvs-theories))
     (maphash #'(lambda (mid mod)
 		 (declare (ignore mid))
 		 (when (module? mod)
@@ -3215,36 +3254,16 @@ formname is nil, then formref should resolve to a unique name."
 				   (all-decls mod))
 				 decls))))
 	     *prelude*)
-    (maphash #'(lambda (lib files&theories)
-		 (declare (ignore lib))
-		 (maphash #'(lambda (mid mod)
-			      (declare (ignore mid))
-			      (when (module? mod)
-				(setq decls
-				      (append (remove-if-not
-						  #'(lambda (d)
-						      (and (declaration? d)
-							   (eq (ref-to-id ref)
-							       (id d))))
-						(all-decls mod))
-					      decls))))
-			  (cadr files&theories)))
-	     *prelude-libraries*)
-    (maphash #'(lambda (lib files&theories)
-		 (declare (ignore lib))
-		 (maphash #'(lambda (mid mod)
-			      (declare (ignore mid))
-			      (when (module? mod)
-				(setq decls
-				      (append (remove-if-not
-						  #'(lambda (d)
-						      (and (declaration? d)
-							   (eq (ref-to-id ref)
-							       (id d))))
-						(all-decls mod))
-					      decls))))
-			  (cadr files&theories)))
-	     *imported-libraries*)
+    (do-all-lib-theories
+	#'(lambda (th)
+	    (setq decls
+		  (append (remove-if-not
+			      #'(lambda (d)
+				  (and (declaration? d)
+				       (eq (ref-to-id ref)
+					   (id d))))
+			    (all-decls th))
+			  decls))))
     (delete-duplicates decls :test #'eq)))
 
 (defun get-typechecked-theories ()
@@ -3252,7 +3271,7 @@ formname is nil, then formref should resolve to a unique name."
     (maphash #'(lambda (thid th)
 		 (declare (ignore thid))
 		 (push th theories))
-	     *pvs-modules*)
+	     (current-pvs-theories))
     theories))
 
 (defun get-all-current-tccs ()

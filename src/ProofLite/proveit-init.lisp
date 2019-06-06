@@ -279,22 +279,21 @@
 			   :if-exists :supersede
 			   :if-does-not-exist :create)
 		   (format stream "/~{~a~^,~}~%" (mapcar #'id pvstheories))
-		   (maphash 
-		    #'(lambda (k e) 
-			(format stream "~a~{~a~^,~}~%" k 
-				(loop for th being the hash-keys in (car e) collect th)))
-		    *imported-libraries*)
+		   (mapc
+		    #'(lambda (ws)
+			(format stream "~a~{~a~^,~}~%" (path ws)
+				(loop for th being the hash-keys
+				   in (pvs-files ws)
+				   collect th)))
+		    *all-workspace-sessions*)
 		   (loop for th in pvstheories
 			 for idth = (id th)
 			 do (format stream "~a:~{~a~^,~}~%" idth
 				    (mapcar 
 				     #'(lambda(x) 
-					 (if (typep x '(or library-theory 
-							   library-datatype 
-							   library-codatatype))
+					 (if (lib-datatype-or-theory? x)
 					     (format nil "~a@~a" 
-						     (string-right-trim 
-						      "/" (lib-ref x))   
+						     (get-library-id (context-path x))   
 						     (id x))
 					   (id x)))
 				     (immediate-theories-in-theory idth))))))

@@ -63,6 +63,36 @@ is replaced with replacement."
 	  while pos))
      n)))
 
+(defun pvs-file (theoryname)
+  "Returns the filename (without extension) containing the given theoryname."
+  (let ((th (get-parsed-theory theoryname t)))
+    (when th
+      (filename th))))
+
+(defun current-pvs-files ()
+  (pvs-files *workspace-session*))
+
+(defun current-pvs-theories ()
+  (pvs-theories *workspace-session*))
+
+(defun current-prelude-libraries ()
+  (prelude-libs *workspace-session*))
+
+(defsetf current-prelude-libraries () (plibs)
+  `(setf (prelude-libs *workspace-session*) ,plibs))
+
+(defun current-pvs-context ()
+  (pvs-context *workspace-session*))
+
+(defsetf current-pvs-context () (pvsctx)
+  `(setf (pvs-context *workspace-session*) ,pvsctx))
+
+(defun current-pvs-context-changed ()
+  (pvs-context-changed *workspace-session*))
+
+(defsetf current-pvs-context-changed () (cc)
+  `(setf (pvs-context-changed *workspace-session*) ,cc))
+
 (defun current-context ()
   *current-context*)
 
@@ -133,13 +163,6 @@ is replaced with replacement."
 
 (defsetf current-using-hash () (using-hash)
   `(setf (using-hash *current-context*) ,using-hash))
-
-(defun current-library-alist ()
-  (assert *current-context*)
-  (library-alist *current-context*))
-
-(defsetf current-library-alist () (lib-alist)
-  `(setf (library-alist *current-context*) ,lib-alist))
 
 (defun current-known-subtypes ()
   (assert *current-context*)
@@ -416,6 +439,11 @@ is replaced with replacement."
 (defun set-working-directory (dir)
   (system::change-directory dir))
 
+(defun absolute-pathname-p (dir)
+  "Checks if dir exists and is absolute, returns the pathname if it is"
+  (and (directory-p dir)
+       (asdf/pathname:absolute-pathname-p dir)))
+
 (defun environment-variable (string)
   #+allegro
   (sys:getenv string)
@@ -489,8 +517,8 @@ is replaced with replacement."
   (system (format nil "/bin/chmod ~a ~a" prot (namestring file))))
 
 (defun pvs-current-directory ()
-  (if (file-exists-p *pvs-context-path*)
-      (shortname *pvs-context-path*)
+  (if (file-exists-p *default-pathname-defaults*)
+      (shortname *default-pathname-defaults*)
       "/dev/null"))
 
 (defun get-formula (theory id)
@@ -503,39 +531,21 @@ is replaced with replacement."
 			(eq (id decl) id)))
 	(theory theory))))
 
-;;; libref is a string - either a pathname (absolute or relative
-;;; to current context), or a simple name followed by / for dirs
-;;; found in PVS_LIBRARY_PATH
-(defmethod libref ((res resolution))
-  (libref (declaration res)))
-
-(defmethod libref ((decl declaration))
-  (libref (module decl)))
-
-(defmethod libref ((decl binding))
-  (when (module decl)
-    (libref (module decl))))
-
-(defmethod libref ((th datatype-or-module))
-  nil)
-
-(defmethod libref ((th library-datatype-or-theory))
-  (lib-ref th))
-
-;;; lib-id is what is found in names, either by a library declaration
-;;; or a simple reference to a PVS_LIBRARY_PATH sub directory
-(defun lib-id (obj)
-  (libref-to-libid (libref obj)))
-
-;;; This usually just returns the module-instance, but for library
-;;; theories it adds the lib-id.  Note that this can't be made a part
-;;; of the resolution, as the lib-id depends on how the library was
-;;; brought into the current PVS context.
+;;; This usually just returns the module-instance, but for library theories
+;;; it adds the lib-id.  Note that this can't be made a part of the original
+;;; resolution, as the lib-id depends on how the library was brought into
+;;; the current PVS context.
 (defmethod theory-instance-with-lib ((res resolution))
   (let ((thinst (module-instance res)))
     (if (library thinst)
 	thinst
-	(lcopy thinst :library (lib-id res)))))
+	(let ((th (module (declaration res))))
+	  (if (and th (lib-datatype-or-theory? th))
+	      (let ((lib-id (get-library-id (context-path th))))
+		(if lib-id
+		    (copy thinst :library lib-id)
+		    (pvs-error "Could not find lib-id for ~a" (context-path th))))
+	      thinst)))))
 
 ;;; Gets the theory that's at the bottom of a chain of
 ;;; mod-decls, abbreviations, etc.
@@ -579,22 +589,24 @@ is replaced with replacement."
   ;;(assert (symbolp library))
   (let ((have-cc *current-context*)
 	(*current-context* (or *current-context*
-			       *prelude-library-context*
+			       (prelude-context *workspace-session*)
 			       *prelude-context*)))
     (if library
-	(let* ((lib-ref (get-library-reference library))
-	       ;;(lib-ref (when lref (get-relative-library-reference lref)))
-	       )
-	  (and lib-ref
-	       (let* ((imphash (cadr (gethash lib-ref *imported-libraries*)))
-		      (prehash (cadr (gethash lib-ref *prelude-libraries*))))
-		 (if (file-equal lib-ref *pvs-context-path*)
-		     (gethash id *pvs-modules*)
+	(let ((lib-path (get-library-reference library)))
+	  (and lib-path
+	       (let* ((impws (get-workspace-session lib-path))
+		      (imphash (when impws (pvs-theories impws)))
+		      ;; (prews (get-prelude-library-theory lib-id))
+		      ;; (prehash (when prews (pvs-theories prews)))
+		      )
+		 (if (file-equal lib-path *default-pathname-defaults*)
+		     (gethash id (current-pvs-theories))
 		     (or (and imphash (gethash id imphash))
-			 (and prehash (gethash id prehash))
+			 ;; (and prehash
+			 ;;      (gethash id prehash))
 			 ;;(gethash id *prelude*)
 			 )))))
-	(or (gethash id *pvs-modules*)
+	(or (gethash id (current-pvs-theories))
 	    (gethash id *prelude*)
 	    (let ((cth (when *current-context* (theory *current-context*))))
 	      (when cth
@@ -603,8 +615,8 @@ is replaced with replacement."
 		    (let ((imps (get-current-imported-theories id)))
 		      (unless (cdr imps)
 			(car imps))))))
-	    (car (assoc id (prelude-libraries-uselist)
-			:test #'eq :key #'id))
+	    ;; (car (assoc id (prelude-libraries-uselist)
+	    ;; 		:test #'eq :key #'id))
 	    (unless (or have-cc
 			;; Don't look in library if it is in the current context
 			(file-exists-p (make-specpath id)))
@@ -628,11 +640,12 @@ is replaced with replacement."
 		       (declare (ignore y))
 		       (if (eq (id x) id)
 			   (push x theories)
-			   (when (and (library-rectype-theory? x)
+			   (when (and (lib-datatype-or-theory? x)
+				      (rectype-theory? x)
 				      (let ((len (length (string (id x)))))
 					(and (< idlen len)
 					     (string= id (id x) :end2 idlen))))
-			     (let ((adt (get-theory* id (lib-ref x))))
+			     (let ((adt (get-theory* id (get-library-id (context-path x)))))
 			       (assert adt () "Should have found adt")
 			       (pushnew adt theories :test #'eq)))))
 		   (current-using-hash))
@@ -640,23 +653,11 @@ is replaced with replacement."
 
 (defun get-imported-theories (id)
   (let ((theories nil))
-    (maphash #'(lambda (lib files&theories)
-		 (declare (ignore lib))
-		 (let ((th (gethash id (cadr files&theories))))
-		   (when th
-		     (push th theories))))
-	     *imported-libraries*)
+    (dolist (ws *all-workspace-sessions*)
+      (let ((th (gethash id (pvs-theories ws))))
+	(when th (push th theories))))
     theories))
 
-
-(defmethod get-lib-id ((th library-datatype-or-theory))
-  (get-lib-id (lib-ref th)))
-
-(defmethod get-lib-id ((str string))
-  (car (rassoc str (current-library-alist) :test #'equal)))
-
-(defmethod get-lib-id ((th datatype-or-module))
-  nil)
 
 ;;; Useful methods - can almost be used as accessors.
 
@@ -803,10 +804,10 @@ is replaced with replacement."
 ;  (make-specpath (id mod)))
 
 (defmethod make-specpath ((name symbol) &optional (ext "pvs"))
-  (make-pathname :defaults *pvs-context-path* :name (string name) :type ext))
+  (make-pathname :defaults *default-pathname-defaults* :name (string name) :type ext))
 
 (defmethod make-specpath ((name string) &optional (ext "pvs"))
-  (make-pathname :defaults *pvs-context-path* :name name :type ext))
+  (make-pathname :defaults *default-pathname-defaults* :name name :type ext))
 
 (defmethod make-specpath ((name name) &optional (ext "pvs"))
   (make-specpath (id name) ext))
@@ -815,10 +816,9 @@ is replaced with replacement."
   (make-binpath (string name)))
 
 (defmethod make-binpath ((name string))
-  (make-pathname :defaults *pvs-context-path*
-		 :directory (append (pathname-directory *pvs-context-path*)
-				    (list #+case-sensitive "pvsbin"
-					  #-case-sensitive "PVSBIN"))
+  (make-pathname :defaults *default-pathname-defaults*
+		 :directory (append (pathname-directory *default-pathname-defaults*)
+				    (list *pvsbin-string*))
 		 :name name
 		 :type "bin"))
 
@@ -860,7 +860,7 @@ is replaced with replacement."
 	(shortpath* (cdr revdirlist) file-info
 		    (cons (car revdirlist) dirlist)))))
 
-(defun relative-path (path &optional (relpath *pvs-context-path*) (depth 2))
+(defun relative-path (path &optional (relpath *default-pathname-defaults*) (depth 2))
   (let ((dirlist (pathname-directory (shortpath path)))
 	(reldirlist (pathname-directory (shortpath relpath))))
     (when (and (eq (car dirlist) :absolute)
@@ -899,12 +899,12 @@ is replaced with replacement."
 		    (if (char= (char dirstr (1- (length dirstr))) #\/)
 			dirstr
 			(concatenate 'string dirstr "/"))
-		    *pvs-context-path*))
+		    *default-pathname-defaults*))
 	 (dirnoslash (merge-pathnames
 		      (if (char= (char dirstr (1- (length dirstr))) #\/)
 			  (subseq dirstr 0 (1- (length dirstr)))
 			  dirstr)
-		      *pvs-context-path*)))
+		      *default-pathname-defaults*)))
     (cond ((not (probe-file dirnoslash))
 	   (values nil (format nil "Directory ~a does not exist." dir)))
 	  ((not (probe-file dirslash))
@@ -1023,7 +1023,7 @@ is replaced with replacement."
    (format nil "cp ~a ~a" (namestring from) (namestring to))))
 
 #+gcl
-(defun write-permission? (&optional (dir *pvs-context-path*))
+(defun write-permission? (&optional (dir *default-pathname-defaults*))
   (let ((path (make-pathname :defaults dir :name "PVS" :type "tmp"))
 	(*break-enable* nil)
 	(error t))
@@ -1037,7 +1037,7 @@ is replaced with replacement."
     (not error)))
 
 #+(or lucid harlequin-common-lisp)
-(defun write-permission? (&optional (dir *pvs-context-path*))
+(defun write-permission? (&optional (dir *default-pathname-defaults*))
   (let* ((path (make-pathname :defaults dir :name "PVS" :type "tmp"))
 	 (str (ignore-errors (open path :direction :output
 				   :if-exists :append
@@ -1176,6 +1176,9 @@ is replaced with replacement."
 	(and th (find (id name) (all-decls th) :key #'ref-to-id)))
       (get-theory (id name))))
 
+(defmethod context ((ctx context))
+  ctx)
+
 (defmethod context ((name-str string))
   (context (pc-parse name-str 'name)))
 
@@ -1233,8 +1236,6 @@ is replaced with replacement."
   (let* ((*generate-tccs* 'none)
 	 (*ignore-exportings* t)
 	 (theory (module decl))
-	 (libalist (when *current-context*
-		     (library-alist *current-context*))) ;; Before we change
 	 (all-decls (reverse (all-decls theory)))
 	 (pdecls (or (memq decl all-decls) (cons decl all-decls)))
 	 (prev-decls (if include?
@@ -1287,10 +1288,7 @@ is replaced with replacement."
 	(importing
 	 (let* ((thname (theory-name d))
 		(th (get-theory* (id thname)
-				 (or (library thname)
-				     (and (library-datatype-or-theory? theory)
-					  (car (rassoc (lib-ref theory) libalist
-						       :test #'string=)))))))
+				 (library thname))))
 	   (assert th)
 	   (add-usings-to-context* th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
@@ -1319,29 +1317,24 @@ is replaced with replacement."
 			   (list theory)))))
 	(dolist (pth pths)
 	  (setf (get-importings pth)
-		(list (mk-modname (id pth)))))))
+		(list (make-theoryname pth))))))
     (update-context-importing-for-mapped-tcc decl)
     *current-context*))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
+  "The context for mapped-axiom-tccs is special, as it should not be able to
+prove itself from the mapped axioms."
   (assert (theory-instance decl))
+  (assert *current-context*)
   (let* ((thname (theory-instance decl))
 	 (th (get-theory thname))
 	 (thdecls (all-decls th))
-	 (prev-decls (ldiff thdecls (memq decl thdecls)))
-	 (*insert-add-decl* nil)
-	 (imp-context (when (and (generated-by decl)
-				 (typep (generated-by decl)
-					'(or importing theory-abbreviation-decl
-					     mod-decl formal-theory-decl)))
-			(saved-context (generated-by decl)))))
+	 (post-decls (memq (generating-axiom decl) thdecls))
+	 (prev-decls (ldiff thdecls post-decls))
+	 (*insert-add-decl* nil))
     ;;; Want something like add-usings-to-context*, but only for those
     ;;; importings that precede the given declaration.
-    (when imp-context
-      (dolist (entry (library-alist imp-context))
-	(pushnew entry (current-library-alist) :key #'car))
-      (add-to-using thname th)
-      (add-preceding-importings prev-decls th thname))))
+    (add-preceding-importings prev-decls th thname)))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl assuming-tcc))
   (let* ((thname (theory-instance decl))
@@ -1355,8 +1348,6 @@ is replaced with replacement."
 					     mod-decl formal-theory-decl)))
 			(saved-context (generated-by decl)))))
     (when imp-context
-      (dolist (entry (library-alist imp-context))
-	(pushnew entry (current-library-alist) :key #'car))
       (add-to-using thname th)
       (add-preceding-importings prev-decls th thname))))
 
@@ -1364,10 +1355,10 @@ is replaced with replacement."
   (dolist (d prev-decls)
     (typecase d
       ((or importing mod-decl theory-abbreviation-decl formal-theory-decl)
-       (let* ((lthname (if (and (library-datatype-or-theory? theory)
+       (let* ((lthname (if (and (lib-datatype-or-theory? theory)
 				(null (library (theory-name d))))
 			   (copy (theory-name d)
-			     'library (libref-to-libid (lib-ref theory)))
+			     'library (get-library-id (context-path theory)))
 			   (theory-name d)))
 	      (thname (subst-mod-params lthname thinst theory))
 	      (th (get-theory lthname)))
@@ -1429,13 +1420,13 @@ is replaced with replacement."
 
 
 (defun make-new-context (theory)
-  (let ((pctx (or *prelude-library-context*
+  (let ((pctx (or (prelude-context *workspace-session*)
 		  *prelude-context*)))
     (if pctx
 	(let ((*current-context*
 	       (make-instance 'context
 		 :theory theory
-		 :theory-name (mk-modname (id theory))
+		 :theory-name (make-theoryname theory)
 		 :using-hash (if *loading-prelude*
 				 (copy (using-hash pctx))
 				 (copy-lhash-table (using-hash pctx)))
@@ -1457,7 +1448,7 @@ is replaced with replacement."
 	  *current-context*)
 	(make-instance 'context
 	  :theory theory
-	  :theory-name (mk-modname (id theory))
+	  :theory-name (make-theoryname theory)
 	  :using-hash (make-lhash-table :test 'eq)
 	  :declarations-hash (make-lhash-table :test 'eq)))))
 
@@ -1476,14 +1467,13 @@ is replaced with replacement."
 	 (make-instance 'context
 	   :theory (or theory (theory context))
 	   :theory-name (if theory
-			    (mk-modname (id theory))
+			    (make-theoryname theory)
 			    (theory-name context))
 	   :declaration (or (car (last decls))
 			    current-decl
 			    (declaration context))
 	   :declarations-hash (copy (declarations-hash context))
 	   :using-hash (copy (using-hash context))
-	   :library-alist (library-alist context)
 	   :conversions (conversions context)
 	   :disabled-conversions (copy-list (disabled-conversions context))
 	   :known-subtypes (known-subtypes context)
@@ -1500,9 +1490,20 @@ is replaced with replacement."
   (assert (declaration context))
   (copy context))
 
+;; (defun check-using-hash (&optional (msg "") (context *current-context*))
+;;   (with-context context
+;;     (map-lhash #'(lambda (th thinsts)
+;; 		   (every #'(lambda (thinst)
+;; 			      (assert (or (null (actuals thinst))
+;; 					  (and (well-typed? (actuals thinst))
+;; 					       (resolution thinst))) ()
+;; 				      "~a: ~a is not well-typed" msg thinst))
+;; 			  thinsts))
+;; 	       (using-hash context))))
+
 (defmethod context (ignore)
   (declare (ignore ignore))
-  (copy-context (or *prelude-library-context* *prelude-context*)))
+  (copy-context (or (prelude-context *workspace-session*) *prelude-context*)))
 
 (defun add-usings-to-context (modinsts)
   (when modinsts
@@ -1519,12 +1520,14 @@ is replaced with replacement."
     (add-usings-to-context
      (mapcar #'(lambda (gen)
 		 (when gen
-		   (let ((frms (formals-sans-usings gen)))
-		     (cond ((length= acts frms)
-			    (mk-modname (id gen) (actuals inst)
-					(library inst)))
-			   (t (mk-modname (id gen) nil
-					  (library inst)))))))
+		   (let* ((frms (formals-sans-usings gen))
+			  (thname (mk-modname (id gen)
+				    (when (length= acts frms)
+				      (actuals inst))
+				    (library inst)))
+			  (res (mk-resolution gen thname nil)))
+		     (setf (resolutions thname) (list res))
+		     thname)))
 	     (delete-if #'null
 			(list (adt-theory adt)
 			      (adt-map-theory adt)
@@ -1539,7 +1542,7 @@ is replaced with replacement."
 			     (memq using (assuming theory))
 			     (memq using (theory theory)))
 		     (setq utheory theory))))
-	     *pvs-modules*)
+	     (current-pvs-theories))
     utheory))
 
 (defmethod module ((ctx context))
@@ -2190,9 +2193,9 @@ is replaced with replacement."
       (let* ((adt-id (makesym "~a_adt" (id te)))
 	     (adt (get-theory adt-id))
 	     (dt (if adt
-		     (if (lib-ref adt)
+		     (if (lib-datatype-or-theory? adt)
 			 (get-theory* (id te)
-				      (libref-to-libid (lib-ref adt)))
+				      (get-library-id (context-path adt)))
 			 (break "get-adt-slot-value: no lib-ref"))
 		     (break "get-adt-slot-value: no adt"))))
 	(and (recursive-type? dt) dt))
@@ -2625,9 +2628,9 @@ is replaced with replacement."
     'library (or (library x)
 		 (library (module-instance (resolution x)))
 		 (when (and (declaration x)
-			    (library-datatype-or-theory?
+			    (lib-datatype-or-theory?
 			     (module (declaration x))))
-		   (libref-to-libid (lib-ref (module (declaration x))))))
+		   (get-library-id (context-path (module (declaration x))))))
     'actuals (mapcar #'(lambda (act)
 			 (full-name (lcopy act :type-value nil)
 				    (when *full-name-depth*
@@ -2646,9 +2649,9 @@ is replaced with replacement."
     'library (or (library x)
 		 (library (module-instance (resolution (adt x))))
 		 (when (and (declaration x)
-			    (library-datatype-or-theory?
+			    (lib-datatype-or-theory?
 			     (module (declaration (adt x)))))
-		   (libref-to-libid (lib-ref (module (declaration x))))))
+		   (get-library-id (context-path (module (declaration x))))))
     'actuals (full-name (actuals (module-instance (resolution (adt x))))
 			(when *full-name-depth*
 			  (1- *full-name-depth*)))
@@ -2671,9 +2674,9 @@ is replaced with replacement."
       'library (or (library x)
 		   (library (module-instance (resolution x)))
 		   (when (and (declaration x)
-			      (library-datatype-or-theory?
+			      (lib-datatype-or-theory?
 			       (module (declaration x))))
-		     (libref-to-libid (lib-ref (module (declaration x))))))
+		     (get-library-id (context-path (module (declaration x))))))
       'actuals (full-name (actuals mi)
 			  (when *full-name-depth*
 			    (1- *full-name-depth*)))
@@ -3204,7 +3207,7 @@ is replaced with replacement."
 		(setf (type nexpr) (type b))
 		(setf (resolutions nexpr)
 		      (list (make-resolution
-				b (mk-modname (id (module decl))))))
+				b (make-theoryname (module decl)))))
 		nexpr))
 	  (or (apply #'append (formals decl))
 	      (bindings (definition decl)))))
@@ -3529,6 +3532,11 @@ space")
 			       expr ex)))))
 	       obj)
     (values (not untyped?) expr)))
+
+(defun well-typed? (obj)
+  (assert (current-context))
+  (and (fully-typed? obj)
+       (fully-instantiated? obj)))
 
 (defmethod untyped* (obj)
   (declare (ignore obj))
@@ -4340,8 +4348,8 @@ space")
 		    (unparse (or (declared-type decl)
 				 (type decl)) :string t))))
 	(when (module decl) (id (module decl)))
-	(when (typep (module decl) 'library-theory)
-	  (lib-ref (module decl)))))
+	(when (lib-datatype-or-theory? (module decl))
+	  (get-library-id (context-path (module decl))))))
 
 (defmethod sexp ((theory module))
   (list (id theory)
@@ -4437,10 +4445,15 @@ space")
 (defmethod library ((ex number-expr)) nil)
 
 (defun name-to-modname (name)
-  (mk-modname (or (mod-id name) (id name))
-    (actuals name)
-    (library name)
-    (mappings name)))
+  (let* ((thname (mk-modname (or (mod-id name) (id name))
+		   (actuals name)
+		   (library name)
+		   (mappings name)))
+	 (th (get-theory thname))
+	 (res (when th (mk-resolution th thname nil))))
+    (when res
+      (setf (resolutions thname) (list res)))
+    thname))
 
 (defun equality? (obj)
   (equation? obj))

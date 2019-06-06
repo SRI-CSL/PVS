@@ -289,7 +289,7 @@
 	   (deps (delete-if #'(lambda (dep)
 				(or (null dep)
 				    (and (not include-libraries?)
-					 (library-datatype-or-theory? dep))))
+					 (lib-datatype-or-theory? dep))))
 		   (mapcar #'(lambda (tname)
 			       (let ((th (get-theory tname)))
 				 (when th

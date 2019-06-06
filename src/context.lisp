@@ -34,8 +34,7 @@
 	  current-context-path get-pvs-file-dependencies pvs-delete-proof
 	  pvs-rename-file pvs-select-proof pvs-view-proof save-context
 	  show-context-path show-orphaned-proofs show-proof-file
-	  show-proofs-pvs-file
-	  pvs-context-stack push-context pop-context))
+	  show-proofs-pvs-file))
 
 ;;; Called from PVS only
 (export '(handle-deleted-theories restore-from-context update-context
@@ -49,13 +48,7 @@
 	    pvs-context-entries))
 
 
-;;; *pvs-context-writable* indicates whether we have write permission in
-;;; the current context.  It is set by change-context.
-
-(defvar *pvs-context-writable* nil)
-
-
-;;; *pvs-context-changed* controls the saving of the PVS context.  It is
+;;; (current-pvs-context-changed) controls the saving of the PVS context.  It is
 ;;; initially nil, and is set to t when a change occurs that affects the
 ;;; context, and reset to nil after the context is written again.  The changes
 ;;; that affect the context are:
@@ -63,9 +56,6 @@
 ;;;   - A file has been modified
 ;;;   - A file/theory is deleted from the context
 ;;;   - The status of a proof has changed
-
-(defvar *pvs-context-changed* nil
-  "Set to T when the context has changed, nil after it's been saved.")
 
 ;;; The pvs-context is a list whose first element is the version, second
 ;;; element is a list of prelude libraries, and the rest are context entries.
@@ -75,28 +65,28 @@
 ;;; contexts.
 
 (defun pvs-context-version ()
-  (car *pvs-context*))
+  (car (current-pvs-context)))
 
 (defun pvs-context-libraries ()
-  (cadr *pvs-context*))
+  (cadr (current-pvs-context)))
 
 (defun pvs-context-default-decision-procedure ()
-  (or (when (listp (caddr *pvs-context*))
-	(getf (caddr *pvs-context*) :default-decision-procedure))
+  (or (when (listp (caddr (current-pvs-context)))
+	(getf (caddr (current-pvs-context)) :default-decision-procedure))
       'shostak))
 
 (defun pvs-context-yices-executable ()
-  (when (listp (caddr *pvs-context*))
-    (getf (caddr *pvs-context*) :yices-executable)))
+  (when (listp (caddr (current-pvs-context)))
+    (getf (caddr (current-pvs-context)) :yices-executable)))
 
 (defun pvs-context-yices2-executable ()
-  (when (listp (caddr *pvs-context*))
-    (getf (caddr *pvs-context*) :yices2-executable)))
+  (when (listp (caddr (current-pvs-context)))
+    (getf (caddr (current-pvs-context)) :yices2-executable)))
 
-(defun pvs-context-entries ()
-  (if (listp (caddr *pvs-context*))
-      (cdddr *pvs-context*)
-      (cddr *pvs-context*)))
+(defun pvs-context-entries (&optional (ctx (current-pvs-context)))
+  (if (listp (caddr ctx))
+      (cdddr ctx)
+      (cddr ctx)))
 
 (defstruct (context-entry (:conc-name ce-)
 			  (:print-function
@@ -222,12 +212,6 @@ pvs-strategies files.")
 (defun cc (directory)
   (change-context directory))
 
-(defun pushc (directory)
-  (push-context directory))
-
-(defun popc ()
-  (pop-context))
-
 
 ;;; Change-context checks that the specified directory exists, prompting
 ;;; for a different directory otherwise.  When a directory is given, the
@@ -237,51 +221,24 @@ pvs-strategies files.")
 (defun change-context (directory &optional init?)
   (let ((dir (get-valid-context-directory directory nil)))
     (unless init? (save-context))
-    (setq *pvs-context-writable* (write-permission? dir))
     (setf (caddr *strat-file-dates*) 0)
     (set-working-directory dir)
-    (setq *pvs-context-path* (shortpath (working-directory)))
-    (setq *default-pathname-defaults* *pvs-context-path*)
+    (setq *default-pathname-defaults* dir)
     (clear-theories t)
     (restore-context)
     (pvs-message "Context changed to ~a"
       (current-context-path))
-    (when *pvs-context-writable*
+    (when (write-permission?)
       (copy-auto-saved-proofs-to-orphan-file))
     (current-context-path)))
-
-(defvar *pvs-context-stack* nil)
-
-(defun pvs-context-stack ()
-  *pvs-context-stack*)
-
-(defun push-context (&optional directory)
-  (cond (directory
-	 (let ((cpath (current-context-path)))
-	   (change-context directory)
-	   (unless (file-equal cpath (current-context-path))
-	     (push cpath *pvs-context-stack*))))
-	(*pvs-context-stack*
-	 ;; Swap current and top
-	 (let ((cpath (current-context-path)))
-	   (change-context (pop *pvs-context-stack*))
-	   (unless (file-equal cpath (current-context-path))
-	     (push cpath *pvs-context-stack*))))
-	(t (pvs-message "No directory given, and context stack is empty"))))
-
-(defun pop-context ()
-  (when *pvs-context-stack*
-    (change-context (pop *pvs-context-stack*))))
 
 (defun reset-context ()
   ;; First reset local context
   (setq *last-proof* nil)
-  (clrhash *pvs-files*)
-  (clrhash *pvs-modules*)
+  (clrhash (current-pvs-files))
+  (clrhash (current-pvs-theories))
   (setq *current-context* nil)
-  (reset-typecheck-caches)
-  ;; Now the loaded (non-prelude) libraries
-  (clrhash *imported-libraries*))
+  (reset-typecheck-caches))
 
 (defun get-valid-context-directory (directory prompt)
   (multiple-value-bind (dir reason)
@@ -298,7 +255,7 @@ pvs-strategies files.")
 ;; 	   (get-valid-context-directory nil nil))
 	  (t dir))))
 
-(defun context-pathname (&optional (dir *pvs-context-path*))
+(defun context-pathname (&optional (dir *default-pathname-defaults*))
   (make-pathname :name *context-name* :defaults dir))
 
 (defvar *dont-write-object-files* nil)
@@ -307,42 +264,46 @@ pvs-strategies files.")
 ;;; changes since the last time the context was saved.
 
 (defun save-context ()
-  (cond ((null *pvs-context-path*)
-	 nil)
-	((not (file-exists-p *pvs-context-path*))
-	 (pvs-message "Directory ~a seems to have disappeared!"
-	   (namestring *pvs-context-path*)))
-	(t (unless *loading-prelude*
-	     (unless (or *dont-write-object-files*
-			 (not *pvs-context-writable*))
-	       (write-object-files))
-	     (write-context)
-	     #+pvsdebug
-	     (maphash #'(lambda (file theories)
-			  (assert (or (some #'(lambda (th)
-						(not (typechecked? th)))
-					    (cdr theories))
-				      (check-binfiles file))))
-		      *pvs-files*)))))
+  (assert (and (file-equal *default-pathname-defaults*
+			   (working-directory))
+	       (file-equal *default-pathname-defaults*
+			   (current-context-path))))
+  (if (not (file-exists-p (working-directory)))
+      (pvs-message "Directory ~a seems to have disappeared!"
+	(namestring *default-pathname-defaults*))
+      (unless *loading-prelude*
+	(unless (or *dont-write-object-files*
+		    (not (write-permission?)))
+	  (write-object-files))
+	(write-context)
+	(maphash #'(lambda (file theories)
+		     (assert (or (some #'(lambda (th)
+					   (not (typechecked? th)))
+				       (cdr theories))
+				 (check-binfiles file))))
+		 (current-pvs-files)))))
 
 (defun sc ()
   (save-context))
 
 
 (defun write-context ()
-  (when (or *pvs-context-changed*
+  (when (or (current-pvs-context-changed)
 	    (and (pvs-context-entries)
 		 (not (file-exists-p (context-pathname)))))
-    (if *pvs-context-writable*
+    (if (write-permission?)
 	(let ((context (make-pvs-context)))
+	  (assert (every #'(lambda (ce)
+			     (file-exists-p (make-specpath (ce-file ce))))
+			 (cdddr context)))
 	  (multiple-value-bind (value condition)
-	      (ignore-file-errors
+	      (progn ;ignore-file-errors
 	       (store-object-to-file context (context-pathname)))
 	    (declare (ignore value))
 	    (cond (condition
 		   (pvs-message "~a" condition))
-		  (t (setq *pvs-context* context)
-		     (setq *pvs-context-changed* nil)
+		  (t (setf (pvs-context *workspace-session*) context)
+		     (setf (pvs-context-changed *workspace-session*) nil)
 		     (pvs-log "Context file ~a written"
 			      (namestring (context-pathname)))))))
 	(pvs-log "Context file ~a not written, do not have write permission"
@@ -352,19 +313,19 @@ pvs-strategies files.")
 
 (defun write-object-files (&optional force?)
   (update-stored-mod-depend)
-  (when (and (> (hash-table-count *pvs-modules*) 0)
+  (when (and (> (hash-table-count (current-pvs-theories)) 0)
 	     (ensure-bin-subdirectory))
     (if t ; *testing-restore*
 	(maphash #'(lambda (id theory)
 		     (declare (ignore id))
 		     (write-object-file theory force?))
-		 *pvs-modules*)
+		 (current-pvs-theories))
 	(multiple-value-bind (value condition)
 	    (ignore-file-errors
 	     (maphash #'(lambda (id theory)
 			  (declare (ignore id))
 			  (write-object-file theory force?))
-		      *pvs-modules*))
+		      (current-pvs-theories)))
 	  (declare (ignore value))
 	  (when condition
 	    (pvs-message "~a" condition))))))
@@ -392,7 +353,7 @@ pvs-strategies files.")
 	    (setf (ce-object-date ce)
 		  (acons (te-id te) (file-write-time binpath)
 			 (delete te-date (ce-object-date ce))))
-	    (setq *pvs-context-changed* t)))))))
+	    (setf (pvs-context-changed *workspace-session*) t)))))))
 
 (defmethod get-theory-with-filename ((m datatype-or-module))
   (assert (filename m))
@@ -408,7 +369,7 @@ pvs-strategies files.")
 
 (defun ensure-bin-subdirectory ()
   (let ((subdir (make-pathname
-		 :defaults *pvs-context-path*
+		 :defaults *default-pathname-defaults*
 		 :name *pvsbin-string*)))
     (if (file-exists-p subdir)
 	(if (directory-p subdir)
@@ -439,7 +400,7 @@ pvs-strategies files.")
 				     (= (file-write-time file)
 					(ce-write-date entry)))
 			  (setq current? nil))))
-		  *pvs-files*)
+		  (current-pvs-files))
 	 current?)))
 ;  (labels ((current? (entries)
 ;	     (or (null entries)
@@ -452,7 +413,7 @@ pvs-strategies files.")
 ;    (current? (pvs-context-entries)))
 
 (defun update-pvs-context ()
-  (setq *pvs-context* (make-pvs-context))
+  (setf (pvs-context *workspace-session*) (make-pvs-context))
   t)
 
 (defun make-pvs-context ()
@@ -463,7 +424,7 @@ pvs-strategies files.")
 		 (let ((ce (create-context-entry name)))
 		   (when ce
 		     (push ce context))))
-	     *pvs-files*)
+	     (current-pvs-files))
     (mapc #'(lambda (entry)
 	      (unless (or (not (file-exists-p (make-specpath (ce-file entry))))
 			  (member (ce-file entry) context
@@ -489,33 +450,33 @@ pvs-strategies files.")
 ;;; update-context writes the .pvscontext file.  It is called by parse-file
 ;;; after parsing or typechecking a file.  It compares the context-entry of
 ;;; the file with the write-date of the file.  If the context entry is
-;;; missing, or the write-date is different, then the *pvs-context* is
-;;; updated, and the *pvs-context-changed* variable is set.  Note that this
+;;; missing, or the write-date is different, then the (current-pvs-context) is
+;;; updated, and the (current-pvs-context-changed) variable is set.  Note that this
 ;;; doesn't actually write out the .pvscontext file.
 
 (defun update-context (filename)
   (let ((oce (get-context-file-entry filename))
 	(nce (create-context-entry filename)))
-    (unless (and (not *pvs-context-changed*)
+    (unless (and (not (current-pvs-context-changed))
 		 oce
 		 (equal (ce-write-date oce)
 			(file-write-time (make-specpath filename)))
 		 (ce-eq oce nce))
       (when (and oce (ce-object-date oce))
 	(setf (ce-object-date nce) (ce-object-date oce)))
-      (setq *pvs-context*
+      (setf (pvs-context *workspace-session*)
 	    (cons *pvs-version*
 		  (cons (pvs-context-libraries)
 			(cons (list :default-decision-procedure
 				    *default-decision-procedure*)
 			      (cons nce (delete oce (pvs-context-entries)))))))
-      (setq *pvs-context-changed* t))))
+      (setf (pvs-context-changed *workspace-session*) t))))
 
 (defun delete-file-from-context (filename)
   (let ((ce (get-context-file-entry filename)))
     (when ce
-      (setq *pvs-context* (remove ce (pvs-context-entries)))
-      (setq *pvs-context-changed* t))))
+      (setf (pvs-context *workspace-session*) (remove ce (pvs-context-entries)))
+      (setf (pvs-context-changed *workspace-session*) t))))
 
 (defun update-context-proof-status (fdecl)
   (unless (or (from-prelude? fdecl)
@@ -525,15 +486,15 @@ pvs-strategies files.")
 	  (let ((status (proof-status-symbol fdecl)))
 	    (unless (eq (fe-status fe) status)
 	      (setf (fe-status fe) status)
-	      (setq *pvs-context-changed* t))
+	      (setf (pvs-context-changed *workspace-session*) t))
 	    (assert (memq (fe-status fe)
 			  '(proved-complete proved-incomplete unchecked
 					    unfinished untried nil))))
-	  (setq *pvs-context-changed* t)))))
+	  (setf (pvs-context-changed *workspace-session*) t)))))
 
 (defun create-context-entry (filename)
   (when (file-exists-p (make-specpath filename))
-    (let* ((theories (gethash filename *pvs-files*))
+    (let* ((theories (gethash filename (current-pvs-files)))
 	   (file-entry (get-context-file-entry filename))
 	   (prf-file (make-prf-pathname filename))
 	   (proofs-write-date (file-write-time prf-file))
@@ -615,10 +576,11 @@ pvs-strategies files.")
 			 collect
 			 (cons (binpath-name inm ith)
 			       (when (and (lib-datatype-or-theory? ith)
+					  (not (from-prelude? ith))
 					  (not (eq (gethash (id ith)
-							    *pvs-modules*)
+							    (current-pvs-theories))
 						   ith)))
-				 (lib-ref ith)))))
+				 (get-library-id (context-path ith))))))
 		  (libalist nil)
 		  (thlist nil)
 		  (*current-context* (saved-context theory)))
@@ -626,10 +588,8 @@ pvs-strategies files.")
 	      ;;             *current-context*))
 	      (loop for (inm . libref) in inames
 		    do (if libref
-			   (let ((libentry (assoc libref libalist
-						  :test #'string=))
-				 (nm (makesym "~a"
-					      (lcopy inm 'library nil))))
+			   (let ((libentry (assoc libref libalist :test #'equalp))
+				 (nm (makesym "~a" (lcopy inm 'library nil))))
 			     (if libentry
 				 (nconc libentry (list nm))
 				 (setq libalist
@@ -642,12 +602,16 @@ pvs-strategies files.")
 	(when te
 	  (te-dependencies te)))))
 
-(defmethod lib-datatype-or-theory? ((obj library-datatype-or-theory))
-  t)
+
+(defmethod lib-datatype-or-theory? ((mod datatype-or-module))
+  (assert (context-path mod))
+  (and (not (file-equal (context-path mod) *default-pathname-defaults*))
+       (not (from-prelude? mod))))
 
 (defmethod lib-datatype-or-theory? (obj)
   (declare (ignore obj))
   nil)
+
 
 (defun add-generated-adt-theories (i-theories i-names
 					      &optional imp-theories imp-names)
@@ -758,7 +722,7 @@ pvs-strategies files.")
     deps))
 
 (defun file-dependencies* (filename)
-  (let ((theories (cdr (gethash filename *pvs-files*))))
+  (let ((theories (cdr (gethash filename (current-pvs-files)))))
     (if (and theories
 	     (every #'(lambda (th) (memq 'typechecked (status th))) theories))
 	(let ((depfiles nil))
@@ -774,13 +738,10 @@ pvs-strategies files.")
 					     (eq (id th)
 						 (generated-by dth))))
 				    theories))
-		    (when (and (lib-datatype-or-theory? dth)
-			       (not (file-equal
-				     (directory-namestring (pvs-file-path dth))
-				     (namestring *pvs-context-path*))))
-		      (let ((lib-ref (lib-ref dth)))
-			(setq depname (format nil "~a~a"
-					lib-ref (filename dth)))))
+		    (when (lib-datatype-or-theory? dth)
+		      (let ((lib-id (get-library-id (context-path dth))))
+			(setq depname (format nil "~a/~a"
+					lib-id (filename dth)))))
 		    (pushnew depname depfiles
 			     :test #'(lambda (x y)
 				       (or (equal x filename)
@@ -795,7 +756,7 @@ pvs-strategies files.")
     (if deps
 	(cdr deps)
 	(let ((cdeps (circular-file-dependencies*
-		      (cdr (gethash filename *pvs-files*)))))
+		      (cdr (gethash filename (current-pvs-files))))))
 	  (push (cons filename (car cdeps)) *circular-file-dependencies*)
 	  (car cdeps)))))
 
@@ -820,7 +781,7 @@ pvs-strategies files.")
 			 (let ((*current-context* (saved-context theory)))
 			   (if (generated-by theory)
 			       (list (get-theory (generated-by theory)))
-			       (delete-if #'library-theory?
+			       (delete-if #'lib-datatype-or-theory?
 				 (mapcar #'(lambda (th) (get-theory th))
 				   (get-immediate-usings theory))))))
 		       (cons theory deps))
@@ -859,7 +820,7 @@ pvs-strategies files.")
 (defvar *file-dependencies*)
 
 (defun get-pvs-file-dependencies (filename)
-  (if (gethash filename *pvs-files*)
+  (if (gethash filename (current-pvs-files))
       ;; Things have been parsed, we can use that information
       (let ((*file-dependencies* nil))
 	(get-pvs-file-dependencies* filename)
@@ -870,14 +831,14 @@ pvs-strategies files.")
 (defun get-pvs-file-dependencies* (filename)
   (unless (member filename *file-dependencies* :test #'string=)
     (push filename *file-dependencies*)
-    (let ((theories (cdr (gethash filename *pvs-files*))))
+    (let ((theories (cdr (gethash filename (current-pvs-files)))))
       (dolist (theory theories)
 	(if (rectype-theory? theory)
 	    (get-pvs-file-dependencies*
 	     (filename (get-theory (generated-by theory))))
 	    (dolist (importing (get-immediate-usings theory))
 	      (let ((itheory (unless (library importing)
-			       (gethash (id importing) *pvs-modules*))))
+			       (gethash (id importing) (current-pvs-theories)))))
 		(if itheory
 		    (if (rectype-theory? itheory)
 			(get-pvs-file-dependencies*
@@ -893,15 +854,20 @@ pvs-strategies files.")
       (te-dependencies te))))
 
 ;;; Restore context
-;;; Reads in the .pvscontext file to the *pvs-context* variable.  Most of
+;;; Reads in the .pvscontext file to the (current-pvs-context) variable.  Most of
 ;;; the rest of this function provides for reading previous versions of the
 ;;; .pvscontext
 
 (defun restore-context ()
+  (assert *workspace-session*)
+  (assert (and (file-equal *default-pathname-defaults*
+			   (working-directory))
+	       (file-equal *default-pathname-defaults*
+			   (current-context-path))))
   (let ((ctx-file (merge-pathnames *context-name*
 				   *default-pathname-defaults*)))
     (if (file-exists-p ctx-file)
-	(handler-case 
+	(handler-case
 	    (let ((context
 		   (if (with-open-file (in ctx-file)
 			 (and (char= (read-char in) #\()
@@ -910,16 +876,19 @@ pvs-strategies files.")
 		       (fetch-object-from-file ctx-file))))
 	      (cond ((duplicate-theory-entries?)
 		     (pvs-message "PVS context has duplicate entries - resetting")
-		     (setq *pvs-context* (list *pvs-version*))
+		     (setf (pvs-context *workspace-session*) (list *pvs-version*))
 		     (write-context))
 		    (t ;;(same-major-version-number (car context) *pvs-version*)
 		     ;; Hopefully we are backward compatible between versions
 		     ;; 3 and 4.
-		     (setq *pvs-context* context)
-		     (setf (cadr *pvs-context*)
+		     (assert (every #'(lambda (ce)
+					(file-exists-p (make-specpath (ce-file ce))))
+				    (pvs-context-entries context)))
+		     (setf (pvs-context *workspace-session*) context)
+		     (setf (cadr (current-pvs-context))
 			   (delete "PVSio/"
 				   (delete "Manip/"
-					   (delete "Field/" (cadr *pvs-context*)
+					   (delete "Field/" (cadr (current-pvs-context))
 						   :test #'string=)
 					   :test #'string=)
 				   :test #'string=))
@@ -936,20 +905,20 @@ pvs-strategies files.")
 			      (unless (listp (ce-object-date ce))
 				(setf (ce-object-date ce) nil))))
 			   ((every #'context-entry-p (cdr context))
-			    (setq *pvs-context*
-				  (cons (car *pvs-context*)
+			    (setf (pvs-context *workspace-session*)
+				  (cons (car (current-pvs-context))
 					(cons nil
-					      (cons nil (cdr *pvs-context*))))))
+					      (cons nil (cdr (current-pvs-context)))))))
 			   (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
-			      (pvs-log "  ~a" error)
-			      (setq *pvs-context* (list *pvs-version*)))))))
-	  (error (err)
+			      (setf (pvs-context *workspace-session*)
+				    (list *pvs-version*)))))))
+	  (file-error (err)
 	    (pvs-message "PVS context problem - resetting")
 	    (pvs-log "  ~a" err)
-	    (setq *pvs-context* (list *pvs-version*))
+	    (setf (pvs-context *workspace-session*) (list *pvs-version*))
 	    (write-context)))
-	(setq *pvs-context* (list *pvs-version*))))
+	(setf (pvs-context *workspace-session*) (list *pvs-version*))))
   nil)
 
 
@@ -977,20 +946,20 @@ pvs-strategies files.")
   (let* ((*theories-restored* nil)
 	 (*adt-type-name-pending* nil))
     (dolist (te (ce-theories (get-context-file-entry filename)))
-      (loop for (libref . theories) in (te-dependencies te)
-	    do (restore-theories* libref theories))
+      (loop for (lib-ref . theories) in (te-dependencies te)
+	    do (restore-theories* lib-ref theories))
       (restore-theory (id te)))
     #+pvsdebug (assert (null *adt-type-name-pending*))
     (let ((files nil))
       (dolist (th *theories-restored*)
 	(let ((file (filename th)))
 	  (unless (or (member file files :test #'string=)
-		      (not (some #'null (gethash file *pvs-files*))))
+		      (not (some #'null (gethash file (current-pvs-files)))))
 	    (push file files))))
       (dolist (file files)
 	(restore-theories file)))
-    (when (some #'null (gethash filename *pvs-files*))
-      (remhash filename *pvs-files*))
+    (when (some #'null (gethash filename (current-pvs-files)))
+      (remhash filename (current-pvs-files)))
     (get-theories (make-specpath filename))))
 
 (defun restore-theories* (libref theories)
@@ -1000,19 +969,19 @@ pvs-strategies files.")
 	(restore-theory th))))
 
 (defun restore-theory (thname)
-  (unless (gethash thname *pvs-modules*)
+  (unless (gethash thname (current-pvs-theories))
     (let ((theory (get-theory-from-binfile thname)))
       (when theory
 	(let* ((tes (when (filename theory)
 		      (ce-theories (get-context-file-entry
 				    (filename theory)))))
 	       (theories (mapcar #'(lambda (te)
-				     (gethash (id te) *pvs-modules*))
+				     (gethash (id te) (current-pvs-theories)))
 			   tes)))
 	  (assert (filename theory))
 	  (push theory *theories-restored*)
 	  (when (filename theory)
-	    (setf (gethash (filename theory) *pvs-files*)
+	    (setf (gethash (filename theory) (current-pvs-files))
 		  (cons (file-write-time (make-specpath (filename theory)))
 			theories)))
 	  (dolist (th theories)
@@ -1039,7 +1008,7 @@ pvs-strategies files.")
   (let* ((adt-theories (adt-generated-theories adt))
 	 (adt-file (filename (car adt-theories))))
     (assert adt-file)
-    (setf (gethash adt-file *pvs-files*)
+    (setf (gethash adt-file (current-pvs-files))
 	  (cons (file-write-time (make-specpath adt-file)) adt-theories))
     (mapc #'update-restored-theories adt-theories)))
 
@@ -1050,7 +1019,7 @@ pvs-strategies files.")
   (let ((nctx (funcall (pvs-context-upgrade-function (car context))
 		       (cdr context))))
     (when nctx
-      (setq *pvs-context* nctx)
+      (setf (pvs-context *workspace-session*) nctx)
       (write-context)
       t)))
 
@@ -1093,7 +1062,7 @@ pvs-strategies files.")
   (pvs-message (current-context-path)))
 
 (defun current-context-path ()
-  (shortname *pvs-context-path*))
+  (shortname *default-pathname-defaults*))
 
 
 ;;; For a given filename, valid-context-entry returns two values: the
@@ -1158,7 +1127,7 @@ pvs-strategies files.")
 			(let ((dir (pathname-directory d)))
 			  (not (or (null dir)
 				   (file-equal (make-pathname :directory dir)
-					       *pvs-context-path*)))))))
+					       *default-pathname-defaults*)))))))
 	      (ce-dependencies entry))))
 
 (defmethod get-context-file-entry ((filename string))
@@ -1172,16 +1141,11 @@ pvs-strategies files.")
 (defmethod get-context-file-entry ((decl declaration))
   (get-context-file-entry (theory decl)))
 
-(defmethod get-context-file-entry ((theory library-theory))
-  (with-pvs-context (lib-ref theory)
-    (restore-context)
-    (get-context-file-entry (filename theory))))
-
 (defun context-files-and-theories (&optional context)
   (when (or (null context)
 	    (file-exists-p context))
     (if (or (null context)
-	    (file-equal context *pvs-context-path*))
+	    (file-equal context *default-pathname-defaults*))
 	(sort (mapcan #'(lambda (e)
 			  (let ((file (format nil "~a.~a"
 					(ce-file e)
@@ -1301,7 +1265,7 @@ pvs-strategies files.")
 (defun get-referenced-declaration (declref)
   (apply #'get-referenced-declaration* declref))
 
-(defun get-referenced-declaration* (id class &optional type theory-id library)
+(defun get-referenced-declaration* (id class &optional type theory-id lib-ref)
   (if (eq class 'module)
       (let ((th (get-theory id)))
 	;;(assert th)
@@ -1324,44 +1288,45 @@ pvs-strategies files.")
 		(if (string= type "[real -> real]")
 		    (cadr decls)
 		    (car decls))))
-	  (let ((theory
-		 (or (and library
-			  (let ((prehash
-				 (cadr (gethash library
-						*prelude-libraries*))))
-			    (and prehash (gethash theory-id prehash))))
-		     (get-theory (mk-modname theory-id nil
-					     (when library
-					       (get-lib-id library))))
-		     (and (null library)
-			  ;; Old proofs may not have library
-			  ;; set, so we look for a unique one
-			  (let ((theories (get-imported-theories
-					   theory-id)))
-			    (if (cdr theories)
-				(pvs-message
-				    "Loading Proof Error: theory reference ambiguous - ~a"
-				  (id (car theories)))
-				(car theories)))))))
-	    (when theory
-	      (let ((decls (remove-if-not
-			       #'(lambda (d)
-				   (and (typep d 'declaration)
-					(eq (id d) id)
-					(eq (type-of d) class)))
-			     (all-decls theory))))
-		;;(assert decls)
-		(cond ((singleton? decls)
-		       (car decls))
-		      ((and (cdr decls) type)
-		       (let ((ndecls (remove-if-not
-					 #'(lambda (d)
-					     (string= (unparse (declared-type d)
-							:string t)
-						      type))
-				       decls)))
-			 (when (singleton? ndecls)
-			   (car ndecls)))))))))))
+	  (multiple-value-bind (lib-path lib-id)
+	      (if (consp lib-ref)
+		  (values (cdr lib-ref) (car lib-ref))
+		  (get-library-reference lib-ref))
+	    (let ((theory
+		   (or (and lib-path
+			    (member lib-path (current-prelude-libraries)
+				    :test #'file-equal)
+			    (let ((ws (get-workspace-session lib-path)))
+			      (gethash theory-id (pvs-theories ws))))
+		       (get-theory* theory-id lib-id)
+		       (and (null lib-id)
+			    ;; Old proofs may not have library
+			    ;; set, so we look for a unique one
+			    (let ((theories (get-imported-theories theory-id)))
+			      (if (cdr theories)
+				  (pvs-message
+				      "Loading Proof Error: theory reference ambiguous - ~a"
+				    (id (car theories)))
+				  (car theories)))))))
+	      (when theory
+		(let ((decls (remove-if-not
+				 #'(lambda (d)
+				     (and (typep d 'declaration)
+					  (eq (id d) id)
+					  (eq (type-of d) class)))
+			       (all-decls theory))))
+		  ;;(assert decls)
+		  (cond ((singleton? decls)
+			 (car decls))
+			((and (cdr decls) type)
+			 (let ((ndecls (remove-if-not
+					   #'(lambda (d)
+					       (string= (unparse (declared-type d)
+							  :string t)
+							type))
+					 decls)))
+			   (when (singleton? ndecls)
+			     (car ndecls))))))))))))
 
 (defun invalidate-context-formula-proof-info (filename file nth)
   (unless (or (null (get-context-file-entry filename))
@@ -1370,10 +1335,10 @@ pvs-strategies files.")
 		      (ce-write-date (get-context-file-entry filename)))))
     (dolist (ce (pvs-context-entries))
       (when (and (member filename (ce-dependencies ce) :test #'string=)
-		 (not (gethash (ce-file ce) *pvs-files*)))
+		 (not (gethash (ce-file ce) (current-pvs-files))))
 	(setf (ce-write-date ce) 0)
 	(setf (ce-object-date ce) 0)
-	(setq *pvs-context-changed* t))
+	(setf (pvs-context-changed *workspace-session*) t))
       (dolist (te (ce-theories ce))
 	(when (and (member (string (id nth)) (te-dependencies te))
 		   (not (get-theory (te-id te))))
@@ -1384,7 +1349,7 @@ pvs-strategies files.")
     (when (memq (fe-status fe)
 		'(proved-complete proved-incomplete))
       (setf (fe-status fe) 'unchecked)
-      (setq *pvs-context-changed* t))))
+      (setf (pvs-context-changed *workspace-session*) t))))
   
 
 (defun invalidate-proofs (theory)
@@ -1428,11 +1393,11 @@ pvs-strategies files.")
 	      (and theory (from-prelude? theory)))
     (if theory
 	(save-proofs (make-prf-pathname (filename theory))
-		     (cdr (gethash (filename theory) *pvs-files*)))
+		     (cdr (gethash (filename theory) (current-pvs-files))))
 	(maphash #'(lambda (file mods)
 		     (when (some #'has-proof? (cdr mods))
 		       (save-proofs (make-prf-pathname file) (cdr mods))))
-		 *pvs-files*))))
+		 (current-pvs-files)))))
 
 (defun has-proof? (mod)
   (some #'(lambda (d) (and (formula-decl? d) (justification d)))
@@ -1449,7 +1414,7 @@ pvs-strategies files.")
   (setq *save-proofs-pretty* (not *save-proofs-pretty*)))
 
 (defun save-proofs (filestring theories)
-  (if *pvs-context-writable*
+  (if (write-permission?)
       (let* ((oldproofs (read-pvs-file-proofs filestring))
 	     (curproofs (collect-theories-proofs theories)))
 	#+pvsdebug
@@ -1890,7 +1855,7 @@ Note that the lists might not be the same length."
 (defun copy-theory-proofs-to-orphan-file (theoryref)
   (when (if *loading-prelude*
 	    (write-permission? (format nil "~a/lib" *pvs-path*))
-	    *pvs-context-writable*)
+	    (write-permission?))
     (let* ((tid (ref-to-id theoryref))
 	   (filename (if *loading-prelude*
 			 (if (member tid (core-prelude-theories) :key #'id)
@@ -1920,7 +1885,7 @@ Note that the lists might not be the same length."
   (when (and proofs
 	     (if *loading-prelude*
 		 (write-permission? (format nil "~a/lib" *pvs-path*))
-		 *pvs-context-writable*))
+		 (write-permission?)))
     (let ((oproofs (read-orphaned-proofs))
 	  (filename (context-file-of theoryid))
 	  (count 0))
@@ -1968,7 +1933,7 @@ Note that the lists might not be the same length."
 	       nil)
 	      (t proofs))))))
 
-(defun read-pvs-file-proofs (filename &optional (dir *pvs-context-path*))
+(defun read-pvs-file-proofs (filename &optional (dir *default-pathname-defaults*))
   (let ((prf-file (make-prf-pathname filename dir)))
     (when (file-exists-p prf-file)
       (handler-case 
@@ -2412,7 +2377,7 @@ Note that the lists might not be the same length."
 	(pvs-message "Cannot find proof for this entry"))))
 
 (defun pvs-delete-proof (num)
-  (if *pvs-context-writable*
+  (if (write-permission?)
       (let ((proof (nth num *displayed-proofs*)))
 	(cond (proof
 	       (setq *displayed-proofs* (remove proof *displayed-proofs*))
@@ -2444,7 +2409,7 @@ Note that the lists might not be the same length."
 			 (directory-p *pvs-path*)
 			 "pvs-strategies"))
 	(home-strat-file (merge-pathnames "~/" "pvs-strategies"))
-	(ctx-strat-file (merge-pathnames *pvs-context-path*
+	(ctx-strat-file (merge-pathnames *default-pathname-defaults*
 					 "pvs-strategies")))
     (load-strategies-file pvs-strat-file *strat-file-dates*)
     (load-strategies-file home-strat-file (cdr *strat-file-dates*))
@@ -2460,8 +2425,7 @@ Note that the lists might not be the same length."
 (defun load-library-strategy-file (lib)
   (let* (#+allegro
 	 (sys:*load-search-list* *pvs-library-path*)
-	 (*default-pathname-defaults* (pathname lib))
-	 (file (merge-pathnames lib "pvs-strategies")))
+	 (file (make-pathname :directory (namestring lib) :name "pvs-strategies")))
     (when (file-exists-p file)
       (let ((fwd (file-write-time file))
 	    (entry (assoc lib *library-strategy-file-dates* :test #'equal)))
@@ -2545,7 +2509,7 @@ Note that the lists might not be the same length."
 	  (unless (assoc lid *prover-keywords*)
 	    (push (cons lid entry) *prover-keywords*)))))))
 
-(defun make-prf-pathname (fname &optional (dir *pvs-context-path*))
+(defun make-prf-pathname (fname &optional (dir *default-pathname-defaults*))
   (assert (or (stringp fname) (pathnamep fname)))
   (let* ((pname (pathname fname))
 	 (name (pathname-name pname))
@@ -2597,12 +2561,12 @@ Note that the lists might not be the same length."
 	       (declare (ignore thid))
 	       (when (module? th)
 		 (pushnew th theories)))
-	     (collect-thrys (libref hash-pair)
-	       (maphash #'collect-theory (cadr hash-pair))))
-      (maphash #'collect-theory *pvs-modules*)
+	     (collect-thrys (thrys)
+	       (maphash #'collect-theory thrys)))
+      (maphash #'collect-theory (current-pvs-theories))
       (maphash #'collect-theory *prelude*)
-      (maphash #'collect-thrys *prelude-libraries*)
-      (maphash #'collect-thrys *imported-libraries*))
+      (dolist (ws *all-workspace-sessions*)
+	(collect-thrys (pvs-theories ws))))
     (sort theories #'string-lessp :key #'id)))
 
 ;;; Called from emacs for theory completion
@@ -2616,8 +2580,10 @@ Note that the lists might not be the same length."
   (let ((pairs (mapcan #'(lambda (th)
 			   (unless (generated-by th)
 			     (list
-			      (list (if (library-datatype-or-theory? th)
-					(format nil "~a@~a" (lib-ref th) (id th))
+			      (list (if (and (lib-datatype-or-theory? th)
+					     (not (from-prelude? th)))
+					(format nil "~a@~a"
+					  (get-library-id (context-path th)) (id th))
 					(string (id th)))
 				    (cond ((filename th))
 					  ((memq th (pvsio-prelude-theories))
@@ -2627,7 +2593,7 @@ Note that the lists might not be the same length."
 					  (t (error "filename not set in theory ~a" th)))))))
 		   (collect-all-theories))))
     ;; Now loop through the .pvscontext entries, from earlier parses.
-    (dolist (ce (cdddr *pvs-context*))
+    (dolist (ce (cdddr (current-pvs-context)))
       (dolist (te (ce-theories ce))
 	(unless (assoc (string (te-id te)) pairs :test #'string=)
 	  (push (list (string (te-id te)) (ce-file ce)) pairs))
@@ -2647,12 +2613,14 @@ Note that the lists might not be the same length."
 \"thid\" in the current-context."
   
   (let ((thnames (mapcar #'(lambda (th)
-			     (if (library-datatype-or-theory? th)
-				 (format nil "~a@~a" (lib-ref th) (id th))
+			     (if (and (lib-datatype-or-theory? th)
+				      (not (from-prelude? th)))
+				 (format nil "~a@~a"
+				   (get-library-id (context-path th)) (id th))
 				 (string (id th))))
 		   (collect-all-theories))))
     ;; Now loop through the .pvscontext entries, from earlier parses.
-    (dolist (ce (cdddr *pvs-context*))
+    (dolist (ce (cdddr (current-pvs-context)))
       (dolist (te (ce-theories ce))
 	(pushnew (string (te-id te)) thnames :test #'string=)
 	(dolist (dep (te-dependencies te))
@@ -2697,8 +2665,8 @@ Note that the lists might not be the same length."
 			      (declare (ignore id))
 			      (when (assq theory (all-usings th))
 				(memq (id th) usedbys)))
-			  *pvs-modules*)))
-	   *pvs-modules*))
+			  (current-pvs-theories))))
+	   (current-pvs-theories)))
 
 ;;; Called from Emacs
 (defun install-pvs-proof-file (filename)
@@ -2731,11 +2699,11 @@ Note that the lists might not be the same length."
   (when *in-checker*
     (setq *auto-save-proof-file*
 	  (merge-pathnames (format nil "#~a.prf#" (filename (module decl)))
-			   *pvs-context-path*))))
+			   *default-pathname-defaults*))))
 
 (defun auto-save-proof ()
   (assert *in-checker*)
-  (when (and *pvs-context-writable*
+  (when (and (write-permission?)
 	     *auto-save-proof-file*)
     (let* ((decl (declaration *top-proofstate*))
 	   (theory (module decl))
@@ -2761,7 +2729,7 @@ Note that the lists might not be the same length."
 
 (defun copy-auto-saved-proofs-to-orphan-file ()
   (let ((auto-saved-files (directory (make-pathname
-				      :defaults *pvs-context-path*
+				      :defaults *default-pathname-defaults*
 				      :name :wild
 				      :type "prf#")))
 	(proofs nil))
@@ -2792,7 +2760,7 @@ Note that the lists might not be the same length."
 ;; (defun check-pvs-context ()
 ;;   (dolist (ce (pvs-context-entries))
 ;;     (check-pvs-context-entry ce))
-;;   (maphash #'check-pvs-context-files *pvs-files*))
+;;   (maphash #'check-pvs-context-files (current-pvs-files)))
 
 ;; (defun check-pvs-context-entry (ce)
 ;;   (let ((file (make-specpath (ce-file ce))))
@@ -2923,17 +2891,15 @@ Note that the lists might not be the same length."
     (check-binfiles* filename)))
 
 (defun check-binfiles* (filename)
-  (let ((dir (simple-directory-namestring filename)))
-    (if dir
-	(with-pvs-context dir
-	  (let* ((ctx-info (get-file-info *context-name*))
-		 (ctx (cdr (assoc ctx-info *binfile-contexts* :test #'equal))))
-	    (cond (ctx
-		   (setq *pvs-context* ctx))
-		  (t (restore-context)
-		     (push (cons ctx-info *pvs-context*) *binfile-contexts*))))
-	  (check-binfiles** (file-namestring filename)))
-	(check-binfiles** filename))))
+  (let* ((lib-ref (simple-directory-namestring filename))
+	 (lib-path (when lib-ref (get-library-path lib-ref))))
+    (unless (or (null lib-ref) lib-path)
+      (break "bad path for ~a?" filename))
+    (when (or (null lib-ref) lib-path) ; check-binfiles fails
+      (if lib-path
+	  (with-workspace lib-path
+	    (check-binfiles** (file-namestring filename)))
+	  (check-binfiles** filename)))))
 
 (defun simple-directory-namestring (filename)
   ;; if filename starts with a single ".", it is lost by directory-namestring
@@ -2944,13 +2910,15 @@ Note that the lists might not be the same length."
 
 (defun check-binfiles** (filename)
   (let ((ce (get-context-file-entry filename)))
+    #+binfile-debug (unless ce (break "No ce for ~a?" filename))
     (when ce
       (cond ((memq ce *ces-checked*)
 	     t)
 	    (t (push ce *ces-checked*)
 	       (cond ((and (every #'check-binfiles* (ce-dependencies ce))
 			   (check-binfile filename ce)))
-		     (t (if (listp (ce-object-date ce))
+		     (t #+binfile-debug (break "Failed check-binfile" filename)
+			(if (listp (ce-object-date ce))
 			    (dolist (objdate (ce-object-date ce))
 			      (setf (cdr objdate) 0))
 			    (setf (ce-object-date ce) nil))
@@ -2980,6 +2948,7 @@ Note that the lists might not be the same length."
 					   (= bin-date expected-bin-date)
 					   (<= spec-date bin-date))))
 				th-entries))))
+	  #+binfile-debug (unless ok? (break "Not ok?"))
 	  (push (list file-info ok? spec-file) *binfiles-checked*)
 	  ok?))))
 
@@ -2990,8 +2959,8 @@ Note that the lists might not be the same length."
 
 ;; (defun check-proof-file-is-current (&optional file)
 ;;   (if file
-;;       (check-proof-file-is-current* file (gethash file *pvs-files*))
-;;       (maphash #'check-proof-file-is-current* *pvs-files*)))
+;;       (check-proof-file-is-current* file (gethash file (current-pvs-files)))
+;;       (maphash #'check-proof-file-is-current* (current-pvs-files))))
 
 ;; (defun check-proof-file-is-current* (file date&theories)
 ;;   (let ((prfpath (make-prf-pathname file))
@@ -3121,19 +3090,20 @@ Note that the lists might not be the same length."
     :input "//dev//null"
     :output '(:string :stripped t)))
 
-(defun under-git-control? ()
+(defun under-git-control? (&optional dir)
   "Checks if the current directory is under git control.
 
 This is determined by git ls-files.  What this does is find an ancestor directory containing
 a .git repo, and list the files of the current context that have been added to that repo.
 If there is no such ancestor, this results in an error; this means it's safe create a repo.
 If there is no error, but the ls-files is empty, then "
-  (or (file-exists-p (format nil "~@[~a~]/.git" dir))
+  (or (directory-p (format nil "~@[~a/~].git" dir))
       (let ((lsf (handler-case
 		     (uiop:run-program (format nil "git ~@[-C ~a~] ls-files" dir)
 		       :input "//dev//null"
 		       :output '(:string :stripped t))
-		   (uiop/run-program:subprocess-error (cnd) nil))))
+		   (uiop/run-program:subprocess-error (cnd)
+		     (declare (ignore cnd)) nil))))
 	(cond ((not (zerop (length lsf)))
 	       ;; Already have files from this dir in a repo
 	       t)
@@ -3166,7 +3136,7 @@ If there is no error, but the ls-files is empty, then "
 ;; 			      (let ((ce (create-context-entry name)))
 ;; 				(when ce
 ;; 				  (push ce context))))
-;; 			  *pvs-files*))
+;; 			  (current-pvs-files)))
 ;;   (append (pvs-meta-info)
 ;; 	  (
   

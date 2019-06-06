@@ -117,7 +117,7 @@
 
 (defun print-xml-prelude ()
   (dolist (theory *prelude-theories*)
-    (let ((*pvs-context-path*
+    (let ((*default-pathname-defaults*
 	   (make-pathname :directory (format nil "~a/lib" *pvs-path*)))
 	  (*current-context* (context theory))
 	  (*current-theory* theory))
@@ -130,8 +130,7 @@
 	    (*current-theory* theory))
 	(dolist (th (remove-if #'(lambda (th)
 				   (or (from-prelude? th)
-				       (typep th '(or library-datatype
-						   library-theory))))
+				       (lib-datatype-or-theory? th)))
 		      (collect-theory-usings theoryname nil)))
 	  (print-xml-theory th))))))
 
@@ -149,7 +148,7 @@
 
 (defun ensure-xml-subdirectory ()
   (let ((subdir (make-pathname
-		 :defaults *pvs-context-path*
+		 :defaults *default-pathname-defaults*
 		 :name #+case-sensitive "pvsxml" #-case-sensitive "PVSXML")))
     (if (file-exists-p subdir)
 	(if (directory-p subdir)
@@ -168,8 +167,8 @@
 		   nil))))))
 
 (defmethod make-xmlpath ((name string))
-  (make-pathname :defaults *pvs-context-path*
-		 :directory (append (pathname-directory *pvs-context-path*)
+  (make-pathname :defaults *default-pathname-defaults*
+		 :directory (append (pathname-directory *default-pathname-defaults*)
 				    (list #+case-sensitive "pvsxml"
 					  #-case-sensitive "PVSXML"))
 		 :name name

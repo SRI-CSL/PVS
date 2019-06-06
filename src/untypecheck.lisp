@@ -46,7 +46,7 @@
     (when (and fe
 	       (ce-object-date fe))
       (setf (ce-object-date fe) nil)
-      (setq *pvs-context-changed* t)))
+      (setf (current-pvs-context-changed) t)))
   (untypecheck-theory (formals dorm))
   (setf (assuming dorm)
 	(remove-if #'(lambda (d) (and (declaration? d)

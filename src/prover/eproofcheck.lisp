@@ -371,8 +371,7 @@
     :all-rewrites-names *all-rewrites-names*))
 
 (defun get-rewrite-names (rewrite-decl)
-  (if (library-datatype-or-theory? (module rewrite-decl))
-      ;; May need to add libids in this case
+  (if (lib-datatype-or-theory? (module rewrite-decl))
       (mapcar #'(lambda (rn)
 		  ;; Note that in general we can't add a library to rn,
 		  ;; as it may have diverse resolutions
@@ -380,8 +379,9 @@
 		    :resolutions
 		    (mapcar #'(lambda (res)
 				(let ((rth (module (declaration res))))
-				  (if (library-datatype-or-theory? rth)
-				      (let ((libid (libref-to-libid (lib-ref rth))))
+				  (if (lib-datatype-or-theory? rth)
+				      (let ((libid (get-library-id (context-path rth))))
+					(assert (and libid (symbolp libid)))
 					(lcopy res
 					  :module-instance
 					  (lcopy (module-instance res)
@@ -2811,7 +2811,7 @@
 			   (memq key modnames))
 		   (push (cons key (collect-module-proofs mod))
 			 proofs)))
-	     *pvs-modules*)
+	     (current-pvs-theories))
     (nreverse proofs)))
 
 (defun write-proofs (filestring &optional modnames)
@@ -2835,7 +2835,7 @@
 	  (t (let* (
 		   (mod (car modproofs))
 		   (proofs (cdr modproofs))
-		   (module (gethash mod *pvs-modules*)))
+		   (module (gethash mod (current-pvs-theories))))
 	       (unless (null module)
 		 (mapc #'(lambda (decl)
 			   (when (typep decl 'formula-decl)

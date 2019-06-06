@@ -3053,8 +3053,7 @@ type of the lhs."
         reses)
       (remove-if #'(lambda (r)
                      (let ((th (module (declaration r))))
-                       (or (typep th '(or library-theory
-                                          library-datatype))
+                       (or (lib-datatype-or-theory? th)
                            (from-prelude? th))))
         reses)
       ;; (remove-if #'(lambda (r)
@@ -3528,8 +3527,8 @@ type of the lhs."
   (if (null bindings)
       (values modinsts theories)
       (let* ((theory (module (caar bindings)))
-             (libid (when (library-datatype-or-theory? theory)
-                      (libref-to-libid (lib-ref theory))))
+             (libid (when (lib-datatype-or-theory? theory)
+                      (get-library-id (context-path theory))))
              (rem (if (eq theory (current-theory))
                       bindings
                       (nthcdr (length (formals-sans-usings theory)) bindings)))
@@ -3604,7 +3603,7 @@ type of the lhs."
        (let ((th (get-theory (module-instance (car resolutions)))))
          (if (and th
                   (or (from-prelude? th)
-                      (typep th 'library-theory)))
+                      (lib-datatype-or-theory? th)))
              result
              (cons (car resolutions) result))))))
 
@@ -5388,9 +5387,9 @@ type of the lhs."
 (defmethod subst-for-formals! ((res resolution) alist)
   (let* ((th (module (declaration res)))
          (thinst (if (and (null (library (module-instance res)))
-                          (library-datatype-or-theory? th))
+                          (lib-datatype-or-theory? th))
                      (lcopy (module-instance res)
-                       :library (libref-to-libid (lib-ref th)))
+                       :library (get-library-id (context-path th)))
                      (module-instance res)))
          (mi (subst-for-formals thinst alist))
          (decl (declaration res))

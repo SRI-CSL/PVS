@@ -43,8 +43,8 @@
 (defvar *pvs-black-box-proof* nil)
 
 (defmacro with-working-context (&rest forms)
-  `(let ((*pvs-files* (get-working-pvs-files))
-	 (*pvs-modules* (get-working-pvs-modules))
+  `(let (;;(*pvs-files* (get-working-pvs-files))
+	 ;;(*pvs-modules* (get-working-pvs-modules))
 	 (*current-context* (get-working-current-context))
 	 (*generate-tccs* 'all))
      ,@forms))

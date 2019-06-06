@@ -2967,7 +2967,7 @@ subgoal is proved)."
 			   (not (connective-occurs? expr)) ;;NSH(11.27.02)
 			   ) ;;this would be wasted work
 		  (assert-test expr))
-		))
+		 ))
 	  (cond ((true-p result) (values '? *true*))
 		((false-p result) (values '? *false*))
 		((and (is-predicate? newop)
@@ -3046,7 +3046,8 @@ subgoal is proved)."
   (let ((hash-res (gethash expr *rewrite-hash*)))
     (if hash-res
 	(do-auto-rewrite-memo* expr op* decl sig hash-res)
-	(let ((top-hash-res (when *top-rewrite-hash*
+	(let ((top-hash-res (when (and *top-rewrite-hash*
+				       (not (eq *top-rewrite-hash* *rewrite-hash*)))
 			      (gethash expr *top-rewrite-hash*))))
 	  (if top-hash-res
 	      (do-auto-rewrite-memo* expr op* decl sig top-hash-res)
@@ -4265,12 +4266,12 @@ subgoal is proved)."
 (defun collect-auto-rewrite-resolutions (res fmla)
   (let* ((thinst (module-instance res))
 	 (th (module (declaration res)))
-	 (lres (if (and (library-datatype-or-theory? th)
+	 (lres (if (and (lib-datatype-or-theory? th)
 			(null (library thinst)))
-		   (copy res
-		     'module-instance
-		     (copy thinst
-		       'library (libref-to-libid (lib-ref th))))
+		   (let ((lib-id (get-library-id (context-path th))))
+		     (assert (and lib-id (symbolp lib-id)))
+		     (copy res 'module-instance
+			   (copy thinst 'library lib-id)))
 		   res)))
     (if (or (actuals thinst)
 	    (null (formals-sans-usings th))

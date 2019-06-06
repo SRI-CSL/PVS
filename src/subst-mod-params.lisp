@@ -162,13 +162,20 @@
 		     alist)))
 	(sterm term))
     (dolist (th theories)
-      (let* ((lib-id (get-lib-id th))
+      (let* ((lib-id (when (lib-datatype-or-theory? th)
+		       (let* ((libpath (context-path th))
+			      (libid (get-library-id libpath)))
+			 (unless libid
+			   (pvs-error "Couldn't find lib-id for ~a" libpath))
+			 libid)))
 	     (actuals (unless (eq th (current-theory))
 			(mapcar #'(lambda (fp)
 				    (or (cdr (assq fp new-alist))
-					(let ((res (make-resolution fp
-						     (mk-modname (id th)
-						       nil lib-id))))
+					(let* ((thname (mk-modname (id th)
+							 nil lib-id))
+					       (tres (mk-resolution th thname nil))
+					       (res (make-resolution fp thname)))
+					  (setf (resolutions thname) (list tres))
 					  (mk-res-actual
 					   (if (type-decl? fp)
 					       (mk-type-name (id fp) nil nil res)
@@ -181,11 +188,9 @@
 			 (mapcar #'(lambda (fp) (cdr (assq fp new-alist)))
 			   (decl-formals fdecl))))
 	     (thname
-	      (mk-modname (id th) actuals lib-id nil dactuals fdecl)))
-	;; This is not necessarily true - we may be retypechecking within
-	;; the library context, in which case it is already a
-	;; library-theory.
-	;; (assert (or lib-id (not (library-datatype-or-theory? th))))
+	      (mk-modname (id th) actuals lib-id nil dactuals fdecl))
+	     (tres (mk-resolution th thname nil)))
+	(setf (resolutions thname) (list tres))
 	(setf sterm (subst-mod-params sterm thname th fdecl))))
     sterm))
 
@@ -219,6 +224,9 @@
 		    (formals-sans-usings *subst-mod-params-theory*)))
 	 (dformals (when decl (all-decl-formals decl)))
 	 (*subst-mod-free-params* nil))
+    (unless (resolution modinst)
+      (setf (resolutions modinst)
+	    (list (mk-resolution *subst-mod-params-theory* modinst nil))))
     (assert (typep *subst-mod-params-theory*
 		   '(or module mod-decl theory-abbreviation-decl
 		     datatype formal-theory-decl)))
@@ -947,6 +955,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	:generated-by decl))))
 
 (defmethod subst-mod-params* ((mn modname) modinst bindings)
+  (assert (resolution modinst))
+  ;;(assert (resolution mn))
   (with-slots (id actuals dactuals mappings) mn
     (let ((entry (assoc id bindings
 			:key #'(lambda (y)
@@ -960,9 +970,11 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				     '||)))))
       (if entry
 	  (if (modname? (cdr entry))
-	      (cdr entry)
+	      (progn (assert (resolution (cdr entry)))
+		     (cdr entry))
 	      ;; Binding could be an actual or mapping rhs
 	      (let ((name (expr (cdr entry))))
+		(break "subst-mod-params* modname")
 		(mk-modname (id name)
 		  (actuals name)
 		  (library name)
@@ -976,14 +988,17 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	      (if t ;(library modinst)
 		  modinst
 		  (lcopy modinst :library (library mn) :dactuals nil))
-	      (let ((nacts (if actuals
-			       (subst-mod-params* actuals modinst bindings)
-			       (when (eq id (id modinst)) (actuals modinst))))
-		    (ndacts (if dactuals
-				(subst-mod-params* dactuals modinst bindings)
-				(when (eq id (id modinst)) (dactuals modinst))))
-		    (nmaps (subst-mod-params* mappings modinst bindings)))
-		(lcopy mn :actuals nacts :dactuals ndacts :mappings nmaps)))))))
+	      (let* ((nacts (if actuals
+				(subst-mod-params* actuals modinst bindings)
+				(when (eq id (id modinst)) (actuals modinst))))
+		     (ndacts (if dactuals
+				 (subst-mod-params* dactuals modinst bindings)
+				 (when (eq id (id modinst)) (dactuals modinst))))
+		     (nmaps (subst-mod-params* mappings modinst bindings))
+		     (thinst (lcopy mn :actuals nacts :dactuals ndacts :mappings nmaps))
+		     (tres (mk-resolution (declaration mn) thinst nil)))
+		(setf (resolutions thinst) (list tres))
+		thinst))))))
 
 (defmethod subst-mod-params* ((adt inline-recursive-type) modinst bindings)
   (copy adt
@@ -1365,26 +1380,23 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		       ;; may have to add a library to mi.  If (module
 		       ;; decl) is a library theory, definitely need it,
 		       ;; but how do we know it is the same library?
-		       (let* ((lib
-			       (when (and (library-datatype-or-theory?
-					   (module decl))
-					  (not (library-datatype-or-theory?
-						(current-theory))))
-				 (car (rassoc (lib-ref (module decl))
-					      (current-library-alist)
-					      :test #'equal))))
+		       (let* ((lib-id
+			       (when (lib-datatype-or-theory?
+				      (module decl))
+				 (or (get-library-id (context-path (module decl)))
+				     (pvs-error "Library id not found for ~a" lib-id))))
 			      (nmi (copy mi :actuals nacts
 					 :dactuals ndacts
-					 :library lib)))
+					 :library lib-id)))
 			 #+pvsdebug
-			 (assert (or lib
-				     (not (library-datatype-or-theory?
+			 (assert (or lib-id
+				     (not (lib-datatype-or-theory?
 					   (module decl)))
 				     (from-prelude-library? decl)
-				     (library-datatype-or-theory?
+				     (lib-datatype-or-theory?
 				      (current-theory))
-				     (file-equal (lib-ref (module decl))
-						 *pvs-context-path*)))
+				     (file-equal (context-path (module decl))
+						 *default-pathname-defaults*)))
 			 (subst-mod-params-type-name type nmi bindings modinst)))
 		   (if (eq (id mi) (id modinst))
 		       ;; mi is useless after this
@@ -1646,7 +1658,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	   (if (declaration? act)
 	       (mk-name-expr (id act) nil nil
 			     (mk-resolution act
-			       (mk-modname (id (module act)))
+			       (make-theoryname (module act))
 			       (type act)))
 	       (let* ((ex (expr act))
 		      (adecl (when dacts
@@ -2103,7 +2115,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			  :type-value (subst-mod-params*
 				       type-value modinst bindings))))
 	    (type-decl (let ((nres (make-resolution nact
-				     (mk-modname (id (module nact))))))
+				     (make-theoryname (module nact)))))
 			 (mk-res-actual (mk-type-name (id nact) nil nil nres)
 					(module nact))))
 	    (t (break "More needed"))))
@@ -2219,7 +2231,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				(strong-tc-eq nacts acts)
 				(strong-tc-eq ndacts dacts)
 				(not (memq (id mi) '(|equalities| |notequal|)))
-				(not (library-datatype-or-theory? (module decl))))
+				(not (lib-datatype-or-theory? (module decl))))
 			       ;; If mappings are present, the resolution may be
 			       ;; mapped inconsistently with the declaration type
 			       ;; bugs/835 shows this, mapping "i /= 0" to "i /= (0, 0)"
@@ -2245,9 +2257,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					 (if eqtype
 					     (list (mk-actual eqtype))
 					     nacts)
-					 (when (library-datatype-or-theory?
-						(module decl))
-					   (get-lib-id (module decl)))
+					 (when (and (lib-datatype-or-theory? (module decl))
+						    (not (from-prelude? (module decl))))
+					   (get-library-id (context-path (module decl))))
 					 (or nmappings
 					     (mappings imp-mi)
 					     (unless (or (eq type ntype)
@@ -2257,10 +2269,12 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					       (mappings modinst)))
 					 ndacts
 					 decl))
+				  (tres (mk-resolution (module decl) nmi nil))
 				  (nrtype (if eqtype
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))
 				  (nres (mk-resolution decl nmi nrtype)))
+			     (setf (resolutions nmi) (list tres))
 			     ;; (assert (subsetp (free-params nres) (free-params modinst))
 			     ;; 	     () "res6")
 			     nres))))))))))
@@ -2294,9 +2308,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			  (eq (id (module decl)) (id modinst)))
 		     (module decl)
 		     (get-theory modinst)))
-	 (mi (if theory
-		 (lcopy modinst :library (lib-id theory))
-		 modinst))
+	 (mi (cond ((lib-datatype-or-theory? theory)
+		    (lcopy modinst :library (get-library-id theory)))
+		   (theory (lcopy modinst :library nil))
+		   (t modinst)))
 	 (rtype (if type
 		    (subst-mod-params type mi theory decl)
 		    (typecase decl
@@ -2345,18 +2360,22 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defun theory-insts-of-param-alist (alist)
   (let ((theories (theories-of-param-alist alist)))
     (values (mapcar #'(lambda (th)
-			(mk-modname (id th)
-			  (mapcar #'(lambda (fm)
-				      (let ((ex (cdr (assq fm alist))))
-					(if ex
-					    (mk-actual ex)
-					    (mk-res-actual
-					     (mk-name-expr (id fm)
-					       nil nil
-					       (make-resolution
-						   fm (mk-modname (id th))))
-					     th))))
-			    (formals-sans-usings th))))
+			(let* ((thinst
+				(mk-modname (id th)
+				  (mapcar #'(lambda (fm)
+					      (let ((ex (cdr (assq fm alist))))
+						(if ex
+						    (mk-actual ex)
+						    (mk-res-actual
+						     (mk-name-expr (id fm)
+						       nil nil
+						       (make-resolution
+							   fm (mk-modname (id th))))
+						     th))))
+				    (formals-sans-usings th))))
+			       (res (mk-resolution th thinst nil)))
+			  (setf (resolutions thinst) (list res))
+			  thinst))
 	      theories)
 	    theories)))
 

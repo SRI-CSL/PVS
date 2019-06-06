@@ -75,10 +75,8 @@
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
 	      (let ((thname (format nil "~@[~a@~]~a"
-			      (when (library-datatype-or-theory? theory)
-				(with-context theory
-				  (assert *current-context*)
-				  (get-lib-id (lib-ref theory))))
+			      (when (lib-datatype-or-theory? theory)
+				(get-library-id (context-path theory)))
 			      (id theory))))
 		(multiple-value-bind (declstr place-hash)
 		    (pp-string-with-view
@@ -144,15 +142,15 @@
 	  (pvs-locate (module decl) decl)))
       (pvs-message "~a has not been typechecked" oname)))
 
-(defun typechecked-origin? (name origin &optional libpath)
+(defun typechecked-origin? (name origin &optional libref)
   (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
 		:pvs)
     ((ppe tccs) (get-theory name))
     ((prelude prelude-theory) t)
-    (libpath
-     (let ((libref (get-library-reference libpath)))
-       (and libref
-	    (get-theory* name libref))))
+    (libref
+     (let ((libpath (get-library-reference libref)))
+       (and libpath
+	    (get-theory* name libpath))))
     (t (typechecked-file? name))))
 
 (defmethod get-decl-associated-with ((obj datatype-or-module))
@@ -227,13 +225,19 @@
   (pvs-message "Not at a valid id")
   nil)
 
-(defun get-term-at (oname origin pos1 &key (pos2 pos1) libpath)
-  (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin libpath)
-    (let ((theory (find-element-containing-pos theories pos1)))
-      (if (or (equal pos1 pos2)
-	      (within-place pos2 (place theory)))
-	  (get-term-at* theories pos1 pos2)))))
+(defun get-term-at (oname pos1 &key (pos2 pos1))
+  "Given the string oname, a (row col) pos1, and optional pos2, finds the
+corresponding PVS terms.  oname is a PVS file or buffer (e.g. TCC buffer).
+Returns a list of terms, from most specific to least."
+  (let ((ext (pathname-type oname))
+	(name (pathname-name oname)))
+    (unless ext (setq ext "pvs"))
+    (multiple-value-bind (objects theories)
+	(get-syntactic-objects-for name ext)
+      (let ((theory (find-element-containing-pos theories pos1)))
+	(if (or (equal pos1 pos2)
+		(within-place pos2 (place theory)))
+	    (get-term-in-theory-at* objects theory pos1 pos2))))))
 
 (defun get-term-in-theory-at* (objects theory pos1 pos2)
   (let* ((decls (all-decls theory))
@@ -312,8 +316,7 @@
 	(find-element-containing-pos (cdr list) pos))))
 
 (defun get-object-in-declaration-at (decl pos1 pos2)
-  (let ((object nil)
-	(objects nil)
+  (let ((objects nil)
 	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (ex)
 		   (or (and (syntax? ex)
@@ -323,8 +326,7 @@
 			    (or (equal pos1 pos2)
 				(within-place pos2 (place ex)))
 			    (unless (arg-tuple-expr? ex)
-			      (push ex objects)
-			      (setq object ex))
+			      (push ex objects))
 			    nil)
 		       (when (and (place ex)
 				  (typep ex '(and syntax
@@ -337,7 +339,8 @@
 				      (within-place pos2 (place ex))))
 			 nil)))
 	       decl)
-    (values object objects)))
+    (let ((sobjects (sort objects #'occurs-in)))
+      (values (car sobjects) (cdr sobjects)))))
 
 (defun terminal? (obj)
   "PVS terms which have no subterms"
@@ -351,7 +354,7 @@
       (get-syntactic-objects-for oname origin libpath)
     (let ((containing-type nil)
 	  (object nil)
-	  (theory (when (listp theories) (car theories)))
+	  (theory (find-element-containing-pos theories pos))
 	  (*parsing-or-unparsing* t))
       (mapobject #'(lambda (ex)
 		     (or object
@@ -359,7 +362,9 @@
 			      (not (eq ex objects))
 			      ;;(or (place ex) (break "Place not set"))
 			      (place ex)
-			      (terminal? ex)
+			      (or (terminal? ex)
+				  (and (slot-exists-p ex 'id)
+				       (within-place pos (id-place ex))))
 			      (if (hash-table-p theories)
 				  (let ((epos (gethash ex theories)))
 				    (and epos
@@ -425,18 +430,230 @@ on the origin:
 	   (let ((theories (typecheck-file name nil nil nil t)))
 	     (values theories theories))))))
 
+;;; PVS objects may be referenced by names of the form
+;;;   lib/filename.ext?place=(...)#theory/decl
+;;; Ex1: In a PVS File, want the smallest term containing a (row col) point or
+;;;      (row1 col1 row2 col2) region:
+;;;    orders/lattices.pvs?place=(26, 30)
 
-;;; Called by Emacs - find-declaration command
+(defun pvs-object-at* (&key lib filename ext place force-parse?)
+  (assert (and (listp place)
+	       (member (length place) '(0 2 4) :test #'=)))
+  (if (and filename ext)
+      (let* ((libpath (get-library-reference lib))
+	     (fpath (make-pathname :directory (namestring libpath) :name filename :type ext)))
+	(if (file-exists-p fpath)
+	    (cond ((string= ext "pvs")
+		   (if place
+		       (let* ((theories (get-theories-for-pvs-file filename lib force-parse?))
+			      (pos1 (when place
+				      (if (= (length place) 2)
+					  place
+					  (list (car place) (cadr place)))))
+			      (pos2 (when pos1
+				      (if (= (length place) 2)
+					  pos1
+					  (cddr place)))))
+			 (if lib
+			     (with-workspace libpath
+			       (multiple-value-bind (obj containing-terms)
+				   (get-object-in-declaration-at theories pos1 pos2)
+				 (if obj
+				     (description-for-json obj containing-terms force-parse?)
+				     (error "No obj 1"))))
+			     (multiple-value-bind (obj containing-terms)
+				 (get-object-in-declaration-at theories pos1 pos2)
+			       (if obj
+				   (description-for-json obj containing-terms force-parse?)
+				   (error "No obj")))))
+		       (break "No place given.")))
+		  (t (break "ext = ~a" ext)))
+	    (break "filename and ext given, not found")))
+      (break "Either filename or ext missing.")))
 
-(defun find-declaration (string)
+(defun get-theories-for-pvs-file (filename lib-ref &optional force-parse?)
+  "We know the file exists; locally or under lib-ref."
+  (if lib-ref
+      (let ((lib-path (get-library-path lib-ref)))
+	(if lib-path
+	    (with-workspace lib-path
+	      (let ((date&theories (gethash filename (current-pvs-files))))
+		(cond (date&theories (cdr date&theories))
+		      (force-parse?
+		       (parse-file filename))
+		      (t (pvs-warning "PVS file ~@[~a@~]~a exists, but is not parsed"
+			   lib-ref filename)))))
+	    (pvs-error "Couldn't find library ~a" lib-ref)))
+      (let ((date&theories (gethash filename (current-pvs-files))))
+	(cond (date&theories (cdr date&theories))
+	      (force-parse? (parse-file filename))
+	      (t (pvs-warning "PVS file ~a exists, but is not parsed"))))))
+
+(defmethod description-for-json ((ex name) containing-terms &optional force-parse?)
+  "for-json here means lists, alists, strings and symbols, and numbers.
+In this case, returns a list of decl descriptions."
+  (if (resolutions ex)
+      ;; If there are resolutions, we know these are the only possibilities
+      (mapcar #'(lambda (res)
+		  (decl-for-json (declaration res) (module (declaration res))))
+	(resolutions ex))
+      (let ((theory (find-if #'module? containing-terms))
+	    (thelt (find-if #'theory-element? containing-terms))
+	    (pdecls nil))
+	(assert theory)
+	(assert thelt)
+	;; First walk up the containing-terms, checking binding-exprs for
+	;; matching ids
+	(dolist (term containing-terms)
+	  (when (binding-expr? term)
+	    (let ((bd (find-if #'(lambda (bd) (eq (id ex) (id bd)))
+			(bindings term))))
+	      (when bd
+		(push (decl-for-json bd theory) pdecls)))))
+	;; Now through all the previous declarations, including importings
+	(flet ((fun (te th)
+		 (when (and (declaration? te)
+			    (eq (id te) (id ex)))
+		   (push (decl-for-json te th) pdecls))))
+	  (walk-parse-tree #'fun theory thelt force-parse?)
+	  pdecls))))
+
+
+(defvar *already-searched*)
+
+(defun walk-parse-tree (fun theory &optional decl force?)
+  "Applies fun to each declaration visible to the given decl, walking down
+importings, etc.  Fun is expected to take an argument of type theory-element
+(declaration or importing-entity).  If an importing names a theory that has
+not yet been parsed, it will be parsed if force? is set.  Otherwise warns
+that the seach is incomplete."
+  (let* ((alldecls (all-decls theory))
+	 (remdecls (when decl (memq decl alldecls)))
+	 (prev-decls (if remdecls
+			 (ldiff alldecls
+				(if (def-decl? decl)
+				    (cdr remdecls)
+				    remdecls))
+			 alldecls))
+	 (*already-searched* nil))
+    (walk-parse-tree* fun prev-decls theory force?)))
+
+(defun walk-parse-tree* (fun decls theory force?)
+  (when decls
+    (funcall fun (car decls) theory)
+    (typecase (car decls)
+      (importing-entity ; includes importings, theory-decls, theory-abbreviations
+       (let* ((imp (car decls))
+	      (thname (theory-name imp)))
+	 (unless (memq (id thname) *already-searched*)
+	   (let ((impth (get-theory thname)))
+	     (if (or impth
+		     (and force?
+			  (setq impth (get-parsed-theory thname t))))
+		 (let ((alldecls (all-decls impth)))
+		   (push (id impth) *already-searched*)
+		   (walk-parse-tree* fun alldecls impth force?))
+		 (pvs-warning "~a found in importings, not parsed (force? is nil)"
+		   thname)))))))
+    (walk-parse-tree* fun (cdr decls) theory force?)))
+
+
+(defun decl-for-json (decl theory)
+  `((:id . ,(id decl))
+    (:type . ,(when (declared-type decl) (str (declared-type decl))))
+    (:theoryid . ,(id theory))
+    (:filename . ,(filename theory))
+    (:filedir . ,*default-pathname-defaults*)
+    ,@(when (lib-datatype-or-theory? theory)
+	`((:library . ,(get-library-id (context-path theory)))))
+    (:decl-ppstring . ,(unparse-decl decl))
+    (:place . ,(place decl))))
+
+
+;;; Called by GUIs - find-declaration command
+
+;; (defun find-declaration (declref &optional (kind :regexp) json?)
+;;   "Given the declref, returns a list of possible declarations.  The declarations Include:
+;;   - all top-level declarations that have a matching id
+;;   - binding declarations:
+;;     - bind-decls (e.g., definition arguments, forall-expr bindings)
+;;     - field-decls
+;;     - dep-bindings (from dependent tuples or functions)
+;; This searches through all the theories of the current context, finding all
+;; declarations that match the declref.
+;; Valid declref arguments depend on the kind:
+;;   - :regexp string or symbol treated as string
+;;   - :file-loc file:location string, e.g.,
+;;         foo:(14, 32) is the 14th row, 32nd col in file foo.pvs
+;;   - :nameref - parsed as a name, but not typechecked.  Used to filter possibilities, but loosely.
+;;     In general, it is a string of the form:
+;;           libid@thid[acts]{{maps}}.id[dacts]
+;;     Everything but the id is optional, and it must equal the decl id.
+;;     If libid is given, an attempt is made to find theories of the corresponding library.
+;;     thid only returns decls of that theory.
+;;     acts/dacts - only the number of actuals matters, and if the name is of the form
+;;     'id[dacts]', it will also match id from theories which match dacts.
+;;     maps are allowed, but ignored."
+;;   (let ((declarations nil))
+;;     (case kind
+;;       (:regexp
+;;        (let* ((regin (typecase declref
+;; 		       (string declref)
+;; 		       (symbol (string declref))
+;; 		       (t declref)))
+;; 	      (regex (excl:compile-re declref)))
+;; 	 (do-all-theories #'(lambda (th)
+;; 			      (setq declarations 
+;; 				    (append (get-find-declaration-info id th)
+;; 					    declarations))))
+;; 	 (let* ((json:*lisp-identifier-name-to-json* #'identity)
+;; 		(fdecl-string (json:encode-json-alist-to-string declarations)))
+;; 	   (break)
+;; 	   (write-declaration-info declarations))))
+;;       (t (error "Unrecognized kind: ~a" kind)))))
+
+(defun find-declaration (string &optional)
+  "find-declaration takes a string, and searches for all declarations with
+that identifier.  The search uses do-all-theories, which goes through the
+parsed or typechecked theories of the current context, imported libraries,
+and the prelude.  It returns a json string of the form, e.g.,
+[{\"declname\": \"product\",
+  \"type\": \"[[finite_set[T], [T -> R]] -> R]\",
+  \"theoryid\": \"finite_sets_product\",
+  \"filename\": \"/home/owre/pvs/lib/finite_sets/finite_sets_product.pvs\",
+  \"place\": [30,2,33,39],
+  \"decl-ppstring\": \"product(S, f): RECURSIVE R =
+  IF (empty?(S)) THEN one ELSE f(choose(S)) * product(rest(S), f) ENDIF
+   MEASURE (LAMBDA S, f: card(S))\"
+}]
+
+Note that the place may be missing, for example, with TCCs.
+
+This only returns declarations with matching ids, and ignores var-decls.
+Importings (but not theory-abbreviation-decls), judgements, conversions, and
+auto-rewrites are ignored unless they are given an optional id.
+
+dep-bindings, field-decls, let-bindings, and lambda etc., bindings are more
+difficult."
   (let ((declarations nil)
 	(id (intern string :pvs)))
     (do-all-theories #'(lambda (th)
 			 (setq declarations
 			       (append (get-find-declaration-info id th)
 				       declarations))))
-    (write-declaration-info declarations)))
+    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	   (fdecl-string (json:encode-json-to-string declarations)))
+      fdecl-string)))
 
+;; (defun get-declaration-at (fileref pos)
+;;   "fileref is a reference, relative to the current-context, with extension
+;; indicating the kind of file, e.g., .tccs, .ppe, .prf, etc.  These are files
+;; that have meaningful locations inside."
+;;   (let* ((object (get-id-object-at fileref origin pos libpath))
+;; 	 (decl (get-decl-associated-with object)))
+;;     (when decl
+;;       (pvs-locate (module decl) decl)))
+;;   (pvs-message "~a has not been typechecked" fileref))
 
 ;;; Called by Emacs - list-declarations command
 
@@ -451,12 +668,14 @@ on the origin:
 			 (if (importing? (car x))
 			     (id (theory-name (car x)))
 			     (id (car x))))))
-    (let ((declarations (mapcar #'(lambda (idecl)
-				    (format-decl-list (car idecl)
-						      (ptype-of (car idecl))
-						      (cdr idecl)))
-				(remove-if-not #'place *list-declarations*))))
-      (write-declaration-info declarations))))
+    (let* ((declarations (mapcar #'(lambda (idecl)
+				     (json-decl-list (car idecl)
+						       (ptype-of (car idecl))
+						       (cdr idecl)))
+			   (remove-if-not #'place *list-declarations*)))
+	   (json:*lisp-identifier-name-to-json* #'identity)
+	   (fdecl-string (json:encode-json-to-string declarations)))
+      fdecl-string)))
 
 
 ;;; Called by Emacs - whereis-declaration-used command
@@ -482,10 +701,12 @@ on the origin:
 						  (unless (generated-by d)
 						    (refers-to d))
 						  (collect-references d)))
-				    (list (format-decl-list d (ptype-of d) th))))
+				    (list (json-decl-list d (ptype-of d) th))))
 			    (all-decls th))
 			  declarations))))
-	      (write-declaration-info declarations))
+	      (let* ((json:*lisp-identifier-name-to-json* #'identity)
+		     (fdecl-string (json:encode-json-to-string declarations)))
+		fdecl-string))
 	    (pvs-message "Could not find associated declaration")))
       (pvs-message "~a is not typechecked" oname)))
 
@@ -497,13 +718,17 @@ on the origin:
 			 (setq declarations
 			       (append (get-whereis-info sym th)
 				       declarations))))
-    (write-declaration-info declarations)))
+    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	   (fdecl-string (json:encode-json-to-string declarations)))
+      fdecl-string)))
 
 (defun get-find-declaration-info (id theory)
   (mapcar #'(lambda (d)
-	      (format-decl-list d (ptype-of d) theory))
+	      (json-decl-list d (ptype-of d) theory))
 	  (remove-if-not #'(lambda (d)
-			     (and (typep d 'declaration)
+			     (and (typep d '(and declaration
+					     (not var-decl)
+					     (not formal-decl)))
 				  (eq id (id d))
 				  (place d)))
 			 (append (formals theory)
@@ -521,38 +746,57 @@ on the origin:
 ;;;    filename		- the name of the file containing the theory
 ;;;    location		- (startline startcol endline endcol)
 
+;; (defstruct decl-list-struct
+;;   declname
+;;   type
+;;   theoryname
+;;   filename
+;;   place
+;;   decl-string)
+
+(defun json-decl-list (decl type theory)
+  (let ((declname (if (typep decl '(or importing auto-rewrite-decl))
+		      (unparse decl :string t :no-newlines? t)
+		      (string (id decl))))
+	(filename (cond ((from-prelude? theory)
+			 (format nil "~a/lib/~a.pvs" *pvs-path*
+				 (if (memq theory (pvsio-prelude-theories))
+				     "pvsio_prelude"
+				     "prelude")))
+			((filename theory)
+			 (format nil "~a.pvs" (pvs-filename theory)))
+			(t (break "Couldn't find filename in json-decl-list ~
+                                   - tell pvs-bugs@csl.sri.com")))))
+    `(("declname" . ,declname)
+      ("type" . ,type)
+      ("theoryid" . ,(string (id theory)))
+      ("filename" . ,filename)
+      ("place" . ,(if (place decl)
+		      (place-list (place decl))
+		      nil))
+      ("decl-ppstring" . ,(unparse-decl decl)))))
+
 (defun format-decl-list (decl type theory)
-  (list (format nil "~25A ~25A ~25A"
-	  (struncate (if (typep decl '(or importing auto-rewrite-decl))
-			 (unparse decl :string t :no-newlines? t)
-			 (id decl))
-		     25)
-	  (struncate type 25)
-	  (struncate (id theory) 25))
-	(if (typep decl '(or importing auto-rewrite-decl))
+  "Returns a list of the form
+  (decl-display declid theoryid filename decl-place decl-string)"
+  (declare (ignore type))
+  (list (if (typep decl '(or importing auto-rewrite-decl))
 	    (unparse decl :string t :no-newlines? t)
 	    (string (id decl)))
 	(string (id theory))
-	(when (filename theory)
-	  (pvs-filename theory))
+	(if (filename theory)
+	    (pvs-filename theory)
+	    (break "get-filename"))
 	(if (place decl)
 	    (place-list (place decl))
 	    nil)
 	(unparse-decl decl)))
 
 (defmethod pvs-filename ((theory datatype-or-module))
-  (namestring (filename theory)))
-
-(defmethod pvs-filename ((theory library-theory))
-  (namestring (format nil "~a~a"
-		(libref-to-pathname (lib-ref theory))
-		(filename theory))))
-
-(defmethod pvs-filename ((theory library-datatype))
-  (namestring (format nil "~a~a"
-		(libref-to-pathname (lib-ref theory))
-		(filename theory))))
-
+  (namestring
+   (if (lib-datatype-or-theory? theory)
+       (format nil "~a/~a" (context-path theory) (filename theory))
+       (filename theory))))
 
 (defun ptype-of (decl)
   (let ((*default-char-width* 1000000))
@@ -612,7 +856,7 @@ on the origin:
 
 (defun get-whereis-info (sym theory)
   (mapcar #'(lambda (d)
-	      (format-decl-list d (ptype-of d) theory))
+	      (json-decl-list d (ptype-of d) theory))
 	  (when (parsed? theory)
 	    (remove-if-not #'(lambda (d) (and (place d)
 					      (whereis sym d)))
@@ -877,14 +1121,9 @@ on the origin:
 ;;     (json:encode-json-to-string alist)))
 
 (defmethod theory-filename ((obj datatype-or-module))
-  (if (from-prelude? obj)
-      (format nil "~a/lib/prelude.pvs" *pvs-path*)
+  (if (lib-datatype-or-theory? obj)
+      (format nil "~a/~a.pvs" (context-path obj) (filename obj))
       (format nil "~a.pvs" (filename obj))))
-
-(defmethod theory-filename ((obj library-datatype-or-theory))
-  (format nil "~a~a.pvs"
-    (libref-to-pathname (lib-ref obj))
-    (filename obj)))
 
 (defvar *visible-decl-info*)
 

@@ -1153,8 +1153,7 @@
 (defun mk-resolution (decl modinst type)
   (assert (or (null type) (typep type '(or type-expr dep-binding))))
   (assert (or (null (dactuals modinst))
-	      (binding? decl)
-	      (decl-formal? decl)
+	      (typep decl '(or binding decl-formal datatype-or-module))
 	      (length= (decl-formals decl) (dactuals modinst))))
   (make-instance 'resolution
     :declaration decl
@@ -1535,6 +1534,19 @@
     :mod-id (id (module-instance res))
     :actuals (actuals (module-instance res))))
 
+(defmethod make-theoryname ((id symbol)
+			    &optional actuals library mappings dactuals decl)
+  (let* ((mname (mk-modname id actuals library mappings dactuals decl))
+	 (res (resolve mname 'module nil)))
+    (setf (resolutions mname) res)
+    mname))
+
+(defmethod make-theoryname ((theory datatype-or-module)
+			    &optional actuals library mappings dactuals decl)
+  (let* ((thname (mk-modname (id theory) actuals library mappings dactuals decl))
+	 (res (mk-resolution theory thname nil)))
+    (setf (resolutions thname) (list res))
+    thname))
 
 (defmethod make-declared-type :around ((te type-expr))
   (or (print-type te)
@@ -2148,8 +2160,12 @@
       :type (mk-funtype adt-type-name *boolean*)
       :resolutions (list (make-resolution rec-decl
 			   (if (and (null (library thinst))
-				    (library-datatype? adt))
-			       (copy thinst :library (get-lib-id adt))
+				    (lib-datatype-or-theory? adt))
+			       (let ((lib-id (get-library-id (context-path adt))))
+				 (unless lib-id
+				   (pvs-error "Couldn't find lib-id for ~a"
+				     (context-path adt)))
+				 (copy thinst :library lib-id))
 			       thinst)
 			   (mk-funtype adt-type-name *boolean*))))))
 

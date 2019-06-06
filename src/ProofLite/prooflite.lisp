@@ -79,9 +79,7 @@
 (defun my-collect-theory-usings (theory)
   (unless (or (memq theory *modules-visited*)
 	      (from-prelude? theory)
-	      (typep theory '(or library-datatype
-				 library-codatatype
-				 library-theory)))
+	      (lib-datatype-or-theory? theory))
     (let ((*current-theory* theory))
       (push theory *modules-visited*)
       (dolist (use (get-immediate-usings theory))

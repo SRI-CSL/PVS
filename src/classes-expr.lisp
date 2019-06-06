@@ -611,7 +611,6 @@
   (theory :restore-as nil)
   (theory-name :restore-as nil)
   (declaration :restore-as nil)
-  library-alist
   (declarations-hash :restore-as nil)
   (using-hash :restore-as nil)
   (judgements :initform (make-instance 'judgements) :restore-as nil)

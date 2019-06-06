@@ -179,7 +179,12 @@
 					    dformals)))
 			     (mk-modname mod-id
 			       (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)
-			       (get-lib-id module)
+			       (when (lib-datatype-or-theory? module)
+				 (let* ((lib-path (context-path module))
+					(lib-id (get-library-id lib-id)))
+				   (unless lib-id
+				     (pvs-error "Couldn't find lib-id for ~a" lib-path))
+				   lib-id))
 			       nil
 			       (mapcar #'(lambda (x) (mk-actual (cdr x))) dalist)
 			       (declaration res)))))

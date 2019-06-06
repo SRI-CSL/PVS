@@ -132,7 +132,7 @@
 	(maphash #'(lambda (id th)
 		     (push (json-file-theories-info id th)
 			   theory-alist))
-		 (if prelude? *prelude* *pvs-modules*))
+		 (if prelude? *prelude* (current-pvs-theories)))
 	theory-alist
 	;;theory-alist
 	)
@@ -142,7 +142,7 @@
   (assert (stringp file))
   (list (cons 'file file)
 	(cons 'theories
-	      (mapcar #'json-pvs-theory-info (cdr (gethash file *pvs-files*))))))
+	      (mapcar #'json-pvs-theory-info (cdr (gethash file (current-pvs-files)))))))
 
 (defun json-pvs-theory-info (th)
   (list (cons 'id (id th))

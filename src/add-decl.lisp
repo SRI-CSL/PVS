@@ -96,7 +96,7 @@
 	      (let ((fe (get-context-file-entry filename)))
 		(when fe
 		  (setf (ce-object-date fe) nil)
-		  (setq *pvs-context-changed* t))))
+		  (setf (current-pvs-context-changed) t))))
 	    (when *to-emacs*
 	      (let* ((*print-pretty* nil)
 		     (*output-to-emacs*
@@ -129,7 +129,7 @@
 			    (get-importings theory
 					    (using-hash (saved-context th))))
 		   (add-new-decls-to-context new-decls (saved-context th)))))
-	   *pvs-modules*)
+	   (current-pvs-theories))
   ;; Now add to the current prover/evaluator context
   (when (and *current-context*
 	     (if (eq theory (current-theory))
@@ -144,7 +144,7 @@
   (when (some #'importing? new-decls)
     ;; need to reset things up the importing chain
     (reset-importing-chains theory)
-    (setq *pvs-context-changed* t)))
+    (setf (current-pvs-context-changed) t)))
 
 (defun reset-importing-chains (theory)
   (reset-importing-chains* theory)
@@ -205,7 +205,7 @@
 	(line-diff (+ (- (ending-row (place (car (last decls))))
 			 (starting-row (place (car decls))))
 		      2))
-	(remtheories (cdr (memq theory (gethash filename *pvs-files*)))))
+	(remtheories (cdr (memq theory (gethash filename (current-pvs-files))))))
     (reset-places* remdecls line-diff)
     (incf (ending-row (place theory)) line-diff)
     (reset-places* remtheories line-diff)))
@@ -477,7 +477,7 @@
 		(ignore-errors (delete-file (make-binpath filename)))
 		(when fe
 		  (setf (ce-object-date fe) nil)
-		  (setq *pvs-context-changed* t)))
+		  (setf (current-pvs-context-changed) t)))
 	      (list filename oplace)))
 	  (pvs-message "File has been modified"))
       (pvs-message "Not adding declaration")))
@@ -494,7 +494,7 @@
 
 (defun reset-mod-decl-places (decl theory filename line-diff)
   (let ((remdecls (cdr (memq decl (all-decls theory))))
-	(remtheories (cdr (memq theory (gethash filename *pvs-files*)))))
+	(remtheories (cdr (memq theory (gethash filename (current-pvs-files))))))
     (reset-places* remdecls line-diff)
     (incf (ending-row (place theory)) line-diff)
     (reset-places* remtheories line-diff)))
