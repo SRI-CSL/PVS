@@ -49,7 +49,11 @@ endif
 SHELL=/bin/sh
 
 # Should test for existence of platform dependent Makefiles
-
+ifdef PVSPATH
+ifneq "${PVSPATH:-1}" "/"
+PVSPATH = "${PVSPATH}/"
+endif
+endif
 CFLAGS = @CFLAGS@
 GREP = @GREP@
 ETAGS = @ETAGS@
@@ -226,7 +230,7 @@ emacs-elc = $(filter-out %go-pvs.elc %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/utils/$(PLATFORM)/b64 \
-           BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
+           src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
            src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 ess = ess/dist-ess.lisp \
@@ -390,6 +394,7 @@ pvs-src = src/closopt.lisp \
 	  src/xref.lisp \
 	  src/occurs-in.lisp \
 	  src/context.lisp \
+	  src/workspaces.lisp \
 	  src/datatype.lisp \
 	  src/typecheck.lisp \
 	  src/tclib.lisp \
@@ -437,10 +442,10 @@ pvs-prover = src/prover/checker-macros.lisp \
 	 src/prover/translate-to-yices.lisp \
 	 src/prover/translate-to-yices2.lisp
 
-bddlisp = BDD/bdd.lisp BDD/mu.lisp
-allegrolisp += BDD/bdd-allegro.lisp BDD/mu-allegro.lisp
-sbcllisp += BDD/bdd-sbcl.lisp BDD/mu-sbcl.lisp
-cmulisp += BDD/bdd-cmu.lisp BDD/mu-cmu.lisp
+bddlisp = src/BDD/bdd.lisp src/BDD/mu.lisp
+allegrolisp += src/BDD/bdd-allegro.lisp src/BDD/mu-allegro.lisp
+sbcllisp += src/BDD/bdd-sbcl.lisp src/BDD/mu-sbcl.lisp
+cmulisp += src/BDD/bdd-cmu.lisp src/BDD/mu-cmu.lisp
 
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
             src/PVSio/eval.lisp src/PVSio/pvsio.lisp
@@ -550,7 +555,7 @@ fileutils = \
    $(PVSPATH)src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
    $(PVSPATH)src/utils/$(PLATFORM)/b64
 
-bddlib = $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
+bddlib = $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
 ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
@@ -643,10 +648,10 @@ $(sbcl-rt) : $(image-deps) $(sbcllisp)
 				(save-lisp-and-die \"$@\" \
 				    :toplevel (function startup-pvs) \
 				    :executable t))"
-	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
+	-rm $(PVSPATH)src/BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)BDD/bdd-sbcl.lisp $(PVSPATH)BDD/mu-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)src/BDD/bdd-sbcl.lisp $(PVSPATH)src/BDD/mu-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
@@ -675,9 +680,9 @@ $(cmulisp-rt) : $(image-deps) $(cmulisp)
 	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) (let ((*load-pvs-prelude* nil)) (mk:operate-on-system :pvs :compile)) (quit)'
 	@echo "******* Building PVS image $@"
 	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) (unwind-protect (mk:operate-on-system :pvs :compile) (save-lisp "$@" :executable t :init-function (function startup-pvs)))'
-	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu.*
-	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
-	cp $(PVSPATH)BDD/bdd-cmu.lisp $(PVSPATH)BDD/mu-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
+	-rm $(PVSPATH)src/BDD/$(PLATFORM)/bdd-cmu.*
+	cp $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
+	cp $(PVSPATH)src/BDD/bdd-cmu.lisp $(PVSPATH)src/BDD/mu-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
@@ -726,7 +731,7 @@ endif
 $(fileutils) makefileutils :
 	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM) XCFLAGS="$(CFLAGS)"
 $(bddlib) makebdd :
-	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM) XCFLAGS="$(CFLAGS)"
+	$(MAKE) -C $(PVSPATH)src/BDD/$(PLATFORM) XCFLAGS="$(CFLAGS)"
 $(ws1slib) makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM) XCFLAGS="$(CFLAGS)"
@@ -804,7 +809,7 @@ clean :
 		rm -rf bin/$$p; \
 		$(MAKE) -C src/utils/$$p clean; \
 		$(MAKE) -C src/WS1S/$$p clean; \
-		$(MAKE) -C BDD/$$p clean; \
+		$(MAKE) -C src/BDD/$$p clean; \
 	done
 
 distclean :
@@ -815,7 +820,7 @@ distclean :
 		rm -rf bin/$$p; \
 		$(MAKE) -C src/utils/$$p clean; \
 		$(MAKE) -C src/WS1S/$$p clean; \
-		$(MAKE) -C BDD/$$p clean; \
+		$(MAKE) -C src/BDD/$$p clean; \
 	done
 	find . -type f -name \*.elc -exec rm \{\} \; ; \
 	rm -f Makefile TAGS autoloads.out config.log config.status configure \

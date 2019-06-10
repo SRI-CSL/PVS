@@ -230,7 +230,7 @@
 		  ;;#+(or cmu sbcl)
 		  ;;(let* ((platform "ix86-Linux")
 			;; (bddpath (concatenate 'string
-				;;	       *pvs-path* "/BDD/" platform)))
+				;;	       *pvs-path* "/src/BDD/" platform)))
 		    ;; hack, because load-object-file isn't exported.
 		    ;; but .. it's the only way to load a *shared* object file!
 		    ;; (with cmucl1.8e, anyway)
@@ -252,7 +252,7 @@
 			 (utilpath (concatenate 'string
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string
-				    *pvs-path* "/BDD/" platform))
+				    *pvs-path* "/src/BDD/" platform))
 			 (ws1spath (concatenate 'string
 				     *pvs-path* "/src/WS1S/" platform))
 			 #+allegro
@@ -371,13 +371,14 @@
 		  #-(or allegro sbcl)
 		  (:file "md5")
 		  (:file "context")
+		  (:file "workspaces")
 		  (:file "pp")
 		  (:file "print-object")
 		  (:file "equalities")
 		  (:file "utils")
 		  (:file "gensubst")
 		  (:file "substit"))
-     :depends-on (language))
+     :depends-on (language macros))
    (:module interface
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
@@ -445,7 +446,7 @@
 		  (:file "translate-to-yices2"))
      :depends-on (typechecker))
    (:module bdd
-     :source-pathname "BDD"
+     :source-pathname "src/BDD"
      :components ((:file "bdd")
 		  #+allegro
 		  (:file "bdd-allegro")
@@ -456,7 +457,7 @@
 		  )
      :depends-on (proof-checker))
    (:module mu-simplifier
-     :source-pathname "BDD"
+     :source-pathname "src/BDD"
      :components ((:file "mu")
 		  #+allegro
 		  (:file "mu-allegro")
