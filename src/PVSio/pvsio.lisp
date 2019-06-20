@@ -1,6 +1,6 @@
 ;;
 ;; pvsio.lisp
-;; Release: PVSio-6.0.10 (xx/xx/xx)
+;; Release: PVSio-7.0.0 (06/20/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -18,6 +18,7 @@
 
 (defparameter *pvsio-promptin* "<PVSio> ")
 (defparameter *pvsio-promptout* "==>~%")
+
 
 ;;; Keeps track of wrappers associated with a given PVS name and lisp
 ;;; function Bound in PVSio.  All wrappers should be turned off (funwrap)
@@ -47,6 +48,8 @@
   help                 : Print this message
   quit                 : Exit the evaluator with confirmation
   exit                 : Exit the evaluator without confirmation
+  debug                : Turn on printing ofg debugging information
+  nodebug              : Turn off printing ofg debugging information
   timing               : Turn on timing information per evaluation
   notiming             : Turn off timing information
   tccs                 : Turn on TCCs generation per evaluation 
@@ -136,8 +139,9 @@ To change output prompt '~a':
       (let ((pref (get-output-stream-string fstr)))
 	(cond ((member pref '("(lisp" "(pvs::lisp")
 		       :test #+allegro #'string= #-allegro #'string-equal)
-	       (let ((input (read input-stream nil nil)))
-		 (format t "~%~s~2%~a" (eval input) *pvsio-promptin*))
+	       (let* ((input (read input-stream nil nil))
+		      (e     (eval input)))
+		 (format t "~s~2%~a" e *pvsio-promptin*))
 	       (loop until (or (null c) (char= c #\)))
 		  do (setq c (read-char-no-hang input-stream nil nil)))
 	       (setq c #\Space)
@@ -208,7 +212,6 @@ To change output prompt '~a':
 		       (eval cl-input)))))
 	    (when *evaluator-debug*
 	      (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
-	    (format t "~a" cl-eval)
 	    (when (and *convert-back-to-pvs* (not isvoid))
 	      (let ((pvs-val (cl2pvs cl-eval (type tc-input))))
 		(assert (expr? pvs-val))
@@ -233,6 +236,14 @@ To change output prompt '~a':
 	   (error 'pvsio-quit))
 	  ((member input '(help "help") :test #'equal)
 	   (help-pvsio)
+	   (read-pvsio input-stream))
+	  ((member input '(debug "debug") :test #'equal)
+	   (setq *evaluator-debug* t)
+	   (format t "Enabled printing of debuggin information~%")
+	   (read-pvsio input-stream))
+	  ((member input '(nodebug "nodebug") :test #'equal)
+	   (setq *evaluator-debug* nil)
+	   (format t "Disabled printing of debugging information~%")
 	   (read-pvsio input-stream))
 	  ((member input '(timing "timing") :test #'equal)
 	   (setq *pvs-eval-do-timing* t)

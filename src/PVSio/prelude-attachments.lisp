@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-6.0.10 (xx/xx/xx)
+;; Release: PVSio-7.0.0 (06/20/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -478,8 +478,7 @@
 
 (defattach |def| (v e)
   "Sets to E the value of a mutable variable V"
-  (when (cdr v) (setf (cdr v) nil))
-  (setf (car v) e))
+  (pvsio_set_gvar v e))
 
 (defattach |undef| (v)
   "Tests if a mutable variable V is undefined"
@@ -487,7 +486,7 @@
 
 (defattach |val_lisp| (v)
   "Gets the current value of a mutable variable V"
-  (car v))
+  (pvsio_get_gvar v))
 
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
