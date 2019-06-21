@@ -40,12 +40,12 @@
 		(cons 'progn body)
 		(list 'store-match-data original))))))
 
-(defmacro defpvs (name class arglist docstring &rest body)
-  "(defpvs NAME CLASS ARGLIST DOCSTRING BODY...):
+(defmacro defpvs (name menupath arglist docstring &rest body)
+  "(defpvs NAME MENUPATH ARGLIST DOCSTRING BODY...):
 define NAME as a PVS command."
   (declare (indent defun))
   (list 'progn
-	(list 'put (list 'quote name) ''pvs-command (list 'quote class))
+	(list 'put (list 'quote name) ''pvs-command (list 'quote menupath))
 	(cons 'defun (cons name (cons arglist (cons docstring body))))))
 (put 'defpvs 'common-lisp-indent-function 'defun)
 
