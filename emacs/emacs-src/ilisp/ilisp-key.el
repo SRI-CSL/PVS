@@ -190,7 +190,7 @@ ilisp-*prefix* is set to the desired prefix."
   (ilisp-bind-ilisp-key-for-map keymap "g" 'abort-commands-lisp "\C-g")
   (ilisp-bind-ilisp-key-for-map keymap "s" 'status-lisp "\C-s")
   (ilisp-bind-ilisp-key-for-map keymap "S" 'select-ilisp "\M-s")
-  (define-key   keymap "\C-x\C-f" 'find-file-lisp)
+  ;;(define-key   keymap "\C-x\C-f" 'find-file-lisp)
   (ilisp-bind-ilisp-key-for-map keymap "l" 'load-file-lisp "\C-l")
   (ilisp-bind-ilisp-key-for-map keymap "k" 'compile-file-lisp "\C-k")
 
