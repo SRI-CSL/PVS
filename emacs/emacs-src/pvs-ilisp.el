@@ -267,6 +267,7 @@ intervenes."
 
 (defvar pvs-aborted nil)
 
+
 (defun pvs-file-send-and-wait (string &optional message status expected)
   (let* ((fstring (format "(pvs:write-to-temp-file %s t)" string))
 	 (file (pvs-send-and-wait fstring message status 'tmp-file))
@@ -279,6 +280,15 @@ intervenes."
     (delete-file file)
     (kill-buffer buf)
     value))
+
+(defun pvs-send-and-wait-for-json (string &optional message status)
+  (let* ((fstring (format "(pvs:write-to-temp-file %s t)" string))
+	 (file (pvs-send-and-wait fstring message status 'tmp-file)))
+    (with-temp-buffer
+      (insert-file-contents file)
+      ;;(setq jjj (buffer-string))
+      (goto-char (point-min))
+      (json-read))))
 
 (defun pvs-send-and-wait (string &optional message status expected)
   (let* ((msg (when message (format "%s...please wait" message)))

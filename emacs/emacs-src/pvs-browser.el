@@ -32,6 +32,14 @@
 
 ;;; PVS browse mode
 
+;;; find-declaration (symbol)
+;;; whereis-declaration-used ()
+;;; whereis-identifier-used (symbol)
+;;; list-declarations (theory)
+;;; unusedby-proof-of-formula ()
+;;; unusedby-proofs-of-formulas (formulas theory)
+;;; usedby-proofs ()
+
 ;;; PVS browse mode key bindings
 (defvar pvs-declarations)
 
@@ -159,9 +167,9 @@ Typing `s' will read in the associated file and position the cursor at the
 declaration.  A `q' quits and removes the declaration buffer."
   (interactive (find-pvs-name "List declarations named: "))
   (save-some-pvs-files)
-  (let ((pvs-decls (pvs-file-send-and-wait
+  (let ((pvs-decls (pvs-send-and-wait-for-json
 		    (format "(find-declaration \"%s\")" symbol)
-		    "Listing..." 'listing 'list)))
+		    "Listing..." 'listing)))
     (unless pvs-decls
       (error "No declarations matching %s were found" symbol))
     (pvs-make-browse-buffer "Browse" pvs-decls)))
@@ -192,11 +200,11 @@ and removes the declaration buffer."
 	(message
 	 "The whereis-declaration-used command is not available in this buffer.")
 	(let ((pvs-decls
-	       (pvs-file-send-and-wait
+	       (pvs-send-and-wait-for-json
 		(format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d) nil %s)"
 		    (or fname theory buf) kind line (real-current-column)
 		    (when lib (format "\"%s\"" lib)))
-		"Listing..." 'listing 'list)))
+		"Listing..." 'listing)))
 	  (unless pvs-decls
 	    (error "No declarations using were found"))
 	  (pvs-make-browse-buffer "Browse" pvs-decls)))))
@@ -204,7 +212,7 @@ and removes the declaration buffer."
 (defpvs whereis-identifier-used browse (symbol)
   "Search for declarations which reference symbol
 
-The whereis-declaration-used command generates a list of declarations
+The whereis-identifier-used command generates a list of declarations
 which reference the specified name.  Each row in the display specifies the
 declaration name, its kind/type, and the theory to which it belongs.
 Declarations in this list may be viewed by placing the cursor on the row
@@ -213,9 +221,9 @@ and position the cursor at the declaration.  A `q' quits and removes the
 declaration buffer."
   (interactive (find-pvs-name "List declarations containing symbol: "))
   (save-some-pvs-files)
-  (let ((pvs-decls (pvs-file-send-and-wait
+  (let ((pvs-decls (pvs-send-and-wait-for-json
 		    (format "(whereis-identifier-used \"%s\")" symbol)
-		    "Listing..." 'listing 'list)))
+		    "Listing..." 'listing)))
     (unless pvs-decls
       (error "No declarations using %s were found" symbol))
     (pvs-make-browse-buffer "Browse" pvs-decls)))
@@ -231,12 +239,12 @@ the row of interest and typing `v'.  Typing `s' will read in the
 associated file and position the cursor at the declaration.  A `q' quits
 and removes the declaration buffer."
   (interactive (complete-theory-name
-		"List declarations for theory named: "))
+		"List declarations for theory named: " nil t))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (save-some-pvs-files)
-  (let ((pvs-decls (pvs-file-send-and-wait
+  (let ((pvs-decls (pvs-send-and-wait-for-json
 		    (format "(list-declarations \"%s\")" theory)
-		    "Listing..." 'listing 'list)))
+		    "Listing..." 'listing)))
     (unless pvs-decls
       (error "No declarations in theory %s were found" theory))
     (pvs-make-browse-buffer "Browse" pvs-decls)))
@@ -260,11 +268,11 @@ proofchain is still complete, if it was in the full theory."
     (if (memq kind '(tccs ppe))
 	(message
 	 "The unusedby-proof-of-formula command is not available in this buffer.")
-	(let ((pvs-decls (pvs-file-send-and-wait
+	(let ((pvs-decls (pvs-send-and-wait-for-json
 			  (format "(unusedby-proof-of-formula \"%s\" \"%s\" %d %s)"
 			      (or fname buf) kind line
 			      (when lib (format "\"%s\"" lib)))
-			  "Collecting..." 'unusedby 'list)))
+			  "Collecting..." 'unusedby)))
 	  (unless pvs-decls
 	    (error "No unused declarations found for formula"))
 	  (pvs-make-browse-buffer "Browse" pvs-decls)))))
@@ -281,11 +289,11 @@ still complete, if it was in the full theory."
   (interactive
    (append (complete-formula-name-list "Formula: ")
 	   (complete-theory-name "Root theory to use as context: ")))
-  (let ((pvs-decls (pvs-file-send-and-wait
+  (let ((pvs-decls (pvs-send-and-wait-for-json
 		    (format "(unusedby-proofs-of-formulas '%s \"%s\")"
 			(mapcar #'(lambda (x) (format "\"%s\"" x)) formulas)
 		      theory)
-		    "Collecting..." 'unusedby 'list)))
+		    "Collecting..." 'unusedby)))
     (unless pvs-decls
       (error "No unused declarations found for given formulas"))
     (pvs-make-browse-buffer "Browse" pvs-decls)))
@@ -294,13 +302,18 @@ still complete, if it was in the full theory."
 ;;; Functions to support PVS browse mode
 
 (defun pvs-make-browse-buffer (buf-name pvs-decls)
-  (let ((buf (get-buffer-create buf-name)))
+  "pvs-decls is now a JSON string."
+  (let* ((buf (get-buffer-create buf-name)))
     (with-current-buffer buf
       (pvs-browse-mode)
-      (setq-local pvs-declarations pvs-decls)
+      (let* (;;(json-array-type 'list)
+	     (decls (json-read-from-string pvs-decls)))
+	(setq-local pvs-declarations decls))
       (let ((inhibit-read-only t))
 	(erase-buffer)
-	(pvs-insert-declarations)
+	(if pvs-declarations
+	    (pvs-insert-declarations)
+	    (insert "No decls found\n"))
 	(goto-char (point-min))
 	(forward-line 2)
 	(set-buffer-modified-p nil))
@@ -308,11 +321,53 @@ still complete, if it was in the full theory."
 	(pvs-display-browse-buffer buf))
       buf)))
 
+(defun fixed-size-str (str size)
+  (cond ((= (length str) size)
+	 str)
+	((< (length str) size)
+	 (concat str (make-string (- size (length str)) ? )))
+	(t (concat (substring str 0 (- size 1)) "$"))))
+
 (defun pvs-insert-declarations ()
-  (insert "Declaration               Type                      Theory\n\n")
-  (dolist (decl pvs-declarations)
-    (insert (car decl))
-    (insert "\n")))
+  (let* ((cols (pvs-get-browse-column-sizes))
+	 (ds (car cols))
+	 (tys (cadr cols))
+	 (ths (caddr cols)))
+    (insert (concat (fixed-size-str "Decl" ds) " "
+		    (fixed-size-str "Type" tys) " "
+		    (fixed-size-str "Thid" ths) "\n\n"))
+    (seq-do #'(lambda (decl-form)
+		(pcase-let ((`((declname . ,declname) (type . ,type) (theoryid . ,theoryid)
+			       (filename . ,filename) (place . ,place)
+			       (decl-ppstring . ,decl-ppstring))
+			      decl-form))
+		  (insert (concat (fixed-size-str declname ds) " "
+				  (fixed-size-str type tys) " "
+				  (fixed-size-str theoryid ths) "\n"))))
+	    pvs-declarations)))
+
+(defun pvs-get-browse-column-sizes ()
+  (let ((decl-size 4) (type-size 4) (thid-size 4)
+	(win-width (max 80 (window-body-width))))
+    (seq-do #'(lambda (decl-form)
+		(pcase-let ((`((declname . ,declname) (type . ,type) (theoryid . ,theoryid)
+			       (filename . ,filename) (place . ,place)
+			       (decl-ppstring . ,decl-ppstring))
+			      decl-form))
+		  (setq decl-size (max decl-size (length declname))
+			type-size (max type-size (length type))
+			thid-size (max thid-size (length theoryid)))))
+	    pvs-declarations)
+    (when (> (+ decl-size type-size thid-size 3) win-width)
+      ;; Unlikely theoryid is the problem
+      ;; This is a quick-and-dirty heuristic
+      (cond ((< (* 2 decl-size) type-size)
+	     (setq type-size (- win-width (+ decl-size thid-size 3))))
+	    ((< (* 2 type-size) decl-size)
+	     (setq decl-size (- win-width (+ type-size thid-size 3))))
+	    (t (let ((size (floor (- win-width (+ thid-size 3)) 2)))
+		 (setq decl-size size type-size size)))))
+    (list decl-size type-size thid-size)))
 
 (defun pvs-browse-select ()
   "Select this line's declaration in full screen."
@@ -322,40 +377,41 @@ still complete, if it was in the full theory."
 	   (buffer-name)))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
-  (let* ((entry (nth (- (current-line-number) 3) pvs-declarations))
-	 (file (unless (member (fourth entry) '(nil NIL))
-		 (format "%s.pvs" (fourth entry))))
-	 (loc (fifth entry)))
-    (if (member loc '(nil NIL))
-	(let* ((bufname (format "%s.%s" (third entry) (second entry)))
-	       (buf (get-buffer-create bufname)))
-	  (message "")
-	  (with-current-buffer buf
-	    (let ((inhibit-read-only t))
-	      (erase-buffer)
-	      (insert (sixth entry))
-	      (set-buffer-modified-p nil))
-	    (pvs-view-mode))
-	  (pop-to-buffer buf))
-	(pvs-browse-quit)
-	(cond ((null file)
-	       (let* ((freg (get-prelude-file-and-region (third entry)))
-		      (line (when freg
-			      (save-excursion
-				(let ((noninteractive t)) ;; Shut up about read-only
-				  (set-buffer (find-file-noselect (car freg))))
-				(goto-char (cadr freg))
-				(- (current-line-number) 1)))))
-		 (view-prelude-theory (third entry))
-		 (when line
-		   (goto-char (point-min))
-		   (forward-line (1- (- (car loc) line)))
-		   (forward-char (cadr loc)))))
-	      (t (find-pvs-file file)
-		 (goto-char (point-min))
-		 (forward-line (1- (car loc)))
-		 (forward-char (cadr loc))))
-	(delete-other-windows)))
+  (let ((entry (elt pvs-declarations (- (current-line-number) 3))))
+    (pcase-let ((`((declname . ,declname) (type . ,type) (theoryid . ,theoryid)
+		   (filename . ,filename) (place . ,place) (decl-ppstring . ,decl-ppstring))
+		  entry))
+      (cond ((member place '(nil NIL))
+	     (let* ((bufname (format "%s.%s" theoryid declname))
+		    (buf (get-buffer-create bufname)))
+	       (message "")
+	       (with-current-buffer buf
+		 (let ((inhibit-read-only t))
+		   (erase-buffer)
+		   (insert decl-ppstring)
+		   (set-buffer-modified-p nil))
+		 (pvs-view-mode))
+	       (pop-to-buffer buf)))
+	    (t ;(pvs-browse-quit)
+	       (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
+		 (cond ((file-equal filename prelude-file)
+			(let* ((freg (get-prelude-file-and-region theoryid))
+			       (line (when freg
+				       (save-excursion
+					 (let ((noninteractive t)) ;; Shut up about read-only
+					   (set-buffer (find-file-noselect (car freg))))
+					 (goto-char (cadr freg))
+					 (- (current-line-number) 1)))))
+			  (view-prelude-theory theoryid)
+			  (when line
+			    (goto-char (point-min))
+			    (forward-line (1- (- (elt place 0) line)))
+			    (forward-char (elt place 1)))))
+		       (t (find-file filename)
+			  (goto-char (point-min))
+			  (forward-line (1- (elt place 0)))
+			  (forward-char (elt place 1))))))))
+    (delete-other-windows))
   (recenter))
 
 
@@ -369,13 +425,15 @@ Returns to Declaration List when done."
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
   (let* ((cbuf (current-buffer))
-	 (entry (nth (- (current-line-number) 3) pvs-declarations))
-	 (decl (sixth entry)))
-    (let ((buf (get-buffer-create "Browse View")))
+	 (buf (get-buffer-create "Browse View"))
+	 (entry (elt pvs-declarations (- (current-line-number) 3))))
+    (pcase-let ((`((declname . ,declname) (type . ,type) (theoryname . ,theoryname)
+		   (filename . ,filename) (place . ,place) (decl-ppstring . ,decl-ppstring))
+		  entry))
       (set-buffer buf)
       (let ((inhibit-read-only t))
 	(erase-buffer)
-	(insert decl)
+	(insert decl-ppstring)
 	(set-buffer-modified-p nil))
       (pvs-view-mode)
       (goto-char (point-min))
@@ -435,6 +493,7 @@ or the resolution determined by the typechecker for an overloaded name."
 		   (goto-char (posn-point posn))
 		   (call-interactively 'show-declaration)))))))
 
+
 (defpvs usedby-proofs browse ()
   "Show a list of formulas whose proofs refer to the declaration at point"
   (interactive)
@@ -450,11 +509,11 @@ or the resolution determined by the typechecker for an overloaded name."
     (if (memq kind '(tccs ppe))
 	(message
 	 "The usedby-proofs command is not available in this buffer.")
-	(let ((pvs-decls (pvs-file-send-and-wait
+	(let ((pvs-decls (pvs-send-and-wait-for-json
 			  (format "(usedby-proofs \"%s\" \"%s\" %d %s)"
 			      (or fname buf) kind line
 			      (when lib (format "\"%s\"" lib)))
-			  "Listing..." 'listing 'list)))
+			  "Listing..." 'listing)))
 	  (when pvs-decls
 	    (pvs-make-browse-buffer "Browse" pvs-decls))))))
 
