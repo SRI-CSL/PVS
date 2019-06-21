@@ -233,7 +233,7 @@
     ("Context"
      ["list-pvs-files" list-pvs-files t]
      ["list-theories" list-theories t]
-     ["change-context" change-context t]
+     ["change-workspace" change-workspace t]
      ["save-context" save-context t]
      ["pvs-remove-bin-files" pvs-remove-bin-files t]
      ["pvs-dont-write-bin-files" pvs-dont-write-bin-files t]

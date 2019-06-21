@@ -808,7 +808,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defvar pvs-library-path-completions nil)
 
-(defun pvs-get-library-path (value)
+(defun pvs-get-library-path (value &optional noerr)
   ;; The noninteractive form, used when load-prelude-library is called
   ;; directly from Emacs, rather than as a command
   (let* ((pvs-library-path-completions
@@ -818,7 +818,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(concat (cdr asdir) "/" (car asdir))
 	(if (file-directory-p value)
 	    value
-	    (error "Not a valid library directory")))))
+	    (unless noerr
+	      (error "Not a valid library directory"))))))
   
 (defun pvs-complete-library-path (prompt)
   (pvs-bury-output)
@@ -1040,7 +1041,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (pvs-bury-output)
   (let ((default (or (current-theory)
 		     (and with-prelude-p
-			  (boundp 'pvs-prelude)
+			  (and (boundp 'pvs-prelude) pvs-prelude)
 			  (buffer-name))))
 	(theories (append (pvs-collect-theories)
 			  (when with-prelude-p
@@ -1257,7 +1258,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (forward-line (1- (caddr place)))
       (forward-char (cadddr place))
       (list beg (point)))))
-
 
 (defun make-command-from-paths (command paths)
   (if (null paths)
@@ -1660,7 +1660,7 @@ Point will be on the offending delimiter."
 		     (default-directory default-directory))
 		 (pvs-message (pvs-version-string))
 		 (let ((pvs-disable-messages nil))
-		   (change-context ,directory))
+		   (change-workspace ,directory))
 		 (condition-case err
 		     (progn ,@body)
 		   (error (pvs-message "ERROR: Emacs: %s %s"
@@ -1714,23 +1714,30 @@ Point will be on the offending delimiter."
 			       (re-search-forward exp nil t))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
-			   (pvs-message "ERROR: %s: unexpected output found"
+			   (pvs-message "[31;1mERROR: %s: unexpected output found[0m"
 			     logfile)
-			   (pvs-message "Did not find unexpected output"))))))
+			   (pvs-message "[32;1mDid not find unexpected output[0m"))))))
 	       (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
 	       (set-buffer-modified-p nil)
 	       (clear-visited-file-modtime)
-	       (if (file-exists-p "baseline.log")
-		   (let ((baseline-log (find-file-noselect "baseline.log")))
-		     (if (pvs-same-validation-buffers-p logbuf baseline-log)
-			 (pvs-message "No significant changes since baseline")
-			 (pvs-message "WARNING: Differences found - check %s" logfile)))
-		   (progn
-		     (pvs-message "NO BASELINE - using this run to create baseline.log")
-		     (copy-file (buffer-file-name) "baseline.log"))))
+	       ;; (if (file-exists-p "baseline.log")
+	       ;; 	   (let ((baseline-log (find-file-noselect "baseline.log")))
+	       ;; 	     (if (pvs-same-validation-buffers-p logbuf baseline-log)
+	       ;; 		 (pvs-message "No significant changes since baseline")
+	       ;; 		 (pvs-message "WARNING: Differences found - check %s" logfile)))
+	       ;; 	   (progn
+	       ;; 	     (pvs-message "NO BASELINE - using this run to create baseline.log")
+	       ;; 	     (copy-file (buffer-file-name) "baseline.log")))
+	       )
 	   ;;(fset 'pvs-handler 'pvs-handler-orig)
 	   (setq comint-handler 'pvs-handler)
-	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))))
+	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))
+       (with-current-buffer ilisp-buffer
+	 (setq kill-buffer-query-functions nil)
+	 ;;(setq kill-emacs-hook nil)
+	 ;;(setq confirm-kill-processes nil)
+	 (kill-buffer))
+       (kill-emacs)))
 
 (defun validation-log-file ()
   (format "%s-%s-%s.log"
@@ -2100,6 +2107,6 @@ existence and time differences to be whitespace")
 					(list (cons 'icon-name title)
 					      (cons 'title title)))))))))
 
-(add-hook 'change-context-hook 'pvs-update-window-titles)
+(add-hook 'change-workspace-hook 'pvs-update-window-titles)
 
 (provide 'pvs-utils)

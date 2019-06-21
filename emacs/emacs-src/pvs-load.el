@@ -59,6 +59,7 @@
 
 (defvar-local pvs-context-sensitive nil)
 (defvar-local from-pvs-theory nil)
+(defvar-local from-pvs-file nil)
 (defvar-local pvs-theory-modtime nil)
 (defvar-local pvs-prelude nil)
 (defvar-local pvs-buffer-kind nil)
@@ -262,8 +263,9 @@ get to the same state."
 	(switch-to-buffer "*pvs*")
 	(error "Could not run PVS"))
       (with-current-buffer (get-buffer "*pvs*")
-	(make-local-variable 'kill-buffer-hook)
-	(setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
+	(unless noninteractive
+	  (make-local-variable 'kill-buffer-hook)
+	  (setq kill-buffer-hook (list 'dont-kill-pvs-buffer)))
 	(set-syntax-table pvs-mode-syntax-table)
 	(goto-char (point-min))
 	(let ((errst (re-search-forward "^Error executing \\(.*\\):$" nil t)))
@@ -275,7 +277,7 @@ get to the same state."
       (setq *pvs-version-information* nil)
       ;; sets pvs-current-directory and pops up the welcome buffer
       (condition-case ()
-	  (init-change-context pvs-current-directory)
+	  (init-change-workspace pvs-current-directory)
 	(quit nil))
       (setq pvs-in-checker nil)
       (setq pvs-in-evaluator nil)
@@ -285,7 +287,7 @@ get to the same state."
       (when (and (file-exists-p "~/.pvsemacs")
 		 (not (pvs-getenv "PVSMINUSQ")))
 	(load "~/.pvsemacs"))
-      (run-hooks 'change-context-hook)
+      (run-hooks 'change-workspace-hook)
       (if (pvs-buffer-file-name)
 	  (pvs-mode)
 	  (unless noninteractive

@@ -49,7 +49,7 @@
 ;; mail-pvs-files (unfinished)
 ;; dump-pvs-files          - get-pvs-file-dependencies
 ;; undump-pvs-files        - N/A
-;; change-context          - change-context
+;; change-workspace          - change-workspace
 ;; save-context            - save-context
 ;; context-path            - N/A
 ;; help-pvs                - N/A
@@ -148,7 +148,7 @@ reparsing and retypechecking of the entire importchain."
   (cond ((or (get-pvs-file-buffer filename)
 	     (file-exists-p (pvs-file-name filename)))
 	 (pvs-bury-output)
-	 (pvs-send (format "(typecheck-file \"%s\" %s %s %s)"
+	 (pvs-send (format "(typecheck-file \"%s\" %s %s %s nil t)"
 		       filename (and current-prefix-arg t)
 		       prove-tccs-p importchain-p)
 		   nil (pvs-get-abbreviation cmd))
@@ -381,7 +381,6 @@ trivial TCCs."
 ;; This should bound to <RET> and mouse-2
 (defun pvs-mouse-goto-tcc-cause (button)
   "In TCC buffer, go to the cause of the TCC when clicked."
-  (setq bbb button)
   (let ((loc (overlay-get button :tcc-cause-location)))
     (with-current-buffer (find-file-other-window from-pvs-file)
       (goto-char (point-min))
@@ -1148,25 +1147,23 @@ ESC or `q' to not overwrite any of the remaining files,
 
 ;;; list-pvs-files and list-theories are in pvs-file-list.el
 
-;;; change-context
+;;; change-workspace
 
 (defvar pvs-context-history nil)
 
-(defpvs change-context context (dir)
-  "Switch to a new PVS context
+(defpvs change-workspace context (file-ref)
+  "Switch to a new PVS workspace
 
-The change-context command is similar to the `cd' command in Unix; it
-saves the context and changes the working directory to the specified one.
-The PVS Welcome buffer is then displayed indicating the new directory.  If
-the requested directory does not exist, and the Emacs you are running
-supports \texttt{make-directory}, then PVS offers to make a new one,
-including parent directories if they do not exist.  If the command fails
-for any reason, then the current PVS context is not changed."
+The change-workspace command is similar to the `cd' command in Unix; it
+saves the .pvscontext file and changes the working directory to the
+specified one.  The PVS Welcome buffer is then displayed indicating the new
+directory.  If the requested directory does not exist, or the command fails
+for any reason, then the current PVS workspace is not changed."
   (interactive
    (let ((cdir (pvs-current-directory t)))
      (confirm-not-in-checker)
      (list (cond ((fboundp 'icicle-read-file-name)
-		  (icicle-read-file-name "Change context to: "
+		  (icicle-read-file-name "Change workspace to: "
 					 nil nil t nil
 					 'file-directory-p
 					 'pvs-context-history))
@@ -1175,35 +1172,39 @@ for any reason, then the current PVS context is not changed."
 		   "(Change context to) directory path: " cdir cdir))
 		 (t (read-file-name
 		     "(Change context to) directory path: " cdir cdir))))))
-  (unless (file-exists-p dir)
-    (if (and (fboundp 'make-directory)
-	     (yes-or-no-p (format "%s does not exist - create it? " dir)))
-	(make-directory dir t)
-	(error "Directory does not exist")))
-  (let ((file nil))
-    (unless (file-directory-p dir)
-      (setq file (pathname-name dir))
-      (setq dir (pathname-directory dir)))
+  (let* ((dir-and-file (get-dir-and-file file-ref))
+	 (dir (car dir-and-file))
+	 (file (cdr dir-and-file)))
     (pvs-bury-output)
     (save-some-pvs-files)
-    (setq dir (expand-file-name dir))
-    (unless (string-match "/$" dir)
-      (setq dir (concat dir "/")))
-    (if (string= dir pvs-current-directory)
-	(message "Already in context %s" dir)
+    (if (file-equal-p dir pvs-current-directory)
+	(pvs-message "Already in workspace %s" dir)
 	(let ((ndir (pvs-send-and-wait
-		     (format "(change-context \"%s\")" dir) nil 'cc 'string)))
-	  (pvs-remove-old-context-buffers)
-	  (if (and (stringp ndir)
-		   (file-exists-p ndir))
-	      (setq pvs-current-directory ndir)
-	      (pvs-current-directory t))
-	  ;; Update the PVS Welcome buffer (and force the display)
-	  (unless noninteractive
-	    (pvs-welcome t))))
+		     (format "(change-workspace \"%s\")" dir)
+		     nil 'cw 'string)))
+	  (unless (and (stringp ndir)
+		       (file-exists-p ndir))
+	    (error "change-workspace: '%s' invalid directory" ndir))
+	  (setq pvs-current-directory ndir)))
     (when file
       (find-pvs-file file)))
-  (run-hooks 'change-context-hook))
+  (run-hooks 'change-workspace-hook))
+
+(defun get-dir-and-file (file-ref)
+  (let ((default-directory (pvs-current-directory t))
+	(dir nil)
+	(file nil))
+    (if (file-exists-p file-ref)
+	(if (file-directory-p file-ref)
+	    (setq dir (expand-file-name file-ref))
+	    (setq dir (expand-file-name (pathname-directory file-ref))
+		  file (pathname-name file-ref)))
+	(setq dir (pvs-get-library-path file-ref t)))
+    (unless dir
+      (error "Directory does not exist: %s" file-ref))
+    (unless (string-match "/$" dir)
+      (setq dir (concat dir "/")))
+    (cons dir file)))
 
 (defun pvs-remove-old-context-buffers ()
   (dolist (b (buffer-list))
@@ -1213,16 +1214,17 @@ for any reason, then the current PVS context is not changed."
 	(set-buffer-modified-p nil)
 	(kill-buffer b)))))
 
-(defun init-change-context (dir)
-  (setq dir (expand-file-name dir))
-  (unless (string-match "/$" dir)
-    (setq dir (concat dir "/")))
-  (let ((ndir (pvs-send-and-wait (format "(change-context \"%s\" t)" dir)
-				 nil nil 'dont-care)))
-    (if (and (stringp ndir)
-	     (file-exists-p ndir))
-	(setq pvs-current-directory ndir)
-	(pvs-current-directory t))))
+(defun init-change-workspace (dir)
+  (unless (file-equal-p dir (pvs-current-directory t))
+    (setq dir (expand-file-name dir))
+    (unless (string-match "/$" dir)
+      (setq dir (concat dir "/")))
+    (let ((ndir (pvs-send-and-wait (format "(change-workspace \"%s\" t)" dir)
+				   nil nil 'dont-care)))
+      (if (and (stringp ndir)
+	       (file-exists-p ndir))
+	  (setq pvs-current-directory ndir)
+	  (pvs-current-directory t)))))
 
 
 ;;; save-context
@@ -1248,7 +1250,7 @@ needed, as PVS automatically saves the context as needed."
 The context-path command displays the current pathname (directory) in the
 echo area."
   (interactive)
-  (let ((dir (pvs-send-and-wait "(namestring *pvs-context-path*)")))
+  (let ((dir (pvs-send-and-wait "(namestring *default-pathname-defaults*)")))
     (message "Context Path: %s" (short-file-name dir))))
 
 
@@ -1272,11 +1274,16 @@ extended.  Thus the next time this context is entered, the prelude will
 automatically be extended (by typechecking the libraries if necessary)."
   (interactive (list (pvs-complete-library-path
 		      "(Load prelude library from) directory: ")))
-  (unless (called-interactively-p 'interactive)
-    (setq dir (pvs-get-library-path dir)))
   (let ((default-directory (pvs-current-directory t)))
-    (unless (file-directory-p dir)
-      (error "Must specify an existing directory"))
+    (unless (called-interactively-p 'interactive)
+      (if (file-exists-p dir)
+	  (if (file-directory-p dir)
+	      dir
+	      (error "load-prelude-library: %s is not a directory" dir))
+	  (let ((ldir (pvs-get-library-path dir t)))
+	    (if ldir
+		(setq dir ldir)
+		(error "load-prelude-library: directory %s not found" dir)))))
     (confirm-not-in-checker)
     (pvs-bury-output)
     (save-some-pvs-files)
@@ -1544,6 +1551,15 @@ be used instead of the Emacs write-file command, which does rename the
 buffer."
   (interactive "FSave PVS buffer into file name: ")
   (write-region (point-min) (point-max) filename nil nil))
+
+;; (defpvs rename-theory editing (from to)
+;;   (let ((pvs-file (pvs-send-and-wait
+;; 		   (format "(pvs-file \"%s\")" from) nil nil 'dont-care)))
+;;     (when pvs-file
+;;       ;; Edit pvs-file
+;;       ;; Edit prf-file
+;;       ;; Find any references to the theory within the current PVS context
+;;       )))
 
 
 ;;;---------------------------------------------
