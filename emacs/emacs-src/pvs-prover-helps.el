@@ -822,6 +822,38 @@ Assumes that an Proof buffer exists."
 	(if editprfwin
 	    (set-window-point editprfwin (point)))))))
 
+(defun pvs-prover-prove-to (step-pat)
+  "Runs the proof up to the first step matching step-pat.  step-pat is an
+emacs regex.  Finds the next step after the current one that matches the
+step-pat. Error if no matching step found."
+  (interactive (list (read-from-string "Regexp to step to: ")))
+  (let ((num (pvs-prover-get-steps-till-match step-pat)))
+    (pvs-prover-run-proof-step num)))
+    
+(defun pvs-prover-get-steps-till-match (step-pat)
+  (unless pvs-in-checker
+    (error "No proof is currently running"))
+  (unless (get-buffer "Proof")
+    (error "Must have a Proof Buffer."))
+  (let ((num 0)
+	(found-it nil))
+    (with-current-buffer (get-buffer "Proof")
+      (save-excursion
+	;; Get past the current one
+	(pvs-prover-goto-next-step)
+	(forward-sexp 1)
+	(while (and (null found-it)
+		    (< (point) (point-max)))
+	  (pvs-prover-goto-next-step)
+	  (incf num)
+	  (let ((end (save-excursion (forward-sexp 1) (point))))
+	    (when (re-search-forward step-pat end t)
+	      (setq found-it t)))
+	  (forward-sexp 1))))
+    (unless found-it
+      (error "No match found for \"%s\" after current step in Proof buffer" step-pat))
+    num))
+
 (defun pvs-prover-undo-proof-step (num)
   "Undoes the previous proof step.  Assumes an Edit Proof buffer exists."
   (interactive "p")
