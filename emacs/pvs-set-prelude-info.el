@@ -29,12 +29,12 @@
 
 (setq load-path
   (append (list pvs-path
-		(concat pvs-path "/emacs/emacs-src")
-		(concat pvs-path "/emacs/emacs-src/ilisp"))
+		(concat pvs-path "/emacs")
+		(concat pvs-path "/emacs/ilisp"))
           load-path))
 
 (defvar region-file
-  "emacs/emacs-src/pvs-prelude-files-and-regions.el")
+  "emacs/pvs-prelude-files-and-regions.el")
 
 (defun set-prelude-files-and-regions ()
   (pvs-message "Creating pvs-prelude-files-and-regions.el")

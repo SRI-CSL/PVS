@@ -123,13 +123,13 @@
 	   (>= emacs-major-version 20)
 	   (boundp 'image-types)
 	   (memq 'xpm image-types))
-  (setq pvs-logo (create-image (concat pvs-path "/emacs/emacs-src/pvs.xpm"))))
+  (setq pvs-logo (create-image (concat pvs-path "/emacs/pvs.xpm"))))
 
 (when (and (featurep 'xemacs)
 	   (boundp 'emacs-major-version)
 	   (>= emacs-major-version 20)
 	   (valid-image-instantiator-format-p 'xpm))
-  (push (concat pvs-path "/emacs/emacs-src") x-bitmap-file-path)
+  (push (concat pvs-path "/emacs") x-bitmap-file-path)
   (setq pvs-logo
         (make-glyph (make-image-specifier `[xpm :file "pvs.xpm"])
 		    'buffer)))

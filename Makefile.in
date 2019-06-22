@@ -78,7 +78,7 @@ ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_DEVEL_FILES)
 SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(SBCLISP_FILES)
 
 SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES install-sh \
-	pvs pvsio pvs-gui proveit provethem emacs/emacs-src/pvs.xpm \
+	pvs pvsio pvs-gui proveit provethem emacs/pvs.xpm \
 	pvs-tex.sub pvs.sty bin/pvs-platform \
 	$(bindir)/b64 bin/tar-b64-mail Examples/README \
 	$(wildcard Examples/*.pvs Examples/*.prf) \
@@ -220,7 +220,7 @@ pvs-make-files = pvs.system src/defsystem.lisp src/closopt.lisp
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
 emacs-src = $(shell $(GIT) ls-files | $(GREP) -E ".*\.el$$" | $(GREP) -v "^\(doc\|src\)")
-emacs-src += emacs/emacs-src/pvs-prelude-files-and-regions.el
+emacs-src += emacs/pvs-prelude-files-and-regions.el
 
 #emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(emacs-src)))
 
@@ -544,7 +544,7 @@ runtime : $(allegro-rt) $(sbcl-rt) $(cmulisp-rt)
 
 parser : pvs-parser-out
 
-prelude-files-and-regions : $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
 
 etags : $(PVSPATH)TAGS
 
@@ -756,34 +756,34 @@ tar :
 # lib/strategies.lisp : src/prover/strategies.lisp
 # 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
-$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : \
-                  $(PVSPATH)emacs/emacs-src/pvs-set-prelude-info.el \
+$(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
+                  $(PVSPATH)emacs/pvs-set-prelude-info.el \
                   $(PVSPATH)lib/prelude.pvs
-	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
+	-./pvs -batch -l emacs/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
-$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/%.el
+$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/%.el
 	$(MKDIR) -p emacs/$(EMACSSUBDIR)
-	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/$(@F) .)
+	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../$(@F) .)
 
-$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/ilisp/%.el
 	$(MKDIR) -p emacs/$(EMACSSUBDIR)
-	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/ilisp/$(@F) .)
+	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../ilisp/$(@F) .)
 
 # We need to create the elc files, but this does not work well with make, as
 # we can't simply byte-compile each file separately.  So we create a dummy
 # .readme file.  It will be newer than all of the subdir source files, and
 # the byte compiled files will thne be newer than it.
 
-$(PVSPATH)emacs/emacs-src/.readme : $(emacs-src)
+$(PVSPATH)emacs/.readme : $(emacs-src)
 	echo "File exists for make dependency usage" > $@
 
-$(emacs-elc) : $(PVSPATH)emacs/emacs-src/.readme
-	(cd emacs/emacs-src; $(EMACS) -batch -l pvs-byte-compile.el)
+$(emacs-elc) : $(PVSPATH)emacs/.readme
+	(cd emacs; $(EMACS) -batch -l pvs-byte-compile.el)
 
 # Doesn't work - too many dependencies in ilisp
 # $(emacs-elc): %.elc: %.el
-# 	$(EMACS) --batch -Q -L emacs/emacs-src -L emacs/emacs-src/ilisp -f batch-byte-compile $<
+# 	$(EMACS) --batch -Q -L emacs -L emacs/ilisp -f batch-byte-compile $<
 
 install:
 	@echo "target install is not used for PVS - see INSTALL"
@@ -824,7 +824,7 @@ distclean :
 	done
 	find . -type f -name \*.elc -exec rm \{\} \; ; \
 	rm -f Makefile TAGS autoloads.out config.log config.status configure \
-              emacs/emacs-src/pvs-prelude-files-and-regions.el lib/*_adt.pvs \
+              emacs/pvs-prelude-files-and-regions.el lib/*_adt.pvs \
               pvs pvsio src/WS1S/mona
 	rm -f src/pvs-info.lisp src/pvs-lexer.lisp src/pvs-methods.lisp \
               src/pvs-parser.lisp src/pvs-sorts.lisp
