@@ -20,37 +20,42 @@
 
 (in-package :pvs)
 (export '(file-exists-p directory-p read-permission? write-permission?
-			file-write-time get-file-info))
+	  file-write-time get-file-info))
 
 (defun file-exists-p (file)
    (probe-file file))
 
 (defun directory-p (dir)
   (handler-case
-      (let ((filestring (namestring (merge-pathnames dir))))
-	(when (sb-posix:s-isdir (sb-posix:stat-mode (sb-posix:stat filestring)))
+      (let ((pfile (probe-file dir)))
+	(when (and pfile
+		   (sb-posix:s-isdir (sb-posix:stat-mode (sb-posix:stat pfile))))
 	  ;; Needs to end with a slash!!!
-	  (pathname (if (char= (char filestring (1- (length filestring))) #\/)
-			filestring
-		      (concatenate 'string filestring "/")))))
+	  (uiop:ensure-directory-pathname pfile)))
     (sb-posix:syscall-error () nil)))
 
 (defun read-permission? (file)
   (handler-case (zerop (sb-posix:access file sb-posix:r-ok))
     (sb-posix:syscall-error () nil)))
 
-(defun write-permission? (file)
-  (handler-case (zerop (sb-posix:access file sb-posix:w-ok))
-    (sb-posix:syscall-error () nil)))
+(defun write-permission? (&optional (file *default-pathname-defaults*))
+  (let ((pfile (probe-file file)))
+    (and pfile
+	 (handler-case (zerop (sb-posix:access pfile sb-posix:w-ok))
+	   (sb-posix:syscall-error () nil)))))
 
 (defconstant u1970 (encode-universal-time 0 0 0 1 1 1970 0))
 
 (defun file-write-time (file)
-  (handler-case (+ u1970 (sb-posix:stat-mtime (sb-posix:stat file)))
-    (sb-posix:syscall-error () nil)))
+  (let ((pfile (probe-file file)))
+    (and pfile
+	 (handler-case (+ u1970 (sb-posix:stat-mtime (sb-posix:stat pfile)))
+	   (sb-posix:syscall-error () nil)))))
 
 (defun get-file-info (file)
-  (handler-case
-      (let ((stat (sb-posix:stat file)))
-	(list (sb-posix:stat-dev stat) (sb-posix:stat-ino stat)))
-    (sb-posix:syscall-error () nil)))
+  (let ((pfile (probe-file file)))
+    (and pfile
+	 (handler-case
+	     (let ((stat (sb-posix:stat pfile)))
+	       (list (sb-posix:stat-dev stat) (sb-posix:stat-ino stat)))
+	   (sb-posix:syscall-error () nil)))))

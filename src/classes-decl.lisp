@@ -1043,7 +1043,8 @@ restored, the TCCs are checked")
   (lisp-files :initform nil :documentation "list of loaded lisp-files")
   (pvs-context :initform nil :documentation "the contents of .pvscontext")
   (pvs-context-changed :initform nil
-		       :documentation "if t, .pvscontext needs to be saved"))
+		       :documentation "if t, .pvscontext needs to be saved")
+  (strat-file-dates :initform (list 0 0 0)))
 
 
 ;; (defcl context-info ()

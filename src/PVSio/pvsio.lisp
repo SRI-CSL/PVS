@@ -537,7 +537,7 @@ strings. "
 	    :direction :output
 	    :if-does-not-exist :create
 	    :if-exists :supersede)
-	   (change-context (directory-namestring file))
+	   (change-workspace (directory-namestring file))
 	   (dolist (pack packlist) (load-prelude-library pack))
 	   (unwind-protect
 	       (typecheck-file (file-namestring file) nil nil nil t)

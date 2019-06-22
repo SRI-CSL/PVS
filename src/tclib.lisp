@@ -366,14 +366,14 @@ each case.  This information is kept in the workspace-session of this
 lib-path, along with modification dates."
   (let ((lib-path (get-library-path lib-ref)))
     (unless lib-path
-      (pvs-error "Load Prelude Error" "Directory for ~a not found" lib-ref))
+      (pvs-error "Load Prelude Error" (format nil "Directory for ~a not found" lib-ref)))
     (assert (absolute-pathname-p lib-path))
     (when (member lib-path *loading-libraries* :test #'file-equal)
       (pvs-error "Load Prelude Error"
 	"Detected circular calls to load-prelude-library,~%~
          check pvs-lib.lisp files in ~{~a~^, ~}" *loading-libraries*))
     (let* ((*loading-libraries* (cons lib-path *loading-libraries*))
-	   (pvs-files-loaded (load-prelude-library-context lib-path force?))
+	   (pvs-files-loaded (load-prelude-library-workspace lib-path force?))
 	   (lisp-files-loaded (load-pvs-lib-lisp-file lib-path force?))
 	   (emacs-files-loaded (load-pvs-lib-emacs-file lib-path force?)))
       (when pvs-files-loaded
@@ -442,20 +442,25 @@ lib-path, along with modification dates."
       (when (directory-p lib)
 	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
 
-(defun get-pvs-libraries-alist ()
-  "Walks down subdirectories of the *pvs-library-path*,
-returning an alist of the form ((libname . libpath) ...)
-e.g., "
+;;; id to abspath
+(defvar *pvs-library-alist*)
+
+(defun pvs-library-alist ()
+  (if (and (boundp '*pvs-library-alist*) *pvs-library-alist*)
+      *pvs-library-alist*
+      (setq *pvs-library-alist* (get-pvs-library-alist))))
+
+(defun get-pvs-library-alist ()
   (let ((alist nil))
     (dolist (path *pvs-library-path*)
-      (dolist (libpath (directory path))
-	(when (directory-p libpath)
-	  (let ((libid (intern (file-namestring libpath) :pvs)))
-	    (if (assq libid alist)
-		(error "~%library ~a appears in both ~a and ~a"
-		       libid (cdr (assq libid alist)) libpath)
-		(push (cons libid libpath) alist))))))
-    alist))
+      (assert (directory-p path))
+      (dolist (subdir (uiop:subdirectories path))
+	(let ((dname (or (pathname-name subdir)
+			 (car (last (pathname-directory subdir))))))
+	  (when (valid-pvs-id* dname)
+	    (push (cons (intern dname :pvs) subdir) alist)))))
+    ;; earlier paths in *pvs-library-path* shadow later ones.
+    (nreverse alist)))
 
 ;;; This is provided for library support, expected to be used in
 ;;; pvs-lib.lisp files (or files loaded by them).  If the filestr
@@ -509,7 +514,7 @@ e.g., "
 		(t (pvs-message "Error in loading ~a" emacs-file))))))))
 
 
-(defun load-prelude-library-context (lib-path force?)
+(defun load-prelude-library-workspace (lib-path force?)
   "Within the workspace of lib-path, load the theories known in .pvscontext,
 which is loaded into (current-pvs-context) by restore-context.  (cddr (current-pvs-context))
 corresponds to the list of pvs-files which have at least been parsed at some
@@ -562,7 +567,7 @@ point."
       (when (and loaded-files
 		 (not *typechecking-module*)
 		 (not *tc-add-decl*))
-	(reset-context)
+	(reset-workspace)
 	(setf (pvs-context-changed *workspace-session*) t))
       (mapcar #'(lambda (file)
 		  (namestring (make-pathname :name file :type "pvs"
@@ -687,13 +692,15 @@ point."
 
 (defun parsed-library-file? (th)
   (assert (lib-datatype-or-theory? th))
-  (or (memq th *theories-seen*)
-      (progn (push th *theories-seen*) nil)
+  (if (assq th *theories-seen*)
+      (cdr (assq th *theories-seen*))
       (with-workspace (context-path th)
-	(if (generated-by th)
-	    (let ((gth (get-theory (generated-by th))))
-	      (and gth (parsed? gth)))
-	    (probe-file (pvs-file-path th))))))
+	(let ((plf? (if (generated-by th)
+			(let ((gth (get-theory (generated-by th))))
+			  (and gth (parsed? gth)))
+			(file-exists-p (pvs-file-path th)))))
+	  (setq *theories-seen* (acons th plf? *theories-seen*))
+	  plf?))))
 
 (defun remove-prelude-library (lib)
   (let* ((lib-path (get-library-reference lib))
@@ -814,35 +821,78 @@ point."
 
 ;;;   3. A libpath, which is an absolute pathname.
 
+(defvar *pvs-lib-path* (directory-p (format nil "~a/lib/" *pvs-path*)))
+
 (defun get-library-reference (libref)
-  "Given a libref, attempts to return a pair of values: an absolute
-lib-path, and a lib-id.  A lib-path may be returned with a null lib-id."
+  "Given a libref, attempts to return three values: an absolute lib-path, a
+lib-id, and the origin.  Returns nil if a lib-path cannot be determined.  A
+lib-path may be returned with a null lib-id.  The lib-ref is a symbol,
+string, or pathname; typically the library id from an importing name, or the
+string from the change-context command.
+
+It first checks whether the libref is an existing directory.  If it is, then
+it may be absolute or relative to the current workspace.  In addition, it
+could be a valid library id, though it may have a '/' at the end when
+associated with the PVS_LIBRARY_PATH (older .pvscontext files do this).  If
+the libref has '/'s other than at the end, the last subdir is checked for
+valid PVS id.
+
+Note that if libref is an existing directory, it may shadow library-decls or
+the PVS_LIBRARY_PATH.
+
+absolute: try to find a corresponding library id:
+          if *current-context* is set
+              if there is a corresponding library-decl, use its id
+                 origin is the library-decl
+          elsif match in PVS_LIBRARY_PATH, and valid PVS id, use it
+                 origin is :pvs-library-path
+          else no lib-id or origin
+relative: expand to absolute pathname for lib-path.  Origin is :relative.
+          if a valid PVS id, use it else no lib-id
+not a dir: if a valid id
+              if *current-context* is set
+                 if corresponding library-decl, use it's lib-path
+                    origin is library-decl
+              else if in PVS_LIBRARY_PATH, use lib-path
+                      origin :pvs-library-path"
   (assert (typep libref '(or pathname symbol string)))
-  (let* ((pstr (if (symbolp libref) (string libref) libref))
-	 (dirp (directory-p pstr))
-	 (lib-path (when dirp (merge-pathnames dirp))))
-    ;;; dirp works for both absolute and relative pathnames Note that a
-    ;;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
-    ;;; same name.
-    (if lib-path
-	(let* ((lib-id (unless (file-equal (format nil "~a/lib/" *pvs-path*)
-					   lib-path)
-			 (find-lib-path-subdir lib-path))))
-	  (values lib-path lib-id))
-	;; If libref is not an existing directory, must be valid id
-	(let ((nstr (when (stringp pstr)
-		      (if (char= (char pstr (1- (length pstr))) #\/)
-			  (subseq pstr 0 (1- (length pstr)))
-			  pstr))))
-	  (when (and nstr
-		     (valid-pvs-id* nstr))
-	    (let* ((lib-id (intern nstr :pvs))
-		   (ld-path (visible-lib-decl-pathname lib-id)))
-	      (if ld-path
-		  (values ld-path lib-id)
-		  (let ((lp-path (cdr (assq lib-id (library-path-alist)))))
-		    (when lp-path
-		      (values lp-path lib-id))))))))))
+  (let* ((libstr (typecase libref
+		   (symbol (string libref))
+		   (pathname (namestring libref))
+		   (t libref)))
+	 (ws (find libref *all-workspace-sessions* :key #'path :test #'equal))
+	 (dirp (if ws libref (directory-p libstr)))		       ; directory exists
+	 (lib-path (when dirp (merge-pathnames dirp))) ; get the absolute path
+	 (nlibstr (if (char= (char libstr (1- (length libstr))) #\/)
+		      (subseq libstr 0 (1- (length libstr)))
+		      libstr))			  ; Remove trailing '/'
+	 (pos (position #\/ nlibstr :from-end t)) ; position of last '/', if any
+	 (idstr (if pos (subseq nlibstr (1+ pos)) nlibstr)) ; possible id is after the last '/'
+	 (pid (when (valid-pvs-id* idstr) (intern idstr :pvs)))) ; is it a valid pvs id?
+    (cond (dirp
+	   (cond ((equal lib-path *pvs-lib-path*)
+		  (values lib-path nil :prelude))
+		 ((equal lib-path (path *workspace-session*))
+		  (values lib-path nil :current-workspace))
+		 ((some #'(lambda (subdir) (file-equal subdir dirp))
+			(directory (path *workspace-session*)))
+		  (values lib-path pid :subdirectory))
+		 ((rassoc dirp (pvs-library-alist) :test #'equal)
+		  (let ((lib-elt (rassoc dirp (pvs-library-alist) :test #'equal)))
+		    (values lib-path (car lib-elt) :pvs-library-path)))
+		 ((visible-lib-decl-id lib-path)
+		  (let ((libid (visible-lib-decl-id lib-path)))
+		    (values lib-path libid :Lib-decl)))
+		 (t lib-path)))
+	  (pos
+	   ;;(pvs-message "directory ~a not found" libref)
+	   nil)
+	  (pid (let ((lib-path (visible-lib-decl-pathname pid)))
+		 (if lib-path
+		     (values lib-path pid :lib-decl)
+		     (let ((lib-elt (assq pid (pvs-library-alist))))
+		       (when lib-elt
+			 (values (cdr lib-elt) pid :pvs-library-path)))))))))
 
 (defun get-library-path (libref)
   (assert (typep libref '(or pathname symbol string)))
@@ -861,13 +911,30 @@ lib-path, and a lib-id.  A lib-path may be returned with a null lib-id."
 		     (valid-pvs-id* nstr))
 	    (let ((lib-id (intern nstr :pvs)))
 	      (or (visible-lib-decl-pathname lib-id)
-		  (cdr (assq lib-id (library-path-alist))))))))))
+		  (cdr (assq lib-id (pvs-library-alist))))))))))
 
 (defmethod get-library-id ((mod datatype-or-module))
   (get-library-id (context-path mod)))
 
 (defmethod get-library-id (libref)
   (nth-value 1 (get-library-reference libref)))
+
+(defun visible-lib-decl-id (lib-path)
+  (when (current-context)
+    (let ((lib-decls (remove-if-not #'(lambda (ld)
+					(file-equal (lib-ref ld) lib-path))
+		       (all-visible-lib-decls))))
+      (when lib-decls
+	(if (cdr lib-decls)
+	    (let* ((locdecl (car lib-decls))
+		   (loc (locality locdecl)))
+	      (dolist (ldecl (cdr lib-decls))
+		(let ((lloc (locality ldecl)))
+		  (when (< lloc loc)
+		    (setq locdecl ldecl
+			  loc lloc))))
+	      (id locdecl))
+	    (id (car lib-decls)))))))
 
 (defun visible-lib-decl-pathname (lib-id)
   (when (current-context)
@@ -882,6 +949,18 @@ lib-path, and a lib-id.  A lib-path may be returned with a null lib-id."
 		(setq locdecl ldecl
 		      loc lloc))))
 	  (merge-pathnames (lib-ref locdecl)))))))
+
+(defun all-visible-lib-decls ()
+  ;; Skip the prelude
+  (let ((dht (lhash-table (current-declarations-hash)))
+	(lib-decls nil))
+    (maphash #'(lambda (id decls)
+		 (declare (ignore id))
+		 (dolist (d decls)
+		   (when (lib-decl? d)
+		     (push d lib-decls))))
+	     dht)
+    lib-decls))
 
 (defun find-lib-path-subdir (abspath
 			     &optional
@@ -958,15 +1037,9 @@ abspath as a subdirectory.  If it is found, and is a valid library id, it is ret
     (maphash #'(lambda (id th)
 		 (declare (ignore id))
 		 (when (module? th)
-		   (apply fn th)))
+		   (funcall fn th)))
 	     (pvs-theories ws))))
 
-(defun get-all-lib-decls ()
-  (let ((lib-decls nil))
-    (do-all-declarations #'(lambda (decl)
-			     (when (lib-decl? decl)
-			       (push decl lib-decls))))
-    lib-decls))
 
 ;;; pvs-file-path is called from file-dependencies and
 ;;; parsed-library-file?  Given a theory, it constructs the pathname to

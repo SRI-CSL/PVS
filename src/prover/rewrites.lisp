@@ -114,10 +114,8 @@
 			    :test #'(lambda (x y) (tc-eq x (car y))))
 	       modsubst)))))
 
-(defun search-and-rewrite* (name-expr res mod-inst 
-				      forms sforms
-				      in-subst context in-sformnums dir order
-				      dont-delete?)
+(defun search-and-rewrite* (name-expr res mod-inst forms sforms
+			    in-subst context in-sformnums dir order dont-delete?)
   (when (and forms sforms)
     (let* ((form (car forms));;it's always a universal closure
 	   (outervars (substitutable-vars form))
@@ -181,7 +179,7 @@
 			       (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)
 			       (when (lib-datatype-or-theory? module)
 				 (let* ((lib-path (context-path module))
-					(lib-id (get-library-id lib-id)))
+					(lib-id (get-library-id lib-path)))
 				   (unless lib-id
 				     (pvs-error "Couldn't find lib-id for ~a" lib-path))
 				   lib-id))

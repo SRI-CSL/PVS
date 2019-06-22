@@ -30,7 +30,7 @@
 (in-package :pvs)
 
 ;;; Called from outside PVS
-(export '(change-context context-files-and-theories context-usingchain
+(export '(change-workspace context-files-and-theories context-usingchain
 	  current-context-path get-pvs-file-dependencies pvs-delete-proof
 	  pvs-rename-file pvs-select-proof pvs-view-proof save-context
 	  show-context-path show-orphaned-proofs show-proof-file
@@ -56,7 +56,6 @@
 ;;;   - A file has been modified
 ;;;   - A file/theory is deleted from the context
 ;;;   - The status of a proof has changed
-
 ;;; The pvs-context is a list whose first element is the version, second
 ;;; element is a list of prelude libraries, and the rest are context entries.
 ;;; This is currently written directly to file, although it could be made
@@ -146,6 +145,13 @@
   theory-id
   (library nil))
 
+(defun context-entries-not-updated ()
+  (mapcan #'(lambda (ce)
+	      (let ((nce (create-context-entry (ce-file ce))))
+		(unless (ce-eq ce nce)
+		  (list ce))))
+    (pvs-context-entries)))
+
 (defun ce-eq (ce1 ce2)
   (and (equal (ce-file ce1) (ce-file ce2))
        (equal (ce-write-date ce1) (ce-write-date ce2))
@@ -209,51 +215,60 @@
   "Used to keep track of the file-dates for the pvs, home, and context
 pvs-strategies files.")
 
-(defun cc (directory)
-  (change-context directory))
+(defvar *workspace-stack* nil)
+
+(defun cw (directory)
+  (change-workspace directory))
 
 
-;;; Change-context checks that the specified directory exists, prompting
+;;; Change-workspace checks that the specified directory exists, prompting
 ;;; for a different directory otherwise.  When a directory is given, the
 ;;; current context is saved (if writable), *last-proof* is cleared, the
 ;;; working-directory is set, and the context is restored.
 
-(defun change-context (directory &optional init?)
-  (let ((dir (get-valid-context-directory directory nil)))
-    (unless init? (save-context))
-    (setf (caddr *strat-file-dates*) 0)
-    (set-working-directory dir)
-    (setq *default-pathname-defaults* dir)
-    (clear-theories t)
-    (restore-context)
-    (pvs-message "Context changed to ~a"
-      (current-context-path))
-    (when (write-permission?)
-      (copy-auto-saved-proofs-to-orphan-file))
-    (current-context-path)))
+(defun change-workspace (directory &optional init?)
+  "PVS must always have a workspace, usually the initial one is the
+directory it was started in.  The *current-workspace* has an associated
+workspace-session, Which is where the parsed/typechecked theories are found.
+Note that changing workspaces does not modify the current one; if you return
+again during the same PVS session, it will be exactly as you left it."
+  (let ((dir (get-library-path directory)))
+    (unless dir
+      (pvs-error "Change Workspace"
+	(format nil "Workspace directory %s not found")))
+    (if (file-equal dir *default-pathname-defaults*)
+	(pvs-message "Change Workspace: already in %s" directory)
+	(let* ((have-ws (get-workspace-session dir))
+	       (next-ws (or have-ws
+			    (let ((ws (make-instance 'workspace-session :path dir)))
+			      (push ws *all-workspace-sessions*)
+			      ws))))
+	  (unless init? (save-context)) ;; Saves .pvscontext
+	  (set-working-directory dir)
+	  (setq *default-pathname-defaults* dir)
+	  (push *workspace-session* *workspace-stack*)
+	  (setq *workspace-session* next-ws)
+	  (unless have-ws ;; .pvscontext not loaded?
+	    (restore-context))          ;; load it
+	  (when (write-permission?)
+	    (copy-auto-saved-proofs-to-orphan-file))
+	  (pvs-message "Context changed to ~a"
+	    (current-context-path))
+	  (current-context-path)))))
 
-(defun reset-context ()
+(defun change-context (directory &optional init?)
+  "Old - deprecated"
+  (change-workspace directory init?))
+
+(defun reset-workspace ()
+  "Called after loading prelude-libraries, to ensure everything is
+retypechecked."
   ;; First reset local context
   (setq *last-proof* nil)
   (clrhash (current-pvs-files))
   (clrhash (current-pvs-theories))
   (setq *current-context* nil)
   (reset-typecheck-caches))
-
-(defun get-valid-context-directory (directory prompt)
-  (multiple-value-bind (dir reason)
-      (directory-p (or directory
-		       (pvs-prompt
-			'directory
-			(or prompt "Change context to (directory): "))))
-    (cond ((not (pathnamep dir))
-	   (get-valid-context-directory nil (format nil "~a  cc to: "
-					      (protect-format-string reason))))
-;; 	  ((and (write-permission? dir)
-;; 		(not (file-exists-p (context-pathname dir)))
-;; 		(not (pvs-y-or-n-p "Context not found - create new one? ")))
-;; 	   (get-valid-context-directory nil nil))
-	  (t dir))))
 
 (defun context-pathname (&optional (dir *default-pathname-defaults*))
   (make-pathname :name *context-name* :defaults dir))
@@ -275,19 +290,28 @@ pvs-strategies files.")
 	(unless (or *dont-write-object-files*
 		    (not (write-permission?)))
 	  (write-object-files))
+	;; (maphash #'(lambda (file theories)
+	;; 	     (assert (or (some #'(lambda (th)
+	;; 				   (not (typechecked? th)))
+	;; 			       (cdr theories))
+	;; 			 (check-binfiles file))
+	;; 		     () "check-binfiles failed after write-object-files"))
+	;; 	 (current-pvs-files))
 	(write-context)
-	(maphash #'(lambda (file theories)
-		     (assert (or (some #'(lambda (th)
-					   (not (typechecked? th)))
-				       (cdr theories))
-				 (check-binfiles file))))
-		 (current-pvs-files)))))
+	;; (maphash #'(lambda (file theories)
+	;; 	     (assert (or (some #'(lambda (th)
+	;; 				   (not (typechecked? th)))
+	;; 			       (cdr theories))
+	;; 			 (check-binfiles file))))
+	;; 	 (current-pvs-files))
+	t)))
 
 (defun sc ()
   (save-context))
 
 
 (defun write-context ()
+  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   (when (or (current-pvs-context-changed)
 	    (and (pvs-context-entries)
 		 (not (file-exists-p (context-pathname)))))
@@ -312,14 +336,22 @@ pvs-strategies files.")
 (defvar *testing-restore* nil)
 
 (defun write-object-files (&optional force?)
-  (update-stored-mod-depend)
   (when (and (> (hash-table-count (current-pvs-theories)) 0)
 	     (ensure-bin-subdirectory))
     (if t ; *testing-restore*
-	(maphash #'(lambda (id theory)
-		     (declare (ignore id))
-		     (write-object-file theory force?))
-		 (current-pvs-theories))
+	(maphash #'(lambda (file theories)
+		     (declare (ignore file))
+		     (dolist (theory (cdr theories))
+		       (write-object-file theory force?)
+		       (let ((bp (make-binpath (id theory)))
+			     (ce (get-context-file-entry (filename theory))))
+			 (assert (or (not (typechecked? theory))
+				     (and ce (file-exists-p bp)
+					  (ce-object-date ce)
+					  (assq (id theory) (ce-object-date ce))
+					  (= (file-write-time bp)
+					     (cdr (assq (id theory) (ce-object-date ce))))))))))
+		 (current-pvs-files))
 	(multiple-value-bind (value condition)
 	    (ignore-file-errors
 	     (maphash #'(lambda (id theory)
@@ -343,17 +375,19 @@ pvs-strategies files.")
 	(setf (ce-object-date ce) nil))
       (let* ((te (get-context-theory-entry gtheory ce))
 	     (te-date (when ce (assq (id theory) (ce-object-date ce)))))
-	(when (and te specdate)
-	  (unless (or (and (not force?)
-			   bindate
-			   (eql bindate (cdr te-date))
-			   (< specdate bindate)))
-	    (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
-	    (save-theory theory)
-	    (setf (ce-object-date ce)
-		  (acons (te-id te) (file-write-time binpath)
-			 (delete te-date (ce-object-date ce))))
-	    (setf (pvs-context-changed *workspace-session*) t)))))))
+	(when (and te
+		   specdate
+		   (or force?
+		       (null bindate)
+		       (null (cdr te-date))
+		       (>= specdate bindate)
+		       (not (eql bindate (cdr te-date)))))
+	  (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
+	  (save-theory theory)
+	  (setf (ce-object-date ce)
+		(acons (te-id te) (file-write-time binpath)
+		       (delete te-date (ce-object-date ce))))
+	  (setf (pvs-context-changed *workspace-session*) t))))))
 
 (defmethod get-theory-with-filename ((m datatype-or-module))
   (assert (filename m))
@@ -414,24 +448,48 @@ pvs-strategies files.")
 
 (defun update-pvs-context ()
   (setf (pvs-context *workspace-session*) (make-pvs-context))
+  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   t)
 
 (defun make-pvs-context ()
-  (let ((context nil)
-	(*valid-entries* (make-hash-table :test #'eq)))
+  "Returns a list representing the .pvscontext file.
+Has form (version (prelude-libnames) ce1 ce2 ...)
+context-entry ce is a struct with slots:
+  file: filename without extension,
+  write-date, proofs-date, object-date,
+  dependencies: list of pvs filenames,
+  theories: list of theory-entry structs,
+  extension: e.g., \"pvs\"
+theory-entry is a struct, with slots:
+  id, status,
+  dependencies: list of binfile-dependencies,
+  formula-info: list of formula-entry structs
+formula-entry is a struct with slots:
+  id, status, decision-procedure-used, proof-time,
+  proof-refers-to: list of declaration-entry structs
+declaration-entry has slots
+  id, class, type, theory-id"
+  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+  (let ((*valid-entries* (make-hash-table :test #'eq))
+	(context nil))
+    ;; Collect from (current-pvs-files
     (maphash #'(lambda (name info)
 		 (declare (ignore info))
 		 (let ((ce (create-context-entry name)))
 		   (when ce
 		     (push ce context))))
 	     (current-pvs-files))
+    (assert (not (duplicates? context :key #'ce-file)) () "after pvs-files")
+    ;; Collect from current pvs-context remaining ce's that still have an
+    ;; associated existing file.
     (mapc #'(lambda (entry)
-	      (unless (or (not (file-exists-p (make-specpath (ce-file entry))))
-			  (member (ce-file entry) context
-				  :key #'ce-file
-				  :test #'string=))
+	      (when (and (not (member (ce-file entry) context
+				      :key #'ce-file
+				      :test #'string=))
+			 (file-exists-p (make-specpath (ce-file entry))))
 		(push entry context)))
 	  (pvs-context-entries))
+    (assert (not (duplicates? context :key #'ce-file)))
     (cons *pvs-version*
 	  (cons (pvs-context-libraries)
 		(cons (context-parameters) context)))))
@@ -455,6 +513,7 @@ pvs-strategies files.")
 ;;; doesn't actually write out the .pvscontext file.
 
 (defun update-context (filename)
+  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   (let ((oce (get-context-file-entry filename))
 	(nce (create-context-entry filename)))
     (unless (and (not (current-pvs-context-changed))
@@ -463,19 +522,25 @@ pvs-strategies files.")
 			(file-write-time (make-specpath filename)))
 		 (ce-eq oce nce))
       (when (and oce (ce-object-date oce))
+	;; (format t "~%update-context: copy ~a to nce ~a"
+	;;   (ce-object-date oce) nce)
 	(setf (ce-object-date nce) (ce-object-date oce)))
-      (setf (pvs-context *workspace-session*)
-	    (cons *pvs-version*
-		  (cons (pvs-context-libraries)
-			(cons (list :default-decision-procedure
-				    *default-decision-procedure*)
-			      (cons nce (delete oce (pvs-context-entries)))))))
-      (setf (pvs-context-changed *workspace-session*) t))))
+      (let ((nctx-entries (cons nce (remove oce (pvs-context-entries)))))
+	(assert (not (duplicates? nctx-entries :key #'ce-file)))
+	(setf (pvs-context *workspace-session*)
+	      (cons *pvs-version*
+		    (cons (pvs-context-libraries)
+			  (cons (list :default-decision-procedure
+				      *default-decision-procedure*)
+				nctx-entries))))
+	(assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+	(setf (pvs-context-changed *workspace-session*) t)))))
 
-(defun delete-file-from-context (filename)
+(defun delete-file-from-workspace (filename)
+  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   (let ((ce (get-context-file-entry filename)))
     (when ce
-      (setf (pvs-context *workspace-session*) (remove ce (pvs-context-entries)))
+      (setf (cdddr (pvs-context *workspace-session*)) (remove ce (pvs-context-entries)))
       (setf (pvs-context-changed *workspace-session*) t))))
 
 (defun update-context-proof-status (fdecl)
@@ -494,26 +559,30 @@ pvs-strategies files.")
 
 (defun create-context-entry (filename)
   (when (file-exists-p (make-specpath filename))
-    (let* ((theories (gethash filename (current-pvs-files)))
-	   (file-entry (get-context-file-entry filename))
+    (let* ((file-entry (get-context-file-entry filename))
+	   (theories (or (gethash filename (current-pvs-files))
+			 (ce-theories file-entry)))
 	   (prf-file (make-prf-pathname filename))
 	   (proofs-write-date (file-write-time prf-file))
 	   (fdeps (file-dependencies filename))
+	   (objdate (when file-entry (ce-object-date file-entry)))
 	   (md5sum (md5-file (make-specpath filename))))
       (assert (cdr theories))
       (assert (plusp md5sum))
+      ;;(format t "~%create-context-entry: ~a objdate = ~a" filename objdate)
       (make-context-entry
        :file filename
        :write-date (car theories)
-       :object-date (when file-entry (ce-object-date file-entry))
+       :object-date objdate
        :extension nil
        :proofs-date proofs-write-date
        :dependencies fdeps
-       :theories (let ((tes (mapcar #'(lambda (th)
-					(create-theory-entry th file-entry))
-			      (cdr theories))))
-		   (assert tes)
-		   tes)
+       :theories (let ((theories (gethash filename (current-pvs-files))))
+		   (if theories
+		       (mapcar #'(lambda (th)
+				   (create-theory-entry th file-entry))
+			 (cdr theories))
+		       (ce-theories file-entry)))
        :md5sum md5sum))))
 
 #+allegro
@@ -580,21 +649,21 @@ pvs-strategies files.")
 					  (not (eq (gethash (id ith)
 							    (current-pvs-theories))
 						   ith)))
-				 (get-library-id (context-path ith))))))
+				 (context-path ith)))))
 		  (libalist nil)
 		  (thlist nil)
 		  (*current-context* (saved-context theory)))
 	      ;; (assert (or (not (memq 'typechecked (status theory)))
 	      ;;             *current-context*))
-	      (loop for (inm . libref) in inames
-		    do (if libref
-			   (let ((libentry (assoc libref libalist :test #'equalp))
+	      (loop for (inm . lib-path) in inames
+		    do (if lib-path
+			   (let ((libentry (assoc lib-path libalist :test #'equalp))
 				 (nm (makesym "~a" (lcopy inm 'library nil))))
 			     (if libentry
 				 (nconc libentry (list nm))
 				 (setq libalist
 				       (nconc libalist
-					      (list (list libref nm))))))
+					      (list (list lib-path nm))))))
 			   (push (makesym "~a" (lcopy inm 'library nil))
 				 thlist)))
 	      (nconc libalist (list (cons nil (nreverse thlist))))))))
@@ -605,7 +674,7 @@ pvs-strategies files.")
 
 (defmethod lib-datatype-or-theory? ((mod datatype-or-module))
   (assert (context-path mod))
-  (and (not (file-equal (context-path mod) *default-pathname-defaults*))
+  (and (not (equal (context-path mod) *default-pathname-defaults*))
        (not (from-prelude? mod))))
 
 (defmethod lib-datatype-or-theory? (obj)
@@ -739,9 +808,12 @@ pvs-strategies files.")
 						 (generated-by dth))))
 				    theories))
 		    (when (lib-datatype-or-theory? dth)
-		      (let ((lib-id (get-library-id (context-path dth))))
+		      (let* ((*current-context* nil) ; Don't want library-decls
+			     (lib-path (context-path dth))
+			     (lib-id (get-library-id lib-path)))
+			(assert (file-exists-p lib-path))
 			(setq depname (format nil "~a/~a"
-					lib-id (filename dth)))))
+					(or lib-id lib-path) (filename dth)))))
 		    (pushnew depname depfiles
 			     :test #'(lambda (x y)
 				       (or (equal x filename)
@@ -864,8 +936,7 @@ pvs-strategies files.")
 			   (working-directory))
 	       (file-equal *default-pathname-defaults*
 			   (current-context-path))))
-  (let ((ctx-file (merge-pathnames *context-name*
-				   *default-pathname-defaults*)))
+  (let ((ctx-file (merge-pathnames *context-name*)))
     (if (file-exists-p ctx-file)
 	(handler-case
 	    (let ((context
@@ -874,6 +945,20 @@ pvs-strategies files.")
 			      (char= (read-char in) #\")))
 		       (with-open-file (in ctx-file) (read in))
 		       (fetch-object-from-file ctx-file))))
+	      (setf (cdddr context)
+		    (remove-duplicates (cdddr context) :key #'ce-file :test #'equal
+				       :from-end t))
+	      (dolist (ce (cdddr context))
+		(let ((ndeps (remove-if-not #'(lambda (dep)
+						(file-exists-p (make-specpath dep)))
+			       (ce-dependencies ce))))
+		  (unless (equal ndeps (ce-dependencies ce))
+		    (pvs-message "PVS context has bad deps: ~a"
+		      (remove-if #'file-exists-p (ce-dependencies ce)))
+		    (break "check this")
+		    (setf (ce-dependencies ce) nil)
+		    (setf (ce-object-date ce) nil)
+		    (setf (ce-theories ce) nil))))
 	      (cond ((duplicate-theory-entries?)
 		     (pvs-message "PVS context has duplicate entries - resetting")
 		     (setf (pvs-context *workspace-session*) (list *pvs-version*))
@@ -885,6 +970,7 @@ pvs-strategies files.")
 					(file-exists-p (make-specpath (ce-file ce))))
 				    (pvs-context-entries context)))
 		     (setf (pvs-context *workspace-session*) context)
+		     (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
 		     (setf (cadr (current-pvs-context))
 			   (delete "PVSio/"
 				   (delete "Manip/"
@@ -912,7 +998,8 @@ pvs-strategies files.")
 			   (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
 			      (setf (pvs-context *workspace-session*)
-				    (list *pvs-version*)))))))
+				    (list *pvs-version*))))))
+	      (assert (not (duplicates? (pvs-context-entries) :key #'ce-file))))
 	  (file-error (err)
 	    (pvs-message "PVS context problem - resetting")
 	    (pvs-log "  ~a" err)
@@ -920,7 +1007,6 @@ pvs-strategies files.")
 	    (write-context)))
 	(setf (pvs-context *workspace-session*) (list *pvs-version*))))
   nil)
-
 
 (defun duplicate-theory-entries? ()
   (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=))
@@ -1020,6 +1106,7 @@ pvs-strategies files.")
 		       (cdr context))))
     (when nctx
       (setf (pvs-context *workspace-session*) nctx)
+      (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
       (write-context)
       t)))
 
@@ -2881,76 +2968,101 @@ Note that the lists might not be the same length."
     (values max nonmax)))
 
 (defvar *binfiles-checked*)
-(defvar *binfile-contexts*)
-(defvar *ces-checked*)
 
 (defun check-binfiles (filename)
   (let ((*binfiles-checked* nil)
-	(*binfile-contexts* nil)
-	(*ces-checked* nil))
-    (check-binfiles* filename)))
+	(ce (get-context-file-entry filename)))
+    (and ce
+	 (every #'(lambda (te)
+		    (and (loop for (lib-ref . theory-ids) in (te-dependencies te)
+			    always (check-binfiles* lib-ref theory-ids))
+			 (check-binfile (id te) ce)))
+		(ce-theories ce)))))
 
-(defun check-binfiles* (filename)
-  (let* ((lib-ref (simple-directory-namestring filename))
-	 (lib-path (when lib-ref (get-library-path lib-ref))))
-    (unless (or (null lib-ref) lib-path)
-      (break "bad path for ~a?" filename))
-    (when (or (null lib-ref) lib-path) ; check-binfiles fails
-      (if lib-path
-	  (with-workspace lib-path
-	    (check-binfiles** (file-namestring filename)))
-	  (check-binfiles** filename)))))
+(defun check-binfiles* (libref theory-ids)
+  (if libref
+      (with-workspace libref
+	(check-binfiles* nil theory-ids))
+      (every #'(lambda (thid)
+		 (let ((ce (context-entry-of thid)))
+		   (when ce
+		     (check-binfile thid ce))))
+	     theory-ids)))
 
-(defun simple-directory-namestring (filename)
-  ;; if filename starts with a single ".", it is lost by directory-namestring
-  ;; so we use a simpler form.
-  (let ((pos (position #\/ filename :from-end t)))
-    (when pos
-      (subseq filename 0 (1+ pos)))))
+;; (defvar *binfile-contexts*)
+;; (defvar *ces-checked*)
 
-(defun check-binfiles** (filename)
-  (let ((ce (get-context-file-entry filename)))
-    #+binfile-debug (unless ce (break "No ce for ~a?" filename))
-    (when ce
-      (cond ((memq ce *ces-checked*)
-	     t)
-	    (t (push ce *ces-checked*)
-	       (cond ((and (every #'check-binfiles* (ce-dependencies ce))
-			   (check-binfile filename ce)))
-		     (t #+binfile-debug (break "Failed check-binfile" filename)
-			(if (listp (ce-object-date ce))
-			    (dolist (objdate (ce-object-date ce))
-			      (setf (cdr objdate) 0))
-			    (setf (ce-object-date ce) nil))
-			nil)))))))
+;; (defun check-binfiles (filename)
+;;   "Checks that the binfiles for filename and all its dependencies are valid,
+;; e.g., the binfile date matches the ce-object-date of the current-pvs-context.
+;; The dependencies come from ce-dependencies."
+;;   (let ((*binfiles-checked* nil)
+;; 	(*binfile-contexts* nil)
+;; 	(*ces-checked* nil))
+;;     (check-binfiles* filename)))
 
-(defun check-binfile (filename ce)
-  (let* ((spec-file (make-specpath filename))
-	 (file-info (get-file-info spec-file))
-	 (checked (assoc file-info *binfiles-checked* :test #'equal)))
-    (if checked
-	(cadr checked)
-	(let* ((spec-date (file-write-time spec-file))
-	       (expected-spec-date (ce-write-date ce))
-	       (bin-dates (ce-object-date ce))
-	       (th-entries (ce-theories ce))
-	       (ok? (and spec-date
-			 expected-spec-date
-			 (= spec-date expected-spec-date)
-			 (listp bin-dates)
-			 (every #'(lambda (te)
-				    (let ((bin-date (file-write-time
-						     (make-binpath (te-id te))))
-					  (expected-bin-date
-					   (cdr (assq (te-id te) bin-dates))))
-				      (and bin-date
-					   expected-bin-date
-					   (= bin-date expected-bin-date)
-					   (<= spec-date bin-date))))
-				th-entries))))
-	  #+binfile-debug (unless ok? (break "Not ok?"))
-	  (push (list file-info ok? spec-file) *binfiles-checked*)
-	  ok?))))
+;; (defun check-binfiles* (filename)
+;;   (let* ((lib-ref (simple-directory-namestring filename))
+;; 	 (lib-path (when lib-ref (get-library-path lib-ref))))
+;;     (unless (or (null lib-ref) lib-path)
+;;       (break "bad path for ~a?" filename))
+;;     (when (or (null lib-ref) lib-path) ; check-binfiles fails
+;;       (if lib-path
+;; 	  (with-workspace lib-path
+;; 	    (check-binfiles** (file-namestring filename)))
+;; 	  (check-binfiles** filename)))))
+
+;; (defun simple-directory-namestring (filename)
+;;   ;; if filename starts with a single ".", it is lost by directory-namestring
+;;   ;; so we use a simpler form.
+;;   (let ((pos (position #\/ filename :from-end t)))
+;;     (when pos
+;;       (subseq filename 0 (1+ pos)))))
+
+;; (defun check-binfiles** (filename)
+;;   (let ((ce (get-context-file-entry filename)))
+;;     ;; (unless ce (break "No ce for ~a?" filename))
+;;     (when ce
+;;       (if (and (boundp '*ces-checked*)
+;; 	       (assq ce *ces-checked*))
+;; 	  (cdr (assq ce *ces-checked*))
+;; 	  (let ((check (cond ((and (every #'check-binfiles* (ce-dependencies ce))
+;; 				   (check-binfile filename ce)))
+;; 			     (t ;;(when (assq 'sigma_l_adt (ce-object-date ce))
+;; 				  ;;(break "Failed check-binfile: resetting ce" filename))
+;; 				(if (listp (ce-object-date ce))
+;; 				    (dolist (objdate (ce-object-date ce))
+;; 				      (setf (cdr objdate) 0))
+;; 				    (setf (ce-object-date ce) nil))
+;; 				nil))))
+;; 	    (setq *ces-checked* (acons ce check *ces-checked*))
+;; 	    check)))))
+
+(defun check-binfile (theory-id ce)
+  "Checks that the file write date is after the spec write date, and matches
+the ce-object-date for each theory in the file.  Note that each theory has a
+binfile, not the filename."
+  (when (ce-object-date ce)
+    (let* ((filename (ce-file ce))
+	   (spec-file (make-specpath filename))
+	   (file-info (get-file-info spec-file))
+	   (checked (member file-info *binfiles-checked* :test #'equal)))
+      (or checked
+       (let* ((spec-date (file-write-time spec-file))
+	      (expected-spec-date (ce-write-date ce))
+	      (expected-bin-date (cdr (assq theory-id (ce-object-date ce))))
+	      (spec-ok? (and spec-date
+			     expected-spec-date
+			     (= spec-date expected-spec-date)))
+	      (ok? (when spec-ok?
+		     (let ((bin-date (file-write-time (make-binpath theory-id))))
+		       (and bin-date
+			    expected-bin-date
+			    (= bin-date expected-bin-date)
+			    (<= spec-date bin-date))))))
+	 ;;(unless ok? (break "Not ok?"))
+	 (when ok? (push file-info *binfiles-checked*))
+	 ok?)))))
 
 (defun remove-binfiles ()
   (dolist (file (directory "pvsbin/"))

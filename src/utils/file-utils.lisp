@@ -72,7 +72,7 @@
 ;;;
 
 (defmacro expanded-tilde-namestring (filename)
-  `(ignore-errors (excl::tilde-expand-unix-namestring (namestring ,filename))))
+  `(ignore-errors (uiop:native-namestring ,filename)))
 
 (defun file-exists-p (filename)
   (let ((exp-file (expanded-tilde-namestring filename)))
@@ -91,7 +91,7 @@
   (zerop (fileutils___read_permission_p
 	  (expanded-tilde-namestring filename))))
 
-(defun write-permission? (filename)
+(defun write-permission? (&optional (filename *default-pathname-defaults*))
   (zerop (fileutils___write_permission_p
 	  (expanded-tilde-namestring filename))))
 

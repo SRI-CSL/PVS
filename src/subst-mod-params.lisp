@@ -973,12 +973,19 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	      (progn (assert (resolution (cdr entry)))
 		     (cdr entry))
 	      ;; Binding could be an actual or mapping rhs
-	      (let ((name (expr (cdr entry))))
-		(break "subst-mod-params* modname")
-		(mk-modname (id name)
-		  (actuals name)
-		  (library name)
-		  (mappings name))))
+	      (let* ((name (expr (cdr entry)))
+		     (reses (remove-if-not #'(lambda (r)
+					       (module? (declaration r)))
+			      (resolutions name))))
+		(cond ((null reses)
+		       (break "subst-mod-params* modname")
+		       (mk-modname (id name)
+			 (actuals name)
+			 (library name)
+			 (mappings name)))
+		      ((cdr reses)
+		       (break "subst-mod-params* modname multiple reses?"))
+		      (t (module-instance (car reses))))))
 	  (if (and (eq id (id modinst))
 		   (null actuals)
 		   (null mappings)
@@ -1380,11 +1387,13 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		       ;; may have to add a library to mi.  If (module
 		       ;; decl) is a library theory, definitely need it,
 		       ;; but how do we know it is the same library?
-		       (let* ((lib-id
-			       (when (lib-datatype-or-theory?
-				      (module decl))
-				 (or (get-library-id (context-path (module decl)))
-				     (pvs-error "Library id not found for ~a" lib-id))))
+		       (let* ((th (module decl))
+			      (lib-id
+			       (when (and (not (from-prelude-library? th))
+					  (lib-datatype-or-theory? th))
+				 (or (get-library-id (context-path th))
+				     (pvs-error "Library id not found for ~a"
+				       (context-path th)))))
 			      (nmi (copy mi :actuals nacts
 					 :dactuals ndacts
 					 :library lib-id)))
@@ -2309,7 +2318,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		     (module decl)
 		     (get-theory modinst)))
 	 (mi (cond ((lib-datatype-or-theory? theory)
-		    (lcopy modinst :library (get-library-id theory)))
+		    (if (library modinst)
+			modinst
+			(lcopy modinst :library (get-library-id theory))))
 		   (theory (lcopy modinst :library nil))
 		   (t modinst)))
 	 (rtype (if type

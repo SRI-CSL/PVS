@@ -24,6 +24,10 @@
 #include <unistd.h>
 #include <errno.h>
 
+/*
+  See access(2) and stat(2) for details
+ */
+
 static struct stat finfo;
 
 int

@@ -485,9 +485,7 @@
 	    (let* ((adecls (all-decls (current-theory)))
 		   (rem (or (memq (current-declaration) adecls)
 			    (and (mapping-lhs? (current-declaration))
-				 (memq (generated-by (current-declaration)) adecls))
-			    (unless *adt*
-			      (break "rem"))))
+				 (memq (generated-by (current-declaration)) adecls))))
 		   (prev (when rem (ldiff adecls rem)))
 		   (thnms (mapcar #'theory-name (remove-if-not #'mod-or-using? prev)))
 		   (imps (mapcan #'(lambda (thname)

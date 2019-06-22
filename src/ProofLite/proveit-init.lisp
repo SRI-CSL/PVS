@@ -263,7 +263,7 @@
 			do (format t "***   ~a: ~a~%"
 				   (car orcl) (cdr orcl)))))
 	      (format t "*** ")
-	      (change-context (probe-file context))
+	      (change-workspace (probe-file context))
 	      (dolist (prelude preludext) (load-prelude-library prelude t))
 	      (when pvsfile (typecheck-file pvsfile nil nil nil t))
 	      (save-context)

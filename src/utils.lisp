@@ -645,7 +645,8 @@ is replaced with replacement."
 				      (let ((len (length (string (id x)))))
 					(and (< idlen len)
 					     (string= id (id x) :end2 idlen))))
-			     (let ((adt (get-theory* id (get-library-id (context-path x)))))
+			     (let ((adt (with-workspace (context-path x)
+					  (get-theory (generated-by x)))))
 			       (assert adt () "Should have found adt")
 			       (pushnew adt theories :test #'eq)))))
 		   (current-using-hash))
@@ -807,7 +808,18 @@ is replaced with replacement."
   (make-pathname :defaults *default-pathname-defaults* :name (string name) :type ext))
 
 (defmethod make-specpath ((name string) &optional (ext "pvs"))
-  (make-pathname :defaults *default-pathname-defaults* :name name :type ext))
+  (let* ((path (parse-namestring name))
+	 (pname (pathname-name path))
+	 (dir (pathname-directory path)))
+    (if dir
+	(let* ((pdir (namestring (make-pathname :directory dir)))
+	       (lib-path (get-library-path pdir)))
+	  (if lib-path
+	      (make-pathname :directory (pathname-directory lib-path)
+			     :name pname :type ext)
+	      (pvs-error "no lib path"
+		(format nil "Could not find lib-path for ~a" pdir))))
+	(make-pathname :defaults *default-pathname-defaults* :name name :type ext))))
 
 (defmethod make-specpath ((name name) &optional (ext "pvs"))
   (make-specpath (id name) ext))
@@ -2773,7 +2785,10 @@ prove itself from the mapped axioms."
 	       (raise-actuals? (print-type x))))))
 
 (defmethod raise-actuals! ((x type-expr))
-  (let ((pt (raise-actuals (print-type x))))
+  (let* ((pt (raise-actuals (print-type x)))
+	 (ppt (if (typep pt '(or null type-name
+			      expr-as-type type-application))
+		  pt (print-type pt))))
     (lcopy (call-next-method) 'print-type pt)))
 
 (defmethod raise-actuals! (x) x)
