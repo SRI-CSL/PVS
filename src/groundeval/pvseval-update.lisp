@@ -61,8 +61,6 @@
 (defvar *destructive?* nil)  ;;tracks if the translation is in the destructive mode
 (defvar *output-vars* nil) ;;
 (defvar *external* nil)
-;;Removed *pvsio2cl-primitives* since PVSio primitives are handled differently (Feb 20 2015) [CM]
-;;(defvar *pvsio2cl-primitives* nil)
 
 (defvar *pvs2cl-decl* nil
   "Tracks the current declaration being compiled, for help in debugging undefined, etc.")
@@ -415,7 +413,8 @@ if called."
     (or (and (eval-info opdecl)
 	     (lisp-function opdecl)) ;;generate code if needed
 	(pvs2cl-datatype operator))
-    (let* ((args (arguments expr))
+    (let* ((args (loop for ar in (argument* expr)
+		       collect ar)) ;; (arguments expr)) Loop takes care of tuples March 19 2015 [CM]
 	   (clargs (pvs2cl_up* args bindings livevars)))
       (if (constructor? operator);;i.e., also a co-constructor
 	  (if (not (eql (length args)(arity operator)))
@@ -1889,10 +1888,10 @@ if called."
 						     as i from 0
 						     collect (list (id ac)
 								   `(svref ,xvar ,i)))
-					     (list (id (car accessors)) xvar))))
+					     (list (list (id (car accessors)) xvar))))) ;; Let requires a list of list (March 17 2015) [CM] 
 			  ;;NSH(2-4-2014): delay co-constructor arguments
 			  (unary-form (when accessors
-					`(lambda (,xvar) (let (,unary-binding)
+					`(lambda (,xvar) (let ,unary-binding
 							   (,constructor-symbol
 							    ,@(loop for ac in accessors
 								    collect (id ac)))))))
