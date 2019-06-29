@@ -141,6 +141,17 @@ BEGIN
   % Formatting text
   format(s:string,t:T):string
 
+  Lisp : TYPE+  
+
+  to_lisp(t:T) : Lisp
+
+  list2listlisp(l:list[T]) : list[Lisp[T]] =
+    map(LAMBDA(t:T): to_lisp(t))(l)
+
+  ;>> : [list[T]->list[Lisp[T]]] = list2listlisp
+
+  {||}(t:T) : Lisp = to_lisp(t)
+
 END stdprog
 
 %% stdglobal.pvs
@@ -170,12 +181,6 @@ BEGIN
 	  pvs2str_lisp(t),
           LAMBDA(e:Exception[void]):"<?>")
 
-  Slisp : TYPE+  
-
-  slisp(l:list[T]) : Slisp
-
-  {||}(l:list[T]) : Slisp = slisp(l)
-
 END stdpvs
 
 %% stdstr.pvs
@@ -184,8 +189,7 @@ END stdpvs
 stdstr: THEORY
 BEGIN
 
-  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
-  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
+  IMPORTING stdmath
 
 % Char from code n
   charcode(n:nat) : string
@@ -212,14 +216,14 @@ BEGIN
   %% Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range
   substr(s:string,i,j:nat):string
 
-  %% Real to string
-  real2str(r:real): string
+  %% Real to string - % r is a real number, n represents the precision 10^-n, and m is the rounding mode 
+  real2str(r:real,n:int,m:RoundingMode) : string
 
   %% Bool to string
   bool2str(b:bool): string =
     IF b THEN "TRUE" ELSE "FALSE" ENDIF
 
-  tostr(r:real): MACRO string = real2str(r)
+  tostr(r:real): MACRO string = real2str(r,val(PRECISION),val(ROUNDING))
   tostr(b:bool): MACRO string = bool2str(b)
 
   %% String to real
@@ -529,67 +533,40 @@ END stdio
 stdmath : THEORY
 BEGIN
 
-  %% sq is available in the theory reals@sq
-  %% div and mod are available through the theories
-  %% ints@div_nat, ints@mod_nat
+  %% The following functions are available in the NASA PVS Library
+  %% div and mod: ints@div_nat and ints@mod_nat
+  %% sq: reals@sq
+  %% sqrt: reals@sqrt
+  %% sin and cos: trig@sincos_def
+  %% tan: trig@trig_basic
+  %% acos: trig@acos
+  %% asin: trig@asin
+  %% atan: trig@atan
+  %% pi: trig@pi_def
+  %% ln, exp, e:lnexp@ln_exp
+  %% sinh, cosh, tanh: lnexp@hyperbolic
 
-%% Math Exceptions
-  MathExceptions : list[ExceptionTag[string]] = 
-   (: NotARealNumber, NotAnInteger :)
+% Math Exceptions
+  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
+  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
 
-  PI                : posreal 
-  SIN(x:real)       : {x:real| -1 <= x and x <= 1}
-  COS(y:real)       : {x:real| -1 <= x and x <= 1}
-  EXP(x:real)       : posreal
+  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
+
+  % Rounding Modes
+  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty} 
+  AwayFromZero : MACRO RoundingMode = TowardsInfnty
+  Ceiling      : MACRO RoundingMode = TowardsPosInfnty
+  Floor        : MACRO RoundingMode = TowardsNegInfnty
+
+  % set(PRECISION,n) sets default precision to 10^(-val(PRECISION)) for computations and printing
+  PRECISION : Global[int,6] 
+
+  % set(ROUNDING,mode) sets default rounding mode for computation and printing
+  ROUNDING  : Global[RoundingMode,TowardsZero]
+
   RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
   NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
-
-  sqrt_lisp(x:nnreal) : nnreal
-  log_lisp(x:posreal) : real
-  atan_lisp(x,y:real) : real
-  asin_lisp(x:real)   : real    
-  acos_lisp(x:real)   : real    
-
-  SQRT(x:real):nnreal =
-    IF x < 0 THEN 
-      throw[nnreal,string](NotARealNumber,"SQRT("+x+")")
-    ELSE sqrt_lisp(x)
-    ENDIF
-
-  LOG(x:real):real =
-    IF x <= 0 THEN 
-      throw[real,string](NotARealNumber,"LOG("+x+")")
-    ELSE log_lisp(x)
-    ENDIF
-
-  TAN(x:real):real =
-    LET d = COS(x) IN
-    IF d = 0 THEN 
-      throw[real,string](NotARealNumber,"TAN("+x+"0)")
-    ELSE
-      SIN(x)/COS(x)
-    ENDIF
-
-  ATAN(y,x:real):real = 
-    IF x=0 AND y= 0 THEN 
-      throw[real,string](NotARealNumber,"ATAN(0,0)")
-    ELSE atan_lisp(y,x)
-    ENDIF
-
-  ASIN(x:real) : real =
-    IF x < -1 OR x > 1 THEN
-      throw[real,string](NotARealNumber,"ASIN("+x+")")
-    ELSE asin_lisp(x)
-    ENDIF
- 
-  ACOS(x:real) : real =
-    IF x < -1 OR x > 1 THEN
-      throw[real,string](NotARealNumber,"ACOS("+x+")")
-    ELSE acos_lisp(x)
-    ENDIF
-
-  BRANDOM: bool =
-    (NRANDOM(2) = 0)
+  BRANDOM           : bool = (NRANDOM(2) = 0)
 
 END stdmath
 
@@ -1079,11 +1056,5 @@ BEGIN
 
   fprintf(f:OStream,s:string): MACRO void =
     fprint(f,format(s,""))
-
-  Blisp : TYPE+  
-
-  blisp(b:bool) : Blisp
-
-  {||}(b:bool) : Blisp = blisp(b)
 
 END stdsys
