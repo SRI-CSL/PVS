@@ -45,7 +45,7 @@
    (lambda (condition stream)
      (format stream
 	 (or (fmt-str condition)
-	     "Hit uninterpreted term ~a during evaluation")
+	     "Hit uninterpreted term ~a during evaluation (pvseval-error)")
        (expr condition)))))
 
 (defun uninterpreted (expr fmt-str)
@@ -116,18 +116,19 @@
 a const-decl, of type 'Global', creates an attachment instance (part of
 PVSio).  Otherwise creates an 'undefined' function, which invokes an error
 if called."
-  (let* ((th    (string (if (declaration? expr)
-			    (id (module expr))
-			    (id (current-theory)))))
-	 (nm    (when (const-decl? expr)
-		  (string (id expr))))
-	 (ptype (when nm (print-type (type expr))))
-	 (nargs (when nm (arity expr))))
-    (if (and nm (= nargs 0) ptype (type-name? ptype)
-	     (eq '|Global| (id ptype)))
+  (let* ((th       (string (if (declaration? expr)
+			       (id (module expr))
+			     (id (current-theory)))))
+	 (nm       (when (const-decl? expr)
+		     (string (id expr))))
+	 (decl     (when nm (declaration expr)))
+	 (decltype (when decl (declared-type decl)))
+	 (nargs    (when nm (arity expr))))
+    (if (and nm (= nargs 0) (type-name? decltype)
+	     (eq '|Global| (id decltype)))
 	(let* ((fname (gentemp "global"))
 	       (mod   (module-instance 
-		       (car (resolutions ptype))))
+		       (car (resolutions decltype))))
 	       (act   (actuals mod))
 	       (doc (format nil "Global mutable variable of type ~a" 
 			    (car act)))
@@ -142,7 +143,7 @@ if called."
       (let* ((fname (gentemp "undefined"))
 	     (msg-fmt
 	      (or message
-		  "Hit uninterpreted term ~a during evaluation"))
+		  "Hit uninterpreted term ~a during evaluation (undefined)"))
 	     (fbody (if (and nargs (> nargs 0))
 			`(defun ,fname (&rest x)
 			   (declare (ignore x))
