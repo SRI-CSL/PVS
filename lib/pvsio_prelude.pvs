@@ -1,4 +1,3 @@
-
 % PVSio support theories
 
 %% stdlang 
@@ -216,14 +215,27 @@ BEGIN
   %% Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range
   substr(s:string,i,j:nat):string
 
-  %% Real to string - % r is a real number, n represents the precision 10^-n, and m is the rounding mode 
-  real2str(r:real,n:int,m:RoundingMode) : string
+  %% Real to string - % r is a real number, precision represents the precision 10^-n, and rounding is the rounding mode 
+  real2decstr(r:real,precision:nat,rounding:RoundingMode) : string
+
+  %% Real to string 
+  real2str(r:real) :string = real2decstr(r,val(PRECISION),val(ROUNDING))
+
+  %% String representing a decimal number to rational number
+  decstr2rat(s:string) : real
+
+  %% Rational number to string representing decimal number
+  rat2decstr(r:real,precision:nat) : string
+
+  %% Rational number to string 
+  rat2str(r:real) : string =
+    rat2decstr(r,val(PRECISION))
 
   %% Bool to string
   bool2str(b:bool): string =
     IF b THEN "TRUE" ELSE "FALSE" ENDIF
 
-  tostr(r:real): MACRO string = real2str(r,val(PRECISION),val(ROUNDING))
+  tostr(r:real): MACRO string = real2str(r)
   tostr(b:bool): MACRO string = bool2str(b)
 
   %% String to real
@@ -559,7 +571,7 @@ BEGIN
   Floor        : MACRO RoundingMode = TowardsNegInfnty
 
   % set(PRECISION,n) sets default precision to 10^(-val(PRECISION)) for computations and printing
-  PRECISION : Global[int,6] 
+  PRECISION : Global[nat,6] 
 
   % set(ROUNDING,mode) sets default rounding mode for computation and printing
   ROUNDING  : Global[RoundingMode,TowardsZero]

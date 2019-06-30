@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-7.0.0 (06/20/19)
+;; Release: PVSio-7.0.0 (06/30/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -13,6 +13,8 @@
 ;;
 ;; Semantic attachments for PVSio standard library
 ;;
+
+(decimals:define-decimal-formatter d (:round-magnitude -6))
 
 (defun stdstr-attachments ()
 
@@ -73,10 +75,20 @@
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
- (defattach |real2str| (r n m)
-   "Converts real number r to string, where the integer n represents the precision 10^-n, and m is the rounding mode
+ (defattach |real2decstr| (r precision rounding)
+   "Converts real number r to string, where the integer precision represents the precision 10^-precision, and rounding is the rounding mode
     (0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
-   (ratio2decimal r (or (= m 3) (and (= m 1) (> r 0)) (and (= m 0) (< r 0))) n))
+   (ratio2decimal r (or (= rounding 3) (and (= rounding 1) (> r 0)) (and (= rounding 0) (< r 0))) precision))
+
+(defattach |decstr2rat| (s)
+  "Converts string representing a decimal number to rational number"
+  (decimals:parse-decimal-number s))
+
+(defattach |rat2decstr| (r precision)
+  "Converts rational number to string representing decimal number using precision"
+  (multiple-value-bind (s x)
+      (decimals:format-decimal-number (rational r) :round-magnitude (- precision))
+    s))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
