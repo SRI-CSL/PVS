@@ -82,14 +82,15 @@
     (when (and (null res)
 	       args
 	       (eq k 'expr))
-      ;; argument-conversion may add to the types of args, and if it returns
-      ;; a resolution we are done, otherwise try function-conversion.
-      (setq res (let ((ares (argument-conversion name args)))
+      ;; argument-conversion may add to the possible types of some of the args, which 
+      ;; are the types with the :from-conversion slot set to a
+      ;; conversion-result instance.  It returns a resolution if some argument had it's types
+      ;; so augmented.  otherwise try function-conversion.
+      (setq res (let ((ares (append (argument-conversion name args)
+				    (argument-k-conversion name args))))
 		  (remove-duplicates
-		      (if ares
-			  (append ares (argument-k-conversion name args))
-			  (or (function-conversion name args)
-			      (argument-k-conversion name args)))
+		      (or ares
+			  (function-conversion name args))
 		    :test #'tc-eq))))
     (when (memq name *recursive-calls-without-enough-args*)
       (dolist (r res)
@@ -132,7 +133,14 @@
 (defmethod typecheck* ((name modname) expected kind argument)
   (declare (ignore expected))
   (cond ((resolution name)
-	 (unless (eq *generate-tccs* 'none)
+	 (unless (or (null (actuals name))
+		     (every #'typed? (actuals name)))
+	   (typecheck-actuals name))
+	 (when (mappings name)
+	   (typecheck-mappings (mappings name) name))
+	 (unless (or (eq *generate-tccs* 'none)
+		     (null (actuals name))
+		     (null (mappings name)))
 	   (check-type-actuals-and-maps name))
 	 name)
 	((not (or (null kind) (eq kind 'module)))
@@ -551,8 +559,8 @@
 		(mapcar #'(lambda (thinst)
 			    (if mappings
 				(make-resolution-with-mappings
-				 decl thinst mappings)
-				(make-resolution decl thinst)))
+				 decl (copy-all thinst) mappings)
+				(make-resolution decl (copy-all thinst))))
 		  thinsts)))
 	  (resolve-with-actuals decl acts dacts dth args mappings)))))
 
