@@ -75,6 +75,10 @@
 				 disables)
 	  do (extra-disable-oracle (intern name :pvs)))))
 
+(defun extra-disable-all-oracles ()
+    (loop for name in (extra-list-oracle-names t)
+	  do (extra-disable-oracle (intern name :pvs))))
+
 (defun extra-list-oracles (&optional (enabled t))
   (sort 
    (loop for orcl being the hash-values of 

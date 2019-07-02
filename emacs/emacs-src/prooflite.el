@@ -217,3 +217,40 @@ Enable external oracle."
   (pvs-send-and-wait (format "(extra-enable-oracle '%s)" oracle)
 		     nil nil 'dont-care))
 
+(defpvs disable-all-oracles prove ()
+  "Disable all oracles. 
+
+Disable all external oracles."
+  (interactive)
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send-and-wait "(extra-disable-all-oracles)"
+		     nil nil 'dont-care))
+
+(defpvs list-enabled-oracles prove ()
+  "List enabled oracles. 
+
+List enabled oracles."
+  (interactive)
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (let ((oracles (pvs-send-and-wait  
+		  "(extra-list-oracle-names t)"
+		  nil nil 'list)))
+    (pvs-message "Enabled oracles: %s" oracles)))
+
+(defpvs list-disabled-oracles prove ()
+  "List disabled oracles. 
+
+List disabled oracles."
+  (interactive)
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (let ((oracles (pvs-send-and-wait  
+		  "(extra-list-oracle-names nil)"
+		  nil nil 'list)))
+    (pvs-message "Disabled oracles: %s" oracles)))
+
