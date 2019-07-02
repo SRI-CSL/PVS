@@ -50,10 +50,13 @@
 
 ;;; Called by typecheck* (name)
 (defun argument-k-conversion (name arguments)
-  (let ((reses (remove-if-not #'(lambda (r)
-				  (typep (find-supertype (type r)) 'funtype))
-		 (resolve name 'expr nil))))
-    (unless (member "K_conversion" *ignored-conversions* :test #'string=)
+  "If K_conversion is in the (current-conversions), then check each argument
+for possible application, to make it match the corresponding type in one of
+the possible types of name."
+  (when (member '|K_conversion| (current-conversions) :key #'id)
+    (let ((reses (remove-if-not #'(lambda (r)
+				    (typep (find-supertype (type r)) 'funtype))
+		   (resolve name 'expr nil))))
       (let ((*only-use-conversions* (list "K_conversion")))
 	(when (argument-conversions (mapcar #'type (reverse reses)) arguments)
 	  (reverse (resolve name 'expr arguments)))))))
