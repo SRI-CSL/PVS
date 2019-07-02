@@ -861,7 +861,7 @@ not a dir: if a valid id
 		   (pathname (namestring libref))
 		   (t libref)))
 	 (ws (find libref *all-workspace-sessions* :key #'path :test #'equal))
-	 (dirp (if ws libref (directory-p libstr)))		       ; directory exists
+	 (dirp (if ws libref (directory-p libstr)))    ; directory exists
 	 (lib-path (when dirp (merge-pathnames dirp))) ; get the absolute path
 	 (nlibstr (if (char= (char libstr (1- (length libstr))) #\/)
 		      (subseq libstr 0 (1- (length libstr)))
@@ -874,8 +874,7 @@ not a dir: if a valid id
 		  (values lib-path nil :prelude))
 		 ((equal lib-path (path *workspace-session*))
 		  (values lib-path nil :current-workspace))
-		 ((some #'(lambda (subdir) (file-equal subdir dirp))
-			(directory (path *workspace-session*)))
+		 ((rassoc pid (current-subdir-alist))
 		  (values lib-path pid :subdirectory))
 		 ((rassoc dirp (pvs-library-alist) :test #'equal)
 		  (let ((lib-elt (rassoc dirp (pvs-library-alist) :test #'equal)))
