@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-7.0.0 (05/13/19)
+;; Release: Extrategies-7.0.0 (06/30/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -15,6 +15,7 @@
 (defparameter *extrategies* "
 %  Printing and commenting: printf, commentf
 %  Defining tactics, i.e., local strategies: deftactic
+%  Defining oracles, i.e., trusted proof rules: deforacle 
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
 %    name-label*, name-replace*, discriminate
 %  Copying formulas: copy*, protect, with-focus-on, with-focus-on@
@@ -84,6 +85,18 @@
 
 (defun extra-list-oracle-names (&optional (enabled t))
   (mapcar #'car (extra-list-oracles enabled)))
+
+(defmacro deforacle (name args step doc format)
+  (let* ((info     (format nil "Oracle ~a. Try (help ~a)" name name))
+	 (dismsg   (format nil "~a has been disabled" name))
+	 (docmsg   (format nil "[Trusted Oracle] ~a" doc)))
+  `(progn
+     (extra-trust-oracle ',name ,info)
+     (defrule ,name ,args
+       (if (is-disabled-oracle ',name)
+	   (printf ,dismsg)
+	 ,step)
+       ,docmsg ,format))))
 
 ;; Load file from library
 (defun extra-load-from-lib (lib filename)

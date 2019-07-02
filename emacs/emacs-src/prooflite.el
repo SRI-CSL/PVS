@@ -1,6 +1,6 @@
 ;;
 ;; prooflite.el
-;; Release: ProofLite-6.0 (12/12/12)
+;; Release: ProofLite-7.0 (06/30/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -183,5 +183,37 @@ in the \"ProofLite\" buffer."
 (define-key pvs-mode-map "\C-c2p" 'insert-prooflite-script)
 (define-key pvs-mode-map "\C-cdp" 'display-prooflite-script)
 
+;; Support for enable/disable oracles
 
+(defun complete-oracle-name (msg enabled)
+  (let* ((oracles (pvs-send-and-wait  
+		   (format "(extra-list-oracle-names %s)" enabled)
+		   nil nil 'list))
+	 (oracle  (completing-read msg
+				   (mapcar 'list oracles) nil t)))
+    (if (equal oracle "")
+	(error "Must provide a oracle name")
+      (list oracle))))
+
+(defpvs disable-oracle prove (oracle)
+  "Disable oracle. 
+
+Disable external oracle."
+  (interactive (complete-oracle-name "Disable external oracle: " t))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send-and-wait (format "(extra-disable-oracle '%s)" oracle)
+		     nil nil 'dont-care))
+
+(defpvs enable-oracle prove (oracle)
+  "Enable oracle. 
+
+Enable external oracle."
+  (interactive (complete-oracle-name "Enable external oracle: " nil))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send-and-wait (format "(extra-enable-oracle '%s)" oracle)
+		     nil nil 'dont-care))
 
