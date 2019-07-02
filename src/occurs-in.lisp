@@ -292,11 +292,16 @@
       (occurs-in obj (expression ass))))
 
 (defmethod occurs-in ((decl bind-decl) (bd bind-decl))
-  (or (when (eq decl bd) bd)
-      (occurs-in decl (type bd))))
+  (car (member decl (freevars bd) :key #'declaration)))
 
 (defmethod occurs-in (obj (bd bind-decl))
   (occurs-in obj (type bd)))
+
+(defmethod occurs-in ((bd bind-decl) (obj adtdecl))
+  (car (member bd (freevars (type obj)) :key #'declaration)))
+
+(defmethod occurs-in ((bd bind-decl) obj)
+  (car (member bd (freevars obj) :key #'declaration)))
 
 (defmethod occurs-in ((obj name) (nm name))
   (or (when (tc-eq obj nm) nm)
