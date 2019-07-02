@@ -15,9 +15,10 @@
 ;;; Useful when a macro is modified.
 (defun source-files-using-macro (mname)
   (mapcar #'pathname-name
-    (remove-duplicates
-	(mapcar #'excl:source-file
-	  (xref:get-relation :macro-calls :wild 'with-current-decl)))))
+    (remove-if-not #'pathnamep
+      (remove-duplicates
+	  (mapcar #'excl:source-file
+	    (xref:get-relation :macro-calls :wild mname))))))
 
 ;;; To run the Allegro profiler:
 ;;;   (prof:with-profiling () <body>)
@@ -121,14 +122,14 @@
 
 (defparameter *ignored-special-variables*
   '(*integer* *real* *posint* *naturalnumber* *number_field* *even_int*
-	      *number* *odd_int* *boolean* *false* *true* *pvs-directories*
-	      *rational-pred* *boolops* *integer-pred* *pvs-operators*
-	      *infix-operators* *infixlist* pr-outfile *strat-file-dates*
-	      *fast-make-instance-makers* PVS-ALL-OPERATORS-LIST
-	      *prelude-libraries-files* *slot-info* *last-end-value*
-	      *expr-prec-info* PVS-KEYWORD-LIST *prelude-libraries*
-	      whitespace-chars *prelude-library-context* *load-prelude-hook*
-	      PVS-RESTRICTED-CHARS ))
+    *number* *odd_int* *boolean* *false* *true* *pvs-directories*
+    *rational-pred* *boolops* *integer-pred* *pvs-operators*
+    *infix-operators* *infixlist* pr-outfile *strat-file-dates*
+    *fast-make-instance-makers* PVS-ALL-OPERATORS-LIST
+    *slot-info* *last-end-value*
+    *expr-prec-info* PVS-KEYWORD-LIST
+    whitespace-chars *load-prelude-hook*
+    PVS-RESTRICTED-CHARS))
 	      
 
 (defun check-special-variables ()
