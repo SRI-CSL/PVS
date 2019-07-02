@@ -677,6 +677,10 @@ declaration-entry has slots
   (and (not (equal (context-path mod) *default-pathname-defaults*))
        (not (from-prelude? mod))))
 
+(defmethod lib-datatype-or-theory? ((mod inline-recursive-type))
+  (assert (adt-theory mod))
+  (lib-datatype-or-theory? (adt-theory mod)))
+
 (defmethod lib-datatype-or-theory? (obj)
   (declare (ignore obj))
   nil)
