@@ -1034,15 +1034,13 @@
 (defun usedby-proofs (bufname origin line &optional libpath)
   (let ((udecl (get-decl-at-origin bufname origin line libpath)))
     (when udecl
-      (let ((decls (declaration-used-by-proofs-of udecl)))
-	(if decls
-	    (let* ((flist (mapcar #'(lambda (d)
-				      (format-decl-list d (ptype-of d) (module d)))
-			    decls))
-		   (json:*lisp-identifier-name-to-json* #'identity)
-		   (fdecl-string (json:encode-json-to-string flist)))
-	      fdecl-string)
-	    (pvs-message "No proofs use ~a" (id udecl)))))))
+      (let* ((decls (declaration-used-by-proofs-of udecl))
+	     (flist (mapcar #'(lambda (d)
+				(json-decl-list d (ptype-of d) (module d)))
+		      decls))
+	     (json:*lisp-identifier-name-to-json* #'identity)
+	     (fdecl-string (json:encode-json-to-string (or flist #()))))
+	fdecl-string))))
 
 (defun get-decl-at-origin (bufname origin line &optional libpath)
   (let ((bname (if (stringp bufname) (intern bufname :pvs) bufname)))
@@ -1410,7 +1408,7 @@
     (unless (some #'null fdecls)
       (if unused
 	  (let* ((flist (mapcar #'(lambda (d)
-				    (format-decl-list
+				    (json-decl-list
 				     d (ptype-of d) (module d)))
 			  unused))
 		 (json:*lisp-identifier-name-to-json* #'identity)
@@ -1441,7 +1439,7 @@
       (let ((decls (unused-by-proof-of udecl)))
 	(if decls
 	    (let* ((flist (mapcar #'(lambda (d)
-				      (format-decl-list
+				      (json-decl-list
 				       d (ptype-of d) (module d)))
 			    decls))
 		   (json:*lisp-identifier-name-to-json* #'identity)
