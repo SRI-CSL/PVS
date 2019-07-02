@@ -38,7 +38,7 @@
 (defvar *bin-theories-set*)
 
 (defun save-theory (theory)
-  (format t "~%Saving ~a" (binpath-id theory))
+  (pvs-log "~%Saving ~a" (binpath-id theory))
   (store-object-to-file (cons *binfile-version* theory)
 			(make-binpath (binpath-id theory))))
 
@@ -107,7 +107,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		   (remhash thid (current-pvs-theories)))
 		 nil))))))
 
-(defun list-of-modules ()
+(defun typechecked-modules ()
   (let ((theory-list nil))
     (maphash #'(lambda (id mod)
 		 (declare (ignore id))
@@ -115,26 +115,6 @@ instances, e.g., other declarations within the theory, or self-references."
 		   (push mod theory-list)))
 	     (current-pvs-theories))
     theory-list))
-
-(defvar *stored-mod-depend* (make-hash-table :test #'eq))
-
-(defun update-stored-mod-depend ()
-  (clrhash *stored-mod-depend*)
-  (dolist (mod (list-of-modules))
-    (setf (gethash (id mod) *stored-mod-depend*)
-	  (nconc (when (typep mod '(and datatype
-					(not enumtype)
-					(not inline-recursive-type)))
-		   (mapcar #'id (adt-generated-theories mod)))
-		 (mapcan #'(lambda (m)
-			     (if (typep m '(and datatype
-						(not enumtype)
-						(not inline-recursive-type)))
-				 (nconc (mapcar #'id
-					  (adt-generated-theories m))
-					(list (id m)))
-				 (list (id m))))
-		   (all-importings mod))))))
 
 
 ;; While we're saving a particular theory, we don't want to save any
