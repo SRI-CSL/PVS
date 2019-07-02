@@ -125,18 +125,17 @@ behavior:
 	    ;;                     -> adt-expand-positive-subtypes!
 	    (not (eq (print-type nte) (print-type te))))
 	nte
-	(copy nte
-	  :print-type (let* ((*dont-expand-adt-subtypes* t)
-			     (npt (gensubst* (print-type te) substfn testfn)))
-			#+pvsdebug
-			(assert (typep (print-type te)
-				       '(or null type-name expr-as-type
-					 type-application)))
-			#+pvsdebug
-			(assert (typep npt
-				       '(or null type-name expr-as-type
-					 type-application)))
-			npt)))))
+	(let* ((*dont-expand-adt-subtypes* t)
+	       (npt (gensubst* (print-type te) substfn testfn)))
+	  ;; Note that npt could come from the *gensubst-cache*
+	  ;;#+pvsdebug
+	  (assert (typep (print-type te)
+			 '(or null type-name expr-as-type
+			   type-application)))
+	  (if (typep npt '(or null type-name
+			   expr-as-type type-application))
+	      (copy nte :print-type npt)
+	      (copy nte :print-type (print-type npt)))))))
 
 (defmethod gensubst* ((list list) substfn testfn)
   (let ((nlist (gensubst-list list substfn testfn nil)))
@@ -241,6 +240,20 @@ behavior:
 	(pred (gensubst* (predicate te) substfn testfn)))
     (lcopy te
       'supertype stype
+      'predicate (if (or *parsing-or-unparsing*
+			 *visible-only*
+			 (eq pred (predicate te)))
+		     pred
+		     (pseudo-normalize pred)))))
+
+(defmethod gensubst* ((te datatype-subtype) substfn testfn)
+  (let ((stype (gensubst* (supertype te) substfn testfn))
+	(dtype (let ((*dont-expand-adt-subtypes* t))
+		 (gensubst* (declared-type te) substfn testfn)))
+	(pred (gensubst* (predicate te) substfn testfn)))
+    (lcopy te
+      'supertype stype
+      'declared-type dtype
       'predicate (if (or *parsing-or-unparsing*
 			 *visible-only*
 			 (eq pred (predicate te)))

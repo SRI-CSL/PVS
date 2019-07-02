@@ -159,11 +159,6 @@
 	  (pushnew pf free-parameters :test #'eq))))
     (union free-parameters frees :test #'eq)))
 
-(defmethod free-params* ((texpr dep-binding) frees)
-  (with-slots (type) texpr
-    (let ((tfrees (free-params* type nil)))
-      (union tfrees frees :test #'eq))))
-
 (defmethod free-parameters ((texpr dep-binding))
   (free-parameters (type texpr)))
     
@@ -480,11 +475,12 @@
   (free-params* type frees))
 
 (defmethod free-params-res ((decl type-decl) (mi modname) type frees)
-  (declare (ignore type)) ;; Can't go down type - recurses
   (with-slots (actuals dactuals) mi
+    (declare (ignore type)) ;; Can't go down type - recurses
     (if (or actuals dactuals)
 	(let* ((afrees (free-params-acts actuals mi))
 	       (dafrees (free-params-dacts dactuals))
+	       ;; Can't go down type - recurses
 	       (ufrees (union dafrees (union afrees frees :test #'eq) :test #'eq)))
 	  ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
 	  ufrees)
@@ -504,7 +500,7 @@
   (with-slots (actuals dactuals) mi
     (let* ((afrees (if actuals
 		       (free-params-acts actuals mi)
-		       (free-params-from-theory mi decl)))
+		       (free-params-from-theory decl)))
 	   (dafrees (if dactuals
 			(free-params-dacts dactuals)
 			(free-params-from-decl decl)))
@@ -517,7 +513,7 @@
       ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
       ufrees)))
 
-(defun free-params-from-theory (mi decl)
+(defun free-params-from-theory (decl)
   (let ((theory (if (typep decl '(and recursive-type
 				  (not inline-recursive-type)))
 		    decl
