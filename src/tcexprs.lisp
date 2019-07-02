@@ -1496,13 +1496,13 @@ field-decls, etc."
 				    (mapcar #'(lambda (x) (cons x nil))
 				      (formals-sans-usings th)))))
 	    (when (every #'cdr bindings)
-	      (setq srange
-		    (subst-mod-params
-		     srange
-		     (mk-modname (id th)
-		       (mapcar #'(lambda (a) (mk-res-actual (cdr a) th))
-			 bindings))
-		     th)))))
+	      (let* ((thinst (mk-modname (id th)
+			       (mapcar #'(lambda (a) (mk-res-actual (cdr a) th))
+				 bindings)))
+		     (res (mk-resolution th thinst nil)))
+		(setf (resolutions thinst) (list res))
+		(setq srange
+		      (subst-mod-params srange thinst th))))))
 	srange)))
 
 (defmethod application-range-type (arg (optype subtype))
@@ -1637,10 +1637,11 @@ field-decls, etc."
       (unless (fully-instantiated? type)
 	(type-error (car bindings)
 	  "Could not determine the full theory instance"))
-      (typecheck-let-bindings* (cdr bindings) arg (1+ anum)
-			       (if (typep dtype 'dep-binding)
-				   (acons dtype bd substs)
-				   substs)))))
+      (let ((*bound-variables* (cons bd *bound-variables*)))
+	(typecheck-let-bindings* (cdr bindings) arg (1+ anum)
+				 (if (typep dtype 'dep-binding)
+				     (acons dtype bd substs)
+				     substs))))))
 
 (defun get-let-binding-type (bd bindings arg anum)
   (if (declared-type bd)
