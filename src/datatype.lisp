@@ -91,8 +91,8 @@ generated")
 				*prelude*
 				(current-pvs-theories)))
 	     *current-theory*)
-       ,@forms
        (setf (generated-by *current-theory*) (id ,vadt))
+       ,@forms
        (push 'typechecked (status *current-theory*))
        (generate-xref *current-theory*)
        (maphash #'(lambda (id decls)
@@ -244,6 +244,11 @@ generated")
 	      (namestring adt-path) condition)
 	    (pvs-message "Wrote pvs file ~a" adt-file)))
       (chmod "a-w" (namestring adt-path)))
+    ;; (assert (and #+allegro (file-exists-p adt-path)
+    ;; 		 #-allegro (probe-file adt-path)
+    ;; 		 (get-context-file-entry (filename adt))
+    ;; 		 (equal (ce-write-date (get-context-file-entry (filename adt)))
+    ;; 			(file-write-time (make-specpath (filename adt))))))
     (let ((ntheories (parse :file adt-path)))
       (copy-lex adt-theories ntheories t)
       (assert (every #'place (theory (car adt-theories)))))
@@ -273,7 +278,12 @@ generated")
       (cond (ce2
 	     (setf (ce-write-date ce2) fdate)
 	     (setf (pvs-context-changed *workspace-session*) t))
-	    (t (update-context adt-file))))))
+	    (t (update-context adt-file))))
+    ;; (assert (let ((ce (get-context-file-entry adt-file)))
+    ;; 	      (and ce (ce-write-date ce) (= (ce-write-date ce)
+    ;; 					    (file-write-time adt-path)))))
+    ))
+		   
 
 
 (defun adt-generated-theories (adt)
