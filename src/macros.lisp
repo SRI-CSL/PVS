@@ -521,10 +521,12 @@ obj may be of type:
                   otherwise uses the main generated theory
   importing: same as a declaration
   :prelude uses the prelude context."
-  `(let ((*current-context* (if (eq ,obj :prelude)
-				*prelude-context* (context ,obj)))
-	 (*generate-tccs* 'all))
-     ,@body))
+  (let ((eobj (gentemp)))
+    `(let* ((,eobj ,obj)
+	    (*current-context* (if (eq ,eobj :prelude)
+				  *prelude-context* (context ,eobj)))
+	    (*generate-tccs* 'all))
+       ,@body)))
 
 (defmacro with-current-theory (theory &rest body)
   (let ((cth (gensym)))
