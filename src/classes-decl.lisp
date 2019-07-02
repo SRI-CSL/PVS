@@ -1041,6 +1041,9 @@ restored, the TCCs are checked")
 		   :documentation
 		   "the context that includes the prelude and all prelude-libraries")
   (lisp-files :initform nil :documentation "list of loaded lisp-files")
+  (subdir-alist :initform :unbound
+		:documentation "alist of subdirectories of this workspace to ids,
+                                to cache the information for speed.")
   (pvs-context :initform nil :documentation "the contents of .pvscontext")
   (pvs-context-changed :initform nil
 		       :documentation "if t, .pvscontext needs to be saved")
