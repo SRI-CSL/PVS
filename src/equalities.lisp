@@ -1641,8 +1641,8 @@
   (assert (eq (id aname) (id ename)))
   #+pvsdebug
   (assert (tc-eq (mappings aname) (mappings ename)))
-  (when (or (resolution aname) (resolution ename))
-    (break "Deal with resolutions"))
+  ;; (when (or (resolution aname) (resolution ename))
+  ;;   (break "Deal with resolutions"))
   (let* ((a1 (actuals aname))
 	 (a2 (actuals ename))
 	 (da1 (dactuals aname))
@@ -2573,8 +2573,10 @@
 	    (t (call-next-method))))))
 
 (defmethod same-free-parameters? ((t1 type-expr) (t2 type-expr))
-  (let ((frees1 (free-params t1))
-	(frees2 (free-params t2)))
+  (let ((frees1 (remove-if-not #'(lambda (fp) (occurs-in fp t1))
+		  (free-params t1)))
+	(frees2 (remove-if-not #'(lambda (fp) (occurs-in fp t2))
+		  (free-params t2))))
     (and (length= frees1 frees2)
 	 (every #'(lambda (f1) (memq f1 frees2)) frees1))))
 
