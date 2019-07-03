@@ -1,6 +1,6 @@
 ;;
 ;; eval.lisp
-;; Release: PVSio-7.0.0 (06/20/19)
+;; Release: PVSio-7.0.0 (06/30/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -53,7 +53,7 @@
       (groundeval-error (condition) (when *eval-verbose* (format t "~%~a" condition)))
       (pvsio-inprover (condition) (format t "~%error2: ~a" condition)))))
 
-(defrule eval-expr (expr &optional safe? (auto? t) quiet? timing?)
+(deforacle eval-expr (expr &optional safe? (auto? t) quiet? timing?)
   (let ((e (extra-get-expr expr)))
     (when e
 	(let ((result (evalexpr e safe? timing?)))
@@ -63,10 +63,11 @@
 	      (let ((casexpr (format nil "(~a) = ~a" e result)))
 		(with-fresh-labels
 		 ((!evx))
-		 (trust *PVSGroundEvaluator*
-			(discriminate (case casexpr) !evx)
-			((skip) !
-			 (when auto? (eval-formula !evx safe? quiet?)))))))))))
+		 (trust-branch!
+		  eval-expr
+		  (discriminate (case casexpr) !evx)
+		  ((skip) !
+		   (when auto? (eval-formula !evx safe? quiet?)))))))))))
   "[PVSio] Adds the hypothesis expr=eval(EXPR) to the current goal,
 where eval(EXPR) is the ground evaluation of EXPR. If SAFE? is t and
 EXPR generates TCCs, the expression is not evaluated. Otherwise, TCCs
@@ -77,9 +78,9 @@ is nil, the strategy may not terminate properly in the presence of
 unproven TCCs. When QUIET? is t, the strategy fails silently. When
 TIMING? is t, strategy prints timing information of the ground
 evaluation."
-  "Evaluating expression ~a in the current sequent")
+  "Evaluating expression ~a in the current sequent" t)
 
-(defrule eval-formula (&optional (fnum 1) safe? quiet? timing?)
+(deforacle eval-formula (&optional (fnum 1) safe? quiet? timing?)
   (let ((fexpr (extra-get-seqf fnum)))
     (when fexpr
       (let ((expr   (formula fexpr))
@@ -87,9 +88,10 @@ evaluation."
 	(if (stringp result)
 	    (unless quiet? (printf "Error: ~a~%" result))
 	  (when result 
-	    (trust *PVSGroundEvaluator*
-		   (case result)
-		   (! (skip))))))))
+	    (trust-branch!
+	     eval-formula
+	     (case result)
+	     (! (skip))))))))
   "[PVSio] Evaluates the formula FNUM in Common Lisp and adds the
 result to the antecedent of the current goal. If SAFE? is t and FNUM
 generates TCCs, the expression is not evaluated. The strategy is safe
@@ -98,7 +100,7 @@ evaluated. However, if SAFE? is nil, the strategy may not terminate
 properly in the presence of unproven TCCs.  When QUIET? is t, the
 strategy fails silently. When TIMING? is t, strategy prints timing
 information of the ground evaluation."
-  "Evaluating formula ~a in the current sequent. ")
+  "Evaluating formula ~a in the current sequent. " t)
 
 (defrule eval (expr &optional safe? quiet? timing?)
   (let ((e (extra-get-expr expr)))

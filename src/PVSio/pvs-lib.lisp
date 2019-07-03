@@ -1,6 +1,6 @@
 ;;
 ;; pvs-lib.lisp
-;; Release: PVSio-7.0.0 (06/20/19)
+;; Release: PVSio-7.0.0 (06/30/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -17,7 +17,7 @@
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "PVSio-7.0.0 (06/20/19)")
+(defparameter *pvsio-version* "PVSio-7.0.0 (06/30/19)")
 (defparameter *pvsio-imported* nil)
 (defparameter *pvsio-update-files* (make-hash-table :test #'equal))
 
