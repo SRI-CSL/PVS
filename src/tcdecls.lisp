@@ -114,7 +114,8 @@
 		      (setf (typecheck-time decl) (realtime-since stime))
 		      (tcdebug " - ~d msec" (typecheck-time decl)))
 		    (setf (typechecked? decl) t)
-		    (put-decl decl)
+		    (unless (decl-formal? decl)
+		      (put-decl decl))
 		    (remove-pseudo-normalize-freevar-entries))
 	       (unless (or *loading-prelude*
 			   (typechecked? decl))
@@ -216,16 +217,20 @@
   (when (decl-formals decl)
     (let* ((dfmls (new-decl-formals* decl))
 	   (dacts (mk-dactuals dfmls))
-	   (thinst (mk-modname (id (or (module decl) (current-theory)))
-		     nil nil nil dacts decl)))
+	   (th (or (module decl) (current-theory)))
+	   (thinst (mk-modname (id th) nil nil nil dacts decl))
+	   (res (mk-resolution th thinst nil)))
+      (setf (resolutions thinst) (list res))
       (values dfmls dacts thinst))))
 
 (defmethod new-decl-formals ((decl mapping-lhs))
   (when (decl-formals decl)
     (let* ((dfmls (new-decl-formals* decl))
 	   (dacts (mk-dactuals dfmls))
-	   (thinst (mk-modname (id (or (module decl) (current-theory)))
-		     nil nil nil dacts)))
+	   (th (or (module decl) (current-theory)))
+	   (thinst (mk-modname (id th) nil nil nil dacts))
+	   (res (mk-resolution th thinst nil)))
+      (setf (resolutions thinst) (list res))
       (values dfmls dacts thinst))))
 
 (defmethod new-decl-formals ((imp importing))
@@ -240,7 +245,8 @@
       (new-decl-formals**
        (cdr dfmls)
        (with-added-decls nfmls
-	 (cons (new-decl-formal (car dfmls)) nfmls)))))
+	 (let ((nfml (new-decl-formal (car dfmls))))
+	   (cons nfml nfmls))))))
 
 (defmethod new-decl-formal ((fml decl-formal-type) &optional id)
   (let ((nfml (copy fml
@@ -250,6 +256,7 @@
 		'type nil
 		'type-value nil
 		'associated-decl nil)))
+    ;; (typecheck-decl nfml)
     (typecheck* nfml nil nil nil)
     nfml))
 
@@ -429,6 +436,9 @@
   (if tgt-theory
       (let ((*current-context* (copy-context *current-context*)))
 	(typecheck-mappings (mappings theory-name) theory-name)
+	(unless (resolution tgt-name)
+	  (setf (resolutions tgt-name)
+		(list (make-resolution tgt-theory tgt-name))))
 	(add-to-using tgt-name tgt-theory)
 	(determine-implicit-mappings*
 	 (interpretable-declarations theory)
@@ -475,7 +485,7 @@
 	  (t (mk-mapping
 	      (mk-name (id decl) nil (id (module decl))
 		       (make-resolution decl
-			 (mk-modname (id (module decl)))))
+			 (make-theoryname (module decl))))
 	      (let ((tdecl (or (car tgt-decls) (declaration (car reses)))))
 		(typecase decl
 		  (type-decl (typecheck*
@@ -584,17 +594,13 @@
 (defmethod typecheck* ((decl lib-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   ;;;(check-duplication decl)
-  (multiple-value-bind (ref msg)
-      (get-lib-decl-lib-ref (lib-string decl))
-    (when msg
-      (type-error decl msg))
-    (setf (lib-ref decl) ref)
-    (pushnew (cons (id decl) ref) (library-alist *current-context*)
-	     :test #'equal)
+  (let ((lib-path (get-library-path (lib-string decl))))
+    (unless lib-path
+      (type-error decl "Directory ~a does not exist" (lib-string decl)))
+    (setf (lib-ref decl) (merge-pathnames lib-path))
     (dolist (d (get-declarations (id decl)))
       (when (and (lib-decl? d)
-		 ;; FIXME - Should refine this
-		 (not (string= ref (lib-ref d))))
+		 (not (file-equal (lib-ref decl) (lib-ref d))))
 	(if (eq (module d) (current-theory))
 	    (type-error decl
 	      "Library id ~a declared earlier in this theory (~a) ~
@@ -605,21 +611,6 @@
                with a different path."
 	      (id decl) (id (module d))))))))
 
-(defun get-lib-decl-lib-ref (libstr)
-  (let ((dirstr (if (char= (char libstr (1- (length libstr))) #\/)
-		    libstr
-		    (concatenate 'string libstr "/"))))
-    (cond ((member (char dirstr 0) '(#\/ #\~) :test #'char=)
-	   (if (file-exists-p dirstr)
-	       (get-library-reference dirstr)
-	       (values nil (format nil "Directory ~a does not exist" libstr))))
-	  ((char= (char dirstr 0) #\.)
-	   (if (file-exists-p (merge-pathnames dirstr *pvs-context-path*))
-	       dirstr
-	       (values nil (format nil "Directory ~a does not exist" libstr))))
-	  (t (or (get-library-reference (intern libstr :pvs))
-		 (values nil (format nil
-				 "Directory ~a does not exist" libstr)))))))
 
 ;;; Module declarations
 
@@ -641,6 +632,7 @@
   (unless (fully-instantiated? (modname decl))
     (type-error (modname decl)
       "Actual parameters must be provided for theory declarations"))
+  (assert (resolution (modname decl)))
   (put-decl decl)
   ;;(add-to-using (expanded-theory-name (modname decl)))
   (setf (saved-context decl) (copy-context *current-context*))
@@ -1600,6 +1592,7 @@
       (setf (positive-types decl) nil)))
 
 (defmethod check-positive-types* ((te type-name) fargs decl bindings postypes)
+  (declare (ignore fargs decl bindings))
   postypes)
 
 (defmethod check-positive-types* ((te dep-binding) fargs decl bindings postypes)
