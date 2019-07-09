@@ -3391,6 +3391,13 @@ prove itself from the mapped axioms."
 (defun op-to-id (ref)
   (let ((id (ref-to-id ref)))
     (or (cdr (assoc id *pvs-operators*))
+	(let* ((str (string id))
+	       (idig (digit-char-p (char str 0))))
+	  (when idig 
+	    (let ((nstr (if (= (length str) 1)
+			    (format nil "~r" idig)
+			    (format nil "n~a" id))))
+	      (intern nstr :pvs))))
 	id)))
 
 (defmethod dactuals ((ex number-expr))
