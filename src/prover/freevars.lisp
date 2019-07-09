@@ -83,6 +83,9 @@
 (defmethod freevars* ((imp importing))
   nil)
 
+(defmethod freevars* ((decl adtdecl))
+  (freevars* (type decl)))
+
 (defmethod freevars* :around ((expr expr))
   (with-slots (free-variables) expr
     (if (eq free-variables 'unbound)
