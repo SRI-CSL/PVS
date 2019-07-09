@@ -249,6 +249,9 @@
 	(universal-closure tform)))))
 
 (defun insert-var-into-conditions (vdecl conditions)
+  "Inserts the vdecl into the conditions list, just before the first
+bind-decl in conditions that is free in the type of vdecl, or at the end if
+there is no such bind-decl."
   (let* ((fvars (freevars vdecl))
 	 (elt (find-if #'(lambda (bd)
 			   (and (binding? bd)
@@ -1270,12 +1273,21 @@
 		  (multiple-value-bind (ndecl mappings-alist)
 		      (make-mapped-axiom-tcc-decl axiom defn modinst mod)
 		    ;; ndecl is nil if mapped axion simplifies to *true*
-		    (declare (ignore mappings-alist))
 		    (let ((netype (when ndecl (nonempty-formula-type ndecl))))
 		      (if (and ndecl
 			       (or (null netype)
 				   (possibly-empty-type? netype)))
-			  (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
+			  (let ((needs-interp (find-needs-interpretation
+					       (definition ndecl)
+					       modinst mod mappings-alist)))
+			    (if needs-interp
+				(unless *collecting-tccs*
+				  (pvs-warning
+				      "Axiom ~a is not mapped to a TCC because~%  ~?~% ~
+                                     ~:[is~;are~] not interpreted."
+				    (id axiom) *andusingctl* needs-interp (cdr needs-interp)))
+				(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
+			  ;;(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
 			  (if ndecl
 			      (add-tcc-comment
 			       'mapped-axiom nil modinst
@@ -1372,6 +1384,7 @@
   (collect-lhs-map-axioms (theory-name lhs) thinst theory))
 
 (defmethod collect-lhs-map-axioms ((lhs module) thinst theory)
+  (declare (ignore  thinst theory))
   (remove-if-not #'axiom? (all-decls lhs)))
 
 ;; (defmethod collect-mapping-axioms* ((map mapping) thinst theory)
@@ -1433,6 +1446,31 @@
 		*even_int* *odd_int* *ordinal* *character*)))
   (member name *prelude-interpreted-types*
 	  :test #'tc-eq))
+
+(defun find-needs-interpretation (expr thinst theory mappings-alist)
+  (declare (ignore thinst theory))
+  (let ((needs-interp nil))
+    (mapobject #'(lambda (ex)
+		   (or (member ex needs-interp :test #'tc-eq)
+		       (prelude-interpreted-type ex)
+		       (and (name-expr? ex)
+			    (resolution ex)
+			    (module (declaration ex))
+			    (memq (id (module (declaration ex)))
+				  '(|booleans| |equalities| |if_def|
+				    |number_fields| |reals|
+				    |character_adt|)))
+		       (adt-name-expr? ex)
+		       (adt-type-name? ex)
+		       (let ((decl (when (name? ex) (declaration ex))))
+			 (when (and (declaration? decl)
+				    (not (assq decl mappings-alist))
+				    (not (eq (module decl) (current-theory)))
+				    ;;(eq (module decl) theory)
+				    (interpretable? decl))
+			   (push ex needs-interp)))))
+	       expr)
+    needs-interp))
 
 (defmethod nonempty-formula-type ((decl formula-decl))
   (nonempty-formula-type (definition decl)))
@@ -1666,26 +1704,51 @@
 	       (vbd (or vdecl
 			(make-bind-decl vid (recursive-signature recdecl))))
 	       (vname (make-variable-expr vbd))
-	       (slist (subst-var-for-recs* (append (reverse conditions)
-						   (list expr))
-					   recdecl vname))
-	       (sexpr (car (last slist)))
-	       (nexpr (if (and (not (eq sexpr expr))
-			       (forall-expr? sexpr))
-			  (copy sexpr
-			    'bindings (append (bindings sexpr)
-					      (list (declaration vname))))
-			  sexpr))
-	       (sconds (nreverse (nbutlast slist))))
-	  (values sconds nexpr vbd
-		  (or (not (tc-eq sconds conditions))
-		      (and (not (tc-eq nexpr expr))
-			   (member vbd (freevars nexpr)
-				   :test #'same-declaration)))))
+	       (prelist (append (reverse conditions) (list expr))))
+	  (multiple-value-bind (slist bindings)
+	      (subst-var-for-recs* prelist recdecl vname)
+	    (let* ((sexpr (car (last slist)))
+		   (svbd (substit vbd bindings))
+		   (nexpr (if (and (not (eq sexpr expr))
+				   (forall-expr? sexpr))
+			      (copy sexpr
+				'bindings (append (bindings sexpr)
+						  (list svbd)))
+			      sexpr))
+		   (sconds (reverse (butlast slist))))
+	      (values sconds nexpr svbd
+		      (or (not (tc-eq sconds conditions))
+			  (and (not (tc-eq nexpr expr))
+			       (member svbd (freevars nexpr)
+				       :test #'same-declaration)))))))
 	(values conditions expr))))
 
-(defun subst-var-for-recs* (expr recdecl vname)
-  (gensubst expr
+(defun subst-var-for-recs* (conds recdecl vname &optional nconds bindings)
+  (if (null conds)
+      (values (nreverse nconds) bindings)
+      (typecase (car conds)
+	(bind-decl (let* ((ncond (substit (car conds) bindings))
+			  (nbind (subst-var-for-recs** ncond recdecl vname)))
+		     (subst-var-for-recs* (cdr conds) recdecl vname
+					  (cons nbind nconds)
+					  (if (eq nbind (car conds))
+					      bindings
+					      (acons (car conds) nbind bindings)))))
+	(cons (let* ((bnd (or (cdr (assq (caar conds) bindings))
+			      (caar conds)))
+		     (sexp (substit (cdar conds) bindings))
+		     (ex (subst-var-for-recs** sexp recdecl vname)))
+		(subst-var-for-recs* (cdr conds) recdecl vname
+				     (cons (cons bnd ex) nconds)
+				     bindings)))
+	(t (let* ((sexp (substit (car conds) bindings))
+		  (ex (subst-var-for-recs** sexp recdecl vname)))
+	     (subst-var-for-recs* (cdr conds) recdecl vname
+				  (cons ex nconds)
+				  bindings))))))
+
+(defun subst-var-for-recs** (conditions recdecl vname)
+  (gensubst conditions
     #'(lambda (x) (declare (ignore x)) (copy vname))
     #'(lambda (x) (and (name-expr? x)
 		       (eq (declaration x) recdecl)))))
