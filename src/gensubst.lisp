@@ -676,18 +676,26 @@ behavior:
 	       ))))
 
 (defmethod gensubst* ((name modname) substfn testfn)
-  (let ((nacts (gensubst* (actuals name) substfn testfn))
-	(ndacts (gensubst* (dactuals name) substfn testfn))
-	(nmaps (gensubst* (mappings name) substfn testfn)))
-    (lcopy name
-      'actuals (if (and nacts
-			(not (eq nacts (actuals name)))
-			(memq (id name) '(|equalities| |notequal|)))
-		   (list (mk-actual (find-supertype
-				     (type-value (car nacts)))))
-		   nacts)
-      'dactuals ndacts
-      'mappings nmaps)))
+  (let* ((gacts (gensubst* (actuals name) substfn testfn))
+	 (nacts (if (and gacts
+			 (not (eq gacts (actuals name)))
+			 (memq (id name) '(|equalities| |notequal|)))
+		    (list (mk-actual (find-supertype
+				      (type-value (car gacts)))))
+		    gacts))
+	 (ndacts (gensubst* (dactuals name) substfn testfn))
+	 (nmaps (gensubst* (mappings name) substfn testfn))
+	 (nthname (lcopy name
+		    'actuals nacts
+		    'dactuals ndacts
+		    'mappings nmaps)))
+    (if (or (eq nthname name)
+	    (null (resolutions name)))
+	nthname
+	(let ((res (mk-resolution (declaration (resolution name)) nthname nil)))
+	  (setf (resolutions nthname) (list res))
+	  nthname))))
+	  
 
 (defmethod gensubst* ((obj symbol) substfn testfn)
   (declare (ignore substfn testfn))
