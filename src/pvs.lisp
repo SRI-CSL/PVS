@@ -51,6 +51,8 @@
 
 (defvar *parsing-files*)
 
+(defvar *theories-seen* nil)
+
 (defstruct pvs-meta-info
   version
   environment
@@ -227,8 +229,6 @@
 (defun pvs-init-globals ()
   (initialize-workspaces)
   (reset-typecheck-caches)
-  (setq *current-theory* nil)
-  (setq *last-proof* nil)
   (clrnumhash)
   ;; Prover hash tables
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
@@ -271,17 +271,23 @@
 
 (defun clear-theories (&optional all? cc?)
   (reset-typecheck-caches)
-  (clrhash (current-pvs-theories))
-  (clrhash (current-pvs-files))
   (setq *circular-file-dependencies* nil)
-  (when all?
-    (initialize-workspaces)
-    (when (and (not cc?)
-	       (current-pvs-context)
-	       (consp (cadr (current-pvs-context)))
-	       (every #'stringp (cadr (current-pvs-context))))
-      (load-prelude-libraries (cadr (current-pvs-context)))))
-  (restore-context))
+  (cond (all?
+	 ;; Save .pvscontext if needed
+	 (dolist (ws *all-workspace-sessions*)
+	   (when (pvs-context-changed ws)
+	     (with-workspace ws
+	       (write-context))))
+	 (initialize-workspaces) ;; Does not load .pvscontext
+	 (restore-context)
+	 ;; load the prelude libraries from the .pvscontext
+	 (when (and (not cc?)
+		    (listp (pvs-context-libraries))
+		    (every #'stringp (pvs-context-libraries)))
+	   (load-prelude-libraries (pvs-context-libraries))))
+	(t (clrhash (current-pvs-theories))
+	   (clrhash (current-pvs-files))))
+  t)
 
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
@@ -306,30 +312,12 @@
 		(nreverse libs)
 		(nreverse (cons pvs-path-lib libs)))))))
 
-;;; id to abspath
-(defvar *library-path-alist*)
-
-(defun library-path-alist ()
-  (if (and (boundp '*library-path-alist*) *library-path-alist*)
-      *library-path-alist*
-      (setq *library-path-alist* (get-library-path-alist))))
-
-(defun get-library-path-alist ()
-  (let ((alist nil))
-    (dolist (path *pvs-library-path*)
-      (assert (directory-p path))
-      (dolist (subdir (uiop:subdirectories path))
-	(let ((dname (or (pathname-name subdir)
-			 (car (last (pathname-directory subdir))))))
-	  (when (valid-pvs-id* dname)
-	    (push (cons (intern dname :pvs) subdir) alist)))))
-    alist))
 
 (defun library-path-to-id (abspath)
-  (car (rassoc abspath (library-path-alist) :test #'file-equal)))
+  (car (rassoc abspath (pvs-library-alist) :test #'file-equal)))
 
 (defun lirary-id-to-path (lib-id)
-  (cdr (assoc lib-id (library-path-alist))))
+  (cdr (assoc lib-id (pvs-library-alist))))
 
 ;;; Called by Emacs function pvs-add-library-path
 (defun add-library-path (dir)
@@ -541,7 +529,12 @@
 
 ;;; Parsing
 
-(defmethod parse-file ((filename string) &optional forced? no-message?)
+(defmethod parse-file ((filename string) &optional forced? no-message? typecheck?)
+  "Invokes the parser on the given file.  If it has been parsed before, it
+is in (current-pvs-files) and its write-date should match that in the
+pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
+t means don't give normal progress messages, and typecheck? says whether to
+use binfiles."
   (let* ((file (make-specpath filename))
 	 (*current-file* filename)
 	 (theories (get-theories file)))
@@ -562,7 +555,8 @@
 	  ((and *in-evaluator*
 		(not *tc-add-decl*))
 	   (pvs-error "Must exit the evaluator first" nil))
-	  ((and (null theories)
+	  ((and typecheck?
+		(null theories)
 		(not forced?)
 		(check-binfiles filename)
 		;;(valid-binfile? filename)
@@ -578,13 +572,17 @@
 			    (list (adt-generated-file? filename)))))
 	     (when deps
 	       (dolist (dep deps)
-		 (typecheck-file dep forced? nil nil no-message?)))))
+		 (if typecheck?
+		     (typecheck-file dep forced? nil nil no-message?)
+		     (parse-file dep forced? no-message? typecheck?))))))
 	  (t (let ((fe (get-context-file-entry filename)))
-	       (when fe (setf (ce-object-date fe) nil)))
+	       (when fe
+		 ;;(format t "~%parse-file: ~a setting ce-object-date to nil" fe)
+		 (setf (ce-object-date fe) nil)))
 	     (multiple-value-bind (theories changed-theories)
 		 (parse-file* filename file theories forced?)
 	       (when (eq forced? 'all)
-		 (parse-importchain theories))
+		 (parse-importchain theories typecheck?))
 	       (dolist (th theories)
 		 (remove-associated-buffers (id th)))
 	       (values theories nil changed-theories))))))
@@ -601,11 +599,11 @@
 
 (defvar *parsed-theories* nil)
 
-(defun parse-importchain (theories)
+(defun parse-importchain (theories typecheck?)
   (let ((*parsed-theories* nil))
-    (parse-importchain* theories)))
+    (parse-importchain* theories typecheck?)))
 
-(defun parse-importchain* (theories)
+(defun parse-importchain* (theories typecheck?)
   (when theories
     (dolist (thname (get-immediate-usings (car theories)))
       (unless (library thname)
@@ -614,14 +612,14 @@
 		 (let* ((filename (context-file-of thname))
 			(nth (if (and filename
 				      (file-exists-p (make-specpath filename)))
-				 (parse-file filename t nil)
-				 (parse-file thname t nil))))
+				 (parse-file filename t nil typecheck?)
+				 (parse-file thname t nil typecheck?))))
 		   (setq *parsed-theories* (append nth *parsed-theories*))
-		   (parse-importchain* nth)))
+		   (parse-importchain* nth typecheck?)))
 		((not (memq th *parsed-theories*))
-		 (let ((nth (parse-file (filename th) t nil)))
+		 (let ((nth (parse-file (filename th) t nil typecheck?)))
 		   (setq *parsed-theories* (append nth *parsed-theories*))
-		   (parse-importchain* nth)))))))))
+		   (parse-importchain* nth typecheck?)))))))))
 
 
 ;;; A filename satisfies valid-binfile? if it has a context entry, the
@@ -707,7 +705,7 @@
 	  (dolist (clth (get-theories clfname))
 	    (delete-theory clth))
 	  (remhash clfname (current-pvs-files))
-	  (delete-file-from-context clfname))
+	  (delete-file-from-workspace clfname))
 	(reset-typecheck-caches)))))
 
 (defun check-import-circularities (theories)
@@ -1160,22 +1158,22 @@
 
 
 #-(or akcl cmu sbcl)
-(defmethod parse-file ((filename pathname) &optional forced? no-message?)
-  (parse-file (pathname-name filename) forced? no-message?))
+(defmethod parse-file ((filename pathname) &optional forced? no-message? typecheck?)
+  (parse-file (pathname-name filename) forced? no-message? typecheck?))
 
 #+(or akcl cmu sbcl)
-(defmethod parse-file (filename &optional forced? no-message?)
+(defmethod parse-file (filename &optional forced? no-message? typecheck?)
   (assert (pathnamep pathname))
-  (parse-file (pathname-name filename) forced? no-message?))
+  (parse-file (pathname-name filename) forced? no-message? typecheck?))
 
-(defmethod parse-file ((filename symbol) &optional forced? no-message?)
-  (parse-file (string filename) forced? no-message?))
+(defmethod parse-file ((filename symbol) &optional forced? no-message? typecheck?)
+  (parse-file (string filename) forced? no-message? typecheck?))
 
-(defmethod parse-file ((filename name) &optional forced? no-message?)
-  (parse-file (string (id filename)) forced? no-message?))
+(defmethod parse-file ((filename name) &optional forced? no-message? typecheck?)
+  (parse-file (string (id filename)) forced? no-message? typecheck?))
 
-(defmethod parse-file ((theory module) &optional forced? no-message?)
-  (parse-file (id theory) forced? no-message?))
+(defmethod parse-file ((theory module) &optional forced? no-message? typecheck?)
+  (parse-file (id theory) forced? no-message? typecheck?))
 
 ;(defun ps (theoryname &optional forced?)
 ;  (parse-file theoryname forced? no-message?))
@@ -1192,7 +1190,7 @@
 	(t
 	 (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
 	   (multiple-value-bind (theories restored? changed-theories)
-	       (parse-file filename forced? t)
+	       (parse-file filename forced? nomsg? t)
 	     (let ((*current-file* filename)
 		   (*typechecking-module* nil))
 	       (unless theories
@@ -2090,21 +2088,26 @@ Note that even proved ones get overwritten"
     (parsed?* mod)))
 
 (defmethod parsed? ((modref modname))
-  (parsed?* (get-theory modref)))
+  (parsed? (get-theory modref)))
 
 (defmethod parsed?* ((mod datatype-or-module))
   (or (memq mod *theories-seen*)
-      (progn (push mod *theories-seen*) nil)
-      (from-prelude? mod)
-      (if (lib-datatype-or-theory? mod)
-	  (parsed-library-file? mod)
-	  (if (generated-by mod)
-	      (let ((gth (get-theory (generated-by mod))))
-		(and gth
-		     (parsed?* gth)))
-	      (and (filename mod)
-		   (eql (car (gethash (filename mod) (current-pvs-files)))
-			(file-write-date (make-specpath (filename mod)))))))))
+      (let ((prsd? (cond ((from-prelude? mod))
+			 ((lib-datatype-or-theory? mod)
+			  (with-workspace (context-path mod)
+			    (parsed?* mod)))
+			 ((generated-by mod)
+			  (let ((gth (get-theory (generated-by mod))))
+			    ;;(unless gth (break "parsed?*: ~a" (generated-by mod)))
+			    (and gth
+				 (or (parsed?* gth)
+				     ;;(break "(parsed?* ~a) failed" gth)
+				     ))))
+			 (t (and (filename mod)
+				 (eql (car (gethash (filename mod) (current-pvs-files)))
+				      (file-write-date (make-specpath (filename mod)))))))))
+	(push mod *theories-seen*)
+	prsd?)))
 
 
 #-gcl
@@ -2136,24 +2139,29 @@ Note that even proved ones get overwritten"
 
 ;;; Must be a method, since the slot exists for declarations.
 
-(defvar *theories-seen* nil)
-
 (defmethod typechecked? ((theory module))
   (let ((*theories-seen* nil))
     (typechecked*? theory)))
 
 (defun typechecked*? (theory)
-  (or (memq theory *theories-seen*)
-      (and (push theory *theories-seen*) 
-	   (parsed? theory)
-	   (memq 'typechecked (status theory))
-	   (saved-context theory)
-	   (let* ((*current-context* (saved-context theory))
-		  (importings (all-importings theory)))
-	     (every #'(lambda (th)
-			(and (parsed? th)
-			     (memq 'typechecked (status th))))
-		    importings)))))
+  (if (assq theory *theories-seen*)
+      (cdr (assq theory *theories-seen*))
+      (let ((tyckd? (or (and (parsed? theory)
+			     (memq 'typechecked (status theory))
+			     (saved-context theory)
+			     (let* ((*current-context* (saved-context theory))
+				    (importings (all-importings theory)))
+			       (every #'(lambda (th)
+					  (or (and (parsed? th)
+						   (memq 'typechecked (status th)))
+					      ;;(break "importing ~a" th)
+					      ))
+				      importings)))
+			;; (when (memq 'typechecked (status theory))
+			;;   (break "typechecked*? failed: ~a" theory) nil)
+			)))
+	(setq *theories-seen* (acons theory tyckd? *theories-seen*))
+	tyckd?)))
 
 (defmethod typechecked? ((theory datatype-or-module))
   (or *in-checker*
@@ -2953,12 +2961,12 @@ formname is nil, then formref should resolve to a unique name."
 	    (untypecheck-theory theory))
 	  (remhash tid (current-pvs-theories)))))
     (remhash filename (current-pvs-files))
-    (delete-file-from-context filename))
+    (delete-file-from-workspace filename))
   (when delete-file?
     (delete-file (make-specpath filename)))
   (if delete-file?
       (pvs-message "~a has been deleted" filename)
-      (pvs-message "~a has been removed from the context" filename)))
+      (pvs-message "~a has been removed from the workspace (the file is still there)" filename)))
 
 (defun delete-theory (theoryref)
   (let ((theory (gethash (ref-to-id theoryref) (current-pvs-theories))))
@@ -3051,7 +3059,7 @@ formname is nil, then formref should resolve to a unique name."
 ;;; get-parsed-theory gets the parsed theory, but will not save the context
 ;;; (last argument to parse-file)
 
-(defun get-parsed-theory (theoryref &optional quiet?)
+(defun get-parsed-theory (theoryref &optional quiet? typecheck?)
   "Get a parsed theory corresponding to the theoryref.  First checks if the
 theory is already parsed, and returns it if so.  Then tries to find a unique
 file containing a theory matching theoryref, parses it, and returns the
@@ -3065,7 +3073,7 @@ errors are quietly ignored, and nil is returned in that case."
       (pvs-message "File ~a.pvs has disappeared!" (filename mod))
       (remhash (filename mod) (current-pvs-files))
       (remhash (id mod) (current-pvs-theories))
-      (delete-file-from-context (filename mod))
+      (delete-file-from-workspace (filename mod))
       (setq mod nil))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
@@ -3081,18 +3089,18 @@ errors are quietly ignored, and nil is returned in that case."
 	     (unless lth (break "no lth?"))
 	     lth))
 	  ((and mod (filename mod))
-	   (parse-file (filename mod) nil t)
+	   (parse-file (filename mod) nil t typecheck?)
 	   (get-theory theoryref))
 	  (t (let ((filename (context-file-of theoryref)))
 	       (if (and filename (file-exists-p (make-specpath filename)))
-		   (parse-file filename nil quiet?)
+		   (parse-file filename nil quiet? typecheck?)
 		   (if (file-exists-p (make-specpath theoryref))
-		       (parse-file theoryref nil quiet?)
+		       (parse-file theoryref nil quiet? typecheck?)
 		       (let ((file
 			      (look-for-theory-in-directory-files theoryref)))
 			 (if file
-			     (parse-file file nil quiet?)
-			     (parse-file theoryref nil quiet?)))))
+			     (parse-file file nil quiet? typecheck?)
+			     (parse-file theoryref nil quiet? typecheck?)))))
 	       (let ((pmod (get-theory theoryref)))
 		 (or pmod
 		     (unless quiet?
@@ -3157,33 +3165,39 @@ errors are quietly ignored, and nil is returned in that case."
 	   theory)
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
-(defun get-typechecked-theory (theoryref &optional theories quiet?)
-  (if (and (modname? theoryref)
-	   (resolution theoryref)
-	   (theory-reference? (declaration theoryref)))
-      (get-typechecked-theory (theory-name (declaration theoryref)))
-      (let ((theoryname (if (modname? theoryref)
-			    theoryref
-			    (pc-parse theoryref 'modname))))
-	(or (and (or *in-checker*
-		     *generating-adt*
-		     (and *current-context*
-			  (eq *current-context* *working-current-context*)))
-		 (get-theory theoryname))
-	    (let ((theory (get-parsed-theory theoryname quiet?)))
-	      (when theory
-		(unless (or *in-checker*
-			    (typechecked? theory)
-			    (memq theory theories))
-		  (assert (not (library theoryname)) ()
-			  "~a should have been already typechecked" theoryref)
-		  (let ((*generating-adt* nil)
-			(*insert-add-decl* t))
-		    (if (library theoryname)
-			(load-imported-library (library theoryname) theoryname)
-			(typecheck-file (filename theory))))))
-	      #+pvsdebug (assert (typechecked? theory))
-	      theory)))))
+(defmethod get-typechecked-theory ((theoryref string) &optional theories quiet?)
+  (get-typechecked-theory (pc-parse theoryref 'modname) theories quiet?))
+
+(defmethod get-typechecked-theory ((theoryref symbol) &optional theories quiet?)
+  (get-typechecked-theory (mk-modname theoryref) theories quiet?))
+
+(defmethod get-typechecked-theory ((thname modname) &optional theories quiet?)
+  ;;(when (eq (id thname) 'Sigma_l_adt) (break "Sigma_l_adt"))
+  (if (library thname)
+      (let ((lib-path (get-library-path (library thname))))
+	(with-workspace lib-path
+	  (get-typechecked-theory (copy thname 'library nil) theories quiet?)))
+      (if (and (resolution thname)
+	       (theory-reference? (declaration thname)))
+	  (get-typechecked-theory (theory-name (declaration thname)))
+	  (or (and (or *in-checker*
+		       *generating-adt*
+		       (and *current-context*
+			    (eq *current-context* *working-current-context*)))
+		   (get-theory thname))
+	      (let ((theory (get-parsed-theory thname quiet? t)))
+		(when theory
+		  (unless (or *in-checker*
+			      (typechecked? theory)
+			      (memq theory theories))
+		    (let ((*generating-adt* nil)
+			  (*insert-add-decl* t))
+		      (typecheck-file (filename theory))))
+		  #+pvsdebug (assert (typechecked? theory))
+		  (unless (or (from-prelude? theory)
+			      (check-binfiles (filename theory)))
+		    (setf (pvs-context-changed *workspace-session*) t)))
+		theory)))))
 
 (defun parsed-date (filename)
   (car (gethash (pathname-name filename) (current-pvs-files))))
@@ -3507,10 +3521,15 @@ errors are quietly ignored, and nil is returned in that case."
       (pvs-message "Not in the prover")))
 
 (defun collect-skolem-constants ()
-  (let ((skoconsts nil))
-    (do-all-declarations #'(lambda (d)
-			     (when (typep d 'skolem-const-decl)
-			       (pushnew d skoconsts))))
+  ;; No need to look in prelude
+  (let ((dht (lhash-table (current-declarations-hash)))
+	(skoconsts nil))
+    (maphash #'(lambda (id decls)
+		 (declare (ignore id))
+		 (dolist (d decls)
+		   (when (typep d 'skolem-const-decl)
+		     (pushnew d skoconsts))))
+	     dht)
     (sort skoconsts #'string-lessp :key #'id)))
 
 (defun get-patch-version ()
