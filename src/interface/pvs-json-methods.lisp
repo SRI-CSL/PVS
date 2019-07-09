@@ -17,7 +17,7 @@
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
-(in-package :pvs-json-rpc)
+(in-package :pvs-json)
 
 ;;; The requests
 
@@ -44,9 +44,13 @@
   (let ((*package* (find-package :pvs)))
     (format nil "~a" (eval (read-from-string string)))))
 
+(defrequest change-workspace (dir)
+  "Change PVS workspace"
+  (pvs:change-workspace dir))
+
 (defrequest change-context (dir)
-  "Change PVS context"
-  (pvs:change-context dir))
+  "Change PVS workspace"
+  (pvs:change-workspace dir))
 
 (defrequest typecheck (filename)
   "Typecheck a file"
@@ -162,6 +166,11 @@
   (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
     (mp:process-interrupt proc #'pvs:pvs-abort)))
 
+(defrequest interrupt ()
+  "Interrupts PVS."
+  (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
+    (mp:process-interrupt proc #'(lambda () (break "Interrupt:")))))
+
 ;;; Prover interface
 
 ;; (defrequest prove-formula (formula theory)
@@ -184,7 +193,15 @@
 ;; 	psjson))))
 
 (defrequest prove-formula (formula theory)
-  "Starts interactive proof of a formula from a given theory"
+  "Starts interactive proof of a formula from a given theory
+
+Creates a ps-control-info struct to control the interaction.  It has slots
+  command
+  json-result
+  lock
+  cmd-gate
+  res-gate
+"
   (let ((res-gate (mp:make-gate nil))
 	(cmd-gate (mp:make-gate nil))
 	(lock (mp:make-process-lock))
@@ -195,6 +212,7 @@
 	   :res-gate res-gate
 	   :cmd-gate cmd-gate))
     ;;(format t "~%prove-formula: Waiting...~%")
+    ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
     ;;(format t "~%prove-formula: Done waiting...~%")

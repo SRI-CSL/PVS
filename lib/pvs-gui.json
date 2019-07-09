@@ -228,7 +228,7 @@
 	    "items": {"$ref": "#/definitions.declaration-info"}
 	},
 	"declaration-info": {
-	    "type": "object"
+	    "type": "object",
 	    "properties": {
 		"declname": "string",
 		"type": "string",

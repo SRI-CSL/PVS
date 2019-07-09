@@ -17,11 +17,11 @@
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
-(defpackage :pvs-json-rpc (:use :json :cl-user :common-lisp :pvs))
+(defpackage :pvs-json (:use :json :cl-user :common-lisp :pvs))
 
-(in-package :pvs-json-rpc)
+(in-package :pvs-json)
 
-(export '(process-json-request))
+(export '(process-json-request json-message))
 
 (define-condition pvs-error (simple-error)
   ((message :accessor message :initarg :message)
@@ -46,6 +46,7 @@
 	   (warning-hook pvs:*pvs-warning-hook*)
 	   (buffer-hook pvs:*pvs-buffer-hook*)
 	   (y-or-n-hook pvs:*pvs-y-or-n-hook*)
+	   (query-hook pvs:*pvs-query-hook*)
 	   (dialog-hook pvs:*pvs-dialog-hook*))
        (unwind-protect
 	    (progn
@@ -64,6 +65,9 @@
 		      pvs:*pvs-y-or-n-hook*
 		      #'(lambda (msg full? timeout?)
 			  (json-y-or-n msg full? timeout? ,gurl))
+		      pvs:*pvs-query-hook*
+		      #'(lambda (prompt)
+			  (json-query prompt ,gurl))
 		      pvs:*pvs-dialog-hook*
 		      #'(lambda (prompt)
 			  (json-dialog prompt ,gurl))))
@@ -73,6 +77,7 @@
 	       pvs:*pvs-warning-hook* warning-hook
 	       pvs:*pvs-buffer-hook* buffer-hook
 	       pvs:*pvs-y-or-n-hook* y-or-n-hook
+	       pvs:*pvs-query-hook* query-hook
 	       pvs:*pvs-dialog-hook* dialog-hook)))))
 
 #+allegro
@@ -97,7 +102,7 @@
   (assert (symbolp methodname) () "defrequest method must be a symbol")
   (assert (listp args) () "defrequest args must be a list")
   (assert (stringp docstring) () "defrequest docstring must be a string")
-  (let* ((pname (intern (format nil "jsonrpc-~a" methodname) :pvs-json-rpc)))
+  (let* ((pname (intern (format nil "jsonrpc-~a" methodname) :pvs-json)))
     `(progn
        (let ((req (assoc ',methodname *pvs-request-methods*)))
 	 (format t "~%Adding ~a" ',methodname)
@@ -167,14 +172,16 @@
 		   (:jsonrpc . "2.0"))))
       jerr)))
 
-(defun json-message (msg url &optional (level "info"))
-  (when url
-    (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (jmsg (json:encode-json-alist-to-string
-		  `((:method . ,level)
-		    (:params . (,msg))
-		    (:jsonrpc . "2.0")))))
-      (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
+(defun json-message (msg &optional url (level "info"))
+  "url is typically something like 'http://localhost:22335/RPC2'"
+  (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	 (jmsg (json:encode-json-alist-to-string
+		`((:method . ,level)
+		  (:params . (,msg))
+		  (:jsonrpc . "2.0")))))
+    (if url
+	(xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)
+	jmsg)))
 
 (defun json-buffer (name contents display? read-only? append? kind url)
   (when url
@@ -216,8 +223,23 @@
 					 :url url))
 	 "yes"))))
 
+(defun json-query (prompt url)
+  "Only currently used by make-directory-path"
+  (or t ;; For now, always return t
+      (null url)
+      (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+	     (jmsg (json:encode-json-alist-to-string
+		    `((:method . "query")
+		      (:params . ,(list prompt))
+		      (:id . ,id)
+		      (:jsonrpc . "2.0")))))
+	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)))))
+
 (defun json-dialog (prompt url)
-  (or (null url)
+  (if (or t  ;; For now...
+	  (null url))
+      ""
       (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
 	     (jmsg (json:encode-json-alist-to-string
@@ -239,10 +261,9 @@
   (let* ((result (format nil "~a" c))
 	 (json:*lisp-identifier-name-to-json* #'identity)
 	 (sresult (json:encode-json-to-string result))
-	 (jresult (json:encode-json-to-string
-		   `((:error . ((:code . 1)
+	 (jresult `((:error . ((:code . 1)
 				(:message . ,sresult)))
-		     (:id . ,id)))))
+		    (:id . ,id))))
     (setq *last-response* jresult)
     jresult))
 

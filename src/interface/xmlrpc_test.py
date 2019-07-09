@@ -4,7 +4,7 @@ This is a simple client for the PVS XML-RPC connection
 The basic idea is that your run PVS, which starts an XML-RPC server on some
 port.  A client connects, sets up a server and sends its server port.
 
-The idea is that there are two connections, to essentially implement
+There are two connections, to essentially implement
 JSON-RPC, which has an implementation in Python, but does not seem to
 in Lisp (though there is undocumented JSON-RPC in CL-JSON).
 
@@ -15,10 +15,16 @@ import sys
 import os
 # import wx
 import json
-import xmlrpclib
+try:
+    import xmlrpclib
+except ImportError:
+    import xmlrpc.client
 import threading
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
+# from SimpleXMLRPCServer import SimpleXMLRPCServer
+# from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
+from xmlrpc.server import SimpleXMLRPCServer
+from xmlrpc.server import SimpleXMLRPCRequestHandler
+from xmlrpc.client import ServerProxy
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -45,15 +51,17 @@ class PVS_XMLRPC(object):
 
     def __init__(self, host='localhost', port=22335):
         # Create server
-        print('Initializing gui_server with ({0}, {1})'.format(host,port))
+        # print('Initializing gui_server with ({0}, {1})'.format(host,port))
         self.ctr = 0
         self.gui_url = 'http://{0}:{1}/RPC2'.format(host, port)
         self.gui_server = SimpleXMLRPCServer((host, port),
-                                             requestHandler=RequestHandler)
+                                             requestHandler=RequestHandler,
+                                             logRequests=False)
         self.gui_server.register_function(self.request, 'request')
         self.server_thread = threading.Thread(target=self.gui_server.serve_forever)
+        self.server_thread.setDaemon(True)
         self.server_thread.start()
-        self.pvs_proxy = xmlrpclib.ServerProxy('http://localhost:22334')
+        self.pvs_proxy = ServerProxy('http://localhost:22445')
         self.json_methods = {'debug': self.pvs_debug,
                              'info': self.pvs_info,
                              'warning': self.pvs_warning,
@@ -87,7 +95,7 @@ class PVS_XMLRPC(object):
         and no error, "null" is returned.  Otherwise, a valid JSON-RPC
         response/error form is returned.
         """
-        print('\nrequest = {0}\n'.format(json_string))
+        # print('\nrequest = {0}\n'.format(json_string))
         try:
             request = json.loads(json_string, object_hook=self.request_check)
             return self.process_request(request)
@@ -116,7 +124,7 @@ class PVS_XMLRPC(object):
             params = []
         if method in self.json_methods:
             try:
-                print('\nCalling method {}\n'.format(method))
+                # print('\nCalling method {}\n'.format(method))
                 mthd = self.json_methods[method]
                 result = self.json_methods[method](*params)
                 if id is not None:
@@ -169,20 +177,36 @@ class PVS_XMLRPC(object):
         """ JSON-RPC method """
         print('WARNING: {0}'.format(msg))
 
-    def pvs_buffer(self, msg):
+    def pvs_buffer(self, name, contents, display_p, read_only_p, append_p, kind):
         """ JSON-RPC method """
-        print('WARNING: {0}'.format(msg))
+        print('BUFFER: {0} (disp: {1}, ro: {2}, app: {3}, kind: {4})'.
+              format(name, display_p, read_only_p, append_p, kind))
+        print("  {0}".format(contents))
 
     def pvs_yes_no(self, prompt, fullp, timeout):
         """ JSON-RPC method """
-        print('yes-no: {0} {1} {2}'.format(prompt, fullp, timeout))
-        answer = raw_input(prompt)
-        while answer != "yes" and answer != "no":
-            answer = raw_input('Please answer yes or no: ')
-        if answer.lower() == "yes":
-            return True
-        else:
-            return False
+        #print('yes-no: {0} {1} {2}'.format(prompt, fullp, timeout))
+        # Since this is a test, we always just answer yes
+        return True
+
+    # def pvs_yes_no(self, prompt, fullp, timeout):
+    #     """ JSON-RPC method """
+        #print('yes-no: {0} {1} {2}'.format(prompt, fullp, timeout))
+        # answer = input(prompt)
+        # if fullp:
+        #     while answer not in ["yes", "no"]:
+        #         answer = input('Please answer yes or no: ')
+        #     if answer.lower() == "yes":
+        #         return True
+        #     else:
+        #         return False
+        # else:
+        #     while answer not in ["y", "n"]:
+        #         answer = input('Please answer y or n: ')
+        #     if answer.lower() == "y":
+        #         return True
+        #     else:
+        #         return False
 
     def pvs_dialog(self, prompt):
         print('dialog: {0}'.format(prompt))
@@ -207,10 +231,10 @@ class PVS_XMLRPC(object):
 # app = MyApp(0)
 # app.MainLoop()
         
-def main():
-    ''' Starts the server, runs tests '''
+# def main():
+#     ''' Starts the server, runs tests '''
     
-    server.serve_forever()
+#     server.serve_forever()
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

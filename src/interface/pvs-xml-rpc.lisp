@@ -84,8 +84,8 @@
 	     (params (cdr (assoc :params request :test #'string-equal)))
 	     (*print-pretty* nil))
 	(setq *last-request* (list method params id client-url))
-	;; (apply #'pvs-json-rpc:process-json-request pvs-xml-rpc::*last-request*)
-	(xmlrpc-result (pvs-json-rpc:process-json-request
+	;; (apply #'pvs-json:process-json-request pvs-xml-rpc::*last-request*)
+	(xmlrpc-result (pvs-json:process-json-request
 			method params id client-url)
 		       id))
     ;; Note: id will not be available if this error is hit
