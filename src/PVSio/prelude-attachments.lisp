@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-6.0.10 (xx/xx/xx)
+;; Release: PVSio-7.0.0 (06/30/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -13,6 +13,8 @@
 ;;
 ;; Semantic attachments for PVSio standard library
 ;;
+
+(decimals:define-decimal-formatter d (:round-magnitude -6))
 
 (defun stdstr-attachments ()
 
@@ -73,12 +75,20 @@
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
-(defattach |real2str| (r)
-  "Converts real number r to string, where the integer n represents the precision 10^-n, and m is the rounding mode
+ (defattach |real2decstr| (r precision rounding)
+   "Converts real number r to string, where the integer precision represents the precision 10^-precision, and rounding is the rounding mode
     (0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
-  (let ((n 6)
-	(m 0))
-    (ratio2decimal r (or (= m 3) (and (= m 1) (> r 0)) (and (= m 0) (< r 0))) n)))
+   (ratio2decimal r (or (= rounding 3) (and (= rounding 1) (> r 0)) (and (= rounding 0) (< r 0))) precision))
+
+(defattach |decstr2rat| (s)
+  "Converts string representing a decimal number to rational number"
+  (decimals:parse-decimal-number s))
+
+(defattach |rat2decstr| (r precision)
+  "Converts rational number to string representing decimal number using precision"
+  (multiple-value-bind (s x)
+      (decimals:format-decimal-number (rational r) :round-magnitude (- precision))
+    s))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
@@ -357,22 +367,6 @@
 
 (eval '(attachments stdmath
 	     
-(defattach |PI| () 
-  "Number Pi"
-  (rational pi))
-
-(defattach |SIN| (x) 
-  "Sine of X"
-  (rational (sin (rat2double x))))
-
-(defattach |COS| (x)
-  "Cosine of X"
-  (rational (cos (rat2double x))))
-
-(defattach |EXP| (x) 
-  "Exponential of X"
-  (rational (exp (rat2double x))))
-
 (defattach |RANDOM| ()
   "Real random number in the interval [0..1]"
   (rational (random (rat2double 1))))
@@ -380,27 +374,6 @@
 (defattach |NRANDOM| (x)
   "Natural random number in the interval [0..X)"
   (random x))
-
-(defattach |sqrt_lisp| (x) 
-  "Square root of X"
-   (rational (sqrt (rat2double x))))
-
-(defattach |log_lisp| (x) 
-  "Logarithm of X"
-  (rational (log (rat2double x))))
-
-(defattach |atan_lisp| (x y)
-  "Arctangent of Y/X"
-  (rational (atan (rat2double x) (rat2double y))))
-
-(defattach |asin_lisp| (x)
-  "Arcsine of X"
-  (rational (asin (rat2double x))))
-
-(defattach |acos_lisp| (x)
-  "Arccosine of X"
-  (rational (acos (rat2double x))))
-
 )))
 
 (defstruct indent stack n prefix)
@@ -446,15 +419,20 @@
 )))
 
 (defun formatargs (e type)
-  (cond ((or (stringp e) (numberp e)
-	     (and (atom e) (type-name? type) (equal (id type) '|Blisp|))) e)
-	((and (listp e)
-	      (type-name? type)
-	      (equal (id type) '|Slisp|))
-	 (let ((ntype (type-value (car (actuals type)))))
-	   (loop for ei in e
-		 collect (formatargs ei ntype))))
-	(t (cl2pvs e type))))
+  (cond
+   ((and (type-name? type)(equal (id type) '|Lisp|))
+    (let ((ptype (find-supertype (type-value (car (actuals type))))))
+      (cond ((and (listp e) (type-name? ptype) (equal (id ptype) '|list|))
+	     (list (loop for ei in e
+			 append (formatargs ei (type-value (car (actuals ptype)))))))
+	    ((and (arrayp e) (tupletype? ptype))
+	     (loop for ei across e
+		   for ti in (types ptype)
+		   append (formatargs ei ti)))
+	    ((numberp e) (list (rat2double e)))
+	    (t (list e)))))
+   ((or (stringp e) (numberp e)) (list e))
+   (t (list (cl2pvs e type)))))
 
 (defun stdprog-attachments ()
 
@@ -478,8 +456,7 @@
 
 (defattach |def| (v e)
   "Sets to E the value of a mutable variable V"
-  (when (cdr v) (setf (cdr v) nil))
-  (setf (car v) e))
+  (pvsio_set_gvar v e))
 
 (defattach |undef| (v)
   "Tests if a mutable variable V is undefined"
@@ -487,7 +464,7 @@
 
 (defattach |val_lisp| (v)
   "Gets the current value of a mutable variable V"
-  (car v))
+  (pvsio_get_gvar v))
 
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
@@ -498,17 +475,14 @@
   "Returns E from an infinite loop"
   (throw '|*pvsio-loop*| e))
 
+ (defattach |to_lisp| (e)
+   "Returns internal Lisp expression representing e. To be used exclusively in format function"
+   e)
+
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let* ((the-type (pc-typecheck (cadr (types (domain *the-pvs-type*))))))
-     (if (and (arrayp e)
-	      (tupletype? the-type))
-	 (let* ((the-types (types the-type))
-		(l (loop for ei across e
-			 for ti in the-types
-			 collect (formatargs ei ti))))
-	   (apply #'format (cons nil (cons s l))))
-       (apply #'format (cons nil (cons s (list (formatargs e the-type))))))))
+   (let ((the-type (pc-typecheck (cadr (types (domain *the-pvs-type*))))))
+     (apply #'format (cons nil (cons s (formatargs e the-type))))))
 )))
 
 (defun stdcatch-attachments ()
@@ -544,10 +518,6 @@
   "Translates PVS expresion E to a string"
   (let* ((the-domain (domain *the-pvs-type*)))
     (format nil "~a" (cl2pvs e (pc-typecheck the-domain)))))
-
-(defattach |slisp| (l)
-  "Returns a s-expression representing list l. To be used exclusively in format functions."
-  l)
 
 )))
 
@@ -593,10 +563,6 @@
 (defattach |get_env| (name default)
   "Gets environment variable NAME. Returns DEFAULT if undefined"
   (or (environment-variable (string name)) default))
-
-(defattach |blisp| (b)
-  "Returns a Boolean lisp expression representing b. To be used exclusively in format functions."
-  b)
 
 )))
 

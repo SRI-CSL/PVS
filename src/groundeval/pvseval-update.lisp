@@ -45,7 +45,7 @@
    (lambda (condition stream)
      (format stream
 	 (or (fmt-str condition)
-	     "Hit uninterpreted term ~a during evaluation")
+	     "Hit uninterpreted term ~a during evaluation (pvseval-error)")
        (expr condition)))))
 
 (defun uninterpreted (expr fmt-str)
@@ -61,8 +61,6 @@
 (defvar *destructive?* nil)  ;;tracks if the translation is in the destructive mode
 (defvar *output-vars* nil) ;;
 (defvar *external* nil)
-;;Removed *pvsio2cl-primitives* since PVSio primitives are handled differently (Feb 20 2015) [CM]
-;;(defvar *pvsio2cl-primitives* nil)
 
 (defvar *pvs2cl-decl* nil
   "Tracks the current declaration being compiled, for help in debugging undefined, etc.")
@@ -118,18 +116,19 @@
 a const-decl, of type 'Global', creates an attachment instance (part of
 PVSio).  Otherwise creates an 'undefined' function, which invokes an error
 if called."
-  (let* ((th    (string (if (declaration? expr)
-			    (id (module expr))
-			    (id (current-theory)))))
-	 (nm    (when (const-decl? expr)
-		  (string (id expr))))
-	 (ptype (when nm (print-type (type expr))))
-	 (nargs (when nm (arity expr))))
-    (if (and nm (= nargs 0) ptype (type-name? ptype)
-	     (eq '|Global| (id ptype)))
+  (let* ((th       (string (if (declaration? expr)
+			       (id (module expr))
+			     (id (current-theory)))))
+	 (nm       (when (const-decl? expr)
+		     (string (id expr))))
+	 (decl     (when nm (declaration expr)))
+	 (decltype (when decl (declared-type decl)))
+	 (nargs    (when nm (arity expr))))
+    (if (and nm (= nargs 0) (type-name? decltype)
+	     (eq '|Global| (id decltype)))
 	(let* ((fname (gentemp "global"))
 	       (mod   (module-instance 
-		       (car (resolutions ptype))))
+		       (car (resolutions decltype))))
 	       (act   (actuals mod))
 	       (doc (format nil "Global mutable variable of type ~a" 
 			    (car act)))
@@ -144,7 +143,7 @@ if called."
       (let* ((fname (gentemp "undefined"))
 	     (msg-fmt
 	      (or message
-		  "Hit uninterpreted term ~a during evaluation"))
+		  "Hit uninterpreted term ~a during evaluation (undefined)"))
 	     (fbody (if (and nargs (> nargs 0))
 			`(defun ,fname (&rest x)
 			   (declare (ignore x))
@@ -415,7 +414,13 @@ if called."
     (or (and (eval-info opdecl)
 	     (lisp-function opdecl)) ;;generate code if needed
 	(pvs2cl-datatype operator))
-    (let* ((args (arguments expr))
+    (let* ((domtyp (domain (declared-type (declaration operator))))
+	   (args (if (and (or (type-name? domtyp)
+			      (and (tupletype? domtyp)
+				   (type-name? (print-type domtyp))))
+			  (> (length (arguments expr)) 1))
+		     (argument* expr)
+		   (arguments expr))) ;; (arguments expr)) Takes care of tuples June 29, 2019 [CM]
 	   (clargs (pvs2cl_up* args bindings livevars)))
       (if (constructor? operator);;i.e., also a co-constructor
 	  (if (not (eql (length args)(arity operator)))
@@ -1889,10 +1894,10 @@ if called."
 						     as i from 0
 						     collect (list (id ac)
 								   `(svref ,xvar ,i)))
-					     (list (id (car accessors)) xvar))))
+					     (list (list (id (car accessors)) xvar))))) ;; Let requires a list of list (March 17 2015) [CM] 
 			  ;;NSH(2-4-2014): delay co-constructor arguments
 			  (unary-form (when accessors
-					`(lambda (,xvar) (let (,unary-binding)
+					`(lambda (,xvar) (let ,unary-binding
 							   (,constructor-symbol
 							    ,@(loop for ac in accessors
 								    collect (id ac)))))))
