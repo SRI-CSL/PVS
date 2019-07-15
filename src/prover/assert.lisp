@@ -945,31 +945,33 @@ subgoal is proved)."
 
 
 (defun check-rest-recognizers (rec all-result &optional indirect)
-  (cond ((null all-result) 'restfalse)
-        ((same-id rec (caar all-result))
-         (if (and (or (true-p (cdar all-result))
-		      (false-p (cdar all-result)))
-		  (null indirect))
-             (cdar all-result)
-             (check-rest-recognizers rec (cdr all-result) indirect)))
-        (t (if (true-p (cdar all-result))
-                *false*
-               (let ((rest (check-rest-recognizers rec (cdr all-result)
-						   indirect))) 
-                  (cond ((or (true-p rest)
-			     (false-p rest))
-			 rest)
-                        ((eq rest 'restfalse)
-                         (if (false-p (cdar all-result))
-                             'restfalse
-                             nil))
-                        (t nil)))))))
+  (unless *adt* ;; Don't do this if typechecking recursive types
+    (cond ((null all-result) 'restfalse)
+          ((same-id rec (caar all-result))
+           (if (and (or (true-p (cdar all-result))
+			(false-p (cdar all-result)))
+		    (null indirect))
+               (cdar all-result)
+               (check-rest-recognizers rec (cdr all-result) indirect)))
+          (t (if (true-p (cdar all-result))
+                 *false*
+		 (let ((rest (check-rest-recognizers rec (cdr all-result)
+						     indirect))) 
+                   (cond ((or (true-p rest)
+			      (false-p rest))
+			  rest)
+                         ((eq rest 'restfalse)
+                          (if (false-p (cdar all-result))
+                              'restfalse
+                              nil))
+                         (t nil))))))))
 
-(defun check-some-recognizer (rec all-result &optional indirect) ;;;all-result comes from
-					      ;;;check-all-recognizers
-    (let ((rest (check-rest-recognizers rec all-result indirect)))
-       (if (eq rest 'restfalse) *true*
-           rest)))
+(defun check-some-recognizer (rec all-result &optional indirect)
+  ;; all-result comes from check-all-recognizers; but if *adt* is bound, we
+  ;; are typecheking a datatype, and all-result is nil
+  (let ((rest (check-rest-recognizers rec all-result indirect)))
+    (if (eq rest 'restfalse) *true*
+        rest)))
 
 
 (defun check-other-recognizers (recog arg &optional indirect)
