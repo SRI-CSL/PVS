@@ -129,17 +129,26 @@
 	(error (c) (jsonrpc-error id c)))
       (process-json-request* method params id url)))
 
+(defun no-url? (url)
+  (member url '("" "nil" "none")
+	  :test #'string-equal)) ; case-insensitive
+
 (defun process-json-request* (method params id url)
   (unless (stringp method)
     (error "method ~a must be a symbol string" method))
   (unless (listp params)
     (error "parameters ~a must be a list" params))
+  
   (multiple-value-bind (reqfun reqsig)
       (get-json-request-function method)
     (check-params params reqsig)
     (setq *last-request* (cons reqfun params))
     (setq *last-response* nil)
-    (let ((result (with-pvs-hooks url (apply reqfun params))))
+    (let ((result
+	   (if (no-url? url)
+	       (apply reqfun params)
+	       (with-pvs-hooks url
+		 (apply reqfun params)))))
       (setq *last-response* result)
       (jsonrpc-result result id))))
 
@@ -179,12 +188,12 @@
 		`((:method . ,level)
 		  (:params . (,msg))
 		  (:jsonrpc . "2.0")))))
-    (if url
-	(xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)
-	jmsg)))
+    (if (no-url? url)
+	jmsg
+	(xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
 
 (defun json-buffer (name contents display? read-only? append? kind url)
-  (when url
+  (unless (no-url? url)
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	   (jmsg (json:encode-json-alist-to-string
 		  `((:method . "buffer")
@@ -210,44 +219,48 @@
 	  (t (error "Neither result nor error given")))))
 
 (defun json-y-or-n (msg full? timeout? url)
-  (or (null url)
-      (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
-	     (jmsg (json:encode-json-alist-to-string
-		    `((:method . "yes_no")
-		      (:params . ,(list msg full? timeout?))
-		      (:id . ,id)
-		      (:jsonrpc . "2.0")))))
-	(string-equal
-	 (json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg)
-					 :url url))
-	 "yes"))))
+  (unless (no-url? url)
+    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	   (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+	   (jmsg (json:encode-json-alist-to-string
+		  `((:method . "yes_no")
+		    (:params . ,(list msg full? timeout?))
+		    (:id . ,id)
+		    (:jsonrpc . "2.0")))))
+      (string-equal
+       (json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg)
+				       :url url))
+       "yes"))))
 
 (defun json-query (prompt url)
   "Only currently used by make-directory-path"
-  (or t ;; For now, always return t
-      (null url)
-      (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
-	     (jmsg (json:encode-json-alist-to-string
-		    `((:method . "query")
-		      (:params . ,(list prompt))
-		      (:id . ,id)
-		      (:jsonrpc . "2.0")))))
-	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)))))
+  (declare (ignore prompt url))
+  ;; (or (null url)
+  ;;     (let* ((json:*lisp-identifier-name-to-json* #'identity)
+  ;; 	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+  ;; 	     (jmsg (json:encode-json-alist-to-string
+  ;; 		    `((:method . "query")
+  ;; 		      (:params . ,(list prompt))
+  ;; 		      (:id . ,id)
+  ;; 		      (:jsonrpc . "2.0")))))
+  ;; 	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
+  t ;; For now, always return t
+  )
 
 (defun json-dialog (prompt url)
-  (if (or t  ;; For now...
-	  (null url))
-      ""
-      (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
-	     (jmsg (json:encode-json-alist-to-string
-		    `((:method . "dialog")
-		      (:params . ,(list prompt))
-		      (:id . ,id)
-		      (:jsonrpc . "2.0")))))
-	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)))))
+  (declare (ignore prompt url))
+  ;; (if (null url)
+  ;;     ""
+  ;;     (let* ((json:*lisp-identifier-name-to-json* #'identity)
+  ;; 	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+  ;; 	     (jmsg (json:encode-json-alist-to-string
+  ;; 		    `((:method . "dialog")
+  ;; 		      (:params . ,(list prompt))
+  ;; 		      (:id . ,id)
+  ;; 		      (:jsonrpc . "2.0")))))
+  ;; 	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
+  ""
+  )
 
 (defun jsonrpc-result (result id)
   (let* ((json:*lisp-identifier-name-to-json* #'identity)
