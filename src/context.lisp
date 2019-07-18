@@ -237,7 +237,7 @@ again during the same PVS session, it will be exactly as you left it."
       (pvs-error "Change Workspace"
 	(format nil "Workspace directory %s not found")))
     (if (file-equal dir *default-pathname-defaults*)
-	(pvs-message "Change Workspace: already in %s" directory)
+	(pvs-message "Change Workspace: already in ~a" directory)
 	(let* ((have-ws (get-workspace-session dir))
 	       (next-ws (or have-ws
 			    (let ((ws (make-instance 'workspace-session :path dir)))
@@ -253,8 +253,8 @@ again during the same PVS session, it will be exactly as you left it."
 	  (when (write-permission?)
 	    (copy-auto-saved-proofs-to-orphan-file))
 	  (pvs-message "Context changed to ~a"
-	    (current-context-path))
-	  (current-context-path)))))
+	    (current-context-path))))
+    (current-context-path)))
 
 (defun change-context (directory &optional init?)
   "Old - deprecated"
