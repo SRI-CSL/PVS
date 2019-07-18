@@ -1,0 +1,125 @@
+more_real_props: THEORY
+
+  BEGIN
+
+  w, x, y, z: VAR real
+  n0w, n0x, n0y, n0z: VAR nonzero_real
+  nnw, nnx, nny, nnz: VAR nonneg_real
+  pw, px, py, pz: VAR posreal
+  npw, npx, npy, npz: VAR nonpos_real
+  nw, nx, ny, nz: VAR negreal
+  n: VAR nat
+  i: VAR int
+
+%--------------------------------------------------------------------------------
+  sqrt_1_lt: LEMMA x * x < 1 IMPLIES abs(x) < 1
+
+  sqrt_1_le: LEMMA x * x <= 1 IMPLIES abs(x) <= 1
+
+
+  abs_div: LEMMA abs(x / n0y) = abs(x) / abs(n0y)
+
+  abs_abs: LEMMA abs(abs(x)) = abs(x)
+
+  abs_square: LEMMA abs(x * x) = x * x
+
+  nzreal_expt:  JUDGEMENT expt(x:nzreal,  n:nat) HAS_TYPE nzreal
+
+  nzreal_exp:  JUDGEMENT ^(x:nzreal,  i:int) HAS_TYPE nzreal
+
+  expt_of_mult: LEMMA expt(x * y, n) = expt(x, n) * expt(y, n)
+
+  expt_of_div: LEMMA expt(x / n0y, n) = expt(x, n) / expt(n0y, n)
+
+  expt_of_inv: LEMMA expt(1 / n0x, n) = 1 / expt(n0x, n)
+
+  expt_of_abs: LEMMA expt(abs(x), n) = abs(expt(x, n))
+
+  abs_of_expt_inv: LEMMA abs(1 / expt(n0x, n)) = 1 / expt(abs(n0x),n)
+
+
+  mult_expt: LEMMA (n0x * n0y) ^i = n0x^i * n0y^i
+
+  div_expt : LEMMA (n0x / n0y)^i = n0x^i / n0y^i
+
+  inv_expt : LEMMA (1 / n0x)^i = 1 / n0x^i
+
+  abs_expt: LEMMA abs(n0x)^i = abs(n0x^i)
+
+  lt1x, lt1y: VAR {r: posreal | r < 1}
+  gt1x, gt1y: VAR {r: posreal | r > 1}
+  pn : VAR posnat
+
+  expt_lt1_bound1: LEMMA  expt(lt1x, n) <= 1
+
+  expt_lt1_bound2: LEMMA  expt(lt1x, pn) < 1
+
+  expt_gt1_bound1: LEMMA  1 <= expt(gt1x, n)
+
+  expt_gt1_bound2: LEMMA  1 < expt(gt1x, pn)
+
+  large_expt: LEMMA 1 < px  IMPLIES (FORALL py: EXISTS n: py < expt(px, n))
+
+  small_expt: LEMMA px < 1  IMPLIES (FORALL py: EXISTS n: expt(px, n) < py)
+
+
+%--------------------------------------------------------------------------------
+
+
+
+%  paren_minus: LEMMA -x - y = -(x + y)
+
+  normalize_left_plus: LEMMA x + y/n0z = (n0z*x + y)/n0z
+  normalize_right_plus: LEMMA x/n0z + y = (x + n0z*y)/n0z
+% next causes loops on times_div2:   LEMMA (x/n0z) * y = (x * y)/n0z
+  normalize_left_minus: LEMMA x - y/n0z = (n0z*x - y)/n0z
+  normalize_right_minus: LEMMA x/n0z - y = (x - n0z*y)/n0z
+
+  normalize_both_plus: LEMMA (x/n0x) + (y/n0y) = (x*n0y + y*n0x)/n0x/n0y
+  normalize_both_minus: LEMMA (x/n0x) - (y/n0y) = (x*n0y - y*n0x)/n0x/n0y
+
+% next loops--why?
+%  div_cancel4: LEMMA y = x/n0z IFF  y * n0z = x
+
+  lt_times_lt_pos3: LEMMA nnx < y AND nnz < w IMPLIES nnx * nnz < y * w
+
+  gt_times_gt_pos3: LEMMA x > nny AND z > nnw IMPLIES x * z > nny * nnw
+
+  % Rules for eliminating minus and subtraction
+
+  shift_minus: LEMMA -x + y = y - x
+
+  move_minus_right: LEMMA (x - y = z) IFF (x = z + y)
+
+  move_minus_left: LEMMA (x = y - z) IFF (x + z = y)
+
+  % Rules that are missing from real-props
+
+  both_sides_times3: LEMMA (x * n0z = n0z * y) IFF x = y
+
+  both_sides_times4: LEMMA (n0z * x = y * n0z) IFF x = y
+
+  both_sides_times1a: LEMMA (x * n0z = n0z) IFF x = 1
+
+  both_sides_times2a: LEMMA (n0z * x = n0z) IFF x = 1
+
+  both_sides_times3a: LEMMA (n0z = x * n0z) IFF x = 1
+
+  both_sides_times4a: LEMMA (n0z = n0z * x) IFF x = y
+
+  floor_is: LEMMA i<=x AND i+1>x => floor(x) = i
+  ceiling_is: LEMMA x<=i and i<x+1 => ceiling(x) = i
+
+  sq_nonneg: LEMMA x*x >= 0
+
+  lt1_prop: LEMMA x<1 and x>-1 => x*x <1
+
+  le1_prop: LEMMA (x<=1 and x>=-1) => x*x <=1
+
+  gt1_prop: LEMMA x>1 or x<-1 => x*x >1
+
+  ge1_prop: LEMMA x>=1 or x<=-1 => x*x >=1
+
+  exp_plus: LEMMA  n0x^n * n0y^n = (n0x*n0y)^n
+
+END more_real_props
