@@ -182,13 +182,55 @@ BEGIN
 
 END stdpvs
 
+%% stdmath.pvs
+%% PVSio math library 
+
+stdmath : THEORY
+BEGIN
+
+  %% The following functions are available in the NASA PVS Library
+  %% div and mod: ints@div_nat and ints@mod_nat
+  %% sq: reals@sq
+  %% sqrt: reals@sqrt
+  %% sin and cos: trig@sincos_def
+  %% tan: trig@trig_basic
+  %% acos: trig@acos
+  %% asin: trig@asin
+  %% atan: trig@atan
+  %% pi: trig@pi_def
+  %% ln, exp, e:lnexp@ln_exp
+  %% sinh, cosh, tanh: lnexp@hyperbolic
+
+% Math Exceptions
+  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
+  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
+
+  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
+
+  % Rounding Modes
+  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty} 
+  AwayFromZero : MACRO RoundingMode = TowardsInfnty
+  Ceiling      : MACRO RoundingMode = TowardsPosInfnty
+  Floor        : MACRO RoundingMode = TowardsNegInfnty
+
+  % set(PRECISION,n) sets default precision to 10^(-val(PRECISION)) for computations and printing
+  PRECISION : Global[nat,6] 
+
+  % set(ROUNDING,mode) sets default rounding mode for computation and printing
+  ROUNDING  : Global[RoundingMode,TowardsZero]
+
+  RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
+  NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
+  BRANDOM           : bool = (NRANDOM(2) = 0)
+
+END stdmath
+
+
 %% stdstr.pvs
 %% String operations
 
 stdstr: THEORY
 BEGIN
-
-  IMPORTING stdmath
 
 % Char from code n
   charcode(n:nat) : string
@@ -538,49 +580,6 @@ BEGIN
     str2bool(fread_word(f),answer)
 
 END stdio
-
-%% stdmath.pvs
-%% PVSio math library 
-
-stdmath : THEORY
-BEGIN
-
-  %% The following functions are available in the NASA PVS Library
-  %% div and mod: ints@div_nat and ints@mod_nat
-  %% sq: reals@sq
-  %% sqrt: reals@sqrt
-  %% sin and cos: trig@sincos_def
-  %% tan: trig@trig_basic
-  %% acos: trig@acos
-  %% asin: trig@asin
-  %% atan: trig@atan
-  %% pi: trig@pi_def
-  %% ln, exp, e:lnexp@ln_exp
-  %% sinh, cosh, tanh: lnexp@hyperbolic
-
-% Math Exceptions
-  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
-  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
-
-  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
-
-  % Rounding Modes
-  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty} 
-  AwayFromZero : MACRO RoundingMode = TowardsInfnty
-  Ceiling      : MACRO RoundingMode = TowardsPosInfnty
-  Floor        : MACRO RoundingMode = TowardsNegInfnty
-
-  % set(PRECISION,n) sets default precision to 10^(-val(PRECISION)) for computations and printing
-  PRECISION : Global[nat,6] 
-
-  % set(ROUNDING,mode) sets default rounding mode for computation and printing
-  ROUNDING  : Global[RoundingMode,TowardsZero]
-
-  RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
-  NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
-  BRANDOM           : bool = (NRANDOM(2) = 0)
-
-END stdmath
 
 %% stdfmap.pvs
 %% Iterations on files and format printing
