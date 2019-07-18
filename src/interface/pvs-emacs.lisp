@@ -1042,7 +1042,7 @@ list of interface names that are currently open."
 (defvar *type-error-argument* nil)
 (defvar *skip-all-conversion-checks* nil)
 
-(define-condition tcerror (simple-condition)
+(define-condition tcerror (simple-error)
   (term))
 
 (#+cmu ext:without-package-locks
