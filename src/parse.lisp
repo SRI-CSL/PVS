@@ -61,12 +61,6 @@
 			     *current-file*))
 	 (start-time (when *current-file* (get-internal-real-time))))
     (init-parser)
-    (when *current-file*
-      (let ((pdir (pathname-directory *current-file*)))
-	(unless (or (null pdir)
-		    (file-equal (make-pathname :directory pdir)
-				*default-pathname-defaults*))
-	  (break "check this"))))
     (multiple-value-bind (term error? place msg args)
 	(apply #'pvs-parse :return-errors t keys)
       (when error?
