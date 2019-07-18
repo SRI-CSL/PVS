@@ -655,34 +655,12 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defvar-local pvs-lib-p nil)
 
 (defun current-pvs-file (&optional no-error)
-  (if (and no-error
-	   current-pvs-file)
-      current-pvs-file
-      (pvs-current-directory)
-      (setq-local pvs-lib-p nil)
-      (cond ((or (not (buffer-file-name))
-		 (not (member-equal (pathname-type (buffer-file-name))
-				    *pvs-file-extensions*)))
-	     (unless no-error
-	       (error "%s is not a valid PVS file" (buffer-name))))
-	    ((file-equal (buffer-file-name)
-			 (format "%s/lib/prelude.pvs" pvs-path))
-	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
-	    ((file-equal (buffer-file-name)
-			 (format "%s/lib/pvsio_prelude.pvs" pvs-path))
-	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
-	    ((file-equal (buffer-file-name)
-			 (format "%s%s"
-			     pvs-current-directory
-			   (file-name-nondirectory (buffer-file-name))))
-	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
-	    ((pvs-library-file-p (buffer-file-name))
-	     (setq-local current-pvs-file (pathname-name (buffer-file-name)))
-	     (setq-local pvs-lib-p t)
-	     current-pvs-file)
-	    (t (unless no-error
-		 (error "%s is not in the current context or a typechecked library file"
-			(buffer-file-name)))))))
+  (if (or (not (buffer-file-name))
+	  (not (member-equal (pathname-type (buffer-file-name))
+			     *pvs-file-extensions*)))
+      (unless no-error
+	(error "%s is not a valid PVS file" (buffer-name)))
+      (buffer-file-name)))
 
 (defun associated-pvs-file (&optional buf)
   (unless buf
