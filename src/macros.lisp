@@ -262,6 +262,32 @@ it the default."
 	       (set-working-directory ,orig-dir)))
 	   (error "Directory ~a does not exist" ,dirstr)))))
 
+(defmacro with-pvs-file (pvsfile pvs-fn)
+  "Given a pvsfile string or pathname, gets the directory and file parts,
+invokes with-workspace on the directory, and applies pvs-fn to the basename,
+which is the pvsfile without directory."
+  (let ((_pvsfile (gentemp))
+	(dir (gentemp))
+	(name (gentemp))
+	(ext (gentemp))
+	(msg (gentemp)))
+    `(let* ((,_pvsfile ,pvsfile)
+	    (,dir (asdf/pathname:pathname-directory-pathname ,_pvsfile))
+	    (,name (pathname-name ,_pvsfile))
+	    (,ext (pathname-type ,_pvsfile)))
+       (unless (or (asdf/pathname:pathname-equal ,dir #p"")
+		   (directory-p ,dir))
+	 (let ((,msg (format nil "with-pvs-file error: bad directory ~a" ,dir)))
+	   (pvs-error ,msg ,msg)))
+       (unless (or (null ,ext) (string-equal ,ext "pvs"))
+	 (pvs-error "with-pvs-file error"
+	   "~a is not a PVS file with extension .pvs"))
+       (if (asdf/pathname:pathname-equal ,dir #p"")
+	   (funcall ,pvs-fn ,name)
+	   (with-workspace ,dir
+	     (funcall ,pvs-fn ,name))))))
+	 
+
 (defmacro add-to-alist (key entry alist)
   (let ((vkey (gentemp))
 	(ventry (gentemp))
