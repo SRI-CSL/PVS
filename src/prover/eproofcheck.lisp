@@ -33,7 +33,11 @@
 
 (defvar *subgoals* nil)
 
-(defvar *multiple-proof-default-behavior* :ask)
+(defvar *multiple-proof-default-behavior* :ask
+  "Defines how to handle when a proof finishes:
+ :ask = asks whether to save the proof, and if yes, whether to overwrite, etc.
+ :noquestions = no questions, automatically overwrites if the proof is different
+ :overwrite = same as :noquestions, but sys that it is overwriting")
 
 (defvar *default-proof-description* nil)
 
