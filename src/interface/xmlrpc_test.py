@@ -49,19 +49,21 @@ class RequestHandler(SimpleXMLRPCRequestHandler):
 
 class PVS_XMLRPC(object):
 
-    def __init__(self, host='localhost', port=22335):
+    def __init__(self, host='localhost', pvsport=22334, myport=22335):
         # Create server
         # print('Initializing gui_server with ({0}, {1})'.format(host,port))
         self.ctr = 0
-        self.gui_url = 'http://{0}:{1}/RPC2'.format(host, port)
-        self.gui_server = SimpleXMLRPCServer((host, port),
-                                             requestHandler=RequestHandler,
-                                             logRequests=False)
-        self.gui_server.register_function(self.request, 'request')
-        self.server_thread = threading.Thread(target=self.gui_server.serve_forever)
-        self.server_thread.setDaemon(True)
-        self.server_thread.start()
-        self.pvs_proxy = ServerProxy('http://localhost:22445')
+        self.gui_url = None
+        if myport:
+            self.gui_url = 'http://{0}:{1}/RPC2'.format(host, myport)
+            self.gui_server = SimpleXMLRPCServer((host, myport),
+                                                 requestHandler=RequestHandler,
+                                                 logRequests=False)
+            self.gui_server.register_function(self.request, 'request')
+            self.server_thread = threading.Thread(target=self.gui_server.serve_forever)
+            self.server_thread.setDaemon(True)
+            self.server_thread.start()
+        self.pvs_proxy = ServerProxy('http://localhost:{0}'.format(pvsport))
         self.json_methods = {'debug': self.pvs_debug,
                              'info': self.pvs_info,
                              'warning': self.pvs_warning,
