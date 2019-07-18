@@ -36,7 +36,9 @@
 
 (in-package :pvs)
 
-(export '(collect-pvs-file-decls-info))
+(export '(collect-pvs-file-decls-info show-expanded-form show-declaration
+	  goto-declaration get-term-at find-declaration list-declarations
+	  whereis-declaration-used names-info))
 
 (defvar *list-declarations* nil)
 
