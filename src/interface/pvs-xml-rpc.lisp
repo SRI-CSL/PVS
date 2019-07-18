@@ -46,6 +46,11 @@
   (use-package :net.aserve)
   )
 
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; Future use
+  (require :sb-bsd-sockets))
+
 ;; #-allegro
 ;; (eval-when (:compile-toplevel :load-toplevel :execute)
 ;;   (require :s-xml-rpc)
