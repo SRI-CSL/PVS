@@ -535,8 +535,13 @@ is in (current-pvs-files) and its write-date should match that in the
 pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
-  (let* ((file (make-specpath filename))
-	 (*current-file* filename)
+  (with-pvs-file filename
+    #'(lambda (name)
+	(parse-file-in name forced? no-message? typecheck?))))
+
+(defun parse-file-in (filename forced? no-message? typecheck?)
+  (let* ((*current-file* filename)
+	 (file (make-specpath filename))
 	 (theories (get-theories file)))
     (cond ((not (file-exists-p file))
 	   (unless no-message?
@@ -683,6 +688,7 @@ use binfiles."
     (let* ((theory (car new-theories))
 	   (clash (gethash (id theory) *prelude*)))
       (when clash
+	(break "check-for-prelude-theory-clashes")
 	(parse-error theory
 	  "~a is a prelude ~a and may not be redefined"
 	  (id clash) (if (datatype? clash) "datatype" "theory")))
