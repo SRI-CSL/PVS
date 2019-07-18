@@ -140,7 +140,8 @@
   (:export "pvs-server"))
 
 #+(or gcl cmu)
-(defpackage :pvs (:use :cl-user :lisp :common-lisp :pcl :make))
+(defpackage :pvs
+  (:use :cl-user :lisp :common-lisp :pcl :make))
 #+(or gcl cmu)
 (defpackage :pvs-xml-rpc (:use :cl-user :lisp :common-lisp :pcl :make))
 
@@ -272,6 +273,9 @@
 			(setq *pvs-has-libyices* t))))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
+		#+allegro
+		(defpackage :pvs
+		  (:import-from :pvs-xml-rpc "pvs-server"))
 		#-(or cmu sbcl)
 		(pvs::BDD_bdd_init)
 		;;(when *pvs-has-libyices*
@@ -485,6 +489,11 @@
 		  (:file "pvs2c-primop")
 		  (:file "pvs2c"))
      :depends-on (basic))
+   (:module Field
+     :source-pathname "src/Field"
+     :components ((:file "decimals")
+		  (:file "extrategies")
+		  (:file "field")))
    (:module PVSio
      :source-pathname "src/PVSio"
      :components ((:file "pvs-lib")
@@ -502,10 +511,6 @@
 		  (:file "manip-strategies")
 		  ;(:file "debug-utils")
 		  ))
-   (:module Field
-     :source-pathname "src/Field"
-     :components ((:file "extrategies")
-		  (:file "field")))
    (:module ProofLite
      :source-pathname "src/ProofLite"
      :components (;(:file "pregexp")
