@@ -324,7 +324,7 @@ command."
 	(use-local-map pvs-show-formulas-map)))))
 
 (defpvs show-tccs tcc (theory &optional arg)
-	"Shows all the TCCs of the indicated theory
+  "Shows all the TCCs of the indicated theory
 
 The show-tccs command pops up a buffer with the name \"THEORY.tccs\".
 displaying just the TCCs of the theory.  Proofs of any displayed TCCs may
@@ -334,30 +334,30 @@ to be proved and invoking the prove command.
 With a nonnegative argument (e.g., C-u or M-0), shows only the unproved TCCs.
 With a negative argument (M--), shows all TCCs, including comments for
 trivial TCCs."
-	(interactive (append (complete-theory-name "Show TCCs of theory named: ")
-			     (list (when current-prefix-arg
-				     (prefix-numeric-value current-prefix-arg)))))
-	(save-some-pvs-buffers)
-	(unless (called-interactively-p 'interactive) (pvs-collect-theories))
-	(message "Creating the %s.tccs buffer..." theory)
-	(pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
-			   nil (pvs-get-abbreviation 'show-tccs)
-			   'dont-care)
-	(let ((pvs-file (buffer-file-name))
-	      (buf (get-buffer (format "%s.tccs" theory))))
-	  (when buf
-	    (save-excursion
-	      (let ((mtime (get-theory-modtime theory)))
-		(with-current-buffer buf
-		  (message "")
-		  (set (make-local-variable 'pvs-context-sensitive) t)
-		  (set (make-local-variable 'from-pvs-file) pvs-file)
-		  (set (make-local-variable 'from-pvs-theory) theory)
-		  (set (make-local-variable 'pvs-theory-modtime) mtime)
-		  (set-tcc-buttons)
-		  (pvs-view-mode)
-		  (use-local-map pvs-show-formulas-map))))
-	    (switch-to-buffer-other-window buf))))
+  (interactive (append (complete-theory-name "Show TCCs of theory named: ")
+		       (list (when current-prefix-arg
+			       (prefix-numeric-value current-prefix-arg)))))
+  (save-some-pvs-buffers)
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
+  (message "Creating the %s.tccs buffer..." theory)
+  (pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
+		     nil (pvs-get-abbreviation 'show-tccs)
+		     'dont-care)
+  (let ((pvs-file (buffer-file-name))
+	(buf (get-buffer (format "%s.tccs" theory))))
+    (when buf
+      (save-excursion
+	(let ((mtime (get-theory-modtime theory)))
+	  (with-current-buffer buf
+	    (message "")
+	    (set (make-local-variable 'pvs-context-sensitive) t)
+	    (set (make-local-variable 'from-pvs-file) pvs-file)
+	    (set (make-local-variable 'from-pvs-theory) theory)
+	    (set (make-local-variable 'pvs-theory-modtime) mtime)
+	    (set-tcc-buttons)
+	    (pvs-view-mode)
+	    (use-local-map pvs-show-formulas-map))))
+      (switch-to-buffer-other-window buf))))
 
 (define-button-type 'tcc-cause-button
     'action 'pvs-mouse-goto-tcc-cause
