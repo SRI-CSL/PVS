@@ -143,15 +143,15 @@
 
 (defun remove-generated-decl (decl)
   (mapc #'remove-generated-decl (generated decl))
-  (cond ((member decl (theory *current-theory*))
-	 (setf (theory *current-theory*)
-	       (remove decl (theory *current-theory*))))
-	((member decl (assuming *current-theory*))
-	 (setf (assuming *current-theory*)
-	       (remove decl (assuming *current-theory*)))))
-;   (setf (gethash (id decl) (declarations *current-theory*))
+  (cond ((member decl (theory (current-theory)))
+	 (setf (theory (current-theory))
+	       (remove decl (theory (current-theory)))))
+	((member decl (assuming (current-theory)))
+	 (setf (assuming (current-theory))
+	       (remove decl (assuming (current-theory))))))
+;   (setf (gethash (id decl) (declarations (current-theory)))
 ; 	(remove decl
-; 		(gethash (id decl) (declarations *current-theory*))))
+; 		(gethash (id decl) (declarations (current-theory)))))
   )
 
 (defun cleanup-typecheck-decls (decl)
@@ -763,9 +763,7 @@
     (make-inlined-theory theory theory-name decl)))
 
 (defun make-inlined-theory (theory theory-name decl)
-  (let* ( ;; Need to ignore earlier substitutions
-	 (*all-subst-mod-params-caches* nil)
-	 (stheory (subst-mod-params theory theory-name theory)))
+  (let ((stheory (subst-mod-params-inlined-theory theory theory-name)))
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
     ;; Might be better to subst-mod-params declarations separately, but then
     ;; the substitution alist must be remade for each one.
@@ -785,6 +783,19 @@
       (subst-new-map-decls (theory stheory) dalist owlist)
       ;; This splices the new decls into the current theory
       (make-inlined-theory-decls stheory decl))))
+
+(defun subst-mod-params-inlined-theory (theory theory-name)
+  "Does subst-mod-params for the whole theory, but with a fresh
+all-subst-mod-params-caches.  It does this by resetting this in
+*workspace-session*, then restoring it after the subst-mod-params call."
+  (let ((cur-all-subst-mod-params-caches
+	 (all-subst-mod-params-caches *workspace-session*)))
+    ;; Need to ignore earlier substitutions, but restore after
+    (setf (all-subst-mod-params-caches *workspace-session*)
+	  (make-pvs-hash-table :strong-eq? t))
+    (unwind-protect (subst-mod-params theory theory-name theory)
+      (setf (all-subst-mod-params-caches *workspace-session*)
+	    cur-all-subst-mod-params-caches))))
 
 (defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
   (if (null sdecls)
@@ -945,9 +956,11 @@
   (change-to-mapped-formula-decl decl)
   (setf (place decl) nil)
   (setf (kind decl) nil)
-  (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
-    (assert fdecl)
-    (setf (from-formula decl) fdecl))
+  (assert (typep (from-formula decl) '(or null formula-decl)))
+  (unless (from-formula decl)
+    (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
+      (assert (formula-decl? fdecl))
+      (setf (from-formula decl) fdecl)))
   (setf (definition decl) (subst-new-map-decls* (closed-definition decl)))
   (setf (closed-definition decl) (definition decl))
   (setf (default-proof decl) nil)
@@ -1186,8 +1199,8 @@
 (defun make-inlined-theory-decls* (decls thdecl lastdecl part)
   (when decls
     (let ((decl (car decls)))
-      (when (declaration? decl)
-	(format t "~%Adding decl ~a" (id decl)))
+      ;; (when (declaration? decl)
+      ;; 	(format t "~%Adding decl ~a" (id decl)))
       (setf (generated-by decl) thdecl)
       (push decl (generated thdecl))
       (add-new-inlined-decl decl lastdecl part)
@@ -1239,7 +1252,7 @@
 
 (defmethod typecheck-inlined-theory* ((theory datatype) theory-name decl)
   ;; Need to inline the datatype as well
-  (let* ((*all-subst-mod-params-caches* nil)
+  (let* (;;(*all-subst-mod-params-caches* nil)
 	 (nadt (subst-mod-params theory theory-name theory)))
     (break "Need to deal with ~a" nadt)
     (typecheck-inlined-theory* (adt-theory theory)
@@ -3101,7 +3114,7 @@ The dependent types are created only when needed."
 	     (singleton? (bindings (definition decl)))
 	     (typep (type (car (bindings (definition decl)))) 'type-name)
 	     (memq (declaration (type (car (bindings (definition decl)))))
-		   (formals *current-theory*)))
+		   (formals (current-theory))))
     (set-nonempty-type (type (car (bindings (definition decl)))) decl)))
 
 
@@ -4080,7 +4093,7 @@ The dependent types are created only when needed."
   ;; If we don't clear the hash, causes problems in ACCoRD@bands_util.gs2v3_gs_only
   (clrhash (judgement-types-hash (current-judgements)))
   (clrhash *subtype-of-hash*)
-  (reset-subst-mod-params-cache)
+  ;;(reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
   (untypecheck-theory (declared-type decl))
   (untypecheck-theory (expr decl))
