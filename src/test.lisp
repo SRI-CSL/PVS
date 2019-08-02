@@ -40,7 +40,7 @@
     (:internal (:effective-method 3 nil nil t t) 0)
     (:internal (:effective-method 1 t nil t t) 0)
     (method initialize-instance (standard-object))
-    "smp_request_gc_op"
+    "smp_request_gc_op" "sem_getvalue" "count_call" clrhash excl::instance-read-1
     (method shared-initialize (standard-object t))
     "sem_wait" excl::sort-list excl::merge-lists* reduce "lisp_cons"
     excl::typep-class "(lisp-trampolines)" (:discriminator (:caching (class) nil))
@@ -54,7 +54,7 @@
     pvs-sxhash-lists-a
     (:internal (:effective-method 2 t nil nil t) 0)
     excl::validate-make-instance-initargs
-    "qsymeval"
+    "qsymeval" "start" "function_lisp_apply"
     excl::fast-list-position-eq excl::list-remove-if format
     "unbind_one_spec"))
 
