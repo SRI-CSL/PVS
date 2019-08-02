@@ -50,16 +50,13 @@
 ;;; themselves, missing module instances, 
 
 
-;;; This is the set of caches for subst-mod-params - it is a
-;;; hash-table of hash-tables, indexed by module-instance.  This
-;;; is initialized by reset-subst-mod-params-cache, and used and set by
-;;; subst-mod-params.
-
-(defvar *all-subst-mod-params-caches* nil)
-
+;;; (all-subst-mod-params-caches *workspace-session*) is the set of caches
+;;; for subst-mod-params - it is a hash-table of hash-tables, indexed by
+;;; module-instance.  This is initialized by reset-subst-mod-params-cache,
+;;; and used and set by subst-mod-params.
 
 ;;; This is set by subst-mod-params to the cache found (or created) in
-;;; looking up the modname in *all-subst-mod-params-caches*.
+;;; looking up the modname in (all-subst-mod-params-caches *workspace-session*).
 
 (defvar *subst-mod-params-cache* nil)
 (defvar *subst-mod-params-eq-cache* nil)
@@ -96,15 +93,14 @@
 
 (defvar *subst-mod-params-map-bindings*)
 
-;;; This resets the *all-subst-mod-params-caches* hash table.  It is
-;;; called from the parser whenever a newly parsed theory replaces the old
-;;; theory, to ensure that the garbage collector can remove the objects.
+;;; This resets the (all-subst-mod-params-caches *workspace-session*) hash
+;;; table.  It is called from the parser whenever a newly parsed theory
+;;; replaces the old theory, to ensure that the garbage collector can remove
+;;; the objects.
 
 (defun reset-subst-mod-params-cache ()
-  (if *all-subst-mod-params-caches*
-      (clrhash *all-subst-mod-params-caches*)
-      (setq *all-subst-mod-params-caches*
-	    (make-pvs-hash-table :strong-eq? t)))
+  (assert *workspace-session*)
+  (clrhash (all-subst-mod-params-caches *workspace-session*))
   (when *subst-mod-params-cache*
     (clrhash *subst-mod-params-cache*))
   (when *subst-mod-params-eq-cache*
@@ -116,21 +112,23 @@
   )
 
 (defun remove-subst-mod-params-cache ()
-  (setq *all-subst-mod-params-caches* nil)
+  (assert *workspace-session*)
+  (clrhash (all-subst-mod-params-caches *workspace-session*))
   (setq *subst-mod-params-cache* nil)
   (setq *subst-mod-params-eq-cache* nil))
 
 (defun copy-subst-mod-params-cache ()
-  (unless *all-subst-mod-params-caches*
+  (assert *workspace-session*)
+  (unless (all-subst-mod-params-caches *workspace-session*)
     (reset-subst-mod-params-cache))
   (let ((new-hash (make-pvs-hash-table
 		   :strong-eq? t
-		   :size (floor (hash-table-size *all-subst-mod-params-caches*)
+		   :size (floor (hash-table-size (all-subst-mod-params-caches *workspace-session*))
 				1.5384616))))
     (maphash #'(lambda (modname hashes)
 		 (setf (gethash modname new-hash)
 		       (cons (copy (car hashes)) (copy (cdr hashes)))))
-	     *all-subst-mod-params-caches*)
+	     (all-subst-mod-params-caches *workspace-session*))
     new-hash))
 
 
@@ -138,14 +136,14 @@
 ;;; and returns it if necessary.
 
 (defun get-subst-mod-params-caches (modinst)
-  (unless *all-subst-mod-params-caches*
+  (unless (all-subst-mod-params-caches *workspace-session*)
     (reset-subst-mod-params-cache))
-  (let ((caches (gethash modinst *all-subst-mod-params-caches*)))
+  (let ((caches (gethash modinst (all-subst-mod-params-caches *workspace-session*))))
     (or caches
 	(let ((ncaches
 	       (cons (make-pvs-hash-table :strong-eq? t)
 		     (make-hash-table :test 'eq))))
-	  (setf (gethash modinst *all-subst-mod-params-caches*) ncaches)
+	  (setf (gethash modinst (all-subst-mod-params-caches *workspace-session*)) ncaches)
 	  ncaches))))
 
 (defmethod subst-theory-params (term (alist cons))
@@ -1084,11 +1082,16 @@ type-name, datatype-subtype, type-application, expr-as-type"
 
 (defmethod subst-mod-params* ((decl type-def-decl) modinst bindings)
   (with-slots (type-value type-expr contains) decl
-    (lcopy decl
-      :type-value (subst-mod-params* type-value modinst bindings)
-      :type-expr (subst-mod-params* type-expr modinst bindings)
-      :contains (subst-mod-params* contains modinst bindings)
-      :generated-by decl)))
+    (let ((tv (subst-mod-params* type-value modinst bindings))
+	  (te (subst-mod-params* type-expr modinst bindings))
+	  (co (subst-mod-params* contains modinst bindings)))
+      (unless (fully-instantiated? (print-type tv))
+	(if (eq tv type-value)
+	    (setq tv (copy tv :print-type nil :free-parameters 'unbound))
+	    (setf (print-type tv) nil
+		  (free-parameters tv) 'unbound)))
+      (unless (fully-instantiated? tv) (break "subst-mod-params* (type-def-decl)"))
+      (lcopy decl :type-value tv :type-expr te :contains co :generated-by decl))))
 
 (defmethod subst-mod-params* ((decl formal-theory-decl) modinst bindings)
   (with-slots (theory-name) decl
@@ -1136,7 +1139,13 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		   (*subst-mod-params-cache* (make-pvs-hash-table :strong-eq? t))
 		   (*subst-mod-params-eq-cache* (make-hash-table :test 'eq)))
 	       (setf (formals rdecl) (subst-mod-params* formals modinst bindings))
-	       (setf (type rdecl) (subst-mod-params* type modinst bindings))
+	       (let ((rtype (subst-mod-params* type modinst bindings)))
+		 (unless (fully-instantiated? (print-type rtype))
+		   (if (eq type rtype)
+		       (setq rtype (copy type :print-type nil :free-parameters 'unbound))
+		       (setf (print-type rtype) nil
+			     (free-parameters rtype) 'unbound)))
+		 (setf (type rdecl) rtype))
 	       (setf (declared-type rdecl) (subst-mod-params* declared-type modinst bindings))
 	       (setf (semi rdecl) t)
 	       rdecl))
@@ -1201,7 +1210,13 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				    *subst-mod-params-theory* decl))
 			    (ndefax (subst-mod-params def-axiom nmodinst
 				      *subst-mod-params-theory* decl)))
-		       ;; (assert (fully-instantiated? ntype))
+		       (unless (fully-instantiated? (print-type ntype))
+			 (if (eq type ntype)
+			     (setq ntype (copy type :print-type nil
+					       :free-parameters 'unbound))
+			     (setf (print-type ntype) nil
+				   (free-parameters ntype) 'unbound)))
+		       ;;(assert (fully-instantiated? ntype))
 		       ;; (assert (fully-instantiated? nfmls))
 		       ;; (assert (fully-instantiated? ndtype))
 		       ;; (assert (fully-instantiated? ndef))
