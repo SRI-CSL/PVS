@@ -475,14 +475,11 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/generate-lisp-for-theory.lisp \
                  src/groundeval/random-test.lisp \
                  src/groundeval/pvs2clean.lisp \
+	         src/groundeval/pvs2c-types.lisp \
+	         src/groundeval/pvs2c-code.lisp \
+	         src/groundeval/pvs2c-analysis.lisp \
 	         src/groundeval/pvs2ir.lisp \
-	         src/groundeval/pvs2c-utils.lisp \
-		 src/groundeval/pvs2c-types.lisp \
-		 src/groundeval/pvs2c-code.lisp \
-		 src/groundeval/pvs2c-analysis.lisp \
-		 src/groundeval/pvs2c-primop.lisp \
-		 src/groundeval/pvs2c.lisp
-
+	         src/groundeval/c-primitive-attachments.lisp
 
 inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/herbrandize.lisp \

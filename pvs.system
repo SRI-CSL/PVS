@@ -337,6 +337,15 @@
 		  (:file "globals")
 		  (:file "optimize")
 		  (:file "makes")))
+   (:module utils
+     :source-pathname "src/utils"
+     :components ((:file "hashfn")
+		  #+allegro
+		  (:file "file-utils")
+		  #+sbcl
+		  (:file "file-utils-sbcl")
+		  #+cmu
+		  (:file "file-utils-cmu")))
    (:module pvs2c
      :source-pathname "src/"
      :components((:file "groundeval/pvs2c-types")
@@ -348,15 +357,6 @@
      :components((:file "pvs-methods"
 			:initially-do
 			(pvs::write-deferred-methods-to-file))))
-   (:module utils
-     :source-pathname "src/utils"
-     :components ((:file "hashfn")
-		  #+allegro
-		  (:file "file-utils")
-		  #+sbcl
-		  (:file "file-utils-sbcl")
-		  #+cmu
-		  (:file "file-utils-cmu")))
    (:module language
      :source-pathname "src/"
      :components ((:file "ergo-runtime-fixes")
@@ -482,12 +482,7 @@
 		  (:file "generate-lisp-for-theory")
 		  (:file "random-test")
 		  (:file "pvs2clean")
-		  ;;(:file "pvs2c-utils")
-		  ;;(:file "pvs2c-types")
-		  ;;(:file "pvs2c-code")
-		  ;;(:file "pvs2c-analysis")
-		  (:file "pvs2c-primop")
-		  (:file "pvs2c"))
+		  (:file "c-primitive-attachments"))
      :depends-on (basic))
    (:module Field
      :source-pathname "src/Field"
