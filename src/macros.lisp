@@ -224,8 +224,6 @@
 		  (,shortdir (shortpath ,lib-path))
 		  (*default-pathname-defaults* ,shortdir)
 		  (*current-context* nil)
-		  (*current-theory* nil)
-		  (*all-subst-mod-params-caches* nil)
 		  (*workspace-session*
 		   (or (when (workspace-session? ,lref)
 			 ,lref)
@@ -272,17 +270,20 @@ which is the pvsfile without directory."
 	(ext (gentemp))
 	(msg (gentemp)))
     `(let* ((,_pvsfile ,pvsfile)
-	    (,dir (asdf/pathname:pathname-directory-pathname ,_pvsfile))
+	    (,dir (uiop:pathname-directory-pathname ,_pvsfile))
 	    (,name (pathname-name ,_pvsfile))
 	    (,ext (pathname-type ,_pvsfile)))
-       (unless (or (asdf/pathname:pathname-equal ,dir #p"")
+       (unless (or (uiop:pathname-equal ,dir #p"")
 		   (directory-p ,dir))
 	 (let ((,msg (format nil "with-pvs-file error: bad directory ~a" ,dir)))
 	   (pvs-error ,msg ,msg)))
        (unless (or (null ,ext) (string-equal ,ext "pvs"))
-	 (pvs-error "with-pvs-file error"
-	   "~a is not a PVS file with extension .pvs"))
-       (if (asdf/pathname:pathname-equal ,dir #p"")
+	 ;; The name could be, e.g., foo.bar, and is intended to refer to
+	 ;; foo.bar.pvs.  So rather than give an error, we just treat it as
+	 ;; the name, with nil type
+	 (setq ,name (uiop:strcat ,name "." ,ext)))
+       (if (or (uiop:pathname-equal ,dir #p"")
+	       (uiop:pathname-equal ,dir *default-pathname-defaults*))
 	   (funcall ,pvs-fn ,name)
 	   (with-workspace ,dir
 	     (funcall ,pvs-fn ,name))))))
@@ -387,8 +388,8 @@ which is the pvsfile without directory."
 	 (pushnew ',reset-name ,hook)
 	 (defun ,name ()
 	   (or ,var
-	       (let* ((*current-theory* (get-typechecked-theory ,theory))
-		      (*current-context* (saved-context *current-theory*))
+	       (let* ((ctheory (get-typechecked-theory ,theory))
+		      (*current-context* (saved-context ctheory))
 		      (*generate-tccs* 'none)
 		      ,@(when expected
 			      `((expected-type

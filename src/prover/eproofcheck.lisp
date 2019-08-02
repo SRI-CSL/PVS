@@ -44,7 +44,7 @@
 (defvar *record-undone-proofstate* nil)
 
 (defmethod prove (name &key  strategy)
-  (let ((decl (get-formula *current-theory*
+  (let ((decl (get-formula (current-theory)
 			   (if (stringp name)(intern name :pvs) name))))
     (if decl
 	(prove-decl decl
@@ -95,11 +95,11 @@
 	 (*proving-tcc* (not interactive?))
 	 (*generate-tccs* t)
 	 (*subgoals* t)
-	 (*current-theory* (if module-name
-			       (get-theory module-name)
-			       *current-theory*))
+	 (ctheory (if module-name
+		      (get-theory module-name)
+		      (current-theory)))
 	 (*current-context* (if module-name
-				(context *current-theory*)
+				(context ctheory)
 				*current-context*))
 	 (expr (typecheck-uniquely (pc-parse expr 'expr)))
 	 (sk-id 'F!1)
@@ -109,7 +109,7 @@
 			   (skdecl (make-instance 'skolem-const-decl
 				     :id sk-id
 				     :type ftype
-				     :module *current-theory*))
+				     :module ctheory))
 			   (*in-checker* t))
 		      (copy-prover-context)
 		      (setf (declarations-hash *current-context*)
@@ -121,7 +121,7 @@
 	 (cexpr (universal-closure bexpr))
 	 (expr-decl (make-instance 'formula-decl
 		      :id (ref-to-id id)
-		      :module *current-theory*
+		      :module ctheory
 		      :spelling 'formula
 		      :definition cexpr
 		      :closed-definition cexpr))
@@ -175,14 +175,14 @@
 	 (*proving-tcc* t)
 	 (*generate-tccs* t)
 	 (*subgoals* t)
-	 (*current-theory* (get-theory module-name))
-	 (*current-context* (context *current-theory*))
+	 (ctheory (get-theory module-name))
+	 (*current-context* (context ctheory))
 	 (expr (typecheck (pc-parse expr 'expr)
 		 :expected *boolean*))
 	 (closed-expr (universal-closure expr))
 	 (expr-decl (make-instance 'formula-decl
 		      :id (ref-to-id id)
-		      :module *current-theory*
+		      :module ctheory
 		      :spelling 'formula
 		      :definition closed-expr))
 	 (*start-proof-display* display?))
@@ -232,7 +232,6 @@
   (ensure-default-proof decl)
   (unless (closed-definition decl)
       (let ((*current-context* (context decl))
-	    (*current-theory* (module decl))
 	    (*generate-tccs* 'none))
 	(with-current-decl decl
 	  (setf (closed-definition decl)
@@ -270,10 +269,8 @@
 	 (*subtype-of-hash* (init-if-rec *subtype-of-hash*))
 	 (*create-formulas-cache* (init-if-rec *create-formulas-cache*))
 	 (*term-print-strings* (init-if-rec *term-print-strings*))
-	 (*all-subst-mod-params-caches* (copy-subst-mod-params-cache))
 	 ;;
 	 (*current-context* (or context (context decl)))
-	 (*current-theory* (module decl))
 	 (*in-checker* t) ; Make sure this follows setting of *current-context*
 	 (*current-decision-procedure* (determine-decision-procedure decl))
 	 (auto-rewrites-info (with-current-decl decl (initialize-auto-rewrites)))
@@ -312,10 +309,18 @@
 		:dp-state *dp-state*
 		:justification (justification decl)
 		:declaration decl
-		:current-auto-rewrites auto-rewrites-info)))
+		:current-auto-rewrites auto-rewrites-info))
+	     (cur-all-subst-mod-params-caches
+	      (all-subst-mod-params-caches *workspace-session*))
+	     (new-all-subst-mod-params-caches
+	      (copy-subst-mod-params-cache)))
 	(before-prove*)
+	(setf (all-subst-mod-params-caches *workspace-session*)
+	      new-all-subst-mod-params-caches)
 	(unwind-protect
-	    (dpi-start #'prove-decl-body)
+	     (dpi-start #'prove-decl-body)
+	  (setf (all-subst-mod-params-caches *workspace-session*)
+	      cur-all-subst-mod-params-caches)
 	  (after-prove*)
 	  (dpi-end *top-proofstate*)
 	  (unless *recursive-prove-decl-call*
@@ -345,7 +350,7 @@
 (defmethod prove-decl ((decl declaration) &key strategy)
   (declare (ignore strategy))
   (error-format-if "~%Couldn't find formula ~a in module ~a."
-	     (id decl) (id *current-theory*)))
+	     (id decl) (id (current-theory))))
 
 (defun before-prove* ()
   (when *start-proof-display*
@@ -1009,8 +1014,7 @@
 		       (current-goal *par-ps*)))
 	 (*new-fmla-nums* (new-formula-nums *goal* *par-goal*))
 	 (*current-context* *current-context*)
-	 (*module-context* (copy-prover-context))
-	 (*current-theory* *current-theory*))
+	 (*module-context* (copy-prover-context)))
     (strat-eval strat)))
 
 (defun step-or-rule-defn (name)
@@ -1382,7 +1386,7 @@
 
 (defun quote? (x)(and (consp x)(eq (car x) 'quote)))
 (defvar *ps-globals* '(*label* *subgoalnum* *goal* *par-label* *par-goal*
-		       *current-context* *module-context* *current-theory*))
+		       *current-context* *module-context*))
 (defun global? (x)
   (memq x *ps-globals*))
 
@@ -1398,8 +1402,7 @@
      (*par-goal* (when (parent-proofstate ps)
 		    (current-goal (parent-proofstate ps))))
      (*current-context* *current-context*)
-     (*module-context* (copy-prover-context))
-     (*current-theory* *current-theory*)))
+     (*module-context* (copy-prover-context))))
 
 (defun isfun? (sym)
   (and (symbolp sym)
@@ -1981,7 +1984,6 @@
 		       (current-goal (parent-proofstate ps))))
 	 (*current-context* *current-context*)
 	 (*module-context* (copy-prover-context))
-	 (*current-theory* *current-theory*)
 	 (*auto-rewrites* (rewrites ps))
 	 (*all-rewrites-names* (all-rewrites-names ps))
 	 (*auto-rewrites-names* (auto-rewrites-names ps))
@@ -2458,12 +2460,12 @@
 ;	 (parsed-decl
 ;	  (pc-parse decl 'theory))
 ;	 (tc-decl (typecheck parsed-decl
-;			       :context (context *current-theory*))))
+;			       :context (current-context))))
 ;    (format-if "~%Adding declaration to current module.
 ;Other than that,")
 ;    (when (consp tc-decl)
 ;      (loop for decl in tc-decl
-;	    do (add-decl decl (context *current-theory*))))
+;	    do (add-decl decl (current-context))))
 ;  (values 'X nil))))
 
 

@@ -146,6 +146,7 @@
 	((not (or (null kind) (eq kind 'module)))
 	 (type-error name "Theory name ~a used where ~a expected" name kind))
 	(t (let* ((*resolve-error-info* nil)
+		  (th (with-no-type-errors (get-typechecked-theory name)))
 		  (res (resolve* name 'module nil)))
 	     (cond ((cdr res)
 		    (type-ambiguity name))
@@ -169,7 +170,7 @@
 
 
 (defmethod module ((binding binding))
-  *current-theory*)
+  (current-theory))
 
 (defun resolve* (name kind args)
   (typecheck-actuals name kind)
@@ -1777,15 +1778,15 @@ decl, args, and mappings."
 		 (list modinst)))))))
 
 (defun uninstantiated-theory? (modinst)
-  (assert *current-theory*)
-  (unless (same-id modinst *current-theory*)
+  (assert *current-context*)
+  (unless (same-id modinst (current-theory))
     (let ((theory (get-theory modinst)))
       (and (formals theory)
 	   (or (null (actuals modinst))
 	       (some #'(lambda (a)
 			 (let ((d (declaration a)))
 			   (and (formal-decl? d)
-				(not (member d (formals *current-theory*))))))
+				(not (member d (formals (current-theory)))))))
 		     (actuals modinst)))))))
 
 (defmethod compatible-uninstantiated? (decl modinst dtypes args)

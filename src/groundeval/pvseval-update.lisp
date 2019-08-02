@@ -176,7 +176,6 @@ if called."
 (defun pvs2cl (expr &optional context)
   (let ((*current-context*
 	 (if context context *current-context*))
-	(*current-theory* (theory *current-context*))
 	(*generate-tccs* 'none))
     (pvs2cl_up* expr nil nil)))
 
@@ -1475,8 +1474,7 @@ if called."
 
 (defun pvs2cl-resolution (expr)
   (let* ((decl (declaration expr))
-	 (*current-context* (saved-context (module decl)))
-	 (*current-theory* (theory *current-context*)))
+	 (*current-context* (saved-context (module decl))))
     (make-eval-info decl)
     (if (datatype-constant? expr)
 	(or (lisp-function2 (declaration expr))
@@ -1511,7 +1509,6 @@ if called."
 (defun pvs2cl-external-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* (module decl))
-	 (*current-theory* (module decl))
 	 (*pvs2cl-decl* decl))
     (cond ((null defax)
 	   (let ((undef (undefined decl)))
@@ -1520,89 +1517,92 @@ if called."
 		   (ex-name-m decl) undef
 		   (ex-name-d decl) undef)
 	     undef))
-	  (t (let ((formals (loop for x in (formals (module decl))
-				  when (formal-const-decl? x)
-				  collect x)))
-	       (if (null formals)
-		   (or (lisp-function decl)
-		       (pvs2cl-lisp-function decl))
-		   (let* ((id (mk-newfsymb (format nil "~a_~a"
-					     (id (module decl))
-					     (pvs2cl-id decl))))
-			  (id-d (mk-newfsymb (format nil "~a!~a"
-					       (id (module decl))
-					       (pvs2cl-id decl))))
-			  (formal-ids (loop for x in formals
-					    collect (lisp-id (id x))))
-			  (bindings (pairlis formals formal-ids))
-			  (defn (args2 (car (last defax))))
-			  (defn-bindings (when (lambda-expr? defn)
-					   (loop for bnd in
-						 (bindings* defn)
-						 append bnd)))
-			  (defn-expr (body* defn))
-			  (defn-binding-ids
-			    (make-binding-ids-without-dups defn-bindings nil))
-			  (formal-ids2 (append formal-ids
-					       defn-binding-ids))
-			  (declarations
-			   (pvs2cl-declare-vars formal-ids2
-						(append formals defn-bindings))))
-		     (make-eval-info decl)
-		     (setf (ex-name decl) id)
-		     (let ((id2 (mk-newfsymb (format nil "~a__~a"
-					       (id (module decl))
-					       (pvs2cl-id decl)))))
-		       (setf (ex-name-m decl) id2)
-		       (let ((*destructive?* nil))
-			 (setf (definition (ex-defn-m decl))
-			       `(defun ,id2 ,formal-ids2
-					 ,@(append (when declarations
-						     (list declarations))
-						   (list 
-						    (pvs2cl_up* defn-expr
-								(append (pairlis
-									 defn-bindings
-									 defn-binding-ids)
-									bindings)
-								nil))))))
-		       (eval (definition (ex-defn-m decl)))
-		       (assert id2)
-		       (compile id2))
-		     (setf (ex-name-d decl) id-d)
-		     (let ((*destructive?* t)
-			   (*output-vars* nil))
-		       (setf (definition (ex-defn-d decl))
-			     `(defun ,id-d ,formal-ids2
-				,declarations
-				,@(append (when declarations
-					    (list declarations))
-					  (list 
-					    (pvs2cl-till-output-stable
-					    (ex-defn-d decl)
-					    defn-expr
-					    (append (pairlis defn-bindings
-							     defn-binding-ids)
-						    bindings)
-					    nil)))))
-		       ;;setf output-vars already in
-		       ;;pvs2cl-till-output-stable
-		       (setf (output-vars (ex-defn-d decl)) *output-vars*))
-		     (eval (definition (ex-defn-d decl)))
-		     (assert id-d)
-		     (compile id-d)
-		     (let ((*destructive?* nil)
-			   (declarations (pvs2cl-declare-vars formal-ids formals)))
-		       (setf (definition (ex-defn decl))
-			     `(defun ,id ,formal-ids
-				,@(append (when declarations
-					    (list declarations))
-					  (list
-					   (pvs2cl_up* defn  bindings nil))))))
-		     (eval (definition (ex-defn decl)))
-		     (assert id)
-		     (compile id)
-		     )))))))
+	  (t (let ((ctheory (current-theory))
+		   (formals (loop for x in (formals (module decl))
+			       when (formal-const-decl? x)
+			       collect x)))
+	       (setf (current-theory) (module decl))
+	       (unwind-protect
+		    (if (null formals)
+			(or (lisp-function decl)
+			    (pvs2cl-lisp-function decl))
+			(let* ((id (mk-newfsymb (format nil "~a_~a"
+						  (id (module decl))
+						  (pvs2cl-id decl))))
+			       (id-d (mk-newfsymb (format nil "~a!~a"
+						    (id (module decl))
+						    (pvs2cl-id decl))))
+			       (formal-ids (loop for x in formals
+					      collect (lisp-id (id x))))
+			       (bindings (pairlis formals formal-ids))
+			       (defn (args2 (car (last defax))))
+			       (defn-bindings (when (lambda-expr? defn)
+						(loop for bnd in
+						     (bindings* defn)
+						   append bnd)))
+			       (defn-expr (body* defn))
+			       (defn-binding-ids
+				(make-binding-ids-without-dups defn-bindings nil))
+			       (formal-ids2 (append formal-ids
+						    defn-binding-ids))
+			       (declarations
+				(pvs2cl-declare-vars formal-ids2
+						     (append formals defn-bindings))))
+			  (make-eval-info decl)
+			  (setf (ex-name decl) id)
+			  (let ((id2 (mk-newfsymb (format nil "~a__~a"
+						    (id (module decl))
+						    (pvs2cl-id decl)))))
+			    (setf (ex-name-m decl) id2)
+			    (let ((*destructive?* nil))
+			      (setf (definition (ex-defn-m decl))
+				    `(defun ,id2 ,formal-ids2
+				       ,@(append (when declarations
+						   (list declarations))
+						 (list 
+						  (pvs2cl_up* defn-expr
+							      (append (pairlis
+								       defn-bindings
+								       defn-binding-ids)
+								      bindings)
+							      nil))))))
+			    (eval (definition (ex-defn-m decl)))
+			    (assert id2)
+			    (compile id2))
+			  (setf (ex-name-d decl) id-d)
+			  (let ((*destructive?* t)
+				(*output-vars* nil))
+			    (setf (definition (ex-defn-d decl))
+				  `(defun ,id-d ,formal-ids2
+				     ,declarations
+				     ,@(append (when declarations
+						 (list declarations))
+					       (list 
+						(pvs2cl-till-output-stable
+						 (ex-defn-d decl)
+						 defn-expr
+						 (append (pairlis defn-bindings
+								  defn-binding-ids)
+							 bindings)
+						 nil)))))
+			    ;;setf output-vars already in
+			    ;;pvs2cl-till-output-stable
+			    (setf (output-vars (ex-defn-d decl)) *output-vars*))
+			  (eval (definition (ex-defn-d decl)))
+			  (assert id-d)
+			  (compile id-d)
+			  (let ((*destructive?* nil)
+				(declarations (pvs2cl-declare-vars formal-ids formals)))
+			    (setf (definition (ex-defn decl))
+				  `(defun ,id ,formal-ids
+				     ,@(append (when declarations
+						 (list declarations))
+					       (list
+						(pvs2cl_up* defn  bindings nil))))))
+			  (eval (definition (ex-defn decl)))
+			  (assert id)
+			  (compile id)))
+		 (setf (current-theory) ctheory)))))))
 
 (defun pvs2cl-till-output-stable (defn-slot expr bindings livevars)
   (let ((old-outputvars (copy-list *output-vars*))

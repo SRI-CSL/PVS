@@ -97,8 +97,7 @@
   (let ((theory (get-theory theoryname)))  
     (unwind-protect
 	(if theory
-	    (let ((*current-theory* theory)
-		  (*generate-tccs* 'all)
+	    (let ((*generate-tccs* 'all)
 		  (*current-context* (or (saved-context theory)
 					 (context nil)))
 		  (*in-evaluator* t)

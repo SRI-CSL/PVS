@@ -32,7 +32,7 @@
 			 theories
 			 rewrites
 			 exclude)
-  (let ((cuth *current-theory*)
+  (let ((cuth (current-theory))
 	(rewrite-msg *rewrite-msg-off*)
 	(cuthstr (string (id cuth)))
 	(exclude (if (listp exclude) exclude (list exclude)))

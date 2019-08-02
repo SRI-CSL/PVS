@@ -852,7 +852,7 @@ righthand-side.  Examples:
 (defstep auto-rewrite-theory (name &optional exclude defs ;defs-only? 
 				   always? tccs?)
   (let ((name (pc-parse name 'modname))
-	(current? (eq (id name)(id *current-theory*)))
+	(current? (eq (id name) (id (current-theory))))
 	(theory-name (resolve-theory-name name))
 	(theory (get-theory theory-name))
 	(exclude (if (listp exclude) exclude (list exclude)))
@@ -3108,7 +3108,7 @@ in B must occur among the free variables in the Ai."
 
 (defstep forward-chain-theory (theory-name)
   (let ((name (pc-parse theory-name 'modname))
-	(current? (eq (id name)(id *current-theory*)))
+	(current? (eq (id name) (id (current-theory))))
 	(theory-name (resolve-theory-name name))
 	(theory (get-theory theory-name)))
     (if theory
@@ -3228,7 +3228,7 @@ found. "
 (defun forward-match (res conc antec-fmlas formlist)
   (let* ((mod-inst (module-instance res))
 	 (theory (get-theory mod-inst))
-	 (current-mod? (eq theory *current-theory*))
+	 (current-mod? (eq theory (current-theory)))
 	 (actuals (unless current-mod? (actuals mod-inst)))
 	 (formals (unless current-mod?
 		    (formals-sans-usings theory)))
@@ -3276,7 +3276,7 @@ found. "
   (loop for f1 in *-* thereis
 	(let* ((mod-inst (module-instance resolution))
 	       (theory (get-theory mod-inst))
-	       (current-mod? (eq theory *current-theory*))
+	       (current-mod? (eq theory (current-theory)))
 	       (actuals (unless current-mod? (actuals mod-inst)))
 	       (formals (unless current-mod?
 			  (formals-sans-usings theory)))
@@ -4538,7 +4538,7 @@ succedent disjunctions, implications, and negations from the sequent."
 				rewrites
 				exclude
 				irredundant?)
-  (let ((cuth *current-theory*)
+  (let ((cuth (current-theory))
 	(cuthstr (string (id cuth)))
 	(init-real-time (get-internal-real-time))
 	(init-run-time (get-run-time)))

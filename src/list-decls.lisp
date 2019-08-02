@@ -47,12 +47,12 @@
 (defun show-expanded-form (oname origin pos1 &optional (pos2 pos1) all? libpath)
   (if (or (equal origin "Declaration")
 	  (typechecked-origin? oname origin libpath))
-      (multiple-value-bind (object *current-theory*)
+      (multiple-value-bind (object ctheory)
 	  (get-object-at oname origin pos1 pos2 libpath)
 	(when object
 	  (let* ((*disable-gc-printout* t)
 		 (*pseudo-normalizing* t)
-		 (*current-context* (context *current-theory*))
+		 (*current-context* (context ctheory))
 		 (expform (if (listp object)
 			      (mapcar #'(lambda (x)
 					  (full-name x nil (not all?)))
@@ -237,18 +237,18 @@ Returns a list of terms, from most specific to least."
     (multiple-value-bind (objects theories)
 	(get-syntactic-objects-for name ext)
       (let ((theory (find-element-containing-pos theories pos1)))
-	(if (or (equal pos1 pos2)
-		(within-place pos2 (place theory)))
-	    (get-term-in-theory-at* objects theory pos1 pos2))))))
+	(when (or (equal pos1 pos2)
+		  (within-place pos2 (place theory)))
+	  (get-term-in-theory-at* objects theory pos1 pos2))))))
 
 (defun get-term-in-theory-at* (objects theory pos1 pos2)
   (let* ((decls (all-decls theory))
 	 (decl (or (find-element-containing-pos decls pos1)
 		   (find-decl-after-pos decls pos1))))
+    (break)
     (if (or (equal pos1 pos2)
 	    (within-place pos2 (place decl)))
-	(or decl
-	    (get-object-in-declaration-at objects pos1 pos2))
+	(get-object-in-declaration-at objects pos1 pos2)
 	(let ((decl2 (find-element-containing-pos decls pos2)))
 	  (unless decl2
 	    (setq decl2

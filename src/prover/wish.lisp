@@ -270,8 +270,8 @@
       (format t "show-proof-commands {~{~a ~}}" commands)))))
 
 (defun x-module-hierarchy (theoryname &optional include-libraries?)
-  (let* ((*current-theory* (get-typechecked-theory theoryname))
-	 (*current-context* (context *current-theory*))
+  (let* ((ctheory (get-typechecked-theory theoryname))
+	 (*current-context* (context ctheory))
 	 (*modules-visited* nil))
     (pvs-wish-source
      (with-output-to-temp-file

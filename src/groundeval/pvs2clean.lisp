@@ -96,10 +96,8 @@
   (format nil "(~a ~{~a ~})" fun args))
 
 (defun pvs2clean (expr &optional context)
-  (let* ((*current-context*
-	 (if context context *current-context*))
-	(*current-theory* (theory *current-context*))
-	(*generate-tccs* 'none))
+  (let* ((*current-context* (or context *current-context*))
+	 (*generate-tccs* 'none))
     (pvs2clean* expr nil nil)))
 
 
@@ -687,7 +685,6 @@ FunnyId is not currently used, just documented here just in case."
   
 (defun pvs2clean-theory (theory)
   (let* ((theory (get-theory theory))
-	 (*current-theory* theory)
 	 (*current-context* (context theory)))
     (cond ((datatype? theory)
 	   (pvs2clean-datatype theory)

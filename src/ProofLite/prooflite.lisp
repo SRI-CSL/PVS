@@ -80,15 +80,14 @@
   (unless (or (memq theory *modules-visited*)
 	      (from-prelude? theory)
 	      (lib-datatype-or-theory? theory))
-    (let ((*current-theory* theory))
-      (push theory *modules-visited*)
-      (dolist (use (get-immediate-usings theory))
-	(let ((th (get-theory use)))
-	  (when th
-	    (my-collect-theory-usings 
-	     (if (typep th 'rectype-theory)
-		 (get-typechecked-theory (generated-by th))
-	       th))))))))
+    (push theory *modules-visited*)
+    (dolist (use (get-immediate-usings theory))
+      (let ((th (get-theory use)))
+	(when th
+	  (my-collect-theory-usings 
+	   (if (typep th 'rectype-theory)
+	       (get-typechecked-theory (generated-by th))
+	       th)))))))
 
 ;; Returns a list of immediately imported theories in the theory-name
 (defun immediate-theories-in-theory (theory-name)

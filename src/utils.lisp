@@ -69,6 +69,25 @@ is replaced with replacement."
     (when th
       (filename th))))
 
+(defun prove-pvs-files-in-file (file)
+  "File is expected to be a list of PVS files in the current directory"
+  (if (file-exists-p file)
+      (with-open-file (str file)
+	(loop as pvsf = (read-line str nil :eof)
+	   until (eq pvsf :eof)
+	   do (prove-pvs-file pvsf t)))
+      (error "File ~a does not exist" file)))
+
+(defun prove-all-pvs-files-in-directory (&optional (dir *default-pathname-defaults*))
+  (unless (uiop:directory-exists-p dir)
+    (error "~a is not a directory"))
+  (dolist (file (directory dir))
+    (when (string-equal (pathname-type file) "pvs")
+      (ignore-errors (prove-pvs-file file t))))
+  (dolist (file (directory dir))
+    (when (string-equal (pathname-type file) "pvs")
+      (status-proof-pvs-file (pathname-name file) t))))
+
 (defun current-pvs-files ()
   (pvs-files *workspace-session*))
 
@@ -117,11 +136,11 @@ is replaced with replacement."
     (theory *current-context*)))
 
 (defsetf current-theory () (theory)
-  (assert *current-context*)
-  `(setf (theory *current-context*) ,theory))
+  `(if *current-context*
+       (setf (theory *current-context*) ,theory)
+       (error "setf current-theory: *current-context* is nil")))
 
 (defun current-theory-name ()
-  (assert *current-context*)
   (theory-name *current-context*))
 
 (defun current-theory-name-with-dactuals ()
@@ -454,7 +473,7 @@ is replaced with replacement."
 (defun absolute-pathname-p (dir)
   "Checks if dir exists and is absolute, returns the pathname if it is"
   (and (directory-p dir)
-       (asdf/pathname:absolute-pathname-p dir)))
+       (uiop:absolute-pathname-p dir)))
 
 (defun environment-variable (string)
   #+allegro
@@ -1239,7 +1258,7 @@ is replaced with replacement."
       (let ((last-decl (car (last (or (theory theory)
 				   (assuming theory)
 				   (formals theory))))))
-	(if last-decl
+	(if (and last-decl (typechecked? last-decl))
 	    (decl-context last-decl t)
 	    (make-new-context theory)))))
 
@@ -1247,8 +1266,9 @@ is replaced with replacement."
   (if (inline-recursive-type? adt)
       (call-next-method)
       (let ((th (adt-theory adt)))
-	(assert th)
-	(context th))))
+	(if th
+	    (context th)
+	    (make-new-context adt)))))
 
 (defmethod context ((using importing))
   (decl-context using))
@@ -1269,7 +1289,6 @@ is replaced with replacement."
 	 (rem-decls (if (and prev-imp (saved-context prev-imp))
 			(ldiff prev-decls (memq prev-imp prev-decls))
 			prev-decls))
-	 (*current-theory* theory)
 	 (*current-context*
 	  (cond ((and prev-imp (saved-context prev-imp))
 		 (copy-context (saved-context prev-imp)
@@ -1280,17 +1299,19 @@ is replaced with replacement."
 			(cadr (memq theory
 				    (reverse
 				     *prelude-theories*)))))
-		   (if prevp
-		       (copy-context (saved-context
-				      (if (datatype? prevp)
-					  (or (adt-reduce-theory prevp)
-					      (adt-map-theory prevp)
-					      (adt-theory prevp))
-					  prevp))
-				     theory
-				     (reverse rem-decls)
-				     (or (car rem-decls) decl))
-		       (copy-context (saved-context theory)))))
+		   (cond (prevp
+			  (copy-context (saved-context
+					 (if (datatype? prevp)
+					     (or (adt-reduce-theory prevp)
+						 (adt-map-theory prevp)
+						 (adt-theory prevp))
+					     prevp))
+					theory
+					(reverse rem-decls)
+					(or (car rem-decls) decl)))
+			 ((saved-context theory)
+			  (copy-context (saved-context theory)))
+			 (t (make-new-context theory)))))
 		(t (make-new-context theory)))))
     ;;; Need to clear this hash or the known-subtypes table won't get
     ;;; updated properly - see add-to-known-subtypes.
@@ -1490,8 +1511,7 @@ prove itself from the mapped axioms."
     new-ht))
 
 (defun copy-context (context &optional theory decls current-decl)
-  (let ((*current-theory* (or theory (theory context)))
-	(*current-context*
+  (let ((*current-context*
 	 (make-instance 'context
 	   :theory (or theory (theory context))
 	   :theory-name (if theory
@@ -1508,7 +1528,7 @@ prove itself from the mapped axioms."
 	   :auto-rewrites (copy-list (auto-rewrites context))
 	   :disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
     (setf (judgements *current-context*)
-	  (if (from-prelude? *current-theory*)
+	  (if (from-prelude? (current-theory))
 	      (set-prelude-context-judgements (judgements context))
 	      (copy-judgements (judgements context))))
     *current-context*))
@@ -2602,9 +2622,9 @@ prove itself from the mapped axioms."
        (not (variable? x))
        (not (skolem-constant? x))
        (module-instance (resolution x))
-       (or (not *current-theory*)
+       (or (not (current-theory))
 	   (not (eq (module (declaration (resolution x)))
-		    *current-theory*))
+		    (current-theory)))
 	   (not (eq (id x) (id (resolution x))))
 	   (actuals (module-instance (resolution x)))
 	   (integerp (id x))
@@ -2618,9 +2638,9 @@ prove itself from the mapped axioms."
   (and (adt x)
        (resolution (adt x))
        (module-instance (resolution (adt x)))
-       (or (not *current-theory*)
+       (or (not (current-theory))
 	   (not (eq (module (declaration (resolution (adt x))))
-		    *current-theory*))
+		    (current-theory)))
 	   (not (eq (id x) (id (resolution (adt x)))))
 	   (actuals (module-instance (resolution (adt x))))
 	   (integerp (id x))
@@ -2638,7 +2658,7 @@ prove itself from the mapped axioms."
 (defmethod full-name? ((x type-name))
   (and (resolution x)
        (module-instance (resolution x))
-       (let ((cth *current-theory*))
+       (let ((cth (current-theory)))
 	 (or (not cth)
 	     (not (eq (id (module-instance (resolution x))) (id cth)))
 	     (not (type-name? (type (resolution x))))
@@ -2648,10 +2668,10 @@ prove itself from the mapped axioms."
 (defmethod full-name! ((x name))
   (copy x
     'id (id (resolution x))
-    'mod-id (when (or (not *current-theory*)
+    'mod-id (when (or (not (current-theory))
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution x)))
-			       (id *current-theory*))))
+			       (id (current-theory)))))
 	      (id (module-instance (resolution x))))
     'library (or (library x)
 		 (library (module-instance (resolution x)))
@@ -2669,10 +2689,10 @@ prove itself from the mapped axioms."
 (defmethod full-name! ((x adt-name-expr))
   (copy x
     'id (id (resolution x))
-    'mod-id (when (or (not *current-theory*)
+    'mod-id (when (or (not (current-theory))
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution (adt x))))
-			       (id *current-theory*))))
+			       (id (current-theory)))))
 	      (id (module-instance (resolution (adt x)))))
     'library (or (library x)
 		 (library (module-instance (resolution (adt x))))
@@ -2696,8 +2716,8 @@ prove itself from the mapped axioms."
     (copy x
       'mod-id (when (and (or (not *exclude-prelude-names*)
 			     (not (gethash modid *prelude*)))
-			 (or (not *current-theory*)
-			     (not (eq modid (id *current-theory*)))))
+			 (or (not (current-theory))
+			     (not (eq modid (id (current-theory))))))
 		modid)
       'library (or (library x)
 		   (library (module-instance (resolution x)))

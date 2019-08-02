@@ -83,8 +83,7 @@ To change output prompt '~a':
 	:if-exists (if *pvs-emacs-interface* :supersede :append))
 	(let ((*pvstrace-wrappers* nil))
 	  (unwind-protect
-	       (let ((*current-theory* theory)
-		     (*generate-tccs* (if tccs? 'all 'none))
+	       (let ((*generate-tccs* (if tccs? 'all 'none))
 		     (*current-context* (or (saved-context theory) (context nil)))
 		     (*suppress-msg* t)
 		     (*in-evaluator* t)
@@ -165,6 +164,16 @@ To change output prompt '~a':
 (define-condition pvsio-error (simple-condition) ())
 
 (define-condition pvsio-quit (simple-condition) ())
+
+;; (defun evaluate-pvsio (input-stream)
+;;   (restart-case
+;;       (evaluate-pvsio* input-stream)
+;;     (return-to-pvsio ()
+;;       :test (lambda (c) (declare (ignore c)) *evaluator-debug*)
+;;       :report "Return to PVSio"))
+;; 	  (pvsio-error () nil))
+;; 	(evaluate-pvsio input-stream))
+;;     (pvsio-quit () nil)))
 
 (defun evaluate-pvsio (input-stream)
   (handler-case

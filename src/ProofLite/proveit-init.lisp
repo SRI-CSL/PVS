@@ -199,7 +199,7 @@
 		  (rename-file "pvs-files.tex"
 			       (format nil "pvstex/main-~a.tex" (id decl)))))))
 	  (when (and save-proofs? *justifications-changed?*)
-	    (save-all-proofs *current-theory*)))))))
+	    (save-all-proofs (current-theory))))))))
 
 (defun now-today ()
   (multiple-value-bind (s mi h d mo y dow dst tz) 

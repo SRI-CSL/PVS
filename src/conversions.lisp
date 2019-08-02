@@ -148,7 +148,7 @@ the possible types of name."
 
 (defun make-function-conversion-resolution (res args compats k-conv-type)
   (declare (ignore args))
-  (let ((theories (delete *current-theory*
+  (let ((theories (delete (current-theory)
 			  (delete-duplicates (mapcar #'module
 						     (free-params res)))))
 	(dtypes (domain-types (type res)))
@@ -483,7 +483,7 @@ the possible types of name."
 					   (current-theory))))
 		    (free-params conversion))
 		  fmls
-		  (not (eq theory *current-theory*)))
+		  (not (eq theory (current-theory))))
 	     (let* ((bindings1 (tc-match optype (domain ctype)
 					 (mapcar #'list fmls)))
 		    (dtypes (domain-types (find-supertype (range ctype))))
@@ -782,7 +782,7 @@ that are not the K_covnersion."
       (typecheck* expr nil nil nil))))
 
 (defun add-conversion-info (conversion expr &optional new-expr)
-  (reset-subst-mod-params-cache)
+  ;;(reset-subst-mod-params-cache)
   (when (type expr)
     (remhash expr (judgement-types-hash (current-judgements))))
   (let ((origin

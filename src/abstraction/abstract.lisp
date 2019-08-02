@@ -52,7 +52,7 @@ using the abstraction map: ~a")
 
 (defstep abstract (cstate astate amap &optional theories rewrites exclude
 			  (strategy '(assert)) feasible verbose?)
-  (let ((cuth *current-theory*)
+  (let ((cuth (current-theory))
 	(cuthstr (string (id cuth))))
     (then  (install-rewrites$ :defs defs :theories theories
 			      :rewrites rewrites :exclude exclude)

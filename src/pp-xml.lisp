@@ -119,15 +119,13 @@
   (dolist (theory *prelude-theories*)
     (let ((*default-pathname-defaults*
 	   (make-pathname :directory (format nil "~a/lib" *pvs-path*)))
-	  (*current-context* (context theory))
-	  (*current-theory* theory))
+	  (*current-context* (context theory)))
       (print-xml-theory theory))))
 
 (defun print-xml-importchain (theoryname)
   (let ((theory (get-typechecked-theory theoryname)))
     (when theory
-      (let ((*current-context* (context theory))
-	    (*current-theory* theory))
+      (let ((*current-context* (context theory)))
 	(dolist (th (remove-if #'(lambda (th)
 				   (or (from-prelude? th)
 				       (lib-datatype-or-theory? th)))

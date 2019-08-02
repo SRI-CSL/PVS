@@ -163,7 +163,6 @@
 (defvar *par-goal*)
 ;;(defvar *current-context*)
 (defvar *module-context*)
-;;(defvar *current-theory*)
 (defvar *ps* nil)
 (#+sbcl sb-ext:without-package-locks
  #-sbcl progn
@@ -477,7 +476,7 @@
 
 (defmacro restore ()
   `(progn (when *in-evaluator*
-	    (clear-dependent-theories *current-theory*))
+	    (clear-dependent-theories (current-theory)))
 	  (if (find-restart 'return-to-pvsio)
 	      (invoke-restart 'return-to-pvsio)
 	      (throw 'abort *in-evaluator*))))

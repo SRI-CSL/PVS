@@ -52,7 +52,6 @@
   (assert context)
   (assert (memq tccs '(nil none all top)))
   (let* ((*current-context* context)
-	 (*current-theory* (current-theory))
 	 (*generate-tccs* (if given tccs *generate-tccs*)))
     (assert *generate-tccs*)
     (typecheck* obj expected nil nil))
@@ -66,7 +65,6 @@
   (assert context)
   (assert (memq tccs '(nil none all top)))
   (let* ((*current-context* context)
-	 (*current-theory* (current-theory))
 	 (*generate-tccs* (if given tccs *generate-tccs*)))
     (typecheck* te expected 'type nil)))
 
@@ -76,7 +74,6 @@
   ;;(assert (or (not given) expected (type ex)))
   (assert (memq tccs '(nil none all top)))
   (let* ((*current-context* context)
-	 (*current-theory* (current-theory))
 	 (*generate-tccs* (if given tccs *generate-tccs*)))
     (assert *generate-tccs*)
     (cond ((type ex)
@@ -169,8 +166,7 @@
       (setf (formals-sans-usings m)
 	    (remove-if #'importing-param? (formals m)))
       (setf (all-imported-theories m) 'unbound)
-      (let* ((*current-theory* m)
-	     (*typechecking-module* t)
+      (let* ((*typechecking-module* t)
 	     (*tccs* nil)
 	     (*tccdecls* nil)
 	     (*tccforms* nil)
@@ -498,7 +494,11 @@ TCCs are generated, and finally exportings are updated."
 	(assert (or (not (lib-datatype-or-theory? itheory))
 		    (library iname)
 		    (from-prelude-library? itheory)
-		    (file-equal (context-path itheory) *default-pathname-defaults*)))
+		    (file-equal (context-path itheory) *default-pathname-defaults*))
+		()
+		"Error in add-exporting-with-theory: itheory = ~a, iname = ~a, ~
+                 itheory-path = ~a, default path = ~a"
+		itheory iname (context-path itheory) *default-pathname-defaults*)
 	#+pvsdebug (assert (or (null (actuals iname))
 			       (fully-instantiated? iname)))
 	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
@@ -1258,8 +1258,8 @@ TCCs are generated, and finally exportings are updated."
 expr, number, or theory reference.  They are appended together, set-type
 sorts it all out.  Note that the mapping may have a declared-type; this will
 be typechecked when set-type selects a resolution."
-  (let* ((*current-theory* lhs-theory)
-	 (*current-context* lhs-context)
+  (let* ((*current-context* lhs-context)
+	 (ass (assert (eq (current-theory) lhs-theory)))
 	 (*generate-tccs* 'none)
 	 (dfmls (decl-formals mapping))
 	 (tres (unless (and (kind mapping)

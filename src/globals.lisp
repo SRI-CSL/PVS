@@ -32,7 +32,7 @@
 
 ;; shadow
 
-(export '(*boolean* *bound-variables* *current-context* *current-theory*
+(export '(*boolean* *bound-variables* *current-context*
 	  *even_int* *even_nat* *even_posnat* *even_negint* *false*
 	  *generate-all-adt-axioms* *generate-tccs*
 	  *integer* *naturalnumber* *number* *number_field* *odd_int* *odd_posnat* *odd_negint*
@@ -168,8 +168,6 @@ order is important")
 
 (defvar *current-library* nil)
 (defvar *current-file* nil)
-(defvar *current-theory* nil
-  "The module which is currently being focused on")
 (defvar *typechecking-module* nil
   "A flag indicating whether we are typechecking a module - used to control
    TCC generation")

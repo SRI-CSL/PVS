@@ -4534,8 +4534,8 @@ e LHS free variables in ~a" hyp lhs)
 
 ;      (cond ((consp names)
 ;	     (loop for name in names do
-;		   (auto-rewrite name (context *current-theory*))))
-;	    (t (auto-rewrite names (context *current-theory*))))
+;		   (auto-rewrite name (current-context)))
+;	    (t (auto-rewrite names (current-context))))
 ;      (values '? (list (current-goal ps)))
 
 (defmethod arithop-decl? ((x name-expr))
@@ -4655,13 +4655,13 @@ e LHS free variables in ~a" hyp lhs)
 	((null (car modules))
 	 (error-format-if "~%Could not find theory ~a" (car names))
 	 nil)
-	((and (eq (id (car modules))(id *current-theory*))
+	((and (eq (id (car modules)) (id (current-theory)))
 	      (actuals (car names))) ;;NSH(9.21.94)
 	 (error-format-if "~%Current theory ~a should not have actuals."
 		    (id (car modules)))
 	 nil)
 	((and (null defs-only?)
-	      (not (or (eq (id (car modules))(id *current-theory*))
+	      (not (or (eq (id (car modules)) (id (current-theory)))
 		       (null (formals-sans-usings (car modules)))
 		       (actuals (car names)))))
 	 (error-format-if
@@ -4733,7 +4733,7 @@ e LHS free variables in ~a" hyp lhs)
 							       (actuals module)))))))))
 		       collect decl))
 	 (fdecls
-	  (if (eq (id module)(id *current-theory*))
+	  (if (eq (id module) (id (current-theory)))
 	      (ldiff fdecls
 		     (memq (declaration *top-proofstate*)
 			   fdecls))
@@ -4925,7 +4925,7 @@ e LHS free variables in ~a" hyp lhs)
 	 
 (defun stop-rewrite-theory-name (name module ps)
   (cond (module
-	 (cond ((or (eq (id module)(id *current-theory*))
+	 (cond ((or (eq (id module) (id (current-theory)))
 		    (null (formals-sans-usings module))(actuals name))
 		(let ((assuming-resolves
 		       (loop for decl in (assuming module)

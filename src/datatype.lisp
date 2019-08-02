@@ -73,16 +73,17 @@ generated")
 
 (defmacro build-adt-theory (tid adt &rest forms)
   (let ((vtid (gensym))
-	(vadt (gensym)))
+	(vadt (gensym))
+	(adt-theory (gensym)))
     `(let* ((,vtid ,tid)
 	    (,vadt ,adt)
 	    (*generating-adt* ,vadt)
-	    (*current-theory* (make-instance 'rectype-theory
-				:id ,vtid
-				:context-path *default-pathname-defaults*
-				:exporting (make-instance 'exporting
-					     :kind 'default)))
-	    (*current-context* (make-new-context *current-theory*))
+	    (,adt-theory (make-instance 'rectype-theory
+			  :id ,vtid
+			  :context-path *default-pathname-defaults*
+			  :exporting (make-instance 'exporting
+				       :kind 'default)))
+	    (*current-context* (make-new-context ,adt-theory))
 	    (*typechecking-module* t)
 	    (*tccs* nil)
 	    (*tccdecls* nil)
@@ -90,11 +91,11 @@ generated")
        (setf (gethash ,vtid (if (from-prelude? ,vadt)
 				*prelude*
 				(current-pvs-theories)))
-	     *current-theory*)
-       (setf (generated-by *current-theory*) (id ,vadt))
+	     ,adt-theory)
+       (setf (generated-by ,adt-theory) (id ,vadt))
        ,@forms
-       (push 'typechecked (status *current-theory*))
-       (generate-xref *current-theory*)
+       (push 'typechecked (status ,adt-theory))
+       (generate-xref ,adt-theory)
        (maphash #'(lambda (id decls)
 		    (let ((ndecls (remove-if #'formal-decl? decls)))
 		      (when ndecls
@@ -103,7 +104,7 @@ generated")
 					   (current-declarations-hash)))
 			      ndecls))))
 		(lhash-table (current-declarations-hash)))
-       (setf (all-usings *current-theory*)
+       (setf (all-usings ,adt-theory)
 	     (let ((imps nil))
 	       (maphash #'(lambda (th thinsts)
 			    (unless (and (from-prelude? th)
@@ -111,16 +112,16 @@ generated")
 			      (push (cons th thinsts) imps)))
 			(lhash-table (current-using-hash)))
 	       imps))
-       (check-exporting *current-theory*)
-       (setf (all-usings *current-theory*)
+       (check-exporting ,adt-theory)
+       (setf (all-usings ,adt-theory)
 	     (let ((imps nil))
 	       (map-lhash #'(lambda (th thinsts)
 			      (unless (from-prelude? th)
 				(push (cons th thinsts) imps)))
 			  (current-using-hash))
 	       imps))
-       (setf (saved-context *current-theory*) *current-context*)
-       *current-theory*)))
+       (setf (saved-context ,adt-theory) *current-context*)
+       ,adt-theory)))
 
 (defmethod typecheck ((adt recursive-type) &key expected context)
   (declare (ignore context))
@@ -701,32 +702,41 @@ generated")
   (let ((constrids (mapcar #'id (remove-if-not #'simple-constructor?
 				  (constructors adt))))
 	(recognids (mapcar #'recognizer (constructors adt)))
-	(*current-theory* (if (typep adt 'inline-recursive-type)
-			      (current-theory)
-			      adt)))
-    (when (duplicates? constrids)
-      (type-error (duplicates? (constructors adt) :test #'same-id)
-	"Duplicate ~a names are not allowed"
-	(if (typep adt 'enumtype) "enumeration" "constructor")))
-    (when (duplicates? recognids)
-      (type-error (duplicates? (constructors adt) :key #'recognizer)
-	"Duplicate recognizer names are not allowed"))
-    (when (duplicates? (append constrids recognids))
-      (type-error (find-if #'(lambda (c) (memq (id c) recognids))
-		    (constructors adt))
-	"~a may not be used as both a constructor and recognizer name"
-	(duplicates? (append constrids recognids))))
-    (when (duplicates? (cons (id adt) recognids))
-      (type-error adt "Datatype name may not be used as a recognizer name"))
-    (dolist (c (constructors adt))
-      (let ((accessids (mapcar #'id (arguments c))))
-	(when (duplicates? accessids)
-	  (type-error (duplicates? (arguments c) :test #'same-id)
-	    "May not have duplicate accessor names for a single constructor"))
-	(when (duplicates? (cons (id adt) accessids))
-	  (type-error (find-if #'(lambda (x) (eq (id x) (id adt)))
-			      (arguments c))
-	    "Datatype name should not be used as an accessor name"))))))
+	;;(ctheory (when (current-context) (current-theory)))
+	)
+    ;; (when (and (current-context)
+    ;; 	       (not (inline-recursive-type? adt)))
+    ;;   (setf (current-theory) adt))
+    ;; (unwind-protect
+    ;; 	 (progn
+	   (when (duplicates? constrids)
+	     (type-error (duplicates? (constructors adt) :test #'same-id)
+	       "Duplicate ~a names are not allowed"
+	       (if (typep adt 'enumtype) "enumeration" "constructor")))
+	   (when (duplicates? recognids)
+	     (type-error (duplicates? (constructors adt) :key #'recognizer)
+	       "Duplicate recognizer names are not allowed"))
+	   (when (duplicates? (append constrids recognids))
+	     (type-error (find-if #'(lambda (c) (memq (id c) recognids))
+			   (constructors adt))
+	       "~a may not be used as both a constructor and recognizer name"
+	       (duplicates? (append constrids recognids))))
+	   (when (duplicates? (cons (id adt) recognids))
+	     (type-error adt "Datatype name may not be used as a recognizer name"))
+	   (dolist (c (constructors adt))
+	     (let ((accessids (mapcar #'id (arguments c))))
+	       (when (duplicates? accessids)
+		 (type-error (duplicates? (arguments c) :test #'same-id)
+		   "May not have duplicate accessor names for a single constructor"))
+	       (when (duplicates? (cons (id adt) accessids))
+		 (type-error (find-if #'(lambda (x) (eq (id x) (id adt)))
+			       (arguments c))
+		   "Datatype name should not be used as an accessor name")))))
+      ;; (when (and (current-context)
+      ;; 		 (not (eq ctheory (current-theory))))
+      ;; 	(setf (current-theory) ctheory))
+  ;;))
+)
 
 (defun check-adt-positive-types (adt)
   (setf (positive-types (current-theory))
@@ -1557,14 +1567,19 @@ generated")
 	    (declare (ignore pos2?))
 	    (when (and negocc2 (place negocc2))
 	      (setq negocc negocc2))))
-	(let ((*current-theory* *adt*))
-	  (setf (filename *current-theory*) *current-file*)
-	  (type-error (or negocc (declared-type arg))
-	    "Recursive uses of the datatype ~a may not appear in:~%  ~
-             the (possible) domain of a function type,~%  ~
-             as a non-positive parameter to another datatype,~%  ~
-             or in the predicate of a subtype."
-	    (id adt-type)))))))
+	(let ((ctheory (current-theory)))
+	  (setf (filename *adt*) *current-file*)
+	  (when ctheory
+	    (setf (current-theory) *adt*))
+	  (unwind-protect
+	       (type-error (or negocc (declared-type arg))
+		 "Recursive uses of the datatype ~a may not appear in:~%  ~
+                  the (possible) domain of a function type,~%  ~
+                  as a non-positive parameter to another datatype,~%  ~
+                  or in the predicate of a subtype."
+		 (id adt-type))
+	    (when ctheory
+	      (setf (current-theory) ctheory))))))))
 
 (defun sequence-adt? (adt-type arg-type)
   (let ((atype (find-supertype arg-type)))
