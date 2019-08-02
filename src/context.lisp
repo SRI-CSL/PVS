@@ -557,33 +557,35 @@ declaration-entry has slots
 					    unfinished untried nil))))
 	  (setf (pvs-context-changed *workspace-session*) t)))))
 
-(defun create-context-entry (filename)
-  (when (file-exists-p (make-specpath filename))
-    (let* ((file-entry (get-context-file-entry filename))
-	   (theories (or (gethash filename (current-pvs-files))
+(defun create-context-entry (pathname)
+  (let ((specpath (make-specpath pathname)))
+    (when (file-exists-p specpath)
+      (let* ((filename (pathname-name specpath))
+	     (file-entry (get-context-file-entry filename))
+	     (theories (or (gethash filename (current-pvs-files))
+			   (and file-entry (ce-theories file-entry))))
+	     (prf-file (make-prf-pathname filename))
+	     (proofs-write-date (file-write-time prf-file))
+	     (fdeps (file-dependencies filename))
+	     (objdate (when file-entry (ce-object-date file-entry)))
+	     (md5sum (md5-file (make-specpath filename))))
+	(assert (cdr theories))
+	(assert (plusp md5sum))
+	;;(format t "~%create-context-entry: ~a objdate = ~a" filename objdate)
+	(make-context-entry
+	 :file filename
+	 :write-date (car theories)
+	 :object-date objdate
+	 :extension nil
+	 :proofs-date proofs-write-date
+	 :dependencies fdeps
+	 :theories (let ((theories (gethash filename (current-pvs-files))))
+		     (if theories
+			 (mapcar #'(lambda (th)
+				     (create-theory-entry th file-entry))
+			   (cdr theories))
 			 (ce-theories file-entry)))
-	   (prf-file (make-prf-pathname filename))
-	   (proofs-write-date (file-write-time prf-file))
-	   (fdeps (file-dependencies filename))
-	   (objdate (when file-entry (ce-object-date file-entry)))
-	   (md5sum (md5-file (make-specpath filename))))
-      (assert (cdr theories))
-      (assert (plusp md5sum))
-      ;;(format t "~%create-context-entry: ~a objdate = ~a" filename objdate)
-      (make-context-entry
-       :file filename
-       :write-date (car theories)
-       :object-date objdate
-       :extension nil
-       :proofs-date proofs-write-date
-       :dependencies fdeps
-       :theories (let ((theories (gethash filename (current-pvs-files))))
-		   (if theories
-		       (mapcar #'(lambda (th)
-				   (create-theory-entry th file-entry))
-			 (cdr theories))
-		       (ce-theories file-entry)))
-       :md5sum md5sum))))
+	 :md5sum md5sum)))))
 
 #+allegro
 (defun md5-file (file)
@@ -1221,6 +1223,9 @@ declaration-entry has slots
 					       *default-pathname-defaults*)))))))
 	      (ce-dependencies entry))))
 
+(defmethod get-context-file-entry ((filename pathname))
+  (get-context-file-entry (pathname-name filename)))
+
 (defmethod get-context-file-entry ((filename string))
   (car (member filename (pvs-context-entries)
 	       :test #'(lambda (x y)
@@ -1552,15 +1557,13 @@ declaration-entry has slots
 
 
 (defun backup-proof-file (file)
-  (let ((filestring (namestring file)))
+  (let ()
     (if (= *number-of-proof-backups* 1)
-	(let ((nfile (concatenate 'string filestring "~")))
-	  (rename-file filestring (concatenate 'string
-				    (namestring filestring) "~"))
-	  (pvs-log "Renamed ~a to ~a"
-		   (file-namestring filestring)
-		   (file-namestring nfile)))
-	(let* ((files (directory (concatenate 'string filestring ".~*~")))
+	(let ((bfile (make-pathname :type "prf~" :defaults file)))
+	  (rename-file file bfile)
+	  (pvs-log "Renamed ~a to ~a" file bfile))
+	(let* ((filestring (namestring file))
+	       (files (directory (concatenate 'string filestring ".~*~")))
 	       (numbers (remove-if #'null
 			  (mapcar #'(lambda (fname)
 				      (parse-integer (pathname-type fname)
@@ -1574,10 +1577,8 @@ declaration-entry has slots
 		(ignore-file-errors
 		 (delete-file ofile)))))
 	  (let ((nfile (format nil "~a.~~~d~~" filestring (1+ max))))
-	    (rename-file filestring nfile)
-	    (pvs-log "Renamed ~a to ~a"
-		     (file-namestring filestring)
-		     (file-namestring nfile)))))))
+	    (rename-file file nfile)
+	    (pvs-log "Renamed ~a to ~a" file nfile))))))
 
 (defun invalid-proof-file (filestring &optional outproofs)
   (with-open-file (in filestring :direction :input)
@@ -2891,9 +2892,11 @@ Note that the lists might not be the same length."
 	 (dproofs (collect-default-proofs aproofs)))
     (if (equalp all-proofs dproofs)
 	(pvs-message "Proof file is already cleaned up")
-	(let ((prf-file (make-prf-pathname file)))
-	  (pvs-message "Moving ~a to ~a.bak" prf-file prf-file)
-	  (rename-file prf-file (concatenate 'string prf-file ".bak"))
+	(let* ((prf-file (make-prf-pathname file))
+	       (prf-fstr (namestring prf-file))
+	       (prf-bak (concatenate 'string prf-fstr ".bak")))
+	  (pvs-message "Moving ~a to ~a" prf-file prf-bak)
+	  (rename-file prf-file prf-bak)
 	  (pvs-message "Writing cleaned up proof file ~a" prf-file) 
 	  (multiple-value-bind (value condition)
 	      (ignore-file-errors
@@ -3218,7 +3221,7 @@ If there is no error, but the ls-files is empty, then "
 		     (uiop:run-program (format nil "git ~@[-C ~a~] ls-files" dir)
 		       :input "//dev//null"
 		       :output '(:string :stripped t))
-		   (uiop/run-program:subprocess-error (cnd)
+		   (uiop:subprocess-error (cnd)
 		     (declare (ignore cnd)) nil))))
 	(cond ((not (zerop (length lsf)))
 	       ;; Already have files from this dir in a repo
