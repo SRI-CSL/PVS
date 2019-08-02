@@ -364,14 +364,22 @@
     (unless (or (null id) (eq id endid))
       (parse-error (term-arg3 theory)
 	"End id ~a does not match theory id ~a" endid id))
-;    (assert (every #'place (modules exp)))
-;    (assert (every #'place assum))
-;    (assert (every #'place tpart))
-    (make-instance 'module
-      :exporting exp
-      :assuming assum
-      :theory tpart
-      :place (term-place theory))))
+    ;; (assert (every #'place (modules exp)))
+    ;; (assert (every #'place assum))
+    ;; (assert (every #'place tpart))
+    (let ((th (make-instance 'module
+		:exporting exp
+		:assuming assum
+		:theory tpart
+		:place (term-place theory))))
+      (dolist (decl assum)
+	(when (declaration? decl)
+	  (setf (module decl) th)))
+      (dolist (decl tpart)
+	(when (declaration? decl)
+	  (setf (module decl) th)))
+      th)))
+      
 
 (defun xt-exporting (exporting)
   (let ((names (term-arg0 exporting))
