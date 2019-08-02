@@ -241,6 +241,8 @@
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (declare (ignore quiet?))
   (assert (not *in-checker*))
+  (assert (subtype decl))
+  (assert (type decl))
   (add-to-known-subtypes (subtype decl) (type decl)))
 
 ;;; Invoked from typecheck* (number-judgement)
@@ -3266,6 +3268,8 @@
 ;;; already known, in which case it does nothing.
 
 (defun add-to-known-subtypes (atype etype)
+  (assert atype)
+  (assert etype)
   (let* ((aty (if (typep atype 'dep-binding) (type atype) atype))
 	 (ety (if (typep etype 'dep-binding) (type etype) etype))
 	 (entry (get-known-subtypes aty)))
@@ -3275,7 +3279,8 @@
       ;; shadow the entry.
       (setf (current-known-subtypes)
 	    (cons (cons aty (cons ety (cdr entry)))
-		  (remove entry (current-known-subtypes)))))))
+		  (remove entry (current-known-subtypes))))
+      (assert (every #'(lambda (ks) (every #'type-expr? ks)) (current-known-subtypes))))))
 
 
 ;;; We remove the compatible *subtype-of-hash* that return nil, as the
@@ -3375,7 +3380,7 @@
   (tc-eq t1 t2))
 
 (defun check-known-subtypes (t1 t2)
-  (check-known-subtypes* t1 t2 (known-subtypes *current-context*)))
+  (check-known-subtypes* t1 t2 (current-known-subtypes)))
 
 (defun check-known-subtypes* (t1 t2 known-subtypes)
   (when known-subtypes
