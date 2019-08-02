@@ -133,57 +133,6 @@ In addition to the usual, slots may have the following attributes:
     ',name))
 
 
-; (defmacro defcl* (name classes &rest args)
-;   (let ((cl (macroexpand `(defcl ,name ,classes ,@args))))
-;     (eval (second cl))
-;     (eval (sixth cl))   ;; updates *slot-info*
-;     (append cl
-; 	    (generate-defcl-methods (list name))
-; 	    (generate-update-fetched-methods (list name)))))
-
-; (defvar *classes-done* nil)
-; (defvar *methods-collected* nil)
-
-; (defun generate-defcl-methods (names)
-;   (let ((*classes-done* nil)
-; 	(*methods-collected* nil))
-;     (generate-defcl-methods* names)
-;     *methods-collected*))
-
-; (defun generate-defcl-methods* (names)
-;   (when names
-;     (let* ((name (car names))
-; 	   (class (find-class name)))
-;       (unless (memq name *classes-done*)
-; 	(push name *classes-done*)
-; 	(setq *methods-collected*
-; 	      (nconc *methods-collected*
-; 		     (list (generate-copy-method name)
-; 			   (generate-store-object*-method name)
-; 			   ;;(generate-update-fetched-method name)
-; 			   )))
-; 	(generate-defcl-methods* (mapcar #'class-name
-; 				   (class-direct-subclasses class)))))
-;     (generate-defcl-methods* (cdr names))))
-
-; (defun generate-update-fetched-methods (names)
-;   (let ((*classes-done* nil)
-; 	(*methods-collected* nil))
-;     (generate-update-fetched-methods* names)
-;     (nreverse *methods-collected*)))
-
-; (defun generate-update-fetched-methods* (names)
-;   (when names
-;     (let* ((name (car names))
-; 	   (class (find-class name)))
-;       (unless (memq name *classes-done*)
-; 	(push name *classes-done*)
-; 	(push (generate-update-fetched-method name) *methods-collected*)
-; 	(generate-update-fetched-methods* (mapcar #'class-name
-; 					    (class-direct-subclasses class)))))
-;     (generate-update-fetched-methods* (cdr names))))
-
-
 ;;; lcopy is a lazy copy that only makes a copy if there is a difference
 
 (defun lcopy (obj &rest initargs)
@@ -215,6 +164,11 @@ In addition to the usual, slots may have the following attributes:
 	  (write '(in-package :pvs) :stream out)
 	  (dolist (si *slot-info*)
 	    (write-deferred-methods (car si) out)))))))
+
+(defgeneric copy (obj &rest initargs))
+(defgeneric store-object* (obj))
+(defgeneric update-fetched (obj))
+(defgeneric restore-object* (obj))
 
 (defun write-deferred-methods (name out)
   (let* ((slots (get-all-slots-of (list name)))
