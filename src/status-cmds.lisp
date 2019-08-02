@@ -250,7 +250,7 @@
     (if theories
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories unproved?))
+	    (proof-summaries theories filename unproved?))
 	  t)
 	(pvs-message "File ~a.pvs is not in the current context"
 	  filename))))
@@ -280,28 +280,30 @@
 
 
 (defun proof-summaries (theory-ids &optional filename unproved?)
-  (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
-    (when filename
-      (format t "~2%Proof summary for file ~a.pvs" filename))
-    (dolist (theory theory-ids)
-      (multiple-value-bind (to pr uf ut tm)
-	  (proof-summary theory (when filename 2) unproved?)
-	(incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
-	(incf time tm)))
-    (if filename
-	(format t "~2%  Totals for ~a.pvs: " filename)
-	(format t "~2%Grand Totals: "))
-    (format t "~d proofs, ~d attempted, ~d succeeded (~,2f s)"
-      tot (+ proved unfin) proved time)
-    (values tot proved unfin untried time)))
+  (unless (and unproved?
+	       (every #'(lambda (thid)
+			  (let* ((th (get-theory thid))
+				 (fdecls (when th (provable-formulas th))))
+			    (and th (every #'proved? fdecls))))
+		      theory-ids))
+    (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
+      (when filename
+	(format t "~2%Proof summary for file ~a.pvs" filename))
+      (dolist (theory theory-ids)
+	(multiple-value-bind (to pr uf ut tm)
+	    (proof-summary theory (when filename 2) unproved?)
+	  (incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
+	  (incf time tm)))
+      (if filename
+	  (format t "~2%  Totals for ~a.pvs: " filename)
+	  (format t "~2%Grand Totals: "))
+      (format t "~d proofs, ~d attempted, ~d succeeded (~,2f s)"
+	tot (+ proved unfin) proved time)
+      (values tot proved unfin untried time))))
 
 (defun proof-summary (theory-id &optional (indent 0) unproved?)
-  (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
   (let* ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
-	 (theory (get-theory theory-id))
-	 (valid? (or (and theory
-			  (from-prelude? theory))
-		     (valid-proofs-file (context-entry-of theory-id)))))
+	 (theory (get-theory theory-id)))
     (if (and theory
 	     (typechecked? theory))
 	(let* ((fdecls (provable-formulas theory))
@@ -317,29 +319,42 @@
 			    2))
 	       (timelength (length (format nil "~,2f" maxtime)))
 	       (idlength (- 79 4 statuslength dplength timelength 4 3)))
-	  (dolist (decl fdecls)
-	    (let ((tm (if (run-proof-time decl)
-			  (/ (run-proof-time decl)
-			     internal-time-units-per-second 1.0)
-			  0)))
-	      (incf tot)
-	      (cond ((proved? decl)
-		     (incf proved))
-		    ((justification decl) (incf unfin))
-		    (t (incf untried)))
-	      (incf time tm)
-	      (when (or (null unproved?) (unproved? decl))
-		(format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
-		  idlength
-		  (id decl)
-		  (proof-status-string decl)
-		  (if (justification decl)
-		      (decision-procedure-used decl)
-		      "Untried")
-		  (if (run-proof-time decl)
-		      (format nil "~v,2f" timelength tm)
-		      (format nil "~v<n/a~>" timelength)))))))
-	(let ((te (get-context-theory-entry theory-id)))
+	  (unless (and unproved? (every #'proved? fdecls))
+	    (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
+	    (dolist (decl fdecls)
+	      (let ((tm (if (run-proof-time decl)
+			    (/ (run-proof-time decl)
+			       internal-time-units-per-second 1.0)
+			    0)))
+		(incf tot)
+		(cond ((proved? decl)
+		       (incf proved))
+		      ((justification decl) (incf unfin))
+		      (t (incf untried)))
+		(incf time tm)
+		(when (or (null unproved?) (unproved? decl))
+		  (format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
+		    idlength
+		    (id decl)
+		    (proof-status-string decl)
+		    (if (justification decl)
+			(decision-procedure-used decl)
+			"Untried")
+		    (if (run-proof-time decl)
+			(format nil "~v,2f" timelength tm)
+			(format nil "~v<n/a~>" timelength))))))
+	    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
+               (~,2f s)"
+	      (ref-to-id theory-id) tot (+ proved unfin) proved
+	      (/ (reduce #'+ (provable-formulas theory)
+			 :key #'(lambda (d) (or (run-proof-time d) 0))
+			 :initial-value 0)
+		 internal-time-units-per-second))))
+	(let ((te (get-context-theory-entry theory-id))
+	      (valid? (or (and theory
+			       (from-prelude? theory))
+			  (valid-proofs-file (context-entry-of theory-id)))))
+	  (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
 	  (mapc #'(lambda (fe)
 		    (let ((status (fe-status fe)))
 		      (format t "~%    ~52,1,0,'.a...~(~10a~)"
@@ -354,14 +369,14 @@
 			((unchecked unfinished)
 			 (incf unfin))
 			(t (incf untried)))))
-		(te-formula-info te))))
-    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
+		(te-formula-info te))
+	  (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
                (~,2f s)"
-	(ref-to-id theory-id) tot (+ proved unfin) proved
-	(/ (reduce #'+ (provable-formulas theory)
-		    :key #'(lambda (d) (or (run-proof-time d) 0))
-		    :initial-value 0)
-	    internal-time-units-per-second))
+	      (ref-to-id theory-id) tot (+ proved unfin) proved
+	      (/ (reduce #'+ (provable-formulas theory)
+			 :key #'(lambda (d) (or (run-proof-time d) 0))
+			 :initial-value 0)
+		 internal-time-units-per-second))))
     (values tot proved unfin untried time)))
 
 (defun run-proof-time (decl)
@@ -400,13 +415,18 @@
 ;;; Module Formula Status
 
 (defun proofchain-status-at (filename declname line &optional (origin "pvs"))
+  (with-pvs-file filename
+    #'(lambda (name)
+	(proofchain-status-at* name declname line origin))))
+
+(defun proofchain-status-at* (filename declname line origin)
   (if (or (gethash filename (current-pvs-files))
 	  (and (member origin '("ppe" "tccs") :test #'string=)
 	       (get-theory filename)))
       (let ((fdecl (formula-decl-to-prove filename declname line origin))
 	    (*disable-gc-printout* t))
 	(if fdecl
-	    (let ((*current-theory* (slot-value fdecl 'module)))
+	    (let ((*current-context* (context (module fdecl))))
 	      (pvs-buffer "PVS Status"
 		(with-output-to-string (*standard-output*)
 		  (pc-analyze fdecl))
@@ -437,8 +457,7 @@
 (defun status-proofchain-importchain (theoryname)
   (let ((th (get-theory theoryname)))
     (if th
-	(let* ((*current-theory* th)
-	       (*current-context* (saved-context th))
+	(let* ((*current-context* (saved-context th))
 	       (theories (collect-theory-usings theoryname))
 	       (*disable-gc-printout* t))
 	  (if theories
@@ -1328,12 +1347,12 @@
       (proofs-get-proof-at line)
     (when prf
       (setf (default-proof fdecl) prf)
-      (let ((*current-theory* (module fdecl)))
+      (let ((*current-context* (context (module fdecl))))
 	(read-strategies-files)
 	(auto-save-proof-setup fdecl)
 	(setq *last-proof* (prove (id fdecl) :strategy '(rerun)))
 	(unless (from-prelude? fdecl)
-	  (save-all-proofs *current-theory*)
+	  (save-all-proofs (current-theory))
 	  ;; If the proof status has changed, update the context.
 	  (update-context-proof-status fdecl))
 	(remove-auto-save-proof-file))
