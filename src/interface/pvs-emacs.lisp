@@ -900,7 +900,7 @@ list of interface names that are currently open."
 		display? read-only? append? kind)))
 	(to-emacs))
       (if display?
-	  (format t "~%~a" contents))))
+	  (format t "~&~a" contents))))
 
 (defun pvs-display (name instance type value)
   ;; note no test for *to-emacs* 
