@@ -766,8 +766,8 @@ behavior:
     (mapobject* fn (type obj)))
   (call-next-method))
 
-(defmethod mapobject* (fn (obj mod-decl))
-  (mapobject* fn (modname obj))
+(defmethod mapobject* (fn (obj theory-reference))
+  (mapobject* fn (theory-name obj))
   (call-next-method))
 
 (defmethod mapobject* (fn (obj type-decl))
