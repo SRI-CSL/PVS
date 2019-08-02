@@ -44,10 +44,12 @@
   "(defpvs NAME MENUPATH ARGLIST DOCSTRING BODY...):
 define NAME as a PVS command."
   (declare (indent defun))
-  (list 'progn
-	(list 'put (list 'quote name) ''pvs-command (list 'quote menupath))
-	(cons 'defun (cons name (cons arglist (cons docstring body))))))
-(put 'defpvs 'common-lisp-indent-function 'defun)
+  `(progn
+     (put ',name 'pvs-command ',menupath)
+     (defun ,name ,arglist ,docstring ,@body)))
+
+;; defun (e.g., (4 &lambda &body) ) doesn't work, as defpvs has an extra argument.
+(put 'defpvs 'lisp-indent-function '(4 0 &lambda &body))
 
 
 ;; This is courtesy of Jerry James.
