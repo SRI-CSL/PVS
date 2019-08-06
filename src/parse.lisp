@@ -64,7 +64,12 @@
     (multiple-value-bind (term error? place msg args)
 	(apply #'pvs-parse :return-errors t keys)
       (when error?
-	(parse-error place (parse-error-msg msg args)))
+	(let ((pargs (mapcar #'(lambda (arg)
+				 (if (stringp arg)
+				     (protect-format-string arg)
+				     arg))
+		       args)))
+	  (parse-error place (parse-error-msg msg pargs))))
       (let* ((nt (cadr (member :nt keys)))
 	     (fn (if nt
 		     (makesym #+(and allegro (version>= 6)) "xt-~(~a~)"
@@ -623,8 +628,9 @@
     importings))
 
 (defun xt-formal-importing-elt (importing)
-  (let ((lib-decl (unless (is-sop 'NOLIB (term-arg0 importing))
-		    (break)))
+  (let ((lib-decl
+	 (unless (is-sop 'NOLIB (term-arg0 importing))
+	   (break "formal importing with lib: needs fixing")))
 	(importings
 	 (mapcar #'(lambda (item)
 		     (let* ((imp-place (term-place importing))
