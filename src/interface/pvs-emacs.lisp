@@ -1008,7 +1008,9 @@ list of interface names that are currently open."
 	     (when (place obj)
 	       (format nil " (line ~a, col ~a)"
 		 (line-begin (place obj))
-		 (col-begin (place obj)))))))
+		 (col-begin (place obj)))))
+	   (when *current-file* (pathname-name *current-file*))
+	   (place obj)))
 	((and (or *in-checker*
 		  *in-evaluator*)
 	      (not *tcdebug*))
