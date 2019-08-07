@@ -301,14 +301,14 @@
   (setq *pvs-library-path* nil)
   (let ((libs nil)
 	(pathenv (environment-variable "PVS_LIBRARY_PATH"))
-	(pvs-path-lib (merge-pathnames #p"lib/" *pvs-path*)))
+	(pvs-path-lib (namestring (merge-pathnames #p"lib/" *pvs-path*))))
     (when pathenv
       (let ((dirs (split-path pathenv)))
 	(dolist (dir dirs)
 	  (when (string= dir "")
 	    (setq dir pvs-path-lib))
 	  (if (uiop:directory-exists-p dir)
-	      (pushnew (truename dir) libs :test #'file-equal)
+	      (pushnew (namestring (truename dir)) libs :test #'file-equal)
 	      (pvs-message "Directory ~a in PVS_LIBRARY_PATH does not exist"
 		dir)))))
     (let ((pvs-path-lib-entry (find pvs-path-lib libs :test #'file-equal)))
