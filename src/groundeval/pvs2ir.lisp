@@ -858,10 +858,11 @@
 
 (defun pvs2ir-formal-types (formals ir-actuals bindings)
   (cond ((consp formals)
-	 (cond ((formal-const-decl? (car formals))(break "const?")
+	 (cond ((formal-const-decl? (car formals));(break "const?")
 		(cons (pvs2ir-type (type (car formals)) bindings)
 		      (pvs2ir-formal-types (cdr formals)(cdr ir-actuals) bindings)))
-	       (t (break "type?")(cons *type-actual-ir-name*
+	       (t ;(break "type?")
+		(cons *type-actual-ir-name*
 			(pvs2ir-formal-types (cdr formals)(cdr ir-actuals)
 					     (cons (cons (car formals)
 							 (if (ir-const-formal? (car ir-actuals))
@@ -6643,7 +6644,7 @@
 		    (loop for thy in  preceding-theories-without-formals
 			  when (not (same-id thy theory-id))
 			  do (format output "~%~%#include \"~a_c.h\"" thy))
-		    (format output "~%~%//cc -Wall -o ~a" theory-id )
+		    (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
 		    (format output " pvslib.c ")
 		    (loop for thy in preceding-theories-without-formals
 			  do (format output " ~a_c.c" thy))
@@ -6847,15 +6848,15 @@
 	  (*ir-type-info-table* nil)
 	  (*c-type-info-table* nil)
 	  (*closure-info-table* nil)) ;;not currently used
-	(let* (;(formal-ids (loop for decl in *theory-formals* do (pvs2ir-decl decl)))
+	(let* ((formal-ids (loop for decl in *theory-formals* do (pvs2ir-decl decl)))
 	       (*ir-theory-formals* (loop for formal in *theory-formals*
 					  collect (if (formal-const-decl? formal)
 							(ir-defn (ir (eval-info formal)))
 						      (mk-ir-const-formal (ir-type-id (ir-type-name (ir-type-value formal))) 
 									  *type-actual-ir-name*))))
 	       (*ir-theory-tbindings* (pairlis *theory-formals* *ir-theory-formals*))
-	       ;; (*c-theory-formals*
-	       ;; 	(ir2c-theory-formals *ir-theory-formals* *theory-formals*))
+	       (*c-theory-formals*
+	        (ir2c-theory-formals *ir-theory-formals* *theory-formals*))
 	       )
 	  (if (eq *theory-id* '|modulo_arithmetic|)
 	      (loop for decl in (theory theory)
