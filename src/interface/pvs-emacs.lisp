@@ -402,28 +402,30 @@
 	    (to-emacs)))
 	(format t "~?" ctl args))))
 
-(defun pvs-error (msg err &optional itheory iplace)
+(defun pvs-error (msg err &optional file-name place)
   ;; Indicates an error; no recovery possible.
+  (assert (or (null file-name)
+	      (file-exists-p file-name)))
   (cond (*pvs-error-hook*
-	 (let* ((place (if *adt-decl* (place *adt-decl*) iplace))
+	 (let* ((place (if *adt-decl* (place *adt-decl*) place))
 		(buff (if *adt-decl*
 			  (or (filename *generating-adt*)
 			      (and (current-theory)
 				   (filename (current-theory)))
 			      *current-file*)
-			  (or *from-buffer* itheory))))
-	   (funcall *pvs-error-hook* msg (write-to-temp-file err) buff place)))
+			  (or *from-buffer* file-name))))
+	   (funcall *pvs-error-hook* msg err buff place)))
 	(*rerunning-proof*
 	 (restore))
 	((and *pvs-emacs-interface*
 	      *to-emacs*)
-	 (let* ((place (if *adt-decl* (place *adt-decl*) iplace))
+	 (let* ((place (if *adt-decl* (place *adt-decl*) place))
 		(buff (if *adt-decl*
 			  (or (filename *generating-adt*)
 			      (and (current-theory)
 				   (filename (current-theory)))
 			      *current-file*)
-			  (or *from-buffer* itheory)))
+			  (or *from-buffer* file-name)))
 		(*print-pretty* nil)
 		(*output-to-emacs*
 		 (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
@@ -441,11 +443,11 @@
 	 (format t "~%<pvserror msg=\"~a\">~%\"~a~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
 	   (protect-emacs-output msg)
 	   (protect-emacs-output err)
-	   itheory
-	   (when iplace
+	   file-name
+	   (when place
 	     (format nil " (line ~a, col ~a)"
-	       (line-begin iplace)
-	       (col-begin iplace))))
+	       (line-begin place)
+	       (col-begin place))))
 	 (pvs-abort))
 	(t
 	 (format t "~%~%~a~%~a" msg err)
@@ -920,14 +922,8 @@ list of interface names that are currently open."
   (if *to-emacs*
       (format t ":pvs-bel :end-pvs-bel~%")))
 
-; #-akcl
-; (define-condition pvs-error (error)
-;   (place)
-;   (:report (lambda (condition stream)
-; 	     (format stream "There is a PVS error at ~a"
-; 		     (pvs-error-place condition)))))
-
 (defun protect-emacs-output (string)
+  "Escapes the &, \", and \\ characters, putting backslash in front."
   (if (stringp string)
       (with-output-to-string (str)
 	(loop for ch across string
@@ -1001,16 +997,20 @@ list of interface names that are currently open."
 		  (or (not *in-checker*)
 		      (not *in-evaluator*)
 		      *tc-add-decl*)))
-	 (pvs-error "Parser error"
-	   (format nil "~?~@[~%In file ~a~]~@[~a~]"
-	     message args
-	     (when *current-file* (pathname-name *current-file*))
-	     (when (place obj)
-	       (format nil " (line ~a, col ~a)"
-		 (line-begin (place obj))
-		 (col-begin (place obj)))))
-	   (when *current-file* (pathname-name *current-file*))
-	   (place obj)))
+	 (let ((file-name
+		(when *current-file*
+		  (if (pathnamep *current-file*)
+		      (namestring *current-file*)
+		      (pathname-name (truename (make-specpath *current-file*)))))))
+	   (pvs-error "Parser error"
+	     (format nil "~?~@[~%In file ~a~]~@[~a~]"
+	       message args file-name
+	       (when (place obj)
+		 (format nil " (line ~a, col ~a)"
+		   (line-begin (place obj))
+		   (col-begin (place obj)))))
+	     file-name
+	     (place obj))))
 	((and (or *in-checker*
 		  *in-evaluator*)
 	      (not *tcdebug*))
@@ -1068,9 +1068,11 @@ list of interface names that are currently open."
 			*tc-add-decl*)))
 	   (pvs-error "Typecheck error"
 	     errmsg
-	     (or (and (current-theory)
-		      (filename (current-theory)))
-		 *current-file*)
+	     (let ((fname (or (and (current-theory)
+				   (filename (current-theory)))
+			      *current-file*)))
+	       (when fname
+		 (namestring (truename (make-specpath fname)))))
 	     (if (and *adt*
 		      (or (not (place obj))
 			  (and (place (current-declaration))
