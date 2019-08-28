@@ -575,7 +575,8 @@ is replaced with replacement."
 	      (let ((lib-id (get-library-id (context-path th))))
 		(if lib-id
 		    (copy thinst :library lib-id)
-		    (pvs-error "Could not find lib-id for ~a" (context-path th))))
+		    (pvs-error "Library reference error"
+		      (format nil "Could not find lib-id for ~a" (context-path th)))))
 	      thinst)))))
 
 ;;; Gets the theory that's at the bottom of a chain of
@@ -848,7 +849,7 @@ is replaced with replacement."
 	  (if lib-path
 	      (make-pathname :directory (pathname-directory lib-path)
 			     :name pname :type ext)
-	      (pvs-error "no lib path"
+	      (pvs-error "Library reference error"
 		(format nil "Could not find lib-path for ~a" pdir))))
 	(make-pathname :defaults *default-pathname-defaults* :name name :type ext))))
 

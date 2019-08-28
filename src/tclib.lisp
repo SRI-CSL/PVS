@@ -370,8 +370,8 @@ lib-path, along with modification dates."
     (assert (absolute-pathname-p lib-path))
     (when (member lib-path *loading-libraries* :test #'file-equal)
       (pvs-error "Load Prelude Error"
-	"Detected circular calls to load-prelude-library,~%~
-         check pvs-lib.lisp files in ~{~a~^, ~}" *loading-libraries*))
+	(format nil "Detected circular calls to load-prelude-library,~%~
+                     check pvs-lib.lisp files in ~{~a~^, ~}" *loading-libraries*)))
     (let* ((*loading-libraries* (cons lib-path *loading-libraries*))
 	   (pvs-files-loaded (load-prelude-library-workspace lib-path force?))
 	   (lisp-files-loaded (load-pvs-lib-lisp-file lib-path force?))
@@ -479,8 +479,8 @@ lib-path, along with modification dates."
 		(merge-pathnames filename *default-pathname-defaults*))))
     (cond ((and (boundp 'libloads) (member file libloads :test #'string=))
 	   (pvs-error "Error in libload"
-	     "Detected circular calls to libload,~%check files in ~{~a~^, ~}"
-	     libloads))
+	     (format nil "Detected circular calls to libload,~%check files in ~{~a~^, ~}"
+	       libloads)))
 	  (t (pvs-message "Loading file ~a" file)
 	     (unwind-protect
 		 (progn #+(and allegro (not pvs6) (not pvs7))

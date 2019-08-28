@@ -32,8 +32,8 @@
 
 (in-package :pvs)
 
-(export '(exit-pvs typecheck-file show-tccs clear-theories formula-decl-to-prove
-	  prove-formula proved?))
+(export '(exit-pvs parse-file typecheck-file show-tccs clear-theories
+	  formula-decl-to-prove prove-formula proved?))
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -137,8 +137,9 @@
 	    (if (and path (uiop:directory-exists-p path))
 		(truename path)
 		(when path
-		  (pvs-error "~a does not exist: cannot find a pvs-path" path)))))
-  #+(or cmu sbcl)
+		  (pvs-error "Init error"
+		    (format nil "~a does not exist: cannot find a pvs-path" path))))))
+   #+(or cmu sbcl)
   (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
     (pushnew exepath *pvs-directories*)
     (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
@@ -561,10 +562,10 @@ use binfiles."
 		(not *tc-add-decl*))
 	   (if (pvs-yes-or-no-p "A proof is running; quit it now?")
 	       (throw 'quit nil)
-	       (pvs-error "Must exit the prover first" nil)))
+	       (pvs-error "Parse error" "Must exit the prover first")))
 	  ((and *in-evaluator*
 		(not *tc-add-decl*))
-	   (pvs-error "Must exit the evaluator first" nil))
+	   (pvs-error "Parse error" "Must exit the evaluator first"))
 	  ((and typecheck?
 		(null theories)
 		(not forced?)
@@ -1210,7 +1211,7 @@ use binfiles."
 		   (*typechecking-module* nil))
 	       (unless theories
 		 (let ((err (format nil "~a not found" filename)))
-		   (pvs-error err err)))
+		   (pvs-error "Typecheck error" err)))
 	       (cond ((and (not forced?)
 			   theories
 			   (every #'(lambda (th)
@@ -1287,7 +1288,7 @@ use binfiles."
 		(count-if #'proved? tccs)
 		(length tccs)
 		impths))))
-	(pvs-error "Theory ~a not found" theoryref))))
+	(pvs-error "Typecheck error" (format nil "Theory ~a not found" theoryref)))))
       
 
 (defun delete-generated-adt-files (theories)
@@ -2906,7 +2907,7 @@ formname is nil, then formref should resolve to a unique name."
 		 0))
 	(*from-buffer* "Proof")
 	(err (format nil "~a - ~s" (or msg "Proof syntax error") subexpr)))
-    (pvs-error "Proof Syntax Error" err
+    (pvs-error "Proof error" err
 	       "Proof" (pos-to-place pos sexpr))
     nil))
 

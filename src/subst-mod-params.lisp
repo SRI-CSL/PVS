@@ -164,7 +164,8 @@
 		       (let* ((libpath (context-path th))
 			      (libid (get-library-id libpath)))
 			 (unless libid
-			   (pvs-error "Couldn't find lib-id for ~a" libpath))
+			   (pvs-error "Library reference error"
+			     (format nil "Couldn't find lib-id for ~a" libpath)))
 			 libid)))
 	     (actuals (unless (eq th (current-theory))
 			(mapcar #'(lambda (fp)
@@ -1407,8 +1408,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			       (when (and (not (from-prelude-library? th))
 					  (lib-datatype-or-theory? th))
 				 (or (get-library-id (context-path th))
-				     (pvs-error "Library id not found for ~a"
-				       (context-path th)))))
+				     (pvs-error "Library reference error"
+				       (format nil "Library id not found for ~a" (context-path th))))))
 			      (nmi (copy mi :actuals nacts
 					 :dactuals ndacts
 					 :library lib-id)))
