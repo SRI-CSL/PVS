@@ -545,7 +545,8 @@ the possible types of name."
 				:argument (if (cdr args)
 					      (make-instance 'arg-tuple-expr
 						:exprs args)
-					      (car args))))
+					      (car args))
+				:place (place orig-expr)))
       (add-conversion-info "LAMBDA conversion" orig-expr expr)
       (typecheck* expr nil nil nil))))
 
@@ -558,7 +559,8 @@ the possible types of name."
 		      (when (name-expr? ex) (setf (resolutions ex) nil))
 		      (let ((ac (make-instance 'argument-conversion
 				  :operator ex
-				  :argument kvar)))
+				  :argument kvar
+				  :place (place ex))))
 			(typecheck* ac nil nil nil)))
 		  #'(lambda (ex)
 		      (and (expr? ex)
@@ -583,7 +585,8 @@ the possible types of name."
 	      (ptypes arg))
 	(let ((ac (make-instance 'argument-conversion
 		    :operator arg
-		    :argument var1)))
+		    :argument var1
+		    :place (place arg))))
 	  (typecheck* ac nil nil nil))
 	arg)))
 
@@ -606,7 +609,8 @@ the possible types of name."
     (if var1
 	(let ((ac (make-instance 'argument-conversion
 		    :operator arg
-		    :argument var1)))
+		    :argument var1
+		    :place (place arg))))
 	  (typecheck* ac nil nil nil))
 	arg))
   ;;arg
@@ -777,7 +781,8 @@ that are not the K_covnersion."
 				:argument (if (cdr args)
 					      (make-instance 'arg-tuple-expr
 						:exprs args)
-					      (car args))))
+					      (car args))
+				:place (place orig-expr)))
       (add-conversion-info "LAMBDA conversion" orig-expr expr) 
       (typecheck* expr nil nil nil))))
 
