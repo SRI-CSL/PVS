@@ -953,6 +953,16 @@ behavior:
   (mapobject* fn (args ex))
   (mapobject* fn (expression ex)))
 
+(defmethod mapobject* (fn (ex lambda-conversion))
+  (if *parsing-or-unparsing*
+      (mapobject* fn (expression ex))
+      (call-next-method)))
+
+(defmethod mapobject* (fn (ex argument-conversion))
+  (if *parsing-or-unparsing*
+      (mapobject* fn (operator ex))
+      (call-next-method)))
+
 ;;; Misc
 
 (defmethod mapobject* (fn (obj simple-decl))
