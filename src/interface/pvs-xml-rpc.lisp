@@ -88,7 +88,7 @@
 	     (method (cdr (assoc :method request :test #'string-equal)))
 	     (params (cdr (assoc :params request :test #'string-equal)))
 	     (*print-pretty* nil))
-	(setq *last-request* (list method params id client-url))
+	;; (setq *last-request* (list method params id client-url))
 	;; (apply #'pvs-json:process-json-request pvs-xml-rpc::*last-request*)
 	(xmlrpc-result (pvs-json:process-json-request
 			method params id client-url)
@@ -97,26 +97,22 @@
     (error (c) (xmlrpc-error (format nil "~a" c)))))
 
 (defun xmlrpc-error (msg)
-  ;; id not available
+  ;; id not available, else would be caught.
   (let ((json:*lisp-identifier-name-to-json* #'identity))
-    (json:encode-json-alist-to-string
-     `((:mode . ,(pvs-current-mode))
-       (:context . ,(pvs:current-context-path))
-       (:xmlrpc_error . ,msg)))))
+    (json:encode-json-to-string msg)))
 
 (defun xmlrpc-result (result id)
   (let ((json:*lisp-identifier-name-to-json* #'identity))
-    (json:encode-json-alist-to-string
-     `((:mode . ,(pvs-current-mode))
-       (:context . ,(pvs:current-context-path))
-       ,@(when id `((:jsonrpc_result . ,result)))))))
+    (json:encode-json-to-string result)))
 
 (defun pvs-current-mode ()
   (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
     (multiple-value-bind (inchecker cbound?)
 	(mp:symeval-in-process 'pvs:*in-checker* proc)
+      (declare (ignore cbound?))
       (multiple-value-bind (ineval ebound?)
 	  (mp:symeval-in-process 'pvs:*in-evaluator* proc)
+	(declare (ignore ebound?))
 	(cond (inchecker "prover")
 	      (ineval "evaluator")
 	      (t "lisp"))))))

@@ -24,9 +24,10 @@
 (export '(process-json-request json-message))
 
 (define-condition pvs-error (simple-error)
-  ((message :accessor message :initarg :message)
-   (error-file :accessor error-file :initarg :error-file)
-   (file-or-buffer-name :accessor file-or-buffer-name :initarg :file-or-buffer-name)
+  ((code :accessor code :initarg :code)
+   (kind :accessor kind :initarg :kind)
+   (error-string :accessor error-string :initarg :error-string)
+   (file-name :accessor file-name :initarg :file-name)
    (place :accessor place :initarg :place)))
 
 ;;; With-pvs-hooks sets up callbacks when the url is provided
@@ -122,6 +123,10 @@
 	(error "Method ~a not found" method))))
 
 ;;; Called from pvs-xml-rpc:xmlrpc-pvs-request
+
+;;; If pvs-error is invoked, it calls json-make-pvs-error from
+;;; *pvs-error-hook*, which creates a pvs-error condition, invoking
+;;; json-pvs-error, which in turn builds the jsonrpc error object.
 (defun process-json-request (method params id url)
   (if id
       (handler-case (process-json-request* method params id url)
@@ -138,7 +143,6 @@
     (error "method ~a must be a symbol string" method))
   (unless (listp params)
     (error "parameters ~a must be a list" params))
-  
   (multiple-value-bind (reqfun reqsig)
       (get-json-request-function method)
     (check-params params reqsig)
@@ -158,25 +162,35 @@
   ;; (error "Params ~a don't match signature ~a" params reqsig)
   )
 
-;; Called from pvs-error, but this is the response, unlike, e.g., pvs-message
-(defun json-make-pvs-error (msg errfile fbname place)
-  (let ((plist (pvs:place-list place)))
+;; Called as a *pvs-error-hook* from the pvs-error function in
+;; pvs-emacs.lisp, Invokes error to create the pvs-error condition.
+;; process-json-request then handles the error by calling json-pvs-error.
+(defun json-make-pvs-error (msg errstring fbname place)
+  (let ((code (cond ((string= msg "Parser error") 1)
+		    ((string= msg "Typecheck error") 2)
+		    ((string= msg "Prover error") 3)
+		    ((string= msg "Change Workspace") 4)
+		    ((string= msg "Init error") 5)
+		    (t 0)))
+	(plist (pvs:place-list place)))
     (error 'pvs-error
-	   :message msg
-	   :error-file errfile
-	   :file-or-buffer-name (when fbname (namestring fbname))
+	   :code code
+	   :kind msg
+	   :error-string errstring
+	   :file-name (when fbname (namestring fbname))
 	   :place plist)))
 
 (defun json-pvs-error (id c)
-  (with-slots (message error-file file-or-buffer-name place) c
-    (let* ((jerr `((:error . ((:code . 0)
-			      (:message . ,message)
-			      (:data . ((:error_file . ,error-file)
-					,@(when file-or-buffer-name
-						`((:theory . ,file-or-buffer-name)))
-					,@(when place
-						`((:begin . ,(list (car place)
-								   (cadr place)))))))))
+  (with-slots (code kind error-string file-name place) c
+    (assert (or (null file-name)
+		(file-exists-p file-name)))
+    (let* ((err-object `((:code . ,code)
+			 (:message . ,kind)
+			 (:data . ((:error_string . ,error-string)
+				   ,@(when file-name
+				       `((:file_name . ,file-name)))
+				   ,@(when place `((:place . ,place)))))))
+	   (jerr `((:error . ,err-object)
 		   (:id . ,id)
 		   (:jsonrpc . "2.0"))))
       jerr)))
@@ -200,6 +214,16 @@
 		    (:params . ,(list name contents display? read-only? append? kind))
 		    (:jsonrpc . "2.0")))))
       (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
+
+;;; JSONRPC Response object:
+;;;   { "jsonrpc" : "2.0"
+;;;     result | error
+;;;     "id" : number }
+;;;  where:
+;;;   result = "result" : defined by API
+;;;   error = "error" : { "code" : integer,
+;;;                       "message" : string,
+;;;                       "data" : API }
 
 (defun json-response (id response)
   (let* ((json:*json-identifier-name-to-lisp* #'identity)

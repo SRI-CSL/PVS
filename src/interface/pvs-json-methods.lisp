@@ -52,18 +52,16 @@
   "Change PVS workspace"
   (pvs:change-workspace dir))
 
+(defrequest parse (filename)
+  "Parse a file"
+  (let ((theories (pvs:parse-file filename)))
+    (pvs:save-context)
+    (xmlrpc-theories theories)))
+
 (defrequest typecheck (filename)
   "Typecheck a file"
   (let ((theories (pvs:typecheck-file filename)))
     (pvs:save-context)
-    (xmlrpc-theories theories)))
-
-(defun jsonrpc-pvs-typecheck-file (filename &optional optargs)
-  ;; filename is a string
-  ;; optargs is a struct of form
-  ;; {"forced?" :bool "prove-tccs?" :bool "importchain?" :bool "nomsg?" :bool}
-  (declare (ignore optargs))
-  (let ((theories (pvs:typecheck-file filename)))
     (xmlrpc-theories theories)))
 
 (defstruct theory-struct
@@ -83,12 +81,10 @@
 
 (defmethod json:encode-json ((ts theory-struct) &optional (stream json:*json-output*))
   (json:with-object (stream)
-    (json:as-object-member (:theory stream)
-      (json:with-object (stream)
-	(json:as-object-member (:id stream)
-	  (json:encode-json (theory-struct-id ts) stream))
-	(json:as-object-member (:decls stream)
-	  (json:encode-json (theory-struct-decls ts) stream))))))
+    (json:as-object-member (:id stream)
+      (json:encode-json (theory-struct-id ts) stream))
+    (json:as-object-member (:decls stream)
+      (json:encode-json (theory-struct-decls ts) stream))))
 
 (defun xmlrpc-theory-decls (decls &optional thdecls)
   (if (null decls)
