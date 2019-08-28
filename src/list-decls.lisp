@@ -245,7 +245,6 @@ Returns a list of terms, from most specific to least."
   (let* ((decls (all-decls theory))
 	 (decl (or (find-element-containing-pos decls pos1)
 		   (find-decl-after-pos decls pos1))))
-    (break)
     (if (or (equal pos1 pos2)
 	    (within-place pos2 (place decl)))
 	(get-object-in-declaration-at objects pos1 pos2)
@@ -321,8 +320,15 @@ Returns a list of terms, from most specific to least."
   (let ((objects nil)
 	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (ex)
-		   (or (and (syntax? ex)
-			    ;;(or (place ex) (break "Place not set"))
+		   (or (and (declaration? ex) (generated-by ex)) ; no need to go down further
+		       (and (typep ex '(or actual funtype type-name lambda-conversion))
+			    (null (place ex)))
+		       (and (typep ex '(and syntax
+					(not (or exporting domain-tupletype arg-tuple-expr))))
+			    (or (place ex)
+				(typep ex '(or lambda-expr expr-as-type chained-branch))
+				
+				(break "Place not set"))
 			    (place ex)
 			    (within-place pos1 (place ex))
 			    (or (equal pos1 pos2)
@@ -485,7 +491,7 @@ on the origin:
 		       (parse-file filename))
 		      (t (pvs-warning "PVS file ~@[~a@~]~a exists, but is not parsed"
 			   lib-ref filename)))))
-	    (pvs-error "Couldn't find library ~a" lib-ref)))
+	    (pvs-error "Missing library" "Couldn't find library ~a" lib-ref)))
       (let ((date&theories (gethash filename (current-pvs-files))))
 	(cond (date&theories (cdr date&theories))
 	      (force-parse? (parse-file filename))
