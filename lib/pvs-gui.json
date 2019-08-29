@@ -31,6 +31,7 @@
 	{"$ref": "#/definitions/prove-formula-request"},
 	{"$ref": "#/definitions/proof-command-request"},
 	{"$ref": "#/definitions/names-info-request"},
+	{"$ref": "#/definitions/find-declaration-request"},
 	{"$ref": "#/definitions/lisp-request"}
       ]
     },
@@ -80,6 +81,7 @@
 	    {"$ref": "#/definitions/prove-formula-result"},
 	    {"$ref": "#/definitions/proof-command-result"},
 	    {"$ref": "#/definitions/names-info-result"},
+	    {"$ref": "#/definitions/find-declaration-result"},
 	    {"$ref": "#/definitions/lisp-result"}
 	  ]
 	}
@@ -324,6 +326,33 @@
 	  "decl": {"type": "string"},
 	  "decl-file": {"type": "string"},
 	  "decl-place": {"$ref": "#/definitions/place"}
+	}
+      }
+    },
+    "find-declaration-request": {
+      "type": "object",
+      "properties": {
+	"method": { "enum": ["find-declaration"] },
+	"params": {
+	  "type" : "array",
+	  "minItems": 1,
+	  "maxItems": 1,
+	  "items": { "type": "string" }
+	}
+      },
+      "required": ["params"]
+    },
+    "find-declaration-result": {
+      "type": "array",
+      "items": {
+	"type": "object",
+	"properties": {
+	  "declname": {"type": "string"},
+	  "type": {"type": "string"},
+	  "theoryid": {"type": "string"},
+	  "filename": {"type": "string"},
+	  "place": {"$ref": "#/definitions/place"},
+	  "decl-ppstring": {"type": "string"}
 	}
       }
     },
