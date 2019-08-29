@@ -157,6 +157,10 @@
   (when (pvs:typecheck-file filename)
     (pvs:collect-pvs-file-decls-info filename)))
 
+(defrequest find-declaration (id)
+  "Searches for all declarations with the given id"
+  (pvs:find-declaration id))
+
 (defrequest reset ()
   "Resets PVS"
   (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))

@@ -620,7 +620,7 @@ that the seach is incomplete."
 ;; 	   (write-declaration-info declarations))))
 ;;       (t (error "Unrecognized kind: ~a" kind)))))
 
-(defun find-declaration (string &optional)
+(defun find-declaration (string)
   "find-declaration takes a string, and searches for all declarations with
 that identifier.  The search uses do-all-theories, which goes through the
 parsed or typechecked theories of the current context, imported libraries,
@@ -646,9 +646,8 @@ difficult."
   (let ((declarations nil)
 	(id (intern string :pvs)))
     (do-all-theories #'(lambda (th)
-			 (setq declarations
-			       (append (get-find-declaration-info id th)
-				       declarations))))
+			 (let ((decls (get-find-declaration-info id th)))
+			   (setq declarations (append decls declarations)))))
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	   (fdecl-string (json:encode-json-to-string declarations)))
       fdecl-string)))
