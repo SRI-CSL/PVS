@@ -2463,29 +2463,91 @@ Note that even proved ones get overwritten"
   "Starts a proof with formula given by formref.  If formname is provided,
 it is the name of the formula, and formref should be a theoryname.  If
 formname is nil, then formref should resolve to a unique name."
-  (if formname
-      (let ((theory (get-typechecked-theory formref)))
-	(if theory
-	    (let* ((fid (intern formname :pvs))
-		   (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
-						      (eq (id d) fid)))
-			    (all-decls theory)))
-		   (strat (when rerun? '(rerun)))
-		   (*current-context* (when fdecl (context fdecl)))
-		   (*please-interrupt* t))
-	      (read-strategies-files)
-	      (if fdecl
-		  (prove formname :strategy strat)
-		  (pvs-message "Formula ~a not found" formname)))
-	    (pvs-message "No such theory: ~a" formref)))
-      (with-context formref
-	(if (formula-decl? (current-declaration))
-	    (let ((strat (when rerun? '(rerun)))
-		  (*please-interrupt* t))
-	      (read-strategies-files)
-	      (prove (current-declaration) :strategy strat))
-	    (pvs-message "~a is not a formula declaration" formref)))))
-	  
+  (let ((dir (uiop:pathname-directory-pathname formref))
+	(name (pathname-name formref))
+	(ext (pathname-type formref)))
+    (when (and ext (not (string-equal ext "pvs")))
+      (error "prove-formula only takes .pvs files"))
+    (when (and ext (null formname))
+      (error "prove-formula missing formula name?"))
+    ;; Check for no dir, or it's already the current context-path
+    (if (or (uiop:pathname-equal dir #p"")
+	    (not (directory-p dir))
+	    (uiop:pathname-equal dir (current-context-path)))
+	(prove-formula-in name ext formname rerun?)
+	(with-workspace dir
+	  (prove-formula-in name ext formname rerun?)))))
+
+(defun prove-formula-in (name ext formname rerun?)
+  (let ((fdecls (get-matching-prove-formulas name ext formname)))
+    (cond ((cdr fdecls)
+	   (let ((locdecls (remove-if-not
+			       #'(lambda (fd)
+				   (uiop:pathname-equal
+				    (context-path (module fd))
+				    (current-context-path)))
+			     fdecls)))
+	     (cond ((cdr locdecls)
+		    ;; Only report errors on current context ambiguities
+		    (pvs-error "prove-formula error"
+		      (format nil "prove-formula ambiguous for name ~a, ~
+                          it appears in the following theories:~%~{~a~^~%~}"
+			(or formname name)
+			(mapcar #'(lambda (fd) (id (module fd))) locdecls))))
+		   ((null locdecls)
+		    ;; Ambiguous - give error for now
+		    (pvs-error "prove-formula error"
+		      (format nil "prove-formula ambiguous for name ~a, ~
+                          it appears in the following theories:~%~{~a~^~%~}"
+			(or formname name)
+			(mapcar #'(lambda (fd) (id (module fd))) fdecls))))
+		   (t (prove-formula-in* fdecl rerun?)))))
+	  ((null fdecls)
+	   (pvs-error "prove-formula error"
+	     (format nil
+		 "prove-formula: formula name ~a not found in any (typechecked) theories"
+	       (or formname name))))
+	  (t (prove-formula-in* (car fdecls) rerun?)))))
+
+(defun prove-formula-in* (fdecl rerun?)
+  (let* ((strat (when rerun? '(rerun)))
+	 (*please-interrupt* t))
+    (read-strategies-files)
+    (prove fdecl :strategy strat)))
+
+(defun get-matching-prove-formulas (name ext formname)
+  (let ((formulas nil))
+    (when (and formname
+	       (or ext
+		   (file-exists-p (make-specpath name))))
+      ;; A PVS file, but if no ext, could still be a theory name
+      (let ((theories (with-no-type-errors (typecheck-file name))))
+	(dolist (theory theories)
+	  (dolist (d (all-decls theory))
+	    (when (and (formula-decl? d)
+		       (string= (id d) formname))
+	      (push d formulas))))))
+    ;; name could be a theory - but we only do this if no formulas found
+    (when (and formname
+	       (null formulas))
+      (let ((theory (with-no-type-errors (get-typechecked-theory name))))
+	(when theory
+	  (dolist (d (all-decls theory))
+	    (when (and (formula-decl? d)
+		       (string= (id d) formname))
+	      (push d formulas))))))
+    (unless formname
+      ;; name must refer to a formula name
+      (assert (null ext))
+      ;; Simply look through every available theory
+      (do-all-theories
+	  #'(lambda (theory)
+	      (when (typechecked? theory)
+		(dolist (d (all-decls theory))
+		  (when (and (formula-decl? d)
+			     (string= (id d) name))
+		    (push d formulas)))))))
+    formulas))
 
 (defun rerun-proof-of? (modname formname)
   (let* ((*current-context* (context (get-theory modname)))
