@@ -2379,33 +2379,17 @@ Note that even proved ones get overwritten"
 					 (string= (id d) declname)))
 			 (all-decls theory))))
 	   (values fdecl (vector line 0 line 0))))
-	(t (if (pathname-directory name)
-	       (let* ((ldir (namestring (make-pathname
-					 :directory
-					 (pathname-directory name))))
-		      (lib-path (get-library-reference ldir))
-		      (fileshash
-		       (let ((ws (get-workspace-session lib-path)))
-			 (and ws
-			      (pvs-files ws)))))
-		 (if fileshash
-		     (let* ((name (pathname-name name))
-			    (theories (cdr (gethash name fileshash)))
-			    (typespec (formula-typespec unproved?))
-			    (decl (get-decl-at line typespec theories)))
-		       (values decl (when decl (place decl))))
-		     (pvs-message "Library ~a is not imported" name)))
-	       (let* ((theories (typecheck-file name nil nil nil t))
-		      (typespec (formula-typespec unproved?))
-		      (decl-at (get-decl-at line typespec theories))
-		      (decl (if (judgement? decl-at)
-				(let ((jtcc (find-if #'judgement-tcc?
-					      (generated decl-at))))
-				  (unless (place jtcc)
-				    (setf (place jtcc) (place decl-at)))
-				  jtcc)
-				decl-at)))
-		 (values decl (when decl (place decl)))))))))
+	(t (let* ((theories (typecheck-file name nil nil nil t))
+		  (typespec (formula-typespec unproved?))
+		  (decl-at (get-decl-at line typespec theories))
+		  (decl (if (judgement? decl-at)
+			    (let ((jtcc (find-if #'judgement-tcc?
+					  (generated decl-at))))
+			      (unless (place jtcc)
+				(setf (place jtcc) (place decl-at)))
+			      jtcc)
+			    decl-at)))
+	     (values decl (when decl (place decl))))))))
 
 (defun formula-typespec (unproved?)
   (if unproved?
