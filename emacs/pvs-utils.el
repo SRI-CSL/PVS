@@ -621,12 +621,13 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defun get-pvs-file-buffer (fname)
   (let* ((name (pathname-name fname))
 	 (ext (pathname-type fname))
-	 (pdir (pathname-directory name))
+	 (pdir (pathname-directory fname))
 	 (dir (if (equal pdir "")
 		  pvs-current-directory
 		  pdir)))
     (if (and ext (member ext *pvs-file-extensions*))
 	(let ((filename (format "%s%s.%s" dir name ext)))
+	  (setq xxx fname yyy filename)
 	  (find-file-noselect filename noninteractive))
 	(let ((files nil))
 	  (dolist (pext *pvs-file-extensions*)
@@ -1075,7 +1076,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defun current-theory ()
   (let ((file (current-pvs-file t)))
     (if file
-	(save-excursion (car (current-theory-region)))
+	(let ((thname (save-excursion (car (current-theory-region)))))
+	  (when thname
+	    (concat file "#" thname)))
 	(if (member-equal (pathname-type (buffer-name)) '("ppe" "tccs"))
 	    (pathname-name (buffer-name))))))
 
