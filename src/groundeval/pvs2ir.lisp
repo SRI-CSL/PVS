@@ -1781,9 +1781,13 @@
 
 (defmethod pvs2ir* ((cexpr cases-expr) bindings)
   (with-slots (expression selections else-part) cexpr
-	      (pvs2ir-cases expression selections else-part bindings)))
+    (let ((expression-var (make-variable-expr (make-bind-decl (gentemp "cx") (type expression))))
+	  (expression-ir-var (mk-ir-variable (new-irvar)(pvs2ir-type (type expression) bindings)))
+	  (expression-ir (pvs2ir expression bindings)))
+      (mk-ir-let expression-ir-var expression-ir
+	      (pvs2ir-cases expression-var expression-ir-var selections else-part bindings)))))
 
-(defun pvs2ir-cases (expression selections else-part bindings)
+(defun pvs2ir-cases (expression-var expression-ir-var selections else-part bindings)
   (cond ((consp selections)
 	 (let* ((sel (car selections))
 		(selexpr (expression sel))
@@ -1795,12 +1799,12 @@
 					(module dec-stype)
 					dec-stype))
 		(accs-exprs (loop for acc in accs collect
-				  (make!-application acc expression)))
+				  (make!-application acc expression-var)))
 		(arg-ir-vars (new-irvars (length (args sel))))
 		(args-ir-vtypes (loop for ir-var in arg-ir-vars
 				      as var in (args sel)
 				      collect (mk-ir-variable ir-var (pvs2ir-type (type var) bindings))))
-		(ir-accs (pvs2ir* accs-exprs bindings))
+		(ir-accs (pvs2ir* accs-exprs (acons expression-var expression-ir-var bindings)))
 		(branch (mk-ir-let* args-ir-vtypes
 				    ir-accs
 				    (pvs2ir* selexpr
@@ -1810,11 +1814,12 @@
 	     (let ((condvar (mk-ir-variable (new-irvar) 'bool)))
 	       (mk-ir-let condvar
 			  (pvs2ir* (make!-application (recognizer (constructor sel))
-						    expression)
-				 bindings)
+						    expression-var)
+				 (acons expression-var expression-ir-var bindings))
 			(mk-ir-ift  condvar
 			    branch
-			    (pvs2ir-cases expression (cdr selections) else-part bindings)))))))
+			    (pvs2ir-cases expression-var expression-ir-var
+					  (cdr selections) else-part bindings)))))))
 	(t (pvs2ir* else-part bindings))))
 		
 ;;  (pvs2ir* (translate-cases-to-if cexpr) bindings))
@@ -2231,12 +2236,22 @@
 (defmethod pvs2ir-type* ((type dep-binding) tbinding)
   (pvs2ir-type* (type type) tbinding))
 
+(defun pvs2ir-tuplefields (types tbinding &optional (index 1))
+  (cond ((consp types)
+	 (let* ((car-irtype (mk-ir-fieldtype (intern (format nil "project_~a" index))
+					     (pvs2ir-type* (car types) tbinding)))
+		(new-tbinding (if (binding? (car types))
+				  (acons (car types) (mk-ir-variable (new-irvar)
+								car-irtype)
+					 tbinding)
+				tbinding)))
+	   (cons car-irtype
+		 (pvs2ir-tuplefields (cdr types) new-tbinding (1+ index)))))
+	(t nil)))
+
 (defmethod pvs2ir-type* ((type tupletype) tbinding)
   (let* ((types (types type))
-	 (tuple-fields
-	  (loop for typ in types as i from 1
-		collect (mk-ir-fieldtype (intern (format nil "project_~a" i))
-			       (pvs2ir-type* typ tbinding)))))
+	 (tuple-fields (pvs2ir-tuplefields types tbinding)))
     (mk-ir-tupletype tuple-fields)))
 
 (defmethod pvs2ir-type* ((type type-name) tbindings)
@@ -2251,8 +2266,14 @@
 
 (defmethod pvs2ir-type* ((type list) tbinding)
   (cond ((consp type)
-	 (cons (pvs2ir-type* (car type) tbinding)
-	       (pvs2ir-type* (cdr type) tbinding)))
+	 (let* ((car-irtype (pvs2ir-type* (car type) tbinding))
+		(new-tbinding (if (binding? (car type))
+				  (acons (car type) (mk-ir-variable (new-irvar)
+								car-irtype)
+					 tbinding)
+				tbinding)))
+	 (cons car-irtype
+	       (pvs2ir-type* (cdr type) new-tbinding))))
 	(t nil)))
 
 (defmethod pvs2ir-type* ((type subtype) tbinding)
@@ -3244,16 +3265,17 @@
 	    (let* ((fdecl (declaration ir-function))
 		   (function-ir (ir (eval-info fdecl)))
 		   (ir-return-type (ir-return-type function-ir))
-		   (function-has-closure-value? (and (null (ir-args function-ir))(ir-funtype? ir-return-type))))
+		   (function-has-closure-value? (and (null (ir-args function-ir))
+						     (or (ir-funtype? ir-return-type)
+							 (and (ir-typename? ir-return-type)
+							      (ir-funtype? (ir-type-defn ir-return-type)))))))
 	      (if function-has-closure-value?
 		  (let* ((tmp (gentemp "tmp"))
 			 (funvar (mk-ir-variable tmp ir-return-type))
 			 (new-ir (mk-ir-let funvar ir-function
 					    (mk-ir-apply (mk-ir-last funvar) ir-args))))
 		    (ir2c* new-ir return-var return-type))
-		(let* ((ir-funarg-types (or (and function-has-closure-value?
-						 (list (ir-domain ir-return-type)))
-					    (and (cdefn (eval-info fdecl))
+		(let* ((ir-funarg-types (or (and (cdefn (eval-info fdecl))
 						 (op-arg-types (cdefn (eval-info fdecl))))
 					    (loop for ir-formal in (ir-args function-ir)
 						  collect (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))))
@@ -6301,7 +6323,9 @@
 (defun pvs2c-decl (decl)
   (let ((saved-c-type-info-table *c-type-info-table*)
 	(*pvs2c-current-decl* decl);;used to save auxilliary type defns in c-type-info-table
-	(*current-context* (decl-context decl)))
+	(*current-context* (decl-context decl))
+	(*var-counter* nil))
+    (newcounter *var-counter*)
     (pvs2c-decl* decl)))
 
     ;;NSH(8/6/2016): Closures are handled now. 
@@ -6350,18 +6374,16 @@
   (let* ((thid (simple-id (id (module decl))))
 	 (declid (simple-id (id decl)))
 	 (hashentry (gethash (intern (format nil "~a_~a" thid declid)) *c-primitive-attachments-hash*)))
-    (if hashentry
-	(let ((einfo (or (eval-info decl)
-			 (let ((new-einfo (make-instance 'eval-info)))
-			   (setf (eval-info decl) new-einfo)
-			   new-einfo))))
-	  (setf (cdefn einfo) hashentry)
-	  (op-name hashentry))
-      (let ((*var-counter* nil))
-	(newcounter *var-counter*)
-	(pvs2ir-decl decl)
-	(let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
-	  (ir2c-decl* ir decl))))))
+    (cond (hashentry
+	   (let ((einfo (or (eval-info decl)
+			    (let ((new-einfo (make-instance 'eval-info)))
+			      (setf (eval-info decl) new-einfo)
+			      new-einfo))))
+	     (setf (cdefn einfo) hashentry)
+	     (op-name hashentry)))
+	  (t (pvs2ir-decl decl)
+	     (let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
+	       (ir2c-decl* ir decl))))))
 
 (defun c-args-string (ir-vars)
   (let* ((c-arg-types (loop for arg in ir-vars
@@ -6543,6 +6565,7 @@
 	 )
     (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
     (format t "~%Generates C definition = ~%~a" c-defn)
+;    (break "make-c-closure-defn")
     (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn
 		    c-defn-arg-types c-defn-result-type)))
 
