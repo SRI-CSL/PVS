@@ -41,7 +41,8 @@
 (defvar ilisp-complete)
 (defvar ilisp-buffer)
 
-(defvar pvs-theories nil)
+(defvar pvs-theories nil
+  "An alist of theory-name file-name string pairs, created by pvs-collect-theories")
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
 (defvar pvs-path) ; Set in pvs-go.el
@@ -1022,7 +1023,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		     (and with-prelude-p
 			  (and (boundp 'pvs-prelude) pvs-prelude)
 			  (buffer-name))))
-	(theories (append (pvs-collect-theories)
+	(theories (append (pvs-collect-theories with-prelude-p)
 			  (when with-prelude-p
 			    (apply 'append
 			      (mapcar 'cdr *prelude-files-and-regions*))))))
@@ -1097,27 +1098,24 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(message "Theory %s not found" theory))))
 
 ;;; pvs-collect-theories returns an assoc list of the theory names and
-;;; their associated PVS filenames.  The filename is accessed using cadr,
-;;; and does not contain the directory or extension.  The primary list
+;;; their associated PVS filenames.  The primary list
 ;;; comes from PVS, and reflects the current pvs context (the .pvscontext
 ;;; file).  This is augmented with the current file, if necessary.  This
 ;;; is because the current file may not yet have been parsed, so its
 ;;; current state is unknown in the pvs context, but it is still a valid
 ;;; choice for many pvs commands.
 
-(defun pvs-collect-theories ()
-  (let* ((dir-and-theories (pvs-send-and-wait "(collect-theories)"
-					      nil nil 'list))
+(defun pvs-collect-theories (&optional no-prelude-p)
+  (let* ((theory-alist (pvs-send-and-wait (format "(collect-theories %s)" no-prelude-p)
+					  nil nil 'list))
 	 (file (current-pvs-file t))
-	 (current-theories (pvs-current-theories)))
-    ;;    (when (not (consp dir-and-theories))
-    ;;      (error "collect-theories did not return a list"))
-    (setq pvs-current-directory (car dir-and-theories))
-    (setq pvs-theories
-	  (append current-theories
-		  (cl-remove-if #'(lambda (x)
-				    (assoc (car x) current-theories))
-		    (cdr dir-and-theories))))))
+	 (current-theories
+	  ;; We include the current buffer theories if a PVS file and not in the alist  
+	  (unless (or (null file)
+		      (cl-rassoc file theory-alist :test 'file-equal))
+	    (pvs-current-theories))))
+    ;; (setq pvs-current-directory (car dir-and-theories))
+    (setq pvs-theories (append current-theories theory-alist))))
 
 (defun pvs-current-theories ()
   (or (pvs-current-prelude-theories)
