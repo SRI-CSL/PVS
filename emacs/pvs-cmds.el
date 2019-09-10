@@ -194,29 +194,34 @@ M-x revert-buffer to return to the old version."
 	       (if declp "declaration" "region"))
 	      (message "No changes were made"))))))
 
-(defpvs theory-element-string prettyprint (thid eltid)
+(defpvs theory-element-string prettyprint (thref eltid)
   "Gets the string associated with a theory element (e.g., declaration or importing)"
-  (interactive (let* ((thid (car (complete-theory-name "Theory id: ")))
+  (interactive (let* ((thref (car (complete-theory-name "Theory reference: ")))
 		      (eltid (complete-theory-element-id
-			      "Element (e.g., declaration) id: " thid)))
-		 (list thid eltid)))
-  (pvs-send-and-wait (format "(pp-theory-element \"%s\" \"%s\")" thid eltid)))
+			      "Element (e.g., declaration) id: " thref)))
+		 (list thref eltid)))
+  (pvs-send-and-wait (format "(pp-theory-element \"%s\" \"%s\")" thref eltid)))
 
 
-(defpvs prettyprint-theory prettyprint (theoryname)
+(defpvs prettyprint-theory prettyprint (theoryref)
   "Prettyprints the specified theory
 
 The prettyprint-theory command prettyprints the specified theory and
 replaces the old theory in the current buffer.  Can use undo (C-x u or
 C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
+  ;; Note that complete-theory-name and pvs-collect-theories set the
+  ;; pvs-theories global variable.
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (save-some-pvs-buffers t)
-  (let ((file (when (member-equal theoryname (buffer-theories))
-		(current-pvs-file))))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
-			   theoryname (when file (format "\"%s\"" file)))
+			   theoryname (format "\"%s\"" file))
 		       "Prettyprinting"
 		       (pvs-get-abbreviation 'prettyprint-theory)
 		       'dont-care))
