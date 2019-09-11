@@ -2662,10 +2662,25 @@ Note that the lists might not be the same length."
     (sort theories #'string-lessp :key #'id)))
 
 ;;; Called from emacs for theory completion
-(defun collect-theories ()
-  "Returns the current context path followed by (theory-name pvs-file) pairs of strings."
-  (cons (current-context-path)
-	(collect-theory-file-pairs)))
+(defun collect-theories (&optional no-prelude?)
+  "Returns the alist of known theories and their context-paths, including
+the prelude and any parsed or typchecked theory from any current
+workspace-sesstion.  The current context is first, followed by the rest of
+the workspaces in *all-workspace-sessions*, followed by the prelude.  Within
+each context, the theories are in alphabetic order."
+  (let ((theories nil))
+    (do-all-theories
+	#'(lambda (th)
+	    (push (cons (string (id th))
+			(format nil "~a/~a.pvs"
+			  (context-path th)
+			  (if (from-prelude? th)
+			      (if (memq th (pvsio-prelude-theories))
+				  "pvsio_prelude" "prelude")
+			      (filename th))))
+		  theories))
+      no-prelude?)
+    (nreverse theories)))
 
 (defun collect-theory-file-pairs ()
   "Creates list of (theory-name pvs-file) pairs of strings."
