@@ -48,6 +48,15 @@
 (defvar *pvs-query-hook* nil)
 (defvar *pvs-dialog-hook* nil)
 
+(defun clear-pvs-hooks ()
+  (setq *pvs-message-hook* nil
+	*pvs-warning-hook* nil
+	*pvs-error-hook* nil
+	*pvs-buffer-hook* nil
+	*pvs-y-or-n-hook* nil
+	*pvs-query-hook* nil
+	*pvs-dialog-hook* nil))
+
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")
 (defvar *prover-invoking-commands*
@@ -237,32 +246,34 @@
 ;;; Collect messages until the end of parsing/typechecking, and provide
 ;;; them to a buffer.
 
-(defun show-theory-warnings (theoryname)
-  (let ((theory (get-theory theoryname)))
-    (cond ((null theory)
-	   (pvs-message "Theory ~a is not typechecked" theoryname))
-	  ((null (warnings theory))
-	   (pvs-message "Theory ~a has no warning messages" theoryname))
-	  (t (pvs-buffer "PVS Warnings"
-	       (format nil "Warnings for theory ~a:~2%~{~a~^~2%~}"
-		 theoryname (mapcar #'cdr (warnings theory)))
-	       t t)))))
+(defun show-theory-warnings (theoryref)
+  (with-pvs-file (fname thname) theoryref
+    (let ((theory (get-theory (or thname fname))))
+      (cond ((null theory)
+	     (pvs-message "Theory ~a is not typechecked" theoryref))
+	    ((null (warnings theory))
+	     (pvs-message "Theory ~a has no warning messages" theoryref))
+	    (t (pvs-buffer "PVS Warnings"
+		 (format nil "Warnings for theory ~a:~2%~{~a~^~2%~}"
+		   thname (mapcar #'cdr (warnings theory)))
+		 t t))))))
 
-(defun show-pvs-file-warnings (filename)
-  (let ((theories (get-theories filename)))
-    (if theories
-	(if (some #'warnings theories)
-	    (pvs-buffer "PVS Warnings"
-	      (format nil
-		  "Warnings for file ~a.pvs:~
+(defun show-pvs-file-warnings (fileref)
+  (with-pvs-file (filename) fileref
+    (let ((theories (get-theories filename)))
+      (if theories
+	  (if (some #'warnings theories)
+	      (pvs-buffer "PVS Warnings"
+		(format nil
+		    "Warnings for file ~a.pvs:~
                ~:{~2%Warnings for theory ~a:~@{~{~2%~a~}~}~}"
-		filename
-		(mapcar #'(lambda (th)
-			    (list (id th) (mapcar #'cdr (warnings th))))
-		  theories))
-	      t t)
-	    (pvs-message "No warnings associated with ~a.pvs" filename))
-	(pvs-message "~a.pvs has not been typechecked" filename))))
+		  filename
+		  (mapcar #'(lambda (th)
+			      (list (id th) (mapcar #'cdr (warnings th))))
+		    theories))
+		t t)
+	      (pvs-message "No warnings associated with ~a.pvs" filename))
+	  (pvs-message "~a.pvs has not been typechecked" filename)))))
 
 (defun pvs-info (ctl &rest args)
   (let ((info (if args
@@ -281,37 +292,39 @@
 		(list (cons (current-declaration) info))))))
   nil)
 
-(defun show-theory-messages (theoryname)
-  (let ((theory (get-theory theoryname)))
-    (cond ((null theory)
-	   (pvs-message "Theory ~a is not typechecked" theoryname))
-	  ((null (info theory))
-	   (pvs-message "Theory ~a has no informational messages" theoryname))
-	  (t (pvs-buffer "PVS Messages"
-	       (format nil
-		   "Messages for theory ~a:~
+(defun show-theory-messages (theoryref)
+  (with-pvs-file (fname theoryname) theoryref
+    (let ((theory (get-theory (or theoryname fname))))
+      (cond ((null theory)
+	     (pvs-message "Theory ~a is not typechecked" (or theoryname fname)))
+	    ((null (info theory))
+	     (pvs-message "Theory ~a has no informational messages" (or theoryname fname)))
+	    (t (pvs-buffer "PVS Messages"
+		 (format nil
+		     "Messages for theory ~a:~
                     ~2%Use M-x show-theory-conversions to see the conversions.~
                     ~2%~{~a~^~2%~}"
-		 theoryname
-		 (mapcar #'cdr (info theory)))
-	       t t)))))
+		   (or theoryname fname)
+		   (mapcar #'cdr (info theory)))
+		 t t))))))
 
-(defun show-pvs-file-messages (filename)
-  (let ((theories (get-theories filename)))
-    (if theories
-	(if (some #'info theories)
-	    (pvs-buffer "PVS Messages"
-	      (format nil
-		  "Messages for file ~a.pvs:~
+(defun show-pvs-file-messages (fileref)
+  (with-pvs-file (filename) fileref
+    (let ((theories (get-theories filename)))
+      (if theories
+	  (if (some #'info theories)
+	      (pvs-buffer "PVS Messages"
+		(format nil
+		    "Messages for file ~a.pvs:~
                    ~2%Use M-x show-theory-conversions to see the conversions.~
                ~:{~2%Messages for theory ~a:~@{~{~2%~a~}~}~}"
-		filename
-		(mapcar #'(lambda (th)
-			    (list (id th) (mapcar #'cdr (info th))))
-		  theories))
-	      t t)
-	    (pvs-message "No messages associated with ~a.pvs" filename))
-	(pvs-message "~a.pvs has not been typechecked" filename))))
+		  filename
+		  (mapcar #'(lambda (th)
+			      (list (id th) (mapcar #'cdr (info th))))
+		    theories))
+		t t)
+	      (pvs-message "No messages associated with ~a.pvs" filename))
+	  (pvs-message "~a.pvs has not been typechecked" filename)))))
 
 ;;; Conversions are treated separately
 
@@ -334,37 +347,40 @@
 		(list (cons (current-declaration) cmsg))))))
   nil)
 
-(defun show-theory-conversions (theoryname)
-  (let ((theory (get-theory theoryname)))
-    (cond ((null theory)
-	   (pvs-message "Theory ~a is not typechecked" theoryname))
-	  ((null (conversion-messages theory))
-	   (pvs-message "Theory ~a has no conversions" theoryname))
-	  (t (pvs-buffer "PVS Conversions"
-	       (format nil
-		   "Conversions for theory ~a:~
+(defun show-theory-conversions (theoryref)
+  (with-pvs-file (fname theoryname) theoryref
+    (let ((theory (get-theory (or theoryname fname))))
+      (cond ((null theory)
+	     (pvs-message "Theory ~a is not typechecked" (or theoryname fname)))
+	    ((null (conversion-messages theory))
+	     (pvs-message "Theory ~a has no conversions" (or theoryname fname)))
+	    (t (pvs-buffer "PVS Conversions"
+		 (format nil
+		     "Conversions for theory ~a:~
                     ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
                     ~2%~{~a~^~2%~}"
-		 theoryname (mapcar #'cdr (conversion-messages theory)))
-	       t t)))))
+		   (or theoryname fname)
+		   (mapcar #'cdr (conversion-messages theory)))
+		 t t))))))
 
-(defun show-pvs-file-conversions (filename)
-  (let ((theories (get-theories filename)))
-    (if theories
-	(if (some #'conversion-messages theories)
-	    (pvs-buffer "PVS Conversions"
-	      (format nil
-		  "Conversions for file ~a.pvs:~
+(defun show-pvs-file-conversions (fileref)
+  (with-pvs-file (filename) fileref
+    (let ((theories (get-theories filename)))
+      (if theories
+	  (if (some #'conversion-messages theories)
+	      (pvs-buffer "PVS Conversions"
+		(format nil
+		    "Conversions for file ~a.pvs:~
                    ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
                ~:{~2%Conversions for theory ~a:~@{~{~2%~a~}~}~}"
-		filename
-		(mapcar #'(lambda (th)
-			    (list (id th)
-				  (mapcar #'cdr (conversion-messages th))))
-		  theories))
-	      t t)
-	    (pvs-message "No conversions associated with ~a.pvs" filename))
-	(pvs-message "~a.pvs has not been typechecked" filename))))
+		  filename
+		  (mapcar #'(lambda (th)
+			      (list (id th)
+				    (mapcar #'cdr (conversion-messages th))))
+		    theories))
+		t t)
+	      (pvs-message "No conversions associated with ~a.pvs" filename))
+	  (pvs-message "~a.pvs has not been typechecked" filename)))))
 
 ;;; Used to put messages in a log file
 
