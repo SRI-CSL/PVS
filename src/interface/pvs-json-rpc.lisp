@@ -65,7 +65,9 @@
 				       append? kind ,gurl))
 		      pvs:*pvs-y-or-n-hook*
 		      #'(lambda (msg full? timeout?)
-			  (json-y-or-n msg full? timeout? ,gurl))
+			  ;;(json-y-or-n msg full? timeout? ,gurl)
+			  (declare (ignore msg full? timeout?))
+			  t)
 		      pvs:*pvs-query-hook*
 		      #'(lambda (prompt)
 			  (json-query prompt ,gurl))
