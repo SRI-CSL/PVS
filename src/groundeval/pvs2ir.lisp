@@ -6291,14 +6291,31 @@
 			  (copy-type* ft1 ft2 newlhs newrhs)))))
 
 (defmethod copy-type* ((texpr1 ir-arraytype)(texpr2 ir-arraytype) lhs rhs)
+  ;;NSH(9/9/19): need to generalize from uint32 below. 
   (with-slots ((size1 size)(et1 elemtype)) texpr1
 	      (with-slots ((size2 size)(et2 elemtype)) texpr2
-			  (let ((index (new-indvar)))
-			    (list (mk-for-instr (format nil "uint32_t ~a = 0; ~a < ~a; ~a++"
-							index index size1 index)
+		(let ((index (new-indvar)))
+		  (if (ir-offset? size1)
+		      (with-slots (expr offset) size1
+			(let* ((tmp (gentemp "tmp"))
+			       (offset-instrs (cons (format nil "uint32_t ~a" tmp)
+						    (ir2c*  expr tmp 'uint32))))
+			  (append offset-instrs
+				  (list (format nil "~a += ~a" tmp offset)
+					(format nil "~a = new_~a(~a)" lhs (add-c-type-definition (ir2c-type texpr1))
+						tmp)
+					(mk-for-instr (format nil "uint32_t ~a = 0; ~a < ~a; ~a++"
+					      index index tmp index)
+						      (copy-type* et1 et2
+								  (format nil "~a->elems[~a]" lhs index)
+								  (format nil "~a->elems[~a]" rhs index)))))))
+		    (list (format nil "~a = new_~a(~a)" lhs (add-c-type-definition (ir2c-type texpr1)) size1)
+			  (mk-for-instr (format nil "uint32_t ~a = 0; ~a < ~a; ~a++"
+						index index size1 index)
 					(copy-type* et1 et2
 						    (format nil "~a->elems[~a]" lhs index)
-						    (format nil "~a->elems[~a]" rhs index))))))))
+						    (format nil "~a->elems[~a]" rhs index)))))))))
+		    
 
 (defmethod copy-type* ((texpr1 ir-typename)(texpr2 t) lhs rhs)
   (with-slots ((id1 ir-type-id)(typedef1 ir-type-defn)) texpr1
