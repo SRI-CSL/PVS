@@ -301,7 +301,7 @@ instance.  No longer used - use prettyprint-expanded instead"
     (define-key pvs-show-formulas-map "\C-c\C-ps" 'step-proof)
     (define-key pvs-show-formulas-map "\C-c\C-pr" 'redo-proof))
 
-(defpvs prettyprint-expanded tcc (theory)
+(defpvs prettyprint-expanded tcc (theoryref)
   "View the expanded form of a theory
 
 The prettyprint-expanded command provides a view of the entire
@@ -313,20 +313,26 @@ command."
   (interactive (complete-theory-name "Prettyprint-expanded theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (message "Creating the %s.ppe buffer..." theory)
-  (pvs-send-and-wait (format "(prettyprint-expanded \"%s\")" theory)
-		     nil (pvs-get-abbreviation 'prettyprint-expanded)
-		     'dont-care)
-  (message "")
-  (let ((buf (get-buffer (format "%s.ppe" theory))))
-    (when buf
-      (with-current-buffer buf
-	(set (make-local-variable 'pvs-context-sensitive) t)
-	(set (make-local-variable 'from-pvs-theory) theory)
-	(let ((mtime (get-theory-modtime theory)))
-	  (set (make-local-variable 'pvs-theory-modtime) mtime))
-	(pvs-view-mode)
-	(use-local-map pvs-show-formulas-map)))))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless (or file
+		(setq file (when (cadr parts) (car parts))))
+      (error "File for theoryname %s not found" theoryname))
+    (message "Creating the %s.ppe buffer..." theoryname)
+    (pvs-send-and-wait (format "(prettyprint-expanded \"%s\")" theoryref)
+		       nil (pvs-get-abbreviation 'prettyprint-expanded)
+		       'dont-care)
+    (message "")
+    (let ((buf (get-buffer (format "%s.ppe" theoryname))))
+      (when buf
+	(with-current-buffer buf
+	  (set (make-local-variable 'pvs-context-sensitive) t)
+	  (set (make-local-variable 'from-pvs-theory) theoryname)
+	  (let ((mtime (get-theory-modtime theory)))
+	    (set (make-local-variable 'pvs-theory-modtime) mtime))
+	  (pvs-view-mode)
+	  (use-local-map pvs-show-formulas-map))))))
 
 (defpvs show-tccs tcc (theory &optional arg)
   "Shows all the TCCs of the indicated theory
@@ -403,6 +409,7 @@ the prove command."
   (interactive)
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
+	 (file (pvs-fref-file fref))
 	 (buf (pvs-fref-buffer fref))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (line (+ (pvs-fref-line fref) poff)))
@@ -410,7 +417,7 @@ the prove command."
   (let ((theory-decl
 	 (pvs-send-and-wait (format
 				"(show-declaration-tccs \"%s\" \"%s\" %d %s)"
-				buf kind line
+				(or file buf) kind line
 				(and current-prefix-arg t))
 			    nil (pvs-get-abbreviation 'show-declaration-tccs)
 			    nil)))
@@ -426,14 +433,19 @@ the prove command."
 
 ;;; Show-theory-warnings
 
-(defpvs show-theory-warnings theory-status (theoryname)
+(defpvs show-theory-warnings theory-status (theoryref)
   "Displays the warnings associated with THEORYNAME"
   (interactive (complete-theory-name "Show warnings of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (pvs-send-and-wait (format "(show-theory-warnings \"%s\")" theoryname) nil
-		     (pvs-get-abbreviation 'show-theory-warnings)
-		     'dont-care))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
+    (pvs-send-and-wait (format "(show-theory-warnings \"%s#%s\")" file theoryname) nil
+		       (pvs-get-abbreviation 'show-theory-warnings)
+		       'dont-care)))
 
 (defpvs show-pvs-file-warnings theory-status (filename)
   "Displays the warnings associated with FILENAME"
@@ -443,14 +455,19 @@ the prove command."
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
 
-(defpvs show-theory-messages theory-status (theoryname)
+(defpvs show-theory-messages theory-status (theoryref)
   "Displays the informational messages associated with THEORYNAME"
   (interactive (complete-theory-name "Show messages of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (pvs-send-and-wait (format "(show-theory-messages \"%s\")" theoryname) nil
-		     (pvs-get-abbreviation 'show-theory-warnings)
-		     'dont-care))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
+    (pvs-send-and-wait (format "(show-theory-messages \"%s#%s\")" file theoryname) nil
+		       (pvs-get-abbreviation 'show-theory-warnings)
+		       'dont-care)))
 
 (defpvs show-pvs-file-messages theory-status (filename)
   "Displays the informational messages associated with FILENAME"
@@ -460,14 +477,19 @@ the prove command."
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
 
-(defpvs show-theory-conversions theory-status (theoryname)
+(defpvs show-theory-conversions theory-status (theoryref)
   "Displays the conversions associated with THEORYNAME"
   (interactive (complete-theory-name "Show conversions of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (pvs-send-and-wait (format "(show-theory-conversions \"%s\")" theoryname) nil
-		     (pvs-get-abbreviation 'show-theory-conversions)
-		     'dont-care))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
+    (pvs-send-and-wait (format "(show-theory-conversions \"%s#%s\")" file theoryname) nil
+		       (pvs-get-abbreviation 'show-theory-conversions)
+		       'dont-care)))
 
 (defpvs show-pvs-file-conversions theory-status (filename)
   "Displays the conversions associated with FILENAME"
