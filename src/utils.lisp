@@ -34,8 +34,8 @@
 (export '(argument* copy-all copy-context current-declarations-hash
 	  current-theory current-theory-name current-using-hash file-older
 	  find-supertype get-theory lf make-new-context mapappend operator*
-	  put-decl pvs-current-directory resolution show assq tc-term formals
-	  pvs-git-description))
+	  prover-status put-decl pvs-current-directory resolution show assq tc-term
+	  formals pvs-git-description))
 
 (declaim (notinline current-theory))
 
@@ -1680,22 +1680,23 @@ prove itself from the mapped axioms."
   (declare (ignore obj))
   nil)
 
-(defun pp-theory-element (thid eltid)
-  (let ((th (get-theory thid)))
-    (cond ((null th)
-	   (pvs-message "Typechecked theory ~a not found" thid))
-	  ((not (module th))
-	   (pvs-message "~a is a (co)datatype" thid))
-	  (t
-	   (let* ((adecls (all-decls th))
-		  (thelt (or (find-if #'(lambda (thelt)
-					  (and (declaration? thelt)
-					       (string= (id thelt) eltid)))
-			       adecls)
-			     (find eltid adecls :test #'string= :key #'unique-id))))
-	     (if thelt
-		 (unparse thelt :string t)
-		 (pvs-message "~a not found in theory ~a" eltid thid)))))))
+(defun pp-theory-element (thref eltid)
+  (with-pvs-file (fname thname) thref
+      (let ((th (get-theory (or thname fname))))
+	(cond ((null th)
+	       (pvs-message "Typechecked theory ~a not found" (or thname fname)))
+	      ((not (module th))
+	       (pvs-message "~a is a (co)datatype" (or thname fname)))
+	      (t
+	       (let* ((adecls (all-decls th))
+		      (thelt (or (find-if #'(lambda (thelt)
+					      (and (declaration? thelt)
+						   (string= (id thelt) eltid)))
+				   adecls)
+				 (find eltid adecls :test #'string= :key #'unique-id))))
+		 (if thelt
+		     (unparse thelt :string t)
+		     (pvs-message "~a not found in theory ~a" eltid (or thname fname)))))))))
 
 
 ;;; create-formula - creates a formula for a given const-decl or def-decl.
@@ -2826,7 +2827,7 @@ prove itself from the mapped axioms."
 	 (ppt (if (typep pt '(or null type-name
 			      expr-as-type type-application))
 		  pt (print-type pt))))
-    (lcopy (call-next-method) 'print-type pt)))
+    (lcopy (call-next-method) 'print-type ppt)))
 
 (defmethod raise-actuals! (x) x)
 
@@ -4496,6 +4497,16 @@ space")
 		     :test #'(lambda (x y) (eq x (id y)))))
 	(next-proof-id fdecl (1+ num))
 	id)))
+
+(defun prover-status ()
+  "Checks the status of the prover: active, proved, unproved, or inactive."
+  (cond (*ps* :active)
+	(*last-proof*
+	 (if (and (typep *last-proof* 'top-proofstate)
+		  (eq (status-flag *last-proof*) '!))
+	     :proved
+	     :unproved))
+	(t :inactive)))
 
 (defmethod id ((ex number-expr)) (number ex))
 (defmethod mod-id ((ex number-expr)) nil)
