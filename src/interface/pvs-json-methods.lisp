@@ -206,6 +206,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	(cmd-gate (mp:make-gate nil))
 	(lock (mp:make-process-lock))
 	(proc (mp:process-name-to-process "Initial Lisp Listener")))
+    (setq pvs:*multiple-proof-default-behavior* :noquestions)
     (setq pvs:*ps-control-info*
 	  (pvs:make-ps-control-info
 	   :lock lock
@@ -240,3 +241,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
       (setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
       (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
       psjson)))
+
+(defrequest prover-status ()
+  "Checks the status of the prover: active, proved, unproved, or inactive."
+  (pvs:prover-status))

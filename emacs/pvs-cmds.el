@@ -194,29 +194,34 @@ M-x revert-buffer to return to the old version."
 	       (if declp "declaration" "region"))
 	      (message "No changes were made"))))))
 
-(defpvs theory-element-string prettyprint (thid eltid)
+(defpvs theory-element-string prettyprint (thref eltid)
   "Gets the string associated with a theory element (e.g., declaration or importing)"
-  (interactive (let* ((thid (car (complete-theory-name "Theory id: ")))
+  (interactive (let* ((thref (car (complete-theory-name "Theory reference: ")))
 		      (eltid (complete-theory-element-id
-			      "Element (e.g., declaration) id: " thid)))
-		 (list thid eltid)))
-  (pvs-send-and-wait (format "(pp-theory-element \"%s\" \"%s\")" thid eltid)))
+			      "Element (e.g., declaration) id: " thref)))
+		 (list thref eltid)))
+  (pvs-send-and-wait (format "(pp-theory-element \"%s\" \"%s\")" thref eltid)))
 
 
-(defpvs prettyprint-theory prettyprint (theoryname)
+(defpvs prettyprint-theory prettyprint (theoryref)
   "Prettyprints the specified theory
 
 The prettyprint-theory command prettyprints the specified theory and
 replaces the old theory in the current buffer.  Can use undo (C-x u or
 C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
+  ;; Note that complete-theory-name and pvs-collect-theories set the
+  ;; pvs-theories global variable.
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (save-some-pvs-buffers t)
-  (let ((file (when (member-equal theoryname (buffer-theories))
-		(current-pvs-file))))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
-			   theoryname (when file (format "\"%s\"" file)))
+			   theoryname (format "\"%s\"" file))
 		       "Prettyprinting"
 		       (pvs-get-abbreviation 'prettyprint-theory)
 		       'dont-care))
@@ -296,7 +301,7 @@ instance.  No longer used - use prettyprint-expanded instead"
     (define-key pvs-show-formulas-map "\C-c\C-ps" 'step-proof)
     (define-key pvs-show-formulas-map "\C-c\C-pr" 'redo-proof))
 
-(defpvs prettyprint-expanded tcc (theory)
+(defpvs prettyprint-expanded tcc (theoryref)
   "View the expanded form of a theory
 
 The prettyprint-expanded command provides a view of the entire
@@ -308,20 +313,26 @@ command."
   (interactive (complete-theory-name "Prettyprint-expanded theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (message "Creating the %s.ppe buffer..." theory)
-  (pvs-send-and-wait (format "(prettyprint-expanded \"%s\")" theory)
-		     nil (pvs-get-abbreviation 'prettyprint-expanded)
-		     'dont-care)
-  (message "")
-  (let ((buf (get-buffer (format "%s.ppe" theory))))
-    (when buf
-      (with-current-buffer buf
-	(set (make-local-variable 'pvs-context-sensitive) t)
-	(set (make-local-variable 'from-pvs-theory) theory)
-	(let ((mtime (get-theory-modtime theory)))
-	  (set (make-local-variable 'pvs-theory-modtime) mtime))
-	(pvs-view-mode)
-	(use-local-map pvs-show-formulas-map)))))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless (or file
+		(setq file (when (cadr parts) (car parts))))
+      (error "File for theoryname %s not found" theoryname))
+    (message "Creating the %s.ppe buffer..." theoryname)
+    (pvs-send-and-wait (format "(prettyprint-expanded \"%s\")" theoryref)
+		       nil (pvs-get-abbreviation 'prettyprint-expanded)
+		       'dont-care)
+    (message "")
+    (let ((buf (get-buffer (format "%s.ppe" theoryname))))
+      (when buf
+	(with-current-buffer buf
+	  (set (make-local-variable 'pvs-context-sensitive) t)
+	  (set (make-local-variable 'from-pvs-theory) theoryname)
+	  (let ((mtime (get-theory-modtime theory)))
+	    (set (make-local-variable 'pvs-theory-modtime) mtime))
+	  (pvs-view-mode)
+	  (use-local-map pvs-show-formulas-map))))))
 
 (defpvs show-tccs tcc (theory &optional arg)
   "Shows all the TCCs of the indicated theory
@@ -398,6 +409,7 @@ the prove command."
   (interactive)
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
+	 (file (pvs-fref-file fref))
 	 (buf (pvs-fref-buffer fref))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (line (+ (pvs-fref-line fref) poff)))
@@ -405,7 +417,7 @@ the prove command."
   (let ((theory-decl
 	 (pvs-send-and-wait (format
 				"(show-declaration-tccs \"%s\" \"%s\" %d %s)"
-				buf kind line
+				(or file buf) kind line
 				(and current-prefix-arg t))
 			    nil (pvs-get-abbreviation 'show-declaration-tccs)
 			    nil)))
@@ -421,14 +433,19 @@ the prove command."
 
 ;;; Show-theory-warnings
 
-(defpvs show-theory-warnings theory-status (theoryname)
+(defpvs show-theory-warnings theory-status (theoryref)
   "Displays the warnings associated with THEORYNAME"
   (interactive (complete-theory-name "Show warnings of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (pvs-send-and-wait (format "(show-theory-warnings \"%s\")" theoryname) nil
-		     (pvs-get-abbreviation 'show-theory-warnings)
-		     'dont-care))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
+    (pvs-send-and-wait (format "(show-theory-warnings \"%s#%s\")" file theoryname) nil
+		       (pvs-get-abbreviation 'show-theory-warnings)
+		       'dont-care)))
 
 (defpvs show-pvs-file-warnings theory-status (filename)
   "Displays the warnings associated with FILENAME"
@@ -438,14 +455,19 @@ the prove command."
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
 
-(defpvs show-theory-messages theory-status (theoryname)
+(defpvs show-theory-messages theory-status (theoryref)
   "Displays the informational messages associated with THEORYNAME"
   (interactive (complete-theory-name "Show messages of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (pvs-send-and-wait (format "(show-theory-messages \"%s\")" theoryname) nil
-		     (pvs-get-abbreviation 'show-theory-warnings)
-		     'dont-care))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
+    (pvs-send-and-wait (format "(show-theory-messages \"%s#%s\")" file theoryname) nil
+		       (pvs-get-abbreviation 'show-theory-warnings)
+		       'dont-care)))
 
 (defpvs show-pvs-file-messages theory-status (filename)
   "Displays the informational messages associated with FILENAME"
@@ -455,14 +477,19 @@ the prove command."
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
 
-(defpvs show-theory-conversions theory-status (theoryname)
+(defpvs show-theory-conversions theory-status (theoryref)
   "Displays the conversions associated with THEORYNAME"
   (interactive (complete-theory-name "Show conversions of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (pvs-send-and-wait (format "(show-theory-conversions \"%s\")" theoryname) nil
-		     (pvs-get-abbreviation 'show-theory-conversions)
-		     'dont-care))
+  (let* ((parts (split-string theoryref "#"))
+	 (theoryname (or (cadr parts) (car parts)))
+	 (file (cdr (assoc theoryname pvs-theories))))
+    (unless file
+      (error "File for theoryname %s not found" theoryname))
+    (pvs-send-and-wait (format "(show-theory-conversions \"%s#%s\")" file theoryname) nil
+		       (pvs-get-abbreviation 'show-theory-conversions)
+		       'dont-care)))
 
 (defpvs show-pvs-file-conversions theory-status (filename)
   "Displays the conversions associated with FILENAME"

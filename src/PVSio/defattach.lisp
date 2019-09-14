@@ -279,7 +279,9 @@ It cannot be evaluated in a formal proof."
 ;; Reports running-time errors in attachments
 (defmacro attach-error (&optional msg)
   "Reports an error in the execution of the semantic attachment. It returns to the PVSio prompt, when running interactively."
-  `(throw '*pvsio-error* (or (when ,msg (format t "~%ERROR: ~a" ,msg)) t)))
+  `(if (find-restart 'return-to-pvsio)
+       (invoke-restart (format nil "~%ERROR: ~a" ,msg))
+       (throw '*pvsio-error* (or (when ,msg (format t "~%ERROR: ~a" ,msg)) t))))
 
 ;; Macros to access global variables by name
 

@@ -50,20 +50,22 @@
 ;;; Status Theory - called from Emacs
 
 (defun status-theory (theoryref)
-  (pvs-message (theory-status-string theoryref)))
+  (with-pvs-file (fname thname) theoryref
+    (pvs-message (theory-status-string (or thname fname)))))
 
 
 ;;; Status PVS File - called from Emacs
 
-(defun status-pvs-file (filename)
-  (let ((theories (get-context-theory-names filename)))
-    (if theories
-	(pvs-buffer "PVS Status"
-	  (format nil "~{~a~%~}"
-	    (mapcar #'theory-status-string theories))
-	  t t)
-	(pvs-message "PVS file ~a is not in the current context"
-	  filename))))
+(defun status-pvs-file (fileref)
+  (with-pvs-file (filename) fileref
+    (let ((theories (get-context-theory-names filename)))
+      (if theories
+	  (pvs-buffer "PVS Status"
+	    (format nil "~{~a~%~}"
+	      (mapcar #'theory-status-string theories))
+	    t t)
+	  (pvs-message "PVS file ~a is not in the current context"
+	    filename)))))
 
 
 ;;; Provides the status of the specified theory; returns a string.
@@ -414,25 +416,21 @@
 ;;; ProofChain Status, Module ProofChain Status, Formula Status and
 ;;; Module Formula Status
 
-(defun proofchain-status-at (filename declname line &optional (origin "pvs"))
-  (with-pvs-file filename
-    #'(lambda (name)
-	(proofchain-status-at* name declname line origin))))
-
-(defun proofchain-status-at* (filename declname line origin)
-  (if (or (gethash filename (current-pvs-files))
-	  (and (member origin '("ppe" "tccs") :test #'string=)
-	       (get-theory filename)))
-      (let ((fdecl (formula-decl-to-prove filename declname line origin))
-	    (*disable-gc-printout* t))
-	(if fdecl
-	    (let ((*current-context* (context (module fdecl))))
-	      (pvs-buffer "PVS Status"
-		(with-output-to-string (*standard-output*)
-		  (pc-analyze fdecl))
-		t))
-	    (pvs-message "Unable to find formula declaration")))
-      (pvs-message "~a.pvs has not been typechecked" filename)))
+(defun proofchain-status-at (fileref declname line &optional (origin "pvs"))
+  (with-pvs-file (filename) fileref
+    (if (or (gethash filename (current-pvs-files))
+	    (and (member origin '("ppe" "tccs") :test #'string=)
+		 (get-theory filename)))
+	(let ((fdecl (formula-decl-to-prove filename declname line origin))
+	      (*disable-gc-printout* t))
+	  (if fdecl
+	      (let ((*current-context* (context (module fdecl))))
+		(pvs-buffer "PVS Status"
+		  (with-output-to-string (*standard-output*)
+		    (pc-analyze fdecl))
+		  t))
+	      (pvs-message "Unable to find formula declaration")))
+	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 (defun status-proofchain-theory (theoryname)
   (let ((theory (get-theory theoryname))

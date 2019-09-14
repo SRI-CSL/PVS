@@ -29,7 +29,7 @@
 
 (in-package :pvs)
 
-(export '(pc-parse pc-typecheck))
+(export '(pc-parse pc-typecheck *multiple-proof-default-behavior*))
 
 (defvar *subgoals* nil)
 
@@ -630,8 +630,7 @@
       (catch-restore
        (output-proofstate proofstate))
       (setq *prover-commentary* nil)
-      (clear-strategy-errors))
-    )
+      (clear-strategy-errors)))
   (let ((nextstate (proofstepper proofstate)))
     (cond ((null (parent-proofstate proofstate))
 	   (cond ((eq (status-flag proofstate) '!)
@@ -736,13 +735,15 @@
 		(eq (car input) 'lisp))
 	   (format t "~%~s~%"  (eval (cadr input)))
 	   (qread prompt))
-	  ((member input '(quit q exit (quit)(exit)(q))
+	  ((member input '(quit q exit (quit) (exit) (q))
 		   :test #'equal)
-	   (if (pvs-y-or-n-p "~%Do you really want to quit? ")
+	   (if (or (eq *multiple-proof-default-behavior* :noquestions)
+		   (pvs-y-or-n-p "~%Do you really want to quit? "))
 	       (throw 'quit nil)
 	       (qread prompt)))
 	  ((eq input 'abort)
-	   (if (pvs-y-or-n-p "~%Do you really want to abort? ")
+	   (if (or (eq *multiple-proof-default-behavior* :noquestions)
+		   (pvs-y-or-n-p "~%Do you really want to abort? "))
 	       (throw 'abort nil)
 	       (qread prompt)))
 	  ((eq input :reset)         ;; from M-x reset-pvs 
@@ -2252,8 +2253,10 @@
 	       (commentary "~%No change.")
 	       (setf (strategy ps)(query*-step))
 	       ps)
-	      (t (let ((response (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
-					       newps)))
+	      (t (let ((response
+			(or (eq *multiple-proof-default-behavior* :noquestions)
+			    (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
+					  newps))))
 		   (cond (response
 			  (when *displaying-proof*
 			    (setf *flush-displayed* newps))

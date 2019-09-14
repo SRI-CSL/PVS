@@ -113,7 +113,10 @@ To change output prompt '~a':
 |
 +----~%" *pvsio-version* *pvsio-promptin* *pvsio-promptin*)
 		     (format t "Starting pvsio script~%"))
-		 (evaluate-pvsio input-stream))
+		 ;; establish a restart - (invoke-restart 'pvsio-quit) exits the loop.
+		 (restart-case
+		     (evaluate-pvsio input-stream)
+		   (pvsio-quit () (format t "~%Exiting PVSio~%") nil)))
 	    ;; unwind-protected forms
 	    (when *pvs-emacs-interface*
 	      (pvs-emacs-eval "(pvs-evaluator-ready)"))
@@ -131,7 +134,9 @@ To change output prompt '~a':
 	    (not instr))
        (string-trim '(#\Space #\Tab #\Newline)
 		    (get-output-stream-string fstr)))
-    (when (null c) (error 'pvsio-quit))
+    (when (null c)
+      (assert (find-restart 'pvsio-quit))
+      (invoke-restart 'pvsio-quit))
     (when (and (not instr)
 	       have-real-char
 	       (not have-first-space)
@@ -148,7 +153,7 @@ To change output prompt '~a':
 	       (setq have-real-char nil
 		     have-first-space nil))
 	      (t (loop for ch across pref do (write-char ch fstr))
-		 (setq havespace t)))))
+		 (setq have-first-space t)))))
     (when (and (eq c #\!) (not instr))
       (clear-input)
       (return
@@ -161,31 +166,21 @@ To change output prompt '~a':
 	  (setq have-real-char t)))
     (when (eq c #\") (setq instr (not instr)))))
 
-(define-condition pvsio-error (simple-condition) ())
-
-(define-condition pvsio-quit (simple-condition) ())
-
-;; (defun evaluate-pvsio (input-stream)
-;;   (restart-case
-;;       (evaluate-pvsio* input-stream)
-;;     (return-to-pvsio ()
-;;       :test (lambda (c) (declare (ignore c)) *evaluator-debug*)
-;;       :report "Return to PVSio"))
-;; 	  (pvsio-error () nil))
-;; 	(evaluate-pvsio input-stream))
-;;     (pvsio-quit () nil)))
-
 (defun evaluate-pvsio (input-stream)
-  (handler-case
-      (progn
-	(handler-case
-	    (restart-case
-		(evaluate-pvsio* input-stream)
-	      (return-to-pvsio ()
-		:report "Return to PVSio"))
-	  (pvsio-error () nil))
-	(evaluate-pvsio input-stream))
-    (pvsio-quit () nil)))
+  "evaluate-pvsio - the basic REPL.  Normally just evaluates the request, prints the result,
+and loops.  If there's an error, it it printed and otherwise ignored, unless
+*evaluator-debug* is set, in which case it breaks into lisp.
+"
+  (restart-case	    ;; catches return-to-pvsio, returns to loop.
+      (handler-bind ;; catches errors
+	  ((error #'(lambda (c)
+		      (unless *evaluator-debug*
+			(format t "Hit an error (use \"debug\" to debug):")
+			(format t "~%~a" c)
+			(invoke-restart 'return-to-pvsio)))))
+	(evaluate-pvsio* input-stream))
+    (return-to-pvsio () nil))
+  (evaluate-pvsio input-stream))
 
 (defun evaluate-pvsio* (input-stream)
   (let* ((input (read-pvsio input-stream))
@@ -209,7 +204,8 @@ To change output prompt '~a':
 	  "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
       (clear-input)
       (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
-	(error 'pvsio-error)))
+	(assert (find-restart 'return-to-pvsio))
+	(invoke-restart 'return-to-pvsio)))
     (let ((cl-input (pvs2cl tc-input)))
       (when *evaluator-debug*
 	(format t "~%PVS expression ~a translates to Common Lisp expression:~%~a~%" 
@@ -238,52 +234,53 @@ To change output prompt '~a':
     (format t "~%~a" *pvsio-promptin*)
     (force-output))
   (let ((input (read-expr input-stream)))
-    (cond ((member input '(quit (quit) "quit") :test #'equal)
+    (cond ((member input '("quit" "q" "(quit)") :test #'string-equal)
 	   (clear-input)
 	   (when (pvs-y-or-n-p "Do you really want to quit? ")
-	     (error 'pvsio-quit))
+	     (unless (find-restart 'pvsio-quit)
+	       (error "No pvsio-quit restart?"))
+	     (invoke-restart 'pvsio-quit))
 	   (read-pvsio input-stream))
-	  ((member input '(exit (exit) "exit") :test #'equal)
-	   (error 'pvsio-quit))
-	  ((member input '(help "help") :test #'equal)
+	  ((member input '("exit" "(exit)") :test #'string-equal)
+	   (when (find-restart 'pvsio-quit)
+	       (invoke-restart 'pvsio-quit)))
+	  ((member input '("help") :test #'string-equal)
 	   (help-pvsio)
 	   (read-pvsio input-stream))
-	  ((member input '(debug "debug") :test #'equal)
+	  ((member input '("debug") :test #'string-equal)
 	   (setq *evaluator-debug* t)
-	   (format t "Enabled printing of debuggin information~%")
+	   (format t "~%Enables debugging; breaks on errors, more information printed~%")
 	   (read-pvsio input-stream))
-	  ((member input '(nodebug "nodebug") :test #'equal)
+	  ((member input '("nodebug") :test #'string-equal)
 	   (setq *evaluator-debug* nil)
-	   (format t "Disabled printing of debugging information~%")
+	   (format t "~%Debugging disabled~%")
 	   (read-pvsio input-stream))
-	  ((member input '(timing "timing") :test #'equal)
+	  ((member input '("timing") :test #'string-equal)
 	   (setq *pvs-eval-do-timing* t)
-	   (format t "Enabled printing of timing information~%")
+	   (format t "~%Printing of timing information enabled~%")
 	   (read-pvsio input-stream))
-	  ((member input '(notiming "notiming") :test #'equal)
+	  ((member input '("notiming") :test #'string-equal)
 	   (setq *pvs-eval-do-timing* nil)
-	   (format t "Disabled printing of timing information~%")
+	   (format t "~%Printing of timing information disabled~%")
 	   (read-pvsio input-stream))
-	  ((member input '(tccs "tccs") :test #'equal)
+	  ((member input '("tccs") :test #'string-equal)
 	   (setq *generate-tccs* 'all)
-	   (format t "Enabled TCCs generation~%")
+	   (format t "~%Enabled TCCs generation~%")
 	   (read-pvsio input-stream))
-	  ((member input '(notccs "notccs") :test #'equal)
+	  ((member input '("notccs") :test #'string-equal)
 	   (setq *generate-tccs* 'none)
-	   (format t "Disabled TCCs generation~%")
+	   (format t "~%Disabled TCCs generation~%")
 	   (read-pvsio input-stream))
-          ((member input '(pvsio-version pvsio_version "pvsio_version") 
-		   :test #'equal)
-	   (format t "~a~%" *pvsio-version*)
+          ((member input '("pvsio-version" "pvsio_version")
+		   :test #'string-equal)
+	   (format t "~%~a~%" *pvsio-version*)
 	   (read-pvsio input-stream))
-	  ((member input '(list-pvs-attachments list_pvs_attachments 
-					    "list_pvs_attachments") 
-		   :test #'equal)
+	  ((member input '("list-pvs-attachments" "list_pvs_attachments")
+		   :test #'string-equal)
 	   (list-pvs-attachments)
 	   (read-pvsio input-stream))
-	  ((member input '(load-pvs-attachments load_pvs_attachments 
-						"load_pvs_attachments") 
-		   :test #'equal)
+	  ((member input '("load-pvs-attachments" "load_pvs_attachments")
+		   :test #'string-equal)
 	   (load-pvs-attachments t)
 	   (read-pvsio input-stream))
 	  ((stringp input) input)
@@ -331,7 +328,7 @@ strings. "
 		     (progn (pvs2cl nexpr)
 			    (assert (eval-info (declaration nexpr))))
 		   (pvseval-error (condition)
-		     (error "~a could not be compiled" nexpr)))))
+		     (error "~a could not be compiled: ~%  ~a" nexpr condition)))))
 	  (let ((info-defs (eval-info-defs nexpr)))
 	    (when (null info-defs)
 	      (error "~a has not been compiled" nexpr))
@@ -492,7 +489,7 @@ strings. "
 	     ;; the domain is of a known finite bound.
 	     (pvs-arg (handler-case
 			  (cl2pvs (car args) atype)
-			(cl2pvs-error (condition)
+			(cl2pvs-error ()
 			  ;; Create a new skolem constant of this type
 			  ;; as a proxy for the real arg
 			  (or (cdr (assq (car args) *eval-untranslatable*))
@@ -539,7 +536,7 @@ strings. "
 	 (time (read-from-string (environment-variable "PVSIOTIME")))
 	 (theory (environment-variable "PVSIOTHEORY"))
 	 (packlist (read-from-string (environment-variable "PVSIOPACK")))
-	 (verb (read-from-string (environment-variable "PVSIOVERB")))
+	 ;;(verb (read-from-string (environment-variable "PVSIOVERB")))
 	 (tccs (read-from-string (environment-variable "PVSIOTCCS")))
 	 (pvsio-main (environment-variable "PVSIOMAIN"))
 	 (main (unless (string= pvsio-main "") (format nil "~a;" pvsio-main)))
@@ -547,28 +544,28 @@ strings. "
 	 (*pvsio-promptout* (environment-variable "PVSIOPROMPTOUT"))
 	 (*pvsio-version* (environment-variable "PVSIOVERSION")))
     (when time (setq *pvs-eval-do-timing* t))
-    (multiple-value-bind 
-	(val err)
+    (multiple-value-bind (val err)
 	(ignore-errors
 	  (unless main
 	    (format t "~%Generating ~a.log~%" theory))
 	  (with-open-file 
-	   (*standard-output*
-	    (merge-pathnames (directory-namestring file) (format nil "~a.log"  theory))
-	    :direction :output
-	    :if-does-not-exist :create
-	    :if-exists :supersede)
-	   (change-workspace (directory-namestring file))
-	   (dolist (pack packlist) (load-prelude-library pack))
-	   (unwind-protect
-	       (typecheck-file (file-namestring file) nil nil nil t)
-	     (fresh-line)
-	     (finish-output)))
+	      (*standard-output*
+	       (merge-pathnames (directory-namestring file) (format nil "~a.log"  theory))
+	       :direction :output
+	       :if-does-not-exist :create
+	       :if-exists :supersede)
+	    (change-workspace (directory-namestring file))
+	    (dolist (pack packlist) (load-prelude-library pack))
+	    (unwind-protect
+		 (typecheck-file (file-namestring file) nil nil nil t)
+	      (fresh-line)
+	      (finish-output)))
 	  (load-pvs-attachments)
 	  (evaluation-mode-pvsio theory main tccs (null main))
 	  t)
+      (declare (ignore val))
       (when err (format t "~%~a (~a.pvs). See ~a~a.log~%"
-			err file (directory-namestring file) theory)))
+		  err file (directory-namestring file) theory)))
     (fresh-line)
     (bye 0)))
 

@@ -260,19 +260,31 @@ it the default."
 	       (set-working-directory ,orig-dir)))
 	   (error "Directory ~a does not exist" ,dirstr)))))
 
-(defmacro with-pvs-file (pvsfile pvs-fn)
+(defmacro with-pvs-file (vars pvsfileref &rest body)
   "Given a pvsfile string or pathname, gets the directory and file parts,
 invokes with-workspace on the directory, and applies pvs-fn to the basename,
-which is the pvsfile without directory."
-  (let ((_pvsfile (gentemp))
+which is the pvsfile without directory.
+Example:
+  (with-pvs-file (fname thname) (show-tccs fname thname))
+expands to:
+  (let ((t2440 (split pvsfileref #\#))
+        (fname (nth 0 t2440))
+        (thname (nth 1 t2440)))
+    (show-tccs fname thname))"
+  (let ((args (gentemp))
+	(path (gentemp))
 	(dir (gentemp))
 	(name (gentemp))
 	(ext (gentemp))
 	(msg (gentemp)))
-    `(let* ((,_pvsfile ,pvsfile)
-	    (,dir (uiop:pathname-directory-pathname ,_pvsfile))
-	    (,name (pathname-name ,_pvsfile))
-	    (,ext (pathname-type ,_pvsfile)))
+    `(let* ((,args (split ,pvsfileref #\#))
+	    (,path (car ,args))
+	    (,dir (uiop:pathname-directory-pathname ,path))
+	    (,name (pathname-name ,path))
+	    (,ext (pathname-type ,path))
+	    (,(car vars) ,name)
+	    ,@(let ((cnt 0))
+		(mapcar #'(lambda (v) (list v `(nth ,(incf cnt) ,args))) (cdr vars))))
        (unless (or (uiop:pathname-equal ,dir #p"")
 		   (directory-p ,dir))
 	 (let ((,msg (format nil "with-pvs-file error: bad directory ~a" ,dir)))
@@ -282,11 +294,11 @@ which is the pvsfile without directory."
 	 ;; foo.bar.pvs.  So rather than give an error, we just treat it as
 	 ;; the name, with nil type
 	 (setq ,name (uiop:strcat ,name "." ,ext)))
-       (if (or (uiop:pathname-equal ,dir #p"")
-	       (uiop:pathname-equal ,dir *default-pathname-defaults*))
-	   (funcall ,pvs-fn ,name)
-	   (with-workspace ,dir
-	     (funcall ,pvs-fn ,name))))))
+       (cond ((or (uiop:pathname-equal ,dir #p"")
+		  (uiop:pathname-equal ,dir *default-pathname-defaults*))
+	      ,@body)
+	     (t (with-workspace ,dir
+		  ,@body))))))
 	 
 
 (defmacro add-to-alist (key entry alist)
@@ -400,23 +412,23 @@ which is the pvsfile without directory."
 	 (defun ,reset-name ()
 	   (setq ,var nil))))))
 
-(defmacro do-all-theories (fn)
+(defun maphash-sorted (fn hashtable &optional (predicate #'string<))
+  (dolist (k (sort (get-hash-keys hashtable) predicate))
+    (funcall fn k (gethash k hashtable))))
+
+(defun do-theories (fn &optional (pvs-theories (current-pvs-theories)))
+  (dolist (k (sort (get-hash-keys pvs-theories) #'string-lessp))
+    (funcall fn (gethash k pvs-theories))))
+
+(defun do-all-theories (fn &optional no-prelude?)
   "Goes through all known (e.g., parsed) theories of the current context,
 and all *all-workspace-sessions* applying fn to each theory."
-  `(progn (maphash #'(lambda (mid theory)
-		       (declare (ignore mid))
-		       (funcall ,fn theory))
-		   (current-pvs-theories))
-	  (dolist (ws *all-workspace-sessions*)
-	    (unless (eq ws *workspace-session*) ; Did this above
-	      (maphash #'(lambda (mid theory)
-			   (declare (ignore mid))
-			   (funcall ,fn theory))
-		       (pvs-theories ws))))
-	  (maphash #'(lambda (mid theory)
-		       (declare (ignore mid))
-		       (funcall ,fn theory))
-		   *prelude*)))
+  (do-theories fn)
+  (dolist (ws *all-workspace-sessions*)
+    (unless (eq ws *workspace-session*) ; Did this above
+      (do-theories fn (pvs-theories ws))))
+  (unless no-prelude?
+    (do-theories fn *prelude*)))
 
 (defmacro protect-types-hash (obj &rest forms)
   `(unwind-protect

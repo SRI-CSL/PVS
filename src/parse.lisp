@@ -172,6 +172,8 @@
                  ~%Remember that the backslash character must be doubled ~
                  in strings~%E.g., (expand \"/\\\\\")"
 	  *escaped-operators-used*)))
+    (when *current-file*
+      (setf (filename aorm) (pathname-name *current-file*)))
     (setf (context-path aorm) *default-pathname-defaults*)
     aorm))
 
@@ -2341,7 +2343,7 @@
     :place (term-place expr)))
 
 (defun make-xt-bind-expr (op body save-as)
-  (let* ((set-expr? (is-sop 'SET-EXPR body))
+  (let* (;;(set-expr? (is-sop 'SET-EXPR body))
 	 (commas? (xt-lambda-formals-check (term-arg0 body)))
 	 (bindings (xt-lambda-formals (term-arg0 body) commas?))
 	 (expr (xt-expr (term-arg2 body)))
