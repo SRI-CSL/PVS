@@ -359,12 +359,20 @@
     `(let ((funval ,function)
 	   (argval ,argument)
 	   (val ,value))
-       (if (pvs-closure-hash-p funval)
-	   (setf (gethash argval (pvs-closure-hash-hash funval))
-		 val)
-	   (let ((hash (make-hash-table :test #'pvs_equalp)))
-	     (setf (gethash argval hash) val)
-	     (mk-pvs-closure-hash hash funval)))))
+       (cond ((pvs-closure-hash-p funval)
+	      (setf (gethash argval (pvs-closure-hash-hash funval))
+		    val)
+	      funval)
+	     (t (let ((hash (make-hash-table :test 'pvs_equalp)))
+		  (setf (gethash argval hash) val)
+		  (mk-pvs-closure-hash hash funval))))))
+
+(defmacro mkcopy-pvs-closure-hash (function)
+  `(let ((funval ,function))
+     (if (pvs-closure-hash-p funval)
+	 (copy-pvs-closure-hash funval)
+       (let ((hash (make-hash-table :test 'pvs_equalp)))
+	 (mk-pvs-closure-hash hash funval)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
