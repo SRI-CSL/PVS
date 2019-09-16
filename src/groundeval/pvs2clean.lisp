@@ -38,9 +38,9 @@
 
 (defvar *livevars-table* nil)
 
-(defparameter *clean-primitives* '((==) (<>) True False pvsImplies pvsImplies
-				   pvsIff (&&) (&&) (||)
- not pvsWhen pvsIff (+) (-) (*) (/) pvsNumberFieldPred (<) (<=) (>)
+(defparameter *clean-primitives* '((==) (<>) True False pvsImplies pvsImplies pvsImplies
+				   pvsIff pvsIff (&&) (&&) (&&) (||) (||)
+ not not pvsWhen pvsIff (+) (-) (*) (/) pvsNumberFieldPred (<) (<=) (>)
  (>=) pvsRealPred pvsIntegerPred pvsIntegerPred pvsRationalsPred pvsFloor pvsCeiling
  nrem rem / pvsEven? pvsOdd? pvsCons hd tl isCons [!!] isNull pvsRestrict
  length isMember (!!) (++) reverse))
@@ -727,7 +727,7 @@ FunnyId is not currently used, just documented here just in case."
 	    (make-new-variable (string-downcase id-str :end 1) dt)))
       (break "What to do with constant formals?")))
 
-(defun pvs2clean-constructors (constrs datatype tvars)
+(defun pvs2clean-constructors (constrs datatype &optional tvars)
   (pvs2clean-constructors* constrs datatype tvars))
 
 (defun pvs2clean-constructors* (constrs datatype tvars)

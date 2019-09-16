@@ -419,9 +419,9 @@
 
 
 (defparameter *ir-primitives*
-  '(= /= TRUE FALSE IMPLIES => <=> NOT AND & OR NOT WHEN IFF + - * /
+  '(= /= TRUE FALSE IMPLIES => ⇒ <=> ⇔ AND & ∧ OR ∨ NOT ¬ WHEN IFF + - * /
    number_field_pred < <= > >= real_pred integer_pred integer?
-   rational_pred floor ceiling ndiv nrem sqrt even? odd? cons car cdr cons?
+   rational_pred floor ceiling nrem ndiv sqrt even? odd? cons car cdr cons?
    null null? restrict length member nth append reverse))
 
 (defparameter *ir-arith-primitives*
