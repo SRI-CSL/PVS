@@ -3372,7 +3372,7 @@
       ((OR ∨)
        (list (format nil "~a = ~a || ~a" return-var (car ir-arg-names) 
 		     (cadr ir-arg-names))))
-      ((AND ∧)
+      ((AND & ∧)
        (list (format nil "~a = ~a && ~a" return-var (car ir-arg-names) 
 		     (cadr ir-arg-names))))
       ((IMPLIES ⇒) (list (format nil "~a = (!~a) ||  ~a" return-var (car ir-arg-names)
