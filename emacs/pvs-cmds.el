@@ -580,7 +580,7 @@ The view-library-file command displays a library file in a buffer of the
 same name.  Only files from libraries that have been imported (either
 directly or using the load-prelude-library command) are available.  With
 an argument, includes the distributed libraries even if they are not
-imported."
+imported.  This is not a very useful command anymore."
   (interactive (list (pvs-complete-library-name "View library file: "
 						current-prefix-arg)))
   (let ((default-directory pvs-current-directory))
@@ -588,20 +588,17 @@ imported."
     (set-buffer-modified-p nil)
     (setq buffer-read-only t)))
 
-(defpvs view-library-theory find-files (library-file-and-place)
+(defpvs view-library-theory find-files (library-file place)
   "Views a library theory
 
 The view-library-theory command displays a library file with the cursor at
 the beginning of the specified theory."
   (interactive
-   (list (pvs-complete-library-theory-name "View library theory: ")))
-  (let ((default-directory pvs-current-directory))
-    (switch-to-buffer (find-file-noselect
-		       (concat (car library-file-and-place) ".pvs")))
-    (set-buffer-modified-p nil)
-    (setq buffer-read-only t)
+   (pvs-complete-library-theory-name "View library theory: "))
+  (message "theory %s at %s" library-file place)
+  (with-current-buffer (find-file (expand-file-name library-file))
     (goto-char (point-min))
-    (forward-line (1- (car (cadr library-file-and-place))))))
+    (forward-line (1- (car place)))))
   
 (defpvs pvs-add-library-path library (libpath)
   "Adds a path to the PVS library paths list"

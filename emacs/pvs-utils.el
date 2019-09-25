@@ -616,8 +616,13 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (kill-buffer buff))))
 
 (defun get-theory-buffer (theoryname)
-  (let ((filename (cadr (assoc theoryname pvs-theories))))
-    (when filename (get-pvs-file-buffer filename))))
+  (let* ((filoc (cdr (assoc theoryname pvs-theories)))
+	 (filename (car filoc))
+	 (place (cadr filoc)))
+    (when filename
+      (with-current-buffer (find-file (expand-file-name filename))
+	(goto-char (point-min))
+	(forward-line (1- (car place)))))))
 
 (defun get-pvs-file-buffer (fname)
   (let* ((name (pathname-name fname))
@@ -628,7 +633,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		  pdir)))
     (if (and ext (member ext *pvs-file-extensions*))
 	(let ((filename (format "%s%s.%s" dir name ext)))
-	  (setq xxx fname yyy filename)
 	  (find-file-noselect filename noninteractive))
 	(let ((files nil))
 	  (dolist (pext *pvs-file-extensions*)
@@ -1017,16 +1021,14 @@ The save-pvs-file command saves the PVS file of the current buffer."
 ;;; the number of calls to Lisp.
 
 (defun complete-theory-name (prompt &optional no-timeout with-prelude-p)
-  "Perform completion on PVS theories"
+  "Perform completion on PVS theories - returns list of filename, place, and
+theoryname."
   (pvs-bury-output)
   (let ((default (or (current-theory)
 		     (and with-prelude-p
 			  (and (boundp 'pvs-prelude) pvs-prelude)
 			  (buffer-name))))
-	(theories (append (pvs-collect-theories with-prelude-p)
-			  (when with-prelude-p
-			    (apply 'append
-			      (mapcar 'cdr *prelude-files-and-regions*))))))
+	(theories (pvs-collect-theories with-prelude-p)))
     (if (null theories)
 	(error "No theories in context.")
 	(let ((theory (if (and (not no-timeout)
