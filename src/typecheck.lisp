@@ -294,7 +294,9 @@
 			       *tc-theories*))
 	 (plib-context (prelude-context *workspace-session*))
 	 (mod (get-typechecked-theory theory-inst)))
-    (assert mod)
+    (unless mod
+      (type-error theory-inst
+	"Cannot find theory ~a" theory-inst))
     ;; (let* ((*generate-tccs* 'none)
     ;; 	   (thname (if (recursive-type? mod)
     ;; 		       (copy theory-inst :id (id (adt-theory mod)))
