@@ -227,16 +227,21 @@
   (pvs-message "Not at a valid id")
   nil)
 
-(defun get-term-at (oname pos1 &key (pos2 pos1))
+(defun get-term-at (fileref pos1 &key (pos2 pos1))
   "Given the string oname, a (row col) pos1, and optional pos2, finds the
 corresponding PVS terms.  oname is a PVS file or buffer (e.g. TCC buffer).
 Returns a list of terms, from most specific to least."
-  (let ((ext (pathname-type oname))
-	(name (pathname-name oname)))
-    (unless ext (setq ext "pvs"))
+  (with-pvs-file (name) fileref
     (multiple-value-bind (objects theories)
-	(get-syntactic-objects-for name ext)
+	(get-syntactic-objects-for name "pvs")
       (let ((theory (find-element-containing-pos theories pos1)))
+	(unless theory
+	  (pvs-error "Location error"
+	    (format nil "~a is outside of any theory in file ~a:~
+                         ~{~%  ~{~a: ~a~}~}"
+	      pos1 fileref
+	      (mapcar #'(lambda (th) (list (id th) (place-list (place th))))
+		theories))))
 	(when (or (equal pos1 pos2)
 		  (within-place pos2 (place theory)))
 	  (get-term-in-theory-at* objects theory pos1 pos2))))))
@@ -320,6 +325,8 @@ Returns a list of terms, from most specific to least."
   (let ((objects nil)
 	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (ex)
+		   (when (string-expr? ex)
+		     (break "get-object-in-declaration-at"))
 		   (or (and (declaration? ex) (generated-by ex)) ; no need to go down further
 		       (and (typep ex '(or actual funtype type-name lambda-conversion))
 			    (null (place ex)))
