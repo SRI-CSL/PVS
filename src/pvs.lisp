@@ -283,6 +283,12 @@
   (setq *exprs-generating-actual-tccs* nil)
   (setq *store-object-hash* nil))
 
+(defun clear-theories (&optional workspace
+		       &key delete-binfiles dont-load-prelude-libraries)
+  (clear-workspace workspace
+		   :delete-binfiles delete-binfiles
+		   :dont-load-prelude-libraries dont-load-prelude-libraries))
+
 (defun clear-workspace (&optional workspace
 			  &key delete-binfiles dont-load-prelude-libraries)
   "Clears the given workspace, or the current workspace if nil, and all
