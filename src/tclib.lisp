@@ -746,18 +746,7 @@ point."
     (sort files #'string<)))
 
 (defun library-theories ()
-  (let ((theories nil))
-    (dolist (ws *all-workspace-sessions*)
-      (maphash #'(lambda (file date&theories)
-		   (dolist (th (cdr date&theories))
-		     (push (list (format nil "~a~a"
-				   (pvs-file-path th) (id th))
-				 (format nil "~a~a"
-				   (pvs-file-path th) file)
-				 (place-list (place th)))
-			   theories)))
-	       (pvs-files ws)))
-    (sort theories #'string< :key #'car)))
+  (collect-theories t))
 
 (defun current-libraries ()
   (let ((libs nil))
