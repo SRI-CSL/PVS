@@ -43,7 +43,6 @@
    (fmt-str :accessor fmt-str :initarg :fmt-str))
   (:report
    (lambda (condition stream)
-     (break "pvseval-error")
      (format stream
 	 (or (fmt-str condition)
 	     "Hit uninterpreted term ~a during evaluation (pvseval-error)")
@@ -576,10 +575,10 @@ if called."
 	(let ((undef (undefined expr "Hit untranslatable term: no binding for ~a")))
 	  `(funcall ',undef)))))
 
-(defun pvs2cl-declare-vars (vars exprs) nil)
-  ;; (let ((decls (pvs2cl-declare-vars* vars exprs)))
-  ;;   (when decls
-  ;;     `(declare ,@decls))))
+(defun pvs2cl-declare-vars (vars exprs)
+  (let ((decls (pvs2cl-declare-vars* vars exprs)))
+    (when decls
+      `(declare ,@decls))))
 
 (defun pvs2cl-declare-vars* (vars exprs)
   (when (consp vars)
@@ -591,11 +590,11 @@ if called."
 		  (pvs2cl-declare-vars* (cdr vars)(cdr exprs)))
 	    (pvs2cl-declare-vars* (cdr vars)(cdr exprs))))))
 
-(defun pvs2cl-declare-vars-types (vars types) nil)
-  ;; (let ((decls (loop for var in vars
-  ;; 		     as typ in types
-  ;; 		     collect (list 'type (pvs2cl-lisp-type typ) var))))
-  ;;   `(declare ,@decls)))
+(defun pvs2cl-declare-vars-types (vars types)
+  (let ((decls (loop for var in vars
+  		  as typ in types
+  		  collect (list 'type (pvs2cl-lisp-type typ) var))))
+    `(declare ,@decls)))
 
 						    
 (defmethod pvs2cl_up* ((expr let-expr) bindings livevars)
@@ -1572,7 +1571,7 @@ if called."
 							      nil))))))
 			    (eval (definition (ex-defn-m decl)))
 			    (assert id2)
-			    ;;(compile id2)
+			    (compile id2)
 			    )
 			  (setf (ex-name-d decl) id-d)
 			  (let ((*destructive?* t)
@@ -1595,7 +1594,7 @@ if called."
 			    (setf (output-vars (ex-defn-d decl)) *output-vars*))
 			  (eval (definition (ex-defn-d decl)))
 			  (assert id-d)
-			  ;;(compile id-d)
+			  (compile id-d)
 			  (let ((*destructive?* nil)
 				(declarations (pvs2cl-declare-vars formal-ids formals)))
 			    (setf (definition (ex-defn decl))
@@ -1606,7 +1605,7 @@ if called."
 						(pvs2cl_up* defn  bindings nil))))))
 			  (eval (definition (ex-defn decl)))
 			  (assert id)
-			  ;;(compile id)
+			  (compile id)
 			  ))
 		 (setf (current-theory) ctheory)))))))
 
@@ -1732,9 +1731,7 @@ if called."
 		 (when *eval-verbose*
 		   (format t "~%IN pvs2cl-lisp-function: compile ~a,~_   args = ~a,~_   long-list: ~a~%"
 		     id2 defn-binding-ids (expr_is_long_list defn-body 0)))
-		 (or skip-compile ;;(compile id2)
-		     ))
-	       ;;		 (compile id2)
+		 (or skip-compile (compile id2)))
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
 	       (setf (in-name-d decl) id-d)
@@ -1775,8 +1772,7 @@ if called."
 			 in-defn))
 	       (eval (definition (in-defn decl)))
 	       (assert id)
-	       (or skip-compile ;;(compile id)
-		   ))))))
+	       (or skip-compile (compile id)))))))
 ;;	       (compile id))))))
 
 (defun pvs2cl-theory (theory)
