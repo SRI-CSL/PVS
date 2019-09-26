@@ -139,7 +139,8 @@
 	  recordtype resolutions saved-context simple-constructor status
 	  subtype supertype theory theory-name tuple-expr tupletype type
 	  type-decl type-def-decl type-expr type-name type-name? type-value
-	  typed-declaration types update-expr using-hash var-decl visible?))
+	  typed-declaration types update-expr using-hash var-decl visible?
+	  inline-recursive-type adt-constructor))
 #+(or cmu sbcl)
 (#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
  (defgeneric class (x))

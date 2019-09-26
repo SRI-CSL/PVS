@@ -32,13 +32,13 @@
 
 ;; shadow
 
-(export '(*boolean* *bound-variables* *current-context*
-	  *even_int* *even_nat* *even_posnat* *even_negint* *false*
-	  *generate-all-adt-axioms* *generate-tccs*
-	  *integer* *naturalnumber* *number* *number_field* *odd_int* *odd_posnat* *odd_negint*
-	  *posint* *negint* *posrat* *negrat* *prelude* *pvs-directories*
-	  *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
-	  *true* *typechecking-module* *prelude-context*))
+(export '(*boolean* *bound-variables* *current-context* *even_int* *even_nat*
+	  *even_posnat* *even_negint* *false* *generate-all-adt-axioms*
+	  *generate-tccs* *integer* *naturalnumber* *number* *number_field*
+	  *odd_int* *odd_posnat* *odd_negint* *posint* *negint* *posrat*
+	  *negrat* *prelude* *pvs-directories* *pvs-tmp-file* *real*
+	  *show-conversions* *tcc-conditions* *true* *typechecking-module*
+	  *prelude-context* *last-proof* *pvs-lisp-process*))
 
 (export '(all none))
 
@@ -71,6 +71,12 @@ in util.lisp")
     "src/WS1S/lisp" "src/abstraction" "src/ground-prover" "src/groundeval"
     "src/PVSio" "src/inst-by-unif" "src/Field" "src/Manip" "src/ProofLite"
     "src/rahd" "src/cl-json/src"))
+
+#+allegro
+(defvar *pvs-lisp-process* nil
+  "Set to mp:*current-process* in pvs-server, in order to use
+  mp:symeval-in-process and get the dynamic values of *ps* and
+  *top-proofstate*")
 
 #+allegro
 (defun pvs-build-date ()

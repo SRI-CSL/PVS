@@ -264,7 +264,7 @@ again during the same PVS session, it will be exactly as you left it."
   "Called after loading prelude-libraries, to ensure everything is
 retypechecked."
   ;; First reset local context
-  (setq *last-proof* nil)
+  ;;(setq *last-proof* nil)
   (clrhash (current-pvs-files))
   (clrhash (current-pvs-theories))
   (setq *current-context* nil)
@@ -2665,19 +2665,16 @@ Note that the lists might not be the same length."
 (defun collect-theories (&optional no-prelude?)
   "Returns the alist of known theories and their context-paths, including
 the prelude and any parsed or typchecked theory from any current
-workspace-sesstion.  The current context is first, followed by the rest of
+workspace-session.  The current context is first, followed by the rest of
 the workspaces in *all-workspace-sessions*, followed by the prelude.  Within
 each context, the theories are in alphabetic order."
   (let ((theories nil))
     (do-all-theories
 	#'(lambda (th)
-	    (push (cons (string (id th))
+	    (push (list (string (id th))
 			(format nil "~a/~a.pvs"
-			  (context-path th)
-			  (if (from-prelude? th)
-			      (if (memq th (pvsio-prelude-theories))
-				  "pvsio_prelude" "prelude")
-			      (filename th))))
+			  (context-path th) (filename th))
+			(place-list (place th)))
 		  theories))
       no-prelude?)
     (nreverse theories)))
