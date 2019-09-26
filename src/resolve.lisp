@@ -1591,6 +1591,8 @@ decl, args, and mappings."
 
 (defun kind-match (kind1 kind2)
   (or (eq kind1 kind2)
+      (and (memq kind1 '(enum datatype))
+	   (memq kind2 '(enum datatype)))
       (and (eq kind2 'rewrite)
 	   (memq kind1 '(expr formula)))))
 
