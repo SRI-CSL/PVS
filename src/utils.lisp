@@ -4498,12 +4498,15 @@ space")
 	(next-proof-id fdecl (1+ num))
 	id)))
 
-(defun prover-status ()
+(defun prover-status (&optional (ps *ps*) (top-ps *top-proofstate*)
+			(last-proof *last-proof*))
   "Checks the status of the prover: active, proved, unproved, or inactive."
-  (cond (*ps* :active)
-	(*last-proof*
-	 (if (and (typep *last-proof* 'top-proofstate)
-		  (eq (status-flag *last-proof*) '!))
+  (format t "~%pvs:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
+    (and top-ps t) (and last-proof t) (and ps t))
+  (cond (top-ps :active)
+	(last-proof
+	 (if (and (typep last-proof 'top-proofstate)
+		  (eq (status-flag last-proof) '!))
 	     :proved
 	     :unproved))
 	(t :inactive)))
