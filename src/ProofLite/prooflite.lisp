@@ -65,10 +65,9 @@
 
 ;; Returns a list of theory names defined in a PVS file
 (defun theories-in-file (file)
-   (mapcan #'(lambda (theofile)
-	       (and (or (string= (cadr theofile) file))
-		    (list (car theofile))))
-	   (cdr (collect-theories))))
+  ;; gethash returns a list of form (date th1 th2 ...), where date is the
+  ;; time the file was parsed.
+  (cdr (gethash file (current-pvs-files))))
 
 ;; Returns a list of theories imported in theory-names  
 (defun imported-theories-in-theories (theory-names)
