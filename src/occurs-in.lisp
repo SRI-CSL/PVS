@@ -39,6 +39,9 @@
     (or (occurs-in obj (car l))
 	(occurs-in obj (cdr l)))))
 
+(defmethod occurs-in (obj (th module))
+  (memq obj (all-decls th)))
+
 (defmethod occurs-in (obj (decl typed-declaration))
   (or (call-next-method)
       (occurs-in obj (or (type decl) (declared-type decl)))))
