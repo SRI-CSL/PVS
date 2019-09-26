@@ -105,6 +105,25 @@
 (defmethod xmlrpc-theory-decl* ((decl pvs:var-decl))
   nil)
 
+(defmethod xmlrpc-theory-decl* ((decl pvs:inline-recursive-type))
+  `((:id . ,(id decl))
+    (:kind . ,(pvs:kind-of decl))
+    (:constructors . ,(mapcar #'xmlrpc-theory-decl*
+			(constructors decl)))
+    (:place . ,(pvs:place-list decl))))
+
+(defmethod xmlrpc-theory-decl* ((decl pvs:adt-constructor))
+  `((:id . ,(pvs:id decl))
+    (:recognizer . ,(pvs:recognizer decl))
+    (:accessors . ,(mapcar #'xmlrpc-theory-decl*
+		     (pvs:arguments decl)))
+    (:place . ,(pvs:place-list decl))))
+
+(defmethod xmlrpc-theory-decl* ((decl pvs:adtdecl))
+  `((:id . ,(pvs:id decl))
+    (:type . ,(pvs:str (pvs:type decl)))
+    (:place . ,(pvs:place-list decl))))
+
 (defmethod xmlrpc-theory-decl* ((imp pvs:importing))
   `((:importing . ,(pvs:str (pvs:theory-name imp)))
     (:kind . :importing)
@@ -116,6 +135,8 @@
     `((:id . ,id)
       (:kind . ,(pvs:kind-of decl))
       (:type . ,(pvs:str (pvs:type decl)))
+      ,@(when (pvs:generated-by decl)
+	  `((:generated-by . ,(pvs:generated-by decl))))
       (:place . ,(pvs:place-list decl)))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:declaration))
@@ -192,7 +213,7 @@
 ;; 	(setf (pvs:psinfo-psjson pvs:*ps-control-info*) nil)
 ;; 	psjson))))
 
-(defrequest prove-formula (formula theory)
+(defrequest prove-formula (formula theory &optional rerun?)
   "Starts interactive proof of a formula from a given theory
 
 Creates a ps-control-info struct to control the interaction.  It has slots
@@ -207,6 +228,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	(lock (mp:make-process-lock))
 	(proc (mp:process-name-to-process "Initial Lisp Listener")))
     (setq pvs:*multiple-proof-default-behavior* :noquestions)
+    (setq pvs:*prover-commentary* nil)
     (setq pvs:*ps-control-info*
 	  (pvs:make-ps-control-info
 	   :lock lock
@@ -214,7 +236,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	   :cmd-gate cmd-gate))
     ;;(format t "~%prove-formula: Waiting...~%")
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
-    (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
+    (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
     ;;(format t "~%prove-formula: Done waiting...~%")
     (mp:with-process-lock (lock)
@@ -243,5 +265,98 @@ Creates a ps-control-info struct to control the interaction.  It has slots
       psjson)))
 
 (defrequest prover-status ()
-  "Checks the status of the prover: active, proved, unproved, or inactive."
-  (pvs:prover-status))
+  "Checks the status of the prover: active or inactive."
+  (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
+	(ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*)))
+    (pvs:prover-status top-ps ps nil)
+    ;; (pvs:prover-status (sys:global-symbol-value 'pvs:*ps*)
+    ;; 		     (sys:global-symbol-value 'pvs:*top-proofstate*)
+    ;; 		     (sys:global-symbol-value 'pvs:*last-proof*))
+    ))
+
+(defrequest proof-status (formref)
+  "Checks the status of the given formula, proved or unproved."
+  (let (
+	(last-proof (or *last-proof*
+			(sys:global-symbol-value '*last-proof*)
+			(mp:symeval-in-process '*last-proof* *pvs-lisp-process*))))
+    ;;(format t "~%pvs-json:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
+    ;;  (and top-ps t) (and last-proof t) (and ps t))
+    (if last-proof
+	(pvs:prover-status nil nil last-proof)
+	'none)))
+
+(defrequest proof-script (fname formula)
+  "Returns the proof script, as with the show-proof command."
+  (pvs:get-proof-script fname formula))
+
+(defrequest show-tccs (fname)
+  "Returns the tccs, as with the show-tccs command."
+  (pvs:get-tccs fname))
+
+
+;;; In PVS, there are frequent references to workspaces, files, theories,
+;;; declarations, etc.  Toward this end a pvsref will be defined as one of:
+;;; 1. a string, when a file (with workspace and extension) is referenced.
+;;;    - workspace is optional and defaults to current
+;;;    - extension is optional and defaults to ".pvs"
+;;; 2. a JSON object (alist in Lisp) with fields
+;;;   pathName: as above, the usual dir/file.ext string.
+;;;   workspace: directory string
+;;;   fileName:  filename string without extension
+;;;   fileExtension: string
+;;;   theoryName: string
+;;;   declName: string
+;;;   place: number or list of numbers
+
+;;; Obviously, giving a pathName and a fileName together is unnecessary;
+;;; similarly for other fields.
+
+;;; Using Paolo's JSON objects, with fields contextFolder, fileName,
+;;; fileExtension, theoryName, formulaName, location, rerun.
+
+;;; 1. Prefer 'workspace' to 'contextFolder'
+
+;;; 2. Allow pathName form: ;;; "dir/file.pvs", and leave out workspace,
+;;;    fileName, fileExtension.
+
+;;; 3. Also allow URL form: "dir/file.pvs#thry#decl" or
+;;;    "dir/file.pvs#place", which are simple strings.
+
+;;; Thus a PVS reference accept JSON objects with fields
+
+(defun json-ref-to-string (ref)
+  (typecase thref
+    (cons ;; should be assoc list with cars
+     ;; :fileName, :fileExtension, :theoryName, :contextFolder
+     (unless (assq :fileName thref)
+       (error "bad thref: ~a" thref))
+     (format nil "~a/~a~a#~a"
+       (cdr (assq :contextFolder thref))
+       (cdr (assq :fileName thref))
+       (cdr (assq :fileExtension thref))
+       (cdr (assq :theoryName thref))))
+    (pathname (namestring thref))
+    (string threr)))
+
+(defrequest prove-tccs (fname)
+  "Attempts proof of TCCs, as with then typecheck-prove (tcp) command."
+  (pvs:prove-tccs fname))
+
+(defrequest term-at (file place &optional typecheck?)
+  "Returns information about the term at the specific place, a (row, col)
+tuple.  The file will be parsed, if necessary, and typechecked if the
+typecheck? flag is set.  Note that the type can only be provided if it is
+typechecked, and unless typechecked, identifiers only give a best guess as
+to the associated declaration."
+  (when (stringp place)
+    (setq place (read-from-string place nil :eof)))
+  (unless (and (listp place)
+	       (member (length place) '(2 4) :test #'=)
+	       (every #'integerp place))
+    (error "term-at: Bad place, should be list of 2 or 4 nats"))
+  (let* ((loc1 (list (car place) (cadr place)))
+	 (loc2 (if (caddr place)
+		   (list (caddr place) (cadddr place))
+		   loc1)))
+    (pvs:get-term-at file loc1 loc2 typecheck?)))

@@ -59,8 +59,16 @@
 (defvar *pvs-xmlrpc-server*)
 ;;; net.aserve:*wserver* will give the port
 
+(defparameter *pvs-top-level-globals*
+  '(pvs:*ps* pvs:*top-proofstate* pvs:*last-proof*))
+
 #+allegro
 (defun pvs-server (&key (port 22334))
+  ;; (dolist (glbl *pvs-top-level-globals*)
+  ;;   (unless (assoc glbl excl:*required-top-level-bindings*)
+  ;;     (push (cons glbl glbl) excl:*required-top-level-bindings*))
+  ;;   (unless (assoc glbl excl:*required-thread-bindings*)
+  ;;     (push (cons glbl glbl) excl:*required-thread-bindings*)))
   (let ((cmdsrv (make-xml-rpc-server 
 		 :start (list 
 			 ;; :host "locahost" 
@@ -69,6 +77,7 @@
 	'("pvs.request" xmlrpc-pvs-request t "Request a PVS method.")
       :string :string :string)
     (setq *pvs-xmlrpc-server* cmdsrv)
+    (setq pvs:*pvs-lisp-process* mp:*current-process*)
     t))
 
 (defvar *client-url* nil)
@@ -102,6 +111,7 @@
     (json:encode-json-to-string msg)))
 
 (defun xmlrpc-result (result id)
+  (declare (ignore id))
   (let ((json:*lisp-identifier-name-to-json* #'identity))
     (json:encode-json-to-string result)))
 
