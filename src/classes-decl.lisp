@@ -1050,7 +1050,8 @@ restored, the TCCs are checked")
 		       :documentation "if t, .pvscontext needs to be saved")
   (strat-file-dates :initform (list 0 0 0))
   (all-subst-mod-params-caches :initform (make-pvs-hash-table :strong-eq? t)
-			       :documentation "see subst-mod-params.lisp"))
+			       :documentation "see subst-mod-params.lisp"
+			       :fetch-as nil :ignore t))
 
 
 ;; (defcl context-info ()
