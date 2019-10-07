@@ -2186,3 +2186,19 @@ difficult."
 		     nil))
 	       obj)
     *collected-names*))
+
+(defmethod all-formulas ((th module))
+  (remove-if-not #'formula-decl? (all-decls th)))
+
+(defmethod formulas-referencing ((ref string))
+  (formulas-referencing (intern ref :pvs)))
+
+(defmethod formulas-referencing ((ref symbol))
+  (let ((ref-forms nil))
+    (do-all-theories
+	#'(lambda (th)
+	    (dolist (decl (all-decls th))
+	      (when (and (formula-decl? decl)
+			 (id-occurs-in ref (definition decl)))
+		(push decl ref-forms)))))
+    ref-forms))
