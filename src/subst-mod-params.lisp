@@ -136,8 +136,9 @@
 ;;; and returns it if necessary.
 
 (defun get-subst-mod-params-caches (modinst)
-  (unless (all-subst-mod-params-caches *workspace-session*)
-    (reset-subst-mod-params-cache))
+  ;; (assert (fully-typed? modinst))
+  ;; (assert (every #'fully-typed?
+  ;; 		 (get-hash-keys (all-subst-mod-params-caches *workspace-session*))))
   (let ((caches (gethash modinst (all-subst-mod-params-caches *workspace-session*))))
     (or caches
 	(let ((ncaches
