@@ -1082,11 +1082,11 @@ is not of the form: (<var> <term>...)" subst)
 			  do (format-if "~%Found substitution ~a:"
 					index)
 			  (loop for (x . y) in (cdr sub)
-				do (format-if "~%~a gets ~a," x y))
+				do (format-if "~%~a~_ gets ~a," x y))
 			  (format-if "~%Using template: ~a" (car sub))))
 		   (t (format-if "~%Found substitution:")
 		      (loop for (x . y) in (cdr subst)
-			    do (format-if "~%~a gets ~a," x y))
+			    do (format-if "~%~a~_ gets ~a," x y))
 		      (format-if "~%Using template: ~a" (car subst))))
 	     subs))))
 
