@@ -138,18 +138,20 @@
 	       (mapc #'(lambda (m) (show-importchain* m (+ indent 2)))
 		     usings))))))
 
-(defun status-importchain (theory &optional brief?)
-  (let ((te (get-context-theory-entry theory)))
-    (if te
-	(let ((*modules-visited* nil)
-	      (*disable-gc-printout* t))
-	  (pvs-buffer "PVS Status"
-	    (with-output-to-string (*standard-output*)
-	      (if brief?
-		  (brief-status-importchain (id te))
-		  (status-importchain* (id te))))
-	    t))
-	(pvs-message "~a is not in the current context" theory))))
+;;; Called from Emacs
+(defun status-importchain (theoryref &optional brief?)
+  (with-pvs-file (fname thname) theoryref
+    (let ((te (get-context-theory-entry (or thname fname))))
+      (if te
+	  (let ((*modules-visited* nil)
+		(*disable-gc-printout* t))
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(if brief?
+		    (brief-status-importchain (id te))
+		    (status-importchain* (id te))))
+	      t))
+	  (pvs-message "~a is not in the current context" theoryref)))))
 
 (defun brief-status-importchain (tname &optional (indent 0))
   (let* ((th (get-theory tname)))
@@ -179,19 +181,20 @@
 
 
 ;;; Usedby Status
-
-(defun status-importbychain (theory &optional brief?)
-  (let ((te (get-context-theory-entry theory)))
-    (if te
-	(let ((*modules-visited* nil)
-	      (*disable-gc-printout* t))
-	  (pvs-buffer "PVS Status"
-	    (with-output-to-string (*standard-output*)
-	      (if brief?
-		  (brief-status-importbychain (id te))
-		  (status-importbychain* (ref-to-id theory))))
-	    t))
-	(pvs-message "~a is not in the current context" theory))))
+;;; Called from Emacs
+(defun status-importbychain (theoryref &optional brief?)
+  (with-pvs-file (fname thname) theoryref
+    (let ((te (get-context-theory-entry (or thname fname))))
+      (if te
+	  (let ((*modules-visited* nil)
+		(*disable-gc-printout* t))
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(if brief?
+		    (brief-status-importbychain (id te))
+		    (status-importbychain* (ref-to-id thname))))
+	      t))
+	  (pvs-message "~a is not in the current context" theoryref)))))
 
 (defun brief-status-importbychain (tname &optional (indent 0))
   (let* ((th (get-theory tname)))
@@ -221,7 +224,7 @@
 
 
 ;;; Proof Status
-
+;;; Called from Emacs - FIXME, not good API
 (defun proof-status-at (filename declname line &optional (origin "pvs"))
   (let ((fdecl (formula-decl-to-prove filename declname line origin)))
     (if fdecl
@@ -230,32 +233,33 @@
 
 
 ;;; Status Proof Theory
-
-(defun status-proof-theory (theoryname &optional unproved?)
-  (let ((theory (or (get-theory theoryname)
-		    (get-context-theory-entry theoryname)))
-	(*disable-gc-printout* t))
-    (if theory
-	(pvs-buffer "PVS Status"
-	  (with-output-to-string (*standard-output*)
-	    (proof-summary (id theory) unproved?))
-	  t)
-	(pvs-message "Theory ~a is not in the current context."
-	  theoryname))))
+;;; Called from Emacs
+(defun status-proof-theory (theoryref &optional unproved?)
+  (with-pvs-file (fname thname) theoryref
+    (let* ((theoryname (or thname fname))
+	   (theory (or (get-theory theoryname)
+		       (get-context-theory-entry theoryname)))
+	   (*disable-gc-printout* t))
+      (if theory
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (proof-summary (id theory) unproved?))
+	    t)
+	  (pvs-message "Theory ~a is not found" theoryref)))))
 
 
 ;;; Status Proof PVS File
-
+;;; Called from Emacs
 (defun status-proof-pvs-file (filename &optional unproved?)
-  (let ((theories (get-context-theory-names filename))
-	(*disable-gc-printout* t))
-    (if theories
-	(pvs-buffer "PVS Status"
-	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories filename unproved?))
-	  t)
-	(pvs-message "File ~a.pvs is not in the current context"
-	  filename))))
+  (with-pvs-file (fname) filename
+    (let ((theories (get-context-theory-names fname))
+	  (*disable-gc-printout* t))
+      (if theories
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (proof-summaries theories fname unproved?))
+	    t)
+	  (pvs-message "PVS file ~a not found" filename)))))
 
 (defun status-proof-theories (theories &optional unproved?)
   (if theories
@@ -267,18 +271,17 @@
       (pvs-message "No theories given")))
 
 ;;; Status Proof Importchain
-
-(defun status-proof-importchain (theoryname &optional unproved?)
-  ;;(update-pvs-context)
-  (let ((theories (context-usingchain theoryname))
-	(*disable-gc-printout* t))
-    (if theories
-	(pvs-buffer "PVS Status"
-	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories nil unproved?))
-	  t)
-	(pvs-message "Theory ~a is not in the current context"
-	  theoryname))))
+;;; Called from Emacs
+(defun status-proof-importchain (theoryref &optional unproved?)
+  (with-pvs-file (fname thname) theoryref
+    (let ((theories (context-usingchain (or thname fname)))
+	  (*disable-gc-printout* t))
+      (if theories
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (proof-summaries theories nil unproved?))
+	    t)
+	  (pvs-message "Theory ~a is not found" theoryref)))))
 
 
 (defun proof-summaries (theory-ids &optional filename unproved?)
@@ -415,7 +418,7 @@
 
 ;;; ProofChain Status, Module ProofChain Status, Formula Status and
 ;;; Module Formula Status
-
+;;; Called from Emacs - FIXME: need better API
 (defun proofchain-status-at (fileref declname line &optional (origin "pvs"))
   (with-pvs-file (filename) fileref
     (if (or (gethash filename (current-pvs-files))
@@ -432,40 +435,45 @@
 	      (pvs-message "Unable to find formula declaration")))
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
-(defun status-proofchain-theory (theoryname)
-  (let ((theory (get-theory theoryname))
-	(*disable-gc-printout* t))
-    (if theory
-	(pvs-buffer "PVS Status"
-	  (with-output-to-string (*standard-output*)
-	    (pc-analyze theory))
-	  t)
-	(pvs-message "~a has not been typechecked" theoryname))))
+;;; Called from emacs
+(defun status-proofchain-theory (theoryref)
+  (with-pvs-file (fname thname) theoryref
+    (let ((theory (get-theory (or thname fname)))
+	  (*disable-gc-printout* t))
+      (if theory
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (pc-analyze theory))
+	    t)
+	  (pvs-message "~a has not been typechecked" theoryref)))))
 
+;;; Called from Emacs
 (defun status-proofchain-pvs-file (filename)
-  (let ((theories (get-theories filename))
-	(*disable-gc-printout* t))
-    (if theories
-	(pvs-buffer "PVS Status"
-	  (with-output-to-string (*standard-output*)
-	    (mapc #'pc-analyze theories))
-	  t)
-	(pvs-message "~a.pvs has not been typechecked" filename))))
+  (with-pvs-file (fname) filename
+    (let ((theories (get-theories fname))
+	  (*disable-gc-printout* t))
+      (if theories
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (mapc #'pc-analyze theories))
+	    t)
+	  (pvs-message "~a.pvs has not been typechecked" filename)))))
 
-(defun status-proofchain-importchain (theoryname)
-  (let ((th (get-theory theoryname)))
-    (if th
-	(let* ((*current-context* (saved-context th))
-	       (theories (collect-theory-usings theoryname))
-	       (*disable-gc-printout* t))
-	  (if theories
-	      (pvs-buffer "PVS Status"
-		(with-output-to-string (*standard-output*)
-		  (mapc #'pc-analyze theories))
-		t)
-	      (pvs-message "Theory ~a is not in the current context"
-		theoryname)))
-	(pvs-message "~a has not been typechecked" theoryname))))
+;;; Called from Emacs
+(defun status-proofchain-importchain (theoryref)
+  (with-pvs-file (fname thname) theoryref
+    (let ((th (get-theory (or thname fname))))
+      (if th
+	  (let* ((*current-context* (saved-context th))
+		 (theories (collect-theory-usings thname))
+		 (*disable-gc-printout* t))
+	    (if theories
+		(pvs-buffer "PVS Status"
+		  (with-output-to-string (*standard-output*)
+		    (mapc #'pc-analyze theories))
+		  t)
+		(pvs-message "Theory ~a not found" theoryref)))
+	  (pvs-message "~a has not been typechecked" theoryref)))))
 
 
 (defun full-status-theory (theoryname)
