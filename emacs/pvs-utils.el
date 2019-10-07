@@ -1114,7 +1114,7 @@ theoryname."
 	 (current-theories
 	  ;; We include the current buffer theories if a PVS file and not in the alist  
 	  (unless (or (null file)
-		      (cl-rassoc file theory-alist :test 'file-equal))
+		      (find file theory-alist :key 'cadr :test 'file-equal))
 	    (pvs-current-theories))))
     ;; (setq pvs-current-directory (car dir-and-theories))
     (setq pvs-theories (append current-theories theory-alist))))
