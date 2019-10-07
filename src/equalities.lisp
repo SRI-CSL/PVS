@@ -2547,9 +2547,15 @@
 	(setf conj1 (collect-subtype-conjuncts t1)))
       (when (null conj2)
 	(setf conj2 (collect-subtype-conjuncts t2)))
-      (assert (and conj1 conj2))
-      (cond ((and (not *checking-conversions*)
-		  (subsetp conj2 conj1 :test #'tc-eq))
+      ;;(assert (and conj1 conj2))
+      ;; conji is of form (bd ex1 ex2), where the bd is a bind-decl in the exi.
+      ;;(break "subtype-of*? subtype")
+      (cond ((and ;;(not *checking-conversions*)
+		  conj1 conj2
+		  (let ((b1 (car conj1))
+			(b2 (car conj2)))
+		    (subsetp (cdr conj2) (cdr conj1)
+			     :test #'(lambda (c2 c1) (tc-eq-with-bindings c2 c1 (list (cons b2 b1)))))))
 	     t)
 	    ((or (and (typep pr1 'recognizer-name-expr)
 		      (typep pr2 'recognizer-name-expr)
