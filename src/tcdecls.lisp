@@ -789,13 +789,13 @@
 all-subst-mod-params-caches.  It does this by resetting this in
 *workspace-session*, then restoring it after the subst-mod-params call."
   (let ((cur-all-subst-mod-params-caches
-	 (all-subst-mod-params-caches *workspace-session*)))
+  	 (all-subst-mod-params-caches *workspace-session*)))
     ;; Need to ignore earlier substitutions, but restore after
     (setf (all-subst-mod-params-caches *workspace-session*)
-	  (make-pvs-hash-table :strong-eq? t))
+  	  (make-pvs-hash-table :strong-eq? t))
     (unwind-protect (subst-mod-params theory theory-name theory)
       (setf (all-subst-mod-params-caches *workspace-session*)
-	    cur-all-subst-mod-params-caches))))
+  	    cur-all-subst-mod-params-caches))))
 
 (defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
   (if (null sdecls)
@@ -3336,53 +3336,86 @@ The dependent types are created only when needed."
 	tval))))
 
 (defun collect-subtype-conjuncts (subtype)
-  (collect-subtype-conjuncts* subtype nil))
+  (let ((conjs (collect-subtype-conjuncts* subtype)))
+    (assert (or (null conjs)
+		(and (bind-decl? (car conjs)) (every #'expr? (cdr conjs)))))
+    (let ((exp-conjs (collect-expanded-conjuncts (cdr conjs))))
+      (cons (car conjs) exp-conjs))))
 
-(defmethod collect-subtype-conjuncts* ((te subtype) conjuncts)
-  (let ((tconj (collect-subtype-conjuncts* (supertype te) conjuncts)))
-    (collect-subtype-conjuncts* (predicate te) tconj)))
+(defun collect-expanded-conjuncts (conjs &optional exp-conjs)
+  (if (null conjs)
+      (nreverse exp-conjs)
+      (let* ((ex (car conjs))
+	     (op (when (application? ex) (operator ex)))
+	     (decl (when (name-expr? op) (declaration op)))
+	     (defn (when (and (typep decl '(and const-decl (not def-decl)))
+			      (def-axiom decl))
+		     (args2 (car (last (def-axiom decl))))))
+	     (sdefn (when (and (lambda-expr? defn)
+			       (conjunction? (expression defn)))
+		      (subst-mod-params defn
+			  (module-instance op) (module decl) decl)))
+	     (nconjs (when sdefn
+		       (collect-expanded-conjuncts
+			(collect-conjuncts (make!-application sdefn (argument ex)))))))
+	(collect-expanded-conjuncts
+	 (cdr conjs)
+	 (if nconjs
+	     (nconc (nreverse nconjs) exp-conjs)
+	     (cons ex exp-conjs))))))
 
-(defmethod collect-subtype-conjuncts* ((te type-expr) conjuncts)
-  conjuncts)
+(defmethod collect-subtype-conjuncts* ((te subtype))
+  (let ((tconj (collect-subtype-conjuncts* (supertype te)))
+	(pconj (collect-subtype-conjuncts* (predicate te))))
+    (assert (or (null tconj) (and (bind-decl? (car tconj)) (every #'expr? (cdr tconj)))))
+    (assert (or (null pconj) (and (bind-decl? (car pconj)) (every #'expr? (cdr pconj)))))
+    (if tconj
+	(if pconj
+	    (append tconj (substit (cdr pconj)
+			    (acons (car pconj) (car tconj) nil)))
+	    tconj)
+	pconj)))
 
-(defmethod collect-subtype-conjuncts* ((ex lambda-expr) conjuncts)
-  (let ((lconj (when (and (singleton? (bindings ex))
-			  (conjunction? (expression ex)))
-		 (collect-conjuncts (expression ex)))))
-    (if (and lconj
-	     (every #'(lambda (cnj)
-			(and (application? cnj)
-			     (name-expr? (argument cnj))
-			     (eq (declaration (argument cnj)) (car (bindings ex)))))
-		    lconj))
-	(collect-subtype-conjuncts* (mapcar #'operator lconj) conjuncts)
-	(pushnew ex conjuncts :test #'tc-eq))))
+(defmethod collect-subtype-conjuncts* ((te type-expr))
+  nil)
 
-(defmethod collect-subtype-conjuncts* ((list cons) conjuncts)
-  (let ((aconj (collect-subtype-conjuncts* (car list) conjuncts)))
-    (collect-subtype-conjuncts* (cdr list) aconj)))
+;;; Lambda exprs are the interesting ones, as they are the only exprs with conjuncts.
+;;; First we change to a single variable, e.g. λ (x, y, z): p(x, y, z) is changed to
+;;; λ w: p(w`1, w`2, w`3).
+(defmethod collect-subtype-conjuncts* ((ex lambda-expr))
+  (if (cdr (bindings ex))
+      (unless (fully-instantiated? ex)
+	(when (singleton? (remove-duplicates (mapcar #'module (free-params ex))))
+	  (let ((*current-context* (context (module (car (free-params ex))))))
+	    (unless (fully-instantiated? ex) (break "Not fi"))
+	    ;; create single-binding equivalent
+	    (let* ((dtype (make-formals-domtype (bindings ex)))
+		   (vid (make-new-variable '|t| dtype))
+		   (bd (typecheck* (mk-bind-decl vid dtype) nil nil nil))
+		   (var (make-variable-expr bd))
+		   (prex (make!-projections var))n
+		   (nex (make!-lambda-expr (list bd)
+			  (substit (expression ex) (mapcar #'cons (bindings ex) prex)))))
+	      (if (conjunction? (expression nex))
+		  (cons (car (bindings nex)) (collect-conjuncts (expression nex)))
+		  (list (car (bindings nex)) (expression nex)))))))
+      (if (conjunction? (expression ex))
+	  (cons (car (bindings ex)) (collect-conjuncts (expression ex)))
+	  (list (car (bindings ex)) (expression ex)))))
 
-(defmethod collect-subtype-conjuncts* ((ex null) conjuncts)
-  conjuncts)
-
-(defmethod collect-subtype-conjuncts* ((ex name-expr) conjuncts)
-  (assert (and (funtype? (find-supertype (type ex)))
-	       (tc-eq (find-supertype (range (find-supertype (type ex)))) *boolean*)))
-  (if (and (typep (declaration ex) '(and const-decl (not def-decl)))
-	   (def-axiom (declaration ex)))
-      (let* ((decl (declaration ex))
-	     (defn (subst-mod-params (args2 (car (last (def-axiom decl))))
-		       (module-instance ex)  (module decl) decl)))
-	(if (lambda-expr? defn)
-	    (collect-subtype-conjuncts* defn conjuncts)
-	    (pushnew ex conjuncts :test #'tc-eq)))
-      (pushnew ex conjuncts :test #'tc-eq)))
-
-(defmethod collect-subtype-conjuncts* ((ex expr) conjuncts)
-  (assert (and (funtype? (find-supertype (type ex)))
-	       (tc-eq (find-supertype (range (find-supertype (type ex)))) *boolean*)))
-  (pushnew ex conjuncts))
-	   
+(defmethod collect-subtype-conjuncts* ((ex expr))
+  ;; Not a lambda-expr - but still a predicate, e.g., p - returns (x: T p(x))
+  (let ((*current-context* (if (fully-instantiated? ex)
+			       *current-context*
+			       (context (module (car (free-params ex)))))))
+    (when (fully-instantiated? ex)
+      (let* ((dtype (domain (type ex)))
+	     (vid (make-new-variable '|x| dtype))
+	     (bd (typecheck* (mk-bind-decl vid dtype) nil nil nil))
+	     (var (make-variable-expr bd))
+	     (app (make!-application ex var)))
+	;; Could expand app defn, and collect conjuncts.
+	(list bd app)))))
 
 (defmethod look-for-expected-from-conversion ((expr application))
   (and (typep (operator expr) 'name-expr)
@@ -4015,60 +4048,68 @@ The dependent types are created only when needed."
 
 (defmethod typecheck* ((decl expr-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let* ((*no-conversions-allowed* t)
-	 (*generate-tccs* 'none)
-	 (*compatible-pred-reason*
-	  (acons (expr decl) "judgement" *compatible-pred-reason*)))
-    (cond ((forall-expr? (expr decl))
-	   ;; Note that it is not really a forall expr, as it is not boolean
-	   (typecheck* (bindings (expr decl)) nil nil nil)
-	   (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
-	     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
-	     (typecheck* (expression (expr decl)) (type decl) nil nil)))
-	  (t (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
-	     (typecheck* (expr decl) (type decl) nil nil))))
-  ;; Need to decide if it should be an application-judgement
-  ;; Note that there could be ambiguity here - for example
-  ;;  judgement *(x, x) has_type nnreal
-  ;; Which is why we check for duplicates
-  (let ((mexpr (or (from-macro (expr decl)) (expr decl))))
-    (if (and (typep mexpr '(and application (not infix-application)))
-	     (let ((args-lists (arguments* mexpr)))
-	       (and (every #'(lambda (args) (every #'variable? args))
-			   args-lists)
-		    (not (duplicates? (apply #'append args-lists)
-				    :test #'same-declaration)))))
-	(change-expr-judgement-to-application-judgement decl)
-	;; Not an application-judgement, but has freevars
-	;; Get the freevars list, and create untyped-bind-decls
-	;; Append to the beginning of bindings if expr is a forall-expr
-	;; Set (formals decl) to this list
-	;; Then retypecheck expr under the new bindings
-	(let* ((*no-expected* t)
-	       ;; uform is not a valid forall expr, but this gets the
-	       ;; expr and type under the same bindings
-	       (lform (if (forall-expr? (expr decl))
-			  (copy (expr decl)
-			    :expression (list (expression (expr decl)) (type decl)))
-			  (list (expr decl) (type decl))))
-	       (uform (universal-closure lform))
-	       (*no-conversions-allowed* t)
-	       (*compatible-pred-reason*
-		(acons (car (expression uform)) "judgement" *compatible-pred-reason*))
-	       (*bound-variables* (when (forall-expr? uform) (bindings uform))))
-	  (if (forall-expr? uform)
-	      (let* ((*bound-variables* (bindings uform)))
-		(assert (listp (expression uform)))
-		(set-type (car (expression uform)) (cadr (expression uform))))
-	      (set-type (car uform) (cadr uform)))
-	  (setf (closed-form decl) uform)
-	  (cond ((and (expr-judgement? decl)
-		      (expr-judgement-useless? (closed-form decl)))
-		 (useless-judgement-warning decl))
-		(t (when (formals-sans-usings (current-theory))
-		     (generic-judgement-warning decl))
-		   ;;(break "Before add-judgement-decl after change: ~a" (id decl))
-		   (add-judgement-decl decl)))))))
+  ;; We typecheck copies of the declared-type and expr - enough to tell whether we
+  ;; need to change decl to an application-judgement.
+  (let* ((ctype (unless (forall-expr? (expr decl))
+		  (let ((*generate-tccs* 'none)
+			(*no-conversions-allowed* t))
+		    (typecheck* (copy-all (declared-type decl)) nil nil nil))))
+	 (cexpr (when ctype
+		  (let ((*generate-tccs* 'none)
+			(*no-conversions-allowed* t))
+		    (typecheck* (copy-all (expr decl)) ctype nil nil))))
+	 (mexpr (and cexpr (or (from-macro cexpr) cexpr))))
+    ;; expr-judgement basically just has an expr and declared-type may want
+    ;; to treat as appl-judgement, with name and formals, in the special
+    ;; case of application form, e.g., f(x, y)(z), where all the arguments
+    ;; are distinct variables.
+    (cond ((and (typep mexpr '(and application (not infix-application)))
+		(let ((args-lists (arguments* mexpr)))
+		  (and (every #'(lambda (args) (every #'variable? args))
+			      args-lists)
+		       (not (duplicates? (apply #'append args-lists)
+					 :test #'same-declaration)))))
+	   (change-expr-judgement-to-application-judgement decl))
+	  (t (let ((*compatible-pred-reason*
+		    (acons (expr decl) "judgement" *compatible-pred-reason*)))
+	       (cond ((forall-expr? (expr decl))
+		      ;; Note that it is not really a forall expr, as it is not boolean
+		      (typecheck* (bindings (expr decl)) nil nil nil)
+		      (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
+			(setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+			(typecheck* (expression (expr decl)) (type decl) nil nil)))
+		     (t (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+			(typecheck* (expr decl) (type decl) nil nil))))
+	     ;; Not an application-judgement, but has freevars
+	     ;; Get the freevars list, and create untyped-bind-decls
+	     ;; Append to the beginning of bindings if expr is a forall-expr
+	     ;; Set (formals decl) to this list
+	     ;; Then retypecheck expr under the new bindings
+	     (let* ((*no-expected* t)
+		    ;; uform is not a valid forall expr, but this gets the
+		    ;; expr and type under the same bindings
+		    (lform (if (forall-expr? (expr decl))
+			       (copy (expr decl)
+				 :expression (list (expression (expr decl)) (type decl)))
+			       (list (expr decl) (type decl))))
+		    (uform (universal-closure lform))
+		    (*no-conversions-allowed* t)
+		    (*compatible-pred-reason*
+		     (acons (car (expression uform)) "judgement" *compatible-pred-reason*))
+		    (*bound-variables* (when (forall-expr? uform) (bindings uform))))
+	       (if (forall-expr? uform)
+		   (let* ((*bound-variables* (bindings uform)))
+		     (assert (listp (expression uform)))
+		     (set-type (car (expression uform)) (cadr (expression uform))))
+		   (set-type (car uform) (cadr uform)))
+	       (setf (closed-form decl) uform)
+	       (cond ((and (expr-judgement? decl)
+			   (expr-judgement-useless? (closed-form decl)))
+		      (useless-judgement-warning decl))
+		     (t (when (formals-sans-usings (current-theory))
+			  (generic-judgement-warning decl))
+			;;(break "Before add-judgement-decl after change: ~a" (id decl))
+			(add-judgement-decl decl))))))))
 
 (defun expr-judgement-useless? (form)
   (if (forall-expr? form)
@@ -4090,17 +4131,9 @@ The dependent types are created only when needed."
 ;;; y, and z are determined to be (distinct) variables.  In this case, we
 ;;; change it to an application-judgement
 (defun change-expr-judgement-to-application-judgement (decl)
-  ;; If we don't clear the hash, causes problems in ACCoRD@bands_util.gs2v3_gs_only
-  (clrhash (judgement-types-hash (current-judgements)))
-  (clrhash *subtype-of-hash*)
-  ;;(reset-subst-mod-params-cache)
-  (reset-pseudo-normalize-caches)
-  (untypecheck-theory (declared-type decl))
-  (untypecheck-theory (expr decl))
-  (untypecheck-theory (decl-formals decl))
   (assert (application? (expr decl)))
   (assert (name-expr? (operator* (expr decl))))
-  (let* ((name (copy-untyped (operator* (expr decl))))
+  (let* ((name (operator* (expr decl)))
 	 (formals (mapcar #'(lambda (args)
 			      (mapcar #'(lambda (arg)
 					  (if (bind-decl? arg)
@@ -4110,7 +4143,7 @@ The dependent types are created only when needed."
 						:place (place arg))))
 				args))
 		    (arguments* (expr decl))))
-	 (dtype (copy-untyped (declared-type decl))))
+	 (dtype (declared-type decl)))
     (change-class decl 'application-judgement
       :name name
       :formals formals
