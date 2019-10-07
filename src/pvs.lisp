@@ -311,6 +311,7 @@ nil."
     (dolist (ws workspaces)
       (clrhash (pvs-files ws))
       (clrhash (pvs-theories ws))
+      (clrhash (all-subst-mod-params-caches ws))
       (when (and (not dont-load-prelude-libraries)
 		 (listp (pvs-context-libraries))
 		 (every #'stringp (pvs-context-libraries)))
