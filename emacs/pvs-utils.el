@@ -615,14 +615,16 @@ The save-pvs-file command saves the PVS file of the current buffer."
     (when buff
       (kill-buffer buff))))
 
-(defun get-theory-buffer (theoryname)
-  (let* ((filoc (cdr (assoc theoryname pvs-theories)))
+(defun get-theory-buffer (theoryref)
+  (let* ((theoryname (car (last (string-split ?# theoryref))))
+	 (filoc (cdr (assoc theoryname pvs-theories)))
 	 (filename (car filoc))
 	 (place (cadr filoc)))
     (when filename
       (with-current-buffer (find-file (expand-file-name filename))
 	(goto-char (point-min))
-	(forward-line (1- (car place)))))))
+	(forward-line (1- (car place)))
+	(current-buffer)))))
 
 (defun get-pvs-file-buffer (fname)
   (let* ((name (pathname-name fname))
@@ -1092,12 +1094,13 @@ theoryname."
 	 (car trs))
 	(t (find-current-theory-region (cdr trs)))))
 
-(defun get-theory-modtime (theory)
-  (let ((thbuf (get-theory-buffer theory)))
+(defun get-theory-modtime (theoryref)
+  (let* ((theory (car (last (string-split ?# theoryref))))
+	 (thbuf (get-theory-buffer theoryref)))
     (if thbuf
 	(with-current-buffer thbuf
 	  (visited-file-modtime))
-	(message "Theory %s not found" theory))))
+	(message "Theory %s not found" theoryref))))
 
 ;;; pvs-collect-theories returns an assoc list of the theory names and
 ;;; their associated PVS filenames.  The primary list
