@@ -597,7 +597,9 @@ is replaced with replacement."
       (get-theory* id library))))
 
 (defmethod get-theory ((str string))
-  (get-theory (pc-parse str 'modname)))
+  (with-pvs-file (pfile th) str
+    (let ((thname (or th pfile)))
+      (get-theory (pc-parse thname 'modname)))))
 
 (defmethod get-theory ((id symbol))
   (get-theory* id nil))
