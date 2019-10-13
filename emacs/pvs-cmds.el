@@ -1210,7 +1210,9 @@ for any reason, then the current PVS workspace is not changed."
 	  (unless (and (stringp ndir)
 		       (file-exists-p ndir))
 	    (error "change-workspace: '%s' invalid directory" ndir))
-	  (setq pvs-current-directory ndir)))
+	  (setq pvs-current-directory ndir)
+	  (unless noninteractive
+	    (pvs-welcome t)))))
     (when file
       (find-pvs-file file)))
   (run-hooks 'change-workspace-hook))
