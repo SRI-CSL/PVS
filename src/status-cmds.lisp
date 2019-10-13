@@ -355,33 +355,36 @@
 			 :key #'(lambda (d) (or (run-proof-time d) 0))
 			 :initial-value 0)
 		 internal-time-units-per-second))))
-	(let ((te (get-context-theory-entry theory-id))
-	      (valid? (or (and theory
-			       (from-prelude? theory))
-			  (valid-proofs-file (context-entry-of theory-id)))))
-	  (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
-	  (mapc #'(lambda (fe)
-		    (let ((status (fe-status fe)))
-		      (format t "~%    ~52,1,0,'.a...~(~10a~)"
-			(fe-id fe)
-			(fe-proof-status-string fe valid?))
-		      (incf tot)
-		      (case status
-			((proved-complete proved-incomplete)
-			 (if valid?
-			     (incf proved)
-			     (incf unfin)))
-			((unchecked unfinished)
-			 (incf unfin))
-			(t (incf untried)))))
-		(te-formula-info te))
-	  (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
+	(let* ((te (get-context-theory-entry theory-id))
+	       (fe-list (te-formula-info te))
+	       (valid? (or (and theory
+				(from-prelude? theory))
+			   (valid-proofs-file (context-entry-of theory-id)))))
+	  (unless (and unproved? (every #'proved? fe-list))
+	    (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
+	    (dolist (fe fe-list)
+	      (let ((status (fe-status fe)))
+		(incf tot)
+		(when (or (null unproved?) (unproved? fe))
+		  (format t "~%    ~52,1,0,'.a...~(~10a~)"
+		    (fe-id fe)
+		    (fe-proof-status-string fe valid?)))
+		(cond ((member status '(proved-complete proved-incomplete)
+			       :test #'string-equal)
+		       (if valid?
+			   (incf proved)
+			   (incf unfin)))
+		      ((member status '(unchecked unfinished)
+			       :test #'string-equal)
+		       (incf unfin))
+		      (t (incf untried)))))
+	    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
                (~,2f s)"
 	      (ref-to-id theory-id) tot (+ proved unfin) proved
 	      (/ (reduce #'+ (provable-formulas theory)
 			 :key #'(lambda (d) (or (run-proof-time d) 0))
 			 :initial-value 0)
-		 internal-time-units-per-second))))
+		 internal-time-units-per-second)))))
     (values tot proved unfin untried time)))
 
 (defun run-proof-time (decl)

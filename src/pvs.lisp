@@ -1488,14 +1488,15 @@ use binfiles."
 		    (proved . ,(proved? tcc))))
 	tccs)))
 
-(defun proved? (fdecl)
-  (or (and (memq (proof-status fdecl)
-		 '(proved proved-complete proved-incomplete))
+(defmethod proved? ((fdecl formula-decl))
+  (or (and (member (proof-status fdecl)
+		   '(proved proved-complete proved-incomplete)
+		   :test #'string-equal)
 	   t)
       (when (mapped-formula-decl? fdecl)
 	(proved? (from-formula fdecl)))))
 
-(defun unproved? (fdecl)
+(defmethod unproved? ((fdecl formula-decl))
   (not (proved? fdecl)))
 
 (defmethod tccs-tried? ((adt recursive-type))

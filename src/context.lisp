@@ -3088,6 +3088,20 @@ binfile, not the filename."
     (when (equal (pathname-type file) "bin")
       (delete-file file))))
 
+(defmethod proved? ((fe formula-entry))
+  (or (and (member (fe-status fe)
+		   '(proved proved-complete proved-incomplete)
+		   :test #'string-equal)
+	   t)
+      ;; TODO: formula-decl also has this; should fix for formula-entries
+      ;; (when (mapped-formula-decl? fe)
+      ;; 	(proved? (from-formula fe)))
+      ))
+
+(defmethod unproved? ((fdecl formula-entry))
+  (not (proved? fdecl)))
+
+
 ;; (defun check-proof-file-is-current (&optional file)
 ;;   (if file
 ;;       (check-proof-file-is-current* file (gethash file (current-pvs-files)))
