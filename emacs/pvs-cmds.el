@@ -329,7 +329,7 @@ command."
 	(with-current-buffer buf
 	  (set (make-local-variable 'pvs-context-sensitive) t)
 	  (set (make-local-variable 'from-pvs-theory) theoryname)
-	  (let ((mtime (get-theory-modtime theory)))
+	  (let ((mtime (get-theory-modtime theoryname)))
 	    (set (make-local-variable 'pvs-theory-modtime) mtime))
 	  (pvs-view-mode)
 	  (use-local-map pvs-show-formulas-map))))))
@@ -1194,9 +1194,9 @@ for any reason, then the current PVS workspace is not changed."
 					 'pvs-context-history))
 		 ((fboundp 'read-directory-name)
 		  (read-directory-name
-		   "(Change context to) directory path: " cdir cdir))
+		   "(Change workspace to) directory path: " cdir cdir))
 		 (t (read-file-name
-		     "(Change context to) directory path: " cdir cdir))))))
+		     "(Change workspace to) directory path: " cdir cdir))))))
   (let* ((dir-and-file (get-dir-and-file file-ref))
 	 (dir (car dir-and-file))
 	 (file (cdr dir-and-file)))
@@ -1212,7 +1212,7 @@ for any reason, then the current PVS workspace is not changed."
 	    (error "change-workspace: '%s' invalid directory" ndir))
 	  (setq pvs-current-directory ndir)
 	  (unless noninteractive
-	    (pvs-welcome t)))))
+	    (pvs-welcome t))))
     (when file
       (find-pvs-file file)))
   (run-hooks 'change-workspace-hook))
@@ -1242,16 +1242,15 @@ for any reason, then the current PVS workspace is not changed."
 	(kill-buffer b)))))
 
 (defun init-change-workspace (dir)
-  (unless (file-equal-p dir (pvs-current-directory t))
-    (setq dir (expand-file-name dir))
-    (unless (string-match "/$" dir)
-      (setq dir (concat dir "/")))
-    (let ((ndir (pvs-send-and-wait (format "(change-workspace \"%s\" t)" dir)
-				   nil nil 'dont-care)))
-      (if (and (stringp ndir)
-	       (file-exists-p ndir))
-	  (setq pvs-current-directory ndir)
-	  (pvs-current-directory t)))))
+  (setq dir (expand-file-name dir))
+  (unless (string-match "/$" dir)
+    (setq dir (concat dir "/")))
+  (let ((ndir (pvs-send-and-wait (format "(change-workspace \"%s\" t)" dir)
+				 nil nil 'dont-care)))
+    (if (and (stringp ndir)
+	     (file-exists-p ndir))
+	(setq pvs-current-directory ndir)
+	(pvs-current-directory t))))
 
 
 ;;; save-context
