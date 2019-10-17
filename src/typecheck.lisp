@@ -769,22 +769,16 @@ TCCs are generated, and finally exportings are updated."
 				       (list (copy thinst
 					       :mappings (mappings theoryname)))
 				       (unless (get-importings th)
-					 (list thinst))))
+					 (list (lcopy thinst
+						 :library (get-library-id thinst))))))
 			 thinsts)
-		       thinsts))
-	 (lthinsts (if (lib-datatype-or-theory? th)
-		       (mapcar #'(lambda (thinst)
-				   (if (library thinst)
-				       thinst
-				       (copy thinst
-					 :library (library theoryname))))
-			 mthinsts)
-		       mthinsts)))
+		       thinsts)))
     (if (fully-instantiated? (lcopy theoryname :mappings nil))
 	(mapcar #'(lambda (thinst)
 		    (subst-theory-importing thinst theoryname theory))
-	  lthinsts)
-	(mapcar #'remove-indirect-formals-of-name lthinsts))))
+	  mthinsts)
+	(mapcar #'remove-indirect-formals-of-name mthinsts))))
+
 
 (defun subst-theory-importing (thinst theoryname theory)
   (if (or (actuals thinst)

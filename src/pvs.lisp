@@ -906,7 +906,9 @@ use binfiles."
 				  (not (library nm)))
 			 (setq nm
 			       (lcopy nm
-				 'library lib 'actuals nil 'mappings nil)))
+				 :library (get-library-id nm)
+				 :actuals nil
+				 :mappings nil)))
 		       (let ((pos (position th imp-theories :test #'eq)))
 			 (when pos
 			   (let ((nnm (nth pos imp-names)))

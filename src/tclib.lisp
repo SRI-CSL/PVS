@@ -906,6 +906,12 @@ not a dir: if a valid id
 (defmethod get-library-id (libref)
   (nth-value 1 (get-library-reference libref)))
 
+(defmethod get-library-id ((mn modname))
+  (or (library mn)
+      (and (resolution mn)
+	   (or (library (module-instance mn))
+	       (get-library-id (declaration mn))))))
+
 (defun visible-lib-decl-id (lib-path)
   (when (current-context)
     (let ((lib-decls (remove-if-not #'(lambda (ld)
