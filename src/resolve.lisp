@@ -139,8 +139,8 @@
 	 (when (mappings name)
 	   (typecheck-mappings (mappings name) name))
 	 (unless (or (eq *generate-tccs* 'none)
-		     (null (actuals name))
-		     (null (mappings name)))
+		     (and (null (actuals name))
+			  (null (mappings name))))
 	   (check-type-actuals-and-maps name))
 	 name)
 	((not (or (null kind) (eq kind 'module)))
@@ -1950,9 +1950,10 @@ decl, args, and mappings."
 		     (filter-bindings res args))))
 		  args nil)
 		 res)
-	     (if *get-all-resolutions*
-		 (move-generics-to-end res)
-		 (remove-outsiders (remove-generics res))))))
+	     (remove-outsiders
+	      (if *get-all-resolutions*
+		  (move-generics-to-end res)
+		  (remove-generics res))))))
       reses))
 
 (defun filter-constructor-subtypes (reses args result)
