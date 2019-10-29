@@ -881,7 +881,19 @@ not a dir: if a valid id
 		       (when lib-elt
 			 (values (cdr lib-elt) pid :pvs-library-path)))))))))
 
-(defun get-library-path (libref)
+(defmethod get-library-path ((mod datatype-or-module))
+  (context-path mod))
+
+(defmethod get-library-path ((res resolution))
+  (get-library-path (module (declaration res))))
+
+(defmethod get-library-path ((mn modname))
+  (or (and (resolution mn)
+	   (get-library-path (declaration mn)))
+      (let ((th (get-theory mn)))
+	(and th (get-library-path th)))))
+
+(defmethod get-library-path (libref)
   (assert (typep libref '(or pathname symbol string)))
   (let* ((pstr (if (symbolp libref) (string libref) libref))
 	 (dirp (directory-p pstr))
@@ -905,6 +917,9 @@ not a dir: if a valid id
 
 (defmethod get-library-id (libref)
   (nth-value 1 (get-library-reference libref)))
+
+(defmethod get-library-id ((res resolution))
+  (get-library-id (module (declaration res))))
 
 (defmethod get-library-id ((mn modname))
   (or (library mn)
