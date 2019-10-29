@@ -3721,3 +3721,40 @@
       (format t "~%  generic hist: ~a~%  graph hist: ~a" histu histg))
     (format t "~%~d subtype-judgements"
       (count-if #'subtype-judgement? (judgement-declarations judgements)))))
+
+;; (defun show-judgements (&optional (context *current-context*))
+;;   (let ((judgements (judgements context)))
+;;     (format t "~%~d number-judgements:"
+;;       (length (number-judgements-alist judgements)))
+;;     (dolist (elt (number-judgements-alist judgements))
+;;       (format t "~%  ~a: ~{~^~%    ~a~}"
+;; 	(car elt) (cdr elt)))
+;;     (format t "~%~d name-judgements:"
+;;       (length (name-judgements-alist judgements)))
+;;     (dolist (elt (name-judgements-alist judgements))
+;;       (format t "~%  ~a: ~{~^~%    ~a~}"
+;; 	(car elt) (cdr elt)))
+;;     (format t "~%~d application-judgements:"
+;;       (length (application-judgements-alist judgements)))
+;;     (dolist (elt (application-judgements-alist judgements))
+;;       ;; each elt has the form (decl . #(application-judgements ...))
+;;       ;; where there is an application-judgements instance for each
+;;       ;; currying level of the decl.  Each application-judgements instance
+;;       ;; has a judgements-graph and a generic-judgements list.
+;;       ;; Everything in the judgements-graph is fully-instantiated wrt the
+;;       ;; given context; the generic-judgements are not, hence are just a
+;;       ;; list.
+;;       (dotimes (i (length (cdr elt)))
+;; 	(when (aref (cdr elt) i)
+;; 	  (let* ((aj (aref (cdr elt) i))
+;; 		 (agraph (judgements-graph aj))
+;; 		 (agen (generic-judgements aj)))
+	    
+;; 	    (if uent
+;; 		(incf (cdr uent))
+;; 		(push (cons ul 1) histu))
+;; 	    (if gent
+;; 		(incf (cdr gent))
+;; 		(push (cons gl 1) histg))))))
+;;     (format t "~%~d subtype-judgements"
+;;       (count-if #'subtype-judgement? (judgement-declarations judgements)))))

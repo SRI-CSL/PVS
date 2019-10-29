@@ -705,6 +705,7 @@ resolution with a macro matching the signature of the arguments."
                          *bound-variables*))))))
 
 (defun find-best-name-resolution (ex resolutions expected)
+  "Filters through the resolutions, trying to narrow it down to one."
   (if (cdr resolutions)
       (or (bound-variable-resolution resolutions)
           (let* ((mreses (when expected
