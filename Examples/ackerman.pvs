@@ -1,7 +1,7 @@
 ackerman: THEORY
   BEGIN
   
-  m, n: VAR nat
+  m, n, x: VAR nat
   ackmeas(m, n): ordinal =
       (IF m = 0 THEN zero
        ELSIF n = 0 THEN add(m, add(1, zero, zero), zero)
@@ -14,5 +14,23 @@ ackerman: THEORY
        ELSE ack(m - 1, ack(m, n - 1))
        ENDIF)
     MEASURE ackmeas
+
+  % Tail-recursive F# version: https://rosettacode.org/wiki/Ackermann_function#F.23
+  % let ackermann M N =
+  %   let rec acker (m, n, k) =
+  %       match m,n with
+  %           | 0, n -> k(n + 1)
+  %           | m, 0 -> acker ((m - 1), 1, k)
+  %           | m, n -> acker (m, (n - 1), (fun x -> acker ((m - 1), x, k)))
+  %   acker (M, N, (fun x -> x))
+
+  acker(m, n, (k: [nat -> nat])): RECURSIVE nat =
+     if m = 0 then k(n + 1)
+     elsif n = 0 then acker(m - 1, 1, k)
+     else acker(m, n - 1, λ x: acker(m - 1, x, k))
+     endif
+   measure ackmeas(m, n)
+
+  ack2(m, n): nat = acker(m, n, id[nat])
     
   END ackerman
