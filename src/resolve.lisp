@@ -770,11 +770,17 @@
 	       (t (cons (car instances) best)))))))
 
 (defun count-equal-actuals (acts1 acts2 &optional (count 0))
+  "Counts the number of equal actuals as a way to decide which theory
+instance is the best match when the theory-id isn't given.
+acts2 is from a theory-instance, and should be fully typed.
+acts1 is part of a name being typechecked."
   (if (null acts1)
       count
       (count-equal-actuals
        (cdr acts1) (cdr acts2)
-       (if (tc-eq (car acts1) (car acts2))
+       (if (if (fully-typed? (car acts1))
+	       (tc-eq (car acts1) (car acts2))
+	       (string= (str (car acts1)) (str (car acts2))))
 	   (1+ count)
 	   count))))
 
@@ -1998,12 +2004,12 @@ decl, args, and mappings."
   (if (null res)
       freses
       (multiple-value-bind (mreses rest)
-	  (split-on #'(lambda (r) (same-declaration r (car res)))
-		    res)
+	  (split-on #'(lambda (r) (same-declaration r (car res))) res)
 	(filter-nonlocal-module-instances1
 	 rest (nconc (filter-nonlocal-module-instances* mreses) freses)))))
 
 (defun filter-nonlocal-module-instances* (mreses)
+  "Remove fully-instantiated instances over the same declaration that are nonlocal."
   (if (cddr mreses) ;; at least three - possibly a generic and two others
       (let ((th (module (declaration (car mreses)))))
 	(if (or (null th)
