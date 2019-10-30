@@ -293,7 +293,8 @@ expands to:
 	 ;; The name could be, e.g., foo.bar, and is intended to refer to
 	 ;; foo.bar.pvs.  So rather than give an error, we just treat it as
 	 ;; the name, with nil type
-	 (setq ,name (uiop:strcat ,name "." ,ext)))
+	 (setq ,name (uiop:strcat ,name "." ,ext))
+	 (setq ,(car vars) ,name))
        (cond ((or (uiop:pathname-equal ,dir #p"")
 		  (uiop:pathname-equal ,dir *default-pathname-defaults*))
 	      ,@body)
