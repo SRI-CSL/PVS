@@ -1478,7 +1478,7 @@ use binfiles."
 		    (cdr (assq :fileExtension thref))
 		    (cdr (assq :theoryName thref))))
 		 (pathname (namestring thref))
-		 (string threr)))
+		 (string thref)))
 	 (theory (get-typechecked-theory thstr))
 	 (tccs (collect-tccs theory)))
     (mapcar #'(lambda (tcc)
@@ -2622,7 +2622,6 @@ formname is nil, then formref should resolve to a unique name."
   "Gets the proof script for formula given by formref.  If formname is
 provided, it is the name of the formula, and formref should be a theoryname.
 If formname is nil, then formref should resolve to a unique formula name."
-  (setq pvs::xxx formref pvs::yyy formname)
   (with-pvs-file (name thname fname) formref
     (unless (or formname fname thname name)
       (error "get-proof-script missing formula name?"))
@@ -3341,6 +3340,7 @@ errors are quietly ignored, and nil is returned in that case."
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
 (defmethod get-typechecked-theory ((th datatype-or-module) &optional theories quiet?)
+  (declare (ignore theories quiet?))
   th)
 
 (defmethod get-typechecked-theory ((theoryref string) &optional theories quiet?)
