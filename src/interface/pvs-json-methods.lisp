@@ -223,6 +223,11 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   cmd-gate
   res-gate
 "
+  ;; (when pvs:*in-checker*
+  ;;   ;; FIXME - may want to save the proof, or ask what to do
+  ;;   (format t "~%About to quit prover~%")
+  ;;   (throw 'pvs::quit nil)
+  ;;   (format t "~%After quitting prover~%"))
   (let ((res-gate (mp:make-gate nil))
 	(cmd-gate (mp:make-gate nil))
 	(lock (mp:make-process-lock))
@@ -268,23 +273,16 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   "Checks the status of the prover: active or inactive."
   (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
 	(ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*)))
-    (pvs:prover-status top-ps ps nil)
+    (pvs:prover-status top-ps ps)
     ;; (pvs:prover-status (sys:global-symbol-value 'pvs:*ps*)
     ;; 		     (sys:global-symbol-value 'pvs:*top-proofstate*)
     ;; 		     (sys:global-symbol-value 'pvs:*last-proof*))
     ))
 
-(defrequest proof-status (formref)
-  "Checks the status of the given formula, proved or unproved."
-  (let (
-	(last-proof (or *last-proof*
-			(sys:global-symbol-value '*last-proof*)
-			(mp:symeval-in-process '*last-proof* *pvs-lisp-process*))))
-    ;;(format t "~%pvs-json:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
-    ;;  (and top-ps t) (and last-proof t) (and ps t))
-    (if last-proof
-	(pvs:prover-status nil nil last-proof)
-	'none)))
+(defrequest proof-status (formref &optional formname)
+  "Checks the status of the given formula, proved, unchecked, unfininshed,
+or unproved."
+  (pvs:get-proof-status formref formname))
 
 (defrequest proof-script (fname formula)
   "Returns the proof script, as with the show-proof command."
@@ -325,7 +323,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 
 ;;; Thus a PVS reference accept JSON objects with fields
 
-(defun json-ref-to-string (ref)
+(defun json-ref-to-string (thref)
   (typecase thref
     (cons ;; should be assoc list with cars
      ;; :fileName, :fileExtension, :theoryName, :contextFolder
@@ -337,7 +335,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
        (cdr (assq :fileExtension thref))
        (cdr (assq :theoryName thref))))
     (pathname (namestring thref))
-    (string threr)))
+    (string thref)))
 
 (defrequest prove-tccs (fname)
   "Attempts proof of TCCs, as with then typecheck-prove (tcp) command."
