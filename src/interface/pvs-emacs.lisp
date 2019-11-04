@@ -194,7 +194,7 @@
 
 (defun pvs-message (ctl &rest args)
   (when *pvs-message-hook*
-    (format t "~%Calling message hook ~a" *pvs-message-hook*)
+    ;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
     (funcall *pvs-message-hook* (format nil "~?" ctl args)))
   (unless *suppress-msg*
     (if *to-emacs*
