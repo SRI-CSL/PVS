@@ -93,23 +93,25 @@
 	   (print-lisp-defns theoryname (format nil "~a.lisp" theoryname)
 			     t)))))
 
-(defun evaluation-mode (theoryname)
-  (let ((theory (get-theory theoryname)))  
-    (unwind-protect
-	(if theory
-	    (let ((*generate-tccs* 'all)
-		  (*current-context* (or (saved-context theory)
-					 (context nil)))
-		  (*in-evaluator* t)
-		  (*pvs-eval-do-timing* t)
-		  (*destructive?* t)
-		  (*convert-back-to-pvs* t))
-	      (load-pvs-attachments)
-	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
-	      (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
-	      (evaluate))
-	    (pvs-message "Theory ~a is not typechecked" theoryname))
-      (pvs-emacs-eval "(pvs-evaluator-ready)"))))
+(defun evaluation-mode (theoryref)
+  (with-pvs-file (fname thname) theoryref
+    (let ((theory (get-theory thname)))
+      (declare (ignore fname))
+      (unwind-protect
+	   (if theory
+	       (let ((*generate-tccs* 'all)
+		     (*current-context* (or (saved-context theory)
+					    (context nil)))
+		     (*in-evaluator* t)
+		     (*pvs-eval-do-timing* t)
+		     (*destructive?* t)
+		     (*convert-back-to-pvs* t))
+		 (load-pvs-attachments)
+		 (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
+		 (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
+		 (evaluate))
+	       (pvs-message "Theory ~a is not typechecked" thname))
+	(pvs-emacs-eval "(pvs-evaluator-ready)")))))
 
 (defun gqread ()
   (format t "~%<GndEval> ")
@@ -261,7 +263,8 @@
 		 (cl2pvs-error (condition)
 		   (format t "~%~a" condition)
 		   (throw 'abort t))
-		 (tcerror)))))))
+		 (tcerror (condition)
+		   (declare (ignore condition)))))))))
     (when result
       (evaluate))))
 
@@ -342,7 +345,7 @@
 			   (cl2pvs-error (condition)
 			     (format out "~%Can't convert back to PVS.")
 			     (format out "Common Lisp value: ~s" cl-eval)
-			     (format out "~%~a" error)
+			     (format out "~%~a" condition)
 			     :no-value))))
 	    (unless (eq pvsval :no-value)
 	      (format out "~%Value: ~a~%~%" pvsval)))
