@@ -456,9 +456,13 @@ and all *all-workspace-sessions* applying fn to each theory."
 ;;   `(progn ,@forms))
 
 (defmacro get-declarations (id &optional decl-hash)
-  (if decl-hash
-      `(get-lhash ,id ,decl-hash)
-      `(get-lhash ,id (current-declarations-hash))))
+  (let ((dhash (gentemp)))
+    `(let ((,dhash ,decl-hash))
+       (ctypecase ,dhash
+	 (linked-hash-table (get-lhash ,id ,dhash))
+	 (hash-table (gethash ,id ,dhash))
+	 (context (get-lhash ,id (declarations-hash ,dhash)))
+	 (null (get-lhash ,id (current-declarations-hash)))))))
 
 (defsetf get-declarations (id &optional decl-hash) (decl)
   (let ((ghash (gensym))
