@@ -34,7 +34,7 @@
 
 (export '(exit-pvs parse-file typecheck-file show-tccs clear-theories
 	  formula-decl-to-prove prove-formula proved? get-proof-script
-	  get-tccs prove-tccs))
+	  get-proof-status get-tccs prove-tccs))
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -2514,10 +2514,23 @@ Note that even proved ones get overwritten"
   "Starts a proof with formula given by formref.  If formname is provided,
 it is the name of the formula, and formref should be a theoryname.  If
 formname is nil, then formref should resolve to a unique name."
+  (when *in-checker*
+    (pvs-error "Prove-formula error" "Must exit the prover first"))
+  (let ((fdecl (get-formula-decl formref formname)))
+    (with-workspace (context-path (module fdecl))
+      (let* ((strat (when rerun? '(rerun)))
+	     (*please-interrupt* t))
+	(read-strategies-files)
+	(setq *last-proof* (prove fdecl :strategy strat))))))
+
+(defun get-proof-status (formref &optional formname)
+  (let ((fdecl (get-formula-decl formref formname)))
+    (status (default-proof fdecl))))
+
+(defun get-formula-decl (formref &optional formname)
   (with-pvs-file (name thname fname) formref
-    (unless (or formname fname thname name)
-      (error "prove-formula missing formula name?"))
-    ;; Check for no dir, or it's already the current context-path
+    (assert (or formname fname thname name) ()
+	    "get-formula-decl missing formula name?")
     (if formname
 	(unless thname
 	  (setf thname (or name fname)))
@@ -2536,31 +2549,25 @@ formname is nil, then formref should resolve to a unique name."
 			       fdecls)))
 	       (cond ((cdr locdecls)
 		      ;; Only report errors on current context ambiguities
-		      (pvs-error "prove-formula error"
-			(format nil "prove-formula ambiguous for name ~a, ~
+		      (pvs-error "formula ambiguous error"
+			(format nil "formula ambiguous for name ~a, ~
                           it appears in the following theories:~%~{~a~^~%~}"
 			  (or formname name)
 			  (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
 		     ((null locdecls)
 		      ;; Ambiguous - give error for now
-		      (pvs-error "prove-formula error"
-			(format nil "prove-formula ambiguous for name ~a, ~
+		      (pvs-error "formula ambiguous error"
+			(format nil "formula ambiguous for name ~a, ~
                           it appears in the following theories:~%~{~a~^~%~}"
 			  (or formname name)
 			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-		     (t (prove-formula-in* (car locdecls) rerun?)))))
+		     (t (car locdecls)))))
 	    ((null fdecls)
-	     (pvs-error "prove-formula error"
+	     (pvs-error "formula not found error"
 	       (format nil
-		   "prove-formula: formula name ~a not found in any (typechecked) theories"
+		   "Formula name ~a not found in any (typechecked) theories"
 		 (or formname name))))
-	    (t (prove-formula-in* (car fdecls) rerun?))))))
-
-(defun prove-formula-in* (fdecl rerun?)
-  (let* ((strat (when rerun? '(rerun)))
-	 (*please-interrupt* t))
-    (read-strategies-files)
-    (setq *last-proof* (prove fdecl :strategy strat))))
+	    (t (car fdecls))))))
 
 (defun get-matching-prove-formulas (name thname formname)
   (let ((formulas nil))
