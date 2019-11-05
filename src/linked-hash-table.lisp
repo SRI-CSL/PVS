@@ -104,6 +104,7 @@
 		:table ht)))))
 
 (defun get-lhash (key lhashtable &optional default)
+  (assert (typep lhashtable 'linked-hash-table))
   (if (hash-table-p (lhash-table lhashtable))
       (multiple-value-bind (value there?)
 	  (gethash key (lhash-table lhashtable))
