@@ -1319,7 +1319,7 @@ list of interface names that are currently open."
 	  obstr
 	  (or (> (length obstr) 20)
 	      (find #\newline obstr))
-	  (mapcar #'(lambda (ty) (unparse (full-name ty 1) :string t)) (ptypes obj))
+	  (unique-full-names (ptypes obj))
 	  (if (some #'fully-instantiated? (ptypes obj))
 	      (if (not (every #'fully-instantiated? (ptypes obj)))
 		  "(Some of these are not fully instantiated)"
@@ -1327,6 +1327,16 @@ list of interface names that are currently open."
 	      (if (= (length (ptypes obj)) 2)
 		  "(Neither of these is fully instantiated)"
 		  "(None of these are fully instantiated)"))))))
+
+(defun unique-full-names (names &optional depth)
+  "Uses full-name on names till a difference shows up.  This is potentially
+very slow, really only good for error messages over small lists of names."
+  (let ((strings (mapcar #'(lambda (name)
+			     (str (if depth (full-name name depth) name)))
+		   names)))
+    (if (duplicates? strings :test #'string=)
+	(unique-full-names names (if depth (1+ depth) 1))
+	strings)))
 
 (defun format-resolution (res)
   (format nil "~@[~a@~]~@[~a~]~@[[~{~a~^,~}]~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~].~a~@[ : ~a~]"
