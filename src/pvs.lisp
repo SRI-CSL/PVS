@@ -790,7 +790,7 @@ use binfiles."
 ;;; list if foo imports (an instance of) list.
 
 (defmethod all-importings ((theory datatype-or-module))
-  (assert (not *saving-theory*))
+  (assert (or (not *saving-theory*) (not (eq (all-imported-theories theory) 'unbound))))
   (if (eq (all-imported-theories theory) 'unbound)
       (let* ((*current-context* (or (and (not (lib-datatype-or-theory?
 					       theory))
