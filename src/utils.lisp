@@ -452,7 +452,7 @@ is replaced with replacement."
 
 #+sbcl
 (defun working-directory ()
-  (make-pathname :directory (sb-posix:getcwd)))
+  (truename (sb-posix:getcwd)))
 
 #+sbcl
 (defun set-working-directory (dir)
