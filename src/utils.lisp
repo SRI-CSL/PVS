@@ -588,8 +588,10 @@ is replaced with replacement."
 	   (get-theory-transitive (theory-name (declaration thname))))))
 
 (defmethod get-theory ((name modname))
-  (with-slots (library id) name
-    (get-theory* id library)))
+  (with-slots (library id resolutions) name
+    (if (car resolutions)
+	(declaration (car resolutions))
+	(get-theory* id library))))
 
 (defmethod get-theory ((name name))
   (with-slots (mod-id library id) name
