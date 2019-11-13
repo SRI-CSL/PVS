@@ -114,7 +114,7 @@
 (defvar pvs-validating nil
   "non-nil if PVS is running in batch mode")
 
-(defvar pvs-current-directory default-directory
+(defvar pvs-current-directory (file-truename default-directory)
   "Pathname of the current PVS context.")
 
 (defvar start-pvs t)
