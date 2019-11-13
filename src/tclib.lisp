@@ -896,7 +896,7 @@ not a dir: if a valid id
 (defmethod get-library-path (libref)
   (assert (typep libref '(or pathname symbol string)))
   (let* ((pstr (if (symbolp libref) (string libref) libref))
-	 (dirp (directory-p pstr))
+	 (dirp (when (directory-p pstr) (truename pstr)))
 	 (lib-path (when dirp (merge-pathnames dirp))))
     ;; dirp works for both absolute and relative pathnames Note that a
     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
@@ -1060,5 +1060,3 @@ abspath as a subdirectory.  If it is found, and is a valid library id, it is ret
   (if (lib-datatype-or-theory? th)
       (format nil "~a/~a.pvs" (context-path th) (filename th))
       (format nil "~a.pvs" (filename th))))
-
-
