@@ -1043,18 +1043,17 @@ BEGIN
   tostr(t:Time): string =
     days_of_week(dow(t))+" "+months(month(t))+
     format(" ~2,'0d ",day(t))+year(t)+
-    format(", ~2,'0d:~2,'0d:~2,'0d ",(hour(t),minute(t),second(t)))+
+    format(", ~2,'0d:~2,'0d:~2,'0d ",{|(hour(t),minute(t),second(t))|})+
     format("(GMT~@d)",-tz(t))
 
   get_time : Time     % Get current time
 
   today : string =
     let t = get_time in
-    format("~d/~2,'0d/~d",(month(t),day(t),year(t)))
+    format("~d/~2,'0d/~d",{|(month(t),day(t),year(t))|})
 
   date : string =
-    let t = get_time in
-     tostr(get_time)
+    tostr(get_time)
 
   sleep(n:nat): void  % Sleep n seconds 
 
