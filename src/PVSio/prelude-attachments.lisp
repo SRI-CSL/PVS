@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-7.0.0 (06/30/19)
+;; Release: PVSio-7.0.0 (11/13/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -14,6 +14,7 @@
 ;; Semantic attachments for PVSio standard library
 ;;
 
+(decimals:define-decimal-formatter c (:round-magnitude -6) (:show-trailing-zeros t))
 (decimals:define-decimal-formatter d (:round-magnitude -6))
 
 (defun stdstr-attachments ()
