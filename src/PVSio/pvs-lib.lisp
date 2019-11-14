@@ -41,10 +41,10 @@
 	  *pvs-library-path*)))
 
 (defun load-imported-attachments (dir &optional force (verbose t))
-  (when (or (and (not (member dir *pvsio-imported* :test #'file-equal))
-		 (push dir *pvsio-imported*))
+  (when (or (not (member dir *pvsio-imported* :test #'file-equal))
 	    force)
-    (libload-attachments dir "pvs-attachments" force verbose)))
+    (prog1 (libload-attachments dir "pvs-attachments" force verbose)
+      (pushnew dir *pvsio-imported* :test #'file-equal))))
 
 (defun load-pvs-attachments (&optional force (verbose t))
   (when verbose (pvs-message "Loading semantic attachments~%"))
@@ -52,8 +52,7 @@
   ;;(load-imported-attachments (current-prelude-libraries) force verbose)
   ;; Was: (load-imported-attachments *all-workspace-sessions* force verbose)
   (dolist (ws *all-workspace-sessions*)
-    (when (or (and (not (member (path ws) *pvsio-imported* :test #'file-equal))
-		   (push (path ws) *pvsio-imported*))
+    (when (or (not (member (path ws) *pvsio-imported* :test #'file-equal))
 	      force)
       (load-imported-attachments (path ws) force verbose)))
   (load-update-attachments "~/" ".pvs-attachments" force verbose)

@@ -144,7 +144,7 @@
 	    (t 
 	     (let ((theory (subseq thnms 0 pos))
 		   (name   (subseq thnms (+ pos 1))))
-	       (pvs-message "Loading semantic attachment: ~a.~a [~a]" 
+	       (pvs-message "Loading semantic attachment: ~a.~a [~a]~%" 
 		 theory name (length args))
 	       (defattach-aux theory name args body)))))))
 
@@ -160,7 +160,7 @@
 	    (t 
 	     (let ((theory (subseq thnms 0 pos))
 		   (name   (subseq thnms (+ pos 1))))
-	       (pvs-message "Loading semantic attachment: ~a.~a [~a, primitive]" 
+	       (pvs-message "Loading semantic attachment: ~a.~a [~a, primitive]~%" 
 			    theory name (length args))
 	       (defattach-aux theory name args body t)))))))
 
