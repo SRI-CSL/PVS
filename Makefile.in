@@ -95,7 +95,8 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES install-sh \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
 	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2 \
-	emacs/configured-for-x src/asdf-patch.lisp
+	emacs/configured-for-x src/asdf-patch.lisp Vagrantfile \
+	pvs-version.lisp
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
 	$(wildcard $(bindir)/runtime/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
@@ -448,7 +449,7 @@ sbcllisp += src/BDD/bdd-sbcl.lisp src/BDD/mu-sbcl.lisp
 cmulisp += src/BDD/bdd-cmu.lisp src/BDD/mu-cmu.lisp
 
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
-            src/PVSio/eval.lisp src/PVSio/pvsio.lisp
+            src/PVSio/pvsio.lisp
 
 Maniplisp = src/Manip/pregexp.lisp src/Manip/manip-utilities.lisp \
             src/Manip/extended-expr.lisp src/Manip/syntax-matching.lisp \

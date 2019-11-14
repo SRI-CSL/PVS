@@ -52,13 +52,13 @@
   (rplacd (assoc 'tpl::*saved-package*
 		 tpl:*default-lisp-listener-bindings*)
 	  'common-lisp:*package*)
-  ;; Can't directly call (pvs::pvs-init)
+  ;; Can't directly reference pvs::pvs-init here
   (apply (find-symbol (string :pvs-init) :pvs) nil))
 
 #+cmu
 (defun startup-pvs ()
   (in-package :pvs)
-  ;; Can't directly call (pvs::pvs-init)
+  ;; Can't directly reference pvs::pvs-init here
   (apply (find-symbol (string :pvs-init) :pvs) nil)
   (lisp::%top-level))
 
@@ -295,6 +295,7 @@
 		(asdf:clear-configuration)
 		(setq *pvs-build-time* (get-universal-time))
 		(setq *pvs-git-describe* (pvs::pvs-git-description))
+		(pvs::write-pvs-version-file)
 		)
   :components
   ((:module ground-prover
@@ -493,7 +494,6 @@
      :source-pathname "src/PVSio"
      :components ((:file "pvs-lib")
 		  (:file "defattach")
-		  (:file "eval")
 		  (:file "pvsio")
 		  (:file "prelude-attachments")
 		  ))
