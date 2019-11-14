@@ -32,7 +32,8 @@
 
 ;; shadow
 
-(export '(*boolean* *bound-variables* *current-context* *even_int* *even_nat*
+(export '(*pvs-path* *pvs-binary-type*
+	  *boolean* *bound-variables* *current-context* *even_int* *even_nat*
 	  *even_posnat* *even_negint* *false* *generate-all-adt-axioms*
 	  *generate-tccs* *integer* *naturalnumber* *number* *number_field*
 	  *odd_int* *odd_posnat* *odd_negint* *posint* *negint* *posrat*
@@ -56,8 +57,9 @@ in util.lisp")
 
 (defvar *loading-files* :other)
 
-(defvar *pvs-path* nil
-  "Set by Emacs")
+(defvar *pvs-path* nil "Set by make process")
+
+;;(defvar *pvs-binary-type* nil "Set by make process")
 
 (defvar *pvs-library-path* nil
   "Set from the PVS_LIBRARY_PATH environment variable + *pvs-path*")

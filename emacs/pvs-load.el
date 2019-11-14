@@ -272,7 +272,7 @@ get to the same state."
 	  (when errst
 	    (switch-to-buffer "*pvs*")
 	    (message "Problem in loading user lisp files or evaluating forms"))))
-      (load (format "patch%d" (pvs-major-version-number)) t t)
+      (load (format "patch%s" (pvs-major-version-number)) t t)
       (setq debug-on-error nil)
       (setq *pvs-version-information* nil)
       ;; sets pvs-current-directory and pops up the welcome buffer

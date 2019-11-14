@@ -1547,22 +1547,22 @@ underlying Lisp in the minibuffer."
 		  (format ", %s" (cadddr vers)))))
       (car (cddddr vers)) (cadr (cddddr vers)))))
 
-(defvar *pvs-version-information* nil)
+(defvar pvs-version-information nil)
 
 (defun get-pvs-version-information ()
-  (or *pvs-version-information*
+  (or pvs-version-information
       (let ((vlist (pvs-send-and-wait
 		    "(get-pvs-version-information)"
 		    nil nil 'list)))
 	(if (consp vlist)
-	    (setq *pvs-version-information* vlist)
+	    (setq pvs-version-information vlist)
 	    (comint-log (ilisp-process) (format "version = {%s}" vlist))
 	    (get-pvs-version-information)))))
 
 (defun pvs-major-version-number ()
-  (if *pvs-version-information*
-      (string-to-number (car *pvs-version-information*))
-      (string-to-number (pvs-send-and-wait "*pvs-version*" nil nil))))
+  (if pvs-version-information
+      (car (string-split ?. (car pvs-version-information)))
+      (car (string-split ?. (pvs-send-and-wait "*pvs-version*" nil nil)))))
 
 ;;; Replay
 
