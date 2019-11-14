@@ -1017,7 +1017,7 @@ list of interface names that are currently open."
 		(when *current-file*
 		  (if (pathnamep *current-file*)
 		      (namestring *current-file*)
-		      (pathname-name (truename (make-specpath *current-file*)))))))
+		      (truename (make-specpath *current-file*))))))
 	   (pvs-error "Parser error"
 	     (format nil "~?~@[~%In file ~a~]~@[~a~]"
 	       message args file-name
