@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # pvsio.in
-# Release: PVSio-7.0.0 (06/20/19)
+# Release: PVSio-7.0.0 (11/15/19)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -23,7 +23,7 @@ PVSPATH=@PVSPATH@
 export PVSIOTCCS=nil
 export PVSIOVERB=nil
 export PVSIOTIME=nil
-export PVSIOVERSION="PVSio-7.0.0 (06/20/19)"
+export PVSIOVERSION="PVSio-7.0.0 (11/15/19)"
 export PVSIOPROMPTIN="<PVSio> "
 export PVSIOPROMPTOUT="==>~%"
 
@@ -184,6 +184,9 @@ if [ "$THMA" -a -z "$FILE" ]; then
 fi
 
 DIR=`dirname $FILE`
+if [ "$DIR" = "." ]; then
+    DIR=`pwd -P`
+fi
 NAME=`basename $FILE .pvs`
 FILE="$DIR/$NAME"
 
