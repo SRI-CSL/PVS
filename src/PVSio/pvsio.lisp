@@ -1,6 +1,6 @@
 ;;
 ;; pvsio.lisp
-;; Release: PVSio-7.0.0 (06/30/19)
+;; Release: PVSio-7.0.0 (11/15/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -554,7 +554,7 @@ strings. "
 	       :direction :output
 	       :if-does-not-exist :create
 	       :if-exists :supersede)
-	    (change-workspace (directory-namestring file))
+	    (change-workspace (directory-namestring file) t)
 	    (dolist (pack packlist) (load-prelude-library pack))
 	    (unwind-protect
 		 (typecheck-file (file-namestring file) nil nil nil t)
