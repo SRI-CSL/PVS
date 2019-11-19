@@ -242,23 +242,23 @@
 	       (set-working-directory ,orig-dir)))
 	   (error "Library ~a does not exist" ,lib-path)))))
 
-(defmacro with-directory (dirstr &rest forms)
-  "This has the effect of cd, by creating a context in which
-*default-pathname-defaults* and (working-directory) are set to dir, making
-it the default."
-  (let ((dir (gentemp))
-	(shortdir (gentemp))
-	(orig-dir (gentemp)))
-    `(let ((,dir (directory-p ,dirstr)))
-       (if ,dir
-	   (let* ((,orig-dir (working-directory))
-		  (,shortdir (shortpath ,dir))
-		  (*default-pathname-defaults* ,shortdir))
-	     (unwind-protect
-		  (progn (set-working-directory ,shortdir)
-			 ,@forms)
-	       (set-working-directory ,orig-dir)))
-	   (error "Directory ~a does not exist" ,dirstr)))))
+;; (defmacro with-directory (dirstr &rest forms)
+;;   "This has the effect of cd, by creating a context in which
+;; *default-pathname-defaults* and (working-directory) are set to dir, making
+;; it the default."
+;;   (let ((dir (gentemp))
+;; 	(shortdir (gentemp))
+;; 	(orig-dir (gentemp)))
+;;     `(let ((,dir (directory-p ,dirstr)))
+;;        (if ,dir
+;; 	   (let* ((,orig-dir (working-directory))
+;; 		  (,shortdir (shortpath ,dir))
+;; 		  (*default-pathname-defaults* ,shortdir))
+;; 	     (unwind-protect
+;; 		  (progn (set-working-directory ,shortdir)
+;; 			 ,@forms)
+;; 	       (set-working-directory ,orig-dir)))
+;; 	   (error "Directory ~a does not exist" ,dirstr)))))
 
 (defmacro with-pvs-file (vars pvsfileref &rest body)
   "Given a pvsfile string or pathname, gets the directory and file parts,
