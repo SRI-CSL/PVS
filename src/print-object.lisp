@@ -171,6 +171,12 @@ print object produces an error, and won't allow inspection of the object.")
       (format stream "#<appl-jdgt ~a:~_ ~a: ~a>"
 	(or (id obj) "@") (name obj) (judgement-type obj))))
 
+(defmethod print-object ((obj rec-application-judgement) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<rec-appl-jdgt ~a:~_ ~a: ~a>"
+	(or (id obj) "@") (name obj) (judgement-type obj))))
+
 (defmethod print-object ((obj dep-binding) stream)
   (if *debugging-print-object*
       (call-next-method)
