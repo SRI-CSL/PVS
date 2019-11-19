@@ -4187,7 +4187,9 @@ The dependent types are created only when needed."
 	(let ((tcc (find-if #'(lambda (tcc)
 				(equalp (tccinfo-reason tcc) "judgement"))
 		     *tccforms*)))
-	  (setf (rewrite-formula decl) (tccinfo-formula tcc))))
+	  ;;(assert tcc)
+	  (when tcc
+	    (setf (rewrite-formula decl) (tccinfo-formula tcc)))))
       (typecheck-rec-judgement decl expr)))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
