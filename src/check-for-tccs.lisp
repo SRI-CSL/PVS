@@ -670,7 +670,7 @@
       (check-assignment-update-arg-types args-list values ex expected)))
 
 (defun check-assignment-rec-arg-types (args-list values ex fields
-						 &optional cargs cvalues)
+				       &optional cargs cvalues)
   (when args-list
     (let* ((pos (position (car fields) args-list :test #'same-id :key #'caar))
 	   (args (when pos (nth pos args-list)))
@@ -695,7 +695,8 @@
 	    (check-assignment-arg-types*
 	     cdr-args (nreverse (cons value cvalues)) fappl fldtype)
 	    (when (and fappl
-		       (funtype? (find-supertype ftype)))
+		       (funtype? (find-supertype ftype))
+		       (caar cdr-args))
 	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
 		     (bd (make-bind-decl bid (domtype ftype)))
 		     (bvar (make-variable-expr bd))
