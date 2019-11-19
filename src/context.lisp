@@ -280,10 +280,16 @@ retypechecked."
 ;;; changes since the last time the context was saved.
 
 (defun save-context ()
-  (assert (and (file-equal *default-pathname-defaults*
-			   (working-directory))
-	       (file-equal *default-pathname-defaults*
-			   (current-context-path))))
+  #+pvsdebug
+  (assert (file-equal *default-pathname-defaults* (working-directory))
+	  () "Mismatch between *default-pathname-defaults* = ~a~%~
+              and                      (working-directory) = ~a"
+	  *default-pathname-defaults* (working-directory))
+  #+pvsdebug
+  (assert (file-equal *default-pathname-defaults* (current-context-path))
+	  () "Mismatch between *default-pathname-defaults* = ~a~%~
+              and                   (current-context-path) = ~a"
+	  *default-pathname-defaults* (current-context-path))
   (if (not (file-exists-p (working-directory)))
       (pvs-message "Directory ~a seems to have disappeared!"
 	(namestring *default-pathname-defaults*))
