@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 from unittest import TestCase, main
 import xmlrpc_test
 import random
@@ -6,13 +8,13 @@ import os
 class TestPVS(TestCase):
   # This class variable creates the connection
   # myport and pvsport can be given, default to 22335 and 22334
-  pvs_rpc = xmlrpc_test.PVS_XMLRPC(myport=None)
-
-  def request(self, method, args):
-    print('Invoking {0} {1}'.format(method, args))
-    response = TestPVS.pvs_rpc.pvs_request(method, args)
-    #print('response {0}'.format(response))
-    result = response['jsonrpc_result']
+  pvs_rpc = xmlrpc_test.PVS_XMLRPC(myport='')
+  def request(self, method, args, debug=False):
+    if (debug):
+      print('Invoking {0} {1}'.format(method, args))
+    result = TestPVS.pvs_rpc.pvs_request(method, args)
+    if (debug):
+      print('result {0}'.format(result))
     if not isinstance(result, dict):
       print('Expected dict - result type {0}: {1}'.format(type(result), result))
     if 'error' in result:
@@ -51,7 +53,7 @@ class TestPVS(TestCase):
     # result = self.request('lisp', ['(pvs-dialog )'])
     
   def test_change_context(self):
-    result = self.request('change-context', ['/home/owre/pvs-specs'])
+    result = self.request('change-context', ['/home/owre/pvs-specs'], debug=False)
     self.assertEqual(result, '~/pvs-specs/')
 
   def test_help(self):
@@ -75,16 +77,22 @@ class TestPVS(TestCase):
     result = self.request('lisp', ['(setq *output-proofstate-p* t)'])
     result = self.request('lisp', ['(setq *multiple-proof-default-behavior* :noquestions)'])
     self.assertEqual(result, 'noquestions')
+    
     cdir = os.path.dirname(os.path.abspath(__file__))
     result = self.request('change-context', [cdir])
     self.assertEqual(os.path.expanduser(result), cdir + '/')
+    
     #result = self.request('typecheck', ['sqrt'])
     result = self.request('typecheck', ['sqrt'])
-    self.assertEqual(result[0]['theory']['id'], 'sqrt')
+    self.assertEqual(result[0]['id'], 'sqrt')
+
     result = self.request('prove-formula', ['sqrt_div', 'sqrt'])
     self.assertEqual(result['label'], 'sqrt_div')
+    
     result = self.request('proof-command', ['(grind)'])
     self.assertEqual(result['num-subgoals'], 1)
+    
+    result = self.request('proof-command', ['(quit)'])
 
   def test_reset(self):
     result = self.request('reset', [])

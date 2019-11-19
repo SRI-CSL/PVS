@@ -53,7 +53,7 @@ class PVS_XMLRPC(object):
         # Create server
         # print('Initializing gui_server with ({0}, {1})'.format(host,port))
         self.ctr = 0
-        self.gui_url = None
+        self.gui_url = ''
         if myport:
             self.gui_url = 'http://{0}:{1}/RPC2'.format(host, myport)
             self.gui_server = SimpleXMLRPCServer((host, myport),
