@@ -733,6 +733,8 @@
   (with-slots ((id1 id) (ty1 type)) op1
     (with-slots ((id2 id) (ty2 type)) op2
       (and (eq id1 id2)
+	   (or (null *strong-tc-eq-flag*)
+	       (eq (declaration op1) (declaration op2)))
 	   (tc-eq* ty1 ty2 bindings)))))
 
 (defmethod tc-eq-ops ((op1 field-name-expr) (op2 name-expr)
@@ -1067,13 +1069,16 @@
 		))))))
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
-  (or (eq n1 n2)
-      (with-slots ((id1 id) (lib1 library) (act1 actuals)
-		   (dacts1 dactuals) (map1 mappings)) n1
-	(with-slots ((id2 id) (lib2 library) (act2 actuals)
-		     (dacts2 dactuals) (map2 mappings)) n2
+  (with-slots ((id1 id) (lib1 library) (act1 actuals)
+	       (dacts1 dactuals) (map1 mappings)) n1
+    (with-slots ((id2 id) (lib2 library) (act2 actuals)
+		 (dacts2 dactuals) (map2 mappings)) n2
+      (or (eq n1 n2)
 	  (and (eq id1 id2)
-	       (eq lib1 lib2)
+	       (or (eq lib1 lib2)
+		   (and (resolution n1)
+			(resolution n2)
+			(eq (declaration n1) (declaration n2))))
 	       (tc-eq* act1 act2 bindings)
 	       (tc-eq* dacts1 dacts2 bindings)
 	       (tc-eq* map1 map2 bindings))))))
