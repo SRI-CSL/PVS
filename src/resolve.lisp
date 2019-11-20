@@ -561,10 +561,15 @@
 		(mapcar #'(lambda (thinst)
 			    (if mappings
 				(make-resolution-with-mappings
-				 decl (copy-all thinst) mappings)
-				(make-resolution decl (copy-all thinst))))
+				 decl (copy-theory-instance thinst) mappings)
+				(make-resolution decl (copy-theory-instance thinst))))
 		  thinsts)))
 	  (resolve-with-actuals decl acts dacts dth args mappings)))))
+
+(defun copy-theory-instance (thinst)
+  (copy thinst
+    :actuals (mapcar #'copy (actuals thinst))
+    :mappings (mapcar #'copy (mappings thinst))))
 
 (defun resolve-with-actuals (decl acts dacts dth args mappings)
   ;; If dacts is there, or if decl has no decl-formals, no ambiguity
@@ -639,10 +644,8 @@
 			     thname))))
 	       (*generate-tccs* 'none))
 	  (when dthi
-	    (when dacts
-	      (setf (dactuals dthi) dacts)
-	      (let ((res (mk-resolution decl nil nil)))
-		(setf (resolutions dthi) (list res))))
+	    ;; (when (and dacts (null (dactuals dthi)))
+	    ;;   (setf (dactuals dthi) dacts))
 	    (set-type-actuals-and-maps dthi dth)
 	    #+pvsdebug (assert (fully-typed? dthi))
 	    (when (visible-to-mapped-tcc? decl dthi dth)
