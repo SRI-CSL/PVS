@@ -1155,7 +1155,9 @@
   (assert (or (null (dactuals modinst))
 	      (typep decl '(or binding decl-formal datatype-or-module))
 	      (length= (decl-formals decl) (dactuals modinst))))
-  (assert (or (not (module? decl)) (same-id decl modinst)))
+  (assert (or (not (module? decl))
+	      (same-id decl modinst)
+	      (eq (generated-by decl) (id modinst))))
   (make-instance 'resolution
     :declaration decl
     :module-instance modinst
