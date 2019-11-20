@@ -589,7 +589,8 @@ is replaced with replacement."
 
 (defmethod get-theory ((name modname))
   (with-slots (library id resolutions) name
-    (if (car resolutions)
+    (if (and (car resolutions)
+	     (module? (declaration (car resolutions))))
 	(declaration (car resolutions))
 	(get-theory* id library))))
 
