@@ -210,7 +210,10 @@
   (assert *current-context*)
   (assert (or (null (dactuals modinst)) decl))
   (assert (modname? modinst))
-  (assert (or (null theory) (null (actuals modinst)) (eq (id theory) (id modinst))))
+  (assert (or (null theory)
+	      (null (actuals modinst))
+	      (same-id theory modinst)
+	      (eq (generated-by theory) (id modinst))))
   (assert (or (null (dactuals modinst)) decl))
   ;;(assert (fully-typed? modinst))
   (let* ((*subst-mod-params-theory* (or theory
@@ -955,9 +958,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	:generated-by decl))))
 
 (defmethod subst-mod-params* ((mn modname) modinst bindings)
-  (assert (resolution modinst))
-  ;;(assert (resolution mn))
   (with-slots (id actuals dactuals mappings) mn
+    (assert (resolution modinst))
+    ;;(assert (resolution mn))
     (let ((entry (assoc id bindings
 			:key #'(lambda (y)
 				 (if (typep y
@@ -1003,7 +1006,11 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				 (when (eq id (id modinst)) (dactuals modinst))))
 		     (nmaps (subst-mod-params* mappings modinst bindings))
 		     (thinst (lcopy mn :actuals nacts :dactuals ndacts :mappings nmaps))
-		     (tres (mk-resolution (declaration mn) thinst nil)))
+		     (theory (if (resolution thinst)
+				 (declaration (resolution thinst))
+				 (or (get-theory thinst)
+				     (break "subst-mod-params* modname problem"))))
+		     (tres (mk-resolution theory thinst nil)))
 		(setf (resolutions thinst) (list tres))
 		thinst))))))
 
