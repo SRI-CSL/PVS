@@ -1,7 +1,14 @@
-@node PVS 7.0 Release Notes
-@unnumbered PVS 7.0 Release Notes
+@node PVS 7.1 Release Notes
+@unnumbered PVS 7.1 Release Notes
 
-PVS 7.0 introduces a new GUI based on wxPython with PVS acting as an
+PVS 7.1 introduces several new features and a number of bug fixes.
+The highlights are:
+@c @itemize @bullet
+@c @item
+@c @item
+@c @end itemize
+
+
 XML-RPC server.  A few enhancements were made to PVS to support more GUI
 features, and most of these were added to the Emacs GUI as well.
 
@@ -13,14 +20,14 @@ ranges.
 
 @ifnottex
 @menu
-* 7.0 Installation Notes::
-* 7.0 New Features::
-* 7.0 Incompatibilities::
+* 7.1 Installation Notes::
+* 7.1 New Features::
+* 7.1 Incompatibilities::
 @end menu
 @end ifnottex
 
 
-@node    7.0 Installation Notes
+@node    7.1 Installation Notes
 @section Installation Notes
 
 The system is most easily installed by getting a tar file from 
@@ -33,7 +40,7 @@ concerns with the Allegro runtime click-though license, in which case get
 one of the SBCL Lisp images.  It is possible to build from sources, but it
 can be sensitive to the platform environment.  If you decide to try it and
 run into problems, let us know at @email{pvs-bugs@@csl.sri.com}.
-PVS 7.0 is built with Allegro CL 10.0 and SBCL 1.0.47.  It is available for
+PVS 7.1 is built with Allegro CL 10.0 and SBCL 1.0.47.  It is available for
 Linux 64-bit machines, and Mac 64-bit.
 
 Note that the XML-RPC server is not (yet) available in SBCL.
@@ -47,10 +54,11 @@ wxPython.  To use, you will need to have Python 2.7, along with @code{wx}
 warnings - these can be ignored.  These packages may often be gotten
 through Linux package managers, or using easy_install or pip.
 
-@node    7.0 New Features
+@node    7.1 New Features
 @section New Features
 
 @menu
+* PVS Contexts, Workspaces, and Libraries::
 * PVS Language Changes::
 * TCC Formulas and Associated Proofs::
 * PVS XML-RPC server::
@@ -60,10 +68,50 @@ through Linux package managers, or using easy_install or pip.
 * Proof Command Definitions::
 * Positive Type Parameters::
 * Typepred Extension::
+* Theory Interpretations::
 * TCC Ordering::
-* Yices in 7.0::
-* 7.0 Development Notes::
+* Yices in 7.1::
+* 7.1 Development Notes::
 @end menu
+
+@node PVS Contexts, Workspaces, and Libraries
+@subsection PVS Contexts, Workspaces, and Libraries
+Contexts and Workspaces: Up to now PVS has had two notions of context, one
+which relates to directories, and the other the usual list of declarations
+of type theory.  Directories are now referred to as workspaces, which are
+just directories with some sort of PVS file in them.
+
+As with directories in a shell, there is a current workspace; other workspaces
+may be referenced as libraries.  Within PVS names, the library is referred to by
+an identifier, and this is resolved to a workspace in one of three ways,
+in order:
+@itemize @bullet
+@item
+there is a visible library declaration with the given id.  Note that this
+only makes sense in a context, e.g., when typechecking, proving, etc.
+@item
+the id is a subdirectory of the current context.
+@item
+it appears as a subdirectory in one of the directories of the
+@code{PVS_LIBRARY_PATH} environment variable.
+@end itemize
+Although one can continue to use PVS as before, there are several
+advantages to this change:
+@itemize @bullet
+@item
+Speed: in the past, library theories were treated specially, because
+references might be relative.  Special class instances were created, and
+changing workspaces meant clearing out typechecked forms, even when they
+were needed from the new workspace.  In PVS 7.1, changing the current
+workspace has no such effect; all the work done in the previous workspace
+will be preserved.
+@item
+Convenience: there is no need to change context to typecheck, prove,
+etc. a PVS spec.  These commands now allow the inclusion of a workspace
+path, and that workspace is temporarily made the current context.
+@end itemize
+
+
 
 @node PVS Language Changes
 @subsection PVS Language Changes
@@ -553,18 +601,18 @@ reverse.  This has no bearing on soundness or correctness, but some
 meta-analysis of PVS was made more difficult because of this, so it was
 fixed.
 
-@node Yices in 7.0
+@node Yices in 7.1
 @subsection Yices
 
 The yices prover commands have been fully integrated into PVS, and Yices
 versions 1 and 2 are included in the distribution.
 
-@node 7.0 Development Notes
+@node 7.1 Development Notes
 @subsection Development Notes
 
 with-context, cam
 
-@node    7.0 Incompatibilities
+@node    7.1 Incompatibilities
 @section Incompatibilities
 
 There are three primary sources of incompatibilities with this release.
