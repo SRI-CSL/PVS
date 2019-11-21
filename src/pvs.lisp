@@ -2531,6 +2531,24 @@ formname is nil, then formref should resolve to a unique name."
 	(read-strategies-files)
 	(setq *last-proof* (prove fdecl :strategy strat))))))
 
+;; (defun prove-formula (formref &optional formname rerun? new-process?)
+;;   "Starts a proof with formula given by formref.  If formname is provided,
+;; it is the name of the formula, and formref should be a theoryname.  If
+;; formname is nil, then formref should resolve to a unique name."
+;;   (let ((fdecl (get-formula-decl formref formname)))
+;;     (with-workspace (context-path (module fdecl))
+;;       (let* ((strat (when rerun? '(rerun)))
+;; 	     (*please-interrupt* t))
+;; 	(read-strategies-files)
+;; 	(if new-process?
+;; 	    (mp:process-run-function
+;; 	     (format nil "~a.~a" (id (module fdecl)) (id fdecl))
+;; 	     ;;name class reset-action run-reasons arrest-reasons priority quantum resume-hook suspend-hook initial-bindings run-immediately stack-allocation message-interrupt-function
+;; 	     ;; `((:name . ,(format nil "~a.~a" (id (module fdecl)) (id fdecl)))
+;; 	     ;;   excl:*required-top-level-bindings*)
+;; 	     #'prove fdecl :strategy strat)
+;; 	    (setq *last-proof* (prove fdecl :strategy strat)))))))
+
 (defun get-proof-status (formref &optional formname)
   (let ((fdecl (get-formula-decl formref formname)))
     (status (default-proof fdecl))))
