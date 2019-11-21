@@ -2302,12 +2302,12 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					       (mappings modinst)))
 					 ndacts
 					 decl))
-				  (tres (mk-resolution (module decl) nmi nil))
+				  ;;(tres (mk-resolution (module decl) nmi nil))
 				  (nrtype (if eqtype
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))
 				  (nres (mk-resolution decl nmi nrtype)))
-			     (setf (resolutions nmi) (list tres))
+			     (setf (resolutions nmi) (list nres))
 			     ;; (assert (subsetp (free-params nres) (free-params modinst))
 			     ;; 	     () "res6")
 			     nres))))))))))
