@@ -1007,10 +1007,14 @@ resolution with a macro matching the signature of the arguments."
       (setf (resolutions (expr act)) reses)
       (when (name-expr? (expr act))
 	(setf (type (expr act)) (type (car reses))))
-      (setf (module-instance (resolution (expr act)))
-	    (set-type-actuals-and-maps (expr act)
-				       (module (declaration (car reses)))))
-      (set-type* (type-value act) nil)
+      (let ((*generate-tccs*
+	     (if (actuals (expr act))
+		 *generate-tccs*
+		 'none)))
+	(setf (module-instance (resolution (expr act)))
+	      (set-type-actuals-and-maps (expr act)
+					 (module (declaration (car reses)))))
+	(set-type* (type-value act) nil))
       #+pvsdebug (assert (fully-typed? (actuals (expr act))))))
   ;; Note that (expr act) now has its actuals and maps set,
   ;; but that (type-value act) and act itself may still not be fully typed.
