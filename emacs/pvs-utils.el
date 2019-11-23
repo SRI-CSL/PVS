@@ -217,7 +217,8 @@ beginning of the previous one."
 	      (error "Can't determine theory boundaries"))
 	    (looking-at "\\w+")
 	    (let ((start (point))
-		  (th-id (buffer-substring (match-beginning 0) (match-end 0))))
+		  (th-id (buffer-substring-no-properties
+			  (match-beginning 0) (match-end 0))))
 	      (find-theory-or-datatype-forward)
 	      (unless (beginning-of-theory (point))
 		(goto-char (point-max)))
@@ -1280,7 +1281,7 @@ theoryname."
   (let ((start (point)))
     (while (looking-at chclass)
       (forward-char 1))
-    (buffer-substring start (point))))
+    (buffer-substring-no-properties start (point))))
 
 (defun find-pvs-name (string)
   (let* ((default (find-name-default))
