@@ -954,6 +954,8 @@ decl, args, and mappings."
 		  (push (car tres) (resolutions (expr act)))
 		  (type-ambiguity (expr act)))
 		(progn
+		  (when (formals (declaration (car tres)))
+		    (type-error act "Type name must have arguments"))
 		  (when (and ;;(not (eq (module (declaration (car tres))) (current-theory)))
 			     (typep (type (car tres)) 'type-name)
 			     (same-id (expr act) (type (car tres))))
