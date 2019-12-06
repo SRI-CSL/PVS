@@ -38,7 +38,7 @@
 	  type-incompatible pvs-locate write-to-temp-file
 	  *ps-control-info* make-ps-control-info psinfo-json-result
 	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock
-	  pvs-abort))
+	  pvs-abort lisp))
 
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)
@@ -421,6 +421,7 @@
 (defun pvs-error (msg err &optional file-name place)
   ;; Indicates an error; no recovery possible.
   (assert (or (null file-name)
+	      *from-buffer*
 	      (file-exists-p file-name)))
   (cond (*pvs-error-hook*
 	 (let* ((place (if *adt-decl* (place *adt-decl*) place))
@@ -1085,6 +1086,7 @@ list of interface names that are currently open."
 	   (pvs-error "Typecheck error"
 	     errmsg
 	     (let ((fname (or (and (current-theory)
+				   (not (from-prelude? (current-theory)))
 				   (filename (current-theory)))
 			      *current-file*)))
 	       (when fname
