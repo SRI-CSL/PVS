@@ -1490,7 +1490,9 @@
     (typecheck nexpr :expected *boolean*)))
 
 (defun make-null-expr (type)
-  (typecheck* (mk-null-expr) type nil nil))
+  (let ((ex (mk-null-expr)))
+    (setf (actuals ex) (list (mk-actual type)))
+    (typecheck* ex nil nil nil)))
 
 (defun make-list-expr (exprs &optional type)
   (assert (or type
@@ -1499,6 +1501,31 @@
       (typecheck* (mk-list-expr* exprs) type nil nil)
       (let ((ctype (reduce #'compatible-exprs-type exprs)))
 	(typecheck* (mk-list-expr* exprs) ctype nil nil))))
+
+(defmethod list-elements ((ex application) &optional elts)
+  (let ((op (operator ex))
+	(arg (argument ex)))
+    (if (and (name-expr? op)
+	     (eq (id op) '|cons|)
+	     (resolution op)
+	     (eq (id (module-instance op)) '|list_adt|)
+	     (tuple-expr? arg))
+	(list-elements (cadr (exprs arg)) (cons (car (exprs arg) elts)))
+	(error "list-elements called with ~:[untypechecked~;non-list~] expression ~a"
+	       (type ex) ex))))
+
+(defmethod list-elements ((ex name-expr) &optional elts)
+  (if (and (eq (id ex) 'null)
+	   (resolution ex)
+	   (eq (id (module-instance ex)) '|list_adt|))
+      (nreverse elts)
+      (error "list-elements called with ~:[untypechecked~;non-list~] expression ~a"
+	     (type ex) ex)))
+
+(defmethod list-elements (ex &optional elts)
+  (declare (ignore elts))
+  (error "list-elements called with non-list expression ~a"
+	 ex))
 
 (defun compatible-exprs-type (ex1 ex2)
   (compatible-type ex1 ex2))
@@ -1728,26 +1755,49 @@
       (change-class appl 'list-expr))
     appl))
 
-(defun make!-list-expr (elt list-ex elt-type)
-  (assert (typep list-ex '(or null-expr list-expr)))
-  (assert (type elt))
-  (assert (type list-ex))
-  (let* ((cons-op (make-cons-name-expr elt-type))
-	 (list-place (concat-places (place elt) (place list-ex))))
-    (setf (place cons-op) (place elt))
-    (make-instance 'list-expr
-      :operator cons-op
-      :argument (make-instance 'arg-tuple-expr
-		  :exprs (list elt list-ex)
-		  :type (mk-tupletype
-			 (list elt-type
-			       (if (null-expr? list-ex)
-				   (type list-ex)
-				   (range (type cons-op)))))
-		  :place list-place)
-      :type (range (type cons-op))
-      :place list-place)))
-    
+(defun make!-list-expr (exprs &optional elt-type)
+  (assert (every #'type exprs))
+  (assert (or exprs elt-type) ()
+	  "make!-list-expr: can't make null without an elt-type")
+  (let ((ctype (or elt-type
+		   (reduce #'compatible-exprs-type exprs))))
+    (assert (every #'(lambda (ex) (compatible? (type ex) ctype)) exprs))
+    (make!-list-expr* (reverse exprs) ctype (make-null-expr ctype))))
+
+(defun make!-list-expr* (exprs elt-type list-ex)
+  (if (null exprs)
+      list-ex
+      (let* ((cons-op (make-cons-name-expr elt-type))
+	     (list-type (range (type cons-op))))
+	(make!-list-expr*
+	 (cdr exprs) elt-type
+	 (make-instance 'list-expr
+	   :operator cons-op
+	   :argument (make-instance 'arg-tuple-expr
+		       :exprs (list (car exprs) list-ex)
+		       :type (mk-tupletype (list elt-type list-type)))
+	   :type list-type)))))
+
+(defun cons-list-to-list-expr (ex)
+  (let ((elt-type (get-list-element-type ex)))
+    (make!-list-expr (list-elements ex) elt-type)))
+
+(defun get-list-element-type (ex)
+  (assert (type ex))
+  (cond ((and (name-expr? ex)
+	      (eq (id ex) 'null)
+	      (resolution ex)
+	      (eq (id (module-instance ex)) '|list_adt|))
+	 (type-value (car (actuals (module-instance ex)))))
+	((and (application? ex)
+	      (let ((op (operator ex)))
+		(and (name-expr? op)
+		     (eq (id op) '|cons|)
+		     (resolution op)
+		     (eq (id (module-instance op)) '|list_adt|))))
+	 (type-value (car (actuals (module-instance (operator ex))))))
+	(t (error "get-list-element-type called with non-list expression ~a"
+		  ex))))
 
 (defun make!-number-expr (number)
   (assert (typep number 'rational))
