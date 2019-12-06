@@ -590,8 +590,20 @@ is replaced with replacement."
 (defmethod get-theory ((name modname))
   (with-slots (library id resolutions) name
     (if (and (car resolutions)
-	     (module? (declaration (car resolutions))))
-	(declaration (car resolutions))
+	     (module? (declaration (car resolutions)))
+	     ;; resolution for a datatype is the generated theory
+	     (same-id (declaration (car resolutions)) name))
+	(let* ((rth (declaration (car resolutions)))
+	       (ws (get-workspace-session (context-path rth)))
+	       (wth (gethash id (pvs-theories ws))))
+	  ;; Could have changed, in which case wth is correct
+	  (cond ((and rth wth)
+		 (if (eq rth wth)
+		     rth
+		     (setf (declaration (car resolutions)) wth)))
+		(t (let ((th (get-theory* id library)))
+		     (when th
+		       (setf (declaration (car resolutions)) th))))))
 	(get-theory* id library))))
 
 (defmethod get-theory ((name name))
