@@ -95,8 +95,7 @@
 
 (defun evaluation-mode (theoryref)
   (with-pvs-file (fname thname) theoryref
-    (let ((theory (get-theory thname)))
-      (declare (ignore fname))
+    (let ((theory (get-theory (or thname fname))))
       (unwind-protect
 	   (if theory
 	       (let ((*generate-tccs* 'all)
@@ -110,7 +109,7 @@
 		 (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
 		 (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
 		 (evaluate))
-	       (pvs-message "Theory ~a is not typechecked" thname))
+	       (pvs-message "Theory ~a is not typechecked" theoryref))
 	(pvs-emacs-eval "(pvs-evaluator-ready)")))))
 
 (defun gqread ()
@@ -124,7 +123,7 @@
 	       (gqread)))
 	  ((and (consp input)
 		(member (car input) '(lisp pvs::lisp)))  ;; allow for us to be interrupted
-	   (format t "~%~s~%" (catch 'abort (catch 'restore (eval (cadr input)))))
+	   (format t "~%~s~%" (eval (cadr input)))
 	   (gqread))
 	  ((member input '(h help)
 		   :test #'equal)
