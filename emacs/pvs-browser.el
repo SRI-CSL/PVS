@@ -179,7 +179,6 @@ and removes the declaration buffer."
 	    "Listing..." 'listing)))
       (unless pvs-decls
 	(error "No declarations using were found"))
-      (setq ddd pvs-decls)
       (pvs-make-browse-buffer "Browse" pvs-decls))))
 
 (defpvs whereis-identifier-used browse (symbol)
