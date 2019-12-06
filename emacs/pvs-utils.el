@@ -68,6 +68,32 @@
 	     (modify-syntax-entry ?\r ">"))
 	(set-syntax-table st))))
 
+(defun pvs-kind-of-buffer (&optional buffer)
+  (let* ((buf (or buffer (current-buffer)))
+	 (bname (buffer-name buf))
+	 (bfile (buffer-file-name buf))
+	 (ext (when bfile (pathname-type bfile))))
+    (cond ((and bfile
+		(file-equal (format "%s/lib/prelude.pvs" pvs-path) bfile))
+	   'prelude)
+	  ((and bfile
+		(file-equal (format "%s/lib/pvsio_prelude.pvs" pvs-path) bfile))
+	   'pvsio_prelude)
+	  (pvs-prelude
+	   'prelude-theory)
+	  ((equal ext "pvs")
+	   'pvs)
+	  ((equal bname "PVS Status")
+	   'proof-status)
+	  ((equal ext "tccs")
+	   'tccs)
+	  ((equal ext "ppe")
+	   'ppe)
+	  ((or (equal pvs-buffer-kind "Declaration")
+	       (equal bname "Declaration"))
+	   ;; From M-x show-declaration
+	   'declaration)
+	  (t (error "Not a known PVS buffer")))))
 
 ;;; Define this first, so we can start logging right away.
 
@@ -1118,7 +1144,7 @@ theoryname."
 	 (current-theories
 	  ;; We include the current buffer theories if a PVS file and not in the alist  
 	  (unless (or (null file)
-		      (find file theory-alist :key 'cadr :test 'file-equal))
+		      (cl-find file theory-alist :key 'cadr :test 'file-equal))
 	    (pvs-current-theories))))
     ;; (setq pvs-current-directory (car dir-and-theories))
     (setq pvs-theories (append current-theories theory-alist))))
@@ -1672,7 +1698,7 @@ Point will be on the offending delimiter."
 		       (save-excursion
 			 (goto-char last-point)
 			 (setq foundit
-			       (re-search-forward exp nil t))
+			       (re-search-forward-lax-whitespace exp nil t))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
 			   (pvs-message "[32;1mFound expected output[0m")
@@ -1696,7 +1722,7 @@ Point will be on the offending delimiter."
 		       (save-excursion
 			 (goto-char last-point)
 			 (setq foundit
-			       (re-search-forward exp nil t))
+			       (re-search-forward-lax-whitespace exp nil t))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
 			   (pvs-message "[31;1mERROR: %s: unexpected output found[0m"
