@@ -1059,16 +1059,17 @@
 	(t (pc-analyze* (car list))
 	   (pc-analyze* (cdr list)))))
 
-(defun usedby-proofs (bufname origin line &optional libpath)
-  (let ((udecl (get-decl-at-origin bufname origin line libpath)))
-    (when udecl
-      (let* ((decls (declaration-used-by-proofs-of udecl))
+(defun usedby-proofs (oname origin line)
+  (if (typechecked-origin? oname origin)
+      (let* ((udecl (get-decl-at-origin oname origin line))
+	     (decls (declaration-used-by-proofs-of udecl))
 	     (flist (mapcar #'(lambda (d)
 				(json-decl-list d (ptype-of d) (module d)))
 		      decls))
 	     (json:*lisp-identifier-name-to-json* #'identity)
 	     (fdecl-string (json:encode-json-to-string (or flist #()))))
-	fdecl-string))))
+	fdecl-string)
+      (pvs-message "~a has not been typechecked" oname)))
 
 (defun get-decl-at-origin (bufname origin line &optional libpath)
   (let ((bname (if (stringp bufname) (intern bufname :pvs) bufname)))
