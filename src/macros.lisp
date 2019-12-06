@@ -236,6 +236,7 @@
 		  (prog1 (progn (set-working-directory ,shortdir)
 				(unless (pvs-context *workspace-session*)
 				  (restore-context))
+				(assert (pvs-context *workspace-session*))
 				,@forms)
 		    (when (pvs-context-changed *workspace-session*)
 		      (save-context)))
@@ -297,6 +298,9 @@ expands to:
 	 (setq ,(car vars) ,name))
        (cond ((or (uiop:pathname-equal ,dir #p"")
 		  (uiop:pathname-equal ,dir *default-pathname-defaults*))
+	      (unless (pvs-context *workspace-session*)
+		(restore-context))
+	      (assert (pvs-context *workspace-session*))
 	      ,@body)
 	     (t (with-workspace ,dir
 		  ,@body))))))
