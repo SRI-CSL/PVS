@@ -1397,6 +1397,9 @@ resolution with a macro matching the signature of the arguments."
 The first arguement is just a method discriminator."
   (assert (eq ldecl (declaration lhs)))
   (setf (type-value rhs) nil)
+  (unless (resolution thinst)
+    (setf (resolutions thinst)
+	  (list (mk-resolution (module ldecl) thinst nil))))
   (let ((stype (subst-mod-params (type (resolution lhs)) thinst (module ldecl) ldecl)))
     (set-type* (expr rhs) stype)))
 
@@ -1411,7 +1414,7 @@ type of the lhs."
 		     (or (not (decl-formal? fp))
 			 (memq fp (decl-formals lhs))))
 		 (free-params (type lhs))))
-  (let ((stype (subst-mod-params (type lhs) thinst (current-theory) lhs)))
+  (let ((stype (subst-mod-params (type lhs) thinst (module ldecl) lhs)))
     (set-type* (expr rhs) stype))
   (assert (every #'(lambda (fp)
 		     (or (not (decl-formal? fp))
