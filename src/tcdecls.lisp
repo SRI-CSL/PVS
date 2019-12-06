@@ -4070,8 +4070,7 @@ The dependent types are created only when needed."
 		       (not (duplicates? (apply #'append args-lists)
 					 :test #'same-declaration)))))
 	   (change-expr-judgement-to-application-judgement decl))
-	  (t (let ((*compatible-pred-reason*
-		    (acons (expr decl) "judgement" *compatible-pred-reason*)))
+	  (t (let ((*generate-tccs* 'none))
 	       (cond ((forall-expr? (expr decl))
 		      ;; Note that it is not really a forall expr, as it is not boolean
 		      (typecheck* (bindings (expr decl)) nil nil nil)
