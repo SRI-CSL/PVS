@@ -111,24 +111,14 @@ specification and typing M-. yields a pop-up buffer displaying the
 declaration.  This command is useful to determine the type of a name,
 or the resolution determined by the typechecker for an overloaded name."
   (interactive)
-  (let* ((fref (pvs-formula-origin))
-	 (kind (pvs-fref-kind fref))
-	 (file (pvs-fref-file fref))
-	 (lib (pvs-fref-library fref))
-	 (fname (pvs-fref-file fref))
-	 (buf (or file (pvs-fref-buffer fref)))
-	 (poff (pvs-fref-prelude-offset fref))
-	 (line (+ (pvs-fref-line fref) poff)))
+  (let* ((kind (pvs-kind-of-buffer))
+	 (file (buffer-file-name)))
     (save-some-pvs-files)
     (pvs-bury-output)
-    (if (memq kind '(tccs ppe))
-	(message
-	 "The show-declaration command is not available in this buffer.")
-	(pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d) nil %s)"
-			       (or fname buf) kind line
-			       (real-current-column)
-			       (when lib (format "\"%s\"" lib)))
-			   nil 'declaration 'dont-care))))
+    (pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d) nil)"
+			   (or file (buffer-name)) kind
+			   (current-line-number) (real-current-column))
+		       nil 'declaration 'dont-care)))
      
 (defpvs goto-declaration browse ()
   "Go to declaration of symbol at cursor
@@ -138,21 +128,13 @@ the symbol or name at the cursor.  It pops up a buffer containing the
 theory associated with the declaration, and positions the cursor at the
 declaration."
   (interactive)
-  (let* ((fref (pvs-formula-origin))
-	 (kind (pvs-fref-kind fref))
-	 (file (pvs-fref-file fref))
-	 (lib (pvs-fref-library fref))
-	 (fname (pvs-fref-file fref))
-	 (theory (pvs-fref-theory fref))
-	 (buf (or file (pvs-fref-buffer fref)))
-	 (poff (pvs-fref-prelude-offset fref))
-	 (line (+ (pvs-fref-line fref) poff)))
+  (let* ((kind (pvs-kind-of-buffer))
+	 (file (buffer-file-name)))
     (pvs-bury-output)
     (save-some-pvs-files)
-    (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d) %s)"
-			   (or fname theory buf) kind line
-			   (real-current-column)
-			   (when lib (format "\"%s\"" lib)))
+    (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d))"
+			   (or file (buffer-name)) kind
+			   (current-line-number) (real-current-column))
 		       'declaration 'dont-care)))
 
 (defpvs find-declaration browse (symbol)
@@ -185,29 +167,20 @@ the row of interest and typing `v'.  Typing `s' will read in the
 associated file and position the cursor at the declaration.  A `q' quits
 and removes the declaration buffer."
   (interactive)
-  (let* ((fref (pvs-formula-origin))
-	 (kind (pvs-fref-kind fref))
-	 (file (pvs-fref-file fref))
-	 (lib (pvs-fref-library fref))
-	 (fname (pvs-fref-file fref))
-	 (theory (pvs-fref-theory fref))
-	 (buf (or file (pvs-fref-buffer fref)))
-	 (poff (pvs-fref-prelude-offset fref))
-	 (line (+ (pvs-fref-line fref) poff)))
+  (let* ((kind (pvs-kind-of-buffer))
+	 (file (buffer-file-name)))
     (save-some-pvs-files)
     (pvs-bury-output)
-    (if (memq kind '(tccs ppe))
-	(message
-	 "The whereis-declaration-used command is not available in this buffer.")
-	(let ((pvs-decls
-	       (pvs-send-and-wait-for-json
-		(format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d) nil %s)"
-		    (or fname theory buf) kind line (real-current-column)
-		    (when lib (format "\"%s\"" lib)))
-		"Listing..." 'listing)))
-	  (unless pvs-decls
-	    (error "No declarations using were found"))
-	  (pvs-make-browse-buffer "Browse" pvs-decls)))))
+    (let ((pvs-decls
+	   (pvs-send-and-wait-for-json
+	    (format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d) nil)"
+		(or file (buffer-name)) kind
+		(current-line-number) (real-current-column))
+	    "Listing..." 'listing)))
+      (unless pvs-decls
+	(error "No declarations using were found"))
+      (setq ddd pvs-decls)
+      (pvs-make-browse-buffer "Browse" pvs-decls))))
 
 (defpvs whereis-identifier-used browse (symbol)
   "Search for declarations which reference symbol
@@ -301,12 +274,28 @@ still complete, if it was in the full theory."
 
 ;;; Functions to support PVS browse mode
 
+(defun pvs-get-declaration-lines (pvs-decls)
+  (let* ((json-array-type 'list)
+	 (decl-forms (json-read-from-string pvs-decls))
+	 (col-sizes (pvs-get-browse-column-sizes decl-forms))
+	 (decl-strings nil))
+    (dotimes (i (length decl-forms))
+      (let ((decl-form (elt decl-forms i)))
+	(let ((declname (cdr (assq 'declname decl-form)))
+	      (type (cdr (assq 'type decl-form)))
+	      (theoryid (cdr (assq 'theoryid decl-form))))
+	  (push (concat (fixed-size-str declname (car col-sizes)) " "
+			(fixed-size-str type (cadr col-sizes)) " "
+			(fixed-size-str theoryid (caddr col-sizes)))
+		decl-strings))))
+    (reverse decl-strings)))
+
 (defun pvs-make-browse-buffer (buf-name pvs-decls)
   "pvs-decls is now a JSON string."
   (let* ((buf (get-buffer-create buf-name)))
     (with-current-buffer buf
       (pvs-browse-mode)
-      (let* (;;(json-array-type 'list)
+      (let* ((json-array-type 'list)
 	     (decls (json-read-from-string pvs-decls)))
 	(setq-local pvs-declarations decls))
       (let ((inhibit-read-only t))
@@ -336,28 +325,30 @@ still complete, if it was in the full theory."
     (insert (concat (fixed-size-str "Decl" ds) " "
 		    (fixed-size-str "Type" tys) " "
 		    (fixed-size-str "Thid" ths) "\n\n"))
-    (seq-do #'(lambda (decl-form)
-		(pcase-let ((`((declname . ,declname) (type . ,type) (theoryid . ,theoryid)
-			       (filename . ,filename) (place . ,place)
-			       (decl-ppstring . ,decl-ppstring))
-			      decl-form))
-		  (insert (concat (fixed-size-str declname ds) " "
-				  (fixed-size-str type tys) " "
-				  (fixed-size-str theoryid ths) "\n"))))
-	    pvs-declarations)))
+    (dotimes (i (length pvs-declarations))
+      (let* ((decl-form (elt pvs-declarations i))
+	     (declname (cdr (assq 'declname decl-form)))
+	     (type (cdr (assq 'type decl-form)))
+	     (theoryid (cdr (assq 'theoryid decl-form))))
+	(insert (concat (fixed-size-str declname ds) " "
+			(fixed-size-str type tys) " "
+			(fixed-size-str theoryid ths) "\n"))))))
 
-(defun pvs-get-browse-column-sizes ()
-  (let ((decl-size 4) (type-size 4) (thid-size 4)
+(defun pvs-get-browse-column-sizes (&optional decl-forms)
+  ;; pvs-declarations is a buffer-local variable
+  (let ((dforms (or decl-forms pvs-declarations))
+	(decl-size 4) (type-size 4) (thid-size 4)
 	(win-width (max 80 (window-body-width))))
-    (seq-do #'(lambda (decl-form)
-		(pcase-let ((`((declname . ,declname) (type . ,type) (theoryid . ,theoryid)
-			       (filename . ,filename) (place . ,place)
-			       (decl-ppstring . ,decl-ppstring))
-			      decl-form))
-		  (setq decl-size (max decl-size (length declname))
-			type-size (max type-size (length type))
-			thid-size (max thid-size (length theoryid)))))
-	    pvs-declarations)
+    (unless dforms
+      (error "No decl-forms provided"))
+    (dotimes (i (length dforms))
+      (let ((decl-form (elt dforms i)))
+	(let ((declname (cdr (assq 'declname decl-form)))
+	      (type (cdr (assq 'type decl-form)))
+	      (theoryid (cdr (assq 'theoryid decl-form))))
+	  (setq decl-size (max decl-size (length declname))
+		type-size (max type-size (length type))
+		thid-size (max thid-size (length theoryid))))))
     (when (> (+ decl-size type-size thid-size 3) win-width)
       ;; Unlikely theoryid is the problem
       ;; This is a quick-and-dirty heuristic
@@ -377,41 +368,44 @@ still complete, if it was in the full theory."
 	   (buffer-name)))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
-  (let ((entry (elt pvs-declarations (- (current-line-number) 3))))
-    (pcase-let ((`((declname . ,declname) (type . ,type) (theoryid . ,theoryid)
-		   (filename . ,filename) (place . ,place) (decl-ppstring . ,decl-ppstring))
-		  entry))
-      (cond ((member place '(nil NIL))
-	     (let* ((bufname (format "%s.%s" theoryid declname))
-		    (buf (get-buffer-create bufname)))
-	       (message "")
-	       (with-current-buffer buf
-		 (let ((inhibit-read-only t))
-		   (erase-buffer)
-		   (insert decl-ppstring)
-		   (set-buffer-modified-p nil))
-		 (pvs-view-mode))
-	       (pop-to-buffer buf)))
-	    (t ;(pvs-browse-quit)
-	       (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
-		 (cond ((file-equal filename prelude-file)
-			(let* ((freg (get-prelude-file-and-region theoryid))
-			       (line (when freg
-				       (save-excursion
-					 (let ((noninteractive t)) ;; Shut up about read-only
-					   (set-buffer (find-file-noselect (car freg))))
-					 (goto-char (cadr freg))
-					 (- (current-line-number) 1)))))
-			  (view-prelude-theory theoryid)
-			  (when line
-			    (goto-char (point-min))
-			    (forward-line (1- (- (elt place 0) line)))
-			    (forward-char (elt place 1)))))
-		       (t (find-file filename)
-			  (goto-char (point-min))
-			  (forward-line (1- (elt place 0)))
-			  (forward-char (elt place 1))))))))
-    (delete-other-windows))
+  (let* ((decl-form (elt pvs-declarations (- (current-line-number) 3)))
+	 (declname (cdr (assq 'declname decl-form)))
+	 (type (cdr (assq 'type decl-form)))
+	 (theoryid (cdr (assq 'theoryid decl-form)))
+	 (place (cdr (assq 'place decl-form)))
+	 (filename (cdr (assq 'filename decl-form)))
+	 (decl-ppstring (cdr (assq 'decl-ppstring decl-form))))
+    (cond ((member place '(nil NIL))
+	   (let* ((bufname (format "%s.%s" theoryid declname))
+		  (buf (get-buffer-create bufname)))
+	     (message "")
+	     (with-current-buffer buf
+	       (let ((inhibit-read-only t))
+		 (erase-buffer)
+		 (insert decl-ppstring)
+		 (set-buffer-modified-p nil))
+	       (pvs-view-mode))
+	     (pop-to-buffer buf)))
+	  (t				;(pvs-browse-quit)
+	   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
+	     (cond ((file-equal filename prelude-file)
+		    (let* ((freg (get-prelude-file-and-region theoryid))
+			   (line (when freg
+				   (save-excursion
+				     (let ((noninteractive t)) ;; Shut up about read-only
+				       (set-buffer (find-file-noselect (car freg))))
+				     (goto-char (cadr freg))
+				     (- (current-line-number) 1)))))
+		      (view-prelude-theory theoryid)
+		      (when line
+			(goto-char (point-min))
+			(forward-line (1- (- (elt place 0) line)))
+			(forward-char (elt place 1)))))
+		   (t (find-file filename)
+		      (goto-char (point-min))
+		      (forward-line (1- (elt place 0)))
+		      (forward-char (elt place 1))))))))
+  (delete-other-windows)
   (recenter))
 
 
@@ -426,26 +420,27 @@ Returns to Declaration List when done."
       (error "Please select from list of choices below."))
   (let* ((cbuf (current-buffer))
 	 (buf (get-buffer-create "Browse View"))
-	 (entry (elt pvs-declarations (- (current-line-number) 3))))
-    (pcase-let ((`((declname . ,declname) (type . ,type) (theoryname . ,theoryname)
-		   (filename . ,filename) (place . ,place) (decl-ppstring . ,decl-ppstring))
-		  entry))
-      (set-buffer buf)
-      (let ((inhibit-read-only t))
-	(erase-buffer)
-	(insert decl-ppstring)
-	(set-buffer-modified-p nil))
-      (pvs-view-mode)
-      (goto-char (point-min))
-      (let ((view-window (get-buffer-window-list buf)))
-	(cond (view-window
-	       (ilisp-shrink-wrap-window (car view-window)))
-	      (t
-	       (other-window 1)
-	       (when (< (ilisp-desired-height buf) (window-height))
-		 (split-window-vertically (ilisp-desired-height buf))
-		 (set-window-buffer (selected-window) buf)
-		 (other-window -1))))))))
+	 (decl-form (elt pvs-declarations (- (current-line-number) 3)))
+	 (declname (cdr (assq 'declname decl-form)))
+	 (type (cdr (assq 'type decl-form)))
+	 (theoryid (cdr (assq 'theoryid decl-form)))
+	 (decl-ppstring (cdr (assq 'decl-ppstring decl-form))))
+    (set-buffer buf)
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert decl-ppstring)
+      (set-buffer-modified-p nil))
+    (pvs-view-mode)
+    (goto-char (point-min))
+    (let ((view-window (get-buffer-window-list buf)))
+      (cond (view-window
+	     (ilisp-shrink-wrap-window (car view-window)))
+	    (t
+	     (other-window 1)
+	     (when (< (ilisp-desired-height buf) (window-height))
+	       (split-window-vertically (ilisp-desired-height buf))
+	       (set-window-buffer (selected-window) buf)
+	       (other-window -1)))))))
 
 (defun pvs-browse-quit ()
   (interactive)
@@ -497,25 +492,17 @@ or the resolution determined by the typechecker for an overloaded name."
 (defpvs usedby-proofs browse ()
   "Show a list of formulas whose proofs refer to the declaration at point"
   (interactive)
-  (let* ((fref (pvs-formula-origin))
-	 (fname (pvs-fref-file fref))
-	 (lib (pvs-fref-library fref))
-	 (kind (pvs-fref-kind fref))
-	 (buf (pvs-fref-buffer fref))
-	 (poff (pvs-fref-prelude-offset fref))
-	 (line (+ (pvs-fref-line fref) poff)))
+  (let* ((kind (pvs-kind-of-buffer))
+	 (file (buffer-file-name)))
     (save-some-pvs-files)
     (pvs-bury-output)
-    (if (memq kind '(tccs ppe))
-	(message
-	 "The usedby-proofs command is not available in this buffer.")
-	(let ((pvs-decls (pvs-send-and-wait-for-json
-			  (format "(usedby-proofs \"%s\" \"%s\" %d %s)"
-			      (or fname buf) kind line
-			      (when lib (format "\"%s\"" lib)))
-			  "Listing..." 'listing)))
-	  (when pvs-decls
-	    (pvs-make-browse-buffer "Browse" pvs-decls))))))
+    (let ((pvs-decls (pvs-send-and-wait-for-json
+		      (format "(usedby-proofs \"%s\" \"%s\" '%d)"
+			  (or file (buffer-name)) kind
+			  (current-line-number))
+		      "Listing..." 'listing)))
+      (when pvs-decls
+	(pvs-make-browse-buffer "Browse" pvs-decls)))))
 
 (defvar expanded-form-face 'expanded-form-face)
 (make-face 'expanded-form-face)
@@ -529,41 +516,34 @@ The show-expanded-form command displays the expanded form of the given
 region.  By default, names from the prelude are not expanded, but with an
 argument they are expanded as well."
   (interactive)
-  (let* ((fref (pvs-formula-origin))
-	 (kind (pvs-fref-kind fref))
-	 (fname (pvs-fref-file fref))
-	 (theory (pvs-fref-theory fref))
-	 (lib (pvs-fref-library fref))
-	 (buf (pvs-fref-buffer fref))
-	 (poff (pvs-fref-prelude-offset fref))
+  (let* ((kind (pvs-kind-of-buffer))
+	 (file (buffer-file-name))
 	 (beg (if (mark t) (region-beginning) (point)))
 	 (end (if (mark t) (region-end) (point)))
 	 (pos1 (save-excursion
 		 (goto-char beg)
-		 (list (+ (current-line-number) poff)
-		       (real-current-column))))
+		 (list (current-line-number) (real-current-column))))
 	 (pos2 (save-excursion
 		 (goto-char end)
-		 (list (+ (current-line-number) poff)
+		 (list (current-line-number)
 		       (real-current-column)))))
     (save-some-pvs-files)
     (pvs-bury-output)
     (let ((place (pvs-send-and-wait
-		  (format "(show-expanded-form \"%s\" \"%s\" '%s '%s %s %s)"
-		      (or fname theory buf) kind pos1 pos2
-		      (and current-prefix-arg t)
-		      (when lib (format "\"%s\"" lib)))
+		  (format "(show-expanded-form \"%s\" \"%s\" '%s '%s %s)"
+		      (or file (buffer-name)) kind pos1 pos2
+		      (and current-prefix-arg t))
 		  nil 'expanded-form 'list)))
       (unless noninteractive
 	(when place
 	  (let ((tbeg (save-excursion
 			(goto-char (point-min))
-			(forward-line (1- (- (car place) poff)))
+			(forward-line (car place))
 			(forward-char (cadr place))
 			(point)))
 		(tend (save-excursion
 			(goto-char (point-min))
-			(forward-line (1- (- (caddr place) poff)))
+			(forward-line (caddr place))
 			(forward-char (cadddr place))
 			(point))))
 	    (setq expanded-form-overlay (make-overlay tbeg tend))
@@ -584,5 +564,3 @@ argument they are expanded as well."
 	((eq pvs-popup-windows 'x)
 	 (error "pvs-popup-windows as x not yet implemented"))
 	(t (error "pvs-popup-windows is not one of nil, 'frame or 'x"))))
-
-	   
