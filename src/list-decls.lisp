@@ -44,11 +44,11 @@
 
 ;;; Called by Emacs - show-expanded-form command
 
-(defun show-expanded-form (oname origin pos1 &optional (pos2 pos1) all? libpath)
+(defun show-expanded-form (oname origin pos1 &optional (pos2 pos1) all?)
   (if (or (equal origin "Declaration")
-	  (typechecked-origin? oname origin libpath))
+	  (typechecked-origin? oname origin))
       (multiple-value-bind (object ctheory)
-	  (get-object-at oname origin pos1 pos2 libpath)
+	  (get-object-at oname origin pos1 pos2)
 	(when object
 	  (let* ((*disable-gc-printout* t)
 		 (*pseudo-normalizing* t)
@@ -69,11 +69,11 @@
 (defvar *containing-type* nil)
 (defvar *show-declarations-alist* nil)
 
-(defun show-declaration (oname origin pos &optional x? libpath)
+(defun show-declaration (oname origin pos &optional x?)
   (if (or (equal origin "declaration")
-	  (typechecked-origin? oname origin libpath))
+	  (typechecked-origin? oname origin))
       (multiple-value-bind (object *containing-type* theory)
-	  (get-id-object-at oname origin pos libpath)
+	  (get-id-object-at oname origin pos)
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
 	      (let ((thname (format nil "~@[~a@~]~a"
@@ -136,24 +136,25 @@
 
 ;;; Called by Emacs - goto-declaration command
 
-(defun goto-declaration (oname origin pos &optional libpath)
-  (if (typechecked-origin? oname origin libpath)
-      (let* ((object (get-id-object-at oname origin pos libpath))
+(defun goto-declaration (oname origin pos)
+  (if (typechecked-origin? oname origin)
+      (let* ((object (get-id-object-at oname origin pos))
 	     (decl (get-decl-associated-with object)))
 	(when decl
 	  (pvs-locate (module decl) decl)))
       (pvs-message "~a has not been typechecked" oname)))
 
-(defun typechecked-origin? (name origin &optional libref)
+(defun typechecked-origin? (name origin)
+  "origin is one of the strings:
+ prelude, pvsio_prelude, prelude-theory, pvs, proof-status, tccs, ppe, or declaration"
   (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
 		:pvs)
-    ((ppe tccs) (get-theory name))
-    ((prelude prelude-theory) t)
-    (libref
-     (let ((libpath (get-library-reference libref)))
-       (and libpath
-	    (get-theory* name libpath))))
-    (t (typechecked-file? name))))
+    ((prelude pvsio_prelude prelude-theory) t)
+    (pvs (typechecked-file? name))
+    (proof-status t)
+    ((tccs ppe) (get-theory name))
+    (declaration t)
+    (t nil)))
 
 (defmethod get-decl-associated-with ((obj datatype-or-module))
   (pvs-message "The cursor is at the declaration for this identifier")
@@ -234,6 +235,7 @@ Returns a list of terms, from most specific to least."
   (with-pvs-file (name) fileref
     (multiple-value-bind (objects theories)
 	(get-syntactic-objects-for name "pvs")
+      (declare (ignore objects)) ;; for PVS files, it's just theories anyway
       (let ((theory (find-element-containing-pos theories pos1)))
 	(unless theory
 	  (pvs-error "Location error"
@@ -244,15 +246,15 @@ Returns a list of terms, from most specific to least."
 		theories))))
 	(when (or (equal pos1 pos2)
 		  (within-place pos2 (place theory)))
-	  (get-term-in-theory-at* objects theory pos1 pos2))))))
+	  (get-term-in-theory-at* theory pos1 pos2))))))
 
-(defun get-term-in-theory-at* (objects theory pos1 pos2)
+(defun get-term-in-theory-at* (theory pos1 pos2)
   (let* ((decls (all-decls theory))
 	 (decl (or (find-element-containing-pos decls pos1)
 		   (find-decl-after-pos decls pos1))))
     (if (or (equal pos1 pos2)
 	    (within-place pos2 (place decl)))
-	(get-object-in-declaration-at objects pos1 pos2)
+	(get-object-in-declaration-at decl pos1 pos2)
 	(let ((decl2 (find-element-containing-pos decls pos2)))
 	  (unless decl2
 	    (setq decl2
@@ -264,9 +266,9 @@ Returns a list of terms, from most specific to least."
 	      (when decl2
 		(list decl2)))))))
 
-(defun get-object-at (oname origin pos1 pos2 &optional libpath)
+(defun get-object-at (oname origin pos1 &optional (pos2 pos1))
   (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin libpath)
+      (get-syntactic-objects-for oname origin)
     (let ((theory (find-element-containing-pos theories pos1))
 	  (npos2 (or pos2 pos1)))
       (if (or (equal pos1 npos2)
@@ -282,8 +284,8 @@ Returns a list of terms, from most specific to least."
       (setq decl (find-decl-after-pos decls pos1)))
     (if (or (equal pos1 pos2)
 	    (within-place pos2 (place decl)))
-	(or decl
-	    (get-object-in-declaration-at objects pos1 pos2))
+	(or (get-object-in-declaration-at objects pos1 pos2)
+	    decl)
 	(let ((decl2 (find-element-containing-pos decls pos2)))
 	  (unless decl2
 	    (setq decl2
@@ -334,7 +336,6 @@ Returns a list of terms, from most specific to least."
 					(not (or exporting domain-tupletype arg-tuple-expr))))
 			    (or (place ex)
 				(typep ex '(or lambda-expr expr-as-type chained-branch))
-				
 				(break "Place not set"))
 			    (place ex)
 			    (within-place pos1 (place ex))
@@ -364,9 +365,9 @@ Returns a list of terms, from most specific to least."
 	       injection-application injection?-application
 	       extraction-application)))
 
-(defun get-id-object-at (oname origin pos &optional libpath)
+(defun get-id-object-at (oname origin pos)
   (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin libpath)
+      (get-syntactic-objects-for oname origin)
     (let ((containing-type nil)
 	  (object nil)
 	  (theory (find-element-containing-pos theories pos))
@@ -412,8 +413,8 @@ Returns a list of terms, from most specific to least."
 		 objects)
       (values object containing-type theory))))
 
-(defun get-syntactic-objects-for (name origin &optional libpath)
-  "Given a name, an origin, and a libath, returns two list values, depending
+(defun get-syntactic-objects-for (name origin)
+  "Given a name and an origin, returns two list values, depending
 on the origin:
  ppe:  name is a theoryref, returns ppe-form and theory
  tccs: name is a theoryref, returns tcc-form and theory
@@ -437,13 +438,8 @@ on the origin:
     (prelude-theory (let ((theory (get-theory name)))
 		      (when theory
 			(values theory (list theory)))))
-    (t (if libpath
-	   (let* ((thname (if (stringp name) (intern name :pvs) name))
-		  (theory (get-theory* thname libpath)))
-	     (assert theory)
-	     (values theory (list theory)))
-	   (let ((theories (typecheck-file name nil nil nil t)))
-	     (values theories theories))))))
+    (t (let ((theories (typecheck-file name nil nil nil t)))
+	 (values theories theories)))))
 
 ;;; PVS objects may be referenced by names of the form
 ;;;   lib/filename.ext?place=(...)#theory/decl
@@ -632,15 +628,15 @@ that the seach is incomplete."
 that identifier.  The search uses do-all-theories, which goes through the
 parsed or typechecked theories of the current context, imported libraries,
 and the prelude.  It returns a json string of the form, e.g.,
-[{\"declname\": \"product\",
-  \"type\": \"[[finite_set[T], [T -> R]] -> R]\",
-  \"theoryid\": \"finite_sets_product\",
-  \"filename\": \"/home/owre/pvs/lib/finite_sets/finite_sets_product.pvs\",
-  \"place\": [30,2,33,39],
-  \"decl-ppstring\": \"product(S, f): RECURSIVE R =
-  IF (empty?(S)) THEN one ELSE f(choose(S)) * product(rest(S), f) ENDIF
-   MEASURE (LAMBDA S, f: card(S))\"
-}]
+  [{\"declname\": \"product\",
+    \"type\": \"[[finite_set[T], [T -> R]] -> R]\",
+    \"theoryid\": \"finite_sets_product\",
+    \"filename\": \"/home/owre/pvs/lib/finite_sets/finite_sets_product.pvs\",
+    \"place\": [30,2,33,39],
+    \"decl-ppstring\": \"product(S, f): RECURSIVE R =
+    IF (empty?(S)) THEN one ELSE f(choose(S)) * product(rest(S), f) ENDIF
+     MEASURE (LAMBDA S, f: card(S))\"
+  }]
 
 Note that the place may be missing, for example, with TCCs.
 
@@ -655,7 +651,9 @@ difficult."
     (do-all-theories #'(lambda (th)
 			 (let ((decls (get-find-declaration-info id th)))
 			   (setq declarations (append decls declarations)))))
-    declarations))
+    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	   (fdecl-string (json:encode-json-to-string declarations)))
+      fdecl-string)))
 
 ;; (defun get-declaration-at (fileref pos)
 ;;   "fileref is a reference, relative to the current-context, with extension
@@ -692,11 +690,11 @@ difficult."
 
 ;;; Called by Emacs - whereis-declaration-used command
 
-(defun whereis-declaration-used (oname origin pos &optional x? libpath)
+(defun whereis-declaration-used (oname origin pos &optional x?)
   (declare (ignore x?))
   (if (or (equal origin "Declaration")
-	  (typechecked-origin? oname origin libpath))
-      (let* ((object (get-id-object-at oname origin pos libpath))
+	  (typechecked-origin? oname origin))
+      (let* ((object (get-object-at oname origin pos))
 	     (decl (if (typep object '(or declaration importing))
 		       object
 		       (get-decl-associated-with object))))
@@ -708,11 +706,7 @@ difficult."
 			 (nconc
 			  (mapcan
 			      #'(lambda (d)
-				  (when (memq decl
-					      (if (typep d 'declaration)
-						  (unless (generated-by d)
-						    (refers-to d))
-						  (collect-references d)))
+				  (when (visibly-refers-to? d decl)
 				    (list (json-decl-list d (ptype-of d) th))))
 			    (all-decls th))
 			  declarations))))
@@ -722,6 +716,23 @@ difficult."
 	    (pvs-message "Could not find associated declaration")))
       (pvs-message "~a is not typechecked" oname)))
 
+(defun visibly-refers-to? (obj decl)
+  "Returns true if obj visibly refers to decl, i.e., the reference has a
+place set."
+  (and (memq decl
+	     (if (typep obj 'declaration)
+		 (unless (generated-by obj)
+		   (refers-to obj))
+		 (collect-references obj)))
+       (let ((foundit nil))
+	 (mapobject #'(lambda (ex)
+			(or foundit
+			    (not (place ex))
+			    (and (name? ex)
+				 (eq (declaration ex) decl)
+				 (setq foundit ex))))
+		    obj)
+	 foundit)))
 
 (defun whereis-identifier-used (string)
   (let ((declarations nil)
