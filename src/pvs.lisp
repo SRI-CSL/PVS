@@ -291,7 +291,7 @@
 		   :dont-load-prelude-libraries dont-load-prelude-libraries))
 
 (defun clear-workspace (&optional workspace
-			  &key delete-binfiles dont-load-prelude-libraries)
+			&key delete-binfiles dont-load-prelude-libraries)
   "Clears the given workspace, or the current workspace if nil, and all
 workspaces if t or 'all.  Roughly speaking, it's in the state of a workspace
 at the start of a PVS session.
@@ -299,8 +299,10 @@ at the start of a PVS session.
 Clearing a workspace saves the .pvscontext file if needed, initializes the
 workspace-session instance, removes binfiles if delete-binfiles is not nil,
 loads .pvscontext, and any prelude library extensions in the .pvscontext
-(see load-prelude-libraries), unless dont-load-prelude-libraries is not
+ (see load-prelude-libraries), unless dont-load-prelude-libraries is not
 nil."
+  (let ((*dont-write-object-files* t))
+    (save-context))
   (reset-typecheck-caches)
   (setq *circular-file-dependencies* nil)
   (let ((workspaces (cond ((memq workspace '(all :all t))
@@ -318,6 +320,7 @@ nil."
 		 (every #'stringp (pvs-context-libraries)))
 	;; May need to make sure a later ws isn't a prelude-library
 	(load-prelude-libraries (prelude-libs ws)))
+      ;;(setf (pvs-context ws) nil)
       (when delete-binfiles
 	(let ((bindir (format nil "~a/~a" (path ws) *pvsbin-string*)))
 	  (dolist (bf (uiop:directory-files bindir "*.bin"))
@@ -328,8 +331,6 @@ nil."
   (with-workspace ws
     (clrhash (current-pvs-files))
     (clrhash (current-pvs-theories))))
-    
-  
 
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
@@ -531,7 +532,7 @@ nil."
   (if (file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
       (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*))
 	(read vers))
-      (t *pvs-version*)))
+      *pvs-version*))
 
 (defun write-pvs-version-file ()
   (when (file-exists-p (format nil "~a/.git" *pvs-path*))
@@ -582,6 +583,7 @@ pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
   (with-pvs-file (filename) fileref
+    (assert (current-pvs-context))
     (let* ((*current-file* filename)
 	   (file (make-specpath filename))
 	   (theories (get-theories file)))
@@ -611,6 +613,8 @@ use binfiles."
 	     (let ((theories (get-theories filename)))
 	       (dolist (th theories)
 		 (remove-associated-buffers (id th)))
+	       ;; (assert (parsed-file? filename))
+	       ;; (assert (every #'parsed? theories))
 	       (values theories t)))
 	    ((adt-generated-file? filename)
 	     (let* ((fe (get-context-file-entry filename))
@@ -708,6 +712,8 @@ use binfiles."
       (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
       #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
 				new-theories))
+      ;; (assert (parsed-file? filename))
+      ;; (assert (every #'parsed? theories))
       (values (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)
 	      changed))))
 
@@ -1018,7 +1024,7 @@ use binfiles."
 	(if (and oth (memq 'typechecked (status oth)))
 	    (let* ((*current-context* (saved-context oth))
 		   (diff (or forced? (compare oth nth))))
-	      ;;; diff is nil, t, or (odecl . ndecl)
+	      ;;; diff is nil, t, (odecl . ndecl), or (nil . ndecl)
 	      (cond ((null diff)
 		     (setq kept? t)
 		     (copy-lex oth nth))
@@ -1152,7 +1158,7 @@ use binfiles."
 				(remove oth oldtheories) (cdr new-theories)
 				forced?
 				(cons (if kept? oth nth) result)
-				(if changed? (cons oth changed) changed)))))
+				(if changed? (cons (if kept? oth nth) changed) changed)))))
 
 
 (defun untypecheck-usedbys (theory)
@@ -1362,8 +1368,8 @@ use binfiles."
 	  ;; (unwind-protect (typecheck theory)
 	  ;;   (reset-subst-mod-params-cache))
 	  (assert (saved-context theory))
-	  (assert (typechecked? theory) nil
-		  "Theory ~a not typechecked?" (id theory))
+	  ;; (assert (typechecked? theory) nil
+	  ;; 	  "Theory ~a not typechecked?" (id theory))
 	  (restore-from-context filename theory all-proofs)
 	  (set-default-proofs theory)
 	  ;;	(when (and *prove-tccs* (module? theory))
@@ -2262,9 +2268,10 @@ Note that even proved ones get overwritten"
 		    importings)))))
 
 (defmethod typechecked? ((theoryref string))
-  (let ((theory (get-theory (pc-parse theoryref 'modname))))
-    (and theory
-	 (typechecked? theory))))
+  (with-pvs-file (fname thname) theoryref
+    (let ((theory (get-theory (pc-parse (or thname fname) 'modname))))
+      (and theory
+	   (typechecked? theory)))))
 
 (defmethod typechecked? ((imp importing))
   (saved-context imp))
@@ -3105,7 +3112,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 		 0))
 	(*from-buffer* "Proof")
 	(err (format nil "~a - ~s" (or msg "Proof syntax error") subexpr)))
-    (pvs-error "Proof error" err
+    (pvs-error "Proof syntax error" err
 	       "Proof" (pos-to-place pos sexpr))
     nil))
 
@@ -3268,10 +3275,12 @@ If formname is nil, then formref should resolve to a unique formula name."
 
 (defun get-parsed-theory (theoryref &optional quiet? typecheck?)
   "Get a parsed theory corresponding to the theoryref.  First checks if the
-theory is already parsed, and returns it if so.  Then tries to find a unique
-file containing a theory matching theoryref, parses it, and returns the
-contained theory.  If quiet? is nil then errors are signaled, otherwise
-errors are quietly ignored, and nil is returned in that case."
+corresponding file still exists, as the user may have (re)moved it; some
+cleanup follows in this case.  Then checks if the theory is already parsed,
+and returns it if so.  Else tries to find a unique file containing a theory
+matching theoryref, parses it, and returns the contained theory.  If quiet?
+is nil then errors are signaled, otherwise errors are quietly ignored, and
+nil is returned in that case."
   (let ((mod (get-theory theoryref)))
     (when (and mod
 	       (filename mod)
@@ -3281,6 +3290,7 @@ errors are quietly ignored, and nil is returned in that case."
       (remhash (filename mod) (current-pvs-files))
       (remhash (id mod) (current-pvs-theories))
       (delete-file-from-workspace (filename mod))
+      (setf (resolutions theoryref) nil)
       (setq mod nil))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
@@ -3296,8 +3306,15 @@ errors are quietly ignored, and nil is returned in that case."
 	     (unless lth (break "no lth?"))
 	     lth))
 	  ((and mod (filename mod))
-	   (parse-file (filename mod) nil t typecheck?)
-	   (get-theory theoryref))
+	   (assert (not (parsed? mod)))
+	   (let* ((theories (parse-file (filename mod) nil t typecheck?))
+		  (th (find (id mod) theories :key #'id)))
+	     (assert th)
+	     (when (and (resolution theoryref)
+			(not (eq th mod)))
+	       (setf (declaration (resolution theoryref)) th))
+	     (assert (eq (get-theory theoryref) th))
+	     th))
 	  (t (let ((filename (context-file-of theoryref)))
 	       (if (and filename (file-exists-p (make-specpath filename)))
 		   (parse-file filename nil quiet? typecheck?)
@@ -3374,7 +3391,10 @@ errors are quietly ignored, and nil is returned in that case."
 
 (defmethod get-typechecked-theory ((th datatype-or-module) &optional theories quiet?)
   (declare (ignore theories quiet?))
-  th)
+  (if (typechecked? th)
+      th
+      (let ((theories (typecheck-file (filename th))))
+	(car (member (id th) theories :key #'id :test #'string=)))))
 
 (defmethod get-typechecked-theory ((theoryref string) &optional theories quiet?)
   "Theoryref may be a URI of the form [pvsfile '#'] thname"
