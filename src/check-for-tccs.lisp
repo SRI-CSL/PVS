@@ -252,7 +252,7 @@
 			     (list stype)))
 	    (etype (or (car subst-types) subst-type)))
        (assert (fully-instantiated? etype))
-       (check-for-tccs* (expr rhs) etype)
+       (set-type (expr rhs) etype)
        (when (definition (declaration lhs))
 	 (assert (def-axiom (declaration lhs)))
 	 (let* ((lname-expr (mk-name-expr lhs))
