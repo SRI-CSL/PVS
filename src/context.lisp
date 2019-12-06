@@ -248,8 +248,7 @@ again during the same PVS session, it will be exactly as you left it."
 	  (setq *default-pathname-defaults* dir)
 	  (push *workspace-session* *workspace-stack*)
 	  (setq *workspace-session* next-ws)
-	  (unless (pvs-context *workspace-session*)
-	    (restore-context))          ;; load it
+	  (restore-context)          ;; load it
 	  (when (write-permission?)
 	    (copy-auto-saved-proofs-to-orphan-file))
 	  (pvs-message "Context changed to ~a"
@@ -949,77 +948,77 @@ declaration-entry has slots
 			   (working-directory))
 	       (file-equal *default-pathname-defaults*
 			   (current-context-path))))
-  (let ((ctx-file (merge-pathnames *context-name*)))
-    (if (file-exists-p ctx-file)
-	(handler-case
-	    (let ((context
-		   (if (with-open-file (in ctx-file)
-			 (and (char= (read-char in) #\()
-			      (char= (read-char in) #\")))
-		       (with-open-file (in ctx-file) (read in))
-		       (fetch-object-from-file ctx-file))))
-	      (setf (cdddr context)
-		    (remove-duplicates (cdddr context) :key #'ce-file :test #'equal
-				       :from-end t))
-	      (dolist (ce (cdddr context))
-		(let ((ndeps (remove-if-not #'(lambda (dep)
-						(file-exists-p (make-specpath dep)))
-			       (ce-dependencies ce))))
-		  (unless (equal ndeps (ce-dependencies ce))
-		    (pvs-message "PVS context has bad deps: ~a"
-		      (remove-if #'file-exists-p (ce-dependencies ce)))
-		    (break "check this")
-		    (setf (ce-dependencies ce) nil)
-		    (setf (ce-object-date ce) nil)
-		    (setf (ce-theories ce) nil))))
-	      (cond ((duplicate-theory-entries?)
-		     (pvs-message "PVS context has duplicate entries - resetting")
-		     (setf (pvs-context *workspace-session*) (list *pvs-version*))
-		     (write-context))
-		    (t ;;(same-major-version-number (car context) *pvs-version*)
-		     ;; Hopefully we are backward compatible between versions
-		     ;; 3 and 4.
-		     (assert (every #'(lambda (ce)
-					(file-exists-p (make-specpath (ce-file ce))))
-				    (pvs-context-entries context)))
-		     (setf (pvs-context *workspace-session*) context)
-		     (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-		     (setf (cadr (current-pvs-context))
-			   (delete "PVSio/"
-				   (delete "Manip/"
-					   (delete "Field/" (cadr (current-pvs-context))
-						   :test #'string=)
-					   :test #'string=)
-				   :test #'string=))
-		     (cond ((and (listp (cadr context))
-				 (listp (caddr context))
-				 (every #'context-entry-p (cdddr context)))
-			    (load-prelude-libraries (cadr context))
-			    (setq *default-decision-procedure*
-				  (or (when (listp (caddr context))
-					(getf (caddr context)
-					      :default-decision-procedure))
-				      'shostak))
-			    (dolist (ce (cdddr context))
-			      (unless (listp (ce-object-date ce))
-				(setf (ce-object-date ce) nil))))
-			   ((every #'context-entry-p (cdr context))
-			    (setf (pvs-context *workspace-session*)
-				  (cons (car (current-pvs-context))
-					(cons nil
-					      (cons nil (cdr (current-pvs-context)))))))
-			   (t (pvs-message "PVS context is not quite right ~
-                                      - resetting")
+  (unless (current-pvs-context)
+    (let ((ctx-file (merge-pathnames *context-name*)))
+      (if (file-exists-p ctx-file)
+	  (handler-case
+	      (let ((context
+		     (if (with-open-file (in ctx-file)
+			   (and (char= (read-char in) #\()
+				(char= (read-char in) #\")))
+			 (with-open-file (in ctx-file) (read in))
+			 (fetch-object-from-file ctx-file))))
+		(setf (cdddr context)
+		      (remove-duplicates (cdddr context) :key #'ce-file :test #'equal
+					 :from-end t))
+		(dolist (ce (cdddr context))
+		  (let ((ndeps (remove-if-not #'(lambda (dep)
+						  (file-exists-p (make-specpath dep)))
+				 (ce-dependencies ce))))
+		    (unless (equal ndeps (ce-dependencies ce))
+		      (pvs-message "PVS context has bad deps: ~a"
+			(remove-if #'file-exists-p (ce-dependencies ce)))
+		      (setf (ce-dependencies ce) nil)
+		      (setf (ce-object-date ce) nil)
+		      (setf (ce-theories ce) nil))))
+		(cond ((duplicate-theory-entries?)
+		       (pvs-message "PVS context has duplicate entries - resetting")
+		       (setf (pvs-context *workspace-session*) (list *pvs-version*))
+		       (write-context))
+		      (t ;;(same-major-version-number (car context) *pvs-version*)
+		       ;; Hopefully we are backward compatible between versions
+		       ;; 3 and 4.
+		       (assert (every #'(lambda (ce)
+					  (file-exists-p (make-specpath (ce-file ce))))
+				      (pvs-context-entries context)))
+		       (setf (pvs-context *workspace-session*) context)
+		       (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+		       (setf (cadr (current-pvs-context))
+			     (delete "PVSio/"
+				     (delete "Manip/"
+					     (delete "Field/" (cadr (current-pvs-context))
+						     :test #'string=)
+					     :test #'string=)
+				     :test #'string=))
+		       (cond ((and (listp (cadr context))
+				   (listp (caddr context))
+				   (every #'context-entry-p (cdddr context)))
+			      (load-prelude-libraries (cadr context))
+			      (setq *default-decision-procedure*
+				    (or (when (listp (caddr context))
+					  (getf (caddr context)
+						:default-decision-procedure))
+					'shostak))
+			      (dolist (ce (cdddr context))
+				(unless (listp (ce-object-date ce))
+				  (setf (ce-object-date ce) nil))))
+			     ((every #'context-entry-p (cdr context))
 			      (setf (pvs-context *workspace-session*)
-				    (list *pvs-version*))))))
-	      (assert (not (duplicates? (pvs-context-entries) :key #'ce-file))))
-	  (file-error (err)
-	    (pvs-message "PVS context problem - resetting")
-	    (pvs-log "  ~a" err)
-	    (setf (pvs-context *workspace-session*) (list *pvs-version*))
-	    (write-context)))
-	(setf (pvs-context *workspace-session*) (list *pvs-version*))))
-  nil)
+				    (cons (car (current-pvs-context))
+					  (cons nil
+						(cons nil (cdr (current-pvs-context)))))))
+			     (t (pvs-message "PVS context is not quite right ~
+                                      - resetting")
+				(setf (pvs-context *workspace-session*)
+				      (list *pvs-version*))))))
+		(assert (not (duplicates? (pvs-context-entries) :key #'ce-file))))
+	    (file-error (err)
+	      (pvs-message "PVS context problem - resetting")
+	      (pvs-log "  ~a" err)
+	      (setf (pvs-context *workspace-session*) (list *pvs-version*))
+	      (write-context)))
+	  (setf (pvs-context *workspace-session*) (list *pvs-version*))))
+    nil))
 
 (defun duplicate-theory-entries? ()
   (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=))
@@ -1095,7 +1094,7 @@ declaration-entry has slots
 	(remove-if #'importing-param? (formals theory)))
   ;;(generate-xref theory)
   ;;(reset-restored-types theory)
-  (unless nil ;(valid-proofs-file (filename theory))
+  (unless (valid-proofs-file (filename theory))
     (let ((*current-context* (saved-context theory)))
       (assert *current-context*)
       (restore-from-context (filename theory) theory)))
@@ -3068,27 +3067,26 @@ each context, the theories are in alphabetic order."
   "Checks that the file write date is after the spec write date, and matches
 the ce-object-date for each theory in the file.  Note that each theory has a
 binfile, not the filename."
-  (when (ce-object-date ce)
+  (when (listp (ce-object-date ce))
     (let* ((filename (ce-file ce))
 	   (spec-file (make-specpath filename))
 	   (file-info (get-file-info spec-file))
 	   (checked (member file-info *binfiles-checked* :test #'equal)))
       (or checked
-       (let* ((spec-date (file-write-time spec-file))
-	      (expected-spec-date (ce-write-date ce))
-	      (expected-bin-date (cdr (assq theory-id (ce-object-date ce))))
-	      (spec-ok? (and spec-date
-			     expected-spec-date
-			     (= spec-date expected-spec-date)))
-	      (ok? (when spec-ok?
-		     (let ((bin-date (file-write-time (make-binpath theory-id))))
-		       (and bin-date
-			    expected-bin-date
-			    (= bin-date expected-bin-date)
-			    (<= spec-date bin-date))))))
-	 ;;(unless ok? (break "Not ok?"))
-	 (when ok? (push file-info *binfiles-checked*))
-	 ok?)))))
+	  (let* ((spec-date (file-write-time spec-file))
+		 (expected-spec-date (ce-write-date ce))
+		 (expected-bin-date (cdr (assq theory-id (ce-object-date ce))))
+		 (spec-ok? (and spec-date
+				expected-spec-date
+				(= spec-date expected-spec-date)))
+		 (ok? (when spec-ok?
+			(let ((bin-date (file-write-time (make-binpath theory-id))))
+			  (and bin-date
+			       expected-bin-date
+			       (= bin-date expected-bin-date)
+			       (<= spec-date bin-date))))))
+	    (when ok? (push file-info *binfiles-checked*))
+	    ok?)))))
 
 (defun remove-binfiles ()
   (dolist (file (directory "pvsbin/"))
