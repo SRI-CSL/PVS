@@ -732,7 +732,7 @@
 			      bind-alist substs)
 		      asubsts))
 		(match* (car acts1) (car acts2) bind-alist substs))
-	    formals
+	    (cdr formals)
 	    postypes))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
