@@ -466,7 +466,6 @@ the prove command."
 	 (file (cadr (assoc theoryname pvs-theories))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
-    (setq xxx (format "(show-theory-messages \"%s#%s\")" file theoryname))
     (pvs-send-and-wait (format "(show-theory-messages \"%s#%s\")" file theoryname) nil
 		       (pvs-get-abbreviation 'show-theory-warnings)
 		       'dont-care)))
