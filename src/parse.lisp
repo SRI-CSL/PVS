@@ -103,9 +103,11 @@
 	     (values (car args) (cadr args))))
     (if found
 	(format nil "Found '~A' when expecting '~A'~
+                     ~:[~;~%  Note: May need a ';' before declaring an infix operator~]~
                      ~@[~%  Note: '~a' is now a keyword~]~
                      ~@[~%  Note: '~a' is only allowed in theory declarations (not importings)~]"
 	  found expected
+	  (string= found ":")
 	  (when (string= found "AS") found)
 	  (when (and (member found '("::=" "=") :test #'string=)
 		     ;; Check that ':=' is expected

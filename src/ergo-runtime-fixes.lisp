@@ -674,7 +674,9 @@ with the comment so as to put it in the proper place")
 	(do-syntax-error formatstr
 	  first
 	  (parse-error-list-string
-	   (mapcar #'(lambda (x) (car x)) fs-list))
+	   (if (> (length fs-list) 100)
+	       (list 'EXPR)
+	       (mapcar #'(lambda (x) (car x)) fs-list)))
 	  place)
 	(multiple-value-bind (second name place) (peek-second)
 	  (declare (ignore name))
