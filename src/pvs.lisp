@@ -3297,6 +3297,8 @@ nil is returned in that case."
 	  ((and mod
 		(parsed? mod)
 		(or (not (lib-datatype-or-theory? mod))
+		    (member (context-path mod) (current-prelude-libraries)
+			    :test #'uiop:pathname-equal)
 		    (and (name? theoryref)
 			 (library theoryref))))
 	   mod)
