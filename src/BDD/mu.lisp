@@ -1363,14 +1363,13 @@ time).  Verbose? set to T provides more information."
     *build-mu-term* *build-access-var* *build-rel-var* *build-arguments*)
   (let ((bvarname (if (stringp bvarid) bvarid (format nil "b~d" bvarid))))
     (if (and *build-rel-var* (not *build-access-var*)) 
-	(mu-mk-rel-var-dcl  bvarname)
+	(mu-mk-rel-var-dcl bvarname)
 	(if *build-access-var* 
 	    (mu-check-bool-var bvarname)
 	    (mu-make-bool-var bvarname)))))
 
 (defun mu-mk-rel-var (bvarname)
-  (mu_mk_rel_var_ Ip
-		  #+allegro (ff:string-to-char* bvarname)
+  (mu_mk_rel_var_ #+allegro (ff:string-to-char* bvarname)
 		  #-allegro bvarname))
 
 (defun mu-mk-rel-var-dcl (bvarname)
@@ -1383,9 +1382,7 @@ time).  Verbose? set to T provides more information."
 
 (defun mu-make-bool-var (bvarname)
   (if *build-mu-term*
-      (mu_mk_rel_var_ Ip
-		      #+allegro (ff:string-to-char* bvarname)
-		      #-allegro bvarname)
+      (mu-mk-rel-var bvarname)
       (mu_check_mk_bool_var #+allegro (ff:string-to-char* bvarname)
 			    #-allegro bvarname)
       ))
