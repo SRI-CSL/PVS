@@ -28,7 +28,7 @@
 ;;;  Formula  ;;;
 ;;;;;;;;;;;;;;;;;
 
-(ff:def-foreign-variable Ip)
+;;(ff:def-foreign-variable Ip)
 
 ;;; Formula mu_mk_false_formula (void)
 (ff:def-foreign-call (mu_mk_false_formula "mu___mu_mk_false_formula")
@@ -205,7 +205,7 @@
   :arg-checking nil
   :call-direct t
   :returning :unsigned-int)
-;;; Term  mu_mk_rel_var_ (R_Interpret Ip, char *name)
+;;; Term  mu_mk_rel_var_ (char *name)
 (ff:def-foreign-call (mu_mk_true_term "mu___mu_mk_true_term")
     (:void)
   :strings-convert nil
