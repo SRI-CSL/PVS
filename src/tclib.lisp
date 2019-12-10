@@ -377,7 +377,8 @@ lib-path, along with modification dates."
 	   (lisp-files-loaded (load-pvs-lib-lisp-file lib-path force?))
 	   (emacs-files-loaded (load-pvs-lib-emacs-file lib-path force?)))
       (when pvs-files-loaded
-	(push lib-path (current-prelude-libraries)))
+	(pushnew lib-path (current-prelude-libraries)
+		 :test #'uiop:pathname-equal))
       (if (or pvs-files-loaded
 	      lisp-files-loaded
 	      emacs-files-loaded)
