@@ -224,7 +224,8 @@ if called."
 ;;String literals are translated directly to strings. 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
   (declare (ignore bindings livevars))
-  (string-value expr)
+  (let ((str (string-value expr)))
+    `(pvs2cl_record (length ,str) ,str))
   ;;(concatenate 'string "\"" (string-value expr) "\"")
   )
   
@@ -2160,10 +2161,7 @@ if called."
 (defmethod pvs2cl-lisp-type* ((type cotupletype))
   nil)
 
-(defmethod pvs2cl-lisp-type*  ((type recordtype))
-  (if (string-type? type)
-      'string
-      '(simple-array t)))
+(defmethod pvs2cl-lisp-type*  ((type recordtype)) '(simple-array t))
 
 (defun subrange-index (type)
   (let ((below (simple-below? type)))
