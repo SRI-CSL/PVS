@@ -2232,8 +2232,9 @@
 			     (pvs2ir-type* range new-tbinding)))))
 
 (defmethod pvs2ir-type* ((type recordtype) tbinding)
-  (let ((fields (sort-fields (fields type))))
-    (mk-ir-recordtype (pvs2ir-type* fields tbinding))))
+  (with-slots (fields) type
+    (let* ((sfields (sort-fields fields (dependent-fields? fields))))
+      (mk-ir-recordtype (pvs2ir-type* sfields tbinding)))))
 
 (defmethod pvs2ir-type* ((type field-decl) tbinding)
   (mk-ir-fieldtype (id type)(pvs2ir-type* (type type) tbinding)))
@@ -2441,6 +2442,10 @@
 		(pvs2ir-freevars* (cdr ir-expr))
 		:test #'tc-eq))
 	(t nil)))
+
+(defmethod pvs2ir-freevars* ((ir-expr ir-release))
+  (with-slots (ir-body) ir-expr
+    (pvs2ir-freevars* ir-body)))
 
 (defmethod pvs2ir-freevars* ((ir-expr t))
   nil)
