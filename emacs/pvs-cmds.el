@@ -441,7 +441,7 @@ the prove command."
   (pvs-bury-output)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cdr (assoc theoryname pvs-theories))))
+	 (file (cadr (assoc theoryname pvs-theories))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(show-theory-warnings \"%s#%s\")" file theoryname) nil
@@ -463,7 +463,7 @@ the prove command."
   (pvs-bury-output)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cdr (assoc theoryname pvs-theories))))
+	 (file (cadr (assoc theoryname pvs-theories))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(show-theory-messages \"%s#%s\")" file theoryname) nil

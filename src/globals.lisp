@@ -69,7 +69,7 @@ in util.lisp")
 
 (defparameter *pvs-directories*
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
-    "src/utils" "BDD" "src/interface" "src/ics-interface"
+    "src/utils" "src/BDD" "src/interface" "src/ics-interface"
     "src/WS1S/lisp" "src/abstraction" "src/ground-prover" "src/groundeval"
     "src/PVSio" "src/inst-by-unif" "src/Field" "src/Manip" "src/ProofLite"
     "src/rahd" "src/cl-json/src"))

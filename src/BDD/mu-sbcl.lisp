@@ -23,7 +23,7 @@
 ;;;  Formula  ;;;
 ;;;;;;;;;;;;;;;;;
 
-(sb-alien:define-alien-variable ("Ip" Ip) (integer 32))
+;;(sb-alien:define-alien-variable ("Ip" Ip) (integer 32))
 
 ;;; Formula mu_mk_false_formula (void)
 (sb-alien:define-alien-routine ("mu___mu_mk_false_formula" mu_mk_false_formula)
@@ -146,10 +146,9 @@
 (sb-alien:define-alien-routine ("mu___mu_mk_rel_var_dcl" mu_mk_rel_var_dcl)
 			       (* t)
   (name sb-alien:c-string))
-;;; Term mu_mk_rel_var_ (R_Interpret Ip, char *name)
+;;; Term mu_mk_rel_var_ (char *name)
 (sb-alien:define-alien-routine ("mu___mu_mk_rel_var_" mu_mk_rel_var_)
 			       (* t)
-  (Ip (* t))	       	       
   (name sb-alien:c-string))
 ;;; Term mu_mk_true_term (void)
 (sb-alien:define-alien-routine ("mu___mu_mk_true_term" mu_mk_true_term)
