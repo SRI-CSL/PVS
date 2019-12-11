@@ -53,4 +53,4 @@ found for libref."
 	      (push ws *all-workspace-sessions*)
 	      ws))
 	(pvs-error "Library reference error"
-	  (fornat nil "Path for ~a not found" libref)))))
+	  (format nil "Path for ~a not found" libref)))))
