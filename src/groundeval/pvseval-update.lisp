@@ -223,11 +223,14 @@ if called."
 
 ;;String literals are translated directly to strings. 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
-  (declare (ignore bindings livevars))
-  (let ((str (string-value expr)))
-    `(pvs2cl_record (length ,str) ,str))
-  ;;(concatenate 'string "\"" (string-value expr) "\"")
-  )
+  (call-next-method))
+;;gave up on this: strings are treated like any other finseq.  
+  ;; (declare (ignore bindings livevars))
+  ;; (let ((str (string-value expr)))
+  ;;   `(pvs2cl_record (length ,str) ,str))
+  ;; ;;(concatenate 'string "\"" (string-value expr) "\"")
+
+
   
 (defun pvs2cl-operator2 (op actuals arguments def-formals livevars bindings)
   (declare (ignore bindings))

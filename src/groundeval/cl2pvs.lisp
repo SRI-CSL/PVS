@@ -237,10 +237,11 @@
 
 (defun cl2pvs*-char (expr type context)
   (declare (ignore type context))
-  (assert (standard-char-p expr))
-  (make-instance 'application
-		 'operator (make-instance 'constructor-name-expr 'id '|char|)
-		 'argument (make-instance 'number-expr 'number (char-code expr))))
+  (with-slots (code) expr
+    ;(assert (standard-char-p code))
+    (make-instance 'application
+		   'operator (make-instance 'constructor-name-expr 'id '|char|)
+		   'argument (make-instance 'number-expr 'number code))))
 
 (defun cl2pvs*-list (exprs eltype context)  
   (if exprs
