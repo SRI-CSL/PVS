@@ -165,6 +165,92 @@
   size
   elemtype);later on, we could add an offset
 
+(defcl constructor-eval-info (eval-info)
+  ctype)
+
+(defcl accessor-eval-info (eval-info)
+  update-cdefn)
+
+(defcl formal-const-eval-info (eval-info)
+  )
+
+(defcl ir-defn ()
+  ir-function-name
+  ir-args
+  ir-return-type
+  ir-defn)
+
+(defcl ir-constructor-defn (ir-defn)
+  ir-constructor-type)
+
+(defcl ir-accessor-defn (ir-defn)
+  ir-update-defn) ;this slot is itself an ir-defn
+
+(defcl ir-formal-const-defn (ir-defn))
+
+(defcl ir-last (ir-expr)
+  ir-var)
+
+(defcl ir-release (ir-expr) ;;these are the variables that should be freed on the then/else branches
+  pre-ir-vars
+  post-ir-vars
+  ir-body)
+
+(defcl if-instr ()
+  if-cond
+  then-instr
+  else-instr)
+
+(defcl for-instr ()
+  for-index
+  for-body)
+
+(defcl c-defn-info ()
+  op-name
+  op-arg-types
+  op-return-type
+  op-header
+  op-defn)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcl simple-c-type-info ()
+  ir-texpr tname tdefn act-defn);act-defn is the type for the actual for this type.
+
+(defcl closure-c-type-info  (simple-c-type-info)
+  tdecl
+  ftable-type-defn
+  release-info
+  hash-entry-type-defn
+  hash-type-defn
+  copy-info
+  lookup-info
+  dupdate-info
+  update-info)
+
+
+(defcl c-type-info (simple-c-type-info)
+  new-info
+  release-info
+  copy-info
+  equal-info
+  update-info)
+
+
+(defcl c-closure-info ()
+  ir-lambda-expr
+  tname
+  tdecl
+  tdefn
+  fdefn
+  mdefn
+  hdefn
+  new-info
+  release-info
+  copy-info)
+
+(defcl ir-actual-info ()
+  ir-actual-type-defn
+  ir-actual-fun-defn)
+
 ;;other types are char, bool, int32_t, int64_t, uint32_t, uint64_t, mpi, and mpz
 ;;we'll add floats later on.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -354,31 +440,6 @@
 		 :ir-type-name name))
 
 
-(defcl constructor-eval-info (eval-info)
-  ctype)
-
-(defcl accessor-eval-info (eval-info)
-  update-cdefn)
-
-(defcl formal-const-eval-info (eval-info)
-  )
-
-(defcl ir-defn ()
-  ir-function-name
-  ir-args
-  ir-return-type
-  ir-defn)
-
-(defcl ir-constructor-defn (ir-defn)
-  ir-constructor-type)
-
-(defcl ir-accessor-defn (ir-defn)
-  ir-update-defn) ;this slot is itself an ir-defn
-
-(defcl ir-formal-const-defn (ir-defn))
-
-(defcl ir-last (ir-expr)
-  ir-var)
 
 (defun mk-ir-variable (ir-name ir-type)
 ;  (when (not ir-type) (break "mk-ir-variable"))
@@ -2360,10 +2421,6 @@
   (with-slots (ir-var) ir-expr
   `(last ,(print-ir ir-var))))
 
-(defcl ir-release (ir-expr) ;;these are the variables that should be freed on the then/else branches
-  pre-ir-vars
-  post-ir-vars
-  ir-body)
 
 (defun mk-ir-release (pre-ir-vars post-ir-vars ir-body)
   (make-instance 'ir-release
@@ -2766,20 +2823,11 @@
   ;(when (null return-type) (break "ir2c"))
     (ir2c* ir-expr 'result (ir2c-type return-type)))
 
-(defcl if-instr ()
-  if-cond
-  then-instr
-  else-instr)
-
 (defun mk-if-instr (if-cond then-instr else-instr)
   (make-instance 'if-instr
 		 :if-cond if-cond
 		 :then-instr then-instr
 		 :else-instr else-instr))
-
-(defcl for-instr ()
-  for-index
-  for-body)
 
 (defun mk-for-instr (for-index for-body)
   (make-instance 'for-instr
@@ -5051,12 +5099,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;process a type into its C definition relative to *c-type-info-table*
 
-(defcl c-defn-info ()
-  op-name
-  op-arg-types
-  op-return-type
-  op-header
-  op-defn)
 
 (defun mk-c-defn-info (op-name op-header op-defn &optional op-arg-types op-return-type)
   (make-instance 'c-defn-info
@@ -5067,40 +5109,6 @@
 		 :op-defn op-defn))
 
 
-(defcl simple-c-type-info ()
-  ir-texpr tname tdefn act-defn);act-defn is the type for the actual for this type.
-
-(defcl closure-c-type-info  (simple-c-type-info)
-  tdecl
-  ftable-type-defn
-  release-info
-  hash-entry-type-defn
-  hash-type-defn
-  copy-info
-  lookup-info
-  dupdate-info
-  update-info)
-
-
-(defcl c-type-info (simple-c-type-info)
-  new-info
-  release-info
-  copy-info
-  equal-info
-  update-info)
-
-
-(defcl c-closure-info ()
-  ir-lambda-expr
-  tname
-  tdecl
-  tdefn
-  fdefn
-  mdefn
-  hdefn
-  new-info
-  release-info
-  copy-info)
 
 (defvar *c-type-info-table* nil) ;;a list of c-type-info
 (defvar *ir-type-info-table* nil) ;;a list of ir-typenames/doesn't seem to be used
@@ -5725,10 +5733,6 @@
      (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info copy-info equal-info update-info)
      *pvs2c-current-decl*)
     type-name-root))
-
-(defcl ir-actual-info ()
-  ir-actual-type-defn
-  ir-actual-fun-defn)
 
 (defun mk-ir-actual-info (type-defn fun-defn)
   (make-instance 'ir-actual-info
