@@ -1554,8 +1554,7 @@ all-subst-mod-params-caches.  It does this by resetting this in
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil))))
-    (set-type rtype nil);;NSH(12/16/19): changed (declared-type decl) to rtype
-					; misses TCC generation o.w
+    (set-type (declared-type decl) nil)
     (assert (fully-instantiated? (declared-type decl)))
     (assert (fully-instantiated? rtype))
     (setf (type decl)
@@ -2437,7 +2436,7 @@ The dependent types are created only when needed."
 	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil))))
-    (set-type rtype nil);;NSH(12/17/19): same fix as const-decl/def-decl
+    (set-type (declared-type decl) nil)
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
     (check-duplication decl)
