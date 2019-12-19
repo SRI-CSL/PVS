@@ -2421,7 +2421,6 @@
   (with-slots (ir-var) ir-expr
   `(last ,(print-ir ir-var))))
 
-
 (defun mk-ir-release (pre-ir-vars post-ir-vars ir-body)
   (make-instance 'ir-release
 		 :pre-ir-vars pre-ir-vars

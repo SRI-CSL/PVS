@@ -100,7 +100,7 @@
 (defmethod generate-xref ((d formal-theory-decl))
   (generate-xref (theory-name d)))
 
-(defmethod generate-xref ((d inline-datatype))
+(defmethod generate-xref ((d inline-recursive-type))
   nil)
 
 (defmethod generate-xref ((d lib-decl))
