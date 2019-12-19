@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-7.0.0 (11/11/19)
+;; Release: Extrategies-7.0.0 (12/12/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -11,9 +11,12 @@
 ;; is claimed in the United States under Title 17, U.S.Code. All Other
 ;; Rights Reserved.
 ;;
+
+(in-package :pvs)
+
 ;; List of strategies in Extrategies:
 (defparameter *extrategies* "
-%  Printing and commenting: printf, commentf
+%  Printing and commenting: printf, commentf, now
 %  Defining tactics, i.e., local strategies: deftactic
 %  Defining oracles, i.e., trusted proof rules: deforacle 
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
@@ -21,16 +24,18 @@
 %  Copying formulas: copy*, protect, with-focus-on, with-focus-on@
 %  Programming: mapstep, mapstep@, with-fresh-labels, with-fresh-labels@,
 %    with-fresh-names, with-fresh-names@
-%  Control flow: finalize, touch, for, for@, when, when@, unless,
-%    unless@, when-label, when-label@, unless-label, unless-label@,
-%    if-label, skip-steps, sklisp
+%  Control flow: try@, try-then, try-then@, finalize, finalize*, touch,
+%    for, for@, when, when@, unless, unless@, when-label, when-label@,
+%    unless-label, unless-label@, if-label, sklisp
 %  Let-in: skoletin, skoletin*, redlet, redlet*
 %  Quantifiers: skeep, skeep*, skodef, skodef*, insteep, insteep*, unroll
-%  TCCs: tccs-expression, tccs-formula, tccs-formula*, tccs-step, with-tccs
-%  Ground evaluation (PVSio): eval-formula, eval-expr, eval
-%  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices")
+%  TCCs: tccs-expression, tccs-formula, tccs-formula*, tccs-step,
+%    if-tcc-sequent, with-tccs
+%  Ground evaluation (PVSio): eval-formula, eval-formula*, eval-expr, eval
+%  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
+%  Strategy debugging (experts only): skip-steps, show-debug-mode, toggle-debug-mode")
 
-(defparameter *extrategies-version* "Extrategies-7.0.0 (11/11/19)")
+(defparameter *extrategies-version* "Extrategies-7.0.0 (12/12/19)")
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -106,10 +111,14 @@
      (defrule ,name ,args
        (if (is-disabled-oracle ',name)
 	   (printf ,dismsg)
-	 (unwind-protect$
-	  (then@ (sklisp (extra-set-oracle-label ',name))
-		 ,step)
-	  (sklisp (extra-reset-oracle-label ',name))))
+	 (then@
+	  (sklisp (extra-set-oracle-label ',name))
+	  (unwind-protect$
+	   (else ,step
+		 (then
+		  (sklisp (extra-reset-oracle-label ',name))
+		  (fail)))
+	   (sklisp (extra-reset-oracle-label ',name)))))
        ,docmsg ,format))))
 
 ;; Load file from library
@@ -152,7 +161,7 @@
 (defun extra-pvs-nasalib ()
   (loop for path in *pvs-library-path* when (probe-file (format nil "~aRELEASE/nasalib.lisp" path)) return path))
 
-;;;;;;;;;; Utility functions and additional strategies
+;;; Utility functions and additional strategies
 
 ;; return a PVS array that represents list
 (defun extra-lambda-list (list default &optional test)
@@ -165,11 +174,9 @@
 		(format nil "~{IF i=~a THEN ~a ELS~}E ~a ENDIF" myl default)
 	      default))))
 
-(defstep skip-steps (&rest steps)
-  (skip)
-  "[Extrategies] Skips steps. This strategy is using for debugging purposes."
-  "Skipping steps")
-
+;; This strategy is similar to (lisp ...). However, that strategy returns
+;; the value of the evaluation, which is printed in console. The
+;; strategy sklisp doesn't!
 (defstrat sklisp (lispexpr)
   (let ((xxx (eval lispexpr)))
     (skip))
@@ -431,29 +438,25 @@
   (car (extra-get-fnums fnum)))
 
 ;; Get a PVS object from expr, where expr can be speficied as a formula or a string
-;; or using Manip's location
-(defun extra-get-expr (expr &optional (tc t))
+;; or using Manip's location. If full is t, expression is obtained in fully-expanded form
+(defun extra-get-expr (expr &optional (tc t) full)
   (when expr
-    (cond ((expr? expr) expr)
-	  ((or (numberp expr) (symbolp expr))
-	   (extra-get-formula expr))
-	  ((stringp expr)
-	   (let ((e (pc-parse expr 'expr)))
-	     (if tc (pc-typecheck e) e)))
-	  ((listp expr)
-	   (let* ((ecar (car (eval-ext-expr expr)))
-		  (e    (when ecar (ee-pvs-obj ecar))))
-	     (when (expr? e) e))))))
+    (let ((nexpr
+	   (cond ((expr? expr) expr)
+		 ((or (numberp expr) (symbolp expr))
+		  (extra-get-formula expr))
+		 ((stringp expr)
+		  (let ((e (pc-parse expr 'expr)))
+		    (if (or tc full) (pc-typecheck e) e)))
+		 ((listp expr)
+		  (let* ((ecar (car (eval-ext-expr expr)))
+			 (e    (when ecar (ee-pvs-obj ecar))))
+		    (when (expr? e) e))))))
+      (if (and full (expr? nexpr)) (full-name nexpr) nexpr))))
 
 ;; Get a list of PVS object from exprs, where expsr are speficied using Manip's location
 (defun extra-get-exprs (exprs)
   (mapcar #'ee-pvs-obj (eval-ext-expr exprs)))
-
-;; Return string of expression. If full is t, prints expression in fully-expanded form
-(defun extra-get-expstr (expr &optional full)
-  (let ((e (extra-get-expr expr full)))
-    (when e
-      (format nil "~a" (if full (full-name e) e)))))
 
 ;; Returns list of formula numbers not in fnums
 (defun extra-get-but-fnums (fnums &key (all '*))
@@ -915,10 +918,10 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
     rel))
 
 (defun extra-is-true (expr)
-  (and (name-expr? expr) (same-declaration expr *true*)))
+  (tc-eq expr *true*))
 
 (defun extra-is-false (expr)
-  (and (name-expr? expr) (same-declaration expr *false*)))
+  (tc-eq expr *false*))
 
 ;;;;;;;;;; Extrategies
 
@@ -936,6 +939,20 @@ ARGS. ARGS must be constant values.")
     (comment msg))
   "[Extrategies] Adds the formatted comment MSG to the sequent using the format
 arguments ARGS. ARGS can only have constant values.")
+
+(defstrat now ()
+  (let ((dummy (multiple-value-bind
+		   (second minute hour date month year day-of-week dst-p tz)
+		   (get-decoded-time)
+		 (format t "~%TIME ~d/~2,'0d/~d  ~2,'0d:~2,'0d:~2,'0d~%"
+			 month
+			 date
+			 year
+			 hour
+			 minute
+			 second))))
+    (skip))
+  "[Extrategies] Prints current time.")
 
 ;;; Labeling and naming
 
@@ -1010,9 +1027,9 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
 (defstep name-label (name expr &optional label (fnums *) (dir lr) hide? full?
 			  (tcc-step (extra-tcc-step)) tcc-label)
   (with-fresh-labels
-   (!notcc :hide)
+   ((!notcc :hide))
    (let ((labl    (unless (equal label 'none) (or label (format nil "~a:" name))))
-	 (estr    (extra-get-expstr expr full?))
+	 (e       (extra-get-expr expr t full?))
 	 (tccsome (and (not (equal tcc-label 'none)) tcc-label))
 	 (tccnone (or (equal tcc-label 'none)
 		      (and (null tcc-label) (equal label 'none))))
@@ -1023,7 +1040,7 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
 					      (format nil "~a-TCC:" lb))
 					  (flatten-labels label))
 			  (format nil "~a-TCC:" name))))))
-     (when estr
+     (when e
        (if (not (check-name name))
 	   (then
 	    (with-fresh-labels@
@@ -1031,8 +1048,8 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
 	      (!nlx))
 	     (let ((fnums (extra-get-fnums fnums)))
 	       (then@
-		(tccs-expression estr :label labtcc :tcc-step tcc-step)
-		(branch (discriminate (name name estr) (labl !nlx))
+		(tccs-expression e :label labtcc :tcc-step tcc-step)
+		(branch (discriminate (name name e) (labl !nlx))
 			((then (when fnums (replace !nlx !nml))
 			       (let ((flagdir (equal dir 'rl)))
 				 (when@ flagdir (swap-rel !nlx)))
@@ -1053,7 +1070,7 @@ a hypothesis and replaces EXPR by NAME in FNUMS. Options are as follows.
 * DIR indicates the direction of the name definition, e.g., EXPR=NAME, 
   if DIR is lr, or NAME=EXPR, if DIR is rl. 
 * The added formula is hidden when HIDE? is t. 
-* When full? is set to t, expression is named in fully-expanded form. This
+* When FULL? is set to t, expression is named in fully-expanded form. This
   is sometimes necessary due to PVS overloading feature.
 * If TCC-STEP is not null and EXPR yields TCCs, these TCCs are added
   as hypotheses to the main branch. 
@@ -1095,7 +1112,7 @@ a hypothesis and replaces EXPR by NAME in FNUMS. Options are as follows.
 	(qdir     (list 'quote dir))
 	(qhide    (list 'quote hide?)))
     (with-fresh-labels
-     (!nls fnums)
+     ((!nls fnums))
      (let ((qnls (list 'quote !nls)))
        (mapstep@ #'(lambda(x)`(name-label ,(nth 0 x) ,(nth 1 x) :label ,(nth 2 x) :fnums ,qnls
 					  :dir ,qdir :hide? ,qhide
@@ -1120,14 +1137,15 @@ In this case, each ei is paired to the i-th element in NAMES-AND-EXPRS."
 	(with-fresh-labels
 	 (!dsc)
 	 (if strict?
-	     (then (with-labels step !dsc)
+	     (then (with-labels step !dsc :push? t)
 		   (relabel label !dsc))
 	   (then (relabel !dsc *)
 		 step
 		 (relabel label (^ !dsc)))))
       step)
-  "[Extrategies] Labels formulas generated by STEP as LABEL(s). When STRICT? is set to t,
-all formulas that are considered new by PVS are also labeled."
+  "[Extrategies] Labels formulas generated by STEP as LABEL(s). When
+STRICT? is set to t, all formulas that are considered new by PVS are
+also labeled."
   "Labeling new formulas~*~@[ as ~a~]")
 
 ;;; Strategy programming
@@ -1277,11 +1295,11 @@ that represents formula FNUMi.
 OPTi can be
 
 :hide     
-  Hide formulas labeled VARi before the strategy exists. This option
+  Hide formulas labeled VARi before the strategy exits. This option
   can also be enabled/disabled programmatically using the option
   :hide? flag, where flag can be either t (enabled) or nil (disabled).
 :delete   
-  Delete formulas labeled VARi before the strategy exists. This option
+  Delete formulas labeled VARi before the strategy exits. This option
   can also be enabled/disabled programmatically using the option
   :delete? flag, where flag can be either t (enabled) or nil
   (disabled).
@@ -1324,7 +1342,7 @@ specified as in WITH-FRESH-LABELS.")
 	  ;; Get list of expressions (same length as bindings)
 	  (exprs    (loop for b in bindings
 			  for full? = (enabled-option-flag ':full (cdr b) t)
-			  collect (extra-get-expstr (cadr b) full?)))
+			  collect (extra-get-expr (cadr b) t full?)))
 	  ;; Bind variables to new names (same length as bindings)
 	  (vnms     (loop for b in bindings
 			  for e in exprs
@@ -1350,7 +1368,7 @@ specified as in WITH-FRESH-LABELS.")
 			  when (or e (and (cadr b) (listp (cadr b))))
 			  append (if e (list (cadr v) e)
 				   (let* ((vs (cadadr v))
-					  (es (mapcar #'(lambda (e) (extra-get-expstr e full?))
+					  (es (mapcar #'(lambda (e) (extra-get-expr e t full?))
 						      (cadr b))))
 				     (merge-lists vs es)))))
 	  ;; List of labels (same length as nmsexs)
@@ -1387,7 +1405,7 @@ specified as in WITH-FRESH-LABELS.")
 	  ;; List of TCCs labels (including nil)
 	  (lbtccsx  (mapcar #'(lambda (tcc) (cadr tcc)) etccs))
 	  (plbtccs  (set-pairing lbtccsx))
-	  (lbtccs   (remove-if-not #'identity lbtccsx))
+	  (lbtccs   (remove-duplicates (remove-if-not #'identity lbtccsx)))
 	  (vrsnms   (append vnms vlbs vtccs))
 	  (thenstep (cons thn steps))
 	  (allbs    (append lbtccs (mapcar #'car vlbs)))
@@ -1397,7 +1415,7 @@ specified as in WITH-FRESH-LABELS.")
 				 (name-label* ,nmsexs :hide? t :label ,plbvrs
 					      :tcc-label ,plbtccs :tcc-step ,ptccstp))
 			       (try ,thenstep (skip) (fail)))
-			(with-fresh-names-expand__$ ,vnms)
+			(repeat (with-fresh-names-expand__$ ,vnms))
 			(delete ,lbtccs)
 			(touch (delabel ,allbs))))))
       step))
@@ -1417,7 +1435,7 @@ specified as in WITH-FRESH-LABELS.")
 
  OPTi can be
 
-:tccs     
+:tccs
   Add TCCs of expression EXPRi as hypotheses to the sequent by
   applying (tccs-expression EXPRi) before STEPS. These TCCs are
   discharged by a default strategy. The TCCs formulas of EXPRi are
@@ -1425,21 +1443,17 @@ specified as in WITH-FRESH-LABELS.")
   The strategy removes all added hypotheses before exiting. This
   option can also be enabled/disabled programmatically using the
   option :tccs? flag, where flag can be eiter t (enabled), STEP
-  (enabled), or nil (disabled). When :tccs? is STEP, this
-  proof command is used instead of the default strategy to discharge
-  the TCCs generated by EXPRi.
-  using a fresh label denoted by *VARi-tccs*. The strategy removes all 
-  added hypotheses before exiting. This option can also be enabled/disabled
-  programmatically using the option :tccs? flag, where flag can be eiter
-  t (enabled) or nil (disabled).
-:full 
-  Expression is considered in fully-expanded form. This is sometimes necessary due 
-  to PVS overloading feature. This option can also be enabled/disabled
-  programmatically using the option :full? flag, where flag can be eiter
-  t (enabled) or nil (disabled).
+  (enabled), or nil (disabled). When :tccs? is STEP, this proof
+  command is used instead of the default strategy to discharge the
+  TCCs generated by EXPRi.
+:full
+  Expression is considered in fully-expanded form. This is
+  sometimes necessary due to PVS overloading feature. This option can
+  also be enabled/disabled programmatically using the option :full?
+  flag, where flag can be eiter t (enabled) or nil (disabled).
 :list n
-  Bind VARi to a list of n fresh names. When EXPRn is a list of expressions
-  this option is implicit and n is the length of the list.  
+  Bind VARi to a list of n fresh names. When EXPRn is a list of
+  expressions this option is implicit and n is the length of the list.
 
 For example,
 
@@ -1490,7 +1504,7 @@ labels are also copied."
    (if fnums
        (let ((labprc (or label !protect)))
 	 (with-fresh-labels
-	  (!pro fnums)
+	  ((!pro fnums))
 	  (copy* !pro labprc :hide? t :labels? t)
 	  step
 	  (unless hide? (reveal labprc))))
@@ -1503,7 +1517,7 @@ labels are also copied."
   (let ((fnums (extra-get-fnums fnums)))
     (when fnums
       (with-fresh-labels
-       (!allbut (^ fnums))
+       ((!allbut (^ fnums)))
        (hide !allbut)
        step
        (reveal !allbut))))
@@ -1620,12 +1634,11 @@ is found in STEPS. This rule *must* only be used in the definition of the oracle
   
 (deforacle tccs-expression (expr &optional label hide? full? (tcc-step (extra-tcc-step)))
   (when tcc-step
-    (let ((e    (extra-get-expr expr))
-	  (estr (extra-get-expstr e full?)))
+    (let ((e    (extra-get-expr expr t full?)))
       (when e
 	(with-fresh-labels
 	 (!tce)
-	 (relabel-hide__ (discriminate (typepred! estr :all? t :implicit? t) !tce)
+	 (relabel-hide__ (discriminate (typepred! e :all? t :implicit? t) !tce)
 			 label !tce hide?)
 	 (let ((tccs  (get-tccs-expression e))
 	       (tcc   (when tccs (expr2str (mk-conjunction tccs)))))
@@ -1652,7 +1665,7 @@ If TCC-STEP is nil, the strategy does nothing."
 
 (defhelper tccs-formula*__ (fnums)
   (with-fresh-labels
-   (!tcf fnums)
+   ((!tcf fnums))
    (let ((fs1 (extra-get-fnums !tcf)))
      (when fs1
        (all-implicit-typepreds !tcf)
@@ -1693,22 +1706,70 @@ are labeled LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t."
 	  (discriminate (case expr) !tcl)
 	  ((relabel-hide__ (flatten !tcl) label !tcl hide?)
 	   (delete !tcs) !)))) !)))
-  "[Extrategies] If STEP generates subgoals, e.g., TCCs, these subgoals are added as hypotheses to the
-first subgoal. Added hypotheses are labeled LABEL(s), if LABEL is not nil. They are hidden when
-HIDE? is t."
+  "[Extrategies] If STEP generates subgoals, e.g., TCCs, these
+subgoals are added as hypotheses to the first subgoal. Added
+hypotheses are labeled LABEL(s), if LABEL is not nil. They are hidden
+when HIDE? is t."
  "Adding TCCs of step ~a as hypotheses" t)
 
-(defstep with-tccs (step &optional steps (fnums *) (tcc-step (extra-tcc-step)))
-  (let ((stps (append (or steps '((skip))) (cons 'finalize tcc-step))))
-    (with-fresh-labels
-     (!wtccs fnums :tccs)
-     (branch step stps)))
-  "[Extrategies] Applies STEP after introducing TCCs for the formulas in FNUMS. If STEP generates
-subgoals, these subgoals are consecutively discharged using STEPS, which is a list of steps.
-TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
+(defstrat if-tcc-sequent (&optional (step '(skip)))
+  (when step
+    (if (typep *goal* 'tcc-sequent)
+	step
+      (skip)))
+  "Apply the step STEP only if the current sequent is a TCC
+sequent. Otherwise, it behaves as a (skip).")
+
+(defstep with-tccs (step &optional (fnums *)
+			 (tcc-step (extra-tcc-step))
+			 protect?)
+  (with-fresh-labels
+   ((!wtccs fnums :tccs))
+   (when protect? (hide *!wtccs-tccs*))
+   (branch
+    step
+    ((if-tcc-sequent
+      (then
+       (when protect? (reveal *!wtccs-tccs*))
+       (finalize tcc-step))))))
+  "[Extrategies] Applies STEP after introducing TCCs for the formulas
+in FNUMS. TCCs generated during the execution of the command are
+discharged with the proof command TCC-STEP. When PROTECT? is set to t,
+TCCs are hidden when STEP is executed and revealed afterwards to be
+proven by TCC-STEP. This way, explicit formula numbers used in STEP
+are protected."
   "Applying ~a assumings TCCs")
 	     
 ;;; Control flow
+
+(defstrat try@ (step then-step else-step)
+  (try-branch
+   step
+   (then-step
+    (skip))
+   else-step)
+  "[Extrategies] Tries STEP on current goal, and if successful,
+applies strategy THEN-STEP to the main subgoal. If no change, then
+ELSE-STEP is applied to current goal.")
+
+(defhelper try-then__ (steps trythn else-step)
+  (let ((try-steps (reduce (lambda (sl1 sl2) `(,trythn ,sl1 ,sl2 ,else-step))
+			   steps
+			   :initial-value '(skip)
+			   :from-end t)))
+    try-steps)
+  "[Extrategies] Internal strategy." "")
+ 
+(defstrat try-then (steps &optional (else-step (skip)))
+  (try-then__$ steps try else-step)
+  "[Extrategies] Successively applies the steps in STEPS to all
+branches until the first that does nothing, then it applies
+ELSE-STEP.")
+
+(defstrat try-then@ (steps &optional (else-step (skip)))
+  (try-then__$ steps try@ else-step)
+  "[Extrategies] Successively applies the steps in STEPS to the main
+branch until the first that does nothing, then it applies ELSE-STEP.")
 
 (defhelper finalize__ (step)
   (try step (fail) (skip))
@@ -1716,12 +1777,19 @@ TCCs generated during the execution of the command are discharged with the proof
 
 (defstrat finalize (step)
   (else (finalize__$ step) (skip))
-  "[Extrategies] Either finishes the current goal with STEP or does nothing.")
+  "[Extrategies] Either finishes the current goal with STEP or does
+  nothing.")
+
+(defstrat finalize* (&rest steps)
+  (mapstep #'(lambda(step)`(finalize ,step)) steps)
+  "[Extrategies] Applies each step in STEPS until the first one that
+  finishes the current goal.")
 
 (defstep touch (&optional (step (skip)))
   (else step (case "TRUE"))
-  "[Extrategies] Does step and touches the proof context so that try and else consider that step
-does something, even when it doesn't." "Doing ~a and touching the proof context")
+  "[Extrategies] Does step and touches the proof context so that try
+and else consider that step does something, even when it doesn't."
+  "Doing ~a and touching the proof context")
 
 (defstrat when (flag &rest steps)
   (if (and flag steps)
@@ -1914,7 +1982,7 @@ uses \"YY\" as the name of the skolem constant for \"y\"."
 
 (defstep skeep* (&optional (fnum '*) preds? postfix n)
   (with-fresh-labels
-   (!skp fnum)
+   ((!skp fnum))
    (for@ n (skeep !skp :preds? preds? :postfix postfix)))
   "[Extrategies] Iterates N times skeep (or until it does nothing if N is nil) in a universally 
 quantified formula in FNUM. If POSTFIX is provided, it is appended to the names of the bounded 
@@ -1931,7 +1999,7 @@ names. Type predicates are introduced as hypothesis when PREDS? is t."
     (loop for bnd in bindings
 	  for i from 1
 	  for is = (is-binding-in-subs bnd i n subs)
-	  collect (if is (or (extra-get-expstr (cadar is)) '_)
+	  collect (if is (or (extra-get-expr (cadar is)) '_)
 		    (format nil "~a~a" (id bnd) postfix)))))
 
 (defstep insteep (&optional (fnum (+ -)) postfix but)
@@ -1958,7 +2026,7 @@ formula but excludes \"x\", (insteep :but (\"x\" (\"y\" \"100\"))) instantiates 
 
 (defstep insteep* (&optional (fnum '*) postfix n)
   (with-fresh-labels
-   (!instp fnum)
+   ((!instp fnum))
    (for@ n (insteep !instp :postfix postfix)))
   "[Extrategies] Iterates N times insteep (or until it does nothing if N is nil) in an
 existentially quantified formula in FNUM.  If POSTFIX is provided, it is appended to the 
@@ -1981,25 +2049,23 @@ names of the bounded variables."
 	      (when (and lb ub)
 		(list lb ub (car x) (cdr x))))))))))
 
-(defhelper unroll-inst__ (fn bndgs id n labs)
+(defhelper unroll-inst__ (fn bndgs id n)
   (let ((terms (mapcar #'(lambda (bnd)(if (equal id (id bnd)) n '_))
 		       bndgs)))
     (with-fresh-labels
-     ((lab!))
-     (let ((labs (cons lab! labs)))
-       (branch
-	(discriminate (inst-cp fn :terms terms) labs :strict? t)
-	((skip)
-	 (eval-formula))))))
+     (lab!)
+     (branch
+      (discriminate (inst-cp fn :terms terms) lab! :strict? t)
+      ((unlabel lab! fn)
+       (eval-formula)))))
  "[Extrategies] Internal strategy." "")
 
 (defhelper unroll-skl__ (fn bndgs id l exprs)
   (with-fresh-names
-   ((n))
+   (n)
    (let ((sks (mapcar #'(lambda (bnd)(if (equal id (id bnd)) n '_)) bndgs))
 	 (fmt (format nil "NOT ( ~~{~a=~~a ~~^OR ~~})" n))
-	 (css (if l (format nil fmt l) "TRUE"))
-         (es  exprs)) 
+	 (css (if l (format nil fmt l) "TRUE")))
      (then
       (skolem fn sks)
       (branch
@@ -2007,11 +2073,13 @@ names of the bounded variables."
        ((then
 	 (hide-all-but 1)
 	 (typepred n)
-	 (with-fresh-names
-	  ((nms exprs :full))
-	  (mapstep #'(lambda (nm)`(eval-expr ,nm)) nms)
-	  (flatten)
-	  (assert)))
+	 (if exprs
+	     (with-fresh-names
+	      ((nms exprs :full))
+	      (mapstep #'(lambda (nm)`(eval-expr ,nm)) nms)
+	      (flatten)
+	      (assert))
+	   (then (flatten) (assert))))
 	(then (split -1) (else (replace -1 :hide? t :actuals? t) (hide -1))))))))
   "[Extrategies] Internal strategy." "")
 
@@ -2030,28 +2098,30 @@ names of the bounded variables."
 	(range (when bndg (extra-subrange-index (type bndg))))
 	(l     (when (and range (<= (car range) (cadr range)))
 		 (fromto (car range) (cadr range))))
-	(inst? (when l (insteep-formula fn qf)))
-	(labs  (when l (extra-get-labels fn))))
+	(inst? (when l (insteep-formula fn qf))))
     (when range
       (with-fresh-labels
        ((fn! fn :hide? inst?))
-       (if (and l inst?)
+       (if (skeep-formula fn qf)
+	   (let ((exprs (remove-if #'(lambda (x) (extra-get-number-from-expr x t))
+				   (cddr range))))
+	     (unroll-skl__$ fn! bndgs id l exprs))
+	 (when inst?
 	   (let ((qfn    (list 'quote fn!))
 		 (qbndgs (list 'quote  bndgs))
-		 (qid    (list 'quote id))
-		 (qlabs  (list 'quote labs)))
-	     (mapstep #'(lambda(n)`(unroll-inst__$ ,qfn ,qbndgs ,qid ,n ,qlabs)) l))
-	 (let ((exprs (remove-if #'(lambda (x) (extra-get-number-from-expr x t))
-				 (cddr range))))
-	   (unroll-skl__$ fn! bndgs id l exprs))))))
-  "[Extrategies] Unrolls quantifier of the form FORALL(x:<int-subrange>):<exp> or
-EXISTS(x:<int-subrange>):<exp>(x) in formula FNUM, where <int-subrange> is either subrange(n,m),
-below(n), or upto(n). Assuming that n ... m is the range specified by <int-subrange>, an universal
-quantifier is unrolled as the conjunction <exp>(n) AND ... AND <exp>(m) and the sequent is then
-flattened. An existential quantifier is unrolled as the disjunction <exp>(n) OR ... OR <exp>(m) and
-the sequent is then split. If FNUM is not provided, the first quantified formula in the sequent is
-used. By default, the first quantified variable is unrolled. A different variables can be specified
-using VAR."
+		 (qid    (list 'quote id)))
+	     (mapstep #'(lambda(n)`(unroll-inst__$ ,qfn ,qbndgs ,qid ,n)) l)))))))
+  "[Extrategies] Unrolls quantifier of the form
+FORALL(x:<int-subrange>):<exp> or EXISTS(x:<int-subrange>):<exp>(x) in
+formula FNUM, where <int-subrange> is either subrange(n,m), below(n),
+or upto(n). Assuming that n ... m is the range specified by
+<int-subrange>, an universal quantifier is unrolled as the conjunction
+<exp>(n) AND ... AND <exp>(m) and the sequent is then flattened. An
+existential quantifier is unrolled as the disjunction <exp>(n) OR
+... OR <exp>(m) and the sequent is then split. If FNUM is not
+provided, the first quantified formula in the sequent is used. By
+default, the first quantified variable is unrolled. A different
+variables can be specified using VAR."
   "Unrolling quantifier over an integer subrange~@[ in formula ~a~]")
 
 (defhelper skoletin__ (fn expr name nth var postfix hide? tcc-step old)
@@ -2133,7 +2203,7 @@ LET x:posreal = 2 IN 1/x."
 
 (defstep skoletin* (&optional (fnum *) postfix hide? (tcc-step (extra-tcc-step)) n old?)
   (with-fresh-labels
-   (!sks fnum)
+   ((!sks fnum))
    (for@ n (skoletin !sks :postfix postfix :hide? hide? :tcc-step tcc-step :old? old?)))
   "[Extrategies] Iterates N times skoletin (or until it does nothing if N is nil) in FNUM.
 
@@ -2185,7 +2255,7 @@ IN 1/x."
 
 (defstep redlet* (&optional (fnum *) (tcc-step (extra-tcc-step)) (n 1))
   (with-fresh-labels
-   (!rds fnum)
+   ((!rds fnum))
    (for@ n (redlet !rds :tcc-step tcc-step)))
   "[Extrategies] Iterates N times redlet (or until it does nothing if N is nil). TCCs generated during
 the execution of the command are discharged with the proof command TCC-STEP."
@@ -2208,7 +2278,7 @@ the execution of the command are discharged with the proof command TCC-STEP."
 	(ivr   (instvar v n (length names))))
     (when nve
       (with-fresh-labels
-       (!skk fnum :tccs)
+       ((!skk fnum :tccs))
        (try-branch
 	(name-label v e :fnums nil :dir rl :hide? t)
 	((branch (let ((stp (cons 'inst (cons !skk ivr))))
@@ -2256,7 +2326,7 @@ are discharged with the proof command TCC-STEP."
 
 (defstep skodef* (&optional (fnum *) hide? postfix (tcc-step (extra-tcc-step)) n)
   (with-fresh-labels
-   (!skk fnum)
+   ((!skk fnum))
    (for@ n (skodef !skk :postfix postfix :hide? hide? :tcc-step tcc-step)))
   "[Extrategies] Iterates N times skodef (or until it does nothing if N is nil) in FNUM.
 TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
@@ -2267,7 +2337,7 @@ TCCs generated during the execution of the command are discharged with the proof
 (defstep cut (cases &optional (tcc-step (extra-tcc-step)))
   (let ((cases (enlist-it cases)))
     (when cases
-      (let ((expr   (extra-get-expstr (car cases)))
+      (let ((expr   (extra-get-expr (car cases)))
 	    (expest (cdr cases)))
 	(branch (case expr)
 		((cut$ expest tcc-step)
@@ -2336,22 +2406,24 @@ TCCs generated during the execution of the command are discharged with the proof
 	(n     (length feqs)))
     (when feqs
       (with-fresh-labels
-       (!replaces :list n)
+       ((!replaces :list n))
        (let ((plabs  (set-pairing !replaces))
 	     (qdir   (list 'quote dir))
 	     (qhide  (list 'quote hide?))
 	     (forms  (extra-get-but-fnums but :all in)))
 	 (with-fresh-labels
-	  (!rep forms)
+	  ((!rep forms))
 	  (let ((qrep (list 'quote !rep)))
 	    (then
 	     (relabel plabs feqs)
-	     (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir)
-					(when ,qhide
-					  (unlabel* ,x ,qrep)
-					  (delabel ,x :hide? t))
-					(skip)))
-		      !replaces))))))))
+	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir)
+					     (when ,qhide
+					       (unlabel* ,x ,qrep)
+					       (delabel ,x :hide? t))
+					     (skip)))
+			   !replaces)
+		  (skip)
+		  (fail)))))))))
   "[Extrategies] Iterates the proof command replace to rewrite with the formulas in FNUMS,
 respecting the order, the formulas in IN but not in BUT. The keys DIR and HIDE? are like
 in REPLACE. Notice that in contrast to REPLACE, the default value of HIDE? is T. Instead
@@ -2429,7 +2501,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
 			     (append b (list (bindings expr)))))))))
 
 (defstep suffices (fnum expr &optional after-var after-qn (tcc-step (extra-tcc-step)))
-  (let ((estr   (extra-get-expstr expr))
+  (let ((estr   (extra-get-expr expr))
 	(fnexpr (when estr (first-formula fnum :test #'skeep-formula)))
     	(fn     (car fnexpr))
 	(expr   (cadr fnexpr))
@@ -2437,7 +2509,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
 					      after-var after-qn))))
     (when form
       (with-fresh-labels 
-       (!sff fn :tccs)
+       ((!sff fn :tccs))
        (branch (case form)
 	       ((skip)
 		(delete !sff)
@@ -2460,8 +2532,6 @@ quantifier, if provided."
 % Strategies in Extrategies:~a
 %--~%" version strategies))
   "[Extrategies] Prints Extrategies's about information.")
-
-;;;;; SPECIFIC FUNCTIONS ;;;;; 
 
 ;; The following functions check the boolean connectives of a given expression, even if the
 ;; expression is not type-checked yet.
@@ -2689,9 +2759,7 @@ quantifier, if provided."
 	(copy expr 'exprs e))))
    (t n)))
 
-;;;;;;;;;; PVSio
-
-(in-package :pvs)
+;;; PVSio
 
 (define-condition eval-error (simple-condition) ())
 
@@ -2733,7 +2801,7 @@ quantifier, if provided."
 	    (when result
 	      (let ((casexpr (format nil "(~a) = ~a" e result)))
 		(with-fresh-labels
-		 ((!evx))
+		 (!evx)
 		 (trust-branch!
 		  eval-expr
 		  (discriminate (case casexpr) !evx)
@@ -2755,14 +2823,11 @@ evaluation."
   (let ((fexpr (extra-get-seqf fnum)))
     (when fexpr
       (let ((expr   (formula fexpr))
-	    (result (evalexpr expr safe? timing?)))
+	    (result (evalexpr expr safe? timing?))
+	    (doit   (extra-is-true result)))
 	(if (stringp result)
 	    (unless quiet? (printf "Error: ~a~%" result))
-	  (when result 
-	    (trust-branch!
-	     eval-formula
-	     (case result)
-	     (! (skip))))))))
+	  (when doit (trust! eval-formula))))))
   "[PVSio] Evaluates the formula FNUM in Common Lisp and adds the
 result to the antecedent of the current goal. If SAFE? is t and FNUM
 generates TCCs, the expression is not evaluated. The strategy is safe
@@ -2771,7 +2836,7 @@ evaluated. However, if SAFE? is nil, the strategy may not terminate
 properly in the presence of unproven TCCs.  When QUIET? is t, the
 strategy fails silently. When TIMING? is t, strategy prints timing
 information of the ground evaluation."
-  "Evaluating formula ~a in the current sequent. " t)
+  "Evaluating formula ~a" t)
 
 (defrule eval (expr &optional safe? quiet? timing?)
   (let ((e (extra-get-expr expr)))
@@ -2788,11 +2853,34 @@ semantic attachments. Therefore, it may not terminate properly. When QUIET?
 is t, the strategy fails silently."
   "Printing the evaluation of ~a")
 
-(defrule eval-formulas (&optional (fnums *) (but nil) safe? quiet?)
-  (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
-			     fnums but))
-	(steps (loop for fnum in fnums
-		     collect `(eval-formula ,fnum ,safe? ,quiet?))))
-    (try-here steps))
-  "[PVSio] Evaluates all the formula in FNUMS not present in BUT. The formulas are evaluated in order until the first TRUE is obtained or the list of fnums is over."
-  "Evaluating formulas in current sequent.")
+(defstep eval-formula* (&optional (fnums *) safe? quiet?)
+  (let ((fnms (extra-get-fnums fnums)))
+    (mapstep #'(lambda (fnum) `(eval-formula ,fnum ,safe? ,quiet?))
+	     fnms)) 
+  "[PVSio] Evaluates all the formula in FNUMS. The formulas are
+evaluated in order until the first one that discharges the sequent or
+when the list of FNUMS is over. Options are as in eval-formula."
+  "Evaluating formulas in ~a")
+
+;;; Debugging features
+
+(defstep skip-steps (&rest steps)
+  (skip)
+  "[Extrategies] Skips steps. This strategy is using for debugging purposes."
+  "Skipping steps")
+
+(defstrat show-debug-mode ()
+  (if (member :strat-debug *features*)
+      (printf "~%Debug mode is currently enabled.~%")
+    (printf "~%Debug mode is currently disabled.~%"))
+  "[Extrategies] Shows current debug mode.")
+
+(defstrat toggle-debug-mode ()
+  (if (member :strat-debug *features*)
+      (let ((dummy (setq *features* (remove :strat-debug *features*)))
+	    (dummy (load "pvs-strategies")))
+	(printf "~%Debug mode disabled.~%"))
+    (let ((dummy (pushnew :strat-debug *features*))
+	  (dummy (load "pvs-strategies")))
+      (printf "~%Debug mode enabled.~%")))
+  "[Extrategies] Toggles debug mode on the current theory strategies.")

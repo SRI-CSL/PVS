@@ -1,6 +1,6 @@
 ;;
 ;; field.lisp
-;; Release: Field-7.0.0 (06/30/19)
+;; Release: Field-7.0.0 (12/12/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -22,7 +22,7 @@
 %  cancel-by, cancel-formula,
 %  both-sides-f, sq-simp")
 
-(defparameter *field-version* "Field-7.0.0 (06/30/19)")
+(defparameter *field-version* "Field-7.0.0 (12/12/19)")
 
 (defun check-no-relation (fnum)
   (let* ((f   (extra-get-formula fnum))
@@ -321,20 +321,19 @@ where new names are defined. These formulas are hidden if HIDE? is t. TCCs gener
 during the execution of the command are discharged with the proof command TCC-STEP.")
 
 (defstep wrap-manip (fnum manip &optional (tcc-step (extra-tcc-step)) (labels? t))
-  (with-fresh-labels
-   ((!wmp fnum)
-    (!wmd))
-   (let ((labs (when labels? (extra-get-labels fnum))))
-     (branch (discriminate
-	      (let ((old *suppress-manip-messages*))
-		(unwind-protect$
-		 (then
-		  (sklisp (setq *suppress-manip-messages* t))
-		  manip)
-		 (sklisp (setq *suppress-manip-messages* old))))
-	      !wmd :strict? t)
-	     ((when labels? (relabel labs !wmd))
-	      (finalize tcc-step)))))
+  (let ((labs (when labels? (extra-get-labels fnum)))
+	(old *suppress-manip-messages*)
+	(new (setq *suppress-manip-messages* t)))
+    (unwind-protect$
+     (with-fresh-labels
+      ((!wmp fnum :tccs)
+       (!wmd))
+      (branch (discriminate
+	       manip
+	       !wmd :strict? t)
+	      ((when labels? (relabel labs !wmd))
+	       (finalize tcc-step))))
+     (sklisp (setq *suppress-manip-messages* old))))
   "[Field] Applies Manip's command MANIP,  dicharges TCCs using TCC-STEP, and
 preserves labels of FNUM when labels? is t."
   "Applying Manip's command ~1@*~a to ~@*~a")
@@ -411,7 +410,7 @@ not be reduced. If DISTRIB? is nil, distribution laws will not be applied."
 				(let-reduce? t)
 				dontdistrib protect)
   (with-fresh-labels
-   (!grd :hide)
+   ((!grd :hide))
    (let ((th    (cons "real_props" (enlist-it theories)))
 	 (pro   (cons !grd (enlist-it protect)))
 	 (step `(grind :defs ,defs :theories ,th :rewrites
@@ -530,7 +529,8 @@ with the proof command TCC-STEP."
       (let ((formula (extra-get-formula label))
 	    (monoms  (get-monoms-formula formula))
 	    (cases   (makecases-monoms monoms)))
-	(cases-monoms__$ label cases tcc-step))))
+	(when cases
+	  (cases-monoms__$ label cases tcc-step)))))
   "[Field] Internal strategy." "")
 
 (defstep cancel-by (fnum expr &optional (tcc-step (extra-tcc-step)) (auto-step (assert)))
@@ -538,27 +538,25 @@ with the proof command TCC-STEP."
 	(fn       (car fnexpr))
 	(formula  (cadr fnexpr))
 	(rel      (is-relation formula))
-	(expstr   (extra-get-expstr expr))
-	(div      (freshname "CBD")))
-    (if (and rel expstr)
-	(with-fresh-labels
-	 ((!cby fn)
-	  (!cbd)
-	  (!cbt :delete)
-	  (!cbdt :delete)
-	  (!ndc :hide))
-	 (tccs-formula !cby :label !cbt)
-	 (branch (then@ (tccs-expression expstr :label !cbdt :tcc-step tcc-step)
-			(name-distrib (!cby !cbt !cbdt) :prefix "NDC" :label !ndc :tcc-step tcc-step)
-			(name-label div expstr :fnums (^ !ndc) :label !cbd :tcc-step tcc-step)
-			(replace !ndc !cbd))
-		 ((cancel-by__$ !cby !cbd div tcc-step auto-step)
-		  (delete !cby)))
-	 (replaces !ndc :but !ndc :dir rl :hide? nil))
-      (if (not rel)
-	  (printf "No arithmetic relational formula in ~a" fnum)
-	(if (not expstr)
-	    (printf "No suitable expression ~a" expr)))))
+	(e        (when rel (extra-get-expr expr))))
+    (if e
+	(with-fresh-names
+	 (div)
+	 (with-fresh-labels
+	  ((!cby fn)
+	   (!cbd)
+	   (!cbt :delete)
+	   (!cbdt :delete)
+	   (!ndc :hide))
+	  (tccs-formula !cby :label !cbt)
+	  (branch (then@ (tccs-expression e :label !cbdt :tcc-step tcc-step)
+			 (name-distrib (!cby !cbt !cbdt) :prefix "NDC" :label !ndc :tcc-step tcc-step)
+			 (name-label div e :fnums (^ !ndc) :label !cbd :tcc-step tcc-step)
+			 (replace !ndc !cbd))
+		  ((cancel-by__$ !cby !cbd div tcc-step auto-step)
+		   (delete !cby)))
+	  (replaces !ndc :but !ndc :dir rl :hide? nil)))
+      (printf "No suitable expression in ~a" fnum)))
   "[Field] Cancels the common expression EXPR in the relational formula FNUM.
 TCCs generated during the execution of the command are discharged with the 
 proof command TCC-STEP. At the end, the strategy tries to discharge the 
@@ -616,7 +614,7 @@ current branch using the proof command AUTO-STEP."
 	(rel     (is-relation formula)))
     (if rel
 	(with-fresh-labels
-	 (!cf fn)
+	 ((!cf fn))
 	 (try (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
 	      (let ((form (extra-get-formula !cf))
 		    (l1   (get-mults-monom nil (args1 form)))
@@ -652,31 +650,31 @@ with the proof command TCC-STEP."
 	 (is_eq    (equation? form))
 	 (divs     (get-divisors-formula form))
 	 (ndivs    (get-const-divisors 1 divs))
-	 (edivs    (remove-if #'(lambda (x) (str2int (car x))) divs)))
+	 (edivs    (remove-if #'(lambda (x) (str2int (car x))) divs))
+	 (exprs    (mapcar #'car edivs)))
      (if divs
-	 (let ((names    (freshnames "FDX" (length edivs)))
-	       (nameseq  (merge-lists names
-				      (mapcar #'(lambda(x) (car x))
-					      edivs)))
-	       (eprod    (makeprod edivs names))
-	       (prod     (normal-mult (if (= ndivs 1) eprod
-					(cons (cons (expr2str ndivs) 1)
-					      eprod))))
-	       (prodgt0  (format nil "~a > 0" prod)))
-	   (spread (name-label* nameseq :label labx :tcc-step tcc-step)
-		   ((if is_eq
-			(then@ (field_case__ labfd labndf labx prod theories)
-			       (field__$ labfd labndf labx theories cancel? tcc-step))
-		      (branch (case prodgt0)
-			      ((then@
-				(finalize (then (delete labfd) (grind-reals :theories theories)))
-				(field_case__ labfd labndf labx prod theories +)
-				(field__$ labfd labndf labx theories cancel? tcc-step))
-			       (then@
-				(finalize (then (delete labfd) (grind-reals :theories theories)))
-				(field_case__ labfd labndf labx prod theories -)
-				(field__$ labfd labndf labx theories cancel? tcc-step))
-			       (finalize tcc-step)))))))
+	 (with-fresh-names@
+	  ((fdx exprs :tccs? tcc-step))
+	  (reveal *fdx*)
+	  (relabel labx *fdx*)
+	  (let ((eprod    (makeprod edivs fdx))
+		(prod     (normal-mult (if (= ndivs 1) eprod
+					 (cons (cons (expr2str ndivs) 1)
+					       eprod))))
+		(prodgt0  (format nil "~a > 0" prod)))
+	    (if is_eq
+		(then@ (field_case__$ labfd labndf labx prod theories)
+		       (field__$ labfd labndf labx theories cancel? tcc-step))
+	      (branch (case prodgt0)
+		      ((then@
+			(finalize (then (delete labfd) (grind-reals :theories theories)))
+			(field_case__$ labfd labndf labx prod theories +)
+			(field__$ labfd labndf labx theories cancel? tcc-step))
+		       (then@
+			(finalize (then (delete labfd) (grind-reals :theories theories)))
+			(field_case__$ labfd labndf labx prod theories -)
+			(field__$ labfd labndf labx theories cancel? tcc-step))
+		       (finalize tcc-step))))))
        (try (replaces labx :but labx :dir rl :hide? nil)
 	    (then@ (delete labx)
 		   (field__$ labfd labndf labx theories cancel? tcc-step))
@@ -699,12 +697,10 @@ with the proof command TCC-STEP."
 	(rel     (is-relation formula)))
     (if rel
 	(with-fresh-labels
-	 ((!fd fn)
-	  (!fdt :delete)
+	 ((!fd fn :tccs)
 	  (!ndf)
 	  (!x))
-	 (tccs-formula !fd :label !fdt)
-	 (branch (name-distrib (!fd !fdt) :prefix "NDF" :label !ndf :tcc-step tcc-step)
+	 (branch (name-distrib (!fd *!fd-tccs*) :prefix "NDF" :label !ndf :tcc-step tcc-step)
 		 ((field__$ !fd !ndf !x theories cancel? tcc-step)
 		  (delete !fd))))
       (printf "No arithmetic relational formula in ~a" fnum)))
