@@ -165,6 +165,11 @@
   size
   elemtype);later on, we could add an offset
 
+(defcl ir-release (ir-expr) ;;these are the variables that should be freed on the then/else branches
+  pre-ir-vars
+  post-ir-vars
+  ir-body)
+
 ;;other types are char, bool, int32_t, int64_t, uint32_t, uint64_t, mpi, and mpz
 ;;we'll add floats later on.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2359,11 +2364,6 @@
 (defmethod print-ir ((ir-expr ir-last))
   (with-slots (ir-var) ir-expr
   `(last ,(print-ir ir-var))))
-
-(defcl ir-release (ir-expr) ;;these are the variables that should be freed on the then/else branches
-  pre-ir-vars
-  post-ir-vars
-  ir-body)
 
 (defun mk-ir-release (pre-ir-vars post-ir-vars ir-body)
   (make-instance 'ir-release
