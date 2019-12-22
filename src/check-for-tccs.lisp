@@ -944,6 +944,11 @@
   (when (predicate te)
     (check-for-tccs* (predicate te) (type (predicate te)))))
 
+(defmethod check-for-tccs* ((te expr-as-type) expected)
+  (declare (ignore expected))
+  (assert (type (expr te)))
+  (check-for-tccs* (expr te) (type (expr te))))
+
 (defmethod check-for-tccs* ((te funtype) expected)
   (with-slots (domain range) te
     (check-for-tccs* domain expected)

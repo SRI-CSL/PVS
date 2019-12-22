@@ -118,7 +118,8 @@ required a context.")
         (dolist (tcc-args (reverse (cdr tcc-args-list-entry)))
           (apply #'generate-subtype-tcc tcc-args))
         (setf (macro-subtype-tcc-args-alist (current-theory))
-              (delete tcc-args-list-entry (macro-subtype-tcc-args-alist (current-theory)))))))
+              (delete tcc-args-list-entry
+		      (macro-subtype-tcc-args-alist (current-theory)))))))
   (cond ((and (type ex)
 	      (fully-instantiated? ex))
          (unless (compatible? (type ex) expected)
@@ -5188,9 +5189,9 @@ type of the lhs."
     (set-type* (type te) nil)))
 
 (defmethod set-type* ((te subtype) expected)
-;;   (when (print-type te)
-;;     (let ((*generate-tccs* 'none))
-;;       (set-type* (print-type te) expected)))
+  ;;   (when (print-type te)
+  ;;     (let ((*generate-tccs* 'none))
+  ;;       (set-type* (print-type te) expected)))
   (when (supertype te)
     (set-type* (supertype te) expected))
   (when (predicate te)
@@ -5205,7 +5206,23 @@ type of the lhs."
 (defmethod set-type* ((te expr-as-type) expected)
   (declare (ignore expected))
   (assert (type (expr te)))
-  (call-next-method))
+  ;;(assert (funtype? (find-supertype (type (expr te)))))
+  (set-type* (expr te) (type (expr te)))
+  (assert (fully-instantiated? (expr te)))
+  ;; expr-as-type should only be a print-type, never a canonical type
+  ;; hence the following should not be used, and causes problems.
+  ;; (unless (supertype te)
+  ;;   (let* ((dtype (domain (find-supertype (type (expr te)))))
+  ;; 	   (id (make-new-variable '|x| (cons (expr te) dtype)))
+  ;; 	   (bd (typecheck* (mk-bind-decl id dtype) nil nil nil))
+  ;; 	   (var (mk-name-expr id nil nil (make-resolution bd nil dtype)))
+  ;; 	   (lex (make!-lambda-expr (list bd) (make!-application (expr te) var))))
+  ;;     ;; E.g., if "p: [T -> bool]", then dtype for "(p)" is "T"
+  ;;     (assert (fully-instantiated? dtype))
+  ;;     (assert (fully-instantiated? lex))
+  ;;     (setf (supertype te) dtype)
+  ;;     (setf (predicate te) lex)))
+  )
 
 (defmethod set-type* ((te funtype) expected)
   (with-slots (domain range) te
