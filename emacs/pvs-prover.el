@@ -168,11 +168,11 @@ the formula.  With an argument, runs the proof in the background."
 		     (or fname theory) fmlastr line kind rerun-proof unproved)
 		 nil nil "t\\|T\\|no\\|NO")))
     (pushw)
-    (ilisp-send
-     (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
-	 (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
-	 poff background display unproved)
-     nil 'pr (not background))))
+    (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
+		     (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
+		     poff background display unproved)))
+      (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
+      (ilisp-send input nil 'pr (not background)))))
 
 (defpvs prove-next-unproved-formula prove ()
   "Invokes the prover on the next unproved formula.
@@ -1357,6 +1357,7 @@ debugging."
 	 (input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s)"
 		    (or fname theory) fmlastr (+ line poff) 't
 		    kind buf poff nil)))
+    (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
     (switch-to-lisp t t)
     (insert input)))
 
@@ -1405,11 +1406,11 @@ through using the edit-proof command."
 	(goto-char (point-min))
 	(pvs-prover-goto-next-step)
 	(hilit-next-prover-command))
-      (ilisp-send
-       (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
-	   (or fname theory) fmlastr (+ line poff) nil kind buf poff nil
-	   pvs-x-show-proofs)
-       nil 'pr t))))
+      (let ((input (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
+		       (or fname theory) fmlastr (+ line poff) nil kind buf poff nil
+		       pvs-x-show-proofs)))
+	(comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
+	(ilisp-send input nil 'pr t))))
 
 (defpvs x-step-proof prove ()
   "Starts the prover, the proof-stepper and the proof display
@@ -2120,8 +2121,9 @@ Letters do not insert themselves; instead, they are commands:
 
 (defun pvs-proofs-rerun-proof ()
   (confirm-not-in-checker)
-  (ilisp-send (format "(proofs-rerun-proof %d)" (current-line-number))
-	      nil 'pr t))
+  (let ((input (format "(proofs-rerun-proof %d)" (current-line-number))))
+    (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
+    (ilisp-send input nil 'pr t)))
 
 (defun pvs-proofs-delete-proof ()
   (if (yes-or-no-p "Delete this proof? ")
@@ -2225,16 +2227,16 @@ Letters do not insert themselves; instead, they are commands:
 	(goto-char (point-min))
 	(pvs-prover-goto-next-step)
 	(hilit-next-prover-command))
-      (if (null name)
-	  (ilisp-send (format "(prove-proof-at %d %s %s)"
-			  (current-line-number) step pvs-x-show-proofs)
-		      "" 'pr t)
-	  (ilisp-send (format
+      (let ((input (if (null name)
+		       (format "(prove-proof-at %d %s %s)"
+			   (current-line-number) step pvs-x-show-proofs)
+		       (format
 			  "(prove-file-at \"%s\" %s %d %s '%s \"%s\" %d nil %s)"
 			  name (when declname (format "\"%s\"" declname))
 			  line (not step) origin (buffer-name)
-			  prelude-offset pvs-x-show-proofs)
-		      "" 'pr t)))))
+			  prelude-offset pvs-x-show-proofs))))
+	(comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
+	(ilisp-send input "" 'pr t)))))
 
 (defpvs set-proof-backup-number prove (num)
   "Set the PVS proof backup number.
