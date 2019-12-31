@@ -3470,10 +3470,21 @@
 		     (unparse-sform sform))))
 	  (t
 	   (format stream
-	       "~%~V@T~6@<~:[{~a~@[,~a~]}~;[~a~@[,~a~]]~]~>~:[~;~%~6<~>~]"
+	       "~%~V@T~6@<~:[{~a~@[, ~{~a~^, ~}~]}~;[~a~@[, ~{~a~^, ~}~]]~]~>~:[~;~%~6<~>~]"
 	     *prover-indent* (memq sform par-sforms) sfnum
 	     (label sform) (label sform))
-	   (write (unparse-sform sform) :stream stream)))))
+	   (let* ((sform-str (unparse-sform sform))
+		  ;; Start to adding tooltip info for sequents.
+		  ;; Doesn't work if print-depth or print-length is set
+		  ;; (*valid-id-check* nil)
+		  ;; (oparse (parse :string sform-str :nt 'expr))
+		  ;; (sparse (if (and (listp oparse) (null (cdr oparse)))
+		  ;; 	      (car oparse)
+		  ;; 	      oparse))
+		  ;; (cc (copy-lex sform sparse nil sform-str))
+		  ;; (info (collect-visible-decl-info cc))
+		  )
+	     (write sform-str :stream stream))))))
 
 (defmethod print-object ((sequent sequent) stream)
   (let ((par-sforms
