@@ -359,24 +359,21 @@
 				    (if (consp (cdr x))
 					(cons (car x)
 					      (make!-tuple-expr
-					       (mapcar #'(lambda (z)
-							   (make!-name-expr
-							    (id z) nil nil
-							    (make-resolution z
-							      nil (type z))))
-						 (cdr x))))
+					       (mapcar #'mk-name-expr (cdr x))))
 					x)))
 			      (substituted-expr
 			       (substit expr (append subst-bind-alist subst)))
 			      (lhs (if (eq expr substituted-expr)
 				       expr
 				       (beta-reduce substituted-expr)))
-			      (equality (make!-equation lhs instance))
+			      (equality
+			       (when (subsetp (freevars lhs) *bound-variables*
+					      :test #'same-declaration)
+				 (make!-equation lhs instance)))
 			      ;;NSH(11.18.96): switching back to using
 			      ;; assert-test0 over tc-eq-norm-addition. 
 			      (result
-			       (if (subsetp (freevars lhs) *bound-variables*
-					    :test #'same-declaration)
+			       (if equality
 				   (assert-test0 ;;pseudo-normalize would do
 				    ;;too much work.  
 				    equality)
