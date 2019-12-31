@@ -599,7 +599,9 @@ use binfiles."
 	    ((and *in-checker*
 		  (not *tc-add-decl*))
 	     (if (pvs-yes-or-no-p "A proof is running; quit it now?")
-		 (throw 'quit nil)
+		 (if (find-restart 'quit-prover)
+		     (invoke-restart 'quit-prover)
+		     (throw 'quit nil))
 		 (pvs-error "Parse error" "Must exit the prover first")))
 	    ((and *in-evaluator*
 		  (not *tc-add-decl*))
