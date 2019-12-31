@@ -251,6 +251,14 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	(mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	json-result))))
 
+;;; This can't work, as it never returns from pvs:prove-formula till the
+;;; prover quits.
+;; (defrequest prove-formula2 (formula theory &optional rerun?)
+;;   "Starts interactive proof of a formula from a given theory"
+;;   (let ((pvs:*multiple-proof-default-behavior* :noquestions))
+;;     (setq pvs:*prover-commentary* nil)
+;;     (pvs:prove-formula theory formula rerun?)))
+
 (defrequest proof-command (form)
   "Sends a command to the prover"
   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
