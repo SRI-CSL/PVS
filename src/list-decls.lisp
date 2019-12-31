@@ -1528,6 +1528,21 @@ place set."
        (field-appl-id-visible-decl-info term (vnode-place obj))))
     (collect-visible-decl-info* (vnode-children obj))))
 
+(defmethod collect-visible-decl-info* ((obj proofstate))
+  (collect-visible-decl-info* (current-goal obj)))
+
+(defmethod collect-visible-decl-info* ((obj sequent))
+  (collect-visible-decl-info* (s-forms obj)))
+
+(defmethod collect-visible-decl-info* ((obj sequent))
+  (collect-visible-decl-info* (s-forms obj)))
+
+(defmethod collect-visible-decl-info* ((obj s-formula))
+  (let ((form (if (negation? (formula obj))
+		  (argument (formula obj))
+		  (formula obj))))
+    (collect-visible-decl-info* form)))
+
 ;;;
 
 (defun get-subterms-at-place (pvs-file row col &optional json?)
