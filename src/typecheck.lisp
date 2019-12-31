@@ -1210,7 +1210,8 @@ TCCs are generated, and finally exportings are updated."
 (defmethod typecheck-mappings (mappings (thinst modname))
   (unless (or (not mappings)
 	      (already-typed? mappings))
-    (let ((lhs-context (mapping-lhs-theory-context thinst)))
+    (let ((lhs-context (mapping-lhs-theory-context thinst))
+	  (rhs-context (mapping-rhs-theory-context thinst)))
       (unless lhs-context
 	(type-error thinst "Theory reference ~a not found" thinst))
       (let* ((lhs-theory (theory lhs-context))
@@ -1238,7 +1239,8 @@ TCCs are generated, and finally exportings are updated."
 		     ;; Notice that this will use the lhs decl-formals,
 		     ;; As we don't yet know which lhs resolution we'll use
 		     (typecheck-mapping-rhs mapping)))
-		  (t (typecheck-mapping-rhs mapping)))
+		  (t (with-context rhs-context
+		       (typecheck-mapping-rhs mapping))))
 	    (assert (or (type-value (rhs mapping))
 			(name-expr? (expr (rhs mapping)))
 			(ptypes (expr (rhs mapping)))))
@@ -1380,6 +1382,33 @@ be typechecked when set-type selects a resolution."
 
 (defmethod mapping-lhs-theory-context ((th datatype))
   (context th))
+
+(defun mapping-rhs-theory-context (thname)
+  "Extends the current context to include thname, removing any mapped
+declarations"
+  (assert (mappings thname))
+  (let* ((nomap-thname (copy thname :mappings nil))
+	 (res (resolve nomap-thname 'module nil))
+	 (thry (if (datatype-or-module? (declaration (car res)))
+		   (declaration (car res))
+		   (declaration (theory-ref (declaration (car res))))))
+	 (idecls (interpretable-declarations thry))
+	 (ncontext (copy-context *current-context*)))
+    (setf (resolutions nomap-thname) res)
+    ;; Add the thry, and then remove those idecls that have been
+    ;; interpreted, as they are no longer visible.
+    (let ((*current-context* ncontext))
+      (add-to-using nomap-thname)
+      ;; (dolist (idecl idecls)
+      ;; 	(let ((gdecls (get-declarations (id idecl))))
+      ;; 	  (when (and (memq idecl gdecls)
+      ;; 		     (some #'(lambda (mapping)
+      ;; 			       (same-id (lhs mapping) idecl))
+      ;; 			   (mappings thname)))
+      ;; 	    (setf (get-declarations (id idecl))
+      ;; 		  (remove idecl gdecls)))))
+      )
+    ncontext))
   
 
 (defmethod already-typed? ((list list))
