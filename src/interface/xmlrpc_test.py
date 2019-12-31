@@ -8,7 +8,12 @@ There are two connections, to essentially implement
 JSON-RPC, which has an implementation in Python, but does not seem to
 in Lisp (though there is undocumented JSON-RPC in CL-JSON).
 
-The advantage of using XML-RPC is that it is ubiquitous. 
+The advantage of using XML-RPC is that it is ubiquitous.
+
+To debug, test new methods, etc. run ipython, and then, e.g.,:
+  import xmlrpc_test
+  pvs = xmlrpc_test.PVS_XMLRPC()
+  pvs.pvs_request("list-methods", [])
 """
 
 import sys
