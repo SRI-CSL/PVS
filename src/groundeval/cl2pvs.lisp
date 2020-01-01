@@ -105,12 +105,12 @@
 	 (cl2pvs*-string sexpr))
 	((finseq-type? type)
 	 (let ((len (elt sexpr 0))
-	       (fn (elt sexpr 1)))
+	       (fn (elt sexpr 1)))(format t "~%cl2pvs*(recordtype)")
 	   (mk-application (mk-name-expr '|list2finseq|)
 			   (cl2pvs*-list (loop for x from 0 to (- len 1) collect (pvs-funcall fn x))
 					 (finseq-type? type)
 					 context))))
-	(t
+	(t (format t "~%wrong branch")
 	 (mk-record-expr
 	  (loop for fld in (sorted-fields type)
 	     as i from 0
@@ -126,6 +126,9 @@
 (defmethod string-type? (type)
   (declare (ignore type))
   nil)
+
+(defun char-code-accessor ();;NSH(12/21/19): used in rendering strings in cl2pvs*-string
+  (lisp-function (accessor-decl (car (arguments (car (constructors (get-theory "character"))))))))
 
 (defmethod finseq-type? ((type recordtype))
   (with-slots (fields) type
@@ -168,12 +171,21 @@
 ; this is a version of xt-string-expr that doesn't do anything
 ; about places
 (defun cl2pvs*-string (str)
-  (let ((ne (mk-name-expr '|char?|)))
+  (let ((ne (mk-name-expr '|char?|))
+	(charlist (if (stringp str)   ;;NSH(12/21/19): extracts list of character codes
+		      (xt-string-to-codes str 0 (length str) '#(0 0 0 0) nil)
+		    ;;else assuming it's a record-vector
+		    (loop for i from 0 to (1- (svref str 0))
+			  collect (funcall (char-code-accessor)
+					   (funcall (svref str 1) i))))))
     (setf (parens ne) 1)
     (make-instance 'string-expr
-      'string-value str
+		   'string-value (or (and (stringp str) str)
+				     (format nil "~{~a~}"
+					     (loop for chcode in charlist
+						   collect (code-char chcode))))
       'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
-      'argument (cl2pvs*-string* (xt-string-to-codes str 0 (length str) '#(0 0 0 0) nil)))))
+      'argument (cl2pvs*-string* charlist))))
 
 (defun cl2pvs*-string* (codes)
   (if (null codes)
@@ -202,8 +214,8 @@
 	((list-type? type)
 	 (cl2pvs*-list sexpr (type-value (car (actuals (find-supertype type))))
 		       context))
-	((char-type? type)
-	 (cl2pvs*-char sexpr type context))
+	;; ((char-type? type) ;;NSH(12/20/19): commented out so that it is treated
+	;;  (cl2pvs*-char sexpr type context));;like any other datatype
 	((enumtype? (adt type))
 	 (nth sexpr (constructors type)))
 	(t
