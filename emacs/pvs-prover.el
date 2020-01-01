@@ -1410,7 +1410,7 @@ through using the edit-proof command."
 		       (or fname theory) fmlastr (+ line poff) nil kind buf poff nil
 		       pvs-x-show-proofs)))
 	(comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
-	(ilisp-send input nil 'pr t))))
+	(ilisp-send input nil 'pr t)))))
 
 (defpvs x-step-proof prove ()
   "Starts the prover, the proof-stepper and the proof display
