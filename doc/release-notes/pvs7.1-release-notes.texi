@@ -1,22 +1,14 @@
 @node PVS 7.1 Release Notes
 @unnumbered PVS 7.1 Release Notes
 
-PVS 7.1 introduces several new features and a number of bug fixes.
-The highlights are:
-@c @itemize @bullet
-@c @item
-@c @item
-@c @end itemize
-
-
-XML-RPC server.  A few enhancements were made to PVS to support more GUI
-features, and most of these were added to the Emacs GUI as well.
-
-In addition, the prover command definition forms were generalized in order
-to make it easier to add new arguments, declaration information is now
-readily available as tooltips, positive type parameters are now used beyond
-datatypes, and the typepred command has been extended to include function
-ranges.
+PVS 7.1 introduces several new features and bug fixes.  Some of the
+highlights include an improved installation (PVS is no longer a ``tar
+bomb''), the concept of workspaces, improvements to the XML-RPC interface,
+some language changes, an improved tracking for TCC changes, improvements
+to strategy definitions, improvements to theory interpretations, and
+inclusion of Yices.  There are many other changes not mentioned here; it
+is worth skimming through the rest of this chapter to see which are
+useful to you.
 
 @ifnottex
 @menu
@@ -33,7 +25,10 @@ ranges.
 The system is most easily installed by getting a tar file from 
 @url{http://pvs.csl.sri.com/download.shtml}.  Untar it in a directory of
 your choice (it will create a subdirectory), cd to the subdirectory, and
-run @code{sh install.sh}.
+run @code{sh install.sh}.  This sets the path in various scripts, so that
+PVS knows where it is.  It also byte-compiles the emacs source for your
+Emacs.  If you move the PVS directory, or change your Emacs, or forgot
+whether you ran it already, then simply rerun it.
 
 We strongly suggest getting a pre-built Allegro version, unless you have
 concerns with the Allegro runtime click-though license, in which case get
@@ -68,41 +63,56 @@ through Linux package managers, or using easy_install or pip.
 * Proof Command Definitions::
 * Positive Type Parameters::
 * Typepred Extension::
-* Theory Interpretations::
 * TCC Ordering::
 * Yices in 7.1::
-* 7.1 Development Notes::
+* Theory Interpretations::
 @end menu
 
 @node PVS Workspaces
 @subsection PVS Contexts, Workspaces, and Libraries
-Contexts and Workspaces: Up to now PVS has had two notions of context, one
-which relates to directories, and the other the usual list of declarations
-of type theory.  Directories are now referred to as workspaces, which are
-just directories with some sort of PVS file in them.
 
-As with directories in a shell, there is a current workspace; other workspaces
-may be referenced as libraries.  Within PVS names, the library is referred to by
-an identifier, and this is resolved to a workspace in one of three ways,
-in order:
+Up to now PVS has had two notions of context, one which relates to
+directories (called a @emph{PVS context}), and the other the usual list of
+declarations of type theory.  The former are now referred to as
+workspaces, which are just directories with some sort of PVS file in them.
+
+As with directories in a shell, there is a current workspace; other
+workspaces may be referenced as libraries.  Within PVS names, the library
+is referred to by an identifier, and this is resolved to a workspace in
+one of three ways, in order:
 @itemize @bullet
 @item
 there is a visible library declaration with the given id.  Note that this
-only makes sense in a context, e.g., when typechecking, proving, etc.
+only makes sense in a declaration context, e.g., when typechecking,
+proving, etc.
 @item
-the id is a subdirectory of the current context.
+the id is a subdirectory of the current workspace.
 @item
-it appears as a subdirectory in one of the directories of the
+the id appears as a subdirectory in one of the directories of the
 @code{PVS_LIBRARY_PATH} environment variable.
 @end itemize
-Although one can continue to use PVS as before, there are several
-advantages to this change:
+Note that the second resolution is sensitive to what the current workspace
+is; in previous PVS versions this was implemented in such a way that the
+current workspace was treated in a special way, and changing workspaces
+meant ``throwing away'' much of the typechecking, etc. results.
+
+In PVS 7, the information associated with a workspace has been
+encapsulated.  This means that the current workspace is not so important.
+It's more like the way a shell uses directories; even if you're in a
+directory, you can run commands on files in other directories, simply by
+giving a (relative or absolute) pathname.  In the same way, you can now
+typecheck a file from any workspace, even if it has never been seen by PVS
+before.  It temporarily becomes the current workspace, the command is run,
+and then the current workspace is restored.
+
+PVS can continue to be used exactly as in earlier versions, but there are
+several advantages to this change:
 @itemize @bullet
 @item
 Speed: in the past, library theories were treated specially, because
 references might be relative.  Special class instances were created, and
 changing workspaces meant clearing out typechecked forms, even when they
-were needed from the new workspace.  In PVS 7.1, changing the current
+were needed from the new workspace.  In PVS 7, changing the current
 workspace has no such effect; all the work done in the previous workspace
 will be preserved.
 @item
@@ -111,32 +121,168 @@ etc. a PVS spec.  These commands now allow the inclusion of a workspace
 path, and that workspace is temporarily made the current context.
 @end itemize
 
+@subsubsection Development details
 
+The current workspace is in the Lisp global @code{*workspace-session*}.
+If the @code{*pvs*} Emacs buffer is not in the prover or ground-evaluator,
+you can use @code{(show *workspace-session*)} to see the contents: this is
+an instance of the @code{workspace-session} class, with slots
+@itemize @bullet
+@item
+@code{path}: the path associated with this workspace.  This must be an
+absolute path, as returned by the Common Lisp function @code{truename}.
+@item
+@code{pvs-files}: this is a hash-table with key the file name string
+(without directory or the @code{.pvs} extension), and returns a list.  The
+first element of the list is the file-date for when it was parsed, and the
+rest of the list is the theories that make up the file.
+@item
+@code{pvs-theories}: this is a hash-table with key the theory id (symbol),
+and simply returns the theory instance.
+@item
+@code{prelude-libs}: this is a list of the prelude extensions allowed by
+PVS.  See @code{load-prelude-library} for details.
+@item
+@code{prelude-context}: this is a context used when prelude-libs is set,
+as a starting context for typechecking new theories.
+@item
+@code{lisp-files}: workspaces may have a @code{pvs-lib.lisp} file, that is
+automatically loaded when the workspace is referenced as a library.
+@item
+@code{subdir-alist}: this is a list of subdirs that may be used as library
+references from this workspace.  Such subdirs must satisfy the rules for a
+PVS identifier, in particular, names with hyphens are not directly allowed
+(though a library declaration may reference them).
+@item
+@code{pvs-context}: this is a list that represents the @code{.pvscontext}
+file.
+@item
+@code{pvs-context-changed}: this is a flag indicating that the
+@code{.pvscontext} has changed, and it will be written at some point.
+@item
+@code{strat-file-dates}: this is a list of dates associated with the
+@code{pvs-strategies} files, first from the PVS directory, then from the
+user's home directory, and finally from the current workspace.
+@item
+@code{all-subst-mod-params-caches}: this is a cache used by
+the @code{subst-mod-params} function, and not interesting unless debugging
+that function.
+@end itemize
+Note that all of these slots were global variables in earlier versions of
+PVS; this is what is meant by @emph{encapsulation}.
+
+When PVS is started, it creates a workspace-session instance in
+@code{*workspace-session*}, reads the @code{.pvscontext} file, if it
+exists, and adds the workspace-session to the
+@code{*all-workspace-sessions*} list.  When a file is parsed or
+typechecked in that workspace, the @code{pvs-files} and
+@code{pvs-theories} are updated accordingly.
+
+To parse, typecheck, etc. a PVS file from a different directory, the
+macros @code{with-workspace} or @code{with-pvs-file} are used to
+temporarily change to the new workspace.  If the associated
+workspace-session is already in @code{*all-workspace-sessions*} (based on
+the @code{path}), then it is simply used, otherwise a new one is created
+and added to @code{*all-workspace-sessions*}.
+
+@defmac with-workspace path &rest forms
+simply takes a @emph{path} (string or
+pathname), and temporarily makes that the current workspace and processes
+the @emph{forms} returning the value of the last one.
+@end defmac
+
+@defmac with-pvs-file vars pvsfileref body
+takes a @emph{pvsfileref}, which in general has the form
+@code{dir/file.pvs#theory}, though it can be as simple as a name.  It is
+pulled apart, and if a @emph{dir} is included, @code{with-workspace} is
+used, and the rest is split on the @code{#}, if it exists.  @emph{vars} is
+a list of names, and these are bound in order with the file, theory, and
+any others if they are provided (the idea is that there could be a
+@code{#formula} or @code{#place} following the @code{#theory}).  The
+@emph{body} is then executed with the names in @emph{vars} bound
+accordingly.  Note that one must be careful here; if @emph{pvsfileref} is
+just a name, it may be referring to a file or a theory, depending on the
+context.  Hence there is code such as that for @code{show-tccs}:
+@example
+(defun show-tccs (theoryref &optional arg)
+  (with-pvs-file (fname thname) theoryref
+    (let* ((theory (get-typechecked-theory (or thname fname)))
+           ...))))
+@end example
+Here a theory is expected, and if the @code{theoryref} is just a name,
+then @code{fname} is set to it, and @code{thname} is @code{nil}.  This is
+why the @code{theory} is derived from @code{(or thname fname)}.
+@end defmac
 
 @node PVS Language Changes
 @subsection PVS Language Changes
+@itemize
+@item
 Prime is allowed in names, e.g., @code{x'}.  Allowed anywhere except the
 first character, which must be alphabetic.
-
+@item
 (Co)Datatypes may now have ASSUMING parts and theory declarations in
 addition to IMPORTINGs, which may appear interleaved in the constructor
 declarations.
+@item
+More expression judgements are allowed.  In earlier versions, the parser
+distinguished between expression judgements and the other kinds of
+judgements.  This is still possible for name and number judgements, but
+the typechecker is now needed in general to distinguish between
+application and expression judgements.  The advantage is that it opens up
+expression judgements to use most any expression, though it must be kept
+in mind that the judgement mechanism uses a very simple match, in order to
+keep the typechecker relatively quick.
+@item
+IF can be given as an application, e.g., IF(b,a,c).
+@item
+LAMBDA expressions may be given a result type, e.g., @code{LAMBDA (x: int)
+-> int: f(x)}.  This will assign the type @code{[int -> int]} to the
+LAMBDA expression, and generate a TCC on @code{f(x)} if necessary.
+@item
+Binary relations may be chained, e.g., @code{a < b /= c > 4}.  Internally,
+this becomes @code{a < b & b /= c & c > 4}.  Works for any binary relation
+between the same or different types.  Note that this will not go inside
+parentheses, so @code{(a < b) /= c > 4} will be interpreted as @code{(a <
+b) /= c & c > 4}, which probably doesn't typecheck.  (Overloading of
+relations or enabling some conversions may allow this to still be typechecked).
 
-Expression judgements have been improved.
-
-IF can be given as an application, e.g., IF(b,a,c)
-
-LAMBDA expressions may be given a result type, e.g.,
-@code{LAMBDA (x: int) -> int: f(x)}
-
-CASES selections may be given as bindings, rather than just ids, e.g.,
-@code{CASES e OF c(x: int | p(x)), ...}
-
-Chained relations: a < b /= c > 4
+@end itemize
 
 @node TCC Formulas and Associated Proofs
 @subsection TCC Formulas and Associated Proofs
 
+TCCs are generated during typechecking for a given declaration, and during
+a proof for a given branch.  During typechecking, the name of a given TCC
+is derived from the declaration, followed by a number; e.g., if the
+declaration is named @code{foo}, then the TCCs will be named
+@code{foo_TCC1}, etc.  Some declarations have many TCCs, with nontrivial
+proofs.  When such a declaration is modified, it can generate insert,
+remove, or otherwise renumber the TCCs, and then associate the wrong
+proofs to them.
+
+The new approach keeps track of where the proof came from, creating a
+@code{tcc-origin} instance, with the following slots:
+@itemize
+@item @code{root}: the root name for the TCC, before the ``_TCC#''.
+@item @code{kind}: one of @code{termination-subtype}, @code{subtype},
+@code{termination}, @code{well-founded}, @code{existence},
+@code{assuming}, @code{mapped-definition-equality}, @code{mapped-axiom},
+@code{cases}, @code{actuals}, @code{disjointness}, or @code{coverage}.
+@item @code{expr}: except for the @code{existence} TCCs, the expanded form
+of the expression that was the reason for the TCC.
+@item @code{type}: the type associated; e.g., for @code{subtype} TCCs, the
+expected type.
+@end itemize
+
+The @code{.prf} file has been extended to include the same information
+with TCC proofs.  When a PVS file is typechecked, the proofs are read from
+the corresponding @code{.prf}.  TCC proofs are no longer matched by TCC
+name, but instead the @code{kind} and @code{expr} are used.  Those that
+match exactly are directly used, any remaining proofs are installed (in
+order) in the remaining TCCs.  This is obviously not perfect, as the
+corresponding @code{expr}s may not match, depending on the changes made to
+a declaration.
 
 @node PVS XML-RPC server
 @subsection PVS XML-RPC server
@@ -607,10 +753,25 @@ fixed.
 The yices prover commands have been fully integrated into PVS, and Yices
 versions 1 and 2 are included in the distribution.
 
-@node 7.1 Development Notes
-@subsection Development Notes
+@node Theory Interpretations
+@subsection Theory Interpretations
 
-with-context, cam
+Theory interpretations have been improved in a few ways.  First, if an
+uninterpreted type or constant has declaration formals, they must be
+included in the mapping, e.g.,
+@example
+eq [A:TYPE+]: [A -> [A -> bool]]
+
+logic_sttfa_pvs : THEORY = logic_sttfa {{
+    connectives_sttfa_th := connectives_sttfa_pvs,
+    eq[T:TYPE+](x:T)(y:T) := x=y
+  }}
+@end example
+
+Second, the context is updated with the theory without mappings when
+typechecking the RHS.  This means that it is not necessary to have two
+importings in order to specify the RHS, and gives access to declarations
+of that context that are not being interpreted.
 
 @node    7.1 Incompatibilities
 @section Incompatibilities
