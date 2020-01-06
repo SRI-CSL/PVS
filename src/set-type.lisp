@@ -820,16 +820,17 @@ resolution with a macro matching the signature of the arguments."
 
 ;;; should be split into two methods
 
-(defun set-type-actuals-and-maps (name theory)
+(defun set-type-actuals-and-maps (name theory &optional decl)
   (assert theory)
-  (prog1 (set-type-actuals name theory)
+  (prog1 (set-type-actuals name theory decl)
     (set-type-maps name theory)))
 
-(defmethod set-type-actuals ((thinst modname) &optional th)
+(defmethod set-type-actuals ((thinst modname) &optional th decl)
   (assert (or (resolution thinst) th))
-  (let* ((decl (declaration thinst))
-	 (theory (if decl
-		     (if (declaration? decl) (module decl) decl)
+  (assert (or (null (dactuals thinst)) decl))
+  (let* ((tdecl (declaration thinst))
+	 (theory (if tdecl
+		     (if (declaration? tdecl) (module tdecl) tdecl)
 		     th))
 	 (fmls (formals-sans-usings theory))
 	 (dfmls (when decl (decl-formals decl)))
@@ -850,8 +851,8 @@ resolution with a macro matching the signature of the arguments."
           (generate-assuming-tccs (lcopy nthinst :mappings nil) thinst theory))
 	nthinst))))
 
-(defmethod set-type-actuals ((expr name) &optional th)
-  (declare (ignore th))
+(defmethod set-type-actuals ((expr name) &optional th adecl)
+  (declare (ignore th adecl))
   #+bad-assert (assert (null *set-type-actuals-name*))
   (unless (module-instance expr)
     (type-ambiguity expr))
