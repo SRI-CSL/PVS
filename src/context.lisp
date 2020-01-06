@@ -1868,6 +1868,10 @@ Note that the lists might not be the same length."
 						(string= (type (origin (car tccs)))
 							 (cadddr prf-orig))))
 				   mproofs)
+				 (find-if #'(lambda (prf)
+					      (let* ((pr-id (car prf)))
+						(string= (id (car tccs)) pr-id)))
+				   mproofs)
 				 (car mproofs))
 			     (car mproofs)))))
 	  (cond (mproof
