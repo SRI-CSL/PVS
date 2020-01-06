@@ -3529,12 +3529,14 @@ nil is returned in that case."
 	     (current-pvs-theories))
     theories))
 
-(defun get-all-current-tccs ()
+(defun get-all-current-tccs (thinst)
   (let ((tccs nil))
     (dolist (th (get-typechecked-theories))
       (dolist (decl (all-decls th))
 	(when (tcc? decl)
-	  (push decl tccs))))
+	  (let ((sdef (subst-mod-params (definition decl) thinst)))
+	    (when (fully-instantiated? sdef)
+	      (push (cons decl sdef) tccs))))))
     tccs))
 
 (defun tcc-conclusion (tcc)
