@@ -1136,11 +1136,16 @@ there is no such bind-decl."
 				  (generate-existence-tcc atype expr)
 				  (check-nonempty-type atype expr)))
 			    (check-nonempty-type atype expr)))
-		      (let* ((*old-tcc-name* nil)
-			     (ndecl (make-assuming-tcc-decl ass modinst)))
-			(if ndecl
-			    (insert-tcc-decl 'assuming modinst ass ndecl)
-			    (add-tcc-comment 'assuming modinst ass))))))))))))
+		      (let ((*old-tcc-name* nil))
+			(multiple-value-bind (ndecl subsumed-by)
+			    (make-assuming-tcc-decl ass modinst)
+			  (cond (ndecl
+				 (insert-tcc-decl 'assuming modinst ass ndecl))
+				(subsumed-by
+				 (add-tcc-comment 'assuming modinst ass
+						  (list 'subsumed subsumed-by)
+						  subsumed-by))
+				(t (add-tcc-comment 'assuming modinst ass))))))))))))))
 
 (defmethod existence-tcc-type ((decl existence-tcc))
   (existence-tcc-type (definition decl)))
@@ -1182,17 +1187,32 @@ there is no such bind-decl."
 			 *true*)
 			(*simplify-tccs*
 			 (pseudo-normalize sform))
-			(t (beta-reduce sform)))))
-      (assert (every #'(lambda (fv) (memq (declaration fv) *keep-unbound*))
-		     (freevars uform)))
-      (unless (tc-eq uform *true*)
-	(when (and *false-tcc-error-flag*
-		   (tc-eq uform *false*))
-	  (type-error ass
-	    "Assuming TCC for this expression simplifies to false:~2%  ~a"
-	    tform))
-	(setf (definition tccdecl) uform)
-	(typecheck* tccdecl nil nil nil)))))
+			(t (beta-reduce sform))))
+	   (subsumed-by (subsuming-assuming (assuming-instances cth) uform)))
+      (cond (subsumed-by
+	     (values nil subsumed-by))
+	    (t (assert (every #'(lambda (fv) (memq (declaration fv) *keep-unbound*))
+			      (freevars uform)))
+	       (unless (tc-eq uform *true*)
+		 (when (and *false-tcc-error-flag*
+			    (tc-eq uform *false*))
+		   (type-error ass
+		     "Assuming TCC for this expression simplifies to false:~2%  ~a"
+		     tform))
+		 (setf (definition tccdecl) uform)
+		 (typecheck* tccdecl nil nil nil)))))))
+
+(defun subsuming-assuming (assuming-instances uform)
+  (when assuming-instances
+    (let* ((assuming-inst (car assuming-instances))
+	   ;; of form (thinst ass curdecl)
+	   (tcc-alist (get-all-current-tccs (car assuming-inst)))
+	   (tcc-elt (find-if #'(lambda (tcc-elt)
+				 (pred-subsumes uform (cdr tcc-elt) nil))
+		      tcc-alist)))
+      (if tcc-elt
+	  (car tcc-elt)
+	  (subsuming-assuming (cdr assuming-instances) uform)))))
 
 (defun generate-mapped-eq-def-tcc (lhs rhs mapthinst)
   (multiple-value-bind (dfmls dacts thinst)
