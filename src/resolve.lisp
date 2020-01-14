@@ -678,7 +678,7 @@ dacts."
 
 (defun resolve-theory-actuals (decl acts dacts dth args mappings)
   "resolve-theory-actuals returns a list of compatible theory instances.
-Note that we acts and dacts have been sorted out."
+Note that the acts and dacts have been sorted out."
   (let* ((thinsts (get-importings dth))
 	 (generic? (or (eq dth (current-theory))
 		       (when (formals-sans-usings dth)
@@ -697,7 +697,7 @@ Note that we acts and dacts have been sorted out."
 				   (when (lib-datatype-or-theory? dth)
 				     (get-library-id (context-path dth))))
 				  (thname (mk-modname-no-tccs
-					   (id dth) nacts libid))
+					   (id dth) nacts ndacts libid))
 				  (res (mk-resolution dth thname nil)))
 			     (setf (resolutions thname) (list res))
 			     thname))))
@@ -711,24 +711,29 @@ Note that we acts and dacts have been sorted out."
 	      (compatible-arguments? decl dthi args (current-theory)))))
 	(let* ((cinsts (decl-args-compatible? decl args mappings))
 	       (modinsts (mapcar #'(lambda (thinst)
+				     (assert (modname? thinst))
+				     (assert (module? (declaration thinst)))
 				     (if (actuals thinst)
 					 (if (or (dactuals thinst)
 						 (null dacts))
 					     thinst
 					     (change-class (copy thinst :dactuals dacts)
-						 'declparam-modname))
+						 'declparam-modname
+					       :from-decl decl))
 					 (if (null acts)
 					     (if (or (dactuals thinst)
 						     (null dacts))
 						 thinst
 						 (change-class (copy thinst :dactuals dacts)
-						     'declparam-modname))
+						     'declparam-modname
+						   :from-decl decl))
 					     (if (or (dactuals thinst)
 						     (null dacts))
 						 (copy thinst :actuals acts)
 						 (change-class (copy thinst :actuals acts
 								     :dactuals dacts)
-						     'declparam-modname)))))
+						     'declparam-modname
+						   :from-decl decl)))))
 			   cinsts))
 	       (thinsts (matching-decl-theory-instances acts dth modinsts)))
 	  (assert (every #'(lambda (thi) (listp (dactuals thi))) modinsts))
@@ -754,8 +759,10 @@ Note that we acts and dacts have been sorted out."
 		       (type-value dact)
 		       (null (type-value dact))))
 	       (decl-formals decl) dacts)
+    (assert (modname? thinst))
+    (assert (module? (declaration thinst)))
     (let* ((nthinst (change-class (copy thinst) 'declparam-modname
-		      'dactuals dacts 'declaration decl))
+		      :dactuals dacts :from-decl decl))
 	   (dtype (subst-mod-params (type decl) nthinst (module decl) decl))
 	   (doms (domain* dtype))
 	   (margs (when args
@@ -775,8 +782,10 @@ Note that we acts and dacts have been sorted out."
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
   (declare (ignore args))
   (assert (and dacts (length= dacts (decl-formals decl))))
+  (assert (modname? thinst))
+  (assert (module? (declaration thinst)))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
-		    'dactuals dacts 'declaration decl))
+		    :dactuals dacts :from-decl decl))
 	 (stype (subst-mod-params (type-value decl) nthinst (module decl) decl)))
     ;;(break "resolve-decl-actuals*")
     (list (mk-resolution decl nthinst stype))))
@@ -784,8 +793,10 @@ Note that we acts and dacts have been sorted out."
 (defmethod resolve-decl-actuals* ((decl formula-decl) dacts thinst args)
   (declare (ignore args))
   (assert (and dacts (length= dacts (decl-formals decl))))
+  (assert (modname? thinst))
+  (assert (module? (declaration thinst)))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
-		    'dactuals dacts 'declaration decl)))
+		    :dactuals dacts :from-decl decl)))
     (list (make-resolution decl nthinst nil))))
 
 (defun visible-to-mapped-tcc? (decl thinst theory)
