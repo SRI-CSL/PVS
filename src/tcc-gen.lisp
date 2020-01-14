@@ -1097,55 +1097,86 @@ there is no such bind-decl."
   (let ((mod (or theory (get-theory modinst))))
     (unless (or (eq mod (current-theory))
 		(null (assuming mod))
-		(and (formals-sans-usings mod) (null (actuals modinst))))
-      (let* ((cdecl (or (and (or *in-checker* *in-evaluator*)
-			     *top-proofstate*
-			     (declaration *top-proofstate*))
-			(current-declaration)))
-	     (prev (find modinst (assuming-instances (current-theory))
-			 :test #'(lambda (x y)
-				   (not (eq (simple-match (car y) x) 'fail))))))
-	(if prev
-	    (unless (member modinst (get-importings theory) :test #'tc-eq)
-	      (let ((aprev (or (cadr prev) (car prev))))
-		(pvs-info "Assuming TCCs not generated ~@[~a~] for~%  ~w~%~
-                           as they are subsumed by the TCCs generated ~@[~a~] for~%  ~w"
-		  (place-string expr) expr (place-string aprev) aprev)))
-	    (unless (and (not *in-checker*)
-			 (existence-tcc? cdecl))
-	      (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
-		;; Don't want to save this module instance unless it does not
-		;; depend on any conditions, including implicit ones in the
-		;; prover
-		(unless (or (or *in-checker* *in-evaluator*)
-			    (mappings modinst)
-			    (some #'(lambda (tcc-cond)
-				      (not (typep tcc-cond '(or bind-decl list))))
-				  *tcc-conditions*))
-		  (push (list modinst expr (current-declaration))
-			(assuming-instances (current-theory))))
-		(dolist (ass assumptions)
-		  (if (or (eq (kind ass) 'existence)
-			  (nonempty-formula-type ass))
-		      (let ((atype (subst-mod-params (existence-tcc-type ass)
-						     modinst
-						     mod)))
-			(if (typep cdecl 'existence-tcc)
-			    (let ((dtype (existence-tcc-type cdecl)))
-			      (if (tc-eq atype dtype)
-				  (generate-existence-tcc atype expr)
-				  (check-nonempty-type atype expr)))
-			    (check-nonempty-type atype expr)))
-		      (let ((*old-tcc-name* nil))
-			(multiple-value-bind (ndecl subsumed-by)
-			    (make-assuming-tcc-decl ass modinst)
-			  (cond (ndecl
-				 (insert-tcc-decl 'assuming modinst ass ndecl))
-				(subsumed-by
-				 (add-tcc-comment 'assuming modinst ass
-						  (list 'subsumed subsumed-by)
-						  subsumed-by))
-				(t (add-tcc-comment 'assuming modinst ass))))))))))))))
+		(and (formals-sans-usings mod) (null (actuals modinst)))
+		(already-generated-assuming? modinst))
+      (let ((cdecl (or (and (or *in-checker* *in-evaluator*)
+			    *top-proofstate*
+			    (declaration *top-proofstate*))
+		       (current-declaration))))
+	(unless (and (not *in-checker*)
+		     (existence-tcc? cdecl))
+	  (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
+	    ;; Don't want to save this module instance unless it does not
+	    ;; depend on any conditions, including implicit ones in the
+	    ;; prover
+	    (dolist (ass assumptions)
+	      (if (or (eq (kind ass) 'existence)
+		      (nonempty-formula-type ass))
+		  (let ((atype (subst-mod-params (existence-tcc-type ass)
+				   modinst
+				 mod)))
+		    (if (typep cdecl 'existence-tcc)
+			(let ((dtype (existence-tcc-type cdecl)))
+			  (if (tc-eq atype dtype)
+			      (generate-existence-tcc atype expr)
+			      (check-nonempty-type atype expr)))
+			(check-nonempty-type atype expr)))
+		  (let ((*old-tcc-name* nil))
+		    (multiple-value-bind (ndecl subsumed-by)
+			(make-assuming-tcc-decl ass modinst)
+		      (cond (ndecl
+			     (insert-tcc-decl 'assuming modinst ass ndecl))
+			    (subsumed-by
+			     (add-tcc-comment 'assuming modinst ass
+					      (list 'subsumed subsumed-by)
+					      subsumed-by))
+			    (t (add-tcc-comment 'assuming modinst ass)))))))
+	    (unless (or (or *in-checker* *in-evaluator*)
+			(mappings modinst)
+			(some #'(lambda (tcc-cond)
+				  (not (typep tcc-cond '(or bind-decl list))))
+			      *tcc-conditions*))
+	      (assert (or (null (resolutions modinst))
+			  (module? (declaration modinst))))
+	      (push (list modinst expr (current-declaration))
+		    (assuming-instances (current-theory))))))))))
+
+(defvar *names-seen*)
+
+(defun already-generated-assuming? (modinst)
+  "Walks down the assuming-instances of the current theory to see if modinst
+has already been seen, recursively walking down and calling subst-mod-params
+using modinst on all recursive calls.  Note that this returns as soon as it
+finds the modinst."
+  (assert (fully-instantiated? modinst))
+  (let ((ainsts (assuming-instances (current-theory)))
+	(*names-seen* nil))
+    (already-generated-assuming?* ainsts modinst)))
+
+(defun already-generated-assuming?* (ainsts modinst)
+  ;; Note: modinst is a modname, essentially an importing of th
+  ;; an assuming-instance has the form (modname expr decl)
+  ;; in this case, we only care about the modname as we walk down.
+  (when ainsts
+    (or (already-generated-assuming?** (caar ainsts) modinst)
+	(already-generated-assuming?* (cdr ainsts) modinst))))
+
+(defun already-generated-assuming?** (ainst modinst)
+  (assert (fully-instantiated? ainst))
+  (unless (member ainst *names-seen* :test #'tc-eq)
+    (push ainst *names-seen*)
+    (or (tc-eq ainst modinst)
+	(let ((ass-insts
+	       (assuming-instances (or (declaration ainst)
+				       (get-theory ainst)))))
+	  (some #'(lambda (elt)
+		    (already-generated-assuming?**
+		     (if (fully-instantiated? (car elt))
+			 (car elt)
+			 (subst-mod-params (car elt) ainst))
+		     modinst))
+		ass-insts)))))
+
 
 (defmethod existence-tcc-type ((decl existence-tcc))
   (existence-tcc-type (definition decl)))
@@ -1187,32 +1218,18 @@ there is no such bind-decl."
 			 *true*)
 			(*simplify-tccs*
 			 (pseudo-normalize sform))
-			(t (beta-reduce sform))))
-	   (subsumed-by (subsuming-assuming (assuming-instances cth) uform)))
-      (cond (subsumed-by
-	     (values nil subsumed-by))
-	    (t (assert (every #'(lambda (fv) (memq (declaration fv) *keep-unbound*))
-			      (freevars uform)))
-	       (unless (tc-eq uform *true*)
-		 (when (and *false-tcc-error-flag*
-			    (tc-eq uform *false*))
-		   (type-error ass
-		     "Assuming TCC for this expression simplifies to false:~2%  ~a"
-		     tform))
-		 (setf (definition tccdecl) uform)
-		 (typecheck* tccdecl nil nil nil)))))))
+			(t (beta-reduce sform)))))
+      (assert (every #'(lambda (fv) (memq (declaration fv) *keep-unbound*))
+		     (freevars uform)))
+      (unless (tc-eq uform *true*)
+	(when (and *false-tcc-error-flag*
+		   (tc-eq uform *false*))
+	  (type-error ass
+	    "Assuming TCC for this expression simplifies to false:~2%  ~a"
+	    tform))
+	(setf (definition tccdecl) uform)
+	(typecheck* tccdecl nil nil nil)))))
 
-(defun subsuming-assuming (assuming-instances uform)
-  (when assuming-instances
-    (let* ((assuming-inst (car assuming-instances))
-	   ;; of form (thinst ass curdecl)
-	   (tcc-alist (get-all-current-tccs (car assuming-inst)))
-	   (tcc-elt (find-if #'(lambda (tcc-elt)
-				 (pred-subsumes uform (cdr tcc-elt) nil))
-		      tcc-alist)))
-      (if tcc-elt
-	  (car tcc-elt)
-	  (subsuming-assuming (cdr assuming-instances) uform)))))
 
 (defun generate-mapped-eq-def-tcc (lhs rhs mapthinst)
   (multiple-value-bind (dfmls dacts thinst)
@@ -1284,6 +1301,9 @@ there is no such bind-decl."
 			  (some #'(lambda (tcc-cond)
 				    (not (typep tcc-cond '(or bind-decl list))))
 				*tcc-conditions*))
+		(assert (or (null (resolutions modinst))
+			    (module? (declaration modinst))
+			    (theory-reference? (declaration modinst))))
 		(push (list modinst nil (current-declaration))
 		      (assuming-instances (current-theory))))
 	      (dolist (axpair (collect-mapping-axioms modinst mod))
