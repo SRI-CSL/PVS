@@ -832,10 +832,10 @@ resolution with a macro matching the signature of the arguments."
 	 (theory (if tdecl
 		     (if (declaration? tdecl) (module tdecl) tdecl)
 		     th))
-	 (fmls (formals-sans-usings theory))
-	 (dfmls (when decl (decl-formals decl)))
 	 (acts (actuals thinst))
-	 (dacts (dactuals thinst)))
+	 (dacts (dactuals thinst))
+	 (fmls (when acts (formals-sans-usings theory)))
+	 (dfmls (when decl (decl-formals decl))))
     ;;(assert (or (null th) (eq th theory)))
     (assert (or (null acts) (length= fmls acts)))
     (assert (or (null dacts) (length= dfmls dacts)))
@@ -5434,7 +5434,7 @@ type of the lhs."
                          (decl-formals decl)))))
          (dmi (if dacts
                   (change-class (copy mi) 'declparam-modname
-                    :dactuals dacts :declaration decl)
+                    :dactuals dacts :from-decl decl)
                   (lcopy mi :dactuals dacts))))
     (make-resolution decl dmi type)))
 
