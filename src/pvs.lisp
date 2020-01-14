@@ -3413,7 +3413,6 @@ nil is returned in that case."
   (get-typechecked-theory (mk-modname theoryref) theories quiet?))
 
 (defmethod get-typechecked-theory ((thname modname) &optional theories quiet?)
-  ;;(when (eq (id thname) 'Sigma_l_adt) (break "Sigma_l_adt"))
   (if (library thname)
       (let ((lib-path (get-library-path (library thname))))
 	(with-workspace lib-path
@@ -3528,16 +3527,6 @@ nil is returned in that case."
 		 (push th theories))
 	     (current-pvs-theories))
     theories))
-
-(defun get-all-current-tccs (thinst)
-  (let ((tccs nil))
-    (dolist (th (get-typechecked-theories))
-      (dolist (decl (all-decls th))
-	(when (tcc? decl)
-	  (let ((sdef (subst-mod-params (definition decl) thinst)))
-	    (when (fully-instantiated? sdef)
-	      (push (cons decl sdef) tccs))))))
-    tccs))
 
 (defun tcc-conclusion (tcc)
   (tcc-conclusion* (definition tcc) nil))
