@@ -2286,6 +2286,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				  (imps (gethash (module (declaration res))
 						 (lhash-table (current-using-hash))))
 				  (imp-mi (best-module-instance imps mi))
+				  (mi-th (get-theory imp-mi))
 				  (nmi (mk-modname (id imp-mi)
 					 (if eqtype
 					     (list (mk-actual eqtype))
@@ -2302,12 +2303,12 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					       (mappings modinst)))
 					 ndacts
 					 decl))
-				  ;;(tres (mk-resolution (module decl) nmi nil))
+				  (tres (mk-resolution mi-th nmi nil))
 				  (nrtype (if eqtype
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))
 				  (nres (mk-resolution decl nmi nrtype)))
-			     (setf (resolutions nmi) (list nres))
+			     (setf (resolutions nmi) (list tres))
 			     ;; (assert (subsetp (free-params nres) (free-params modinst))
 			     ;; 	     () "res6")
 			     nres))))))))))
