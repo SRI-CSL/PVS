@@ -303,12 +303,12 @@
 ;; 	 (mon:report-monitoring :all ,nested ,threshold ,key :ignore-no-calls))
 ;;      (mon:unmonitor))))
 
-(excl:def-fwrapper gethash-wrap (key hash-table)
-		   (when (> (hash-table-count hash-table) 2000)
-		     (break "Big table: ~a" hash-table))
-		   (excl:call-next-fwrapper))
+;; (excl:def-fwrapper gethash-wrap (key hash-table)
+;; 		   (when (> (hash-table-count hash-table) 2000)
+;; 		     (break "Big table: ~a" hash-table))
+;; 		   (excl:call-next-fwrapper))
 
-(excl:fwrap 'gethash 'gethashwrap1 'gethash-wrap)
+;; (excl:fwrap 'gethash 'gethashwrap1 'gethash-wrap)
 
 ;;; Like show, but only gives the "interesting" slots
 (defun show-ps (ps)
