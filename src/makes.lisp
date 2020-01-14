@@ -933,7 +933,7 @@
   (if decl
       (make-instance 'declparam-modname
 	:id id
-	:declaration decl
+	:from-decl decl
 	:actuals actuals
 	:dactuals dactuals
 	:library library
@@ -945,13 +945,17 @@
 	:library library
 	:mappings mappings)))
 
-(defun mk-modname-no-tccs (id &optional actuals library mappings)
+(defun mk-modname-no-tccs (id &optional actuals dactuals library mappings)
   (make-instance 'modname-no-tccs
     :id id
     :actuals (mapcar #'(lambda (a) (make-instance 'actual
 				     :expr (expr a)
 				     :type-value (type-value a)))
-		     actuals)
+	       actuals)
+    :dactuals (mapcar #'(lambda (a) (make-instance 'actual
+				      :expr (expr a)
+				      :type-value (type-value a)))
+		dactuals)
     :library library
     :mappings mappings))
 
@@ -1510,7 +1514,7 @@
 	     (resolution op)
 	     (eq (id (module-instance op)) '|list_adt|)
 	     (tuple-expr? arg))
-	(list-elements (cadr (exprs arg)) (cons (car (exprs arg) elts)))
+	(list-elements (cadr (exprs arg)) (cons (car (exprs arg)) elts))
 	(error "list-elements called with ~:[untypechecked~;non-list~] expression ~a"
 	       (type ex) ex))))
 
