@@ -519,7 +519,7 @@
   interp-theory)
 
 (defcl declparam-modname (modname)
-  declaration)
+  from-decl)
 
 ;;; Used to keep modnames for which TCCs have not yet been generated.  Used to
 ;;; delay the generation of TCCs until the TCC context has been built up,
