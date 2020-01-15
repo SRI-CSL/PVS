@@ -189,14 +189,14 @@
   (pvs-init-globals)
   (do-theories #'(lambda (th)
 		   (setf (context-path th)
-			 (shortpath (format nil "~a/lib" *pvs-path*))))
+			 (truename (format nil "~a/lib" *pvs-path*))))
     *prelude*)
   (initialize-decision-procedures)
   ;;(initialize-prelude-attachments)
   ;;(register-manip-type *number_field* 'pvs-type-real)
   (unless *default-pathname-defaults*
     ;; Need to make sure this is set to something
-    (setq *default-pathname-defaults* (shortpath (working-directory))))
+    (setq *default-pathname-defaults* (truename (working-directory))))
   ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
@@ -2580,7 +2580,7 @@ formname is nil, then formref should resolve to a unique name."
 				 #'(lambda (fd)
 				     (uiop:pathname-equal
 				      (context-path (module fd))
-				      (current-context-path)))
+				      *default-pathname-defaults*))
 			       fdecls)))
 	       (cond ((cdr locdecls)
 		      ;; Only report errors on current context ambiguities
@@ -2682,7 +2682,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 				 #'(lambda (fd)
 				     (uiop:pathname-equal
 				      (context-path (module fd))
-				      (current-context-path)))
+				      *default-pathname-defaults*))
 			       fdecls)))
 	       (cond ((cdr locdecls)
 		      ;; Only report errors on current context ambiguities

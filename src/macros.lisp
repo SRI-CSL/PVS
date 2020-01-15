@@ -213,7 +213,7 @@
   (let ((lref (gentemp))
 	(lib-path (gentemp))
 	(ws (gentemp))
-	(shortdir (gentemp))
+	(truedir (gentemp))
 	(orig-dir (gentemp)))
     `(let* ((,lref ,lib-ref)
 	    (,lib-path (if (workspace-session? ,lref)
@@ -221,8 +221,8 @@
 			   (get-library-path ,lref))))
        (if (directory-p ,lib-path)
 	   (let* ((,orig-dir (working-directory))
-		  (,shortdir (shortpath ,lib-path))
-		  (*default-pathname-defaults* ,shortdir)
+		  (,truedir (truename ,lib-path))
+		  (*default-pathname-defaults* ,truedir)
 		  (*current-context* nil)
 		  (*workspace-session*
 		   (or (when (workspace-session? ,lref)
@@ -233,7 +233,7 @@
 			 (push ,ws *all-workspace-sessions*)
 			 ,ws))))
 	     (unwind-protect 
-		  (prog1 (progn (set-working-directory ,shortdir)
+		  (prog1 (progn (set-working-directory ,truedir)
 				(unless (pvs-context *workspace-session*)
 				  (restore-context))
 				(assert (pvs-context *workspace-session*))

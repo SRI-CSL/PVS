@@ -944,6 +944,7 @@ declaration-entry has slots
 
 (defun restore-context ()
   (assert *workspace-session*)
+  #+pvsdebug
   (assert (and (file-equal *default-pathname-defaults*
 			   (working-directory))
 	       (file-equal *default-pathname-defaults*
@@ -1326,7 +1327,7 @@ declaration-entry has slots
     (if (or (equal file "prelude")
 	    (equal file "pvsio_prelude"))
 	(format t "~a/~a.pvs" *pvs-path* file)
-	(shortname (make-specpath file (or ext "pvs"))))))
+	(truename (make-specpath file (or ext "pvs"))))))
 
 (defun context-file-of* (theoryid entries)
   (when entries
