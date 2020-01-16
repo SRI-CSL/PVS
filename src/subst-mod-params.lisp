@@ -2286,7 +2286,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				  (imps (gethash (module (declaration res))
 						 (lhash-table (current-using-hash))))
 				  (imp-mi (best-module-instance imps mi))
-				  (mi-th (get-theory imp-mi))
+				  (mi-th (or (get-theory imp-mi)
+					     (and (same-id (module decl) imp-mi)
+						  (module decl))
+					     (break "what now?")))
 				  (nmi (mk-modname (id imp-mi)
 					 (if eqtype
 					     (list (mk-actual eqtype))
