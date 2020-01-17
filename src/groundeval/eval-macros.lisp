@@ -568,11 +568,18 @@
 	     (cdr lookup-diffs))
 	(aref (pvs-array-contents ,arr) ,ind))))))
 
+(defmacro trap-undefined (expr)
+  `(handler-case
+       ,expr
+     (groundeval-error (condition) nil)))
+
 (defmacro pvs2cl_tuple (&rest args)
-    `(vector ,@args))
+  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
+    `(vector ,@protected-args)))
 
 (defmacro pvs2cl_record (&rest args)
-    `(vector ,@args))
+  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
+    `(vector ,@protected-args)))
 
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)
