@@ -568,10 +568,12 @@
 	     (cdr lookup-diffs))
 	(aref (pvs-array-contents ,arr) ,ind))))))
 
+(defconstant *cant-translate* 'cant-translate)
+
 (defmacro trap-undefined (expr)
   `(handler-case
        ,expr
-     (groundeval-error (condition) nil)))
+     (groundeval-error (condition) *cant-translate*)))
 
 (defmacro pvs2cl_tuple (&rest args)
   (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
