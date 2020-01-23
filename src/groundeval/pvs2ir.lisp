@@ -2972,7 +2972,7 @@
 	      (let* ((rhs (format nil "~a()" ir-fname))
 		     (ir2c-return-type (ir2c-type return-type))
 		     (rhs-type (or (and declaration (add-c-type-definition (ir2c-type (pvs2ir-type (type declaration)))))
-				   c-return-type)))
+				   (add-c-type-definition ir2c-return-type))))
 		(mk-c-assignment-with-count return-var ir2c-return-type rhs rhs-type))))
 
 
@@ -3009,37 +3009,37 @@
 		       (c-return-type (add-c-type-definition ir2c-return-type))
 		       (ir2c-rhs-type  (ir2c-type ir-vtype))
 		       (c-rhs-type (add-c-type-definition ir2c-rhs-type))
-		       (c-assignments (copy-type ir2c-return-type ir2c-rhs-type return-var ir-name))
+		       (c-assignments (copy-type ir2c-return-type ir2c-rhs-type return-var ir-name)))
 				  ;(mk-c-assignment return-var c-return-type ir-name c-rhs-type)
 			    ;(format t "~% last: ~a, return-var: ~a, c-return-type:~a, c-rhs-type: ~a" (print-ir ir-var)(print-ir return-var) c-return-type c-rhs-type)
-			    (case c-return-type
-			      ((mpq mpz)
-			       (let ((return-init-instrs nil); already initialized
-				     ;; (list (format nil "~a = safe_malloc(sizeof(~a_t))"
-				     ;; 		    return-var c-return-type)
-				     ;; 	    (format nil "~a_init(~a)" c-return-type return-var))
-				     )
-				 (case c-rhs-type
-				   ((mpq mpz)
-				    (append return-init-instrs
-					    (if nil;(member ir-var *mpvar-parameters*)
-						 c-assignments
-					      (append c-assignments
-						    (list (format nil "~a_clear(~a)"
-								  c-rhs-type ir-name))))))
-				   (t (append return-init-instrs
-					    c-assignments)))))
-			      (t (case c-rhs-type
-				   ((mpq mpz);(break "ir-last")
-				    (if nil ;(member ir-var *mpvar-parameters*)
-					 c-assignments
-				      (append c-assignments
+		  (case c-return-type
+		    ((mpq mpz)
+		     (let ((return-init-instrs nil) ; already initialized
+			   ;; (list (format nil "~a = safe_malloc(sizeof(~a_t))"
+			   ;; 		    return-var c-return-type)
+			   ;; 	    (format nil "~a_init(~a)" c-return-type return-var))
+			   )
+		       (case c-rhs-type
+			 ((mpq mpz)
+			  (append return-init-instrs
+				  (if nil ;(member ir-var *mpvar-parameters*)
+				      c-assignments
+				    (append c-assignments
 					    (list (format nil "~a_clear(~a)"
-							  c-rhs-type ir-name)))))
-				   (t  ;(break "ir-last: rhs: ~a" ir-name)
-				       (if (ir-reference-type? ir2c-rhs-type)
-					   (append c-assignments (list (release-last-var ir-var)))
-					 c-assignments)))))))))
+							  c-rhs-type ir-name))))))
+			 (t (append return-init-instrs
+				    c-assignments)))))
+		    (t (case c-rhs-type
+			 ((mpq mpz)	;(break "ir-last")
+			  (if nil  ;(member ir-var *mpvar-parameters*)
+			      c-assignments
+			    (append c-assignments
+				    (list (format nil "~a_clear(~a)"
+						  c-rhs-type ir-name)))))
+			 (t	   ;(break "ir-last: rhs: ~a" ir-name)
+			  (if (ir-reference-type? ir2c-rhs-type)
+			      (append c-assignments (list (release-last-var ir-var)))
+			    c-assignments)))))))))
 
 (defmethod ir2c* ((ir-expr ir-variable) return-var return-type)
   (with-slots (ir-name ir-vtype) ir-expr
