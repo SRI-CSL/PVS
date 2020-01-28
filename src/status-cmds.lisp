@@ -592,28 +592,29 @@
 	   "complete")
 	  (t "incomplete"))))
 
-(defun show-proofs-pvs-file (file &optional all?)
-  (let* ((all-proofs (read-pvs-file-proofs file))
-	 (proofs (if all-proofs
-		     (if all?
-			 all-proofs
-			 (proofs-with-associated-decls file all-proofs))
-		     (collect-theories-proofs
-		      (cdr (gethash file (current-pvs-files)))))))
-    (cond (proofs
-	   (setq *displayed-proofs* proofs)
-	   (pvs-buffer "Show Proofs"
-	     (with-output-to-string (outstr)
-	       (format outstr "Proof scripts for file ~a.pvs:" file)
-	       (let* ((ce (context-entry-of file))
-		      (valid? (and ce (valid-proofs-file ce))))
-		 (show-all-proofs-file proofs outstr valid?)))
-	     'popto t)
-	   t)
-	  (all-proofs
-	   (pvs-message "None of the proofs in this file have a formula -~
+(defun show-proofs-pvs-file (fileref &optional all?)
+  (with-pvs-file (file) fileref
+    (let* ((all-proofs (read-pvs-file-proofs file))
+	   (proofs (if all-proofs
+		       (if all?
+			   all-proofs
+			   (proofs-with-associated-decls file all-proofs))
+		       (collect-theories-proofs
+			(cdr (gethash file (current-pvs-files)))))))
+      (cond (proofs
+	     (setq *displayed-proofs* proofs)
+	     (pvs-buffer "Show Proofs"
+	       (with-output-to-string (outstr)
+		 (format outstr "Proof scripts for file ~a.pvs:" file)
+		 (let* ((ce (context-entry-of file))
+			(valid? (and ce (valid-proofs-file ce))))
+		   (show-all-proofs-file proofs outstr valid?)))
+	       'popto t)
+	     t)
+	    (all-proofs
+	     (pvs-message "None of the proofs in this file have a formula -~
                          include an argument to see them anyway"))
-	  (t (pvs-message "No proofs found in this file")))))
+	    (t (pvs-message "No proofs found in this file"))))))
 
 (defun proofs-with-associated-decls (file proofs)
   (let ((alist (theory-formula-alist file))
