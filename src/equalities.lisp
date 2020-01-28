@@ -1041,12 +1041,21 @@
 (defvar *in-tc-eq-resolution* nil)
 
 (defmethod tc-eq* ((res1 resolution) (res2 resolution) bindings)
-  (with-slots ((decl1 declaration) (mi1 module-instance)) res1
-    (with-slots ((decl2 declaration) (mi2 module-instance)) res2
+  (with-slots ((decl1 declaration) (mi1 module-instance) (type1 type)) res1
+    (with-slots ((decl2 declaration) (mi2 module-instance) (type2 type)) res2
       (or (let ((bind (cdr (assq decl1 bindings))))
 	    (and bind
 		 (eq decl2 (if (consp bind) (car bind) bind))))
-	  (and (eq decl1 decl2)
+	  (and (or (eq decl1 decl2)
+		   (and *allow-var-decl-comparison*
+			(cond ((skolem-const-decl? decl1)
+			       (typep decl2 '(or binding var-decl)))
+			      ((skolem-const-decl? decl2)
+			       (typep decl1 '(or binding var-decl)))
+			      (t (and (eq (id decl1) (id decl2))
+				      (typep decl1 '(or binding var-decl))
+				      (typep decl2 '(or binding var-decl)))))
+			(tc-eq* type1 type2 bindings)))
 	       (and ;;(binding? decl1)
 		(if mi1
 		    (and mi2
