@@ -1138,44 +1138,30 @@ there is no such bind-decl."
 			      *tcc-conditions*))
 	      (assert (or (null (resolutions modinst))
 			  (module? (declaration modinst))))
-	      (push (list modinst expr (current-declaration))
-		    (assuming-instances (current-theory))))))))))
+	      (add-to-assuming-instances modinst expr))))))))
 
-(defvar *names-seen*)
+(defun add-to-assuming-instances (modinst expr)
+  (unless (let ((*allow-var-decl-comparison* t))
+	    (assoc modinst (assuming-instances (current-theory))
+		   :test #'tc-eq))
+    (let ((th (or (declaration modinst) (get-theory modinst))))
+      (dolist (ainst (assuming-instances th))
+	(let ((amodinst (subst-mod-params (car ainst) modinst th)))
+	  (unless (let ((*allow-var-decl-comparison* t))
+		    (assoc amodinst (assuming-instances (current-theory))
+			   :test #'tc-eq))
+	    (push (list amodinst (cadr ainst) (caddr ainst))
+		  (assuming-instances (current-theory))))))
+      (push (list modinst expr (current-declaration))
+	    (assuming-instances (current-theory))))))
 
 (defun already-generated-assuming? (modinst)
-  "Walks down the assuming-instances of the current theory to see if modinst
-has already been seen, recursively walking down and calling subst-mod-params
-using modinst on all recursive calls.  Note that this returns as soon as it
-finds the modinst."
+  "Checks if modinst is in the assuming-instances of the current theory,
+which is the transitive closure of the immediate assuming instances."
   (assert (fully-instantiated? modinst))
-  (let ((ainsts (assuming-instances (current-theory)))
-	(*names-seen* nil))
-    (already-generated-assuming?* ainsts modinst)))
-
-(defun already-generated-assuming?* (ainsts modinst)
-  ;; Note: modinst is a modname, essentially an importing of th
-  ;; an assuming-instance has the form (modname expr decl)
-  ;; in this case, we only care about the modname as we walk down.
-  (when ainsts
-    (or (already-generated-assuming?** (caar ainsts) modinst)
-	(already-generated-assuming?* (cdr ainsts) modinst))))
-
-(defun already-generated-assuming?** (ainst modinst)
-  (assert (fully-instantiated? ainst))
-  (unless (member ainst *names-seen* :test #'tc-eq)
-    (push ainst *names-seen*)
-    (or (tc-eq ainst modinst)
-	(let ((ass-insts
-	       (assuming-instances (or (declaration ainst)
-				       (get-theory ainst)))))
-	  (some #'(lambda (elt)
-		    (already-generated-assuming?**
-		     (if (fully-instantiated? (car elt))
-			 (car elt)
-			 (subst-mod-params (car elt) ainst))
-		     modinst))
-		ass-insts)))))
+  (let ((*allow-var-decl-comparison* t))
+    (assoc modinst (assuming-instances (current-theory))
+	   :test #'tc-eq)))
 
 
 (defmethod existence-tcc-type ((decl existence-tcc))
@@ -2191,6 +2177,8 @@ the same id for the substitution."
     (values total proved unproved subsumed simplified)))
 
 (defun print-tcc-comment (decl kind expr type reason place preason)
+  "This is applied by show-tccs to an element of tcc-comments, which is a
+list of kind, etc."
   (let* ((submsg (case kind
 		   (actuals nil)
 		   (assuming (format nil "generated from assumption ~a.~a"
@@ -2229,6 +2217,50 @@ the same id for the substitution."
 	(unpindent expr 4 :string t :comment? t))
       submsg
       (tcc-reason-string reason))))
+
+(defun print-tccinfo (tccinfo simplified?)
+  "This is applied by show-tccs to an element of tcc-comments, which is a
+list of kind, etc."
+  ;; (decl kind expr type reason place preason)
+  (let* ((decl (current-declaration))
+	 (kind (tccinfo-kind tccinfo))
+	 (expr (tccinfo-expr tccinfo))
+	 (type (tccinfo-type tccinfo))
+	 (reason (tccinfo-reason tccinfo))
+	 (submsg (case kind
+		   (actuals nil)
+		   (assuming (format nil "generated from assumption ~a.~a"
+			       (id (module type)) (id type)))
+		   (cases
+		    (format nil
+			"for missing ELSE of CASES expression over datatype ~a"
+		      (id type)))
+		   (coverage nil)
+		   (disjointness nil)
+		   (existence nil)
+		   (mapped-axiom
+		    (unpindent type 4 :string t :comment? t))
+		   ((subtype termination-subtype)
+		    (format nil "expected type ~a"
+		      (unpindent type 19 :string t :comment? t)))
+		   (termination nil)
+		   (well-founded (format nil "for ~a" (id decl))))))
+    (format t
+	"~% The ~a TCC for ~:[ ~;~%   ~]~@[~a~]~@[~%    ~a~]~%  ~a"
+      kind
+      (> (+ (length (string kind))
+	    (if expr
+		(length (unpindent expr 4 :string t :comment? t))
+		0)
+	    25)
+	 *default-char-width*)
+      (when expr
+	(unpindent expr 4 :string t :comment? t))
+      submsg
+      (if simplified?
+	  "    simplified to TRUE"
+	  (format nil "    simplified to ~%    ~a"
+	    (tccinfo-formula tccinfo))))))
 
 (defun tcc-reason-string (reason)
   (cond ((eq reason 'in-context)
