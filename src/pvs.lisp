@@ -389,7 +389,7 @@ nil."
 (defun load-pvs-patches ()
   (let ((*loading-files* :patches))
     (dolist (pfile (append (collect-pvs-patch-files)
-			   (user-pvs-lisp-file)))
+			   (collect-pvs-lisp-files)))
       (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
 	     (compile? (and (file-exists-p pfile)
 			    (or (not (file-exists-p bfile))
@@ -493,6 +493,16 @@ nil."
 	 (and (every #'digit-char-p date)
 	      (string> date (pvs-build-date)))))))
 
+(defun collect-pvs-lisp-files ()
+  (let ((lfiles nil))
+    (dolist (dir *pvs-library-path*)
+      (let ((lfile (make-pathname :defaults dir :name ".pvs" :type "lisp")))
+	(when (file-exists-p lfile)
+	  (push lfile lfiles))))
+    (let ((ufile (user-pvs-lisp-file)))
+      (when ufile (push ufile lfiles)))
+    (nreverse lfiles)))
+
 (defun user-pvs-lisp-file ()
   (unless *started-with-minus-q*
     (let* ((homedir (truename (user-homedir-pathname)))
@@ -502,7 +512,7 @@ nil."
 					  :name ".pvs" :type *pvs-binary-type*)))
       (when (or (file-exists-p home-lisp-file)
 		(file-exists-p home-fasl-file))
-	(list home-lisp-file)))))
+	home-lisp-file))))
 
 (defun pvs-patch-files-for (ext)
   (let* ((defaults (pathname (format nil "~a/"
