@@ -140,6 +140,9 @@ formula declaration.")
 
 (defvar *conversions-allowed* nil)
 
+(defvar *allow-var-decl-comparison* nil
+  "Used in tc-eq test for assuming-instances in tcc-gen.lisp")
+
 (defvar *from-buffer* nil
   "Set to the buffer from which a temporary file was generated for
 parsing or typechecking - used by pvs-error.")
@@ -433,6 +436,9 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 (defvar *prover-print-lines* nil)
 
 (defvar *report-mode* nil)
+
+(defvar *report-tccs* nil
+  "If not nil, prover prints result of each TCC simplification")
 
 (defvar *print-descendants* nil)
 

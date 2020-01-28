@@ -1959,15 +1959,22 @@
 	  (let ((*sequent-typealist* nil))
 	    (assert-if (tccinfo-formula (car tccforms))))
 	(cond ((tc-eq value *true*)
+	       (when *report-tccs*
+		 (print-tccinfo (car tccforms) t))
 	       (assert-tccforms* (cdr tccforms) ps))
-	      ((eq sig 'X) (cons (car tccforms)
-				 (assert-tccforms*
-				  (cdr tccforms) ps)))
+	      ((eq sig 'X)
+	       (when *report-tccs*
+		 (print-tccinfo (car tccforms) nil))
+	       (cons (car tccforms)
+		     (assert-tccforms*
+		      (cdr tccforms) ps)))
 	      (t (when (tc-eq value *false*)
 		   (error-format-if
 		    "~%*WARNING*: TCC ~a ~%~11Tsimplifies to FALSE"
 		    (tccinfo-formula (car tccforms))))
 		 (setf (tccinfo-formula (car tccforms)) value)
+		 (when *report-tccs*
+		   (print-tccinfo (car tccforms) nil))
 		 (cons (car tccforms)
 		       (assert-tccforms* (cdr tccforms) ps)))))))
 
