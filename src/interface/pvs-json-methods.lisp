@@ -366,3 +366,29 @@ to the associated declaration."
 		   (list (caddr place) (cadddr place))
 		   loc1)))
     (pvs:get-term-at file loc1 loc2 typecheck?)))
+
+(defun json-term (term)
+  (json-term* term))
+
+(defmethod json-term* ((term module))
+  `((:kind . :theory)
+    (:id . ,(id term))
+    (:place . ,(place-list (place term)))))
+
+(defmethod json-term* ((term recursive-type))
+  `((:kind . :recursive-type)
+    (:id . ,(id term))
+    (:place . ,(place-list (place term)))))
+
+(defmethod json-term* ((term declaration))
+  (json-decl-list term (ptype-of term) (module decl)))
+
+(defmethod json-term* ((term type-expr))
+  `((:kind . :type)
+    (:string . ,(str term))
+    (:place . ,(place-list (place term)))))
+
+(defmethod json-term* ((term expr))
+  `((:kind . :expr)
+    (:string . ,(str term))
+    (:place . ,(place-list (place term)))))
