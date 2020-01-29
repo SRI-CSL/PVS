@@ -295,7 +295,12 @@ expands to:
 	 ;; foo.bar.pvs.  So rather than give an error, we just treat it as
 	 ;; the name, with nil type
 	 (setq ,name (uiop:strcat ,name "." ,ext))
+	 (setq ,ext nil)
 	 (setq ,(car vars) ,name))
+       ;; (let ((fpath (make-pathname :name ,name :type ,ext :defaults ,dir)))
+       ;; 	 (unless (file-exists-p fpath)
+       ;; 	   (let ((err (format nil "~a not found" fpath)))
+       ;; 	     (pvs-error "Typecheck error" err))))
        (cond ((or (uiop:pathname-equal ,dir #p"")
 		  (uiop:pathname-equal ,dir *default-pathname-defaults*))
 	      (unless (pvs-context *workspace-session*)
