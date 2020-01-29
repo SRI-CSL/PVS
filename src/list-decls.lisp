@@ -48,7 +48,7 @@
   (if (or (equal origin "Declaration")
 	  (typechecked-origin? oname origin))
       (multiple-value-bind (object ctheory)
-	  (get-object-at oname origin pos1 pos2)
+	  (get-object-at oname origin pos1 pos2 t)
 	(when object
 	  (let* ((*disable-gc-printout* t)
 		 (*pseudo-normalizing* t)
@@ -73,7 +73,7 @@
   (if (or (equal origin "declaration")
 	  (typechecked-origin? oname origin))
       (multiple-value-bind (object *containing-type* theory)
-	  (get-id-object-at oname origin pos)
+	  (get-id-object-at oname origin pos t)
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
 	      (let ((thname (format nil "~@[~a@~]~a"
@@ -138,7 +138,7 @@
 
 (defun goto-declaration (oname origin pos)
   (if (typechecked-origin? oname origin)
-      (let* ((object (get-id-object-at oname origin pos))
+      (let* ((object (get-id-object-at oname origin pos t))
 	     (decl (get-decl-associated-with object)))
 	(when decl
 	  (pvs-locate (module decl) decl)))
@@ -228,13 +228,13 @@
   (pvs-message "Not at a valid id")
   nil)
 
-(defun get-term-at (fileref pos1 &key (pos2 pos1))
-  "Given the string oname, a (row col) pos1, and optional pos2, finds the
-corresponding PVS terms.  oname is a PVS file or buffer (e.g. TCC buffer).
+(defun get-term-at (fileref pos1 &optional (pos2 pos1) typecheck?)
+  "Given the fileref, a (row col) pos1, and optional pos2, finds the
+corresponding PVS terms.  fileref is a PVS file or buffer (e.g. TCC buffer).
 Returns a list of terms, from most specific to least."
   (with-pvs-file (name) fileref
     (multiple-value-bind (objects theories)
-	(get-syntactic-objects-for name "pvs")
+	(get-syntactic-objects-for name "pvs" typecheck?)
       (declare (ignore objects)) ;; for PVS files, it's just theories anyway
       (let ((theory (find-element-containing-pos theories pos1)))
 	(unless theory
@@ -266,9 +266,9 @@ Returns a list of terms, from most specific to least."
 	      (when decl2
 		(list decl2)))))))
 
-(defun get-object-at (oname origin pos1 &optional (pos2 pos1))
+(defun get-object-at (oname origin pos1 &optional (pos2 pos1) typecheck?)
   (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin)
+      (get-syntactic-objects-for oname origin typecheck?)
     (let ((theory (find-element-containing-pos theories pos1))
 	  (npos2 (or pos2 pos1)))
       (if (or (equal pos1 npos2)
@@ -365,9 +365,9 @@ Returns a list of terms, from most specific to least."
 	       injection-application injection?-application
 	       extraction-application)))
 
-(defun get-id-object-at (oname origin pos)
+(defun get-id-object-at (oname origin pos &optional typecheck?)
   (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin)
+      (get-syntactic-objects-for oname origin typecheck?)
     (let ((containing-type nil)
 	  (object nil)
 	  (theory (find-element-containing-pos theories pos))
@@ -413,7 +413,7 @@ Returns a list of terms, from most specific to least."
 		 objects)
       (values object containing-type theory))))
 
-(defun get-syntactic-objects-for (name origin)
+(defun get-syntactic-objects-for (name origin &optional typecheck?)
   "Given a name and an origin, returns two list values, depending
 on the origin:
  ppe:  name is a theoryref, returns ppe-form and theory
@@ -438,7 +438,10 @@ on the origin:
     (prelude-theory (let ((theory (get-theory name)))
 		      (when theory
 			(values theory (list theory)))))
-    (t (let ((theories (typecheck-file name nil nil nil t)))
+    (t (let ((theories
+	      (if typecheck?
+		  (typecheck-file name nil nil nil t)
+		  (parse-file name))))
 	 (values theories theories)))))
 
 ;;; PVS objects may be referenced by names of the form
@@ -651,9 +654,7 @@ difficult."
     (do-all-theories #'(lambda (th)
 			 (let ((decls (get-find-declaration-info id th)))
 			   (setq declarations (append decls declarations)))))
-    (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (fdecl-string (json:encode-json-to-string declarations)))
-      fdecl-string)))
+    declarations))
 
 ;; (defun get-declaration-at (fileref pos)
 ;;   "fileref is a reference, relative to the current-context, with extension
@@ -694,7 +695,7 @@ difficult."
   (declare (ignore x?))
   (if (or (equal origin "Declaration")
 	  (typechecked-origin? oname origin))
-      (let* ((object (get-object-at oname origin pos))
+      (let* ((object (get-object-at oname origin pos pos t))
 	     (decl (if (typep object '(or declaration importing))
 		       object
 		       (get-decl-associated-with object))))
@@ -1530,9 +1531,6 @@ place set."
 
 (defmethod collect-visible-decl-info* ((obj proofstate))
   (collect-visible-decl-info* (current-goal obj)))
-
-(defmethod collect-visible-decl-info* ((obj sequent))
-  (collect-visible-decl-info* (s-forms obj)))
 
 (defmethod collect-visible-decl-info* ((obj sequent))
   (collect-visible-decl-info* (s-forms obj)))
