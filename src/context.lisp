@@ -349,8 +349,8 @@ retypechecked."
 		     (declare (ignore file))
 		     (dolist (theory (cdr theories))
 		       (write-object-file theory force?)
-		       (let ((bp (make-binpath (id theory)))
-			     (ce (get-context-file-entry (filename theory))))
+		       (let ((bp (make-binpath theory))
+			     (ce (get-context-file-entry theory)))
 			 (assert (or (not (typechecked? theory))
 				     (and ce (file-exists-p bp)
 					  (ce-object-date ce)
@@ -1230,6 +1230,12 @@ declaration-entry has slots
 					       *default-pathname-defaults*)))))))
 	      (ce-dependencies entry))))
 
+(defmethod get-context-file-entry ((th datatype-or-module))
+  (let ((ws (get-workspace-session (context-path th))))
+    (car (member (filename th) (pvs-context-entries (pvs-context ws))
+		 :test #'(lambda (x y)
+			   (string= x (ce-file y)))))))
+  
 (defmethod get-context-file-entry ((filename pathname))
   (get-context-file-entry (pathname-name filename)))
 
@@ -1237,9 +1243,6 @@ declaration-entry has slots
   (car (member filename (pvs-context-entries)
 	       :test #'(lambda (x y)
 			 (string= x (ce-file y))))))
-
-(defmethod get-context-file-entry ((theory module))
-  (get-context-file-entry (filename theory)))
 
 (defmethod get-context-file-entry ((decl declaration))
   (get-context-file-entry (theory decl)))

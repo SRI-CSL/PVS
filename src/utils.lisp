@@ -853,6 +853,10 @@ is replaced with replacement."
 ;(defmethod make-specpath ((mod module-form))
 ;  (make-specpath (id mod)))
 
+(defmethod make-specpath ((th datatype-or-module) &optional (ext "pvs"))
+  (let ((*default-pathname-defaults* (context-path th)))
+    (make-specpath (id th))))
+
 (defmethod make-specpath ((name symbol) &optional (ext "pvs"))
   (make-pathname :defaults *default-pathname-defaults* :name (string name) :type ext))
 
@@ -872,6 +876,10 @@ is replaced with replacement."
 
 (defmethod make-specpath ((name name) &optional (ext "pvs"))
   (make-specpath (id name) ext))
+
+(defmethod make-binpath ((th datatype-or-module))
+  (let ((*default-pathname-defaults* (context-path th)))
+    (make-binpath (id th))))
 
 (defmethod make-binpath ((name symbol))
   (make-binpath (string name)))
