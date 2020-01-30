@@ -65,7 +65,7 @@ through Linux package managers, or using easy_install or pip.
 * Typepred Extension::
 * TCC Ordering::
 * Yices in 7.1::
-* Theory Interpretations::
+* Theory Interpretations in 7.1::
 @end menu
 
 @node PVS Workspaces
@@ -753,7 +753,7 @@ fixed.
 The yices prover commands have been fully integrated into PVS, and Yices
 versions 1 and 2 are included in the distribution.
 
-@node Theory Interpretations
+@node Theory Interpretations in 7.1
 @subsection Theory Interpretations
 
 Theory interpretations have been improved in a few ways.  First, if an
