@@ -24,13 +24,13 @@ grammar-tables = keywords.tex operator-table.tex opsym-table.tex
 all : language.pdf
 
 keywords.tex : pvs-doc.el ${pvs-grammar-file}
-	$(EMACS) -batch -q -l pvs-doc.el --eval="(pvs-keyword-table 5 'tex)" > keywords.tex 2> /dev/null 
+	$(EMACS) -batch -q -l pvs-doc.el --eval="(pvs-keyword-table 5)" > keywords.tex 2> /dev/null
 
 operator-table.tex : pvs-doc.el ${pvs-grammar-file}
-	$(EMACS) -batch -q -l pvs-doc.el --eval "(pvs-operator-table 6 'tex)" > operator-table.tex 2> /dev/null
+	$(EMACS) -batch -q -l pvs-doc.el --eval "(pvs-operator-table 6)" > operator-table.tex 2> /dev/null
 
 opsym-table.tex : pvs-doc.el ${pvs-grammar-file}
-	$(EMACS) -batch -q -l pvs-doc.el --eval "(pvs-opsym-table 6 'tex)" > opsym-table.tex 2> /dev/null 
+	$(EMACS) -batch -q -l pvs-doc.el --eval "(pvs-opsym-table 6)" > opsym-table.tex 2> /dev/null
 
 language.pdf : ${sources} ${grammar-tables}
 	$(LATEXMK) $(LATEXMKFLAGS) language.tex
