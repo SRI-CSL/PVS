@@ -34,8 +34,8 @@
 
 (export '(exit-pvs parse-file typecheck-file show-tccs clear-theories
 	  formula-decl-to-prove prove-formula proved? get-proof-script
-	  get-proof-status get-tccs prove-tccs write-pvs-version-file
-	  get-pvs-version-information))
+	  get-formula-decl get-proof-status get-tccs prove-tccs
+	  write-pvs-version-file get-pvs-version-information))
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -2620,7 +2620,7 @@ formname is nil, then formref should resolve to a unique name."
 	       name
 	       (file-exists-p (make-specpath name)))
       ;; A PVS file, but if no ext, could still be a theory name
-      (let ((theories (with-no-type-errors (typecheck-file name))))
+      (let ((theories (typecheck-file name)))
 	(if thname
 	    (let ((theory (find thname theories :test #'string= :key #'id)))
 	      (dolist (d (all-decls theory))
@@ -2708,13 +2708,19 @@ If formname is nil, then formref should resolve to a unique formula name."
                           it appears in the following theories:~%~{~a~^~%~}"
 			  (or formname name)
 			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-		     (t (get-proof-script-output-string (car locdecls))))))
+		     (t (if (default-proof (car locdecls))
+			    (get-proof-script-output-string (car locdecls))
+			    (pvs-error "Proof script error"
+			      (format nil "~a does not have a proof" formref)))))))
 	    ((null fdecls)
 	     (pvs-error "get-proof-script error"
 	       (format nil
 		   "get-proof-script formula name ~a not found in any (typechecked) theories"
 		 (or formname name))))
-	    (t (get-proof-script-output-string (car fdecls)))))))
+	    (t (if (default-proof (car fdecls))
+		   (get-proof-script-output-string (car fdecls))
+		   (pvs-error "Proof script error"
+		     (format nil "~a does not have a proof" formref))))))))
 
 ;;; Non-interactive Proving
 
@@ -2960,7 +2966,6 @@ If formname is nil, then formref should resolve to a unique formula name."
 	   :stream out :pretty t :escape t
 	   :level nil :length nil
 	   :pprint-dispatch *proof-script-pprint-dispatch*)))
-
 
 (defun install-proof (tmpfilename name declname line origin buffer prelude-offset)
   ;; If the origin is supplied, simply install the proof.  Otherwise the
