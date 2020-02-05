@@ -38,7 +38,7 @@
 
 (export '(collect-pvs-file-decls-info show-expanded-form show-declaration
 	  goto-declaration get-term-at find-declaration list-declarations
-	  whereis-declaration-used names-info))
+	  whereis-declaration-used names-info json-decl-list ptype-of))
 
 (defvar *list-declarations* nil)
 
@@ -249,12 +249,17 @@ Returns a list of terms, from most specific to least."
 	  (get-term-in-theory-at* theory pos1 pos2))))))
 
 (defun get-term-in-theory-at* (theory pos1 pos2)
+  "Given a theory which contains pos1 and pos2, if pos1 and pos2 both occur
+in a single declaration of the theory, returns two values: the smallest term
+containing pos1 and pos2, and a list of containing terms, leading to the
+containing decl.  Otherwise it is a list of declarations."
   (let* ((decls (all-decls theory))
 	 (decl (or (find-element-containing-pos decls pos1)
 		   (find-decl-after-pos decls pos1))))
     (if (or (equal pos1 pos2)
 	    (within-place pos2 (place decl)))
 	(get-object-in-declaration-at decl pos1 pos2)
+	;; Else return a list of decls containing pos1 and pos2
 	(let ((decl2 (find-element-containing-pos decls pos2)))
 	  (unless decl2
 	    (setq decl2
@@ -324,6 +329,7 @@ Returns a list of terms, from most specific to least."
 	(find-element-containing-pos (cdr list) pos))))
 
 (defun get-object-in-declaration-at (decl pos1 pos2)
+  "Given a decl in which both pos1 and pos2 occur, returns the smallest term containing both, and the list of containing terms, up to the decl"
   (let ((objects nil)
 	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (ex)
@@ -783,7 +789,7 @@ place set."
 		      (unparse decl :string t :no-newlines? t)
 		      (string (id decl))))
 	(filename (cond ((from-prelude? theory)
-			 (format nil "~a/lib/~a.pvs" *pvs-path*
+			 (format nil "~alib/~a.pvs" *pvs-path*
 				 (if (memq theory (pvsio-prelude-theories))
 				     "pvsio_prelude"
 				     "prelude")))
@@ -819,7 +825,7 @@ place set."
 (defmethod pvs-filename ((theory datatype-or-module))
   (namestring
    (if (lib-datatype-or-theory? theory)
-       (format nil "~a/~a" (context-path theory) (filename theory))
+       (format nil "~a~a" (context-path theory) (filename theory))
        (filename theory))))
 
 (defun ptype-of (decl)
