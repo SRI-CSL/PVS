@@ -29,7 +29,8 @@
 
 (in-package :pvs)
 
-(export '(pc-parse pc-typecheck *multiple-proof-default-behavior*))
+(export '(pc-parse pc-typecheck check-arguments
+	  *multiple-proof-default-behavior*))
 
 (defvar *subgoals* nil)
 
