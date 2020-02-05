@@ -213,6 +213,14 @@
 ;; 	(setf (pvs:psinfo-psjson pvs:*ps-control-info*) nil)
 ;; 	psjson))))
 
+;;; This is tricky, RPC is really for function calls, but this is an
+;;; interactive session.  This function is being called from a particular
+;;; XML-RPC thread.  We can't start the prover on this thread, as later
+;;; commands will come in on other threads.
+
+;;; The tricky thing here is that we are running the prover in the initial
+;;; thread, from an XML-RPC thread.  
+
 (defrequest prove-formula (formula theory &optional rerun?)
   "Starts interactive proof of a formula from a given theory
 
@@ -223,10 +231,15 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   cmd-gate
   res-gate
 "
-  ;; (when pvs:*in-checker*
+  ;; We do this in this thread, as error messages are easier to deal with.
+  ;; Thus we make sure we're not in the checker, that the theory typechecks,
+  ;; and that the formula exists in that theory.
+  (when pvs:*in-checker*
+    (pvs-error "Prove-formula error" "Must exit the prover first"))
+  (pvs:get-formula-decl theory formula)
   ;;   ;; FIXME - may want to save the proof, or ask what to do
   ;;   (format t "~%About to quit prover~%")
-  ;;   (throw 'pvs::quit nil)
+  ;;   (throw 'pvs:quit nil)
   ;;   (format t "~%After quitting prover~%"))
   (let ((res-gate (mp:make-gate nil))
 	(cmd-gate (mp:make-gate nil))
@@ -241,6 +254,8 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	   :cmd-gate cmd-gate))
     ;;(format t "~%prove-formula: Waiting...~%")
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
+    ;; process-interrupt interrupts the main pvs process proc, and invokes
+    ;; prove-formula
     (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
     ;;(format t "~%prove-formula: Done waiting...~%")
@@ -250,6 +265,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	(setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
 	(mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	json-result))))
+  
 
 ;;; This can't work, as it never returns from pvs:prove-formula till the
 ;;; prover quits.
@@ -265,17 +281,41 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
   (assert (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))
   (assert (null (pvs:psinfo-json-result pvs:*ps-control-info*)))
-  (setf (pvs:psinfo-command pvs:*ps-control-info*) form)
-  (mp:open-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
-  (mp:process-wait "Waiting for next Proofstate"
-		   #'mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
-  (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
-  (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
-  (mp:with-process-lock ((pvs:psinfo-lock pvs:*ps-control-info*))
-    (let ((psjson (pvs:psinfo-json-result pvs:*ps-control-info*)))
-      (setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
-      (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-      psjson)))
+  (multiple-value-bind (input err)
+      (ignore-errors (read-from-string form))
+    ;; note that read-from-string returns multiple vales;
+    ;; err will be the number of chars read in this case.
+    (cond ((typep err 'error)
+	   (let ((com (format nil "bad proof command: ~a"
+			(if (typep err 'end-of-file)
+			    "eof encountered, probably mismatched parens, quotes, etc."
+			    err)))
+		 (ps (mp:symeval-in-process 'pvs:*ps* *pvs-lisp-process*))
+		 (json:*lisp-identifier-name-to-json* #'identity))
+	     (setq pvs:*prover-commentary* (list com))
+	     (unwind-protect
+		  (pvs:pvs2json ps)
+	       (setq pvs:*prover-commentary* nil))))
+	  ((and (consp input)
+		;; check-arguments sets *prover-commentary*
+		(not (pvs:check-arguments input)))
+	   (unwind-protect
+		(let* ((ps (mp:symeval-in-process 'pvs:*ps* *pvs-lisp-process*))
+		       (json:*lisp-identifier-name-to-json* #'identity))
+		  (pvs:pvs2json ps))
+	     (setq pvs:*prover-commentary* nil)))
+	  (t 
+	   (setf (pvs:psinfo-command pvs:*ps-control-info*) form)
+	   (mp:open-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
+	   (mp:process-wait "Waiting for next Proofstate"
+			    #'mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
+	   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
+	   (mp:with-process-lock ((pvs:psinfo-lock pvs:*ps-control-info*))
+	     (let ((psjson (pvs:psinfo-json-result pvs:*ps-control-info*)))
+	       (setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
+	       (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	       psjson))))))
 
 (defrequest prover-status ()
   "Checks the status of the prover: active or inactive."
@@ -365,7 +405,9 @@ to the associated declaration."
 	 (loc2 (if (caddr place)
 		   (list (caddr place) (cadddr place))
 		   loc1)))
-    (pvs:get-term-at file loc1 loc2 typecheck?)))
+    (multiple-value-bind (term containing-terms)
+	(pvs:get-term-at file loc1 loc2 typecheck?)
+      (json-term term))))
 
 (defun json-term (term)
   (json-term* term))
@@ -381,7 +423,7 @@ to the associated declaration."
     (:place . ,(place-list (place term)))))
 
 (defmethod json-term* ((term declaration))
-  (json-decl-list term (ptype-of term) (module decl)))
+  (pvs:json-decl-list term (pvs:ptype-of term) (module term)))
 
 (defmethod json-term* ((term type-expr))
   `((:kind . :type)
