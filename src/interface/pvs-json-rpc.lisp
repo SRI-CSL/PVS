@@ -30,6 +30,9 @@
    (file-name :accessor file-name :initarg :file-name)
    (place :accessor place :initarg :place)))
 
+(defmethod print-object ((err pvs-error) stream)
+  (format stream "#<pvs-error ~a>" (error-string err)))
+
 ;;; With-pvs-hooks sets up callbacks when the url is provided
 ;;; Used primarily for informative messages that are not part of the result
 ;;; E.g., "foo typechecked in 3 sec", garbage collecting, ...
