@@ -234,7 +234,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   ;; We do this in this thread, as error messages are easier to deal with.
   ;; Thus we make sure we're not in the checker, that the theory typechecks,
   ;; and that the formula exists in that theory.
-  (when pvs:*in-checker*
+  (when (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
     (pvs-error "Prove-formula error" "Must exit the prover first"))
   (pvs:get-formula-decl theory formula)
   ;;   ;; FIXME - may want to save the proof, or ask what to do
@@ -277,6 +277,8 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 
 (defrequest proof-command (form)
   "Sends a command to the prover"
+  (unless (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+    (pvs-error "Proof-command error" "Prover is not running: start it with prove-formula"))
   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
   (assert (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))
