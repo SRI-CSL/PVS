@@ -549,7 +549,7 @@ is replaced with replacement."
 
 (defun pvs-current-directory ()
   (if (file-exists-p *default-pathname-defaults*)
-      (shortname *default-pathname-defaults*)
+      (namestring *default-pathname-defaults*)
       "/dev/null"))
 
 (defun get-formula (theory id)
@@ -848,7 +848,18 @@ is replaced with replacement."
 	(ly (length y)))
     (and (<= lx ly)
 	 (string= x (subseq y (- ly lx) ly)))))
-    
+
+(defun unique-symbol (sym)
+  (if (or (symbolp sym)
+	  (find-symbol sym))
+      (unique-symbol* sym 1)
+      (intern sym :pvs)))
+
+(defun unique-symbol* (sym ctr)
+  (let ((nstr (format nil "~a~d" sym ctr)))
+    (if (find-symbol nstr)
+	(unique-symbol* sym (1+ ctr))
+	(intern nstr))))
 
 ;(defmethod make-specpath ((mod module-form))
 ;  (make-specpath (id mod)))
