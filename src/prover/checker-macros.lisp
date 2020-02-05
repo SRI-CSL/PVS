@@ -302,7 +302,7 @@
 (defmacro commentary (string &rest args)
   `(unless *suppress-printing*
      (let ((com (format nil ,string ,@args)))
-       (push com *prover-commentary*) 
+       (push (string-trim '(#\Space #\Tab #\Newline) com) *prover-commentary*) 
        (format t "~a" com))))
 
 (defmacro error-format-if (string &rest args)
