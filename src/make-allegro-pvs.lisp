@@ -37,7 +37,7 @@
   (load (format nil "~a/pvs.system" *pvs-path*))
   (require :uri)
   #+(version>= 6)
-  (require :pxml)
+  (require :pxml-sax)
   (require :sock-s)
   (let ((excl:*enable-package-locked-errors* nil))
     ;; These are autoloaded functions - ed was accidentally used in a proof
