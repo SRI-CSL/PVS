@@ -43,43 +43,47 @@
     (when (file-exists-p lisp-file)
       (find-file-read-only-other-window lisp-file))))
 
-(defpvs pvs-C-theory typecheck (theoryname)
+(defpvs pvs-C-theory typecheck (theoryref)
   "Generates the C code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate C code for theory: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
-  (message "Generating C code for theory...")
-  (pvs-send-and-wait (format "(pvs2c-theory \"%s\")"
-			 theoryname) nil nil 'dont-care)
-  (let ((buf (pvs-find-C-file (format "%s_c" theoryname))))
+  (pvs-message "Generating C code for theory %s..." theoryref)
+  (let* ((c-files (pvs-send-and-wait (format "(pvs2c-theory \"%s\")" theoryref)
+				     nil nil 'list))
+	 (buf (find-file-noselect (car c-files) t)))
     (when buf
-      (message "")
       (with-current-buffer buf
 	(set (make-local-variable 'pvs-context-sensitive) t)
-	(lisp-mode)))))
+	(c-mode))
+      (pvs-message "Generated C-file %s" (car c-files))
+      (pop-to-buffer buf))))
 
 (defpvs pvs-C-file find-file (filename)
-  "Generates the C code for a given file and displays it in a buffer"
-  (interactive (pvs-complete-file-name "Generate C for file: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
+  "Generates the C code for a given file"
+  (interactive (pvs-complete-file-name "Generate C for file: " (current-pvs-file)))
   (pvs-bury-output)
-  (message (format "Generating C for file %s ..." filename))
-  (pvs-send-and-wait (format "(generate-C-for-pvs-file \"%s\")"
-			     (pathname-name filename))
-		     nil nil 'dont-care)
-  (let ((buf (pvs-find-C-file (pathname-name filename))))
-    (when buf
-      (message "")
-      (with-current-buffer buf
-	(set (make-local-variable 'pvs-context-sensitive) t)
-	(lisp-mode)))))
+  (pvs-message (format "Generating C for PVS file %s ..." filename))
+  (let* ((pvs-error nil)
+	 (c-files (pvs-send-and-wait (format "(pvs2c-pvs-file \"%s\")" filename)
+				     nil nil 'list)))
+    (pvs-message "")
+    (unless pvs-error
+      (dolist (c-file (reverse c-files))
+	(assert (file-exists-p c-file))
+	(let ((buf (find-file-noselect c-file t)))
+	  (with-current-buffer buf
+	    (set (make-local-variable 'pvs-context-sensitive) t)
+	    (c-mode))))
+      (pvs-message "Generated C files %s" c-files))))
 
 (defun pvs-find-C-file (filename)
   (let ((buf (get-buffer (format "%s.c" filename))))
     (when buf (kill-buffer buf)))
-  (let ((C-file (format "%s%s.c" pvs-current-directory filename)))
+  (let ((C-file (format "%s.c" filename)))
     (when (file-exists-p C-file)
-      (find-file-read-only-other-window C-file))))
+      (find-file-read-only-other-window C-file)
+      (get-buffer C-file))))
 
 
 

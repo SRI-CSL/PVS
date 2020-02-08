@@ -4095,6 +4095,23 @@ nil is returned in that case."
 						     prelude-theory-names))))))))
     prelude-theory-names))
 
+(defun used-prelude-theories (theory &optional prelude-theories)
+  (let ((th (get-theory theory)))
+    (unless th
+      (error "Theory ~a not found - may need to typecheck first" theory))
+    (dolist (decl (all-decls th))
+      (when (typep decl '(or type-decl const-decl))
+	(dolist (d (refers-to decl))
+	  (when (and (typep d '(or type-decl const-decl))
+		     (from-prelude? d))
+	    (unless (or (eq (module d) th)
+			(memq (module d) prelude-theories))
+	      (setq prelude-theories
+		    (used-prelude-theories (module d)
+					   (cons (module d)
+						 prelude-theories))))))))
+    prelude-theories))
+
 (defun collect-prelude-decls-if (pred)
   (let ((decls nil))
     (dolist (th *prelude-theories*)
