@@ -3059,10 +3059,10 @@
 (defmethod ir2c* ((ir-expr ir-type-actual) return-var return-type)
   (with-slots (ir-actual-type) ir-expr
 	      (let ((ir2c-return-type (ir2c-type return-type))
-		    (c-type (add-c-type-definition (ir2c-type ir-actual-type))));(break "ir2c*(actual)")
+		    (ir2c-type (ir2c-type ir-actual-type)));(break "ir2c*(actual)")
 		(mk-c-assignment-with-count return-var ir2c-return-type
 					    (format nil "actual_~a" c-type)
-					    c-type))))
+					    ir2c-type))))
 
 (defmethod ir2c* ((ir-expr ir-const-actual) return-var return-type)
   (with-slots (ir-actual-expr) ir-expr
@@ -4987,7 +4987,8 @@
       (if array?
 	  (let* ((ir-arraytype  (get-arraytype return-type)) ;(mk-ir-arraytype array? (ir2c-type ir-rangetype)))
 		 (elemtype (with-slots (elemtype) ir-arraytype elemtype))
-		 (c-arraytype (add-c-type-definition ir-arraytype))
+		 (ir2c-arraytype (ir2c-type ir-arraytype))
+		 (c-arraytype (add-c-type-definition ir2c-arraytype))
 		 (index (ir-name (car ir-vartypes)))
 		 (return-location (format nil "~a->elems[~a]" return-var index))
 		 (return-location-type (ir2c-type elemtype))
@@ -5003,7 +5004,7 @@
 					      (ir2c* expr size 'uint16)
 					      (list offset-instr)))))))
 					;		    (break "ir2c*(ir-lambda)")
-	    (with-slots (elemtype) ir-arraytype
+	    (with-slots (elemtype) ir2c-arraytype
 	      (append size-instrs
 		      (append (list (format nil "~a = new_~a(~a)" return-var c-arraytype size)
 					;(format nil "~a->count = 1");;this should be done within new.
@@ -5012,6 +5013,7 @@
 						  c-body))
 			      release-instrs))))
 	  (let* ((fvars (pvs2ir-freevars* ir-expr))
+		 (lastvars (ir-lastvars ir-expr))
 		 (c-return-type (add-c-type-definition return-type))
 		 (closure-name (add-closure-definition ir-expr c-return-type))
 		 (closure-var (gentemp "cl"))
@@ -5646,6 +5648,7 @@
 ~16Treturn dupdate_~a(a, i, v);
 ~12T} else {
 ~16T~a_t x = copy_~a(a);
+~16Tx->count--;
 ~16Treturn dupdate_~a(x, i, v);
 ~12T}}" type-name-root type-name-root type-name-root type-name-root))
 	 (defn (format nil "~a~a" header body)))
@@ -5848,6 +5851,7 @@
 	      (ir-reference-type? ir-type-defn)))
 
 (defmethod ir-reference-type? ((ir-type t))
+  ;(break "ir-reference-type? fall-through")
   nil)
 
 (defun make-array-release-header (release-name type-name-root c-param-decl-string)
@@ -5945,10 +5949,10 @@
 (defun make-array-update-defn (update-name type-name-root ir-range c-param-arg-string c-param-decl-string)
   (let* ((range-type-info (get-c-type-info ir-range))
 	 (range-type-name (if range-type-info (tname range-type-info)  ir-range)))
-    (if (ir-reference-type? ir-range)
-	(format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1){y = x;}~%~16T else {y = copy_~a(x~a);};~%~8T~
-                     ~a_t * yelems = y->elems;~%~8T~
-                     if (yelems[i] != NULL){release_~a(yelems[i]~{, ~a~});};~%~8T yelems[i] = v; if (v != NULL){v->count++;}~%~8T return y;}"
+    (if (ir-reference-type? ir-range) ;;NSH(2/6/20):update is only invoked on last-marked array variable
+	(format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1){y = x;}~%~16T else {y = copy_~a(x~a);~%~22Tx->count--;};~%~8T~
+                     ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;}~%~8T~
+                     if (yelems[i] != NULL){release_~a(yelems[i]~{, ~a~});};~%~8T yelems[i] = v;~%~8T return y;}"
 		type-name-root update-name type-name-root range-type-name
 		c-param-decl-string
 		type-name-root type-name-root c-param-arg-string
@@ -5956,7 +5960,7 @@
 		(loop for ir-formal in (free-ir-formals ir-range)
 		      collect (ir-type-id ir-formal)))
       (if (ir-formal-typename? ir-range)
-	(format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1){y = x;}~%~16T else {y = copy_~a(x~a);};~%~8T~
+	(format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1){y = x;}~%~16T else {y = copy_~a(x~a);~%~16Tx->count--;};~%~8T~
                      ~a_t * yelems = y->elems;~%~8T~
                      if (~a->tag == 'p' && yelems[i] != NULL){~a->release_ptr(yelems[i]~{, ~a~});};~%~8T yelems[i] = v; if (~a->tag == 'p' && v != NULL){v->count++;}~%~8T return y;}"
 		type-name-root update-name type-name-root range-type-name
@@ -5965,7 +5969,7 @@
 		range-type-name range-type-name range-type-name
 		(loop for ir-formal in (free-ir-formals ir-range)
 		      collect (ir-type-id ir-formal)) range-type-name)  
-    (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v){~%~8T~a_t y; ~%~8T if (x->count == 1){y = x;}~%~10T else {y = copy_~a(x);}~%~8T~
+    (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v){~%~8T~a_t y; ~%~8T if (x->count == 1){y = x;}~%~10T else {y = copy_~a(x);~%~16Tx->count--;};~%~8T~
                     ~a;~%~8T~
                     return y;}"
 	    type-name-root update-name type-name-root range-type-name type-name-root type-name-root
@@ -6140,22 +6144,24 @@
   (let ((fname (ir-id ir-field-type))
 	(ftype (ir-ftype ir-field-type)))
     (if (ir-reference-type? ftype)
-	(format nil "~a_t ~a(~a_t x, ~a_t v){~%~8T~a_t y;~%~8Tif (x->count == 1){y = x; if (x->~a != NULL){release_~a(x->~a);};}~%~8T~
-                     else {y = copy_~a(x); y->~a->count--;};~%~8T~
-                     ~a;~%~8Tif (v != NULL){v->count++;};~%~8Treturn y;}"
-		type-name-root update-name type-name-root c-field-type type-name-root fname c-field-type
+	(format nil "~a_t ~a(~a_t x, ~a_t v){~%~8T~a_t y;~%~8Tif (v != NULL){v->count++;};~
+                     ~%~8Tif (x->count == 1){y = x; if (x->~a != NULL){release_~a(x->~a);};}~%~8T~
+                     else {y = copy_~a(x); x->count--; y->~a->count--;};~%~8T~
+                     ~a;~%~8Treturn y;}"
+		type-name-root update-name type-name-root c-field-type type-name-root 
+		fname c-field-type
 		fname type-name-root fname (make-c-assignment (format nil "y->~a"fname)
 							      c-field-type
 							       "v" c-field-type))
       (format nil "~a_t ~a(~a_t x, ~a_t v){~%~8T~a_t y;~%~8Tif (x->count == 1){y = x;}~%~8T~
-                     else {y = copy_~a(x);};~%~
+                     else {y = copy_~a(x); x->count--;};~%~
                      ~8T~a;~%~8Treturn y;}"
 		type-name-root update-name type-name-root c-field-type type-name-root 
 		type-name-root (make-c-assignment (format nil "y->~a"fname)
 							      c-field-type
 							       "v" c-field-type)))))
 
-;;equality method for ir-types
+;;equality method for ir-types; treats adt and constructor types as tequal since these have been typechecked
 (defun ir2c-tequal (texpr1 texpr2)
   ;(format t "~%ir2c-tequal")
   ;(format t "~%texpr1: ~a" (print-ir texpr1))
@@ -6215,6 +6221,80 @@
   (eq texpr1 texpr2));;Since the base case
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;NSH(2/11/20): type are tcompatible when a value of one can be directly assigned to the other. 
+;;equality method for ir-types; treats adt and constructor types as tequal since these have been typechecked
+(defun ir2c-tcompatible (texpr1 texpr2)
+  ;(format t "~%ir2c-tcompatible")
+  ;(format t "~%texpr1: ~a" (print-ir texpr1))
+   ; (format t "~%texpr2: ~a" (print-ir texpr2))
+  (ir2c-tcompatible* texpr1 texpr2))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-recordtype)(texpr2 ir-recordtype))
+  (if (or (ir-adt-constructor-recordtype? texpr1)
+	  (ir-adt-constructor-recordtype? texpr2))
+      (call-next-method)
+    (with-slots ((ir-ftypes1 ir-field-types)) texpr1
+      (with-slots ((ir-ftypes2 ir-field-types)) texpr2
+	(ir2c-tcompatible* ir-ftypes1 ir-ftypes2)))))
+
+;;NSH(2/7/20): 
+(defmethod ir2c-tcompatible* ((texpr1 ir-adt-constructor-recordtype)(texpr2 t))
+  (with-slots ((ir-tname ir-adt-name)) texpr1
+    (ir2c-tcompatible* (ir2c-type ir-tname) texpr2)))
+
+(defmethod ir2c-tcompatible* ((texpr1 t)(texpr2 ir-adt-constructor-recordtype))
+  (with-slots ((ir-tname ir-adt-name)) texpr2 
+    (ir2c-tcompatible* texpr1 (ir2c-type ir-tname))))
+
+(defmethod ir2c-tcompatible* ((texpr1 list)(texpr2 list))
+  (cond ((consp texpr1)
+	 (and (consp texpr2)
+	      (ir2c-tcompatible* (car texpr1)(car texpr2))
+	      (ir2c-tcompatible* (cdr texpr1)(cdr texpr2))))
+	(t (not (consp texpr2)))))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-fieldtype)(texpr2 ir-fieldtype))
+  (with-slots ((ir-id1 ir-id)(ir-ftype1 ir-ftype)) texpr1
+	      (with-slots ((ir-id2 ir-id)(ir-ftype2 ir-ftype)) texpr2
+			  (and (eq ir-id1 ir-id2)
+			       (ir2c-tcompatible* ir-ftype1 ir-ftype2)))))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-funtype)(texpr2 ir-funtype))
+  (with-slots ((ir-dom1 ir-domain)(ir-ran1 ir-range)) texpr1
+	      (with-slots ((ir-dom2 ir-domain)(ir-ran2 ir-range)) texpr2
+			  (and (ir2c-tcompatible* ir-dom1 ir-dom2)
+			       (ir2c-tcompatible* ir-ran1 ir-ran2)))))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-arraytype)(texpr2 ir-arraytype))
+  (with-slots ((size1 size)(elemtype1 elemtype)) texpr1
+	      (with-slots ((size2 size)(elemtype2 elemtype)) texpr2
+	;		  (and (eql size1 size2);NSF:4/19: size is irrelevant
+		(ir2c-tcompatible* elemtype1 elemtype2))))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-subrange )(texpr2 ir-subrange))
+  (equal (ir2c-type texpr1)(ir2c-type texpr2)))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-typename)(texpr2 ir-typename))
+  (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
+	      (with-slots ((id2 ir-type-id)(tdef2 ir-type-defn)) texpr2
+			  ;(and (eq id1 id2))
+			  (ir2c-tcompatible* tdef1 tdef2))))
+
+(defmethod ir2c-tcompatible* ((texpr1 ir-typename)(texpr2 t))
+  (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
+	      (ir2c-tcompatible* tdef1 texpr2)))
+
+(defmethod ir2c-tcompatible* ((texpr1 t)(texpr2 ir-typename))
+  (with-slots ((id2 ir-type-id)(tdef2 ir-type-defn)) texpr2
+	      (ir2c-tcompatible* texpr1 tdef2)))
+
+
+
+(defmethod ir2c-tcompatible* ((texpr1 t)(texpr2 t))
+  (eq texpr1 texpr2));;Since the base case
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;expects ir2c-types for texpr1 and texpr2; made it copy lazily only when types are mismatched. 
 (defun copy-type (texpr1 texpr2 lhs rhs)
   (let ((*var-counter* nil))
@@ -6225,16 +6305,19 @@
 	  (copy-type* texpr1 texpr2 lhs rhs))))
 
 (defmethod copy-type* :around ((ltype t)(rtype t) lhs rhs)
-  (if (ir2c-tequal ltype rtype)
-      (mk-c-assignment-with-count lhs ltype rhs (add-c-type-definition rtype))
+  (if (ir2c-tcompatible ltype rtype)
+      (mk-c-assignment-with-count lhs ltype rhs rtype)
     (call-next-method)))
 
 (defmethod copy-type* ((ltype ir-recordtype)(rtype ir-recordtype) lhs rhs)
   (with-slots ((ift1 ir-field-types)) ltype
-	      (with-slots ((ift2 ir-field-types)) rtype
-			  (loop for ft1 in ift1
-				as ft2 in ift2
-				append (copy-type* ft1 ft2 lhs rhs)))))
+    (with-slots ((ift2 ir-field-types)) rtype
+      (cons (format nil "~a = new_~a()" lhs (add-c-type-definition ltype))
+	    (loop for ft1 in ift1
+	       as ft2 in ift2
+	       append (copy-type* (ir-ftype ft1)(ir-ftype ft2)
+				  (format nil "~a->~a" lhs (ir-id ft1))
+				  (format nil "~a->~a" rhs (ir-id ft2))))))))
 
 (defmethod copy-type* ((texpr1 ir-fieldtype)(texpr2 ir-fieldtype) lhs rhs)
   (with-slots ((ft1 ir-ftype)(id1 ir-id)) texpr1
