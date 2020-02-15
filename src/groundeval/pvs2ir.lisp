@@ -1068,10 +1068,12 @@
 		       (make-ir-lett* (cdr vartypes)(cdr expr-types)(cdr exprs) body)))
 	(t body)))
 
-(defun adt-decl? (decl)
-  (or (adt-constructor-decl? decl)
-      (adt-accessor-decl? decl)
-      (adt-recognizer-decl? decl)))
+(defun adt-expr? (ex)
+  ;; Note that if ex is a plain name-expr, it will be converted to
+  ;; a constructor-name-expr, etc.
+  (or (constructor? ex)
+      (accessor? ex)
+      (recognizer? ex)))
 
 (defun pvs2ir-decl (decl)
   (let* ((*current-context* (decl-context decl))
@@ -1203,7 +1205,7 @@
 		 ((eq (id expr) 'FALSE) (mk-ir-bool nil))
 		 (t (mk-ir-primitive-function (id expr) decl))));for primitives, types are derived from args
 	  (t 
-	   (if (adt-decl? decl)
+	   (if (adt-expr? expr)
 	       (let ((adt (adt expr)))
 		 (pvs2ir-adt adt)
 		 (ir-function-name (ir (eval-info decl))))
@@ -1955,7 +1957,8 @@
 
 (defmethod pvs2ir* ((expr quant-expr) bindings)
   (declare (ignore bindings))
-  (format t "~%PVS2C Error generating code for ~% ~a ~%Quantifiers are not handled" expr)
+  (unless *to-emacs*
+    (format t "~%PVS2C Error generating code for ~% ~a ~%Quantifiers are not handled" expr))
   (mk-ir-function 'u_undef_quant_expr));;using a dummy name
 
 ;;gets the type of component of nested arrays/records being updated.
@@ -2748,7 +2751,8 @@
 	      (let ((new-ir-target (preprocess-ir* ir-target livevars bindings))
 		    (new-ir-lhs (preprocess-ir* ir-lhs livevars bindings))
 		    (new-ir-rhs (preprocess-ir* ir-rhs livevars bindings)))
-		(unless (ir-last? new-ir-target)
+		(unless (or *to-emacs*
+			    (ir-last? new-ir-target))
 		  (format t "~%Updating an unmarked variable in ~s" (print-ir ir-expr)))
 	      (mk-ir-update new-ir-target new-ir-lhs new-ir-rhs))))
 
@@ -3061,7 +3065,7 @@
 	      (let ((ir2c-return-type (ir2c-type return-type))
 		    (ir2c-type (ir2c-type ir-actual-type)));(break "ir2c*(actual)")
 		(mk-c-assignment-with-count return-var ir2c-return-type
-					    (format nil "actual_~a" c-type)
+					    (format nil "actual_~a" ir2c-type)
 					    ir2c-type))))
 
 (defmethod ir2c* ((ir-expr ir-const-actual) return-var return-type)
@@ -5013,7 +5017,7 @@
 						  c-body))
 			      release-instrs))))
 	  (let* ((fvars (pvs2ir-freevars* ir-expr))
-		 (lastvars (ir-lastvars ir-expr))
+		 ;;(lastvars (ir-lastvars ir-expr))
 		 (c-return-type (add-c-type-definition return-type))
 		 (closure-name (add-closure-definition ir-expr c-return-type))
 		 (closure-var (gentemp "cl"))
@@ -5500,8 +5504,9 @@
   (push c-type-info (c-type-info-table (ir-type-value decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl t))
-;  (when (consp c-type-info) (break "push-type-info-to-decl"))  
-  (format t "\nEmpty decl")
+  ;;  (when (consp c-type-info) (break "push-type-info-to-decl"))
+  (unless *to-emacs*
+    (format t "\nEmpty decl"))
   (push c-type-info *c-type-info-table*))
 
 (defmethod get-c-type-info-table ((decl  const-decl))
@@ -6403,7 +6408,8 @@
 	 (thname (intern (format nil "~a_~a" thid declid)))
 	 (hashentry (gethash  thname *c-primitive-type-attachments-hash*)))
     (cond (hashentry
-	   (format t "~% attaching definition for type ~a" declid)
+	   (unless *to-emacs*
+	     (format t "~% attaching definition for type ~a" declid))
 	   (push-type-info-to-decl hashentry decl)
 	   thname)
 	  (t (let ((typename (pvs2ir-decl* decl)))
@@ -6493,7 +6499,8 @@
 	       (c-header (format nil "extern ~a_t ~a(~a)"
 			   (mppointer-type c-result-type) ir-function-name
 			   (c-args-string ir-args))))
-	  (format t "~%No definition for ~a" ir-function-name)
+	  (unless *to-emacs* ;; causes problems
+	    (format t "~%No definition for ~a" ir-function-name))
 	  (mk-c-defn-info ir-function-name (format nil "~a;" c-header) nil nil
 			  c-result-type))
 	(let* ((ir-function-name (ir-fname ir-function-name))
