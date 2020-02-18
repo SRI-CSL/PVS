@@ -229,6 +229,84 @@
 	      (pvs-message "Interrupted: ~a sec timeout" timeout)))))
       (call-next-method)))
 
+;; BEGIN: Modified by MM to inclue auto-fix [February 19, 2020]
+(defmacro ps-label-as-list (label)
+  `(uiop:split-string ,label :separator "."))
+
+(defmacro neighbor-branch-id? (id1 id2 &optional (degree 1))
+  `(let ((dist (abs (- (parse-integer ,id1 :junk-allowed t) (parse-integer ,id2 :junk-allowed t)))))
+     (and
+      (>= ,degree dist)
+      (> dist 0))))
+
+(defstrat try-siblings-proofs (&optional (degree 1))
+  (let ((own-branch-label (ps-label-as-list(label *ps*))))
+    (if (< 1 (length own-branch-label))
+	(let ((own-branch-id (car(reverse own-branch-label)))
+	      (justifs (loop for sg in (all-subgoals (parent-proofstate *ps*))
+			     when (neighbor-branch-id? own-branch-id (car(reverse(ps-label-as-list(label sg)))) degree)
+			     collect (editable-justification(collect-justification sg)))))
+	  (if justifs
+	      (rerun* justifs)
+	    (skip)))
+      (skip-msg "Current goal has no siblings.")))
+  "")
+
+(defmacro current-pvs-verbose-level ()
+  (if (and *noninteractive*
+	   (integerp *pvs-verbose*))
+      *pvs-verbose*
+    -1))
+
+(defstrat rerun (&optional proof recheck? break? default auto-fix?)
+  (let ((default (if *proof-for-unexpected-branches*
+		     (let ((dummy (when (and (> (current-pvs-verbose-level) 2) default)
+				    (format t "~%[rerun] WARNING default proof given by argument is being omitted since a default proof is set in *proof-for-unexpected-branches*.~%"))))
+		       *proof-for-unexpected-branches*)
+		   default))
+	(auto-fix? (if *auto-fix-on-rerun*
+		       (let ((dummy (unless (or (not (> (current-pvs-verbose-level) 2)) auto-fix?)
+				    (format t "~%[rerun] WARNING auto-fix? is set in *auto-fix-on-rerun*.~%"))))
+			 *auto-fix-on-rerun*)
+		     auto-fix?))
+	(x (rerun-step (cond  ((null proof)
+			       (justification *ps*))
+			      ((null (check-edited-justification proof))
+			       (revert-justification proof))
+			      (t (error-format-if
+				  "~%Given proof is not well-formed")
+				 '(skip)))
+		       recheck?
+		       break?
+		       default
+		       auto-fix?)))
+    x)
+  "Strategy to rerun existing or supplied proof. The RECHECK? flag when T is
+used to rerun an entire proof using only primitive proof steps.  Normally
+rerun gives warnings when there is a mismatch between the number of sobgoals
+and the number of subproofs.  The BREAK? flag causes an error and queries
+the user instead."
+  "")
+
+(defstrat rerun* (proofs)
+  (mapstep #'(lambda(prf)`(finalize (rerun ,prf))) proofs)
+  "Apply rerun to every script in the PROOFS parameter."
+  "")
+
+;; Auto-Fix parameters
+;; - default proof to be tried on open branches after the stored proof was rerun.
+(defparameter *proof-for-unexpected-branches* nil)
+;; - when a non-integer value is stored in *auto-fix-on-rerun*, that value is assumed
+;;   to determine the acceptable neighborhood size to look for misplaced proofs. For
+;;   example, if the branch 1.1.2.4 of a particular lemma cannot be closed with the
+;;   proof stored for it in the prf file, and the value *auto-fix-on-rerun* is 2, the
+;;   subproofs corresponding to the branches 1.1.2.2, 1.1.2.3, 1.1.2.5, and 1.1.2.6
+;;   will be tried on the open branch (1.1.2.4).
+(defparameter *auto-fix-on-rerun* nil)
+
+;; END: Modified by MM to inclue auto-fix [February 19, 2020]
+
+
 (defmethod prove-decl ((decl formula-decl) &key strategy context)
   (ensure-default-proof decl)
   (unless (closed-definition decl)
@@ -488,10 +566,16 @@
 			    (not (listp (car step)))))
 		   (cdr scr-new)))))
 
+;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun save-proof-info (decl init-real-time init-run-time)
-  (let ((prinfo (default-proof decl))
+  (let*((prinfo (default-proof decl))
 	(script (extract-justification-sexp
-		 (collect-justification *top-proofstate*))))
+		 (collect-justification *top-proofstate*)))
+	(auto-fixed-prf
+	 ;; if the prf was rerun in *auto-fix-on-rerun* mode and it ended proved, save it.
+	 (and *auto-fix-on-rerun*
+	      (eq (status-flag *top-proofstate*) '!)
+	      (not *context-modified*))))	
     (cond ((or (null (script prinfo))
 	       (equal (script prinfo) '("" (postpone) nil nil))
 	       (and (tcc-decl? decl)
@@ -500,12 +584,14 @@
 		    (eq (status-flag *top-proofstate*) '!)
 		    (script-structure-changed? prinfo script)))
 	   (setf (script prinfo) script))
-	  ((and (not *proving-tcc*)
-		(not *noninteractive*)
+	  ((and (or (not *proving-tcc*) auto-fixed-prf)
+		(or (not *noninteractive*)
+		    auto-fixed-prf)
 		script
 		(not (equal script '("" (postpone) nil nil)))
 		(not (equal (script prinfo) script))
 		(or (eq *multiple-proof-default-behavior* :noquestions)
+		    auto-fixed-prf
 		    (let ((ids (mapcar #'id
 				 (remove-if-not
 				     #'(lambda (prinfo)
@@ -516,12 +602,13 @@
                        as ~{~a~^, ~}~%~]~
                     Would you like the proof to be saved~@[ anyway~]? "
 		       ids ids))))
-	   (cond ((or (memq *multiple-proof-default-behavior*
-			    '(:overwrite :noquestions))
-		      (and (eq *multiple-proof-default-behavior* :ask)
-			   (pvs-yes-or-no-p
-			    "Would you like to overwrite the current proof (named ~a)? "
-			    (id prinfo))))
+	   (cond ((and (not auto-fixed-prf)
+		       (or (memq *multiple-proof-default-behavior*
+				 '(:overwrite :noquestions))
+			   (and (eq *multiple-proof-default-behavior* :ask)
+				(pvs-yes-or-no-p
+				 "Would you like to overwrite the current proof (named ~a)? "
+				 (id prinfo)))))
 		  (when (eq *multiple-proof-default-behavior* :overwrite)
 		    (format t "Overwriting proof named ~a" (id prinfo)))
 		  (setf (script prinfo) script))
@@ -554,8 +641,9 @@
 	(let ((*in-checker* nil))
 	  (prove-decl decl :strategy '(then (rerun) (query*))))))))
 
+;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun read-proof-id (default)
-  (cond ((eq *multiple-proof-default-behavior* :ask)
+  (cond ((and (not *auto-fix-on-rerun*)(eq *multiple-proof-default-behavior* :ask))
 	 (let ((id (pvs-dialog "Please enter an id (default ~a): " default)))
 	   (cond ((equal id "") default)
 		 ((valid-proof-id id) (intern id :pvs))
@@ -572,8 +660,9 @@
 		      (member ch '(#\_ #\? #\-) :test #'char=)))
 	      (subseq str 1))))
 
+;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun read-proof-description ()
-  (cond ((eq *multiple-proof-default-behavior* :ask)
+  (cond ((and (not *auto-fix-on-rerun*)(eq *multiple-proof-default-behavior* :ask))
 	 (let ((descr (pvs-dialog "Please enter a description~@[ (default ~s)~]: "
 				  *default-proof-description*)))
 	   (if (string-equal descr "")
@@ -2524,25 +2613,26 @@
 		(retypecheck-sexp (cdr sexp))))
       sexp))
 					       
-
-
 (defun mystring<= (st1 st2)
   (or (< (length st1)(length st2))
       (and (eql (length st1)(length st2))
 	   (string<= st1 st2))))
       
-
-(defun rerun-step (justif  recheck? &optional break?)
-  (cond ((or (typep justif 'justification)
-	     (consp justif))
-	 (let* ((top-rule-in (if (and recheck?
-				      (typep justif 'justification)
-				      (xrule justif))
-				 (xrule justif)
+;; Modified by MM to inclue auto-fix [February 19, 2020]
+(defun rerun-step (justif  recheck? &optional break? default auto-fix?)
+  (let ((auto-fix? (if auto-fix?
+		       (if (and (integerp auto-fix?) (> auto-fix? 0)) auto-fix? 1)
+		     nil)))
+    (cond ((or (typep justif 'justification)
+	       (consp justif))
+	   (let* ((top-rule-in (if (and recheck?
+					(typep justif 'justification)
+					(xrule justif))
+				   (xrule justif)
 				 (rule justif))))
-	   (format-if "~%Rerunning step: ~s" (format-rule top-rule-in t))
-	   (if nil ;;(and (consp top-rule-in)
-	           ;;     (not (step-or-rule-defn (car top-rule-in))))
+	     (format-if "~%Rerunning step: ~s" (format-rule top-rule-in t))
+	     (if nil ;;(and (consp top-rule-in)
+		 ;;     (not (step-or-rule-defn (car top-rule-in))))
 	       (rerun-step (when (subgoals justif)
 			     (car (subgoals justif)))
 			   recheck? break?)
@@ -2552,44 +2642,69 @@
 		      (loop for subjustif in
 			    (sort (subgoals justif) #'mystring<=
 				  :key #'label)
-			    collect `(let ((strat (rerun-step (quote
-							       ,subjustif) ,recheck? ,break?)))
-				       strat)))
-		     )
+			    collect (let((subgoal-step
+					  (let ((original-step
+						 `(let ((strat
+							 (rerun-step
+							  (quote ,subjustif)
+							  ,recheck?
+							  ,break?
+							  (quote ,default)
+							  ,auto-fix?)))
+						    strat)))
+					    (if default
+						`(then ,original-step ,default)
+					      original-step))))
+				      (if auto-fix?
+					  `(then (finalize ,subgoal-step) (try-siblings-proofs ,auto-fix?))
+					subgoal-step)))))
 		 (if break?
 		     `(spread! ,top-rule ,subgoal-strategy)
-		     `(spread@ ,top-rule ,subgoal-strategy))))))
-	(t (query*-step))))
+		   `(spread@ ,top-rule ,subgoal-strategy))))))
+	  (t (query*-step)))))
+
+;; (defun rerun-step (justif  recheck? &optional break? default)
+;;   (cond ((or (typep justif 'justification)
+;; 	     (consp justif))
+;; 	 (let* ((top-rule-in (if (and recheck?
+;; 				      (typep justif 'justification)
+;; 				      (xrule justif))
+;; 				 (xrule justif)
+;; 				 (rule justif))))
+;; 	   (format-if "~%Rerunning step: ~s" (format-rule top-rule-in t))
+;; 	   (if nil ;;(and (consp top-rule-in)
+;; 	           ;;     (not (step-or-rule-defn (car top-rule-in))))
+;; 	       (rerun-step (when (subgoals justif)
+;; 			     (car (subgoals justif)))
+;; 			   recheck? break?)
+;; 	       (let ((top-rule `(let ((x (retypecheck-sexp (quote ,top-rule-in))))
+;; 				  x))
+;; 		     (subgoal-strategy
+;; 		      (loop for subjustif in
+;; 			    (sort (subgoals justif) #'mystring<=
+;; 				  :key #'label)
+;; 			    collect (if default
+;; 					`(then
+;; 					  ;; (finalize
+;; 					  (try
+;; 					   (try 
+;; 					    (then (let ((strat (rerun-step (quote
+;; 									    ,subjustif) ,recheck? ,break? (quote ,default))))
+;; 						    strat)
+;; 						  ,default)
+;; 					    (fail)
+;; 					    (skip))
+;; 					   (skip) 
+;; 					   (try-siblings-proofs)))
+;; 					`(let ((strat (rerun-step (quote
+;; 								   ,subjustif) ,recheck? ,break?)))
+;; 					   strat))))
+;; 		     )
+;; 		 (if break?
+;; 		     `(spread! ,top-rule ,subgoal-strategy)
+;; 		     `(spread@ ,top-rule ,subgoal-strategy))))))
+;; 	(t (query*-step))))
 	
-;(defun rerun-step (justif)
-;  (cond ((or (typep justif 'justification)
-;	     (consp justif))
-;	 (let* ((top-rule (rule justif))
-;		(rule-name (car top-rule))
-;		(rule-entry (gethash rule-name *rulebase*))
-;		(strategy-entry (gethash rule-name *strategies*)))
-;	   (if rule-entry
-;	       (make-instance 'strategy
-;		 :top-rule-function
-;		 #'(lambda (ps)
-;		     (declare (ignore ps))
-;		     (format-if "~%~a~%" (rule justif))
-;		     (retypecheck-sexp (rule justif)))
-;		 :subgoal-strategy-function
-;		 #'(lambda (goal)
-;		     (rerun-step (find (label goal)
-;				       (subgoals justif)
-;				       :test #'(lambda (x y)
-;						 (equal x (label y))))))
-;		 :strat-if-a-subgoal-fails
-;		 (postpone-strat)
-;		 )
-;	       (rerun-step (car (subgoals justif))))))
-;	(t (query*-step))))
-
-;(add-strategy-fun 'rerun nil nil (rerun)
-;		  "(rerun): redoes a proof")
-
 (defmethod extract-justification-sexp ((justification justification))
   (list (label justification)
 	(sexp-unparse (rule justification))

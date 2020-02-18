@@ -16,7 +16,7 @@
 #  
 
 PVSPATH=@PVSPATH@
-VERSION="ProofLite-7.0.0 (11/15/19)"
+VERSION="ProofLite-7.0.0 (02/04/20)"
 
 export PROVEITVERSION="proveit - $VERSION"
 
@@ -37,6 +37,9 @@ LISPTXTPROOFS=nil
 LISPTEXPROOFS=nil
 LISPTYPECHECK=nil
 LISPDEPENDENCIES=nil
+LISPAUTOFIX=nil
+PVSTIMEOUT=
+LISPDEFAULTPROOFSCRIPT=nil
 PRELUDEXT=
 DISABLE=
 ENABLE=
@@ -59,6 +62,9 @@ reset_vars() {
   THFS=
   THEORIES=  
   LISPDEPENDENCIES=nil
+  LISPAUTOFIX=nil
+  PVSTIMEOUT=
+  LISPDEFAULTPROOFSCRIPT=nil
 }
 
 all_opt() {
@@ -96,7 +102,7 @@ compile_infile_name() {
     LISPDEPENDENCIES=t
   # If  <file>, set context to its dirname and pvsfile to its base name
   else 
-    PVSCONTEXT=`dirname $ARG`
+    PVSCONTEXT=$(cd "$(dirname $ARG)"; pwd -P)
     PVSFILE=`basename $ARG .pvs`
     if [ ! -f $PVSCONTEXT/$PVSFILE.pvs ]; then
 	case $ARG in
@@ -248,10 +254,14 @@ OPTIONS
   combined.
 
    -a|--all            equivalent to -ciq 
+   --auto-fix [<num>]  try sibling proofs on unfinished branchs (<num> is the maximum 
+                       acceptable distance between the current branch and the sibling 
+                       which proof is to be tried; default value is 2)
    -c|--clean          remove bin files and .pvscontext
    -C|--clean-only     clean but do not typecheck or prove the theory
    -d|--dir <dir>      use <dir> as default directory of summary files
    --dependencies      compute theory dependencies and save them in pvsbin/<file>.dep.
+   --default-script <proof script> default prooflite script to be tried on unfinished branches
    --disable <o1,..,on> disable external oracles o1,...,on
    --disable-oracles   disable any external oracle
    --enable <o1,..,on> enable external oracles o1,..,on. Overwrite --disable
@@ -275,6 +285,7 @@ OPTIONS
    --txt               generate text proof files in directory pvstxt
    --no-txt            don't generate text proof files (default)
    -t|--top <topfile>  use <topfile>.pvs instead of top.pvs when the input is a directory
+   --timeout <secs>    timeout in seconds for each proof
    --traces            include proof traces in log file
    --no-traces         don't include proof traces in log file (default)
    -T|--typecheck-only typecheck but do not prove the theory
@@ -544,6 +555,15 @@ proveit() {
 	  if [ "$LISPTEXPROOFS" = "t" ]; then
 	      echo "Generating LaTeX proof files in directory pvstex"
 	  fi
+	  if [ "$LISPAUTOFIX" != "nil" ]; then
+	      echo "Auto-fix enabled"
+	  fi
+	  if [ "$LISPDEFAULTPROOFSCRIPT" != "nil" ]; then
+	      echo "Default proof script $LISPDEFAULTPROOFSCRIPT"
+	  fi
+	  if [ "$PVSTIMEOUT" ]; then
+	      echo "Timeout set at $PVSTIMEOUT secs."
+	  fi
       fi
 
       export PROVEITARG="$ARG"
@@ -566,6 +586,8 @@ proveit() {
       export PROVEITLISPENABLE="`list_to_lisp $ENABLE`"
       export PROVEITLISPTHFS="`list_to_lisp $THFS`"
       export PROVEITLISPTHEORIES="`list_to_lisp $THEORIES`"
+      export PROVEITLISPAUTOFIX="$LISPAUTOFIX"
+      export PROVEITLISPDEFAULTPROOFSCRIPT="$LISPDEFAULTPROOFSCRIPT"
       
       if [ "$DEBUG" ]; then
 	  echo "PROVEITVERSION: $PROVEITVERSION"
@@ -587,9 +609,15 @@ proveit() {
 	  echo "PROVEITLISPENABLE: $PROVEITLISPENABLE"
 	  echo "PROVEITLISPTHFS: $PROVEITLISPTHFS"
 	  echo "PROVEITLISPTHEORIES: $PROVEITLISPTHEORIES"
+	  echo "PROVEITLISPAUTOFIX: $PROVEITLISPAUTOFIX"
+	  echo "PROVEITLISPDEFAULTPROOFSCRIPT: $PROVEITLISPDEFAULTPROOFSCRIPT"
       fi
-      
-      $PVSPATH/pvs -raw $PVSLISP -E "(proveit)" > $OUTFILE
+
+      if [ $PVSTIMEOUT ]; then
+	  $PVSPATH/pvs -raw $PVSLISP -timeout $PVSTIMEOUT -E "(proveit)" > $OUTFILE
+      else
+	  $PVSPATH/pvs -raw $PVSLISP -E "(proveit)" > $OUTFILE
+      fi
       
       if [ $? -ne 0 ]; then
 	  error_output
@@ -670,6 +698,28 @@ do
     -enable|--enable) 
 	  ENABLE=`append $2 $ENABLE`
 	  shift;;
+    --auto-fix)
+	LISPAUTOFIX=2
+	if echo $2 | grep -qE '^[+-]?[0-9]+$'; then
+	    LISPAUTOFIX=$2
+	    shift
+	fi;;
+    --timeout)
+	if echo $2 | grep -qE '^[0-9]+$'; then
+	    PVSTIMEOUT=$2
+	    shift
+	else
+	    echo "Error: --timeout option must be followed by the limit in seconds. (See proveit --help for details.)"
+	    exit 1
+	fi;;
+    --default-script)
+	if echo $2 | grep -qE '\(.*\)'; then
+	    LISPDEFAULTPROOFSCRIPT=$2
+	    shift
+	else
+	    echo "Error: $2 does not seem to be a proof script."
+	    exit 1
+	fi;;
     -*|~*) OPTS="$OPTS $1";;
     *)     ARG=$1
  	   NOFILE=
@@ -682,7 +732,7 @@ if [ "$NOFILE" ]; then
   if [ -f $ARG -o "$CLEAN" = "only" ]; then
     proveit
   else
-    echo "Usage: proveit [--help | <option> ...] <file>.pvs"
+    usage
   fi
 fi
 
