@@ -1481,25 +1481,6 @@ If STEP does nothing, then ELSE-STEP is applied.")
   "Applying propositional simplification and decision procedures")
 
 
-(defstrat rerun (&optional proof recheck? break?)
-  (let ((x (rerun-step (cond  ((null proof)
-			       (justification *ps*))
-			      ((null (check-edited-justification proof))
-			       (revert-justification proof))
-			      (t (error-format-if
-				  "~%Given proof is not well-formed")
-				 '(skip)))
-		       recheck?
-		       break?)))
-    x)
-  "Strategy to rerun existing or supplied proof. The RECHECK? flag when T is
-used to rerun an entire proof using only primitive proof steps.  Normally
-rerun gives warnings when there is a mismatch between the number of sobgoals
-and the number of subproofs.  The BREAK? flag causes an error and queries
-the user instead."
-  "")
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defstep skosimp (&optional (fnum *) preds? &inherit skolem! skolem-typepred)
   (then (if preds?
@@ -5108,7 +5089,7 @@ Or:
 	  (mapobject #'(lambda (ex)
 			 (or (and (eq where 'first)
 				  let-exprs)
-			     (typecase (ex)
+			     (typecase ex
 			       (binding-expr
 				(let ((*bound-variables*
 				       (append (bindings ex) *bound-variables*)))
@@ -5444,3 +5425,81 @@ conditions given in cases-list."
 (defmethod collect-conds-old ((expr number-expr)  &optional  boundvars)
   (declare (ignore boundvars))
   nil)
+
+
+;; BEGIN: Modified by MM to inclue auto-fix [February 19, 2020]
+(defmacro ps-label-as-list (label)
+  `(uiop:split-string ,label :separator "."))
+
+(defmacro neighbor-branch-id? (id1 id2 &optional (degree 1))
+  `(let ((dist (abs (- (parse-integer ,id1 :junk-allowed t) (parse-integer ,id2 :junk-allowed t)))))
+     (and
+      (>= ,degree dist)
+      (> dist 0))))
+
+(defstrat try-siblings-proofs (&optional (degree 1))
+  (let ((own-branch-label (ps-label-as-list(label *ps*))))
+    (if (< 1 (length own-branch-label))
+	(let ((own-branch-id (car(reverse own-branch-label)))
+	      (justifs (loop for sg in (all-subgoals (parent-proofstate *ps*))
+			     when (neighbor-branch-id? own-branch-id (car(reverse(ps-label-as-list(label sg)))) degree)
+			     collect (editable-justification(collect-justification sg)))))
+	  (if justifs
+	      (rerun* justifs)
+	    (skip)))
+      (skip-msg "Current goal has no siblings.")))
+  "")
+
+(defmacro current-pvs-verbose-level ()
+  (if (and *noninteractive*
+	   (integerp *pvs-verbose*))
+      *pvs-verbose*
+    -1))
+
+(defstrat rerun (&optional proof recheck? break? default auto-fix?)
+  (let ((default (if *proof-for-unexpected-branches*
+		     (let ((dummy (when (and (> (current-pvs-verbose-level) 2) default)
+				    (format t "~%[rerun] WARNING default proof given by argument is being omitted since a default proof is set in *proof-for-unexpected-branches*.~%"))))
+		       *proof-for-unexpected-branches*)
+		     default))
+	(auto-fix? (if *auto-fix-on-rerun*
+		       (let ((dummy (unless (or (not (> (current-pvs-verbose-level) 2)) auto-fix?)
+				      (format t "~%[rerun] WARNING auto-fix? is set in *auto-fix-on-rerun*.~%"))))
+			 *auto-fix-on-rerun*)
+		       auto-fix?))
+	(x (rerun-step (cond  ((null proof)
+			       (justification *ps*))
+			      ((null (check-edited-justification proof))
+			       (revert-justification proof))
+			      (t (error-format-if
+				  "~%Given proof is not well-formed")
+				 '(skip)))
+		       recheck?
+		       break?
+		       default
+		       auto-fix?)))
+    x)
+  "Strategy to rerun existing or supplied proof. The RECHECK? flag when T is
+used to rerun an entire proof using only primitive proof steps.  Normally
+rerun gives warnings when there is a mismatch between the number of sobgoals
+and the number of subproofs.  The BREAK? flag causes an error and queries
+the user instead."
+  "")
+
+(defstrat rerun* (proofs)
+  (mapstep #'(lambda(prf)`(finalize (rerun ,prf))) proofs)
+  "Apply rerun to every script in the PROOFS parameter."
+  "")
+
+;; Auto-Fix parameters
+;; - default proof to be tried on open branches after the stored proof was rerun.
+(defparameter *proof-for-unexpected-branches* nil)
+;; - when a non-integer value is stored in *auto-fix-on-rerun*, that value is assumed
+;;   to determine the acceptable neighborhood size to look for misplaced proofs. For
+;;   example, if the branch 1.1.2.4 of a particular lemma cannot be closed with the
+;;   proof stored for it in the prf file, and the value *auto-fix-on-rerun* is 2, the
+;;   subproofs corresponding to the branches 1.1.2.2, 1.1.2.3, 1.1.2.5, and 1.1.2.6
+;;   will be tried on the open branch (1.1.2.4).
+(defparameter *auto-fix-on-rerun* nil)
+
+;; END: Modified by MM to inclue auto-fix [February 19, 2020]
