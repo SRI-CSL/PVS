@@ -3309,6 +3309,13 @@ nil is returned in that case."
       (delete-file-from-workspace (filename mod))
       (setf (resolutions theoryref) nil)
       (setq mod nil))
+    (unless (and mod
+		 (parsed? mod)
+		 (or (not (lib-datatype-or-theory? mod))
+		     (and (name? theoryref)
+			  (null (library theoryref))
+			  (not (look-for-theory-in-directory-files theoryref)))))
+      (setq mod nil))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
 	  ((and mod
