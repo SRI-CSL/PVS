@@ -292,20 +292,21 @@
 		 #'(lambda (ws)
 		     (format stream "~a~{~a~^,~}~%" (path ws)
 			     (loop for th being the hash-keys
-				in (pvs-files ws)
-				collect th)))
+				   in (pvs-files ws)
+				   collect th)))
 		 *all-workspace-sessions*)
 		(loop for th in pvstheories
-		   for idth = (id th)
-		   do (format stream "~a:~{~a~^,~}~%" idth
-			      (mapcar 
+		      for idth = (id th)
+		      do (format stream "~a:~{~a~^,~}~%" idth
+				 (mapcar
 				  #'(lambda(x) 
 				      (if (lib-datatype-or-theory? x)
-					  (format nil "~a@~a" 
-					    (get-library-id (context-path x))   
-					    (id x))
-					  (id x)))
-				(immediate-theories-in-theory idth))))))
+					  (format nil
+						  "~a~a"
+						  (context-path x)
+						  (id x))
+					(id x)))
+				  (immediate-theories-in-theory idth))))))
 	    (if typecheckonly
 		(if pvsfile (format t "~%File ~a.pvs typechecked" pvsfile)
 		    (format t "~%Typechecked ~a" proveitarg))
