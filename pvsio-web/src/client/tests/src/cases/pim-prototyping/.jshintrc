@@ -1,9 +1,0 @@
-{
-  "extends": "../../../../../../.jshintrc",
-  "indent": 4,
-  "curly": true,
-  "nonew": true,
-  "quotmark": "double",
-  "devel": false,
-  "jasmine": true
-}

@@ -1,7 +1,0 @@
-{{#if declarations}}-- declarations{{#each declarations}}
-{{#if isBoundedInteger}}VAR {{name}} : {{min}}..{{max}};{{/if
-    }}{{#if isEnumeration}}VAR {{name}} : { {{#each constants}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} };{{/if
-    }}{{#if type}}VAR {{name}} : {{type}};{{/if
-}}{{/each}}
-{{/if}}{{#if trans}}IVAR event : { {{#each trans}}{{name}}{{#unless @last}}, {{/unless}}{{/each}} };
-{{/if}}

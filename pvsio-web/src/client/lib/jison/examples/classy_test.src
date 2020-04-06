@@ -1,7 +1,0 @@
-class Chris extends Person {
-}
-
-main {
-	var string cool;
-	printnat(cool);
-}

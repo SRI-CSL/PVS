@@ -1,9 +1,0 @@
-{{#if template_description}}
-%
-%   Description: This template generates C constants:
-%                - const const_type const_name = const_val;
-%
-{{/if}}{{#if comment}}/**
- * {{comment}}
- */{{/if}}{{#each constants}}
-const {{type}} {{name}} = {{value}};{{/each}}

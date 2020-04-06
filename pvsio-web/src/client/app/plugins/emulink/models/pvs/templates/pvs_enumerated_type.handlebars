@@ -1,8 +1,0 @@
-{{#if template_description}}
-%
-%   Description: This template generates PVS enumerated types. They are in the form:
-%                - enum_type_name: TYPE = { c1, c2, ... }
-%
-{{/if}}{{#if comment}}  %-- {{comment}}{{/if}}{{#each enumtype}}{{#if modes}}
-  {{type}}: TYPE {{#if modes}}= { {{#each modes}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} }{{/if}}{{/if}}{{#if datatypes}}{{#each datatypes}}
-  {{name}}: TYPE {{#if constructors}}= { {{#each constructors}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} }{{/if}}{{/each}}{{/if}}{{/each}}

@@ -1,9 +1,0 @@
-%-- PVS predicate defining the property to be analysed
-visibility(st: State): bool ={{#each actions}}
-    (per_{{{this}}}(st) IMPLIES
-      LET post = {{{this}}}(st)
-       IN post`current_state /= st`current_state
-          IMPLIES
-         ({{#each ../disp}}post`{{{this}}} /= st`{{{this}}}{{#unless @last}}
-          OR {{/unless}}{{/each}}))
-    {{#unless @last}}AND{{/unless}}{{/each}}

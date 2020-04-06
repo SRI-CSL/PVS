@@ -1,3 +1,0 @@
-reversibility(st: State): bool ={{#each actions}}
-    (per_{{{this}}}(st) IMPLIES
-      (per_{{{../reversingAction}}}({{{this}}}(st)) AND {{{../reversingAction}}}({{{this}}}(st))`{{{../s}}} = st`{{{../s}}})){{#unless @last}} AND{{/unless}}{{/each}}
