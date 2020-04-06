@@ -43,7 +43,7 @@
     (when (file-exists-p lisp-file)
       (find-file-read-only-other-window lisp-file))))
 
-(defpvs pvs-C-theory typecheck (theoryref)
+(defpvs pvs-c-theory typecheck (theoryref)
   "Generates the C code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate C code for theory: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
@@ -59,7 +59,7 @@
       (pvs-message "Generated C-file %s" (car c-files))
       (pop-to-buffer buf))))
 
-(defpvs pvs-C-file find-file (filename)
+(defpvs pvs-c-file find-file (filename)
   "Generates the C code for a given file"
   (interactive (pvs-complete-file-name "Generate C for file: " (current-pvs-file)))
   (pvs-bury-output)

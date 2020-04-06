@@ -139,3 +139,5 @@
 (pvs-abbreviate 'x-prove 'xpr)
 (pvs-abbreviate 'x-step-proof 'xsp)
 (pvs-abbreviate 'pvs-load-patches 'load-pvs-patches)
+(pvs-abbreviate 'pvs-c-file 'pvs-C-file)
+(pvs-abbreviate 'pvs-c-theory 'pvs-C-theory)
