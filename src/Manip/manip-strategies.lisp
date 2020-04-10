@@ -504,7 +504,6 @@ proof for operator will be tried automatically."
 
 ;;;;;;;;;;;;;;;;;;;;
 
-;; Last modified by MM and CM (April 10, 2020)
 (defstep swap-rel (&rest fnums)
   (let ((f-nums (get-relations (extract-fnums-arg fnums)))
 	(swap-step
@@ -516,6 +515,7 @@ proof for operator will be tried automatically."
 of the relational operators."
   "~%Reversing the order of the relations in formulas ~A")
 
+;; Last modified by MM and CM (April 10, 2020)
 (defhelper swap-rel-one (fnum)
   (let ((formula (manip-get-formula fnum))
 	(operator (id (operator formula)))
