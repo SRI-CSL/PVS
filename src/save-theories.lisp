@@ -1213,6 +1213,10 @@ instances, e.g., other declarations within the theory, or self-references."
 		     (not (memq fdcl (get-declarations (id fdcl)))))
 		 (decl-formals obj))))
 
+(defmethod restore-object* :around ((obj existence-tcc))
+  (call-next-method)
+  (setf (nonempty? (type obj)) t))
+
 (defmethod restore-object* :around ((obj binding-expr))
   (let ((*bound-variables* (append (bindings obj) *bound-variables*)))
     (call-next-method)))

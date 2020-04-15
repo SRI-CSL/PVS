@@ -858,16 +858,25 @@ there is no such bind-decl."
 (defmethod well-founded-type? ((otype type-expr))
   nil)
 
+(defun decls-upto (&rest keys &key (decl (current-declaration)) (theory (current-theory))
+				(pred #'identity) &allow-other-keys)
+  (remove-if-not pred (apply #'list-upto (all-decls theory) decl
+			     :allow-other-keys t keys)))
+
 (defun check-nonempty-type (te expr)
   (let ((type (if (dep-binding? te) (type te) te)))
-    (unless (or (nonempty? type)
-		(typep (current-declaration) 'adt-accessor-decl)
-		(assoc type (nonempty-types (current-theory)) :test #'tc-eq))
-      (when (possibly-empty-type? type)
-	(let ((etcc (generate-existence-tcc type expr)))
-	  (unless (or (or *in-checker* *in-evaluator*)
-		      *tcc-conditions*)
-	    (set-nonempty-type type etcc)))))))
+    (unless (nonempty? type)
+      (cond ((member type (decls-upto :pred #'existence-tcc?)
+		     :test #'tc-eq :key #'type)
+	     (setf (nonempty? type) t)
+	     nil)
+	    (t (unless (or (typep (current-declaration) 'adt-accessor-decl)
+			   (assoc type (nonempty-types (current-theory)) :test #'tc-eq))
+		 (when (possibly-empty-type? type)
+		   (let ((etcc (generate-existence-tcc type expr)))
+		     (unless (or (or *in-checker* *in-evaluator*)
+				 *tcc-conditions*)
+		       (set-nonempty-type type etcc))))))))))
 
 (defmethod possibly-empty-type? :around ((te type-expr))
   (unless (nonempty? te)
@@ -945,7 +954,7 @@ there is no such bind-decl."
 	 (form (mk-exists-expr (list (mk-bind-decl var type)) *true*))
 	 (tform (typecheck* form *boolean* nil nil))
 	 (id (make-tcc-name))
-	 (decl (typecheck* (mk-existence-tcc id tform) nil nil nil))
+	 (decl (typecheck* (mk-existence-tcc id tform nil type) nil nil nil))
 	 (origin (make-instance 'tcc-origin
 		   :root (tcc-root-name type)
 		   :kind 'existence
@@ -1060,7 +1069,7 @@ there is no such bind-decl."
 	   (var (make-new-variable '|x| type))
 	   (id (make-tcc-name))
 	   (edecl (if (eq fclass 'OBLIGATION)
-		      (mk-existence-tcc id nil dfmls)
+		      (mk-existence-tcc id nil dfmls type)
 		      (mk-formula-decl id nil fclass nil dfmls)))
 	   (form (with-current-decl edecl
 		   (make!-exists-expr (list (mk-bind-decl var stype stype))

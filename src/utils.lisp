@@ -45,6 +45,10 @@
 			    (flatten-list (cdr obj))))
 	(t (list obj))))
 
+(defun list-upto (list elt &rest kpairs &key &allow-other-keys)
+  (let ((mlist (apply #'member elt list :allow-other-keys t kpairs)))
+    (ldiff list mlist)))
+
 (defun replace-all (string part replacement &key (test #'char=))
   "Returns a new string in which all the occurences of the part 
 is replaced with replacement."

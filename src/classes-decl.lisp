@@ -605,7 +605,8 @@ restored, the TCCs are checked")
 
 (defcl recursive-judgement-axiom (formula-decl))
 
-(defcl existence-tcc (tcc-decl))
+(defcl existence-tcc (tcc-decl)
+  type)
 
 (defcl assuming-tcc (tcc-decl)
   theory-instance

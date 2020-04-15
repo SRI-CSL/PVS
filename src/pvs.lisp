@@ -1505,7 +1505,11 @@ use binfiles."
 		    (cdr (assq :theoryName thref))))
 		 (pathname (namestring thref))
 		 (string thref)))
-	 (theory (get-typechecked-theory thstr))
+	 (theory (cond (thstr
+			(get-typechecked-theory thstr))
+		       ((datatype-or-module? thref)
+			thref)
+		       (t (error "get-tccs: bad thref"))))
 	 (tccs (collect-tccs theory)))
     (mapcar #'(lambda (tcc)
 		  `((id . ,(id tcc))

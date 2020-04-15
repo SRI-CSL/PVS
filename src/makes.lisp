@@ -284,7 +284,7 @@
     :definition expr
     :semi t))
 
-(defun mk-existence-tcc (id expr &optional dfmls)
+(defun mk-existence-tcc (id expr dfmls type)
   (assert (or *in-checker* *in-evaluator*
 	      dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'existence-tcc
@@ -293,7 +293,8 @@
     :spelling 'OBLIGATION
     :kind 'existence
     :definition expr
-    :semi t))
+    :semi t
+    :type type))
 
 (defun mk-assuming-tcc (id expr theory-instance assuming-decl dfmls)
   (make-instance 'assuming-tcc
