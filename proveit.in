@@ -16,7 +16,7 @@
 #  
 
 PVSPATH=@PVSPATH@
-VERSION="ProofLite-7.0.0 (02/04/20)"
+VERSION="ProofLite-7.0.0 (03/10/20)"
 
 export PROVEITVERSION="proveit - $VERSION"
 
@@ -38,6 +38,7 @@ LISPTEXPROOFS=nil
 LISPTYPECHECK=nil
 LISPDEPENDENCIES=nil
 LISPAUTOFIX=nil
+LISPRETRYWITHTCCS=nil
 PVSTIMEOUT=
 LISPDEFAULTPROOFSCRIPT=nil
 PRELUDEXT=
@@ -63,6 +64,7 @@ reset_vars() {
   THEORIES=  
   LISPDEPENDENCIES=nil
   LISPAUTOFIX=nil
+  LISPRETRYWITHTCCS=nil
   PVSTIMEOUT=
   LISPDEFAULTPROOFSCRIPT=nil
 }
@@ -101,7 +103,7 @@ compile_infile_name() {
     fi
     LISPDEPENDENCIES=t
   # If  <file>, set context to its dirname and pvsfile to its base name
-  else 
+  else
     PVSCONTEXT=$(cd "$(dirname $ARG)"; pwd -P)
     PVSFILE=`basename $ARG .pvs`
     if [ ! -f $PVSCONTEXT/$PVSFILE.pvs ]; then
@@ -109,7 +111,7 @@ compile_infile_name() {
 	    *@*) predir=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
 		THFS=`echo $ARG | sed -e "s/[^@]*@//"`
 		if [ -z "$predir" ]; then
-		    PVSCONTEXT="."
+		    PVSCONTEXT=$(pwd -P)
 		else 
 		    if [ -d "$predir" ]; then
 			PVSCONTEXT=$predir
@@ -558,6 +560,9 @@ proveit() {
 	  if [ "$LISPAUTOFIX" != "nil" ]; then
 	      echo "Auto-fix enabled"
 	  fi
+	  if [ "$LISPRETRYWITHTCCS" != "nil" ]; then
+	      echo "Retry-with-tccs enabled"
+	  fi
 	  if [ "$LISPDEFAULTPROOFSCRIPT" != "nil" ]; then
 	      echo "Default proof script $LISPDEFAULTPROOFSCRIPT"
 	  fi
@@ -587,6 +592,7 @@ proveit() {
       export PROVEITLISPTHFS="`list_to_lisp $THFS`"
       export PROVEITLISPTHEORIES="`list_to_lisp $THEORIES`"
       export PROVEITLISPAUTOFIX="$LISPAUTOFIX"
+      export PROVEITLISPRETRYWITHTCCS="$LISPRETRYWITHTCCS"
       export PROVEITLISPDEFAULTPROOFSCRIPT="$LISPDEFAULTPROOFSCRIPT"
       
       if [ "$DEBUG" ]; then
@@ -610,6 +616,7 @@ proveit() {
 	  echo "PROVEITLISPTHFS: $PROVEITLISPTHFS"
 	  echo "PROVEITLISPTHEORIES: $PROVEITLISPTHEORIES"
 	  echo "PROVEITLISPAUTOFIX: $PROVEITLISPAUTOFIX"
+	  echo "PROVEITLISPRETRYWITHTCCS: $PROVEITLISPRETRYWITHTCCS"
 	  echo "PROVEITLISPDEFAULTPROOFSCRIPT: $PROVEITLISPDEFAULTPROOFSCRIPT"
       fi
 
@@ -698,6 +705,9 @@ do
     -enable|--enable) 
 	  ENABLE=`append $2 $ENABLE`
 	  shift;;
+    --retry-with-tccs)
+	LISPRETRYWITHTCCS=t
+	shift;;
     --auto-fix)
 	LISPAUTOFIX=2
 	if echo $2 | grep -qE '^[+-]?[0-9]+$'; then

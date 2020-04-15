@@ -4336,7 +4336,7 @@
 	  ((uint8 uint16 uint32 uint64); __uint128)
 	   (list (format nil "~a = (~a_t)((uint64_t)~a - (uint64_t)~a)" return-var c-return-type arg1 arg2)))
 	  ((int8 int16 int32 int64); __int128)
-	   (list (format nil "~a = (~a_t)(((uint64_t)~a - (int64_t)~a)" return-var c-return-type arg1 arg2)))
+	   (list (format nil "~a = (~a_t)((uint64_t)~a - (int64_t)~a)" return-var c-return-type arg1 arg2)))
 	  (mpz (break "Not implemented"))
 	  (mpq (break "Not available"))))
        ((int8 int16 int32 int64 __int128)
@@ -6732,12 +6732,12 @@
 		    (format output "~%~%#include \"pvslib.h\"")
 		    (loop for thy in  preceding-theories-without-formals
 			  when (not (same-id thy theory-id))
-			  do (format output "~%~%#include \"~a_c.h\"" thy))
+			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
 		    (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
 		    (format output " -I ~asrc/groundeval/" *pvs-path*)
 		    (format output " pvslib.c ")
 		    (loop for thy in preceding-theories-without-formals
-			  do (format output " ~a_c.c" thy))
+			  do (format output " ~a_c.c" (id thy)))
 		    (format output " -lgmp ")
 		    ;; (loop for formal in (formals theory)
 		    ;;  	  when (formal-type-decl? decl)
