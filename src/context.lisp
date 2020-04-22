@@ -3114,6 +3114,34 @@ binfile, not the filename."
 (defmethod unproved? ((fdecl formula-entry))
   (not (proved? fdecl)))
 
+(defun collect-default-proofs ()
+  (maphash #'collect-default-proofs-theories (current-pvs-files)))
+
+(defun collect-default-proofs-theories (fname theories)
+  (with-open-file (out (format nil "~a.dprf" fname) :direction :output
+		       :if-exists :supersede)
+    (dolist (theory (cdr theories))
+      (let ((proofs (collect-default-proofs-theory theory)))
+	(write proofs :length nil :level nil :escape t
+	       :pretty t
+	       :stream out)
+	(terpri out)))))
+
+(defun collect-default-proofs-theory (theory)
+  (cons (id theory)
+	(collect-default-proofs-theory*
+	 (append (assuming theory) (theory theory))
+	 nil)))
+
+(defun collect-default-proofs-theory* (decls proofs)
+  (if (null decls)
+      (nreverse proofs)
+      (collect-default-proofs-theory*
+       (cdr decls)
+       (if (and (formula-decl? (car decls))
+		(default-proof (car decls)))
+	   (list (id (car decls)) 0 (sexp (default-proof (car decls))) proofs)
+	   proofs))))
 
 ;; (defun check-proof-file-is-current (&optional file)
 ;;   (if file
