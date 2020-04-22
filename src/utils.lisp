@@ -4926,19 +4926,35 @@ space")
 
 (defun pvs-git-description ()
   "E.g., pvs7.0-647-g8c1572bb"
-  (values
-   (uiop:run-program
-       (format nil "git -C ~a describe" *pvs-path*)
-     :input "//dev//null"
-     :output '(:string :stripped t))))
+  (if (string= (uiop:run-program
+		   (format nil "git -C ~a tag -l pvs~a" *pvs-path* *pvs-version*)
+		 :input "//dev//null"
+		 :output '(:string :stripped t))
+	       "")
+      (let ((rev (uiop:run-program
+		   (format nil "git -C ~a rev-parse --short HEAD" *pvs-path*)
+		 :input "//dev//null"
+		 :output '(:string :stripped t))))
+	(format nil "pvs~a.0-0-g~a" *pvs-version* rev))
+      (values
+       (uiop:run-program
+	   (format nil "git -C ~a describe" *pvs-path*)
+	 :input "//dev//null"
+	 :output '(:string :stripped t)))))
 
 (defun pvs-git-count-since ()
   "Returns the number of commits since the pvs-version number tag"
-  (values
-   (uiop:run-program
-       (format nil "git -C ~a rev-list pvs~a..HEAD --count" *pvs-path* *pvs-version*)
-     :input "//dev//null"
-     :output '(:string :stripped t))))
+  (if (string= (uiop:run-program
+		   (format nil "git -C ~a tag -l pvs~a" *pvs-path* *pvs-version*)
+		 :input "//dev//null"
+		 :output '(:string :stripped t))
+	       "")
+      "0"
+      (values
+       (uiop:run-program
+	   (format nil "git -C ~a rev-list pvs~a..HEAD --count" *pvs-path* *pvs-version*)
+	 :input "//dev//null"
+	 :output '(:string :stripped t)))))
 
 (defun git-current-commit ()
   (if (file-exists-p (format nil "~a/.git" *pvs-path*))
