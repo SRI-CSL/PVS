@@ -51,7 +51,7 @@ SHELL=/bin/sh
 # Should test for existence of platform dependent Makefiles
 ifdef PVSPATH
 ifneq "${PVSPATH:-1}" "/"
-PVSPATH := "${PVSPATH}/"
+PVSPATH := ${PVSPATH}/
 endif
 endif
 CFLAGS = @CFLAGS@
