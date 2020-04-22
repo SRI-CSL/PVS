@@ -416,9 +416,8 @@
 (defmethod translate-to-prove ((expr field-application))
   (with-slots (id argument type) expr
     (let* ((fields (fields (find-supertype (type argument))))
-	   (sfields ;;(sort-fields fields)
-	    fields)
-	   (pos (position id sfields :key #'id)))
+	   (pos (position id fields :key #'id)))
+      ;;(assert (equal fields (sort-fields fields)))
       (list (make-apply-name (mk-funtype (type argument) type))
 	    (translate-to-prove argument)
 	    pos))))
