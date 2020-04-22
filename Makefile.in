@@ -68,9 +68,11 @@ PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
 TAG = $(PACKAGE)$(VERSION)
 ifeq ($(shell $(GIT) tag -l $(TAG)),)
-$(error "Need to add tag $(TAG), or change PACKAGE or VERSION")
-endif
+GIT_DESC := $(TAG)-0-g$(shell $(GIT) rev-parse --short HEAD)
+SUBVERSION = 0
+else
 SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
+endif
 DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)
 DIST_ARCHIVES = $(DISTDIR).tar.gz
 ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_FILES)

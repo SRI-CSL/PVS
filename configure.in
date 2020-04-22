@@ -22,7 +22,7 @@ dnl --------------------------------------------------------------------
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.59)
-AC_INIT([pvs],[7.0],[pvs-bugs@csl.sri.com])
+AC_INIT([pvs],[7.1],[pvs-bugs@csl.sri.com])
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
