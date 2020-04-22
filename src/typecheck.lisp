@@ -505,7 +505,9 @@ TCCs are generated, and finally exportings are updated."
 			       (fully-instantiated? iname)))
 	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
 	  ;; Add this to the assuming-instances list if fully instantiated
-	  (pushnew (list iname) (assuming-instances (current-theory))
+	  (assert (theory-element? (current-declaration)))
+	  (pushnew (list iname inst (current-declaration))
+		   (assuming-instances (current-theory))
 		   :test #'(lambda (x y)
 				   (not (eq (simple-match (car y) x) 'fail)))))
 	(unless skip-add-to-using?

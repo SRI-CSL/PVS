@@ -35,6 +35,8 @@
 
 (defvar *restoring-type-application* nil)
 
+(defvar *needs-pseudonormalizing* nil)
+
 (defvar *bin-theories-set*)
 
 (defun save-theory (theory)
@@ -207,6 +209,32 @@ instances, e.g., other declarations within the theory, or self-references."
       (setf (parens list-ex) parens)
       (setf (type list-ex) type)
       list-ex)))
+
+(defvar *restoring-module* nil
+  "used to keep from recursing through the following")
+
+(defmethod restore-object* :around ((obj module))
+  (unless (eq obj *restoring-module*)
+    (let ((*restoring-module* obj))
+      (call-next-method))
+    (dolist (pair (nonempty-types obj))
+      (let ((*restore-object-parent* pair)
+	    (*restore-object-parent-slot* 'car)
+	    (type (car pair))
+	    (*restoring-declaration* (cdr pair)))
+	(with-current-decl *restoring-declaration*
+	  (restore-object* type))))
+    (dolist (ass-inst (assuming-instances obj))
+      (let ((*restore-object-parent* ass-inst)
+	    (thinst (car ass-inst))
+	    (expr (cadr ass-inst))
+	    (*restoring-declaration* (caddr ass-inst)))
+	(when *restoring-declaration*
+	  (let ((*restore-object-parent-slot* 'car))
+	    (restore-object* thinst))
+	  (let ((*restore-object-parent-slot* 'cadr))
+	    (restore-object* expr)))))))
+
 
 (defmethod restore-object* :around ((obj list-expr))
   (let ((*restore-object-parent* obj))
@@ -547,7 +575,8 @@ instances, e.g., other declarations within the theory, or self-references."
 		  (cons (car conversions) store-convs)))))))
 
 (defun create-store-declarations-hash (declarations-hash)
-  (if (eq declarations-hash (declarations-hash *prelude-context*))
+  (if (or (eq declarations-hash 'prelude-declarations-hash)
+	  (eq declarations-hash (declarations-hash *prelude-context*)))
       'prelude-declarations-hash
       (make-linked-hash-table
        :table (lhash-table declarations-hash)
@@ -652,7 +681,8 @@ instances, e.g., other declarations within the theory, or self-references."
 		  (cons (car known-subtypes) store-subtypes)))))))
 
 (defun create-store-using-hash (using-hash)
-  (if (eq using-hash (using-hash *prelude-context*))
+  (if (or (eq using-hash 'prelude-using-hash)
+	  (eq using-hash (using-hash *prelude-context*)))
       'prelude-using-hash
       (make-linked-hash-table
        :table (lhash-table using-hash)
@@ -885,17 +915,19 @@ instances, e.g., other declarations within the theory, or self-references."
 
 
 (defmethod restore-object* :around ((obj importing-entity))
-  (call-next-method)
-  (when (saved-context obj)
-    (setq *current-context* (saved-context obj))
-    (restore-saved-context *current-context*)
-    (setq *current-context* (copy-context *current-context*))
-    #+pvsdebug
-    (assert (every #'conversion-decl? (conversions (saved-context obj))))))
+  (let ((*restoring-declaration* obj))
+    (call-next-method)
+    (when (saved-context obj)
+      (setq *current-context* (saved-context obj))
+      (restore-saved-context *current-context*)
+      (setq *current-context* (copy-context *current-context*))
+      #+pvsdebug
+      (assert (every #'conversion-decl? (conversions (saved-context obj)))))))
 
 (defun restore-saved-context (obj)
   (when obj
-    (let ((*restoring-declaration* nil))
+    (let ((*restoring-declaration* nil)
+	  (*needs-pseudonormalizing* nil))
       (assert (module? (theory obj)))
       (assert (module? (current-theory)))
       (setf (declarations-hash obj)
@@ -911,9 +943,62 @@ instances, e.g., other declarations within the theory, or self-references."
 	    (restore-context-judgements (judgements obj)))
       (setf (conversions obj)
 	    (restore-context-conversions (conversions obj)))
+      (dolist (pair *needs-pseudonormalizing*)
+      	(let ((ex (car pair))
+      	      (decl (cdr pair)))
+      	  (with-current-decl decl
+      	    (typecase ex
+      	      (type-expr (pseudo-norm! ex))
+      	      (expr (break "expr case") (pseudo-normalize ex))
+      	      (t (break "what else?"))))))
       #+pvsdebug
       (assert (every #'conversion-decl? (conversions obj)))
       obj)))
+
+(defmethod pseudo-norm! ((act actual))
+  (cond ((type-value act)
+	 (pseudo-norm! (type-value act))
+	 (setf (expr act) (type-value act)))
+	(t (let ((nex (pseudo-normalize (expr act))))
+	     (unless (eq nex (expr act))
+	       (setf (expr act) nex))))))
+
+(defmethod pseudo-norm! ((te type-name))
+  (mapc #'pseudo-norm! (actuals te))
+  (mapc #'pseudo-norm! (dactuals te)))
+
+(defmethod pseudo-norm! ((db dep-binding))
+  (pseudo-norm! (type db)))
+
+(defmethod pseudo-norm! ((te funtype))
+  (pseudo-norm! (domain te))
+  (pseudo-norm! (range te)))
+
+(defmethod pseudo-norm! ((te tupletype))
+  (mapc #'pseudo-norm! (types te)))
+
+(defmethod pseudo-norm! ((te cotupletype))
+  (mapc #'pseudo-norm! (types te)))
+
+(defmethod pseudo-norm! ((te recordtype))
+  (mapc #'pseudo-norm! (fields te)))
+
+(defmethod pseudo-norm! ((fld field-decl))
+  (pseudo-norm! (type fld)))
+
+(defmethod pseudo-norm! ((te subtype))
+  (let ((pte (pseudo-normalize (predicate te))))
+    (unless (eq pte te)
+      (setf (predicate te) pte))))
+
+(defmethod pseudo-norm! ((te type-application))
+  (pseudo-norm! (type te))
+  (let ((nparms (mapcar #'pseudo-normalize (parameters te))))
+    (unless (equal nparms (parameters te))
+      (setf (parameters te) nparms))))
+
+(defmethod pseudo-norm! (te)
+  (break "Need pseudo-norm! method for ~a" (type te)))
 
 (defun restore-declarations-hash (lhash)
   (cond ((null lhash)
@@ -952,18 +1037,19 @@ instances, e.g., other declarations within the theory, or self-references."
 	   #+pvsdebug
 	   (assert (every #'conversion-decl? convs))
 	   (nconc (nreverse convs) pconvs)))
-	(t (restore-context-conversions
-	    (cdr conversions)
-	    (cons (if (numberp (car conversions))
-		      (let ((pconv (nth (car conversions)
-					(conversions *prelude-context*))))
-			(assert (conversion-decl? pconv))
-			(push pconv *restore-objects-seen*)
-			pconv)
-		      (progn (restore-object* (car conversions))
-			     (assert (conversion-decl? (car conversions)))
-			     (car conversions)))
-		  convs)))))
+	(t (let ((*restoring-declaration* (car conversions)))
+	     (restore-context-conversions
+	      (cdr conversions)
+	      (cons (if (numberp (car conversions))
+			(let ((pconv (nth (car conversions)
+					  (conversions *prelude-context*))))
+			  (assert (conversion-decl? pconv))
+			  (push pconv *restore-objects-seen*)
+			  pconv)
+			(progn (restore-object* (car conversions))
+			       (assert (conversion-decl? (car conversions)))
+			       (car conversions)))
+		    convs))))))
 
 (defun prerestore-context-judgements (judgements)
   (if (eq (current-judgements) 'prelude-judgements)
@@ -1195,7 +1281,8 @@ instances, e.g., other declarations within the theory, or self-references."
 		 (decl-formals obj)) () "recursive declaration restore?")
   (with-current-decl obj
     (if (gethash obj *restore-object-hash*)
-	(call-next-method)
+	(let ((*restoring-declaration* obj))
+	  (call-next-method))
 	(if (and (module obj)
 		 (eq (module obj) *restoring-theory*))
 	    (unless (and (boundp '*restoring-declaration*) ;; bound to nil in context
@@ -1207,7 +1294,8 @@ instances, e.g., other declarations within the theory, or self-references."
 		(when (and (eq *restoring-theory* (current-theory))
 			   (not (typep obj 'adtdecl)))
 		  (put-decl obj))))
-	    (call-next-method))))
+	    (let ((*restoring-declaration* obj))
+	      (call-next-method)))))
   #+badassert
   (assert (every #'(lambda (fdcl)
 		     (not (memq fdcl (get-declarations (id fdcl)))))
@@ -1234,6 +1322,10 @@ instances, e.g., other declarations within the theory, or self-references."
 (defmethod restore-object* :around ((obj nonempty-type-decl))
   (call-next-method)
   (set-nonempty-type (type-value obj) obj))
+
+;; (defmethod set-nonempty-type ((te store-print-type) decl)
+;;   (declare (ignore decl))
+;;   (setf (nonempty? te) t))
 
 (defmethod restore-object* :around ((obj type-decl))
   (call-next-method)
@@ -1416,7 +1508,8 @@ instances, e.g., other declarations within the theory, or self-references."
       (setf (fields obj)
 	    (sort-fields (fields obj) (dependent? obj))))))
 
-;;;
+
+;;; Do not make this an :around method - causes problems I don't fully understand
 
 (defmethod restore-object* ((obj store-print-type))
   (or (type obj)
@@ -1428,8 +1521,7 @@ instances, e.g., other declarations within the theory, or self-references."
 	       ;;(assert (eq (type-value (declaration pt)) obj))
 	       (let* ((decl (declaration pt))
 		      (tn (mk-type-name (id decl)))
-		      (res (mk-resolution decl (mk-modname (id (module decl)))
-					  tn))
+		      (res (mk-resolution decl (mk-modname (id (module decl))) tn))
 		      (ptype (if (formals decl)
 				 (make-instance 'type-application
 				   :type tn
@@ -1440,6 +1532,10 @@ instances, e.g., other declarations within the theory, or self-references."
 		 (setf (resolutions tn) (list res))
 		 #+pvsdebug (assert (true-type-expr? tval) ()
 				    "Not a true type - type-name")
+		 (unless (nonempty? tval)
+		   (setf (nonempty? tval)
+			 (or (nonempty? obj)
+			     (nonempty? pt))))
 		 (setf (type-value decl) tval)))
 	      ((type-application? pt)
 	       (restore-object* (parameters pt))
@@ -1448,13 +1544,29 @@ instances, e.g., other declarations within the theory, or self-references."
 	       (let ((texpr (type-expr-from-print-type pt)))
 		 #+pvsdebug (assert (true-type-expr? texpr) ()
 				    "Not a true type - type-application")
+		 (unless (nonempty? texpr)
+		   (setf (nonempty? texpr)
+			 (or (nonempty? obj)
+			     (nonempty? pt))))
 		 (setf (type obj) texpr)))
 	      ((store-print-type? pt)
-	       (setf (type obj) (restore-object* pt)))
+	       (let ((stype (restore-object* pt)))
+	       	 #+pvsdebug (assert (true-type-expr? stype) ()
+				    "Not a true type - store-print-type case")
+	       	 (setf (type obj) stype)
+		 (unless (nonempty? stype)
+		   (setf (nonempty? stype)
+			 (or (nonempty? obj)
+			     (nonempty? pt))))
+	       	 stype))
 	      (t (restore-object* pt)
 		 (let ((texpr (type-expr-from-print-type pt)))
 		   #+pvsdebug (assert (true-type-expr? texpr) ()
 				      "Not a true type - default case")
+		   (unless (nonempty? texpr)
+		     (setf (nonempty? texpr)
+			   (or (nonempty? obj)
+			       (nonempty? pt))))
 		   (setf (type obj) texpr)))))))
 
 (defun type-def-decl-saved-value (decl tn)
@@ -1543,8 +1655,12 @@ instances, e.g., other declarations within the theory, or self-references."
     (restore-object* (dactuals thinst))
     (assert (not (store-print-type? tval)))
     (let* ((type-expr (if (or (actuals thinst) (dactuals thinst))
-			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
-			    (subst-mod-params tval thinst (module decl) decl))
+			  (let* ((*pseudo-normalizing* t) ;; disallow pseudo-normalize
+				 (nte (subst-mod-params tval thinst (module decl) decl)))
+			    (when (theory-element? *restoring-declaration*)
+			      (push (cons nte *restoring-declaration*)
+				    *needs-pseudonormalizing*))
+			    nte)
 			  (copy tval 'print-type te))))
       #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
       #+pvsdebug (assert (true-type-expr? type-expr))
@@ -1565,18 +1681,32 @@ instances, e.g., other declarations within the theory, or self-references."
     (restore-object* (actuals thinst))
     (restore-object* (dactuals thinst))
     (let* ((mtype-expr (if (or (actuals thinst) (dactuals thinst))
-			   (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
-			     (subst-mod-params (type-value decl) thinst
-			       (module decl) decl))
+			   (let* ((*pseudo-normalizing* t) ;; disallow pseudo-normalize
+				  (nte (subst-mod-params (type-value decl) thinst
+					 (module decl) decl))
+				  (decl (or (and (boundp '*restoring-declaration*)
+						 (theory-element? *restoring-declaration*)
+						 *restoring-declaration*)
+					    (current-declaration))))
+			     (assert decl)
+			     (push (cons nte decl) *needs-pseudonormalizing*)
+			     nte)
 			   (type-value decl)))
 	   (type-expr (if (every #'(lambda (x y)
 				     (and (name-expr? y)
 					  (eq (declaration y) x)))
 				 (car (formals decl)) (parameters te))
 			  mtype-expr
-			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
-			    (substit mtype-expr
-			      (pairlis (car (formals decl)) (parameters te)))))))
+			  (let ((*pseudo-normalizing* t) ;; disallow pseudo-normalize
+				(nte (substit mtype-expr
+				       (pairlis (car (formals decl)) (parameters te))))
+				(decl (or (and (boundp '*restoring-declaration*)
+					       (theory-element? *restoring-declaration*)
+					       *restoring-declaration*)
+					  (current-declaration))))
+			    (assert (theory-element? decl))
+			    (push (cons nte decl) *needs-pseudonormalizing*)
+			    nte))))
       #+pvsdebug (assert (true-type-expr? type-expr))
       (unless (eq type-expr (type-value decl))
 	;; Make sure to set the slot, not call any methods

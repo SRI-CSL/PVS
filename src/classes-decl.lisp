@@ -278,11 +278,11 @@
 (defcl module (datatype-or-module)
   (theory :type list :parse t) ; The declarations of the theory-part
   (exporting :parse t)  ; A list of exportings
-  nonempty-types  ; Keep track of types marked nonempty during typechecking
+  (nonempty-types :restore-as nil)  ; Keep track of types marked nonempty during typechecking
   all-usings ; The transitive closure of the usings of the theory
   (immediate-usings :initform 'unbound) ; immediate usings of the theory
   instances-used
-  assuming-instances
+  (assuming-instances :restore-as nil)
   used-by
   saved-context
   dependent-known-subtypes ; Those that reference the theory parameters
@@ -943,6 +943,7 @@ restored, the TCCs are checked")
 ;;; are created whenever possible.
 (defcl store-print-type ()
   print-type
+  nonempty?
   (type :fetch-as nil))
 
 

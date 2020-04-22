@@ -3900,11 +3900,12 @@ The dependent types are created only when needed."
       (cond ((null flds2)
 	     (pvs-warning "~-100I~_~<The record extension ~_~w ~_adds no new fields~:>"
 	       (list te))
-	     (nreverse nfields))
-	    (t (append (nreverse nfields)
+	     (sort-fields nfields))
+	    (t (sort-fields
+		(append (nreverse nfields)
 		       (substit flds2
 			 (mapcar #'(lambda (x) (cons (cdr x) (car x)))
-			   bindings)))))
+			   bindings))))))
       (let* ((fld1 (car flds1))
 	     (fld2 (find (id fld1) flds2 :key #'id)))
 	(when (and fld2
