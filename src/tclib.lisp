@@ -897,7 +897,10 @@ not a dir: if a valid id
 
 (defmethod get-library-path (libref)
   (assert (typep libref '(or pathname symbol string)))
-  (let* ((pstr (if (symbolp libref) (string libref) libref))
+  (let* ((pstr (typecase libref
+		 (symbol (string libref))
+		 (pathname (namestring libref))
+		 (t libref)))
 	 (dirp (when (directory-p pstr) (truename pstr)))
 	 (lib-path (when dirp (merge-pathnames dirp))))
     ;; dirp works for both absolute and relative pathnames Note that a
