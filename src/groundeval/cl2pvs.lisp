@@ -113,7 +113,7 @@
 			   (cl2pvs*-list (loop for x from 0 to (- len 1) collect (pvs-funcall fn x))
 					 (finseq-type? type)
 					 context))))
-	(t (format t "~%wrong branch")
+	(t ;;(format t "~%wrong branch")
 	 (mk-record-expr
 	  (loop for fld in (sorted-fields type)
 	     as i from 0
