@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # proveit.in
-# Release: ProofLite-7.0.0 (11/15/19)
+# Release: ProofLite-7.0.0 (04/24/20)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -16,7 +16,7 @@
 #  
 
 PVSPATH=@PVSPATH@
-VERSION="ProofLite-7.0.0 (03/10/20)"
+VERSION="ProofLite-7.0.0 (04/24/20)"
 
 export PROVEITVERSION="proveit - $VERSION"
 
@@ -80,6 +80,7 @@ all_opt() {
     fi
     LISPIMPORT=t
     LISPSCRIPTS=nil
+    LISPDEPENDENCIES=t
   fi
 }
 
@@ -193,7 +194,11 @@ cleanup() {
   if [ "$CLEAN" ]
   then
       if [ "$PVSCONTEXT" ]; then
-	  PVSCONTEXT_CTXT="$PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/*.*"
+	  if [ "$BINARIESONLY" ]; then
+	      PVSCONTEXT_CTXT="$PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/*.bin"
+	  else
+	      PVSCONTEXT_CTXT="$PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/*.*"
+	  fi
       fi   
       if [ "$LOGFILE" ]; then
 	  if [ "$OUTDIR" ]; then
@@ -225,7 +230,7 @@ usage() {
 
 SYNOPSIS
 
-  proveit <option> ... <file>[.pvs] | [<ctxt>]@<thf1>,..,<thfn> ...
+  proveit <option> ... <file>[.pvs] | [<ctxt>]@<thf1>,..,<thfn> ... | <dir>
      where <thfi> has the form  <th>[.<f1>:..:<fm>]
 
 DESCRIPTION
@@ -241,7 +246,7 @@ DESCRIPTION
      Prove all theries in <file>.pvs and their dependencies
 
 ADVANCED USE
-  In the more general form, a context,  a list of theories, and a list of 
+  In the more general form, a context, a list of theories, and a list of 
   formulas are specified using the syntax <[ctxt]@thf1,..,thfn>,  where <ctxt> 
   is a directory and each <thfi> has the form <th[.f1:..:fm]> with <th> being a 
   theory and <f1:..:fn> a list of formulas in <th>. Only formulas specified
@@ -250,6 +255,8 @@ ADVANCED USE
   <f2> in theory <theory> in the current context, type: 
   \$proveit @<theory>.<f1>:<f2>
 
+  Note that, when the target is a directory (as in the first example in the 
+  Description section), all the files in its pvsbin subfolder are overwritten.
 
 OPTIONS
   Options are processed in the order they appear. One letter options can be 
@@ -259,8 +266,11 @@ OPTIONS
    --auto-fix [<num>]  try sibling proofs on unfinished branchs (<num> is the maximum 
                        acceptable distance between the current branch and the sibling 
                        which proof is to be tried; default value is 2)
-   -c|--clean          remove bin files and .pvscontext
-   -C|--clean-only     clean but do not typecheck or prove the theory
+   -c|--clean          remove .pvscontext and binary files in the pvsbin folder before proving
+   -C|--clean-only     just remove .pvscontext and binary files in the pvsbin folder 
+                       (do not typecheck nor prove)
+   --clean-all         just remove .pvscontext and all files in the pvsbin folder 
+                       (do not typecheck nor prove)
    -d|--dir <dir>      use <dir> as default directory of summary files
    --dependencies      compute theory dependencies and save them in pvsbin/<file>.dep.
    --default-script <proof script> default prooflite script to be tried on unfinished branches
@@ -387,11 +397,8 @@ process_opts() {
     case $1 in
 	-a|all|--all)  
 	    all_opt;;
-	-c|-clean|--clean)   
+	-c|-clean|--clean)
 	    CLEAN=yes;;
-	-C|-Clean|--Clean|-clean-only|--clean-only)
-	    QUIET=
-	    CLEAN=only;;
         ~c|-no-clean|--no-clean)
 	    CLEAN=;;
         -dep|--dep|-dependencies|--dependencies)
@@ -448,6 +455,7 @@ process_opts() {
 		      CLEAN=yes;;
 		  C)
 		      QUIET=
+		      BINARIESONLY=t
 		      CLEAN=only;;
 		  f)   
 		      LISPFORCE=t;;
@@ -496,6 +504,7 @@ process_opts() {
     shift
   done
 }
+
 
 # Main Function
 proveit() {
@@ -683,9 +692,17 @@ do
     -t|-top|--top)           
 	  TOP=$2
 	  shift;;
-    -C|-Clean|--Clean|-clean-only|--clean-only)
-	  QUIET=
-	  CLEAN=only;;
+    -Clean|--Clean)
+	echo "The option $1 is not longer supported. Please use --clean-all instead."
+	exit 1;;
+    -C|-clean-only|--clean-only)
+	QUIET=
+	BINARIESONLY=t
+	CLEAN=only;;
+    -clean-all|--clean-all)
+	QUIET=
+	BINARIESONLY=
+	CLEAN=only;;
     -o|-out|--out)           
 	  if [ -d "$2" ]; then
 	      echo "Error: $2 is a directory"
