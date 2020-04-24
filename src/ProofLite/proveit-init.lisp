@@ -213,40 +213,42 @@
 	 (proveitarg (environment-variable "PROVEITARG"))
 	 (pvsfile (let ((name (environment-variable "PROVEITPVSFILE")))
 		    (when (and name (string/= name "")) name)))
-	 (import (read-from-string 
-		  (environment-variable "PROVEITLISPIMPORT")))
-	 (scripts (read-from-string 
-		   (environment-variable "PROVEITLISPSCRIPTS")))
-	 (traces (read-from-string 
-		  (environment-variable "PROVEITLISPTRACES")))
-	 (force (read-from-string 
-		 (environment-variable "PROVEITLISPFORCE")))
-	 (typecheckonly (read-from-string 
-			 (environment-variable "PROVEITLISPTYPECHECK")))
-	 (txtproofs (read-from-string 
-		     (environment-variable "PROVEITLISPTXTPROOFS")))
-	 (texproofs (read-from-string 
-		     (environment-variable "PROVEITLISPTEXPROOFS")))
-	 (preludext (remove-duplicates 
-		     (read-from-string 
-		      (environment-variable "PROVEITLISPPRELUDEXT"))
-		     :test #'string=))
+	 (import (let ((envstr (environment-variable "PROVEITLISPIMPORT")))
+		   (when envstr (read-from-string envstr))))
+	 (scripts (let ((envstr (environment-variable "PROVEITLISPSCRIPTS")))
+		    (when envstr (read-from-string envstr))))
+	 (traces (let ((envstr (environment-variable "PROVEITLISPTRACES")))
+		   (when envstr (read-from-string envstr))))
+	 (force (let ((envstr (environment-variable "PROVEITLISPFORCE")))
+		  (when envstr (read-from-string envstr))))
+	 (typecheckonly (let ((envstr (environment-variable "PROVEITLISPTYPECHECK")))
+			  (when envstr (read-from-string envstr))))
+	 (txtproofs (let ((envstr (environment-variable "PROVEITLISPTXTPROOFS")))
+		      (when envstr (read-from-string envstr))))
+	 (texproofs (let ((envstr (environment-variable "PROVEITLISPTEXPROOFS")))
+		      (when envstr (read-from-string envstr))))
+	 (preludext (remove-duplicates
+			(let ((envstr (environment-variable "PROVEITLISPPRELUDEXT")))
+			  (when envstr (read-from-string envstr)))
+		      :test #'string=))
 	 (disable (remove-duplicates 
-		   (read-from-string 
-		    (environment-variable "PROVEITLISPDISABLE"))
+		      (let ((envstr (environment-variable "PROVEITLISPDISABLE")))
+			(when envstr (read-from-string envstr)))
+		    :test #'string=))
+	 (enable (remove-duplicates
+		     (let ((envstr (environment-variable "PROVEITLISPENABLE")))
+		       (when envstr (read-from-string envstr)))
 		   :test #'string=))
-	 (enable (remove-duplicates 
-		  (read-from-string 
-		   (environment-variable "PROVEITLISPENABLE"))
-		  :test #'string=))
-	 (auto-fix? (read-from-string 
-		     (environment-variable "PROVEITLISPAUTOFIX")))
-	 (default-proof (read-from-string (environment-variable "PROVEITLISPDEFAULTPROOFSCRIPT")))
-	 (thfs (thfs2list (read-from-string 
-			   (environment-variable "PROVEITLISPTHFS"))))
-	 (theories (remove-duplicates 
-		       (read-from-string 
-			(environment-variable "PROVEITLISPTHEORIES"))
+	 (auto-fix? (let ((envstr (environment-variable "PROVEITLISPAUTOFIX")))
+		      (when envstr (read-from-string envstr))))
+	 (default-proof (let ((envstr (environment-variable
+				       "PROVEITLISPDEFAULTPROOFSCRIPT")))
+			  (when envstr (read-from-string envstr))))
+	 (thfs (thfs2list (let ((envstr (environment-variable "PROVEITLISPTHFS")))
+			    (when envstr (read-from-string envstr)))))
+	 (theories (remove-duplicates
+		       (let ((envstr (environment-variable "PROVEITLISPTHEORIES")))
+			 (when envstr (read-from-string envstr)))
 		     :test #'string=))
 	 (dependencies (environment-variable "PROVEITLISPDEPENDENCIES"))
 	 (*print-readably* nil)
@@ -327,3 +329,4 @@
       (error (condition) 
 	(format t "~%~a (~a)~%" condition proveitarg)
 	(bye 1)))))
+
