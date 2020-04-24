@@ -582,36 +582,53 @@ instances, e.g., other declarations within the theory, or self-references."
        :table (lhash-table declarations-hash)
        :next (create-store-declarations-hash (lhash-next declarations-hash)))))
 
+(defmethod judgement-types-hash ((sym symbol))
+  (judgement-types-hash (judgements *prelude-context*)))
+
+(defmethod judgement-declarations ((sym symbol))
+  (judgement-declarations (judgements *prelude-context*)))
+
+(defmethod number-judgements-alist ((sym symbol))
+  (number-judgements-alist (judgements *prelude-context*)))
+  
+(defmethod name-judgements-alist ((sym symbol))
+  (name-judgements-alist (judgements *prelude-context*)))
+
+(defmethod application-judgements-alist ((sym symbol))
+  (application-judgements-alist (judgements *prelude-context*)))
+
 (defun create-store-judgements (judgements)
-  (let* ((pjudgements (judgements *prelude-context*))
-	 (eqnum? (eq (number-judgements-alist pjudgements)
-		     (number-judgements-alist judgements)))
-	 (eqname? (eq (name-judgements-alist pjudgements)
-		      (name-judgements-alist judgements)))
-	 (eqapp? (eq (application-judgements-alist pjudgements)
-		     (application-judgements-alist judgements)))
-	 (eqexpr? (eq (expr-judgements-alist pjudgements)
-		      (expr-judgements-alist judgements))))
-    (if (and eqnum? eqname? eqapp? eqexpr?)
-	'prelude-judgements
-	(let ((num-judgements (create-store-number-judgements
-			       (number-judgements-alist judgements)
-			       (number-judgements-alist pjudgements)))
-	      (name-judgements (create-store-name-judgements
-				(name-judgements-alist judgements)
-				(name-judgements-alist pjudgements)))
-	      (appl-judgements (create-store-application-judgements
-				(application-judgements-alist judgements)
-				(application-judgements-alist pjudgements)))
-	      (expr-judgements (create-store-expr-judgements
-				(expr-judgements-alist judgements)
-				(expr-judgements-alist pjudgements))))
-	  (make-instance 'judgements
-	    :judgement-types-hash nil
-	    :number-judgements-alist num-judgements
-	    :name-judgements-alist name-judgements
-	    :application-judgements-alist appl-judgements
-	    :expr-judgements-alist expr-judgements)))))
+  (if (symbolp judgements)
+      (judgements *prelude-context*)
+      (let* ((pjudgements (judgements *prelude-context*))
+	     (eqnum? (eq (number-judgements-alist pjudgements)
+			 (number-judgements-alist judgements)))
+	     (eqname? (eq (name-judgements-alist pjudgements)
+			  (name-judgements-alist judgements)))
+	     (eqapp? (eq (application-judgements-alist pjudgements)
+			 (application-judgements-alist judgements)))
+	     (eqexpr? (eq (expr-judgements-alist pjudgements)
+			  (expr-judgements-alist judgements))))
+	(if (and eqnum? eqname? eqapp? eqexpr?)
+	    'prelude-judgements
+	    (let ((num-judgements (create-store-number-judgements
+				   (number-judgements-alist judgements)
+				   (number-judgements-alist pjudgements)))
+		  (name-judgements (create-store-name-judgements
+				    (name-judgements-alist judgements)
+				    (name-judgements-alist pjudgements)))
+		  (appl-judgements (create-store-application-judgements
+				    (application-judgements-alist judgements)
+				    (application-judgements-alist pjudgements)))
+		  (expr-judgements (create-store-expr-judgements
+				    (expr-judgements-alist judgements)
+				    (expr-judgements-alist pjudgements))))
+	      (make-instance 'judgements
+		:judgement-types-hash nil
+		:number-judgements-alist num-judgements
+		:name-judgements-alist name-judgements
+		:application-judgements-alist appl-judgements
+		:expr-judgements-alist expr-judgements))))))
 
 (defun create-store-number-judgements (num-judgements pnum-judgements
 						      &optional numjs)
@@ -927,7 +944,8 @@ instances, e.g., other declarations within the theory, or self-references."
 (defun restore-saved-context (obj)
   (when obj
     (let ((*restoring-declaration* nil)
-	  (*needs-pseudonormalizing* nil))
+	  (*needs-pseudonormalizing* nil)
+	  (*current-context* obj))
       (assert (module? (theory obj)))
       (assert (module? (current-theory)))
       (setf (declarations-hash obj)
@@ -1062,9 +1080,9 @@ instances, e.g., other declarations within the theory, or self-references."
 	  (setf (judgement-types-hash (current-judgements))
 		(make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
 	(unless (eq judgements 'prelude-judgements)
-	  ;;(prerestore-number-judgements-alist
-	  ;; (number-judgements-alist judgements)
-	  ;; (number-judgements-alist pjudgements))
+	  ;; (prerestore-number-judgements-alist
+	  ;;  (number-judgements-alist judgements)
+	  ;;  (number-judgements-alist pjudgements))
 	  (setf (name-judgements-alist judgements)
 		(prerestore-name-judgements-alist
 		 (name-judgements-alist judgements)
@@ -1090,6 +1108,26 @@ instances, e.g., other declarations within the theory, or self-references."
 			      (expr-judgements-alist judgements)))))
 	    (nconc (nbutlast (expr-judgements-alist judgements))
 		   (expr-judgements-alist pjudgements)))))))
+
+(defun prerestore-nunmer-judgements-alist (number-judgements pnumber-judgements
+					   &optional numjs)
+  (cond ((null number-judgements)
+	 (nreverse numjs))
+	((eq (car number-judgements) 'prelude-number-judgements)
+	 (assert pnumber-judgements)
+	 (push pnumber-judgements *restore-objects-seen*)
+	 (nconc (nreverse numjs) pnumber-judgements))
+	(t (prerestore-number-judgements-alist
+	    (cdr number-judgements)
+	    pnumber-judgements
+	    (cons (if (numberp (car number-judgements))
+		      (let ((pnumj (nth (car number-judgements)
+					pnumber-judgements)))
+			(assert pnumj)
+			(push pnumj *restore-objects-seen*)
+			pnumj)
+		      (car number-judgements))
+		  numjs)))))
 
 (defun prerestore-name-judgements-alist (name-judgements pname-judgements
 							 &optional namejs)
