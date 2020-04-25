@@ -203,7 +203,7 @@ is replaced with replacement."
 
 (defun install-prooflite-scripts (filename theory line force)
   (with-open-file 
-   (file filename :direction :input)
+   (file (make-specpath filename) :direction :input)
    (let* ((loc        (place (get-theory theory)))
 	  (lfrom      (aref loc 0))
 	  (lto        (aref loc 2)))
