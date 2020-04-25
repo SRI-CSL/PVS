@@ -876,18 +876,23 @@ is replaced with replacement."
   (make-pathname :defaults *default-pathname-defaults* :name (string name) :type ext))
 
 (defmethod make-specpath ((name string) &optional (ext "pvs"))
-  (let* ((path (parse-namestring name))
-	 (pname (pathname-name path))
-	 (dir (pathname-directory path)))
-    (if dir
-	(let* ((pdir (namestring (make-pathname :directory dir)))
-	       (lib-path (get-library-path pdir)))
-	  (if lib-path
-	      (make-pathname :directory (pathname-directory lib-path)
-			     :name pname :type ext)
-	      (pvs-error "Library reference error"
-		(format nil "Could not find lib-path for ~a" pdir))))
-	(make-pathname :defaults *default-pathname-defaults* :name name :type ext))))
+  (if (and (> (length name) (1+ (length ext)))
+	   (string= (subseq name (- (length name) (1+ (length ext))))
+		    (format nil ".~a" ext)))
+      ;; Ends in, e.g., ".pvs", just return it as a path.
+      (pathname name)
+      (let* ((path (parse-namestring name))
+	     (pname (pathname-name path))
+	     (dir (pathname-directory path)))
+	(if dir
+	    (let* ((pdir (namestring (make-pathname :directory dir)))
+		   (lib-path (get-library-path pdir)))
+	      (if lib-path
+		  (make-pathname :directory (pathname-directory lib-path)
+				 :name pname :type ext)
+		  (pvs-error "Library reference error"
+		    (format nil "Could not find lib-path for ~a" pdir))))
+	    (make-pathname :defaults *default-pathname-defaults* :name name :type ext)))))
 
 (defmethod make-specpath ((name name) &optional (ext "pvs"))
   (make-specpath (id name) ext))
