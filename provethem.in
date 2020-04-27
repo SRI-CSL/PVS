@@ -22,7 +22,7 @@ use Cwd;
 
 $Term::ANSIColor::AUTORESET = 1;
 
-$PVSPATH=@PVSPATH@
+$PVSPATH="@PVSPATH@";
 
 @prelude = ("bitvector", "finite_sets");
 
