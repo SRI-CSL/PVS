@@ -1,5 +1,3 @@
-% Document Type: LaTeX
-% Master File: datatypes.tex
 \documentclass[11pt,twoside]{book}
 \usepackage{relsize,url,makeidx,alltt}
 \usepackage{fancyhdr}
@@ -23,7 +21,7 @@
 %\makeindex
 %\setcounter{secnumdepth}{4} 
 %\setcounter{tocdepth}{4}
-%\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
+\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
 \newenvironment{stdisplay}{\begin{pagegroup}\begin{smalltt}}{\end{smalltt}\end{pagegroup}}
 \newenvironment{tdisplay}{\hozline\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}\hozline}
 %\renewcommand{\baselinestretch}{2}
@@ -36,7 +34,8 @@
 %\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
 %\newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
 %\input{/homes/shankar/linear/lmacros}
-\input{/homes/rushby/tex/prelude}
+%\input{/homes/rushby/tex/prelude}
+\input{../pvstex}
 %\input{/homes/rushby/tex/jmacros}
 \newcommand{\aro}{\mathord\rightarrow} % see pages 154-155 of TeX manual
 \newcommand{\pvsref}[1]{\fbox{\footnotesize\ref{#1}}} \def\id#1{\hbox{\textt{#1}}} %changing ids from roman to tt.

@@ -1,29 +1,16 @@
+EMACS = emacs
+LATEXMK = latexmk
+LATEXMKFLAGS = -pdf -pdflatex='lualatex -file-line-error -synctex=1'
+
 sources = datatypes.tex
 
-all : datatypes.dvi datatypes.ps datatypes.ps.gz datatypes.pdf
-
-datatypes.dvi: $(sources)
-	latex $<;
-	makeindex -c datatypes.idx
-	bibtex datatypes || echo
-	latex $<
-	latex $<
-
-datatypes.ps.gz : datatypes.ps
-	gzip -c $< > $@
-
-datatypes.ps : datatypes.dvi
-	dvips -o $@ $<
+all : datatypes.pdf
 
 datatypes.pdf : ${sources}
-	pdflatex $<
-	makeindex -c datatypes.idx
-	bibtex datatypes || echo
-	pdflatex $<
-	pdflatex $<
+	$(LATEXMK) $(LATEXMKFLAGS) datatypes.tex
 
 .PHONY: clean
 clean :
-	rm -f Makefile datatypes.dvi datatypes.pdf datatypes.ps datatypes.ps.gz \
+	rm -f datatypes.pdf \
               *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux \
               *.toc *.idx *.brf 
