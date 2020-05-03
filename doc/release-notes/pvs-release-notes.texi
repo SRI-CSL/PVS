@@ -19,7 +19,7 @@ Copyright 2002 SRI International
 @title PVS Release Notes
 @author Sam Owre <owre@@csl.sri.com>
 @author SRI International
-@author October 5, 2018
+@author May 2, 2020
 @page
 @end titlepage
 
