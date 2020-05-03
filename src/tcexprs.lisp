@@ -1557,7 +1557,13 @@ field-decls, etc."
 (defmethod typecheck* ((expr string-expr) expected kind arguments)
   "A string-expr \"foo\" is internally list2finseq((: char(102), char(111), char(111) :))"
   (declare (ignore expected kind arguments))
-  (typecheck* (argument expr) *string-type* nil nil)
+  (typecheck* (operator expr) nil nil nil)
+  (unless (type (operator expr))
+    (if (= (length (types (operator expr))) 1)
+	(set-type (operator expr) (car (types (operator expr))))
+	(error "typecheck* string-expr: strange types")))
+  (assert (type (operator expr)))
+  (typecheck* (argument expr) (domain (type (operator expr))) nil nil)
   (call-next-method))
 
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
