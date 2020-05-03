@@ -212,7 +212,6 @@ associated file and position the cursor at the declaration.  A `q' quits
 and removes the declaration buffer."
   (interactive (complete-theory-name
 		"List declarations for theory named: " nil t))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (save-some-pvs-files)
   (let ((pvs-decls (pvs-send-and-wait-for-json
 		    (format "(list-declarations \"%s\")" theory)

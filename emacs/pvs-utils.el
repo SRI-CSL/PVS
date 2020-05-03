@@ -41,8 +41,6 @@
 (defvar ilisp-complete)
 (defvar ilisp-buffer)
 
-(defvar pvs-theories nil
-  "An alist of theory-name file-name string pairs, created by pvs-collect-theories")
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
 (defvar pvs-path) ; Set in pvs-go.el
@@ -644,13 +642,14 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun get-theory-buffer (theoryref)
   (let* ((theoryname (car (last (string-split ?# theoryref))))
-	 (filoc (cdr (assoc theoryname pvs-theories)))
+	 (filoc (cdr (assoc theoryname (pvs-collect-theories))))
 	 (filename (car filoc))
 	 (place (cadr filoc)))
     (when filename
-      (with-current-buffer (find-file (expand-file-name filename))
+      (with-current-buffer (find-file-noselect (expand-file-name filename))
 	(goto-char (point-min))
-	(forward-line (1- (car place)))
+	(when place
+	  (forward-line (1- (car place))))
 	(current-buffer)))))
 
 (defun get-pvs-file-buffer (fname)
@@ -703,9 +702,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (with-current-buffer buf
     (or (current-pvs-file t)
 	(and (boundp 'from-pvs-theory)
-	     (cadr (assoc from-pvs-theory pvs-theories)))
+	     (cadr (assoc from-pvs-theory (pvs-collect-theories))))
 	(and (member-equal (pathname-type (buffer-name)) '("tccs" "ppe"))
-	     (cadr (assoc (pathname-name (buffer-name)) pvs-theories))))))
+	     (cadr (assoc (pathname-name (buffer-name)) (pvs-collect-theories)))))))
 
 (defun pvs-library-file-p (filename)
   (pvs-send-and-wait (format "(library-file? \"%s\")" filename)
@@ -795,9 +794,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(list theoryname))))
 
 (defun new-theory-name (prompt &optional initial)
-  (pvs-collect-theories)
   (let ((theoryname (read-from-minibuffer prompt initial)))
-    (if (assoc theoryname pvs-theories)
+    (if (assoc theoryname (pvs-collect-theories))
 	(error "Theory %s already exists." theoryname)
 	(if (valid-theory-name theoryname)
 	    (list theoryname)
@@ -1046,7 +1044,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 ;;; Returns a theory name, allowing completion on the theories known to
 ;;; the context and those in the current buffer.  Has the side effect of
-;;; setting pvs-current-directory and pvs-theories, to cut down on
+;;; setting pvs-current-directory, to cut down on
 ;;; the number of calls to Lisp.
 
 (defun complete-theory-name (prompt &optional no-timeout with-prelude-p)
@@ -1138,8 +1136,8 @@ theoryname."
 ;;; choice for many pvs commands.
 
 (defun pvs-collect-theories (&optional no-prelude-p)
-  (let* ((theory-alist (pvs-send-and-wait (format "(collect-theories %s)" no-prelude-p)
-					  nil nil 'list))
+  "Generates an alist of the form ((th file place) ...)"
+  (let* ((theory-alist (pvs-send-and-wait "(collect-theories nil)" nil nil 'list))
 	 (file (current-pvs-file t))
 	 (current-theories
 	  ;; We include the current buffer theories if a PVS file and not in the alist  
@@ -1147,7 +1145,9 @@ theoryname."
 		      (cl-find file theory-alist :key 'cadr :test 'file-equal))
 	    (pvs-current-theories))))
     ;; (setq pvs-current-directory (car dir-and-theories))
-    (setq pvs-theories (append current-theories theory-alist))))
+    (append current-theories
+	    theory-alist
+	    (pvs-get-prelude-theories-alist))))
 
 (defun pvs-current-theories ()
   (or (pvs-current-prelude-theories)
@@ -1155,6 +1155,13 @@ theoryname."
 	     (cur-theories (when cur-file (buffer-theories))))
 	(when cur-theories
 	  (mapcar #'(lambda (th) (list th cur-file)) cur-theories)))))
+
+(defvar pvs-prelude-theories-alist nil)
+
+(defun pvs-get-prelude-theories-alist ()
+  (or pvs-prelude-theories-alist
+      (setq pvs-prelude-theories-alist
+	    (pvs-send-and-wait "(collect-prelude-theories)" nil nil 'list))))
 
 (defun pvs-current-prelude-theories ()
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))

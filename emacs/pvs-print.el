@@ -134,8 +134,7 @@ rotated output, add the following to your ~/.emacs file:
 The print-theory command prints the specified theory using the
 pvs-print-region command."
   (interactive (complete-theory-name "Print theory named: " nil t))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
-  (let* ((filename (cadr (assoc theoryname pvs-theories))))
+  (let* ((filename (cadr (assoc theoryname (pvs-collect-theories)))))
     (cond (filename
 	   (with-current-buffer (get-theory-buffer theoryname)
 	     (let ((pvs-print-name (format "Theory %s" theoryname)))
@@ -278,10 +277,6 @@ the corresponding generated file is foo-alltt.tex."
 		"Generate alltt file for PVS file named: "))
   (with-current-buffer (get-pvs-file-buffer filename)
     (let ((tregs (theory-regions)))
-      (setq pvs-theories
-	    (mapcar #'(lambda (treg)
-			(list (car treg) filename))
-		    tregs))
       (dolist (treg tregs)
 	(alltt-theory (car treg)))))
   (message "Finished generating alltt files"))

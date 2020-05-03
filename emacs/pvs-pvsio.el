@@ -20,7 +20,6 @@
   (interactive (progn (confirm-not-in-checker)
 		      (complete-theory-name "Use context of theory: ")))
   (confirm-not-in-checker)
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait "(load-pvs-attachments)" nil nil 'dont-care)
   (pvs-evaluator-busy)
   (save-some-pvs-buffers)
@@ -31,7 +30,6 @@
 (defpvs pvs-ground-evaluator prove (theory)
   "Invokes the ground evaluator in the context of the given PVS theory"
   (interactive (complete-theory-name "Use context of theory: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (confirm-not-in-checker)
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
 			     nil 'tc nil)

@@ -2675,6 +2675,13 @@ Note that the lists might not be the same length."
 	(collect-thrys (pvs-theories ws))))
     (sort theories #'string-lessp :key #'id)))
 
+(defun collect-prelude-theories ()
+  (mapcar #'(lambda (th)
+	      (list (string (id th))
+		    (full-pvs-file-path th)
+		    (coerce (place th) 'list)))
+    *prelude-theories*))
+
 ;;; Called from emacs for theory completion
 (defun collect-theories (&optional no-prelude?)
   "Returns the alist of known theories and their context-paths, including

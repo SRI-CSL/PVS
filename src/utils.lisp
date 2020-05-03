@@ -911,6 +911,9 @@ is replaced with replacement."
 		 :name name
 		 :type "bin"))
 
+(defun full-pvs-file-path (th)
+  (format nil "~a/~a.pvs" (context-path th) (filename th)))
+
 (defun shortname (directory)
   (let* ((home (namestring (truename (user-homedir-pathname))))
 	 (cdir (namestring (truename directory))))

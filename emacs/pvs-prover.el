@@ -2066,7 +2066,6 @@ Letters do not insert themselves; instead, they are commands:
 (defpvs pvs-sizeof-proofs-theory proof-status (theoryname)
   "Display the number of steps of the proofs in the given theory"
   (interactive (complete-theory-name "Proof sizes for theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(sizeof-proofs-theory \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-theory)
 		     'dont-care))
@@ -2082,7 +2081,6 @@ Letters do not insert themselves; instead, they are commands:
   "Display the number of steps of the proofs in the import chain."
   (interactive (complete-theory-name
 		"Proof sizes for import chain of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(sizeof-proofs-importchain \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-importchain)
 		     'dont-care))

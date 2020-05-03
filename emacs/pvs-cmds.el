@@ -210,14 +210,11 @@ The prettyprint-theory command prettyprints the specified theory and
 replaces the old theory in the current buffer.  Can use undo (C-x u or
 C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
-  ;; Note that complete-theory-name and pvs-collect-theories set the
-  ;; pvs-theories global variable.
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (save-some-pvs-buffers t)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cdr (assoc theoryname pvs-theories))))
+	 (file (cdr (assoc theoryname (pvs-collect-theories)))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
@@ -311,11 +308,10 @@ displayed TCCs or other formulas may be initiated in the usual way, simply
 by moving the cursor to the formula to be proved and invoking the prove
 command."
   (interactive (complete-theory-name "Prettyprint-expanded theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cdr (assoc theoryname pvs-theories))))
+	 (file (cdr (assoc theoryname (pvs-collect-theories)))))
     (unless (or file
 		(setq file (when (cadr parts) (car parts))))
       (error "File for theoryname %s not found" theoryname))
@@ -350,7 +346,6 @@ trivial TCCs."
 			       (prefix-numeric-value current-prefix-arg)))))
   (let ((theory (car (last (string-split ?# theoryref)))))
     (save-some-pvs-buffers)
-    (unless (called-interactively-p 'interactive) (pvs-collect-theories))
     (message "Creating the %s.tccs buffer..." theory)
     (pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theoryref arg)
 		       nil (pvs-get-abbreviation 'show-tccs)
@@ -437,11 +432,10 @@ the prove command."
 (defpvs show-theory-warnings theory-status (theoryref)
   "Displays the warnings associated with THEORYNAME"
   (interactive (complete-theory-name "Show warnings of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cadr (assoc theoryname pvs-theories))))
+	 (file (cadr (assoc theoryname (pvs-collect-theories)))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(show-theory-warnings \"%s#%s\")" file theoryname) nil
@@ -459,11 +453,10 @@ the prove command."
 (defpvs show-theory-messages theory-status (theoryref)
   "Displays the informational messages associated with THEORYNAME"
   (interactive (complete-theory-name "Show messages of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cadr (assoc theoryname pvs-theories))))
+	 (file (cadr (assoc theoryname (pvs-collect-theories)))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(show-theory-messages \"%s#%s\")" file theoryname) nil
@@ -481,11 +474,10 @@ the prove command."
 (defpvs show-theory-conversions theory-status (theoryref)
   "Displays the conversions associated with THEORYNAME"
   (interactive (complete-theory-name "Show conversions of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (let* ((parts (split-string theoryref "#"))
 	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cadr (assoc theoryname pvs-theories))))
+	 (file (cadr (assoc theoryname (pvs-collect-theories)))))
     (unless file
       (error "File for theoryname %s not found" theoryname))
     (pvs-send-and-wait (format "(show-theory-conversions \"%s#%s\")" file theoryname) nil
@@ -649,7 +641,6 @@ The find-theory command finds the PVS file associated with the specified
 theory, and reads in that file."
   (interactive (complete-theory-name
 		"Find PVS file containing theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((tbuf (get-theory-buffer theoryname)))
     (if (null tbuf)
 	(message "%s is not in the current context" theoryname)
@@ -795,7 +786,6 @@ deleted from the directory."
 The delete-theory command deletes the specified theory from the current
 buffer, which must be associated with a PVS file."
   (interactive (complete-theory-name "Delete theory named: " t))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((tbuf (get-theory-buffer theoryname)))
     (with-current-buffer tbuf
       (let ((treg (theory-region theoryname)))
@@ -1597,7 +1587,6 @@ buffer."
 The status-theory command provides a description of the status of the
 specified theory in the minibuffer."
   (interactive (complete-theory-name "Status of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (pvs-send-and-wait (format "(status-theory \"%s\")" theory) nil
 		     (pvs-get-abbreviation 'status-theory)
@@ -1624,7 +1613,6 @@ The status-importchain command provides description of the status of each
 theory within the importchain of the specified theory in the PVS Status
 buffer.  With an argument, displays just the theory names."
   (interactive (complete-theory-name "Importchain for theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send (format "(status-importchain \"%s\" %s)"
 		theory (and current-prefix-arg t))
 	    nil (pvs-get-abbreviation 'show-importchain)))
@@ -1637,7 +1625,6 @@ The status-importchain command provides description of the status of each
 theory which imports the specified theory in the current context in the
 PVS Status buffer.  With an argument, displays just the theory names."
   (interactive (complete-theory-name "Importbychain for theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send (format "(status-importbychain \"%s\" %s)"
 		theory (and current-prefix-arg t))
 	    nil (pvs-get-abbreviation 'show-importbychain)))
@@ -1673,7 +1660,6 @@ The status-proof-theory command provides a summary of the status of the
 proofs in the current theory in the PVS Status buffer.  With an argument (C-u),
 only lists the unproved decls, though the totals include all the formulas."
   (interactive (complete-theory-name "Proof status for theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(status-proof-theory \"%s\" %s)"
 			 theoryname (and current-prefix-arg t))
 		     nil (pvs-get-abbreviation 'status-proof-theory)
@@ -1700,7 +1686,6 @@ buffer.  With an argument (C-u), only lists the unproved decls, though
 the totals include all the formulas."
   (interactive (complete-theory-name
 		"Proof status for import chain of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(status-proof-importchain \"%s\" %s)"
 			 theoryname (and current-prefix-arg t))
 		     nil (pvs-get-abbreviation 'status-proof-importchain)
@@ -1740,7 +1725,6 @@ no circularities."
 The status-proofchain-theory command provide a proofchain analysis for
 each formula of the specified theory in the PVS Status buffer."
   (interactive (complete-theory-name "Proofchain status for theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(status-proofchain-theory \"%s\")"
 			 theoryname)
 		     nil (pvs-get-abbreviation 'status-proofchain-theory)
@@ -1766,7 +1750,6 @@ for each formula of the import chain of the specified theory in the PVS
 Status buffer."
   (interactive (complete-theory-name
 		"Proofchain status for import chain of theory named: "))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send (format "(status-proofchain-importchain \"%s\")"
 		theoryname)
 	     nil (pvs-get-abbreviation 'status-proofchain-importchain)))
@@ -1812,7 +1795,6 @@ processing other commands."
 ;;   (interactive (list (complete-declaration-name "Change name: ")
 ;; 		     (complete-symbol "To id: ")
 ;; 		     (complete-theory-name "Root Theory: ")))
-;;   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
 ;;   (let ((change-info (pvs-send-file-and-wait
 ;; 		      (format "(change-declaration-name \"%s\" \"%s\" \"%s\")"
 ;; 			  from-name to-id root-theory)
@@ -1832,7 +1814,6 @@ are not included; give an argument to include them.  The display uses
 Tcl/Tk, click on the Help button at the bottom of the display for more
 information."
   (interactive (complete-theory-name "Show theory hierarchy from theory:"))
-  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (if (wish-possible-p)
       (pvs-send (format "(x-module-hierarchy \"%s\" %s)"
 		    theoryname (and current-prefix-arg t)))
