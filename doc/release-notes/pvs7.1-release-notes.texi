@@ -40,14 +40,12 @@ Linux 64-bit machines, and Mac 64-bit.
 
 Note that the XML-RPC server is not (yet) available in SBCL.
 
-The latest PVS includes a preliminary version of a PVS client, written in
-wxPython.  To use, you will need to have Python 2.7, along with @code{wx}
-(@url{http://www.wxpython.org/}), @code{pyparsing}
-(@url{http://pyparsing.wikispaces.com/}), and optionally @code{jsonschema}
-(@url{https://github.com/Julian/jsonschema}) and @code{requests}
-(@url{http://www.wxpython.org/}).  If missing, the latter will give
-warnings - these can be ignored.  These packages may often be gotten
-through Linux package managers, or using easy_install or pip.
+The latest PVS Allegro supports a new GUI based on Microsoft Visual Studio Code.
+To experiment this new GUI, you will need to download @code{VSCode-PVS} 
+(@url{http://github.com/nasa/vscode-pvs}), and have 
+NodeJS (>=12.16.1 @url{https://nodejs.org}), 
+Java JDK (>=1.8, @url{https://openjdk.java.net}), 
+and Visual Studio Code (>=1.32.3, @url{https://code.visualstudio.com}).
 
 @node    7.1 New Features
 @section New Features
@@ -65,7 +63,7 @@ through Linux package managers, or using easy_install or pip.
 * Typepred Extension::
 * TCC Ordering::
 * Yices in 7.1::
-* Theory Interpretations::
+* Theory Interpretations 7.1::
 @end menu
 
 @node PVS Workspaces
@@ -325,8 +323,8 @@ windows, or the various popup buffers that PVS normally does through
 Emacs.  Note that there is an @code{eclipse} subdirectory in the PVS Git
 sources, for anyone who wants to continue this work.
 
-But we took a step back, and started fresh with wxPython, which so far has
-proved more flexible, and quicker for prototyping.
+But we took a step back, and started fresh with Visual Studio Code, which
+so far has proved more flexible, and quicker for prototyping.
 
 The basic architecture consists of a PVS server, with any number of
 clients.  A client can make a request to the PVS URI, and PVS will return
@@ -464,31 +462,24 @@ single proof.
 @node GUI
 @subsection GUI
 
-As described above, the new GUI is built on wxPython.  The executable is
-@code{pvs-gui} in the top level PVS directory.  Starting it with no
-arguments creates a client with port 22335, and expects the PVS server to
-be at port 22334.  Currently you have to start up both, but they can be
-started in either order, and if one crashes it can be restarted without
-directly affecting the other.  For starting pvs include @code{-port 22334}
-with any other arguments you might want.  In principle, pvs can be started
-with -raw, meaning no Emacs, but it is easier for debugging to have the
-Emacs ILISP interface available.  Run @code{pvs-gui -h} for details on how
-to set the ports and debug levels.
+As described above, VSCode-PVS is a new PVS GUI based on Visual Studio
+Code.  VSCode-PVS provides several features of modern code editors,
+including:
 
-The GUI configuration by default is in the file
-@code{PVS/python/src/pvside.cfg}, where @code{PVS} is the pvs installation
-directory.  At startup, this file is read, then the @code{~/pvside.cfg}
-file is read, if it exists.  This has the same syntax as the default
-file (with sections and attributes), 
-but should include only those sections and attributes that you wish to
-overwrite.  This includes things like the default ports, fonts, colors, etc.
+@itemize @bullet
+@item Syntax highlighting: PVS keywords and library functions are automatically highlighted.
+@item Autocompletion and code snippets: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
+@item Hover information for symbol definitions: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
+@item Go-to definition: Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
+@item Peek defintions: Symbol definitions can be shown in mini editors embedded in the current view.
+@item Live diagnostics: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
+@item Outline View: Interactive tree view showing the outline of the pvs file open in the editor. Point-and-click actions can be used to jump to definitions.
+@item Workspace Explorer: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
+@item Proof Explorer: Interactive tree view for viewing and editing the current proof.
+@item Prover Terminal: An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+@item Proof Mate: Helper designed to suggest proof commands that can be used to make progress with the current proof.
+@end itemize
 
-Once started, it should be fairly easy to explore and find files, change
-context, typecheck, and start proofs.  There is a Help menu that gives
-more details.  This is very much an early prototype, and suggestions are
-welcome.  Note that the sources are available on GitHub with the rest of
-PVS in the python subdirectory.  Please let us know if you would like to
-get involved in development of the GUI.
 
 @node Prover GUI
 @subsection Prover Emacs UI
@@ -753,20 +744,20 @@ fixed.
 The yices prover commands have been fully integrated into PVS, and Yices
 versions 1 and 2 are included in the distribution.
 
-@node Theory Interpretations
+@node Theory Interpretations 7.1
 @subsection Theory Interpretations
 
 Theory interpretations have been improved in a few ways.  First, if an
 uninterpreted type or constant has declaration formals, they must be
 included in the mapping, e.g.,
-@example
+@verbatim
 eq [A:TYPE+]: [A -> [A -> bool]]
 
 logic_sttfa_pvs : THEORY = logic_sttfa {{
     connectives_sttfa_th := connectives_sttfa_pvs,
     eq[T:TYPE+](x:T)(y:T) := x=y
   }}
-@end example
+@end verbatim
 
 Second, the context is updated with the theory without mappings when
 typechecking the RHS.  This means that it is not necessary to have two
