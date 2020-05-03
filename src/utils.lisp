@@ -1645,6 +1645,11 @@ prove itself from the mapped axioms."
 (defmethod module ((ctx context))
   (theory ctx))
 
+(defmethod get-unique-id ((elt theory-element))
+  (when (eq (unique-id elt) :unbound)
+    (set-unique-ids (module elt))
+    (assert (not (eq (unique-id elt) :unbound))))
+  (unique-id elt))
 
 (defun set-unique-ids (theory)
     (let ((elts (all-decls theory)))

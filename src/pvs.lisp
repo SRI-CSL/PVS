@@ -1515,7 +1515,7 @@ use binfiles."
 		  `((id . ,(id tcc))
 		    (theory . ,(id (module tcc)))
 		    (comment . ,(newline-comment tcc))
-		    (from-decl . ,(id (generated-by tcc)))
+		    (from-decl . ,(get-unique-id (generated-by tcc)))
 		    (definition . ,(str (definition tcc)))
 		    (proved . ,(proved? tcc))))
 	tccs)))
