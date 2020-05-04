@@ -457,8 +457,8 @@ lib-path, along with modification dates."
       (assert (directory-p path))
       (dolist (sdir (uiop:subdirectories path))
 	(let* ((subdir (truename sdir))
-	       (dname (or (pathname-name subdir)
-			 (car (last (pathname-directory subdir))))))
+	       (dname (or (pathname-name sdir)
+			  (car (last (pathname-directory sdir))))))
 	  (when (valid-pvs-id* dname)
 	    (push (cons (intern dname :pvs) subdir) alist)))))
     ;; earlier paths in *pvs-library-path* shadow later ones.
