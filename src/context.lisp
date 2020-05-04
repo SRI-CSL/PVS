@@ -962,6 +962,10 @@ declaration-entry has slots
 		(setf (cdddr context)
 		      (remove-duplicates (cdddr context) :key #'ce-file :test #'equal
 					 :from-end t))
+		(setf (cdddr context)
+		      (delete-if-not #'(lambda (ce)
+					 (file-exists-p (make-specpath (ce-file ce))))
+			(cdddr context)))
 		(dolist (ce (cdddr context))
 		  (let ((ndeps (remove-if-not #'(lambda (dep)
 						  (file-exists-p (make-specpath dep)))
