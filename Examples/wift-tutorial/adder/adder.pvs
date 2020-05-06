@@ -1,0 +1,52 @@
+full_adder: THEORY
+ BEGIN
+
+  x, y, cin: VAR bit
+
+  CONVERSION+ b2n
+
+  FA(x, y, cin): [# carry: bit, sum: bit #] =
+      (# carry := (x AND y) OR ((x XOR y) AND cin),
+         sum := (x XOR y) XOR cin #)
+
+  FA_char: LEMMA FA(x, y, cin)`sum = x + y + cin - 2 * FA(x, y, cin)`carry
+ END full_adder
+
+ripple_adder[N: posnat]: THEORY
+ BEGIN
+
+  IMPORTING full_adder
+
+  n: VAR below[N]
+
+  bv1, bv2: VAR bvec[N]
+
+  j: VAR upto[N]
+
+  nth_cin(j, bv1, bv2): RECURSIVE bit =
+    IF j = 0
+      THEN FALSE
+    ELSE FA(bv1(j - 1), bv2(j - 1), nth_cin(j - 1, bv1, bv2))`carry
+    ENDIF
+     MEASURE j
+
+  adder(bv1, bv2): [# carry: bit, sum: bvec[N] #] =
+      (# carry := nth_cin(N, bv1, bv2),
+         sum := (LAMBDA n: FA(bv1(n), bv2(n), nth_cin(n, bv1, bv2))`sum) #)
+
+  adder_invariant: LEMMA
+    bv2nat_rec(j, adder(bv1, bv2)`sum) =
+     bv2nat_rec(j, bv1) + bv2nat_rec(j, bv2) - nth_cin(j, bv1, bv2) * exp2(j)
+
+  bv_nat(bv1): nat = bv2nat(bv1)
+
+  CONVERSION bv_nat
+
+  % With PVS 4.0, bit vector arithmetic operators were added to the prelude
+  % and this makes the conversion choices different.  Corrected by adding
+  % the bv_nat conversions directly on the RHS (was bv1 + bv2 - ...)
+
+  adder_correct: THEOREM
+    bv_nat(adder(bv1, bv2)`sum) =
+      bv_nat(bv1) + bv_nat(bv2) - adder(bv1, bv2)`carry * exp2(N)
+ END ripple_adder

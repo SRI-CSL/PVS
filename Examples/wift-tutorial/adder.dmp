@@ -1,0 +1,111 @@
+<html><h1>
+PVS dump file adder.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+adder.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (adder.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+
+
+%Patch files loaded: (patch2-test patch2) version 2.394
+
+$$$adder.pvs
+% This treatment of a ripple-carry adder follows that given in 
+%  Harald Ruess. "Hierarchical verification of two-dimensional high-speed
+%  multiplication in PVS: A case study." In M. Srivas, editor, Formal
+%  Methods in Computer-Aided Design (FMCAD '96), Palo Alto, CA,
+%  November 1996. To appear.
+%  Available at http://www.csl.sri.com/reports/postscript/fmcad96-ruess.ps.gz
+%
+% The notations bitvector@bit, bitvectors@bv[N], bitvectors@bv_nat
+% indicate the theories bit, bv[N], and bv_nat from the bitvector library
+% that is distributed with PVS
+
+full_adder: THEORY
+BEGIN
+
+  IMPORTING bitvectors@bit
+
+  x, y, cin: VAR bit
+
+  FA(x, y, cin): [# carry, sum: bit #] =
+    (# carry := (x AND y) OR ((x XOR y) AND cin), 
+	 sum := (x XOR y) XOR cin #)
+
+  FA_char: LEMMA sum(FA(x, y, cin)) = x + y + cin - 2 * carry(FA(x, y, cin))
+
+END full_adder
+
+
+ripple_adder[N: posnat] : THEORY
+
+BEGIN
+
+  IMPORTING full_adder, bitvectors@bv[N], bitvectors@bv_nat
+
+  n: VAR below[N]
+  bv1, bv2: VAR bvec[N]
+  j: VAR upto[N]
+
+  nth_cin(j, bv1, bv2): RECURSIVE bit =
+      IF j = 0 THEN 0
+      ELSE carry(FA(bv1(j-1), bv2(j-1), nth_cin(j-1, bv1, bv2))) ENDIF
+    MEASURE j
+
+  adder(bv1, bv2): [# carry: bit, sum :bvec[N] #] =
+    (# carry := nth_cin(N, bv1, bv2),
+         sum := (LAMBDA n: sum(FA(bv1(n), bv2(n), nth_cin(n, bv1,bv2)))) #)
+
+  adder_invariant: LEMMA 
+      bv2nat_rec(j, sum(adder(bv1, bv2)))
+       = bv2nat_rec(j, bv1) + bv2nat_rec(j, bv2) 
+          - nth_cin(j, bv1, bv2) * exp2(j) 
+    
+  bv_nat(bv1): nat = bv2nat(bv1)
+
+  CONVERSION bv_nat
+
+  adder_correct: THEOREM 
+    sum(adder(bv1, bv2)) =  bv1 + bv2 - carry(adder(bv1, bv2)) * exp2(N)
+ 
+END ripple_adder
+
+$$$adder.prf
+(|full_adder| (|FA_char| "" (GRIND) NIL))(|ripple_adder|
+                                          (|nth_cin_TCC1|
+                                           ""
+                                           (SUBTYPE-TCC)
+                                           NIL)
+                                          (|nth_cin_TCC2|
+                                           ""
+                                           (SUBTYPE-TCC)
+                                           NIL)
+                                          (|nth_cin_TCC3|
+                                           ""
+                                           (SUBTYPE-TCC)
+                                           NIL)
+                                          (|nth_cin_TCC4|
+                                           ""
+                                           (TERMINATION-TCC)
+                                           NIL)
+                                          (|adder_TCC1| "" (SUBTYPE-TCC) NIL)
+                                          (|adder_TCC2| "" (SUBTYPE-TCC) NIL)
+                                          (|adder_invariant|
+                                           ""
+                                           (INDUCT-AND-SIMPLIFY
+                                            "j"
+                                            :EXCLUDE
+                                            "FA"
+                                            :THEORIES
+                                            "full_adder")
+                                           NIL)
+                                          (|adder_correct|
+                                           ""
+                                           (LEMMA "adder_invariant")
+                                           (("" (GRIND :EXCLUDE "FA") NIL))))

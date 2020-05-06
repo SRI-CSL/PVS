@@ -1,0 +1,37 @@
+phone_4 : THEORY
+
+  BEGIN
+
+  N: TYPE                           % names
+  P: TYPE                           % phone numbers
+  B: TYPE = [N -> setof[P]]         % phone books
+  VB: TYPE = {b:B | (FORALL (x,y:N): x /= y => disjoint?(b(x), b(y)))}
+
+  nm, x: VAR N
+  pn: VAR P
+  bk: VAR VB
+  
+  emptybook: VB = (LAMBDA (x:N): emptyset[P])
+
+  FindPhone(bk,nm): setof[P] = bk(nm)
+
+  UnusedPhoneNum(bk,pn): bool =
+     (FORALL nm: NOT member(pn,FindPhone(bk,nm)))
+
+  AddPhone(bk,nm,pn): VB = 
+    IF UnusedPhoneNum(bk,pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
+      ELSE bk
+    ENDIF
+
+
+  DelPhone(bk,nm): VB = bk with [(nm) := emptyset[P]]
+
+  DelPhoneNum(bk,nm,pn): VB = bk WITH [(nm) := remove(pn, bk(nm))]
+
+  FindAdd: CONJECTURE UnusedPhoneNum(bk,pn) IMPLIES
+                   member(pn,FindPhone(AddPhone(bk,nm,pn),nm))
+
+  DelAdd: CONJECTURE DelPhoneNum(AddPhone(bk,nm,pn),nm,pn) =
+                DelPhoneNum(bk,nm,pn)
+
+  END phone_4

@@ -1,0 +1,4 @@
+time : THEORY
+BEGIN
+ time: TYPE = nat
+END time

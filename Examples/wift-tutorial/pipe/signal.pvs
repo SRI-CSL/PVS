@@ -1,0 +1,19 @@
+signal[val: TYPE+]: THEORY
+BEGIN
+ IMPORTING time
+ signal: TYPE = [time->val]
+ t,t1,t2: VAR time
+ sig,sig1,sig2: VAR signal
+
+unchanged(sig) (t:posint):bool
+ = (sig(t) = sig(t-1))
+
+idles(sig)(t1,t2):bool
+ = (FORALL t: t>= t1 & t < t2 IMPLIES sig(t) = sig(t+1))
+
+stays_same(sig) (t1,t2):bool
+ = (FORALL t:t>= t1 & t <= t2 IMPLIES sig(t) = sig(t1))
+
+guard(t:time, s:signal): val = if t=0 then epsilon! (x:val): true else s(t-1) endif
+
+END signal

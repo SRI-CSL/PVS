@@ -1,0 +1,54 @@
+phone_2: THEORY
+
+BEGIN
+
+  N: NONEMPTY_TYPE     % names
+  P: NONEMPTY_TYPE     % phone numbers
+  B: TYPE = [N -> P]   % phone books
+
+  n0: P
+
+  GP: TYPE = {pn: P | pn /= n0}
+
+  nm: VAR N
+
+  a_name: N
+
+  pn: VAR P
+  bk: VAR B
+  gp, gp1, gp2: VAR GP
+
+  emptybook(nm): P = n0
+
+  FindPhone(bk, nm): P = bk(nm)
+
+  Known?(bk, nm): bool = bk(nm) /= n0
+
+  AddPhone(bk, nm, gp): B = 
+    IF Known?(bk, nm) THEN bk ELSE bk WITH [(nm) := gp] ENDIF
+
+  ChangePhone(bk, nm, gp): B = 
+    IF Known?(bk, nm) THEN bk WITH [(nm) := gp] ELSE bk ENDIF
+
+  DelPhone(bk, nm): B = bk WITH [(nm) := n0]
+
+  FindAdd: CONJECTURE
+    NOT Known?(bk, nm) => FindPhone(AddPhone(bk, nm, gp), nm) = gp
+
+  whoops: AXIOM Known?(AddPhone(bk, nm, pn), nm)
+
+  aargh: LEMMA true=false
+
+  FindChange: CONJECTURE
+    Known?(bk, nm) => FindPhone(ChangePhone(bk, nm, gp), nm) = gp
+
+  DelAdd: CONJECTURE
+    DelPhone(AddPhone(bk, nm, gp), nm) = DelPhone (bk, nm)
+
+  KnownAdd: CONJECTURE Known?(AddPhone(bk, nm, gp), nm)
+
+  AddChange: CONJECTURE
+    ChangePhone(AddPhone(bk, nm, gp1), nm, gp2) =
+      AddPhone(ChangePhone(bk, nm, gp2), nm, gp2)
+
+END phone_2

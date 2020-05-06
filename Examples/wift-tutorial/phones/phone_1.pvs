@@ -1,0 +1,39 @@
+phone_1: THEORY
+
+BEGIN
+
+  N: TYPE              % names
+  P: NONEMPTY_TYPE     % phone numbers
+  B: TYPE = [N -> P]   % phone books
+
+  n0: P
+  emptybook: B
+  emptyax: AXIOM   FORALL (nm: N): emptybook(nm) = n0
+
+  FindPhone: [B, N -> P]
+  Findax: AXIOM   FORALL (bk: B), (nm: N):  FindPhone(bk, nm) = bk(nm)
+
+  AddPhone: [B, N, P -> B]
+  Addax: AXIOM   FORALL (bk: B), (nm: N), (pn: P): 
+     AddPhone(bk, nm, pn) = bk WITH [(nm) := pn]
+
+  FindAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    FindPhone(AddPhone(bk, nm, pn), nm) = pn
+
+  DelPhone: [B, N -> B]
+  Delax: AXIOM   FORALL (bk: B), (nm: N):
+     DelPhone(bk, nm) = bk WITH [(nm) := n0]
+
+  DelAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    DelPhone(AddPhone(bk, nm, pn), nm) = bk
+
+  DelAdd2: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    FindPhone(bk, nm) = n0 => DelPhone(AddPhone(bk, nm, pn), nm) = bk
+
+  DelAdd3: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    DelPhone(AddPhone(bk, nm, pn), nm) = DelPhone(bk, nm)
+
+  KnownAdd: CONJECTURE FORALL (bk: B), (nm: N), (pn: P):
+    FindPhone(AddPhone(bk, nm, pn), nm) /= n0
+
+END phone_1

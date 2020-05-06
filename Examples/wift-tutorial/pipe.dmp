@@ -1,0 +1,151 @@
+<html><h1>
+PVS dump file pipe.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+pipe.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (pipe.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: (patch2-test patch2) version 2.394
+
+$$$pipe.pvs
+pipe[addr, data, opcodes: NONEMPTY_TYPE]: THEORY
+
+% Unlike the example in the tutorial, this version uses definitions
+% rather than axioms--however, one axiom is needed to break the
+% circularity in the overall datapath.
+
+% The axiomatic specification in the tutorial uses axioms like
+%   wbreg(t+1) = aluout(t)
+% This avoids the need to deal with the wbreg(0) case
+% The definitional form must either use something like
+%   wbreg(t) = IF t=0 THEN somedata ELSE aluout(t) ENDIF
+% where somedata is an uninterpreted constant, or else
+%   wbreg(t) = aluout(pred(t))
+% where pred(t) is defined in the prelude as
+% pred(t) = IF t=0 THEN 0 ELSE t-1 ENDIF
+% This specification uses both forms
+
+BEGIN
+ 
+  IMPORTING time, signal
+
+     t: VAR time   
+
+     somedata: data
+     somefile: [addr -> data]
+
+   % Input wires: decoded instruction fields
+
+     opcode: signal[opcodes]
+     src1, src2: signal[addr]
+     dstn: signal[addr]
+
+   % Controller-generated pipeline abort signal to handle control hazards
+     stall: signal[bool]
+
+   % Internal registers
+   
+   % The Pipeline registers
+
+     dstnd(t): addr = dstn(pred(t))
+     dstndd(t): addr = dstnd(pred(t))
+     stalld(t): bool = stall(pred(t))
+     stalldd(t): bool = stalld(pred(t))
+
+   % ALU 
+
+     aluop: [opcodes, data, data -> data]
+     aluout: signal[data]
+
+   % Write back register
+
+     wbreg(t): data = aluout(pred(t))
+
+   % Register file, the only externally visible part of the machine
+
+     regfile(t): recursive [addr->data] =
+      IF t = 0 THEN somefile
+      ELSIF stalldd(t-1) THEN regfile(t-1)
+      ELSE regfile(t-1) WITH [(dstndd(t-1)) := wbreg(t-1)] ENDIF
+        MEASURE t
+
+   % ALU input registers
+
+     opreg1(t): data =
+       IF t=0 THEN somedata
+       ELSIF src1(t-1) = dstnd(t-1) & NOT stalld(t-1) THEN aluout(t-1)
+       ELSIF src1(t-1) = dstndd(t-1) & NOT stalldd(t-1) THEN wbreg(t-1)
+       ELSE regfile(t-1)(src1(t-1)) ENDIF
+
+     opreg2(t): data =
+       IF t=0 THEN somedata
+       ELSIF src2(t-1) = dstnd(t-1) & NOT stalld(t-1) THEN aluout(t-1)
+       ELSIF src2(t-1) = dstndd(t-1) & NOT stalldd(t-1) THEN wbreg(t-1)
+       ELSE regfile(t-1)(src2(t-1)) ENDIF
+
+    opcoded(t): opcodes = opcode(pred(t))
+
+  % ALU output register.  Axiom needed to break circularity
+
+    ALU_ax: AXIOM  aluout(t) =  aluop(opcoded(t), opreg1(t), opreg2(t)) 
+
+   correctness: THEOREM
+     FORALL t: 
+       NOT(stall(t)) 
+         IMPLIES
+           regfile(t+3)(dstn(t)) =
+      aluop(opcode(t), regfile(t+2)(src1(t)), regfile(t+2)(src2(t)))
+
+% The following proves the theorem
+%
+%   (INSTALL-REWRITES :DEFS T :THEORIES ("pipe"))
+%   (SKOSIMP*)
+%   (APPLY (REPEAT (ASSERT)))
+%   (APPLY (REPEAT (LIFT-IF :UPDATES? NIL)))
+%   (ASSERT)
+
+END pipe
+
+$$$pipe.prf
+(|pipe| (|regfile_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|regfile_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|regfile_TCC3| "" (TERMINATION-TCC) NIL)
+ (|correctness| "" (INSTALL-REWRITES :DEFS T :THEORIES ("pipe"))
+  (("" (SKOSIMP*)
+    (("" (APPLY (REPEAT (ASSERT)))
+      (("" (APPLY (REPEAT (LIFT-IF :UPDATES? NIL))) (("" (ASSERT) NIL))))))))))
+$$$time.pvs
+time : THEORY
+BEGIN
+ time: TYPE = nat
+END time
+
+$$$signal.pvs
+signal[val: TYPE+]: THEORY
+BEGIN
+ IMPORTING time
+ signal: TYPE = [time->val]
+ t,t1,t2: VAR time
+ sig,sig1,sig2: VAR signal
+
+unchanged(sig) (t:posint):bool
+ = (sig(t) = sig(t-1))
+
+idles(sig)(t1,t2):bool
+ = (FORALL t: t>= t1 & t < t2 IMPLIES sig(t) = sig(t+1))
+
+stays_same(sig) (t1,t2):bool
+ = (FORALL t:t>= t1 & t <= t2 IMPLIES sig(t) = sig(t1))
+
+guard(t:time, s:signal): val = if t=0 then epsilon! (x:val): true else s(t-1) endif
+
+END signal
+
+$$$signal.prf
+(|signal| (|unchanged_TCC1| "" (SUBTYPE-TCC) NIL))

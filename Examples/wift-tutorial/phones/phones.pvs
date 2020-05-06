@@ -1,0 +1,8 @@
+phones: THEORY
+BEGIN
+  
+  IMPORTING phone_1, phone_2, phone_3, phone_4
+  
+END phones
+
+
