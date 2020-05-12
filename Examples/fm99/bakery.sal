@@ -1,0 +1,40 @@
+mutex: CONTEXT = 
+BEGIN 
+
+bakery : MODULE = 
+BEGIN 
+ OUTPUT 
+ pc1, pc2 : {idle,trying,critical}, 
+ y1,y2 : nat
+
+INIT
+ TRUE --> 
+ pc1 = idle;
+ pc2 = idle;
+ y1 = 0;
+ y2 = 0;
+
+NEXT 
+ 
+ pc1 = idle --> next(y1) = y2 + 1;
+                next(pc1) = trying;
+ 
+ pc1 = trying AND (y2=0 OR y1 <= y2) --> next(pc1) = critical;
+
+ pc1 = critical --> next(y1) = 0;
+                    next(pc1) = idle;
+
+ pc2 = idle --> next(y2) = y1 +1;
+               next(pc2) = trying;
+
+ pc2 = trying AND (y1=0 OR y2<y1) --> next(pc2) = critical;
+
+ pc2 = critical --> next(y2) = 0;
+                    next(pc2) = idle;
+
+END
+
+
+
+safety: LEMMA = AG(NOT((pc1=critical) AND (pc2=critical)))
+END

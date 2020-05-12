@@ -1,0 +1,97 @@
+(phone_2
+ (FindAdd 0
+  (FindAdd-1 nil 3446684130 3506929561
+   ("" (skosimp)
+    (("" (expand "Known?")
+      (("" (expand "FindPhone")
+        (("" (expand "AddPhone")
+          (("" (expand "Known?")
+            (("" (lift-if)
+              (("" (split)
+                (("1" (flatten) nil nil) ("2" (propax) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((Known? const-decl "bool" phone_2 nil)
+    (AddPhone const-decl "B" phone_2 nil)
+    (FindPhone const-decl "P" phone_2 nil))
+   52 16 nil nil))
+ (whoops_TCC1 0
+  (whoops_TCC1-1 nil 3446684130 3506929561
+   ("" (subtype-tcc) (("" (postpone) nil nil)) nil) unfinished nil 44
+   20 nil nil))
+ (aargh 0
+  (aargh-1 nil 3446684130 3506929561
+   ("" (lemma "whoops")
+    (("" (inst -1 _ _ "n0")
+      (("" (inst -1 "emptybook" _)
+        (("" (inst -1 "a_name")
+          (("" (expand "Known?") (("" (grind) nil nil)) nil)) nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((P nonempty-type-decl nil phone_2 nil)
+    (n0 const-decl "P" phone_2 nil) (a_name const-decl "N" phone_2 nil)
+    (AddPhone const-decl "B" phone_2 nil)
+    (Known? const-decl "bool" phone_2 nil)
+    (emptybook const-decl "P" phone_2 nil)
+    (B type-eq-decl nil phone_2 nil)
+    (N nonempty-type-decl nil phone_2 nil)
+    (whoops formula-decl nil phone_2 nil))
+   104 26 nil nil))
+ (whoops_corrected 0
+  (whoops_corrected-1 nil 3446684130 nil ("" (grind) nil nil) unchecked
+   nil nil nil nil nil))
+ (FindChange 0
+  (FindChange-1 nil 3446684130 3506929561 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (P nonempty-type-decl nil phone_2 nil)
+    (n0 const-decl "P" phone_2 nil) (GP type-eq-decl nil phone_2 nil)
+    (/= const-decl "boolean" notequal nil)
+    (Known? const-decl "bool" phone_2 nil)
+    (ChangePhone const-decl "B" phone_2 nil)
+    (FindPhone const-decl "P" phone_2 nil))
+   65 24 nil nil))
+ (DelAdd 0
+  (DelAdd-1 nil 3446684130 3506929561 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (P nonempty-type-decl nil phone_2 nil)
+    (n0 const-decl "P" phone_2 nil) (GP type-eq-decl nil phone_2 nil)
+    (/= const-decl "boolean" notequal nil)
+    (Known? const-decl "bool" phone_2 nil)
+    (AddPhone const-decl "B" phone_2 nil)
+    (DelPhone const-decl "B" phone_2 nil))
+   63 34 nil nil))
+ (KnownAdd 0
+  (KnownAdd-1 nil 3446684130 3506929561 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (P nonempty-type-decl nil phone_2 nil)
+    (n0 const-decl "P" phone_2 nil) (GP type-eq-decl nil phone_2 nil)
+    (/= const-decl "boolean" notequal nil)
+    (Known? const-decl "bool" phone_2 nil)
+    (AddPhone const-decl "B" phone_2 nil))
+   84 16 nil nil))
+ (AddChange 0
+  (AddChange-1 nil 3446684130 3506929561 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (P nonempty-type-decl nil phone_2 nil)
+    (n0 const-decl "P" phone_2 nil) (GP type-eq-decl nil phone_2 nil)
+    (/= const-decl "boolean" notequal nil)
+    (Known? const-decl "bool" phone_2 nil)
+    (AddPhone const-decl "B" phone_2 nil)
+    (ChangePhone const-decl "B" phone_2 nil))
+   76 44 nil nil)))
+

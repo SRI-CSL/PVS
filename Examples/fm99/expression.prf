@@ -1,0 +1,12 @@
+(|elemexpr|)
+(|elemeval| (|valof_TCC1| "" (WELL-FOUNDED-TCC))
+ (|valof_TCC2| "" (TERMINATION-TCC) NIL NIL)
+ (|valof_TCC3| "" (TERMINATION-TCC) NIL NIL)
+ (|valof_TCC4| "" (TERMINATION-TCC) NIL NIL)
+ (|valof_TCC5| "" (TERMINATION-TCC) NIL NIL)
+ (|valof_TCC6| "" (TERMINATION-TCC) NIL NIL) (|test| "" (GRIND) NIL NIL)
+ (|test2| "" (GRIND) NIL NIL))
+(|expression|)
+(|eval| (|valof_TCC1| "" (WELL-FOUNDED-TCC))
+ (|test| "" (ASSERT) (("" (EXPAND "valof") (("" (PROPAX) NIL NIL)) NIL)) NIL))
+

@@ -1,0 +1,102 @@
+(bijections
+ (wig_sym 0
+  (wig_sym-1 nil 3446684132 3506929588
+   ("" (skosimp)
+    (("" (expand "symmetric?")
+      (("" (rule-induct "wiggle")
+        (("" (skosimp*)
+          (("" (ground)
+            (("1" (expand "wiggle") (("1" (propax) nil nil)) nil)
+             ("2" (skosimp)
+              (("2" (expand "wiggle" +)
+                (("2" (ground)
+                  (("1" (inst?)
+                    (("1" (inst?)
+                      (("1" (ground) (("1" (grind) nil nil)) nil))
+                      nil))
+                    nil)
+                   ("2" (inst?)
+                    (("2" (inst?)
+                      (("2" (ground) (("2" (grind) nil nil)) nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((symmetric? const-decl "bool" relations nil)
+    (member const-decl "bool" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (add const-decl "(nonempty?)" sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (wiggle inductive-decl "bool" bijections nil)
+    (set type-eq-decl nil sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (wiggle_weak_induction formula-decl nil bijections nil))
+   310 164 nil nil))
+ (wig_tran 0
+  (wig_tran-1 nil 3446684132 3506929588
+   ("" (skosimp)
+    (("" (expand "transitive?")
+      (("" (skolem! +)
+        (("" (flatten)
+          ((""
+            (lemma "bijections.wiggle_weak_induction" :subst
+             (p1
+              (typechecked "LAMBDA (x_136: set[int], y_137: set[int]):
+  wiggle(P!1)(x_136, y!1) AND wiggle(P!1)(y!1, y_137) IMPLIES
+   wiggle(P!1)(x_136, y_137)" "[[set[int], set[int]] -> boolean]")
+              p (typechecked "P!1" "pred[[int, int]]")))
+            (("" (prop)
+              (("1" (inst? :polarity? t) (("1" (postpone) nil nil))
+                nil)
+               ("2" (postpone) nil nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil 116 36 nil nil)))
+(fermat
+ (mod_TCC1 0
+  (mod_TCC1-1 nil 3446684132 nil ("" (existence-tcc) nil nil) unchecked
+   nil nil nil nil nil))
+ (e_lem_TCC1 0
+  (e_lem_TCC1-1 nil 3446684132 nil ("" (subtype-tcc) nil nil) unchecked
+   nil nil nil nil nil))
+ (flem 0
+  (flem-1 nil 3446684132 nil
+   ("" (skosimp)
+    (("" (case "mod(a!1*(n!1-m!1),p!1)=0")
+      (("1" (postpone) nil nil)
+       ("2" (lemma "modax")
+        (("2" (inst - _ "p!1")
+          (("2" (inst-cp - "n!1*a!1")
+            (("2" (inst-cp - "m!1*a!1")
+              (("2" (skosimp*) (("2" (postpone) nil nil)) nil)) nil))
+            nil))
+          nil))
+        nil)
+       ("3" (assert) (("3" (postpone) nil nil)) nil))
+      nil))
+    nil)
+   unfinished nil nil nil nil nil)))
+

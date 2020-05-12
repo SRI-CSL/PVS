@@ -1,0 +1,282 @@
+<html><h1>
+PVS dump file phones.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+phones.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (phones.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: (patch2-test patch2)
+
+$$$phones.pvs
+phones: THEORY
+BEGIN
+  
+  IMPORTING phone_1, phone_2, phone_3, phone_4
+  
+END phones
+
+
+
+$$$phones.prf
+(|phones|)
+$$$phone_1.pvs
+phone_1: THEORY
+
+BEGIN
+
+  N: TYPE              % names
+  P: NONEMPTY_TYPE     % phone numbers
+  B: TYPE = [N -> P]   % phone books
+
+  n0: P
+  emptybook: B
+  emptyax: AXIOM   FORALL (nm: N): emptybook(nm) = n0
+
+  FindPhone: [B, N -> P]
+  Findax: AXIOM   FORALL (bk: B), (nm: N):  FindPhone(bk, nm) = bk(nm)
+
+  AddPhone: [B, N, P -> B]
+  Addax: AXIOM   FORALL (bk: B), (nm: N), (pn: P): 
+     AddPhone(bk, nm, pn) = bk WITH [(nm) := pn]
+
+  FindAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    FindPhone(AddPhone(bk, nm, pn), nm) = pn
+
+  DelPhone: [B, N -> B]
+  Delax: AXIOM   FORALL (bk: B), (nm: N):
+     DelPhone(bk, nm) = bk WITH [(nm) := n0]
+
+  DelAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    DelPhone(AddPhone(bk, nm, pn), nm) = bk
+
+  DelAdd2: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    FindPhone(bk, nm) = n0 => DelPhone(AddPhone(bk, nm, pn), nm) = bk
+
+  DelAdd3: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+    DelPhone(AddPhone(bk, nm, pn), nm) = DelPhone(bk, nm)
+
+  KnownAdd: CONJECTURE FORALL (bk: B), (nm: N), (pn: P):
+    FindPhone(AddPhone(bk, nm, pn), nm) /= n0
+
+END phone_1
+
+
+
+
+
+$$$phone_1.prf
+(|phone_1| (|FindAdd| "" (GRIND :THEORIES ("phone_1")) NIL)
+ (|DelAdd| "" (GRIND :THEORIES ("phone_1"))
+  (("" (APPLY-EXTENSIONALITY)
+    (("" (DELETE 2)
+      (("" (LIFT-IF) (("" (GROUND) (("" (POSTPONE) NIL)))))))))))
+ (|DelAdd2| "" (GRIND :THEORIES ("phone_1"))
+  (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (SMASH) NIL)))))
+ (|DelAdd3| "" (GRIND :THEORIES ("phone_1")) NIL)
+ (|KnownAdd| "" (GRIND :THEORIES ("phone_1")) (("" (POSTPONE) NIL))))
+$$$phone_2.pvs
+phone_2: THEORY
+
+BEGIN
+
+  N: NONEMPTY_TYPE     % names
+  P: NONEMPTY_TYPE     % phone numbers
+  B: TYPE = [N -> P]   % phone books
+
+  n0: P
+
+  GP: TYPE = {pn: P | pn /= n0}
+
+  nm: VAR N
+
+  a_name: N
+
+  pn: VAR P
+  bk: VAR B
+  gp, gp1, gp2: VAR GP
+
+  emptybook(nm): P = n0
+
+  FindPhone(bk, nm): P = bk(nm)
+
+  Known?(bk, nm): bool = bk(nm) /= n0
+
+  AddPhone(bk, nm, gp): B = 
+    IF Known?(bk, nm) THEN bk ELSE bk WITH [(nm) := gp] ENDIF
+
+  ChangePhone(bk, nm, gp): B = 
+    IF Known?(bk, nm) THEN bk WITH [(nm) := gp] ELSE bk ENDIF
+
+  DelPhone(bk, nm): B = bk WITH [(nm) := n0]
+
+  FindAdd: CONJECTURE
+    NOT Known?(bk, nm) => FindPhone(AddPhone(bk, nm, gp), nm) = gp
+
+  whoops: AXIOM Known?(AddPhone(bk, nm, pn), nm)
+
+  aargh: LEMMA true=false
+
+  whoops_corrected: AXIOM Known?(AddPhone(bk, nm, gp), nm)
+
+  FindChange: CONJECTURE
+    Known?(bk, nm) => FindPhone(ChangePhone(bk, nm, gp), nm) = gp
+
+  DelAdd: CONJECTURE
+    DelPhone(AddPhone(bk, nm, gp), nm) = DelPhone (bk, nm)
+
+  KnownAdd: CONJECTURE Known?(AddPhone(bk, nm, gp), nm)
+
+  AddChange: CONJECTURE
+    ChangePhone(AddPhone(bk, nm, gp1), nm, gp2) =
+      AddPhone(ChangePhone(bk, nm, gp2), nm, gp2)
+
+END phone_2
+
+$$$phone_2.prf
+(|phone_2|
+  (|FindAdd| ""
+             (SKOSIMP)
+             (("" (EXPAND "Known?")
+                  (("" (EXPAND "FindPhone")
+                       (("" (EXPAND "AddPhone")
+                            (("" (EXPAND "Known?")
+                                 (("" (LIFT-IF)
+                                      (("" (SPLIT)
+                                           (("1" (FLATTEN)
+                                                 (("1" (PROPAX)
+                                                       NIL)))
+                                             ("2" (FLATTEN)
+                                                  (("2" (ASSERT)
+                                                        NIL)))))))))))))))))
+  (|aargh| ""
+           (LEMMA "whoops")
+           (("" (INST -1 _ _ "n0")
+                (("" (INST -1 "emptybook" _)
+                     (("" (INST -1 "a_name")
+                          (("" (EXPAND "Known?")
+                               (("" (GRIND)
+                                    (("" (EXPAND "emptybook")
+                                         (("" (PROPAX) NIL)))))))))))))))
+  (|whoops_corrected| "" (GRIND) NIL)
+  (|FindChange| "" (GRIND) NIL)
+  (|DelAdd| "" (GRIND) NIL)
+  (|KnownAdd| "" (GRIND) NIL)
+  (|AddChange| "" (GRIND) NIL))
+$$$phone_3.pvs
+phone_3 : THEORY
+
+  BEGIN
+
+  N: TYPE                     % names
+  P: TYPE                     % phone numbers
+  B: TYPE = [N -> setof[P]]   % phone books
+  nm, x: VAR N
+  pn: VAR P
+  bk: VAR B
+
+  emptybook(nm): setof[P] = emptyset[P]
+
+  FindPhone(bk, nm): setof[P] = bk(nm)
+
+  AddPhone(bk, nm, pn): B = bk WITH [(nm) := add(pn, bk(nm))]
+
+  DelPhone(bk,nm): B = bk WITH [(nm) := emptyset[P]]
+
+  DelPhoneNum(bk,nm,pn): B = bk WITH [(nm) := remove(pn, bk(nm))]
+
+  FindAdd: CONJECTURE member(pn, FindPhone(AddPhone(bk, nm, pn), nm))
+
+  DelAdd: CONJECTURE DelPhoneNum(AddPhone(bk, nm, pn), nm, pn) =
+                DelPhoneNum(bk, nm, pn)
+
+  updates: VAR list[[N, P]]
+
+  AddList(bk, updates): RECURSIVE B = 
+    CASES updates OF
+      null: bk,
+      cons(upd, rest): AddList(AddPhone(bk, proj_1(upd), proj_2(upd)), rest)
+    ENDCASES
+    MEASURE length(updates)
+
+  AddList_member: CONJECTURE
+    member(pn, FindPhone(bk, nm)) =>
+      member(pn, FindPhone(AddList(bk, updates), nm))
+
+  FindList: CONJECTURE
+    (every! (upd:[N, P]): proj_1(upd)/=nm) (updates) =>
+       FindPhone(AddList(bk, updates), nm) = FindPhone(bk, nm)
+
+END phone_3
+
+$$$phone_3.prf
+(|phone_3| (|FindAdd| "" (GRIND) NIL)
+ (|DelAdd| "" (GRIND)
+  (("" (APPLY-EXTENSIONALITY :HIDE? T)
+    (("" (SMASH)
+      (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (SMASH) NIL)))))))))
+ (|AddList_TCC1| "" (TERMINATION-TCC) NIL)
+ (|AddList_member| "" (INDUCT-AND-SIMPLIFY "updates") NIL)
+ (|FindList| "" (INDUCT-AND-SIMPLIFY "updates") NIL))
+$$$phone_4.pvs
+phone_4 : THEORY
+
+  BEGIN
+
+  N: TYPE                           % names
+  P: TYPE                           % phone numbers
+  B: TYPE = [N -> setof[P]]         % phone books
+  VB: TYPE = {b:B | (FORALL (x,y:N): x /= y => disjoint?(b(x), b(y)))}
+
+  nm, x: VAR N
+  pn: VAR P
+  bk: VAR VB
+  
+  emptybook: VB = (LAMBDA (x:N): emptyset[P])
+
+  FindPhone(bk,nm): setof[P] = bk(nm)
+
+  UnusedPhoneNum(bk,pn): bool =
+     (FORALL nm: NOT member(pn,FindPhone(bk,nm)))
+
+  AddPhone(bk,nm,pn): VB = 
+    IF UnusedPhoneNum(bk,pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
+      ELSE bk
+    ENDIF
+
+
+  DelPhone(bk,nm): VB = bk with [(nm) := emptyset[P]]
+
+  DelPhoneNum(bk,nm,pn): VB = bk WITH [(nm) := remove(pn, bk(nm))]
+
+  FindAdd: CONJECTURE UnusedPhoneNum(bk,pn) IMPLIES
+                   member(pn,FindPhone(AddPhone(bk,nm,pn),nm))
+
+  DelAdd: CONJECTURE DelPhoneNum(AddPhone(bk,nm,pn),nm,pn) =
+                DelPhoneNum(bk,nm,pn)
+
+  END phone_4
+
+$$$phone_4.prf
+(|phone_4|
+ (|AddPhone_TCC1| "" (GRIND :IF-MATCH NIL)
+  (("1" (INST - "x!1" "y!1") (("1" (REDUCE) NIL)))
+   ("2" (INST - "x!1" "y!1") (("2" (REDUCE) NIL)))
+   ("3" (INST - "x!1" "y!1") (("3" (REDUCE) NIL)))
+   ("4" (INST - "x!1" "y!1") (("4" (REDUCE) NIL)))
+   ("5" (INST - "x!1" "y!1") (("5" (REDUCE) NIL)))))
+ (|DelPhoneNum_TCC1| "" (GRIND :IF-MATCH NIL)
+  (("1" (INST - "x!1" "y!1") (("1" (REDUCE) NIL)))
+   ("2" (INST - "x!1" "y!1") (("2" (REDUCE) NIL)))
+   ("3" (INST - "x!1" "y!1") (("3" (REDUCE) NIL)))))
+ (|FindAdd| "" (GRIND) NIL)
+ (|DelAdd| "" (GRIND)
+  (("" (APPLY-EXTENSIONALITY :HIDE? T)
+    (("" (SMASH)
+      (("" (APPLY-EXTENSIONALITY :HIDE? T)
+        (("" (BDDSIMP) (("" (PROPAX) NIL))))))))))))

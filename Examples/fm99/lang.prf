@@ -1,0 +1,467 @@
+(memories)
+(exprs)
+(statements)
+(eval (valof_TCC1 0
+       (valof_TCC1-1 nil 3446684134 3506929588
+        ("" (use "exprs_well_founded") (("" (grind) nil nil)) nil)
+        proved
+        ((well_founded? const-decl "bool" orders nil)
+         (<< adt-def-decl "(well_founded?[exprs])" exprs_adt nil)
+         (exprs_well_founded formula-decl nil exprs_adt nil))
+        157 66 nil nil))
+      (valof_TCC2 0
+       (valof_TCC2-1 nil 3446684134 3506929588
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[exprs])" exprs_adt nil)) 70
+        30 nil nil))
+      (valof_TCC3 0
+       (valof_TCC3-1 nil 3446684134 3506929589
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[exprs])" exprs_adt nil)) 91
+        26 nil nil))
+      (valof_TCC4 0
+       (valof_TCC4-1 nil 3446684134 3506929589
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[exprs])" exprs_adt nil)) 139
+        30 nil nil))
+      (valof_TCC5 0
+       (valof_TCC5-1 nil 3446684134 3506929589
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[exprs])" exprs_adt nil)) 92
+        30 nil nil))
+      (test1 0
+       (test1-1 nil 3446684134 3506929589 ("" (grind) nil nil) proved
+        ((int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (minus_int_is_int application-judgement "int" integers nil)
+         (valof def-decl "int" eval nil))
+        59 10 nil nil))
+      (test2 0
+       (test2-1 nil 3446684134 3506929589 ("" (grind) nil nil) proved
+        ((int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (minus_int_is_int application-judgement "int" integers nil)
+         (valof def-decl "int" eval nil))
+        70 20 nil nil))
+      (test3 0
+       (test3-1 nil 3446684134 3506929589 ("" (grind) nil nil) proved
+        ((int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (minus_int_is_int application-judgement "int" integers nil)
+         (valof def-decl "int" eval nil))
+        57 10 nil nil))
+      (test4_TCC1 0
+       (test4_TCC1-1 nil 3446684134 3506929589
+        ("" (subtype-tcc) nil nil) proved
+        ((n const-decl "nat" memories nil)
+         (real_le_is_total_order name-judgement "(total_order?[real])"
+          real_props nil))
+        45 10 nil nil))
+      (test4_TCC2 0
+       (test4_TCC2-1 nil 3446684134 3506929589
+        ("" (subtype-tcc) nil nil) proved
+        ((n const-decl "nat" memories nil)
+         (real_le_is_total_order name-judgement "(total_order?[real])"
+          real_props nil))
+        39 0 nil nil))
+      (test4 0
+       (test4-1 nil 3446684134 3506929589
+        ("" (grind) (("" (postpone) nil nil)) nil) unfinished nil 88 40
+        nil nil))
+      (test4a 0
+       (test4a-1 nil 3446684134 3506929589 ("" (grind) nil nil) proved
+        ((minus_odd_is_odd application-judgement "odd_int" integers
+          nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (minus_int_is_int application-judgement "int" integers nil)
+         (valof def-decl "int" eval nil))
+        63 20 nil nil))
+      (runtime_TCC1 0
+       (runtime_TCC1-1 nil 3446684134 3506929589
+        ("" (use "statements_well_founded") (("" (grind) nil nil)) nil)
+        proved
+        ((well_founded? const-decl "bool" orders nil)
+         (<< adt-def-decl "(well_founded?[statements])" statements_adt
+          nil)
+         (statements_well_founded formula-decl nil statements_adt nil))
+        146 56 nil nil))
+      (runtime_TCC2 0
+       (runtime_TCC2-1 nil 3446684134 3506929589
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[statements])" statements_adt
+          nil))
+        117 30 nil nil))
+      (runtime_TCC3 0
+       (runtime_TCC3-1 nil 3446684134 3506929590
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[statements])" statements_adt
+          nil))
+        98 30 nil nil))
+      (runtime_TCC4 0
+       (runtime_TCC4-1 nil 3446684134 3506929590
+        ("" (termination-tcc) nil nil) proved
+        ((<< adt-def-decl "(well_founded?[statements])" statements_adt
+          nil))
+        135 40 nil nil))
+      (runtime_TCC5 0
+       (runtime_TCC5-1 nil 3446684134 3506929590
+        ("" (termination-tcc) nil nil) proved
+        ((boolean nonempty-type-decl nil booleans nil)
+         (bool nonempty-type-eq-decl nil booleans nil)
+         (NOT const-decl "[bool -> bool]" booleans nil)
+         (number nonempty-type-decl nil numbers nil)
+         (number_field_pred const-decl "[number -> boolean]"
+          number_fields nil)
+         (number_field nonempty-type-from-decl nil number_fields nil)
+         (real_pred const-decl "[number_field -> boolean]" reals nil)
+         (real nonempty-type-from-decl nil reals nil)
+         (>= const-decl "bool" reals nil)
+         (rational_pred const-decl "[real -> boolean]" rationals nil)
+         (rational nonempty-type-from-decl nil rationals nil)
+         (integer_pred const-decl "[rational -> boolean]" integers nil)
+         (int nonempty-type-eq-decl nil integers nil)
+         (nat nonempty-type-eq-decl nil naturalnumbers nil)
+         (real_ge_is_total_order name-judgement "(total_order?[real])"
+          real_props nil)
+         (<< adt-def-decl "(well_founded?[statements])" statements_adt
+          nil))
+        95 20 nil nil))
+      (exec_TCC1 0
+       (exec_TCC1-1 nil 3446684134 3506929590 ("" (grind) nil nil)
+        proved
+        ((real_lt_is_strict_total_order name-judgement
+          "(strict_total_order?[real])" real_props nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (runtime def-decl "posnat" eval nil))
+        167 80 nil nil))
+      (exec_TCC2 0
+       (exec_TCC2-1 nil 3446684134 3506929590
+        ("" (termination-tcc) nil nil) proved
+        ((real_lt_is_strict_total_order name-judgement
+          "(strict_total_order?[real])" real_props nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (runtime def-decl "posnat" eval nil))
+        158 74 nil nil))
+      (exec_TCC3 0
+       (exec_TCC3-1 nil 3446684134 3506929590
+        ("" (termination-tcc) nil nil) proved
+        ((runtime def-decl "posnat" eval nil)
+         (max const-decl "{p: real | p >= m AND p >= n}" real_defs nil)
+         (real_lt_is_strict_total_order name-judgement
+          "(strict_total_order?[real])" real_props nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (posint_max application-judgement
+          "{k: posint | i <= k AND j <= k}" real_defs nil)
+         (posrat_max application-judgement
+          "{s: posrat | s >= q AND s >= r}" real_defs nil)
+         (/= const-decl "boolean" notequal nil))
+        311 180 nil nil))
+      (exec_TCC4 0
+       (exec_TCC4-1 nil 3446684134 3506929591
+        ("" (termination-tcc) nil nil) proved
+        ((runtime def-decl "posnat" eval nil)
+         (max const-decl "{p: real | p >= m AND p >= n}" real_defs nil)
+         (real_lt_is_strict_total_order name-judgement
+          "(strict_total_order?[real])" real_props nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (posint_max application-judgement
+          "{k: posint | i <= k AND j <= k}" real_defs nil)
+         (posrat_max application-judgement
+          "{s: posrat | s >= q AND s >= r}" real_defs nil)
+         (/= const-decl "boolean" notequal nil))
+        278 180 nil nil))
+      (exec_TCC5 0
+       (exec_TCC5-1 nil 3446684134 3506929591
+        ("" (skosimp)
+         (("" (case "l!1 * runtime(b!1) >= runtime(b!1)")
+           (("1" (assert) nil nil) ("2" (assert) nil nil)) nil))
+         nil)
+        proved
+        ((runtime def-decl "posnat" eval nil)
+         (posnat nonempty-type-eq-decl nil integers nil)
+         (> const-decl "bool" reals nil)
+         (nonneg_int nonempty-type-eq-decl nil integers nil)
+         (statements type-decl nil statements_adt nil)
+         (nat nonempty-type-eq-decl nil naturalnumbers nil)
+         (int nonempty-type-eq-decl nil integers nil)
+         (integer_pred const-decl "[rational -> boolean]" integers nil)
+         (rational nonempty-type-from-decl nil rationals nil)
+         (rational_pred const-decl "[real -> boolean]" rationals nil)
+         (* const-decl "[numfield, numfield -> numfield]" number_fields
+            nil)
+         (numfield nonempty-type-eq-decl nil number_fields nil)
+         (>= const-decl "bool" reals nil)
+         (bool nonempty-type-eq-decl nil booleans nil)
+         (real nonempty-type-from-decl nil reals nil)
+         (real_pred const-decl "[number_field -> boolean]" reals nil)
+         (number_field nonempty-type-from-decl nil number_fields nil)
+         (number_field_pred const-decl "[number -> boolean]"
+          number_fields nil)
+         (boolean nonempty-type-decl nil booleans nil)
+         (number nonempty-type-decl nil numbers nil)
+         (mult_divides2 application-judgement "(divides(m))" divides
+          nil)
+         (mult_divides1 application-judgement "(divides(n))" divides
+          nil)
+         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+          integers nil)
+         (real_ge_is_total_order name-judgement "(total_order?[real])"
+          real_props nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil))
+        142 74 nil nil))
+      (exec_TCC6 0
+       (exec_TCC6-1 nil 3446684134 3506929591
+        ("" (termination-tcc)
+         (("" (lemma "nnreal_times_nnreal_is_nnreal")
+           (("" (inst -1 "l!1-1" "runtime(b!1)")
+             (("" (assert) nil nil)) nil))
+           nil))
+         nil)
+        proved
+        ((nnreal_times_nnreal_is_nnreal judgement-tcc nil real_types
+          nil)
+         (minus_odd_is_odd application-judgement "odd_int" integers
+          nil)
+         (nonneg_real nonempty-type-eq-decl nil real_types nil)
+         (numfield nonempty-type-eq-decl nil number_fields nil)
+         (- const-decl "[numfield, numfield -> numfield]" number_fields
+            nil)
+         (statements type-decl nil statements_adt nil)
+         (nonneg_int nonempty-type-eq-decl nil integers nil)
+         (> const-decl "bool" reals nil)
+         (posnat nonempty-type-eq-decl nil integers nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (mult_divides2 application-judgement "(divides(m))" divides
+          nil)
+         (mult_divides1 application-judgement "(divides(n))" divides
+          nil)
+         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+          integers nil)
+         (nnint_plus_posint_is_posint application-judgement "posint"
+          integers nil)
+         (real_lt_is_strict_total_order name-judgement
+          "(strict_total_order?[real])" real_props nil)
+         (real_ge_is_total_order name-judgement "(total_order?[real])"
+          real_props nil)
+         (runtime def-decl "posnat" eval nil)
+         (boolean nonempty-type-decl nil booleans nil)
+         (bool nonempty-type-eq-decl nil booleans nil)
+         (NOT const-decl "[bool -> bool]" booleans nil)
+         (number nonempty-type-decl nil numbers nil)
+         (number_field_pred const-decl "[number -> boolean]"
+          number_fields nil)
+         (number_field nonempty-type-from-decl nil number_fields nil)
+         (real_pred const-decl "[number_field -> boolean]" reals nil)
+         (real nonempty-type-from-decl nil reals nil)
+         (>= const-decl "bool" reals nil)
+         (rational_pred const-decl "[real -> boolean]" rationals nil)
+         (rational nonempty-type-from-decl nil rationals nil)
+         (integer_pred const-decl "[rational -> boolean]" integers nil)
+         (int nonempty-type-eq-decl nil integers nil)
+         (nat nonempty-type-eq-decl nil naturalnumbers nil))
+        268 204 nil nil))
+      (exec_TCC7 0
+       (exec_TCC7-1 nil 3446684134 3506929591
+        ("" (termination-tcc) nil nil) proved
+        ((boolean nonempty-type-decl nil booleans nil)
+         (bool nonempty-type-eq-decl nil booleans nil)
+         (NOT const-decl "[bool -> bool]" booleans nil)
+         (number nonempty-type-decl nil numbers nil)
+         (number_field_pred const-decl "[number -> boolean]"
+          number_fields nil)
+         (number_field nonempty-type-from-decl nil number_fields nil)
+         (real_pred const-decl "[number_field -> boolean]" reals nil)
+         (real nonempty-type-from-decl nil reals nil)
+         (>= const-decl "bool" reals nil)
+         (rational_pred const-decl "[real -> boolean]" rationals nil)
+         (rational nonempty-type-from-decl nil rationals nil)
+         (integer_pred const-decl "[rational -> boolean]" integers nil)
+         (int nonempty-type-eq-decl nil integers nil)
+         (nat nonempty-type-eq-decl nil naturalnumbers nil)
+         (real_ge_is_total_order name-judgement "(total_order?[real])"
+          real_props nil)
+         (real_lt_is_strict_total_order name-judgement
+          "(strict_total_order?[real])" real_props nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (nnint_plus_posint_is_posint application-judgement "posint"
+          integers nil)
+         (runtime def-decl "posnat" eval nil)
+         (minus_odd_is_odd application-judgement "odd_int" integers
+          nil)
+         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+          integers nil)
+         (mult_divides1 application-judgement "(divides(n))" divides
+          nil)
+         (mult_divides2 application-judgement "(divides(m))" divides
+          nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil))
+        228 160 nil nil))
+      (test5 0
+       (test5-1 nil 3446684134 3506929591 ("" (grind) nil nil) proved
+        ((init const-decl "memory" eval nil)
+         (id const-decl "(bijective?[T, T])" identity nil)
+         (valof def-decl "int" eval nil)
+         (exec def-decl "memory" eval nil)
+         (minus_int_is_int application-judgement "int" integers nil)
+         (id_preserves application-judgement "S" identity_props nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil))
+        58 30 nil nil))
+      (test5a 0
+       (test5a-1 nil 3446684134 3506929591 ("" (grind) nil nil) proved
+        ((init const-decl "memory" eval nil)
+         (id const-decl "(bijective?[T, T])" identity nil)
+         (valof def-decl "int" eval nil)
+         (exec def-decl "memory" eval nil)
+         (minus_int_is_int application-judgement "int" integers nil)
+         (id_preserves application-judgement "S" identity_props nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil))
+        63 20 nil nil))
+      (test_sum_TCC1 0
+       (test_sum_TCC1-1 nil 3446684134 3506929591
+        ("" (subtype-tcc) nil nil) proved
+        ((n const-decl "nat" memories nil)) 21 0 nil nil))
+      (test_sum_TCC2 0
+       (test_sum_TCC2-1 nil 3446684134 3506929592
+        ("" (subtype-tcc) nil nil) proved
+        ((n const-decl "nat" memories nil)) 41 10 nil nil))
+      (test_sum 0
+       (test_sum-1 nil 3446684134 3506929592
+        ("" (beta *) (("" (grind) nil nil)) nil) proved
+        ((zero const-decl "memory" eval nil)
+         (K_conversion const-decl "T1" K_conversion nil)
+         (valof def-decl "int" eval nil)
+         (exec def-decl "memory" eval nil)
+         (sum_nats def-decl "nat" sum nil)
+         (even_minus_odd_is_odd application-judgement "odd_int"
+          integers nil)
+         (K_preserves application-judgement "S" K_props nil)
+         (int_plus_int_is_int application-judgement "int" integers nil)
+         (odd_minus_odd_is_even application-judgement "even_int"
+          integers nil)
+         (K_preserves1 application-judgement "[T2 -> S]" K_props nil)
+         (even_plus_odd_is_odd application-judgement "odd_int" integers
+          nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil))
+        870 714 nil nil))
+      (program_prop_lemma_TCC1 0
+       (program_prop_lemma_TCC1-1 nil 3446684134 3506929592
+        ("" (subtype-tcc) nil nil) proved
+        ((n const-decl "nat" memories nil)
+         (real_le_is_total_order name-judgement "(total_order?[real])"
+          real_props nil))
+        43 10 nil nil))
+      (program_prop_lemma_TCC2 0
+       (program_prop_lemma_TCC2-1 nil 3446684134 3506929593
+        ("" (subtype-tcc) nil nil) proved
+        ((n const-decl "nat" memories nil)
+         (real_le_is_total_order name-judgement "(total_order?[real])"
+          real_props nil))
+        43 10 nil nil))
+      (program_prop_lemma 0
+       (program_prop_lemma-1 nil 3446684134 3506929593
+        ("" (install-rewrites :defs t)
+         (("" (induct "j")
+           (("1" (reduce) nil nil)
+            ("2" (skosimp*)
+             (("2" (expand "exec" +)
+               (("2" (inst?) (("2" (assert) nil nil)) nil)) nil))
+             nil))
+           nil))
+         nil)
+        proved
+        ((real_le_is_total_order name-judgement "(total_order?[real])"
+          real_props nil)
+         (nnint_plus_posint_is_posint application-judgement "posint"
+          integers nil)
+         (number nonempty-type-decl nil numbers nil)
+         (boolean nonempty-type-decl nil booleans nil)
+         (number_field_pred const-decl "[number -> boolean]"
+          number_fields nil)
+         (number_field nonempty-type-from-decl nil number_fields nil)
+         (real_pred const-decl "[number_field -> boolean]" reals nil)
+         (real nonempty-type-from-decl nil reals nil)
+         (rational_pred const-decl "[real -> boolean]" rationals nil)
+         (rational nonempty-type-from-decl nil rationals nil)
+         (integer_pred const-decl "[rational -> boolean]" integers nil)
+         (int nonempty-type-eq-decl nil integers nil)
+         (bool nonempty-type-eq-decl nil booleans nil)
+         (>= const-decl "bool" reals nil)
+         (nat nonempty-type-eq-decl nil naturalnumbers nil)
+         (pred type-eq-decl nil defined_types nil)
+         (<= const-decl "bool" reals nil)
+         (n const-decl "nat" memories nil)
+         (addrs type-eq-decl nil memories nil)
+         (memory type-eq-decl nil memories nil)
+         (= const-decl "[T, T -> boolean]" equalities nil)
+         (exprs type-decl nil exprs_adt nil)
+         (valof def-decl "int" eval nil)
+         (vbl? adt-recognizer-decl "[exprs -> boolean]" exprs_adt nil)
+         (varbl adt-constructor-decl "[addrs -> (vbl?)]" exprs_adt nil)
+         (statements type-decl nil statements_adt nil)
+         (exec def-decl "memory" eval nil)
+         (for? adt-recognizer-decl "[statements -> boolean]"
+          statements_adt nil)
+         (for adt-constructor-decl "[[nat, statements] -> (for?)]"
+          statements_adt nil)
+         (numfield nonempty-type-eq-decl nil number_fields nil)
+         (+ const-decl "[numfield, numfield -> numfield]" number_fields
+            nil)
+         (seq? adt-recognizer-decl "[statements -> boolean]"
+          statements_adt nil)
+         (seq adt-constructor-decl
+          "[[statements, statements] -> (seq?)]" statements_adt nil)
+         (assign? adt-recognizer-decl "[statements -> boolean]"
+          statements_adt nil)
+         (assign adt-constructor-decl "[[addrs, exprs] -> (assign?)]"
+          statements_adt nil)
+         (sum? adt-recognizer-decl "[exprs -> boolean]" exprs_adt nil)
+         (+ adt-constructor-decl "[[exprs, exprs] -> (sum?)]" exprs_adt
+            nil)
+         (num? adt-recognizer-decl "[exprs -> boolean]" exprs_adt nil)
+         (const adt-constructor-decl "[int -> (num?)]" exprs_adt nil)
+         (sum_nats def-decl "nat" sum nil)
+         (* const-decl "[numfield, numfield -> numfield]" number_fields
+            nil)
+         (nat_induction formula-decl nil naturalnumbers nil)
+         (mult_divides2 application-judgement "(divides(m))" divides
+          nil)
+         (mult_divides1 application-judgement "(divides(n))" divides
+          nil)
+         (int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (even_times_int_is_even application-judgement "even_int"
+          integers nil)
+         (int_plus_int_is_int application-judgement "int" integers
+          nil))
+        622 477 nil nil))
+      (program_prop 0
+       (program_prop-1 nil 3446684134 3506929593
+        ("" (grind :defs explicit :rewrites ("program_prop_lemma")) nil
+         nil)
+        proved
+        ((int_minus_int_is_int application-judgement "int" integers
+          nil)
+         (posint_plus_nnint_is_posint application-judgement "posint"
+          integers nil)
+         (K_preserves1 application-judgement "[T2 -> S]" K_props nil)
+         (program_prop_lemma formula-decl nil eval nil)
+         (K_conversion const-decl "T1" K_conversion nil)
+         (zero const-decl "memory" eval nil))
+        67 50 nil nil)))
+

@@ -1,0 +1,354 @@
+(light_bakery
+ (ii_to_xx 0
+  (ii_to_xx-1 nil 3386654193 3506929574 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (odd_plus_even_is_odd application-judgement "odd_int" integers nil)
+    (ii const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (it const-decl "bool" light_bakery nil)
+    (ti const-decl "bool" light_bakery nil))
+   360 259 nil nil))
+ (it_to_xx 0
+  (it_to_xx-1 nil 3386654193 3506929574 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (it const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (ic const-decl "bool" light_bakery nil)
+    (tt const-decl "bool" light_bakery nil))
+   414 304 nil nil))
+ (ti_to_xx 0
+  (ti_to_xx-1 nil 3386654193 3506929574 ("" (grind) nil nil) proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (/= const-decl "boolean" notequal nil)
+    (ti const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (ci const-decl "bool" light_bakery nil)
+    (tt const-decl "bool" light_bakery nil))
+   501 294 nil nil))
+ (ic_to_xx 0
+  (ic_to_xx-1 nil 3386654193 3506929575 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (ic const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (tc const-decl "bool" light_bakery nil)
+    (ii const-decl "bool" light_bakery nil))
+   357 268 nil nil))
+ (ci_to_xx 0
+  (ci_to_xx-1 nil 3386654193 3506929575 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (ci const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (ct const-decl "bool" light_bakery nil)
+    (ii const-decl "bool" light_bakery nil))
+   365 268 nil nil))
+ (tt_to_xx 0
+  (tt_to_xx-1 nil 3386654193 3506929576 ("" (grind) nil nil) proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (tt const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (tc const-decl "bool" light_bakery nil)
+    (ct const-decl "bool" light_bakery nil))
+   386 264 nil nil))
+ (tc_to_ti 0
+  (tc_to_ti-1 nil 3386654193 3506929576 ("" (grind) nil nil) proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (tc const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (ti const-decl "bool" light_bakery nil))
+   266 178 nil nil))
+ (ct_to_it 0
+  (ct_to_it-1 nil 3386654193 3506929576 ("" (grind) nil nil) proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (ct const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil)
+    (it const-decl "bool" light_bakery nil))
+   246 174 nil nil))
+ (r_is_r 0
+  (r_is_r-1 nil 3386654193 3506929578 ("" (grind) nil nil) proved
+   ((odd_plus_even_is_odd application-judgement "odd_int" integers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (ii const-decl "bool" light_bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (it const-decl "bool" light_bakery nil)
+    (ti const-decl "bool" light_bakery nil)
+    (ic const-decl "bool" light_bakery nil)
+    (ci const-decl "bool" light_bakery nil)
+    (tt const-decl "bool" light_bakery nil)
+    (tc const-decl "bool" light_bakery nil)
+    (ct const-decl "bool" light_bakery nil)
+    (reachable const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil))
+   1749 1330 nil nil))
+ (s_is_s 0
+  (s_is_s-1 nil 3386654193 3506929580 ("" (grind) nil nil) proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (odd_plus_even_is_odd application-judgement "odd_int" integers nil)
+    (/= const-decl "boolean" notequal nil)
+    (strong const-decl "bool" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (N const-decl "bool" light_bakery nil))
+   2278 1540 nil nil))
+ (useful1 0
+  (useful1-2 "" 3386784381 3506929581
+   (""
+    (abstract-and-mc "staterec" "[# pc1, pc2: location, a: bool #]"
+     (("a" "lambda(state): y1(state)=0")))
+    nil nil)
+   proved
+   ((N const-decl "bool" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" light_bakery nil))
+   932 648 t shostak)
+  (useful1-1 nil 3386654193 3386654259
+   ("" (abstract-and-mc ("lambda(state) :y1(state)=0")) nil nil) proved
+   ((N const-decl "bool" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" light_bakery nil))
+   1 0 nil nil))
+ (useful2 0
+  (useful2-2 "" 3386788801 3506929582
+   (""
+    (abstract-and-mc "staterec" "[# pc1, pc2: location, a: bool #]"
+     (("a" "lambda(state): y2(state)=0")))
+    nil nil)
+   proved
+   ((N const-decl "bool" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" light_bakery nil))
+   932 684 t shostak)
+  (useful2-1 nil 3386654193 3386654259
+   ("" (abstract-and-mc ("lambda(state) :y2(state)=0")) nil nil) proved
+   ((N const-decl "bool" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" light_bakery nil))
+   2 0 nil nil))
+ (equivthm1 0
+  (equivthm1-1 nil 3386654193 3506929582
+   ("" (grind :if-match nil)
+    (("" (inst -4 "lambda s: not INV!1(s)")
+      (("" (ground)
+        (("1" (reduce) nil nil)
+         ("2" (skosimp)
+          (("2" (ground) (("2" (skosimp) (("2" (reduce) nil nil)) nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((NOT const-decl "[bool -> bool]" booleans nil)
+    (pred type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (staterec type-eq-decl nil light_bakery nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (location type-decl nil light_bakery nil)
+    (CTLinvariant const-decl "bool" light_bakery nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (glb const-decl "pred[T]" mucalculus nil)
+    (member const-decl "bool" sets nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (mu const-decl "pred[T]" mucalculus nil)
+    (lfp const-decl "pred[T]" mucalculus nil)
+    (<= const-decl "bool" mucalculus nil)
+    (EX const-decl "bool" ctlops nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (invariant const-decl "bool" light_bakery nil))
+   248 140 nil nil))
+ (equivthm2 0
+  (equivthm2-1 nil 3386654193 3506929583
+   ("" (grind :if-match nil)
+    (("1" (postpone) nil nil)
+     ("2" (inst?)
+      (("2" (ground) (("2" (skosimp) (("2" (reduce) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil 280 126 t nil))
+ (safe 0
+  (safe-2 "" 3386789402 3506929585
+   (""
+    (abstract-and-mc "staterec"
+     "[# pc1, pc2: location, a, b, c: bool #]"
+     (("a" "lambda(state): y1(state)=0")
+      ("b" "lambda(state): y2(state)=0")
+      ("c" "lambda(state): y1(state) <= y2(state)")))
+    nil nil)
+   proved
+   ((N const-decl "bool" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" light_bakery nil))
+   2726 2172 t shostak)
+  (safe-1 nil 3386654193 3386654260
+   (""
+    (abstract-and-mc
+     ("lambda(state) :y1(state)=0" "lambda(state) :y2(state)=0"
+      "lambda(state) :y1(state) <= y2(state)"))
+    nil nil)
+   proved
+   ((N const-decl "bool" light_bakery nil)
+    (nextp2 const-decl "boolean" light_bakery nil)
+    (nextp1 const-decl "boolean" light_bakery nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" light_bakery nil))
+   2 0 nil nil))
+ (trans 0
+  (trans-2 "" 3386789486 3506929587
+   (""
+    (abstract-and-mc "staterec"
+     "[# pc1, pc2: location, a, b, c: bool #]"
+     (("a" "lambda(state): y1(state)=0")
+      ("b" "lambda(state): y2(state)=0")
+      ("c" "lambda(state): y1(state) <= y2(state)")))
+    (("" (postpone) nil nil)) nil)
+   unfinished nil 2218 1798 t shostak)
+  (trans-1 nil 3386654193 3386654260
+   (""
+    (abstract
+     ("lambda(state) :y1(state)=0" "lambda(state) :y2(state)=0"
+      "lambda(state) :y1(state) <= y2(state)"))
+    (("" (postpone) nil)) nil)
+   unfinished nil 3 10 nil nil))
+ (zozo 0
+  (zozo-2 "" 3386793585 3506929588
+   (""
+    (abstract "staterec" "[# pc1, pc2: location, a, b, c: bool #]"
+     (("a" "lambda(state): y1(state)=0")
+      ("b" "lambda(state): y2(state)=0")
+      ("c" "lambda(state): y1(state) <= y2(state)")))
+    (("1" (musimp) nil nil)
+     ("2" (hide 2)
+      (("2" (skosimp)
+        (("2"
+          (inst 1 "(# pc1 := astate!1`pc1, pc2 := astate!1`pc2,
+ y1 := if astate!1`a then 0 else 2 endif, 
+ y2:= if astate!1`b then 0 elsif astate!1`c then 2 else 1 endif #)")
+          (("2" (assert)
+            (("2" (lift-if)
+              (("2" (assert)
+                (("2" (ground)
+                  (("1" (lift-if) (("1" (assert) nil nil)) nil)
+                   ("2" (lift-if)
+                    (("2" (assert)
+                      (("2" (ground)
+                        (("1" (postpone) nil nil)
+                         ("2" (postpone) nil nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("3" (lift-if) (("3" (ground) nil nil)) nil)
+                   ("4" (lift-if)
+                    (("4" (ground) (("4" (postpone) nil nil)) nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil 290 166 t shostak)
+  (zozo-1 nil 3386654193 3386654260
+   (""
+    (interpret-and-prove
+     ("lambda(state):y1(state)=0" "lambda(state):y2(state)=0"
+      "lambda(state):y1(state)<=y2(state)"))
+    nil nil)
+   unfinished nil 7 0 nil nil)))
+

@@ -1,0 +1,212 @@
+(bakery
+ (first_try 0
+  (first_try-1 nil 3386654193 3506929564
+   ("" (expand "invariant")
+    (("" (ground)
+      (("1" (grind) nil nil)
+       ("2" (skosimp)
+        (("2" (expand "transitions")
+          (("2" (ground)
+            (("1" (expand "P1_transition")
+              (("1" (ground)
+                (("1" (grind) nil nil)
+                 ("2" (grind) (("2" (postpone) nil nil)) nil)
+                 ("3" (postpone) nil nil) ("4" (postpone) nil nil)
+                 ("5" (postpone) nil nil))
+                nil))
+              nil)
+             ("2" (postpone) nil nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil 238 170 nil nil))
+ (second_try 0
+  (second_try-1 nil 3386654193 3506929564
+   ("" (expand "invariant")
+    (("" (ground)
+      (("1" (grind) nil nil)
+       ("2" (skosimp)
+        (("2" (expand "transitions")
+          (("2" (ground)
+            (("1" (expand "P1_transition")
+              (("1" (ground)
+                (("1" (grind) nil nil) ("2" (grind) nil nil)
+                 ("3" (grind) (("3" (postpone) nil nil)) nil)
+                 ("4" (postpone) nil nil) ("5" (postpone) nil nil))
+                nil))
+              nil)
+             ("2" (postpone) nil nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil 362 282 nil nil))
+ (third_try 0
+  (third_try-1 nil 3386654193 3506929566 ("" (grind) nil nil) proved
+   ((odd_plus_even_is_odd application-judgement "odd_int" integers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (init const-decl "boolean" bakery nil)
+    (safe const-decl "boolean" bakery nil)
+    (/= const-decl "boolean" notequal nil)
+    (strong_safe const-decl "bool" bakery nil)
+    (inductive_safe const-decl "bool" bakery nil)
+    (P1_transition const-decl "boolean" bakery nil)
+    (P2_transition const-decl "boolean" bakery nil)
+    (transitions const-decl "bool" bakery nil)
+    (invariant const-decl "bool" bakery nil))
+   2033 1512 nil nil))
+ (init_simulation 0
+  (init_simulation-1 nil 3386654193 3506929566 ("" (grind) nil nil)
+   proved
+   ((init const-decl "boolean" bakery nil)
+    (abst const-decl "abstract_state" bakery nil)
+    (a_init const-decl "bool" bakery nil))
+   93 30 nil nil))
+ (trans_simulation 0
+  (trans_simulation-1 nil 3386654193 3506929568
+   ("" (skosimp)
+    (("" (expand "transitions")
+      (("" (ground)
+        (("1" (expand "P1_transition")
+          (("1" (ground)
+            (("1" (grind) nil nil) ("2" (grind) nil nil)
+             ("3" (grind) nil nil) ("4" (grind) nil nil)
+             ("5" (grind) nil nil) ("6" (grind) nil nil))
+            nil))
+          nil)
+         ("2" (expand "P2_transition")
+          (("2" (ground)
+            (("1" (grind) nil nil) ("2" (grind) nil nil)
+             ("3" (grind) nil nil) ("4" (grind) nil nil)
+             ("5" (grind) nil nil)
+             ("6" (grind)
+              (("1" (postpone) nil nil) ("2" (postpone) nil nil)) nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil 1240 925 t nil))
+ (extra 0
+  (extra-1 nil 3386654193 3506929568 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (init const-decl "boolean" bakery nil)
+    (not_eq const-decl "bool" bakery nil)
+    (P1_transition const-decl "boolean" bakery nil)
+    (P2_transition const-decl "boolean" bakery nil)
+    (transitions const-decl "bool" bakery nil)
+    (invariant const-decl "bool" bakery nil))
+   412 284 nil nil))
+ (strong_trans_simulation 0
+  (strong_trans_simulation-1 nil 3386654193 3506929570
+   ("" (skosimp)
+    (("" (expand "transitions")
+      (("" (ground)
+        (("1" (expand "P1_transition")
+          (("1" (apply (then (ground) (grind))) nil nil)) nil)
+         ("2" (expand "P2_transition")
+          (("2" (apply (then (ground) (grind))) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((transitions const-decl "bool" bakery nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (P1_transition const-decl "boolean" bakery nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (a_trans const-decl "bool" bakery nil)
+    (a_P2_transition const-decl "bool" bakery nil)
+    (a_P1_transition const-decl "bool" bakery nil)
+    (abst const-decl "abstract_state" bakery nil)
+    (invariant const-decl "bool" bakery nil)
+    (not_eq const-decl "bool" bakery nil)
+    (init const-decl "boolean" bakery nil)
+    (P2_transition const-decl "boolean" bakery nil)
+    (state type-eq-decl nil bakery nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (phase type-decl nil bakery nil))
+   1935 1630 nil nil))
+ (safety_preserved 0
+  (safety_preserved-1 nil 3386654193 3506929570 ("" (grind) nil nil)
+   proved
+   ((abst const-decl "abstract_state" bakery nil)
+    (a_safe const-decl "boolean" bakery nil)
+    (safe const-decl "boolean" bakery nil))
+   63 20 nil nil))
+ (abs_invariant_ctl 0
+  (abs_invariant_ctl-1 nil 3386654193 3506929570
+   ("" (model-check) nil nil) proved
+   ((a_init const-decl "bool" bakery nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EX const-decl "bool" ctlops nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (a_safe const-decl "boolean" bakery nil)
+    (a_P1_transition const-decl "bool" bakery nil)
+    (a_P2_transition const-decl "bool" bakery nil)
+    (a_trans const-decl "bool" bakery nil))
+   284 147 nil nil))
+ (auto_abstract 0
+  (auto_abstract-3 "" 3386784603 3506929573
+   (""
+    (abstract-and-mc "state" "abstract_state"
+     (("t1_is_0" "lambda (s): s`t1=0") ("t2_is_0" "lambda (s): s`t2=0")
+      ("t1_lt_t2" "lambda(s): s`t1 < s`t2")))
+    nil nil)
+   proved
+   ((transitions const-decl "bool" bakery nil)
+    (P2_transition const-decl "boolean" bakery nil)
+    (P1_transition const-decl "boolean" bakery nil)
+    (safe const-decl "boolean" bakery nil)
+    (a_safe const-decl "boolean" bakery nil)
+    (abst const-decl "abstract_state" bakery nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" bakery nil))
+   2799 2241 t shostak)
+  (auto_abstract-2 "" 3386746906 3386746906
+   (""
+    (abstract-and-mc "state" "abstract_state"
+     ("lambda (s): s`t1=0" "lambda (s): s`t2=0"
+      "lambda(s): s`t1 < s`t2"))
+    (("" (postpone) nil nil)) nil)
+   proved
+   ((transitions const-decl "bool" bakery nil)
+    (P2_transition const-decl "boolean" bakery nil)
+    (P1_transition const-decl "boolean" bakery nil)
+    (safe const-decl "boolean" bakery nil)
+    (a_safe const-decl "boolean" bakery nil)
+    (abst const-decl "abstract_state" bakery nil)
+    (K_conversion const-decl "T1" K_conversion nil)
+    (EX const-decl "bool" ctlops nil)
+    (EU const-decl "pred[state]" ctlops nil)
+    (EF const-decl "pred[state]" ctlops nil)
+    (AG const-decl "pred[state]" ctlops nil)
+    (init const-decl "boolean" bakery nil))
+   20714435 2340 t shostak)
+  (auto_abstract-1 nil 3386654193 3386654249
+   (""
+    (abstract-and-mc
+     ("lambda(s) :s`t1=0" "lambda(s) :s`t2=0"
+      "lambda(s) :s`t1 < s`t2 "))
+    nil nil)
+   unfinished nil 1 0 nil nil)))
+

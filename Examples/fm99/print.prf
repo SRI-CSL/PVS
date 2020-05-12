@@ -1,0 +1,6 @@
+(|sprint|)
+(|print|)
+(|gprint|)
+(|test|)
+(|sine| (|goo| "" (PROPAX) NIL NIL))
+

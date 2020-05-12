@@ -1,0 +1,172 @@
+(sum
+ (sum_nats_TCC1 0
+  (sum_nats_TCC1-1 nil 3446684136 3506929593 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   75 30 nil nil))
+ (sum_nats_TCC2 0
+  (sum_nats_TCC2-1 nil 3446684136 3506929593
+   ("" (termination-tcc) nil nil) proved nil 44 0 nil nil))
+ (test 0
+  (test-1 nil 3446684136 3506929593 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (odd_minus_odd_is_even application-judgement "even_int" integers
+     nil)
+    (even_minus_odd_is_odd application-judgement "odd_int" integers
+     nil)
+    (sum_nats def-decl "nat" sum nil))
+   98 60 nil nil))
+ (closed_form 0
+  (closed_form-1 nil 3446684136 3506929594
+   ("" (induct-and-simplify "n") nil nil) proved
+   ((number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (pred type-eq-decl nil defined_types nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (sum_nats def-decl "nat" sum nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (/= const-decl "boolean" notequal nil)
+    (nznum nonempty-type-eq-decl nil number_fields nil)
+    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nat_induction formula-decl nil naturalnumbers nil)
+    (nnrat_div_posrat_is_nnrat application-judgement "nonneg_rat"
+     rationals nil)
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
+    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
+    (posrat_div_posrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil))
+   295 226 nil nil))
+ (bigtest 0
+  (bigtest-1 nil 3446684136 3506929596 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (even_minus_odd_is_odd application-judgement "odd_int" integers
+     nil)
+    (odd_minus_odd_is_even application-judgement "even_int" integers
+     nil)
+    (sum_nats def-decl "nat" sum nil))
+   1830 1592 nil nil))
+ (biggertest 0
+  (biggertest-1 nil 3446684136 3506929601 ("" (grind) nil nil) proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (even_minus_odd_is_odd application-judgement "odd_int" integers
+     nil)
+    (odd_minus_odd_is_even application-judgement "even_int" integers
+     nil)
+    (sum_nats def-decl "nat" sum nil))
+   5473 5042 nil nil))
+ (hugetest 0
+  (hugetest-1 nil 3446684136 3506929601 ("" (postpone) nil nil)
+   unfinished nil 18 0 nil nil)))
+(summations
+ (summation_TCC1 0
+  (summation_TCC1-1 nil 3446684136 nil ("" (subtype-tcc) nil nil)
+   unchecked nil nil nil nil nil))
+ (summation_TCC2 0
+  (summation_TCC2-1 nil 3446684136 nil ("" (termination-tcc) nil nil)
+   unchecked nil nil nil nil nil))
+ (summation_nats 0
+  (summation_nats-1 nil 3446684136 nil
+   ("" (induct-and-simplify "n") nil nil) unfinished nil nil nil nil
+   nil))
+ (summation_nats_closed_form 0
+  (summation_nats_closed_form-1 nil 3446684136 nil
+   ("" (skosimp)
+    (("" (use* "summation_nats" "closed_form") (("" (assert) nil nil))
+      nil))
+    nil)
+   unfinished nil nil nil nil nil))
+ (summation_squares 0
+  (summation_squares-1 nil 3446684136 nil
+   ("" (induct-and-simplify "n") nil nil) unfinished nil nil nil nil
+   nil))
+ (summation_cubes 0
+  (summation_cubes-1 nil 3446684136 nil
+   ("" (induct-and-simplify "n") nil nil) unfinished nil nil nil nil
+   nil))
+ (summation_of_cubes_alt 0
+  (summation_of_cubes_alt-1 nil 3446684136 nil
+   ("" (skosimp)
+    (("" (rewrite "summation_nats_closed_form")
+      (("" (expand "square")
+        (("" (generalize "n!1" "n")
+          (("" (induct-and-simplify "n") nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   unfinished nil nil nil nil nil))
+ (summation_of_cubes_alt2 0
+  (summation_of_cubes_alt2-1 nil 3446684136 nil
+   (""
+    (grind :defs explicit :theories ("sum" "summations") :exclude
+     ("summation_of_cubes_alt"))
+    nil nil)
+   unfinished nil nil nil nil nil))
+ (summation_of_sum 0
+  (summation_of_sum-1 nil 3446684136 nil
+   ("" (induct-and-simplify "n") nil nil) unfinished nil nil nil nil
+   nil))
+ (subtype_test_TCC1 0
+  (subtype_test_TCC1-1 nil 3446684136 nil ("" (subtype-tcc)) unchecked
+   nil nil nil nil nil))
+ (subtype_test 0
+  (subtype_test-1 nil 3446684136 nil ("" (grind) nil nil) unfinished
+   nil nil nil nil nil))
+ (summation_of_nat_is_nat 0
+  (summation_of_nat_is_nat-1 nil 3446684136 nil
+   ("" (induct-and-simplify "n")
+    (("1" (lemma "int_plus_int_is_int") (("1" (inst?) nil nil)) nil)
+     ("2" (lemma "rat_plus_rat_is_rat") (("2" (inst?) nil nil)) nil))
+    nil)
+   unchecked nil nil nil nil nil))
+ (judgement_test 0
+  (judgement_test-1 nil 3446684136 nil ("" (grind) nil nil) unfinished
+   nil nil nil nil nil)))
+

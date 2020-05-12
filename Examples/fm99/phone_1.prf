@@ -1,0 +1,38 @@
+(phone_1
+ (FindAdd 0
+  (FindAdd-1 nil 3446684130 3506929560
+   ("" (grind :theories ("phone_1")) nil nil) proved
+   ((Addax formula-decl nil phone_1 nil)
+    (Findax formula-decl nil phone_1 nil))
+   83 36 nil nil))
+ (DelAdd 0
+  (DelAdd-1 nil 3446684130 3506929560
+   ("" (grind :theories ("phone_1"))
+    (("" (apply-extensionality)
+      (("" (delete 2)
+        (("" (lift-if) (("" (ground) (("" (postpone) nil))))))))))
+    nil)
+   unfinished nil 167 40 nil nil))
+ (DelAdd2 0
+  (DelAdd2-1 nil 3446684130 3506929560
+   ("" (grind :theories ("phone_1"))
+    (("" (apply-extensionality :hide? t) (("" (smash) nil)))) nil)
+   proved
+   ((N type-decl nil phone_1 nil)
+    (P nonempty-type-decl nil phone_1 nil)
+    (B type-eq-decl nil phone_1 nil) (n0 const-decl "P" phone_1 nil)
+    (Delax formula-decl nil phone_1 nil)
+    (Addax formula-decl nil phone_1 nil)
+    (Findax formula-decl nil phone_1 nil))
+   165 41 nil nil))
+ (DelAdd3 0
+  (DelAdd3-1 nil 3446684130 3506929560
+   ("" (grind :theories ("phone_1")) nil nil) proved
+   ((Addax formula-decl nil phone_1 nil)
+    (Delax formula-decl nil phone_1 nil))
+   30 20 nil nil))
+ (KnownAdd 0
+  (KnownAdd-1 nil 3446684130 3506929561
+   ("" (grind :theories ("phone_1")) (("" (postpone) nil)) nil)
+   unfinished nil 95 22 nil nil)))
+
