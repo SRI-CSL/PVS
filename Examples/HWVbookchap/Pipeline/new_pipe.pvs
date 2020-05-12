@@ -1,0 +1,79 @@
+% For HTML <xmp>
+new_pipe[addr, data, opcodes: TYPE+]: THEORY
+
+  BEGIN
+ 
+   IMPORTING time, signal
+
+   t: VAR time   
+
+   %% Input wires: decoded instruction fields
+     opcode: signal[opcodes]
+
+     src1: signal[addr]
+     src2: signal[addr]
+
+     dstn: signal[addr]
+
+   %% Controller generated pipeline abort signal to handle control hazards
+     stall: signal[bool]
+
+   %% Register file, the only externally visible part of the machine
+     regfile: signal[[addr -> data]]
+   
+   %% Internal registers %%
+   
+    % The Pipeline registers
+      dstnd, dstndd: signal[addr]
+      stalld, stalldd: signal[bool]
+      opcoded, opcodedd: signal[opcodes]
+
+    % Write back register
+      wbreg: signal[data]
+
+    % ALU input registers
+      opreg1, opreg2: signal[data]
+
+    % ALU 
+      aluop: [opcodes, data, data -> data]
+      aluout: signal[data]
+
+  
+    %% Specification of constraints on the signals
+  
+      dstnd_ax: AXIOM dstnd(t+1) = dstn(t)
+      dstndd_ax: AXIOM dstndd(t+1)= dstnd(t)
+
+      stalld_ax: AXIOM stalld(t+1) = stall(t)
+      stalldd_ax: AXIOM stalldd(t+1) = stalld(t)
+
+      opcoded_ax: AXIOM opcoded(t+1) = opcode(t)
+   
+      wbreg_ax: AXIOM wbreg(t+1) = aluout(t)
+
+      regfile_ax: AXIOM regfile(t+1) =
+                          IF stalldd(t) THEN regfile(t)
+                          ELSE regfile(t)
+                                 WITH [(dstndd(t)) := wbreg(t)] ENDIF
+      opreg1_ax: AXIOM opreg1(t+1) =
+                    IF src1(t) = dstnd(t) & NOT stalld(t)
+                       THEN aluout(t)
+                    ELSIF src1(t) = dstndd(t) & NOT stalldd(t)
+                          THEN wbreg(t)
+                    ELSE regfile(t)(src1(t)) ENDIF
+
+      opreg2_ax: AXIOM opreg2(t+1) =
+                   IF src2(t) = dstnd(t) & NOT stalld(t)
+                      THEN aluout(t)
+                   ELSIF src2(t) = dstndd(t) & NOT stalldd(t)
+                         THEN wbreg(t)
+                   ELSE regfile(t)(src2(t)) ENDIF
+
+      ALU_ax: AXIOM aluout(t) = aluop(opcoded(t), opreg1(t), opreg2(t))
+
+   correctness: THEOREM (FORALL t:
+    NOT(stall(t)) IMPLIES
+        regfile(t+3)(dstn(t)) =
+          aluop(opcode(t), regfile(t+2)(src1(t)), regfile(t+2)(src2(t))) )
+
+  END new_pipe

@@ -1,0 +1,9 @@
+% For HTML <xmp>
+signal[val: TYPE]: THEORY
+
+  BEGIN
+   IMPORTING time
+ 
+   signal: TYPE = [time -> val]
+
+  END signal

@@ -1,0 +1,36 @@
+% For HTML <xmp>
+traces [state: TYPE]: THEORY
+
+BEGIN
+
+  i, n: VAR nat
+
+  next_type: TYPE = function[state -> state]
+
+  next: VAR next_type
+
+  s: VAR state
+
+  next_to_the_n (next, s, n): RECURSIVE state =
+    IF n = 0 THEN s
+       ELSE next_to_the_n(next, next(s), n-1)
+    ENDIF
+  MEASURE (LAMBDA next, s, n: n)
+
+    next_to_the_n_lem_0: LEMMA
+      next_to_the_n(next, next(s), n) = next_to_the_n(next, s, n+1)
+
+ next_to_the_n_lem_1: LEMMA
+   next_to_the_n (next, s, n) =
+    IF n = 0 THEN s
+       ELSE next_to_the_n(next, next(s), n-1)
+    ENDIF
+
+  next_to_the_n_lem: LEMMA
+     n > 0 IMPLIES
+       next_to_the_n(next, s, n) = next(next_to_the_n(next, s, n-1))
+
+  trace(next, s): sequence[state] =
+    (LAMBDA i: next_to_the_n(next, s, i))
+
+END traces

@@ -1,0 +1,79 @@
+% For HTML <xmp>
+arbiter: THEORY
+
+BEGIN
+
+  % -- Preliminaries
+
+   i, j: VAR below[4]
+  
+
+  % -- State
+
+   state: TYPE = [below[4] -> [# request, persistent, token: bool #]]
+
+   s, s0, s1: VAR state
+
+   request(i)(s)   : bool = request(s(i))
+   persistent(i)(s): bool = persistent(s(i))
+   token(i)(s)     : bool = token(s(i))
+
+   IMPORTING MU@connectives[state]
+
+  % -- Definitions
+
+   override(k: upto[4]): RECURSIVE pred[state] =
+     IF k = 4 THEN FALSE
+     ELSE override(k + 1) OR (token(k) AND persistent(k)) ENDIF
+   MEASURE (LAMBDA (k: upto[4]): 4 - k)
+
+   grant(i): RECURSIVE pred[state] =
+     IF i = 0 THEN NOT override(0)
+     ELSE grant(i - 1) AND NOT request(i - 1) ENDIF
+   MEASURE i
+
+   ack(i): pred[state] = 
+     request(i) AND ((persistent(i) AND token(i)) OR grant(i))
+   
+  % -- Init
+
+   init: pred[state] =   
+     NOT persistent(0) AND NOT persistent(1) AND
+     NOT persistent(2) AND NOT persistent(3) AND
+     token(0) AND NOT token(1) AND NOT token(2) AND NOT token(3)
+
+  % -- Next state
+
+    next(s0, s1): bool =
+            token(0)(s1) = token(3)(s0)
+     &      token(1)(s1) = token(0)(s0)
+     &      token(2)(s1) = token(1)(s0)
+     &      token(3)(s1) = token(2)(s0)
+     & persistent(0)(s1) = (request(0) AND (persistent(0) OR token(0)))(s0)
+     & persistent(1)(s1) = (request(1) AND (persistent(1) OR token(1)))(s0)
+     & persistent(2)(s1) = (request(2) AND (persistent(2) OR token(2)))(s0)
+     & persistent(3)(s1) = (request(3) AND (persistent(3) OR token(3)))(s0)
+      
+  % -- Specs
+
+   IMPORTING MU@ctlops[state]
+
+   % No two acknowledge outputs are asserted simultaneously
+
+   th1: THEOREM 
+     init(s) IMPLIES
+       i /= j IMPLIES AG(next, NOT(ack(i) AND ack(j)))(s)
+
+   % Every persistent request is eventually acknowledged
+
+   th2: THEOREM
+     init(s) IMPLIES
+       AG(next, AF(next, request(i) IMPLIES ack(i)))(s)
+
+   % Acknowledge is not asserted without request
+
+   th3: THEOREM
+     init(s) IMPLIES
+       AG(next, ack(i) IMPLIES request(i))(s)  
+    
+END arbiter

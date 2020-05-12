@@ -1,0 +1,85 @@
+% For HTML <xmp>
+microrom_rewrite[wordt, addrt: TYPE+]: THEORY
+
+BEGIN
+
+IMPORTING hard2[wordt, addrt]
+
+  src0: LEMMA src(microrom(0)) = pc
+  dstn0: LEMMA dstn(microrom(0)) = mar
+  test0: LEMMA test(microrom(0)) = inc_microp
+  next0: LEMMA next(microrom(0)) = 0
+
+  src1: LEMMA src(microrom(1)) = mem
+  dstn1: LEMMA dstn(microrom(1)) = ir
+  test1: LEMMA test(microrom(1)) = inc_microp
+  next1: LEMMA next(microrom(1)) = 0
+
+  src2: LEMMA src(microrom(2)) = ir
+  dstn2: LEMMA dstn(microrom(2)) = mar
+  test2: LEMMA test(microrom(2)) = jop_microp
+  next2: LEMMA next(microrom(2)) = 0
+
+  src3: LEMMA src(microrom(3)) = none
+  dstn3: LEMMA dstn(microrom(3)) = none
+  test3: LEMMA test(microrom(3)) = jnz_microp
+  next3: LEMMA next(microrom(3)) = 10
+
+  src4: LEMMA src(microrom(4)) = ir
+  dstn4: LEMMA dstn(microrom(4)) = pc
+  test4: LEMMA test(microrom(4)) = jmp_microp
+  next4: LEMMA next(microrom(4)) = 0
+
+  src5: LEMMA src(microrom(5)) = acc
+  dstn5: LEMMA dstn(microrom(5)) = arg
+  test5: LEMMA test(microrom(5)) = jmp_microp
+  next5: LEMMA next(microrom(5)) = 12
+
+  src6: LEMMA src(microrom(6)) = acc
+  dstn6: LEMMA dstn(microrom(6)) = arg
+  test6: LEMMA test(microrom(6)) = jmp_microp
+  next6: LEMMA next(microrom(6)) = 13
+
+  src7: LEMMA src(microrom(7)) = mem
+  dstn7: LEMMA dstn(microrom(7)) = acc
+  test7: LEMMA test(microrom(7)) = jmp_microp
+  next7: LEMMA next(microrom(7)) = 10
+
+  src8: LEMMA src(microrom(8)) = acc
+  dstn8: LEMMA dstn(microrom(8)) = mem
+  test8: LEMMA test(microrom(8)) = jmp_microp
+  next8: LEMMA next(microrom(8)) = 10
+
+  src9: LEMMA src(microrom(9)) = none
+  dstn9: LEMMA dstn(microrom(9)) = none
+  test9: LEMMA test(microrom(9)) = inc_microp
+  next9: LEMMA next(microrom(9)) = 0
+
+  src10: LEMMA src(microrom(10)) = pc
+  dstn10: LEMMA dstn(microrom(10)) = alu_inc
+  test10: LEMMA test(microrom(10)) = inc_microp
+  next10: LEMMA next(microrom(10)) = 0
+
+  src11: LEMMA src(microrom(11)) = buf
+  dstn11: LEMMA dstn(microrom(11)) = pc
+  test11: LEMMA test(microrom(11)) = jmp_microp
+  next11: LEMMA next(microrom(11)) = 0
+
+  src12: LEMMA src(microrom(12)) = mem
+  dstn12: LEMMA dstn(microrom(12)) = alu_add
+  test12: LEMMA test(microrom(12)) = jmp_microp
+  next12: LEMMA next(microrom(12)) = 14
+
+  src13: LEMMA src(microrom(13)) = mem
+  dstn13: LEMMA dstn(microrom(13)) = alu_sub
+  test13: LEMMA test(microrom(13)) = inc_microp
+  next13: LEMMA next(microrom(13)) = 0
+
+  src14: LEMMA src(microrom(14)) = buf
+  dstn14: LEMMA dstn(microrom(14)) = acc
+  test14: LEMMA test(microrom(14)) = jmp_microp
+  next14: LEMMA next(microrom(14)) = 10
+
+
+
+END microrom_rewrite

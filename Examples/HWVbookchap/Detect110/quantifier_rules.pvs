@@ -1,0 +1,15 @@
+% For HTML <xmp>
+quantifier_rules: THEORY
+
+  BEGIN
+  IMPORTING signal
+
+   forall_and: LEMMA (FORALL (A, B: signal[bool]):
+                     (FORALL (t : time): A(t) & B(t)) =
+                     ((FORALL (t: time) : A(t)) &
+                      (FORALL (t : time) : B(t))))
+
+   forall_triv: LEMMA (FORALL (A : bool):
+                (FORALL (t : time) : A) = A)
+
+  END quantifier_rules

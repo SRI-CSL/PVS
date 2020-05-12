@@ -1,0 +1,26 @@
+% For HTML <xmp>
+wordth [wordt1, addrt1: TYPE+]: THEORY
+BEGIN
+
+ opcodet:
+
+ TYPE = {jump_op, jump_zero_op, add_op, sub_op, load_op, store_op, nop}
+ 
+ w1, w2: VAR wordt1	
+ instr_part: [wordt1 -> opcodet]
+ 
+ memt: TYPE = [addrt1 -> wordt1]
+
+  addr_part: [wordt1 -> addrt1]
+  word_add1: [wordt1 -> wordt1]
+  word_plus: [wordt1, wordt1 -> wordt1]
+  word_diff: [wordt1, wordt1 -> wordt1]
+  is_zero: [wordt1 -> bool]
+
+  anything: wordt1
+
+  word_axiom: AXIOM
+               (addr_part(w1) = addr_part(w2)) IMPLIES
+                      (addr_part(word_add1(w1)) = addr_part(word_add1(w2)))
+
+END wordth

@@ -1,0 +1,20 @@
+% For HTML <xmp>
+transition[state: TYPE+]: THEORY
+
+BEGIN
+
+ % -- Transitions consist of a Precondition and an Effect
+
+  transition: TYPE = [pred[state], [state -> state]]   
+  
+  t, t0, t1: VAR transition
+
+  pre(t)   : pred[state]    = proj_1(t)
+  effect(t): [state->state] = proj_2(t)
+
+ % -- Semantics of Transitions in terms of state predicates
+
+  [||](t)(s0, s1: state): bool =
+       (s1 = effect(t)(s0)) AND pre(t)(s0)
+
+END transition

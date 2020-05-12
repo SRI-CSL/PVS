@@ -1,0 +1,56 @@
+% For HTML <xmp>
+verification [wordt, addrt: TYPE+]: THEORY
+
+BEGIN
+
+IMPORTING trace_equiv,
+      wordth[wordt, addrt],
+      soft[wordt, addrt],
+      hard2[wordt, addrt],
+      verification_rewrites[wordt, addrt],
+      microrom_rewrite[wordt, addrt]
+    
+ hs: VAR hard_statet
+ ir, acc: VAR wordt
+ mpc: VAR microaddrt
+ opcode: VAR opcodet
+ i,j,k: VAR nat
+
+ iteratehard ((hs: hard_statet), (cycle: nat)): RECURSIVE hard_statet
+   = (IF cycle = 0 THEN hs
+      ELSE iteratehard(hardstep(hs), cycle-1) ENDIF)
+      MEASURE (LAMBDA hs, i: i)
+
+ start_condn ((hs: hard_statet)): bool
+   = (mpcp(hs) = 0)
+
+  visible_hard_state: TYPE = {hs: hard_statet | start_condn(hs)}
+
+  vhs: VAR visible_hard_state
+
+  oracle(vhs): nat =
+   LET opcode = instr_part((memp(vhs))(addr_part(pcp(vhs))))
+    IN IF jump_op?(opcode) THEN 4
+       ELSIF jump_zero_op?(opcode) THEN IF is_zero(accp(vhs)) THEN 5 ELSE 6 ENDIF
+       ELSIF load_op?(opcode) THEN 6
+       ELSIF store_op?(opcode) THEN 6
+       ELSIF add_op?(opcode) THEN 8
+       ELSIF nop?(opcode) THEN 5
+       ELSE 8 ENDIF
+
+  I(vhs): visible_hard_state = iteratehard(vhs, oracle(vhs))
+
+ abs (vhs): soft_statet
+   = (# mempart := memp(vhs),
+        pcpart := pcp(vhs),
+        accpart := accp(vhs) #)
+
+  mem_abs: LEMMA mempart(abs(vhs)) = memp(vhs)
+  pc_abs: LEMMA pcpart(abs(vhs)) = pcp(vhs)
+  acc_abs: LEMMA accpart(abs(vhs)) = accp(vhs)
+
+  verif: THEORY = trace_equiv[soft_statet, softstep,
+                              visible_hard_state, I,
+                              abs]
+
+END verification   

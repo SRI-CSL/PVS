@@ -1,0 +1,48 @@
+% For HTML <xmp>
+soft[wordt, addrt: TYPE+]: THEORY
+ BEGIN
+ IMPORTING wordth[wordt, addrt]
+ 
+ current_instr((pc: wordt), (mem: memt)): wordt = mem(addr_part(pc))
+ 
+ current_instr_type((pc: wordt), (mem: memt)):
+   opcodet = instr_part(current_instr(pc, mem))
+ 
+ current_instr_addr((pc: wordt), (mem: memt)):
+   addrt = addr_part(current_instr(pc, mem))
+
+  soft_update_mem((mem: memt), (pc: wordt), (acc: wordt)): memt =
+   CASES current_instr_type(pc, mem) OF
+      store_op: mem WITH [(addr_part(current_instr(pc, mem))) := acc]
+      ELSE mem ENDCASES
+  
+   soft_update_pc((mem: memt), (pc: wordt), (acc: wordt)): wordt =
+     CASES current_instr_type(pc, mem) OF
+       jump_op: (current_instr(pc, mem)),
+       jump_zero_op: IF is_zero(acc) THEN current_instr(pc, mem)
+                       ELSE word_add1(pc) ENDIF
+       ELSE word_add1(pc) ENDCASES
+   
+   soft_update_acc((mem: memt), (pc: wordt), (acc: wordt)): wordt =
+     LET
+       opcode = current_instr_type(pc, mem),
+       operand = mem(current_instr_addr(pc, mem))
+      IN
+       CASES opcode OF
+         load_op: operand,
+         add_op : word_plus(acc, operand),
+         sub_op : word_diff(acc, operand)
+         ELSE acc ENDCASES
+
+ 
+  soft_statet: TYPE = [# mempart: memt, pcpart: wordt, accpart: wordt #]
+ 
+  softstep((soft_state: soft_statet)): soft_statet =
+    LET
+       omem = mempart(soft_state), opc = pcpart(soft_state), oacc = accpart(soft_state)
+      IN
+      (# mempart := soft_update_mem(omem, opc, oacc),
+         pcpart := soft_update_pc(omem, opc, oacc),
+         accpart := soft_update_acc(omem, opc, oacc) #)
+
+END soft

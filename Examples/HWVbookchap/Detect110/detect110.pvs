@@ -1,0 +1,31 @@
+% For HTML <xmp>
+detect110: THEORY
+
+  BEGIN
+
+   IMPORTING components, quantifier_rules
+
+  t: VAR time
+
+  e, a, l1, l2, l3, q4, l5, l6, q7: VAR signal[bool]
+
+  detect110_spec(e, a): bool =
+    (FORALL t: a(t+2) = (NOT e(t+2) & e(t+1) & e(t)))
+
+  
+  detect110_imp(e, a): bool =
+    (EXISTS (l1, l2, l3, q4, l5, l6, q7):
+      (FORALL t: NOTp(e(t), l1(t)) &
+                 NOTp(l5(t), l6(t)) &
+                 ANDp(e(t), l5(t), l2(t)) &
+                 ANDp(e(t), l6(t), l3(t)) &
+                 DELAY(l2, q4) &
+                 DELAY(l3, q7) &
+                 ANDp(l1(t), q4(t), a(t)) &
+                 ORp(q4(t), q7(t), l5(t))))
+
+   detect110_correct: LEMMA
+      detect110_imp(e, a) IMPLIES detect110_spec(e, a)
+
+  END detect110
+

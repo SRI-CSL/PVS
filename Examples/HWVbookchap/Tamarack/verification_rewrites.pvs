@@ -1,0 +1,130 @@
+% For HTML <xmp>
+verification_rewrites[wordt, addrt: TYPE+]: THEORY
+
+BEGIN
+
+  IMPORTING hard2[wordt, addrt]
+
+  hs: VAR hard_statet
+        
+   mem_hard: LEMMA
+   memp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_mem(omem, minstrn, omar, busvalue)
+
+   pc_hard: LEMMA
+   pcp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_pc(opc, busvalue, minstrn)
+
+   acc_hard: LEMMA
+   accp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_acc(oacc, busvalue, minstrn)
+
+   ir_hard: LEMMA
+   irp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_ir(oir, busvalue, minstrn)
+
+   mar_hard: LEMMA
+   marp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_mar(omar, busvalue, minstrn)
+
+   arg_hard: LEMMA
+   argp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_arg(oarg, busvalue, minstrn)
+
+   buf_hard: LEMMA
+   bufp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_buf(oarg, busvalue, minstrn)
+
+   mpc_hard: LEMMA
+   mpcp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_mpc(ompc, oacc, oir, microrom(ompc))
+
+END verification_rewrites

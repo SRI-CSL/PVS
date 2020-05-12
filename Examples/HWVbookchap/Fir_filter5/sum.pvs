@@ -1,0 +1,19 @@
+% For HTML <xmp>
+sum[n: nat, m: upfrom[n]]: THEORY
+
+   BEGIN
+
+     f: VAR [subrange(n, m) -> real]
+     j: VAR subrange(n, m)
+
+     sum_rec(j, f): RECURSIVE real =
+       IF j = m THEN
+          f(m)
+       ELSE
+          f(j) + sum_rec(j + 1, f)
+       ENDIF
+     MEASURE m - j
+
+     sum(f): real = sum_rec(n, f)
+
+   END sum

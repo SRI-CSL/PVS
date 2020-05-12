@@ -1,0 +1,16 @@
+% For HTML <xmp>
+components: THEORY
+
+  BEGIN
+    IMPORTING signal
+
+  t: VAR time
+  i, j, i0, j0: VAR bool
+  e, a: VAR signal[bool]
+
+  NOTp(i, j): bool = (j IFF NOT i)
+  ANDp(i0, j0, i): bool = (i IFF (i0 & j0))
+  ORp(i0, j0, i): bool = (i IFF (i0 OR j0))
+  DELAY(e, a): bool = (FORALL t: (a(0) = FALSE) & (a(t+1) = e(t)))
+
+  END components

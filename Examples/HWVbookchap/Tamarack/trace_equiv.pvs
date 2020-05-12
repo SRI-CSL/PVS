@@ -1,0 +1,32 @@
+% For HTML <xmp>
+trace_equiv [Astate: TYPE, 
+             A: [Astate -> Astate],
+             Istate: TYPE,
+             I: [Istate -> Istate],
+             Abst:  (surjective?[Istate, Astate])]: THEORY
+BEGIN
+
+ASSUMING
+
+  Commutes: ASSUMPTION
+     FORALL (s: Istate): Abst(I(s)) = A(Abst(s))
+
+ENDASSUMING
+
+IMPORTING traces[Astate], traces[Istate]
+
+  r : VAR Astate
+  s : VAR Istate
+
+  Atrace(r): sequence[Astate] =
+    traces[Astate].trace(A, r)
+
+  Itrace(s): sequence[Istate] =
+    traces[Istate].trace(I, s)
+
+  trace_equiv_aux: LEMMA FORALL (i: nat):
+    map(Abst, Itrace(s))(i) = Atrace(Abst(s))(i)
+
+  trace_equiv: THEOREM map(Abst, Itrace(s)) = Atrace(Abst(s))
+
+END trace_equiv

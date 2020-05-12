@@ -1,0 +1,35 @@
+% For HTML <xmp>
+fir_filter5[w: [subrange(1, 5) -> real]]: THEORY
+
+BEGIN
+
+   IMPORTING time, signal[real], sum
+
+   t: VAR time
+
+  % -- Signal Declarations
+
+   x: signal
+   y: signal
+
+   D(i: subrange(1, 8)): signal
+
+  % -- Behavior
+
+   ax1: AXIOM FORALL (i: subrange(1, 4)): 
+                D(i)(t + 1) = w(i) * x(t)
+
+   ax2: AXIOM D(5)(t + 2) = w(5) * x(t)
+
+   ax3: AXIOM FORALL (i: subrange(6, 8)):
+                D(i)(t + 1) = D(10 - i)(t) + D(i - 1)(t)
+
+   ax4: AXIOM y(t) = D(1)(t) + D(8)(t)
+
+  % -- Invariant
+
+   fir_filter_char: THEOREM
+      FORALL (t: upfrom(5)):
+        y(t) = sum(LAMBDA (i: subrange(1, 5)): w(i) * x(t - i))
+
+END fir_filter5

@@ -1,0 +1,45 @@
+% For HTML <xmp>
+singlepulser: THEORY
+
+BEGIN
+
+   state: TYPE = [# x, dff: bool #]
+
+   s, curr, next: VAR state
+
+   x(s)  : bool = x(s)
+   dff(s): bool = dff(s)
+
+   IMPORTING MU@ctlops[state], MU@fairctlops[state], MU@connectives
+
+   rising_edge: pred[state] = x AND NOT dff
+
+   init: pred[state] = NOT dff
+  
+   N(curr, next): bool =
+     next = curr WITH [dff := x(curr)]
+
+   y: pred[state] = x AND NOT dff
+
+   is: VAR (init)
+
+  % -- A rising edge eventually leads to an output pulse:
+
+   char1: LEMMA
+     AG(N, rising_edge IMPLIES AF(N, y))
+       (is)
+
+  % -- There is at most one output pulse for each rising edge:
+
+    char2: LEMMA
+      AG(N, y IMPLIES AX(N, fairAU(N, NOT(y), rising_edge)(rising_edge)))
+        (is)
+
+  % -- There is at most one rising edge for each output pulse:
+
+    char3: LEMMA
+      AG(N, rising_edge IMPLIES
+              (NOT(y) IMPLIES AX(N, AU(N, NOT(rising_edge), y))))
+        (is)
+
+END singlepulser

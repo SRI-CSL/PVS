@@ -1,0 +1,223 @@
+% For HTML <xmp>
+hard2[wordt, addrt: TYPE+]: THEORY
+ BEGIN
+   IMPORTING wordth[wordt, addrt]
+ 
+ %% The Hardware
+ %% The ALU Instruction Codes
+
+% aluopt: TYPE = {inc, add, sub}
+ 
+  srcNdstn:
+    TYPE = {pc, mem, ir, acc,% source and destn for bus
+       buf,% source only
+       mar, arg, alu_add, alu_sub, alu_inc,% destn only
+       none}
+  
+  alu((aluop: srcNdstn), (arg1: wordt), (arg2: wordt)): wordt =
+    CASES aluop OF
+       alu_inc: word_add1(arg2),
+       alu_add: word_plus(arg1, arg2),
+       alu_sub: word_diff(arg1, arg2)
+       ELSE anything ENDCASES
+  
+  srconly: pred[[srcNdstn]] = (LAMBDA (x: srcNdstn): buf?(x))
+  
+  dstnonly: pred[[srcNdstn]] =
+    (LAMBDA (x: srcNdstn): CASES x OF
+                    mar : TRUE,
+                    arg : TRUE,
+                    alu_add: TRUE,
+                    alu_sub: TRUE,
+                    alu_inc: TRUE
+                    ELSE FALSE ENDCASES)
+  
+  fromt: TYPE = srcNdstn %{x: srcNdstn | NOT (dstnonly(x))}
+  
+  tot: TYPE = srcNdstn %{x: srcNdstn | NOT (srconly(x))}
+  
+  testt: TYPE = {inc_microp, jnz_microp, jop_microp, jmp_microp}
+  
+  microaddrt: TYPE = {i: nat | 0 <= i & i < 15} CONTAINING 0
+  
+  microinstrnt:
+    TYPE = [# src: fromt, dstn: tot, test: testt, next: microaddrt #]
+  
+  microrom: [microaddrt -> microinstrnt] =
+    (LAMBDA (mpc: microaddrt):
+      IF mpc = 0
+        THEN (# src := pc,
+                dstn := mar,
+                test := inc_microp,
+                next := 0 #)
+      ELSIF mpc = 1 THEN
+        (# src := mem,
+           dstn := ir,
+           test := inc_microp,
+           next := 0 #)
+      ELSIF mpc = 2 THEN
+        (# src := ir,
+           dstn := mar,
+           test := jop_microp,
+           next := 0 #)
+      ELSIF mpc = 3 THEN
+        (# src := none,
+           dstn := none,
+           test := jnz_microp,
+           next := 10 #)
+      ELSIF mpc = 4 THEN
+        (# src := ir,
+           dstn := pc,
+           test := jmp_microp,
+           next := 0 #)
+      ELSIF mpc = 5 THEN
+        (# src := acc,
+           dstn := arg,
+           test := jmp_microp,
+           next := 12 #)
+      ELSIF mpc = 6 THEN
+        (# src := acc,
+           dstn := arg,
+           test := jmp_microp,
+           next := 13 #)
+      ELSIF mpc = 7 THEN
+        (# src := mem,
+           dstn := acc,
+           test := jmp_microp,
+           next := 10 #)
+      ELSIF mpc = 8 THEN
+        (# src := acc,
+           dstn := mem,
+           test := jmp_microp,
+           next := 10 #)
+      ELSIF mpc = 9 THEN
+        (# src := none,
+           dstn := none,
+           test := inc_microp,
+           next := 0 #)
+      ELSIF mpc = 10 THEN
+        (# src := pc,
+           dstn := alu_inc,
+           test := inc_microp,
+           next := 0 #)
+      ELSIF mpc = 11 THEN
+        (# src := buf,
+           dstn := pc,
+           test := jmp_microp,
+           next := 0 #)
+      ELSIF mpc = 12 THEN
+        (# src := mem,
+           dstn := alu_add,
+           test := jmp_microp,
+           next := 14 #)
+      ELSIF mpc = 13 THEN
+        (# src := mem,
+           dstn := alu_sub,
+           test := inc_microp,
+           next := 0 #)
+      ELSE (# src := buf,
+           dstn := acc,
+           test := jmp_microp,
+           next := 10 #)
+ %    ELSE (# src := none, dstn := none, test := jmp_microp, next := 0 #)
+      ENDIF
+    )
+  
+   %The bus value
+   bus ((src: fromt), (memv: memt),
+        (pcv, accv, irv, marv, argv, bufv: wordt)): wordt =
+     CASES src OF
+      mem : memv(addr_part(marv)),
+      pc : pcv,
+      ir : irv,
+      mar: marv,
+      arg: argv,
+      buf: bufv,
+      acc: accv
+      ELSE anything ENDCASES
+ 
+   update_mem ((memv: memt), (minstrn: microinstrnt),
+               (mar, bus: wordt)): memt =
+     CASES (dstn(minstrn)) OF
+        mem: memv WITH [(addr_part(mar)) := bus]
+        ELSE memv ENDCASES
+
+   update_buf ((arg, bus: wordt), (minstrn: microinstrnt)): wordt =
+     alu(dstn(minstrn), arg, bus)
+   
+   update_arg ((argv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES (dstn(minstrn)) OF
+       arg: bus
+       ELSE argv ENDCASES
+
+   update_mar ((marv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       mar: bus
+       ELSE marv ENDCASES
+
+  rel_entry_point ((opcode: opcodet)): microaddrt =
+    CASES opcode OF
+       jump_zero_op: 0,
+       jump_op: 1,
+       add_op: 2,
+       sub_op: 3,
+       load_op: 4,
+       store_op: 5     
+       ELSE 7 ENDCASES
+
+
+  update_mpc ((mpc: microaddrt), (acc, ir: wordt),
+               (minstrn: microinstrnt)): nat =
+     CASES test(minstrn) OF
+       inc_microp: mpc+1,
+       jnz_microp: IF is_zero(acc) THEN mpc+1
+                     ELSE next(minstrn) ENDIF,
+       jop_microp: (mpc + 1) + rel_entry_point(instr_part(ir))
+       ELSE next(minstrn) ENDCASES
+
+  update_ir ((irv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       ir: bus
+       ELSE irv ENDCASES
+
+  update_acc ((accv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       acc: bus
+       ELSE accv ENDCASES
+
+  update_pc ((pcv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       pc: bus
+       ELSE pcv ENDCASES
+
+  hard_statet: TYPE =
+    [# memp: memt, pcp, accp, irp, marp, argp, bufp: wordt,
+                                           mpcp: microaddrt #]
+
+  hardstep ((hard_state: hard_statet)): hard_statet
+    = LET omem = memp(hard_state),
+          opc = pcp(hard_state),
+          oacc = accp(hard_state),
+          oir = irp(hard_state),
+          omar = marp(hard_state),
+          oarg = argp(hard_state),
+          obuf = bufp(hard_state),
+          ompc = mpcp(hard_state),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN
+        (# memp := update_mem(omem, minstrn, omar, busvalue),
+           pcp := update_pc(opc, busvalue, minstrn),
+           accp := update_acc(oacc, busvalue,  minstrn),
+           irp := update_ir(oir, busvalue, minstrn),
+           marp := update_mar(omar, busvalue, minstrn),
+           argp := update_arg(oarg, busvalue, minstrn),
+           bufp := update_buf(oarg, busvalue, minstrn),
+           mpcp := update_mpc(ompc, oacc, oir, microrom(ompc)) #)
+        
+       
+   
+
+  
+ END hard2
