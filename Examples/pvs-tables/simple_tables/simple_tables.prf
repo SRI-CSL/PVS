@@ -1,0 +1,833 @@
+(simple_tables
+ (sign_cond_TCC1 0
+  (sign_cond_TCC1-1 nil 3446684468 3506929828
+   ("" (subtype-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   143 68 nil nil))
+ (sign_cond_TCC2 0
+  (sign_cond_TCC2-1 nil 3446684468 3506929828
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   86 12 nil nil))
+ (sign_cond2_TCC1 0
+  (sign_cond2_TCC1-1 nil 3446684468 3506929828
+   ("" (subtype-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   63 26 nil nil))
+ (trad_cond_same 0
+  (trad_cond_same-1 nil 3446684468 3506929828
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_traditional const-decl "signs" simple_tables nil)
+    (sign_cond const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   90 36 nil nil))
+ (trad_cond2_same 0
+  (trad_cond2_same-1 nil 3446684468 3506929828
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_traditional const-decl "signs" simple_tables nil)
+    (sign_cond2 const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   101 46 nil nil))
+ (trad_vtable_same 0
+  (trad_vtable_same-1 nil 3446684468 3506929828
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_traditional const-decl "signs" simple_tables nil)
+    (sign_vtable const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   95 34 nil nil))
+ (trad_htable_same 0
+  (trad_htable_same-1 nil 3446684468 3506929829
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_traditional const-decl "signs" simple_tables nil)
+    (sign_htable const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   78 40 nil nil))
+ (vtables_same 0
+  (vtables_same-1 nil 3446684468 3506929829
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_vtable const-decl "signs" simple_tables nil)
+    (sign_vtable2 const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   63 30 nil nil))
+ (htables_same 0
+  (htables_same-1 nil 3446684468 3506929829
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_htable const-decl "signs" simple_tables nil)
+    (sign_htable2 const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   86 24 nil nil))
+ (calculate 0
+  (calculate-1 nil 3446684468 3506929829 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (minus_odd_is_odd application-judgement "odd_int" integers nil)
+    (minus_int_is_int application-judgement "int" integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (sign_htable const-decl "signs" simple_tables nil))
+   55 40 nil nil))
+ (h_enum_same 0
+  (h_enum_same-1 nil 3446684468 3506929829
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((minus_even_is_even application-judgement "even_int" integers nil)
+    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
+    (sign_fewh const-decl "signs" simple_tables nil)
+    (sign_fewh_enum const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (few_ints type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   82 28 nil nil))
+ (v_enum_same 0
+  (v_enum_same-1 nil 3446684468 3506929829
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((minus_even_is_even application-judgement "even_int" integers nil)
+    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
+    (sign_fewh const-decl "signs" simple_tables nil)
+    (sign_fewv_enum const-decl "signs" simple_tables nil)
+    (signs type-eq-decl nil simple_tables nil)
+    (few_ints type-eq-decl nil simple_tables nil)
+    (<= const-decl "bool" reals nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (>= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   69 34 nil nil)))
+(adt_tables
+ (value_alt_TCC1 0
+  (value_alt_TCC1-1 nil 3446684468 3506929829 ("" (grind) nil nil)
+   proved nil 80 38 nil nil))
+ (value_alt_TCC2 0
+  (value_alt_TCC2-1 nil 3446684468 3506929829 ("" (grind) nil nil)
+   proved nil 62 24 nil nil))
+ (same 0
+  (same-1 nil 3446684468 3506929829
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((bool nonempty-type-eq-decl nil booleans nil)
+    (value const-decl "bool" adt_tables nil)
+    (value_alt const-decl "bool" adt_tables nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (modes type-decl nil adt_tables nil))
+   86 54 nil nil)))
+(Parnas_examples
+ (Vector_0_TCC1 0
+  (Vector_0_TCC1-1 nil 3446684468 3506929829 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (minus_real_is_real application-judgement "real" reals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   71 30 nil nil))
+ (Vector_0_TCC2 0
+  (Vector_0_TCC2-1 nil 3446684468 3506929829 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   55 24 nil nil))
+ (Vector_0_TCC3 0
+  (Vector_0_TCC3-1 nil 3446684468 3506929829
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   63 24 nil nil))
+ (Vector_0_TCC4 0
+  (Vector_0_TCC4-1 nil 3446684468 3506929829
+   ("" (cond-coverage-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   34 10 nil nil))
+ (test0_1 0
+  (test0_1-1 nil 3446684468 3506929830
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
+    (real_plus_real_is_real application-judgement "real" reals nil)
+    (real_minus_real_is_real application-judgement "real" reals nil)
+    (Vector_0 const-decl "[real, real]" Parnas_examples nil)
+    (Vector_1 const-decl "[real, real]" Parnas_examples nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   137 108 nil nil))
+ (test1_2 0
+  (test1_2-1 nil 3446684468 3506929830
+   ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
+   proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
+    (real_plus_real_is_real application-judgement "real" reals nil)
+    (real_minus_real_is_real application-judgement "real" reals nil)
+    (Vector_1 const-decl "[real, real]" Parnas_examples nil)
+    (Vector_2 const-decl "[real, real]" Parnas_examples nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   152 94 nil nil))
+ (test_a 0
+  (test_a-1 nil 3446684468 3506929830 ("" (grind) nil nil) proved
+   ((odd_plus_even_is_odd application-judgement "odd_int" integers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (odd_minus_even_is_odd application-judgement "odd_int" integers
+     nil)
+    (posrat_plus_nnrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posrat_div_posrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (Vector_0 const-decl "[real, real]" Parnas_examples nil))
+   132 94 nil nil))
+ (test_b 0
+  (test_b-1 nil 3446684468 3506929830 ("" (grind) nil nil) proved
+   ((posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
+    (even_plus_even_is_even application-judgement "even_int" integers
+     nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (posrat_plus_nnrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (even_minus_even_is_even application-judgement "even_int" integers
+     nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posrat_div_posrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
+    (minus_even_is_even application-judgement "even_int" integers nil)
+    (Vector_1 const-decl "[real, real]" Parnas_examples nil))
+   101 90 nil nil))
+ (test_c 0
+  (test_c-1 nil 3446684468 3506929830 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (minus_real_is_real application-judgement "real" reals nil)
+    (posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (/= const-decl "boolean" notequal nil)
+    (Vector_2 const-decl "[real, real]" Parnas_examples nil))
+   154 68 nil nil))
+ (test_d 0
+  (test_d-1 nil 3446684468 3506929830 ("" (grind) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
+    (minus_even_is_even application-judgement "even_int" integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posrat_div_posrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (posrat_plus_nnrat_is_posrat application-judgement "posrat"
+     rationals nil)
+    (posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
+    (Vector_2 const-decl "[real, real]" Parnas_examples nil))
+   194 118 nil nil)))
+(two_d_tables
+ (normal2_TCC1 0
+  (normal2_TCC1-1 nil 3446684468 3506929830 ("" (subtype-tcc) nil nil)
+   proved ((/= const-decl "boolean" notequal nil)) 67 4 nil nil))
+ (normal2_TCC2 0
+  (normal2_TCC2-1 nil 3446684468 3506929830
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   99 34 nil nil))
+ (normal2_TCC3 0
+  (normal2_TCC3-1 nil 3446684468 3506929831
+   ("" (cond-coverage-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   79 24 nil nil))
+ (normal2_TCC4 0
+  (normal2_TCC4-1 nil 3446684468 3506929831 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (minus_real_is_real application-judgement "real" reals nil)
+    (real_minus_real_is_real application-judgement "real" reals nil))
+   83 24 nil nil))
+ (normal2_TCC5 0
+  (normal2_TCC5-1 nil 3446684468 3506929831 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (minus_real_is_real application-judgement "real" reals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_minus_real_is_real application-judgement "real" reals nil))
+   82 14 nil nil))
+ (normal2_TCC6 0
+  (normal2_TCC6-1 nil 3446684468 3506929831 ("" (subtype-tcc) nil nil)
+   proved ((/= const-decl "boolean" notequal nil)) 62 14 nil nil))
+ (normal2_TCC7 0
+  (normal2_TCC7-1 nil 3446684468 3506929831 ("" (subtype-tcc) nil nil)
+   proved ((/= const-decl "boolean" notequal nil)) 48 10 nil nil))
+ (normal2_TCC8 0
+  (normal2_TCC8-1 nil 3446684468 3506929831
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   95 28 nil nil))
+ (normal2_TCC9 0
+  (normal2_TCC9-1 nil 3446684468 3506929831
+   ("" (cond-coverage-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   77 24 nil nil))
+ (normal2_TCC10 0
+  (normal2_TCC10-1 nil 3446684468 3506929831 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_minus_real_is_real application-judgement "real" reals nil))
+   76 14 nil nil))
+ (normal2_TCC11 0
+  (normal2_TCC11-1 nil 3446684468 3506929831
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   110 32 nil nil))
+ (normal2_TCC12 0
+  (normal2_TCC12-1 nil 3446684468 3506929831
+   ("" (cond-coverage-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   77 18 nil nil))
+ (normal2_TCC13 0
+  (normal2_TCC13-1 nil 3446684468 3506929831
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   83 24 nil nil))
+ (normal2_TCC14 0
+  (normal2_TCC14-1 nil 3446684468 3506929831
+   ("" (cond-coverage-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   71 18 nil nil)))
+(blank_entries
+ (subp_TCC1 0
+  (subp_TCC1-1 nil 3446684468 3506929832 ("" (subtype-tcc) nil nil)
+   proved
+   ((minus_odd_is_odd application-judgement "odd_int" integers nil)) 57
+   10 nil nil))
+ (subp_TCC2 0
+  (subp_TCC2-1 nil 3446684468 3506929832 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (<= const-decl "bool" reals nil)
+    (int_plus_int_is_int application-judgement "int" integers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   142 68 nil nil))
+ (subp_TCC3 0
+  (subp_TCC3-1 nil 3446684468 3506929832 ("" (termination-tcc) nil nil)
+   proved
+   ((minus_odd_is_odd application-judgement "odd_int" integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil))
+   56 10 nil nil))
+ (subp_TCC4 0
+  (subp_TCC4-1 nil 3446684468 3506929832
+   ("" (cond-disjoint-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (<= const-decl "bool" reals nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   79 18 nil nil))
+ (subp_TCC5 0
+  (subp_TCC5-1 nil 3446684468 3506929832
+   ("" (cond-coverage-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (<= const-decl "bool" reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   79 24 nil nil))
+ (subp_blank2_TCC1 0
+  (subp_blank2_TCC1-1 nil 3446684468 3506929832
+   ("" (subtype-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (<= const-decl "bool" reals nil)
+    (int_plus_int_is_int application-judgement "int" integers nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   142 66 nil nil))
+ (subp_blank2_TCC2 0
+  (subp_blank2_TCC2-1 nil 3446684468 3506929832
+   ("" (termination-tcc) nil nil) proved
+   ((minus_odd_is_odd application-judgement "odd_int" integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil))
+   52 10 nil nil))
+ (bad_subp_TCC1 0
+  (bad_subp_TCC1-1 nil 3446684468 3506929832
+   ("" (cond-disjoint-tcc) nil nil) proved nil 45 10 nil nil))
+ (bad_subp_TCC2 0
+  (bad_subp_TCC2-1 nil 3446684468 3506929832
+   ("" (cond-coverage-tcc) (("" (postpone) nil nil)) nil) unfinished
+   nil 83 28 nil nil))
+ (bang 0
+  (bang-1 nil 3446684468 3506929832
+   ("" (expand "bad_subp") (("" (postpone) nil)) nil) unfinished nil 62
+   -2 nil nil)))
+

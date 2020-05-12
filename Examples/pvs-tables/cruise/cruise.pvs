@@ -1,0 +1,287 @@
+cruise: THEORY
+
+BEGIN
+
+  lever_pos: TYPE = {activate, deactivate, resume}
+  engine_state: TYPE = { off, ignition, running }
+  
+  monitored_vars: TYPE = [#
+                  engine:  engine_state,
+                  toofast: bool,
+                  brake:   bool,
+                  lever:   lever_pos
+                 #]
+
+  modes: TYPE = {off,inactive,cruise,override}
+
+  null: TYPE
+
+  IMPORTING scr[monitored_vars,modes,null]
+
+  ignited:    condition = LAMBDA (m:monitored_vars): 
+                             ignition?(engine(m)) OR running?(engine(m))
+  running:    condition = LAMBDA (m:monitored_vars): running?(engine(m))
+  brake  :    condition = LAMBDA (m:monitored_vars): brake(m)
+  activate:   condition = LAMBDA (m:monitored_vars): activate?(lever(m))
+  deactivate: condition = LAMBDA (m:monitored_vars): deactivate?(lever(m))
+  resume:     condition = LAMBDA (m:monitored_vars): resume?(lever(m))
+
+  toofast:    condition = LAMBDA (m:monitored_vars): toofast(m)
+
+  p: VAR monitored_vars
+
+  engine_prop: AXIOM toofast(p) => running(p)
+
+end cruise
+
+cruise_tab: THEORY
+BEGIN
+
+IMPORTING cruise
+
+  original(s:modes, (p, q:monitored_vars)): modes =
+  LET 
+    x: conds7 = 
+            (ignited, running, toofast, brake, activate, deactivate, resume),
+    X = (LAMBDA (a,b,c,d,e,f,g:EC): PC(a,b,c,d,e,f,g)(x)(p,q))
+  IN TABLE s
+   |off| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atT,  dc,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |off    ||
+      %----|----------------------------------------|------------||
+    ENDTABLE ||
+
+   |inactive| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(     T ,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |inactive||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+   |cruise| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc, atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc, atT,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc , dc , atT,  dc,  dc,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc , dc , dc , dc , atT,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |cruise  ||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+    |override| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T,  T ,  dc,  F ,  dc,  dc, atT      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |override||
+      % ---|----------------------------------------|------------||
+     ENDTABLE ||
+ENDTABLE
+
+  deterministic(s: modes, (p, q: monitored_vars)): modes =
+  LET 
+    x:conds7 = 
+            (ignited, running, toofast, brake, activate, deactivate, resume),
+    X = (LAMBDA (a,b,c,d,e,f,g:EC): PC(a,b,c,d,e,f,g)(x)(p,q))
+  IN TABLE s
+   |off| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atT,  dc,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |off    ||
+      %----|----------------------------------------|------------||
+    ENDTABLE ||
+
+   |inactive| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |inactive||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+   |cruise| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc, atT,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F , atT,  dc,  dc,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F ,  dc,  dc, atT,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |cruise  ||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+    |override| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  dc,  F ,  dc,  dc, atT      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |override||
+      % ---|----------------------------------------|------------||
+     ENDTABLE ||
+ENDTABLE
+
+  corrected(s: modes, (p, q: monitored_vars)): modes =
+  LET 
+    x:conds7 =
+           (ignited, running, toofast, brake, activate, deactivate, resume),
+    X = (LAMBDA (a,b,c,d,e,f,g:EC): PC(a,b,c,d,e,f,g)(x)(p,q))
+  IN TABLE s
+   |off| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atT,  dc,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |off    ||
+      %----|----------------------------------------|------------||
+    ENDTABLE ||
+
+   |inactive| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,   F,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |inactive||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+   |cruise| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc, atT,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F , atT,  dc,  dc,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F ,  dc,  dc, atT,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |cruise  ||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+    |override| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,   F,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,   F,  F ,  dc,  dc, atT      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |override||
+      % ---|----------------------------------------|------------||
+     ENDTABLE ||
+ENDTABLE
+
+END cruise_tab
+
+cruise_test:THEORY
+BEGIN
+
+  IMPORTING %MU@ctlops, 
+            cruise_tab
+  CONVERSION+ K_conversion
+
+  p,q,r: var state
+
+  init(p): bool = off?(p) and not ignited(p)
+
+  trans:transition_relation = trans(deterministic)
+
+  safe1: THEOREM init(p)
+           => AG(trans, (LAMBDA q: off?(q) => NOT ignited(q)))(p)
+
+  safe2: THEOREM init(p)
+           => AG(trans, (LAMBDA q: NOT off?(q) => ignited(q)))(p)
+
+  safe3: THEOREM init(p)                              % FALSE replace by 6
+           => AG(trans, (LAMBDA q: inactive?(q) => ignited(q)
+        AND NOT (running(q) and activate(q))))(p)
+
+  safe4: THEOREM init(p)                               % FALSE
+           => AG(trans, (LAMBDA q: cruise?(q) => 
+         ignited(q) & running(q) & NOT toofast(q) & NOT brake(q)
+         & NOT deactivate(q)))(p)
+
+  safe5: THEOREM init(p)
+      => AG(trans, (LAMBDA q: override?(q) => ignited(q) AND running(q)))(p)
+
+  safe6: THEOREM init(p)
+      => AG(trans, (LAMBDA q: inactive?(q) & ignited(q) & running(q)
+        & NOT toofast(q) & NOT brake(q) & NOT activate(q))
+        IMPLIES NOT EX(trans, (LAMBDA r: inactive?(r) & ignited(r) &
+               running(r) & NOT toofast(r) & NOT 
+                   brake(r) & activate(r))))(p)
+
+END cruise_test
+
+cruise_test2:THEORY
+BEGIN
+
+  IMPORTING %MU@ctlops, 
+            cruise_tab
+  CONVERSION+ K_conversion
+
+  p,q,r: var state
+
+  init(p): bool = off?(p) and not ignited(p)
+
+  trans:transition_relation = trans(corrected)
+
+  safe1: THEOREM init(p)
+           => AG(trans, (LAMBDA q: off?(q) => NOT ignited(q)))(p)
+
+  safe2: THEOREM init(p)
+           => AG(trans, (LAMBDA q: NOT off?(q) => ignited(q)))(p)
+
+  safe3: THEOREM init(p)                        % FALSE replace by 6
+           => AG(trans, (LAMBDA q: inactive?(q) => ignited(q)
+        AND NOT (running(q) and activate(q))))(p)
+
+  safe4: THEOREM init(p)
+           => AG(trans, (LAMBDA q: cruise?(q) => 
+         ignited(q) & running(q) & NOT toofast(q) & NOT brake(q)
+         & NOT deactivate(q)))(p)
+
+  safe5: THEOREM init(p)
+      => AG(trans, (LAMBDA q: override?(q) => ignited(q) AND running(q)))(p)
+
+  safe6: THEOREM init(p)
+      => AG(trans, (LAMBDA q: inactive?(q) & ignited(q) & running(q)
+        & NOT toofast(q) & NOT brake(q) & NOT activate(q))
+        IMPLIES NOT EX(trans, (LAMBDA r: inactive?(r) & ignited(r) &
+               running(r) & NOT toofast(r) & NOT 
+                   brake(r) & activate(r))))(p)
+
+END cruise_test2

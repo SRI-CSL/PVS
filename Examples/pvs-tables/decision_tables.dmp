@@ -1,0 +1,156 @@
+<html><h1>
+PVS dump file decision_tables.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+decision_tables.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (decision_tables.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: (patch2-test patch2) version 2.377
+
+$$$tablewise.pvs
+tablewise: THEORY
+
+BEGIN
+
+operational_procedures: TYPE = {Takeoff, Climb, Climb_Int_Level, Cruise}
+
+flight_phases: TYPE = {climb, cruise}
+
+Flightphase: VAR flight_phases
+AC_Alt, Acc_Alt, Alt_Target, prev_Alt_Target,Cruise_Level: VAR nat
+Alt_Capt_Hold: VAR bool  
+
+x,y:var nat
+
+GT(x,y):bool = x>y
+LT(x,y):bool = x<y
+EQ(x,y):bool = x=y
+NE(x,y):bool = x/=y
+GE(x,y):bool = x>=y
+LE(x,y):bool = x<=y
+;*(x,y):bool = true
+
+b:var bool
+
+true(b):bool = b
+false(b):bool = not b
+;*(b):bool = true
+
+decision_table(Flightphase, 
+               AC_Alt,
+               Acc_Alt,
+               Alt_Target, 
+               prev_Alt_Target,
+               Alt_Capt_Hold): operational_procedures = 
+LET X = (LAMBDA (a: pred[flight_phases]),
+                (b: pred[bool]),
+                (c: pred[[nat,nat]]),
+                (d: pred[bool]),
+                (e: pred[[nat,nat]]): 
+              a(Flightphase) &
+              b(AC_Alt > 400) &
+              c(AC_Alt,Acc_Alt) &
+              d(Alt_Capt_Hold) &
+              e(Alt_Target,prev_Alt_Target))
+IN TABLE
+
+%    Flightphase
+%       |     AC_Alt > 400
+%       |        |   cmp(AC_Alt,Acc_Alt)
+%       |        |      |   Alt_Capt_Hold
+%       |        |      |       |   cmp(Alt_Target,prev_Alt_Target)
+%       |        |      |       |       |
+%       |        |      |       |       |     Operational Procedure
+  %----------|-------|------|-------|-------|------------- ----%
+  | X(climb? , true  ,  LT  , false ,   * ) | Takeoff         ||
+   %----------|-------|------|-------|-------|------------------%
+  | X(climb? , true  ,  LT  , true  ,   GT) | Takeoff         ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? ,   *   ,  GE  , false ,   * ) | Climb           ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? ,   *   ,  GE  , true  ,   GT) | Climb           ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? ,   *   ,  *   , true  ,   * ) | Climb_Int_Level ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(cruise?,   *   ,  GT  , true  ,   EQ) | Cruise          ||
+  %----------|-------|------|-------|-------|------------------%
+ENDTABLE
+
+decision_table2(Flightphase, 
+               AC_Alt,
+               Acc_Alt,
+               Alt_Target, 
+               prev_Alt_Target,
+               Alt_Capt_Hold): operational_procedures = 
+LET X = (LAMBDA (a: pred[flight_phases]),
+                (b: pred[bool]),
+                (c: pred[[nat,nat]]),
+                (d: pred[bool]),
+                (e: pred[[nat,nat]]): 
+              a(Flightphase) &
+              b(AC_Alt > 400) &
+              c(AC_Alt,Acc_Alt) &
+              d(Alt_Capt_Hold) &
+              e(Alt_Target,prev_Alt_Target))
+IN TABLE
+
+%    Flightphase
+%       |     AC_Alt > 400
+%       |        |   cmp(AC_Alt,Acc_Alt)
+%       |        |      |   Alt_Capt_Hold
+%       |        |      |       |   cmp(Alt_Target,prev_Alt_Target)
+%       |        |      |       |       |
+%       |        |      |       |       |     Operational Procedure
+  %----------|-------|------|-------|-------|------------- ----%
+  | X(climb? , true  ,  LT  , false ,   * ) | Takeoff         ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? , true  ,  LT  , true  ,   GT) | Takeoff         ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? ,   *   ,  GE  , false ,   * ) | Climb           ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? ,   *   ,  GE  , true  ,   GT) | Climb           ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(climb? , false ,  LT  , true  ,   * ) | Climb_Int_Level ||
+  %----------|-------|------|-------|-------|------------------%
+  | X(cruise?,   *   ,  GT  , true  ,   EQ) | Cruise          ||
+  %----------|-------|------|-------|-------|------------------%
+  | ELSE                                    | Cruise          ||
+  %----------|-------|------|-------|-------|------------------%
+ENDTABLE
+
+test: THEOREM AC_Alt=Acc_Alt =>
+   decision_table2(cruise, AC_Alt, Acc_Alt,
+             Alt_Target, prev_Alt_Target, Alt_Capt_Hold)
+      = Cruise
+
+test2: THEOREM AC_Alt=Acc_Alt =>
+   decision_table2(climb, AC_Alt, Acc_Alt,
+             Alt_Target, prev_Alt_Target, Alt_Capt_Hold)
+      = Climb
+
+END tablewise
+
+$$$tablewise.prf
+(|tablewise|
+ (|decision_table_TCC1| "" (GRIND :EXCLUDE ("<" ">" "<=" ">="))
+  (("1" (HIDE -1 -2 -3 -4 -5) (("1" (POSTPONE) NIL)))
+   ("2" (HIDE -1 -2 -3 -4 -5) (("2" (POSTPONE) NIL)))))
+ (|decision_table_TCC2| "" (GRIND :EXCLUDE ("<" ">" "<=" ">="))
+  (("1" (HIDE -1 -2 -3 -4 -5) (("1" (POSTPONE) NIL)))
+   ("2" (HIDE -1 -2 -3 -4 -5) (("2" (POSTPONE) NIL)))
+   ("3" (HIDE -1 -2 -3 -4 -5) (("3" (POSTPONE) NIL)))
+   ("4" (HIDE -1 -2 -3 -4 -5) (("4" (POSTPONE) NIL)))))
+ (|decision_table2_TCC1| "" (GRIND) NIL) (|test| "" (GRIND) NIL)
+ (|test2| "" (GRIND) (("" (POSTPONE) NIL))))(|tablewise2|
+                                             (|decision_table2_TCC1|
+                                              ""
+                                              (COND-DISJOINT-TCC))
+                                             (|decision_table2_TCC2|
+                                              ""
+                                              (COND-COVERAGE-TCC)))

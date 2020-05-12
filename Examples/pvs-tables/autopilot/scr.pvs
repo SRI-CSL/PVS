@@ -1,0 +1,87 @@
+scr[input,mode,output:type]:THEORY
+
+BEGIN
+
+  condition: TYPE = pred[input]
+
+  event: TYPE = pred[[input, input]]
+
+  event_constructor: TYPE = [condition -> event]
+
+  EC: TYPE = event_constructor
+
+  p,q: VAR input
+
+  P: VAR condition
+
+% define event constructors
+
+  atT(P)(p,q): bool = NOT P(p) & P(q)      % @T(P)
+  atF(P)(p,q): bool = P(p) & NOT P(q)      % @F(P)
+  T(P)(p,q):   bool = P(p) & P(q)
+  F(P)(p,q):   bool = NOT P(p) & NOT P(q)
+  dc(P)(p,q):  bool = true                 % don't care
+
+  mode_table: TYPE = [mode, input, input -> mode]
+
+  state: TYPE = [# mode: mode, vars: input #]
+
+  transition_relation: TYPE = pred[[state, state]]
+
+  trans(mt: mode_table): transition_relation =
+    (LAMBDA (s,t:state): mode(t) = mt(mode(s), vars(s), vars(t)))
+
+  liftc(c:condition): pred[state] = LAMBDA (s:state): c(vars(s))
+  CONVERSION liftc
+
+  liftm(m: pred[mode]): pred[state] = LAMBDA (s:state): m(mode(s))
+  CONVERSION liftm
+
+  conds1:type = [condition]
+  conds2:type = [condition, condition]
+  conds3:type = [condition, condition, condition]
+  conds4:type = [condition, condition, condition, condition]
+  conds5:type = [condition, condition, condition, condition, condition]
+  conds6:type = [condition, condition, condition, condition,
+                     condition, condition]
+  conds7:type = [condition, condition, condition, condition,
+                     condition, condition, condition]
+  conds8:type = [condition, condition, condition, condition,
+                     condition, condition, condition, condition]
+  conds9:type = [condition, condition, condition, condition,
+                     condition, condition, condition, condition, condition]
+  conds10:type = [condition, condition, condition, condition, condition,
+                     condition, condition, condition, condition, condition]
+
+  A,B,C,D,E,FF,G,H,I,J: VAR EC
+
+  a,b,c,d,e,f,g,h,i,j: VAR condition
+
+  PC(A)(a)(p,q):bool = A(a)(p,q)
+
+  PC(A,B)(a,b)(p,q):bool = A(a)(p,q) & B(b)(p,q)
+
+  PC(A,B,C)(a,b,c)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q)
+
+  PC(A,B,C,D)(a,b,c,d)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q) & D(d)(p,q)
+
+  PC(A,B,C,D,E)(a,b,c,d,e)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q) &
+      D(d)(p,q) & E(e)(p,q)
+
+  PC(A,B,C,D,E,FF)(a,b,c,d,e,f)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q)
+
+  PC(A,B,C,D,E,FF,G)(a,b,c,d,e,f,g)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H)(a,b,c,d,e,f,g,h)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q) & H(h)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H,I)(a,b,c,d,e,f,g,h,i)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q) & H(h)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H,I,J)(a,b,c,d,e,f,g,h,i,j)(p,q):bool = A(a)(p,q) &
+      B(b)(p,q) & C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) &
+      G(g)(p,q) & H(h)(p,q) 
+
+END scr

@@ -1,0 +1,263 @@
+<html><h1>
+PVS dump file autopilot.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+autopilot.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (autopilot.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: (patch2-test patch2) version 2.377
+
+$$$autopilot.pvs
+linkedmodes: THEORY
+
+BEGIN
+
+  modes: TYPE = {off, armed, on}
+
+  combined_modes: TYPE = [# climbmode, levelmode:  modes #] 
+
+  m, n: VAR combined_modes
+
+  Coff(m): bool =  off?(climbmode(m))
+  Carm(m): bool =  armed?(climbmode(m))
+  Con(m):  bool =  on?(climbmode(m))
+
+  Loff(m): bool =  off?(levelmode(m))
+  Larm(m): bool =  armed?(levelmode(m))
+  Lon(m):  bool =  on?(levelmode(m))
+
+  monitored_vars: TYPE = [# Cbutton, Lbutton: bool #]
+
+  p, q: VAR monitored_vars
+
+  null: TYPE
+
+  IMPORTING MU@ctlops, scr[monitored_vars, combined_modes, null]
+
+  r, s, t: VAR state
+
+  Cbutton: condition = LAMBDA p: Cbutton(p)
+  Lbutton: condition = LAMBDA p: Lbutton(p)
+
+  Ctransition(s,t): bool =
+    LET x: conds2 = (Cbutton, Lbutton),
+        X = (LAMBDA (a,b:EC): PC(a,b)(x)(vars(s),vars(t)))
+    IN TABLE climbmode(mode(s))
+      |off| TABLE
+        %---------------------------------%
+        |X( atT, dc) | Carm(t) OR Con(t) ||
+        %---------------------------------%
+        |ELSE        | Coff(t)           ||
+        %---------------------------------%
+        ENDTABLE ||
+
+      |armed| TABLE
+        %---------------------------------%
+        |X( atT, dc) | Coff(t)           ||
+        %---------------------------------%
+        |ELSE        | Carm(t) OR Con(t) ||
+        %---------------------------------%
+        ENDTABLE ||
+
+      |on| TABLE
+        %---------------------------------%
+        |X( atT, dc) | Coff(t)           ||
+        %---------------------------------%
+        |ELSE        | Carm(t) OR Con(t) ||
+        %---------------------------------%
+        ENDTABLE ||
+     ENDTABLE
+
+  Ltransition(s, t): bool =
+    LET x: conds2 = (Cbutton, Lbutton),
+        X = (LAMBDA (a,b:EC): PC(a,b)(x)(vars(s),vars(t)))
+    IN TABLE levelmode(mode(s))
+      |off| TABLE
+        %---------------------------------%
+        |X( dc, atT) | Larm(t) OR Lon(t) ||
+        %---------------------------------%
+        |ELSE        | Loff(t)           ||
+        %---------------------------------%
+        ENDTABLE ||
+
+      |ELSE| TABLE
+        %---------------------------------%
+        |X( dc, atT) | Loff(t)           ||
+        %---------------------------------%
+        |ELSE        | Larm(t) OR Lon(t) ||
+        %---------------------------------%
+        ENDTABLE ||
+     ENDTABLE
+
+  exclude(s): bool = (Con(s) IFF Lon(s)) AND NOT (Carm(s) AND Larm(s))
+
+  req(s,t): bool =
+      (Ctransition(s,t) OR Ltransition(s,t)) AND exclude(s) AND exclude(t)
+
+  init(s): bool = Coff(s) AND Loff(s)
+
+  safe1: THEOREM init(s) => AG(req, (LAMBDA t: Con(t) => Lon(t)))(s)
+
+  safe2: THEOREM init(s) => AG(req, (LAMBDA t: NOT (Carm(t) & Larm(t))))(s)
+
+  live1: THEOREM init(s) => EF(req, (LAMBDA t: Carm(t) & Loff(t)))(s)
+
+  live2: THEOREM init(s) => EF(req, (LAMBDA t: Con(t) & Lon(t)))(s)
+
+  P: VAR condition
+
+  Phase1(s, t): bool = 
+    LET atT = (LAMBDA P: atT(P)(vars(s),vars(t))),
+        climbmode = (LAMBDA s: climbmode(mode(s))),
+        levelmode = (LAMBDA s: levelmode(mode(s)))
+    IN
+        IF atT(Cbutton) THEN
+           If Coff(s) THEN Carm(t) ELSE Coff(t) ENDIF
+        ELSE climbmode(s) = climbmode(t)
+        ENDIF  
+       OR
+        IF atT(Lbutton) THEN
+           If Loff(s) THEN Larm(t) ELSE Loff(t) ENDIF
+        ELSE levelmode(t) = levelmode(s)
+        ENDIF  
+
+  Phase2(s, t): bool = 
+    LET climbmode = (LAMBDA s: climbmode(mode(s))),
+        levelmode = (LAMBDA s: levelmode(mode(s)))
+    IN
+       IF NOT (Coff(s) OR Loff(s)) THEN Con(t) AND Lon(t)
+       ELSIF Coff(s) AND Lon(s) THEN Coff(t) AND Larm(t)
+       ELSIF Loff(s) AND Con(s) THEN Loff(t) AND Carm(t)
+       ELSE  climbmode(t) = climbmode(s)
+             AND levelmode(t) = levelmode(s) 
+       ENDIF
+     AND Cbutton(t) = Cbutton(s) 
+     AND Lbutton(s) = Lbutton(t)
+
+  impl(s, t): bool = (EXISTS r: Phase1(s, r) AND Phase2(r, t))
+
+  safe1_i: THEOREM init(s) => AG(impl, (LAMBDA r: Con(r) => Lon(r)))(s)
+
+  safe2_i: THEOREM init(s) => AG(impl, (LAMBDA r: NOT (Carm(r) & Larm(r))))(s)
+
+  live1_i: THEOREM init(s) => EF(impl, (LAMBDA r: Carm(r) & Loff(r)))(s)
+
+  live2_i: THEOREM init(s) => EF(impl, (LAMBDA r: Con(r) & Lon(r)))(s)
+
+  A, B: VAR transition_relation
+
+  super(A,B)(s:state):bool = AG(B, (LAMBDA t: AX(B, (LAMBDA r: A(t,r)))(t)))(s)
+
+  req_impl: LEMMA init(s) => super(req,impl)(s)
+
+  impl_req: LEMMA init(s) => super(impl,req)(s)
+
+END linkedmodes
+
+$$$autopilot.prf
+(|linkedmodes|
+ (|safe1| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|safe2| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|live1| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|live2| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|safe1_i| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|safe2_i| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|live1_i| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|live2_i| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|req_impl| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL)))
+ (|impl_req| "" (AUTO-REWRITE-THEORY "scr" :DEFS T) (("" (MODEL-CHECK) NIL))))
+
+$$$scr.pvs
+scr[input,mode,output:type]:THEORY
+
+BEGIN
+
+  condition: TYPE = pred[input]
+
+  event: TYPE = pred[[input, input]]
+
+  event_constructor: TYPE = [condition -> event]
+
+  EC: TYPE = event_constructor
+
+  p,q: VAR input
+
+  P: VAR condition
+
+% define event constructors
+
+  atT(P)(p,q): bool = NOT P(p) & P(q)      % @T(P)
+  atF(P)(p,q): bool = P(p) & NOT P(q)      % @F(P)
+  T(P)(p,q):   bool = P(p) & P(q)
+  F(P)(p,q):   bool = NOT P(p) & NOT P(q)
+  dc(P)(p,q):  bool = true                 % don't care
+
+  mode_table: TYPE = [mode, input, input -> mode]
+
+  state: TYPE = [# mode: mode, vars: input #]
+
+  transition_relation: TYPE = pred[[state, state]]
+
+  trans(mt: mode_table): transition_relation =
+    (LAMBDA (s,t:state): mode(t) = mt(mode(s), vars(s), vars(t)))
+
+  liftc(c:condition): pred[state] = LAMBDA (s:state): c(vars(s))
+  CONVERSION liftc
+
+  liftm(m: pred[mode]): pred[state] = LAMBDA (s:state): m(mode(s))
+  CONVERSION liftm
+
+  conds1:type = [condition]
+  conds2:type = [condition, condition]
+  conds3:type = [condition, condition, condition]
+  conds4:type = [condition, condition, condition, condition]
+  conds5:type = [condition, condition, condition, condition, condition]
+  conds6:type = [condition, condition, condition, condition,
+                     condition, condition]
+  conds7:type = [condition, condition, condition, condition,
+                     condition, condition, condition]
+  conds8:type = [condition, condition, condition, condition,
+                     condition, condition, condition, condition]
+  conds9:type = [condition, condition, condition, condition,
+                     condition, condition, condition, condition, condition]
+  conds10:type = [condition, condition, condition, condition, condition,
+                     condition, condition, condition, condition, condition]
+
+  A,B,C,D,E,FF,G,H,I,J: VAR EC
+
+  a,b,c,d,e,f,g,h,i,j: VAR condition
+
+  PC(A)(a)(p,q):bool = A(a)(p,q)
+
+  PC(A,B)(a,b)(p,q):bool = A(a)(p,q) & B(b)(p,q)
+
+  PC(A,B,C)(a,b,c)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q)
+
+  PC(A,B,C,D)(a,b,c,d)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q) & D(d)(p,q)
+
+  PC(A,B,C,D,E)(a,b,c,d,e)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q) &
+      D(d)(p,q) & E(e)(p,q)
+
+  PC(A,B,C,D,E,FF)(a,b,c,d,e,f)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q)
+
+  PC(A,B,C,D,E,FF,G)(a,b,c,d,e,f,g)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H)(a,b,c,d,e,f,g,h)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q) & H(h)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H,I)(a,b,c,d,e,f,g,h,i)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q) & H(h)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H,I,J)(a,b,c,d,e,f,g,h,i,j)(p,q):bool = A(a)(p,q) &
+      B(b)(p,q) & C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) &
+      G(g)(p,q) & H(h)(p,q) 
+
+END scr

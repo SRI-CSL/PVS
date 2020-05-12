@@ -1,0 +1,557 @@
+<html><h1>
+PVS dump file cruise.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+cruise.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (cruise.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: (patch2-test patch2) version 2.377
+
+$$$cruise.pvs
+cruise: THEORY
+
+BEGIN
+
+  lever_pos: TYPE = {activate, deactivate, resume}
+  engine_state: TYPE = { off, ignition, running }
+  
+  monitored_vars: TYPE = [#
+                  engine:  engine_state,
+                  toofast: bool,
+                  brake:   bool,
+                  lever:   lever_pos
+                 #]
+
+  modes: TYPE = {off,inactive,cruise,override}
+
+  null: TYPE
+
+  IMPORTING scr[monitored_vars,modes,null]
+
+  ignited:    condition = LAMBDA (m:monitored_vars): 
+                             ignition?(engine(m)) OR running?(engine(m))
+  running:    condition = LAMBDA (m:monitored_vars): running?(engine(m))
+  brake  :    condition = LAMBDA (m:monitored_vars): brake(m)
+  activate:   condition = LAMBDA (m:monitored_vars): activate?(lever(m))
+  deactivate: condition = LAMBDA (m:monitored_vars): deactivate?(lever(m))
+  resume:     condition = LAMBDA (m:monitored_vars): resume?(lever(m))
+
+  toofast:    condition = LAMBDA (m:monitored_vars): toofast(m)
+
+  p: VAR monitored_vars
+
+  engine_prop: AXIOM toofast(p) => running(p)
+
+end cruise
+
+cruise_tab: THEORY
+BEGIN
+
+IMPORTING cruise
+
+  original(s:modes, (p, q:monitored_vars)): modes =
+  LET 
+    x: conds7 = 
+            (ignited, running, toofast, brake, activate, deactivate, resume),
+    X = (LAMBDA (a,b,c,d,e,f,g:EC): PC(a,b,c,d,e,f,g)(x)(p,q))
+  IN TABLE s
+   |off| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atT,  dc,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |off    ||
+      %----|----------------------------------------|------------||
+    ENDTABLE ||
+
+   |inactive| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(     T ,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |inactive||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+   |cruise| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc, atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc, atT,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc , dc , atT,  dc,  dc,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc , dc , dc , dc , atT,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |cruise  ||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+    |override| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T,  T ,  dc,  F ,  dc,  dc, atT      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |override||
+      % ---|----------------------------------------|------------||
+     ENDTABLE ||
+ENDTABLE
+
+  deterministic(s: modes, (p, q: monitored_vars)): modes =
+  LET 
+    x:conds7 = 
+            (ignited, running, toofast, brake, activate, deactivate, resume),
+    X = (LAMBDA (a,b,c,d,e,f,g:EC): PC(a,b,c,d,e,f,g)(x)(p,q))
+  IN TABLE s
+   |off| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atT,  dc,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |off    ||
+      %----|----------------------------------------|------------||
+    ENDTABLE ||
+
+   |inactive| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |inactive||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+   |cruise| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc, atT,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F , atT,  dc,  dc,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F ,  dc,  dc, atT,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |cruise  ||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+    |override| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  dc,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  dc,  F ,  dc,  dc, atT      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |override||
+      % ---|----------------------------------------|------------||
+     ENDTABLE ||
+ENDTABLE
+
+  corrected(s: modes, (p, q: monitored_vars)): modes =
+  LET 
+    x:conds7 =
+           (ignited, running, toofast, brake, activate, deactivate, resume),
+    X = (LAMBDA (a,b,c,d,e,f,g:EC): PC(a,b,c,d,e,f,g)(x)(p,q))
+  IN TABLE s
+   |off| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atT,  dc,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |off    ||
+      %----|----------------------------------------|------------||
+    ENDTABLE ||
+
+   |inactive| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,   F,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |inactive||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+   |cruise| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  dc, atT,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F , atT,  dc,  dc,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,  F ,  dc,  dc, atT,  dc      )|override||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |cruise  ||
+      %----|----------------------------------------|------------||
+     ENDTABLE ||
+
+    |override| TABLE
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(   atF,  dc,  dc,  dc,  dc,  dc,  dc      )|off     ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    T , atF,  dc,  dc,  dc,  dc,  dc      )|inactive||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,   F,  F , atT,  dc,  dc      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |X(    dc,  T ,   F,  F ,  dc,  dc, atT      )|cruise  ||
+      %----|----|----|----|----|----|----|----|-----|------------||
+      |    ELSE                                     |override||
+      % ---|----------------------------------------|------------||
+     ENDTABLE ||
+ENDTABLE
+
+END cruise_tab
+
+cruise_test:THEORY
+BEGIN
+
+  IMPORTING MU@ctlops, cruise_tab
+
+  p,q,r: var state
+
+  init(p): bool = off?(p) and not ignited(p)
+
+  trans:transition_relation = trans(deterministic)
+
+  safe1: THEOREM init(p)
+           => AG(trans, (LAMBDA q: off?(q) => NOT ignited(q)))(p)
+
+  safe2: THEOREM init(p)
+           => AG(trans, (LAMBDA q: NOT off?(q) => ignited(q)))(p)
+
+  safe3: THEOREM init(p)                              % FALSE replace by 6
+           => AG(trans, (LAMBDA q: inactive?(q) => ignited(q)
+        AND NOT (running(q) and activate(q))))(p)
+
+  safe4: THEOREM init(p)                               % FALSE
+           => AG(trans, (LAMBDA q: cruise?(q) => 
+         ignited(q) & running(q) & NOT toofast(q) & NOT brake(q)
+         & NOT deactivate(q)))(p)
+
+  safe5: THEOREM init(p)
+      => AG(trans, (LAMBDA q: override?(q) => ignited(q) AND running(q)))(p)
+
+  safe6: THEOREM init(p)
+      => AG(trans, (LAMBDA q: inactive?(q) & ignited(q) & running(q)
+        & NOT toofast(q) & NOT brake(q) & NOT activate(q))
+        IMPLIES NOT EX(trans, (LAMBDA r: inactive?(r) & ignited(r) &
+               running(r) & NOT toofast(r) & NOT 
+                   brake(r) & activate(r))))(p)
+
+END cruise_test
+
+cruise_test2:THEORY
+BEGIN
+
+  IMPORTING MU@ctlops, cruise_tab
+
+  p,q,r: var state
+
+  init(p): bool = off?(p) and not ignited(p)
+
+  trans:transition_relation = trans(corrected)
+
+  safe1: THEOREM init(p)
+           => AG(trans, (LAMBDA q: off?(q) => NOT ignited(q)))(p)
+
+  safe2: THEOREM init(p)
+           => AG(trans, (LAMBDA q: NOT off?(q) => ignited(q)))(p)
+
+  safe3: THEOREM init(p)                        % FALSE replace by 6
+           => AG(trans, (LAMBDA q: inactive?(q) => ignited(q)
+        AND NOT (running(q) and activate(q))))(p)
+
+  safe4: THEOREM init(p)
+           => AG(trans, (LAMBDA q: cruise?(q) => 
+         ignited(q) & running(q) & NOT toofast(q) & NOT brake(q)
+         & NOT deactivate(q)))(p)
+
+  safe5: THEOREM init(p)
+      => AG(trans, (LAMBDA q: override?(q) => ignited(q) AND running(q)))(p)
+
+  safe6: THEOREM init(p)
+      => AG(trans, (LAMBDA q: inactive?(q) & ignited(q) & running(q)
+        & NOT toofast(q) & NOT brake(q) & NOT activate(q))
+        IMPLIES NOT EX(trans, (LAMBDA r: inactive?(r) & ignited(r) &
+               running(r) & NOT toofast(r) & NOT 
+                   brake(r) & activate(r))))(p)
+
+END cruise_test2
+
+$$$cruise.prf
+(|cruise|)(|cruise_tab| (|original_TCC1| "" (COND-DISJOINT-TCC) NIL)
+           (|original_TCC2| "" (COND-DISJOINT-TCC)
+            (("1" (POSTPONE) NIL) ("2" (POSTPONE) NIL) ("3" (POSTPONE) NIL)
+             ("4" (POSTPONE) NIL) ("5" (POSTPONE) NIL) ("6" (POSTPONE) NIL)
+             ("7" (POSTPONE) NIL) ("8" (POSTPONE) NIL)))
+           (|original_TCC3| "" (GRIND) (("" (POSTPONE) NIL)))
+           (|deterministic_TCC1| "" (GRIND)
+            (("" (LEMMA "engine_prop") (("" (GRIND :IF-MATCH ALL) NIL)))))
+           (|deterministic_TCC2| "" (GRIND)
+            (("1" (LEMMA "engine_prop") (("1" (GRIND :IF-MATCH ALL) NIL)))
+             ("2" (LEMMA "engine_prop") (("2" (GRIND :IF-MATCH ALL) NIL)))
+             ("3" (LEMMA "engine_prop") (("3" (GRIND :IF-MATCH ALL) NIL)))))
+           (|deterministic_TCC3| "" (GRIND)
+            (("1" (LEMMA "engine_prop") (("1" (GRIND :IF-MATCH ALL) NIL)))
+             ("2" (LEMMA "engine_prop") (("2" (GRIND :IF-MATCH ALL) NIL)))
+             ("3" (LEMMA "engine_prop") (("3" (GRIND :IF-MATCH ALL) NIL)))))
+           (|corrected_TCC1| "" (GRIND)
+            (("" (LEMMA "engine_prop") (("" (GRIND :IF-MATCH ALL) NIL)))))
+           (|corrected_TCC2| "" (GRIND)
+            (("1" (LEMMA "engine_prop") (("1" (GRIND :IF-MATCH ALL) NIL)))
+             ("2" (LEMMA "engine_prop") (("2" (GRIND :IF-MATCH ALL) NIL)))
+             ("3" (LEMMA "engine_prop") (("3" (GRIND :IF-MATCH ALL) NIL))))))(|cruise_test|
+                                                                              (|safe1|
+                                                                               ""
+                                                                               (AUTO-REWRITE-THEORIES
+                                                                                ("scr"
+                                                                                 :DEFS
+                                                                                 T)
+                                                                                "cruise_tab"
+                                                                                "cruise"
+                                                                                "cruise_test")
+                                                                               ((""
+                                                                                 (MODEL-CHECK)
+                                                                                 NIL)))
+                                                                              (|safe2|
+                                                                               ""
+                                                                               (AUTO-REWRITE-THEORIES
+                                                                                ("scr"
+                                                                                 :DEFS
+                                                                                 T)
+                                                                                "cruise_tab"
+                                                                                "cruise"
+                                                                                "cruise_test")
+                                                                               ((""
+                                                                                 (MODEL-CHECK)
+                                                                                 NIL)))
+                                                                              (|safe3|
+                                                                               ""
+                                                                               (AUTO-REWRITE-THEORIES
+                                                                                ("scr"
+                                                                                 :DEFS
+                                                                                 T)
+                                                                                "cruise_tab"
+                                                                                "cruise"
+                                                                                "cruise_test")
+                                                                               ((""
+                                                                                 (MODEL-CHECK)
+                                                                                 ((""
+                                                                                   (POSTPONE)
+                                                                                   NIL)))))
+                                                                              (|safe4|
+                                                                               ""
+                                                                               (AUTO-REWRITE-THEORIES
+                                                                                ("scr"
+                                                                                 :DEFS
+                                                                                 T)
+                                                                                "cruise_tab"
+                                                                                "cruise"
+                                                                                "cruise_test")
+                                                                               ((""
+                                                                                 (MODEL-CHECK)
+                                                                                 NIL)))
+                                                                              (|safe5|
+                                                                               ""
+                                                                               (AUTO-REWRITE-THEORIES
+                                                                                ("scr"
+                                                                                 :DEFS
+                                                                                 T)
+                                                                                "cruise_tab"
+                                                                                "cruise"
+                                                                                "cruise_test")
+                                                                               ((""
+                                                                                 (MODEL-CHECK)
+                                                                                 NIL)))
+                                                                              (|safe6|
+                                                                               ""
+                                                                               (AUTO-REWRITE-THEORIES
+                                                                                ("scr"
+                                                                                 :DEFS
+                                                                                 T)
+                                                                                "cruise_tab"
+                                                                                "cruise"
+                                                                                "cruise_test")
+                                                                               ((""
+                                                                                 (MODEL-CHECK)
+                                                                                 NIL))))(|cruise_test2|
+                                                                                         (|safe1|
+                                                                                          ""
+                                                                                          (AUTO-REWRITE-THEORIES
+                                                                                           ("scr"
+                                                                                            :DEFS
+                                                                                            T)
+                                                                                           "cruise_tab"
+                                                                                           "cruise"
+                                                                                           "cruise_test2")
+                                                                                          ((""
+                                                                                            (MODEL-CHECK)
+                                                                                            NIL)))
+                                                                                         (|safe2|
+                                                                                          ""
+                                                                                          (AUTO-REWRITE-THEORIES
+                                                                                           ("scr"
+                                                                                            :DEFS
+                                                                                            T)
+                                                                                           "cruise_tab"
+                                                                                           "cruise"
+                                                                                           "cruise_test2")
+                                                                                          ((""
+                                                                                            (MODEL-CHECK)
+                                                                                            NIL)))
+                                                                                         (|safe3|
+                                                                                          ""
+                                                                                          (AUTO-REWRITE-THEORIES
+                                                                                           ("scr"
+                                                                                            :DEFS
+                                                                                            T)
+                                                                                           "cruise_tab"
+                                                                                           "cruise"
+                                                                                           "cruise_test2")
+                                                                                          ((""
+                                                                                            (MODEL-CHECK)
+                                                                                            NIL)))
+                                                                                         (|safe4|
+                                                                                          ""
+                                                                                          (AUTO-REWRITE-THEORIES
+                                                                                           ("scr"
+                                                                                            :DEFS
+                                                                                            T)
+                                                                                           "cruise_tab"
+                                                                                           "cruise"
+                                                                                           "cruise_test2")
+                                                                                          ((""
+                                                                                            (MODEL-CHECK)
+                                                                                            NIL)))
+                                                                                         (|safe5|
+                                                                                          ""
+                                                                                          (AUTO-REWRITE-THEORIES
+                                                                                           ("scr"
+                                                                                            :DEFS
+                                                                                            T)
+                                                                                           "cruise_tab"
+                                                                                           "cruise"
+                                                                                           "cruise_test2")
+                                                                                          ((""
+                                                                                            (MODEL-CHECK)
+                                                                                            NIL)))
+                                                                                         (|safe6|
+                                                                                          ""
+                                                                                          (AUTO-REWRITE-THEORIES
+                                                                                           ("scr"
+                                                                                            :DEFS
+                                                                                            T)
+                                                                                           "cruise_tab"
+                                                                                           "cruise"
+                                                                                           "cruise_test2")
+                                                                                          ((""
+                                                                                            (MODEL-CHECK)
+                                                                                            NIL))))
+$$$scr.pvs
+scr[input,mode,output:type]:THEORY
+
+BEGIN
+
+  condition: TYPE = pred[input]
+
+  event: TYPE = pred[[input, input]]
+
+  event_constructor: TYPE = [condition -> event]
+
+  EC: TYPE = event_constructor
+
+  p,q: VAR input
+
+  P: VAR condition
+
+% define event constructors
+
+  atT(P)(p,q): bool = NOT P(p) & P(q)      % @T(P)
+  atF(P)(p,q): bool = P(p) & NOT P(q)      % @F(P)
+  T(P)(p,q):   bool = P(p) & P(q)
+  F(P)(p,q):   bool = NOT P(p) & NOT P(q)
+  dc(P)(p,q):  bool = true                 % don't care
+
+  mode_table: TYPE = [mode, input, input -> mode]
+
+  state: TYPE = [# mode: mode, vars: input #]
+
+  transition_relation: TYPE = pred[[state, state]]
+
+  trans(mt: mode_table): transition_relation =
+    (LAMBDA (s,t:state): mode(t) = mt(mode(s), vars(s), vars(t)))
+
+  liftc(c:condition): pred[state] = LAMBDA (s:state): c(vars(s))
+  CONVERSION liftc
+
+  liftm(m: pred[mode]): pred[state] = LAMBDA (s:state): m(mode(s))
+  CONVERSION liftm
+
+  conds1:type = [condition]
+  conds2:type = [condition, condition]
+  conds3:type = [condition, condition, condition]
+  conds4:type = [condition, condition, condition, condition]
+  conds5:type = [condition, condition, condition, condition, condition]
+  conds6:type = [condition, condition, condition, condition,
+                     condition, condition]
+  conds7:type = [condition, condition, condition, condition,
+                     condition, condition, condition]
+  conds8:type = [condition, condition, condition, condition,
+                     condition, condition, condition, condition]
+  conds9:type = [condition, condition, condition, condition,
+                     condition, condition, condition, condition, condition]
+  conds10:type = [condition, condition, condition, condition, condition,
+                     condition, condition, condition, condition, condition]
+
+  A,B,C,D,E,FF,G,H,I,J: VAR EC
+
+  a,b,c,d,e,f,g,h,i,j: VAR condition
+
+  PC(A)(a)(p,q):bool = A(a)(p,q)
+
+  PC(A,B)(a,b)(p,q):bool = A(a)(p,q) & B(b)(p,q)
+
+  PC(A,B,C)(a,b,c)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q)
+
+  PC(A,B,C,D)(a,b,c,d)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q) & D(d)(p,q)
+
+  PC(A,B,C,D,E)(a,b,c,d,e)(p,q):bool = A(a)(p,q) & B(b)(p,q) & C(c)(p,q) &
+      D(d)(p,q) & E(e)(p,q)
+
+  PC(A,B,C,D,E,FF)(a,b,c,d,e,f)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q)
+
+  PC(A,B,C,D,E,FF,G)(a,b,c,d,e,f,g)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H)(a,b,c,d,e,f,g,h)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q) & H(h)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H,I)(a,b,c,d,e,f,g,h,i)(p,q):bool = A(a)(p,q) & B(b)(p,q) &
+      C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) & G(g)(p,q) & H(h)(p,q)
+
+  PC(A,B,C,D,E,FF,G,H,I,J)(a,b,c,d,e,f,g,h,i,j)(p,q):bool = A(a)(p,q) &
+      B(b)(p,q) & C(c)(p,q) & D(d)(p,q) & E(e)(p,q) & FF(f)(p,q) &
+      G(g)(p,q) & H(h)(p,q) 
+
+END scr

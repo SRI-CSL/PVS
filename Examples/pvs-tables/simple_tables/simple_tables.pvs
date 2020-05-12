@@ -1,0 +1,266 @@
+simple_tables: THEORY
+BEGIN
+
+  signs: TYPE = { x: int | x >= -1 & x <= 1}
+
+  x: var int
+
+  sign_traditional(x): signs = IF x<0 THEN -1 ELSIF x>0 then 1 ELSE 0 ENDIF
+
+  sign_cond(x): signs =
+    COND 
+      x<0 -> -1, 
+      x=0 -> 0, 
+      x>0 -> 1 
+    ENDCOND
+
+  sign_cond2(x): signs = 
+    COND 
+      x<0 -> -1, 
+      x=0 -> 0, 
+      ELSE -> 1 
+    ENDCOND
+
+  trad_cond_same:  LEMMA sign_traditional = sign_cond
+
+  trad_cond2_same: LEMMA sign_traditional = sign_cond2
+
+  sign_vtable(x): signs = TABLE
+                 %----------%
+                 | x<0 | -1 ||
+                 %----------%
+                 | x=0 |  0 ||
+                 %----------%
+                 | x>0 |  1 ||
+                 %----------%
+		 ENDTABLE
+
+  sign_vtable2(x): signs = TABLE
+                 %----------%
+                 | x<0 | -1 ||
+                 %----------%
+                 | x=0 |  0 ||
+                 %----------%
+                 | ELSE|  1 ||
+                 %----------%
+		 ENDTABLE
+
+  sign_htable(x): signs = TABLE 
+                 %-------------------%
+                 |[ x<0 | x=0 | x>0 ]|
+                 %-------------------%
+                 |  -1  |  0  |  1  ||
+                 %-------------------%
+		 ENDTABLE
+
+  sign_htable2(x): signs = TABLE 
+                 %-------------------%
+                 |[ x<0 | x=0 | ELSE ]|
+                 %-------------------%
+                 |  -1  |  0  |  1  ||
+                 %-------------------%
+		 ENDTABLE
+
+
+  trad_vtable_same: LEMMA sign_traditional = sign_vtable
+
+  trad_htable_same: LEMMA sign_traditional = sign_htable
+
+  vtables_same: LEMMA sign_vtable = sign_vtable2
+
+  htables_same: LEMMA sign_htable = sign_htable2
+
+  calculate: LEMMA sign_htable(-x) = - sign_htable(x)
+
+  few_ints: TYPE = { x : int | x >= -2 & x <= 2}
+
+  sign_fewh(z:few_ints): signs = TABLE
+         %---------------------------------%
+         |[ z = -2 | z = -1 | z = 0 | ELSE ]|
+         %---------------------------------%
+         |    -1   |   -1   |   0   |   1  ||
+         %---------------------------------%
+     ENDTABLE
+
+  sign_fewh_enum(z:few_ints): signs = TABLE
+         %---------------------------------%
+      ,z |[   -2   |   -1   |   0   | ELSE ]|
+         %---------------------------------%
+         |    -1   |   -1   |   0   |   1  ||
+         %----------------------------------%
+     ENDTABLE
+
+  sign_fewv_enum(z:few_ints): signs = TABLE
+                 z
+              %---------%
+              | -2 | -1 ||
+              %---------%
+              | -1 | -1 ||
+              %---------%
+              |  0 |  0 ||
+              %---------%
+              |ELSE|  1 ||
+              %---------%
+ENDTABLE
+
+  h_enum_same: LEMMA sign_fewh = sign_fewh_enum
+
+  v_enum_same: LEMMA sign_fewh = sign_fewv_enum
+
+END simple_tables
+
+adt_tables: THEORY
+
+BEGIN
+
+  modes: TYPE = { off, armed, engaged }
+
+  value(m:modes):bool = TABLE
+            m
+          %-----------------%
+          | off     | false ||
+          %-----------------%
+          | armed   | true  ||
+          %-----------------%
+          | engaged | true  ||
+          %-----------------%
+          ENDTABLE
+
+
+  value_alt(m:modes):bool = TABLE
+          %---------------------%
+          | off?(m)     | false ||
+          %---------------------%
+          | armed?(m)   | true  ||
+          %---------------------%
+          | engaged?(m) | true  ||
+          %---------------------%
+          ENDTABLE
+
+  same: LEMMA value = value_alt
+
+END adt_tables
+
+Parnas_examples: THEORY
+
+BEGIN
+
+  sqrt: [nonneg_real -> nonneg_real]
+
+  Vector_0(x:real): [real, real] =
+       COND x<0 -> (x+2, 5+sqrt(-x)),
+            x=0 -> (x+4+(21/100), x-4),
+            x>0 -> (5+(4/10)+sqrt(x), x)
+       ENDCOND
+  
+
+  Vector_1(x:real): [real, real] =
+       TABLE
+          %-----------------------------------------------------------------%
+          |[       x<0       |         x=0         |          x>0          ]|
+          %-----------------------------------------------------------------%
+          |(x+2, 5+sqrt(-x)) | (x+4+(21/100), x-4) | (5+(4/10)+sqrt(x), x) ||
+          %-----------------------------------------------------------------%
+       ENDTABLE
+
+  Vector_2(x:real): [real, real] =
+       TABLE
+          %------------------------------%
+          | x<0 | (x+2, 5+sqrt(-x))     ||
+          %------------------------------%
+          | x=0 | (x+4+(21/100), x-4)   || 
+          %------------------------------%
+          | x>0 | (5+(4/10)+sqrt(x), x) || 
+          %------------------------------%
+       ENDTABLE
+
+  test0_1: LEMMA Vector_0 = Vector_1
+
+  test1_2: LEMMA Vector_1 = Vector_2
+
+  test_a: LEMMA proj_2(Vector_0(17)) = 17
+
+  test_b: LEMMA proj_2(Vector_1(0)) = -4
+
+  test_c: LEMMA FORALL (x:real): x/=0 => proj_2(Vector_2(x)) > 0
+
+  test_d: LEMMA FORALL (x:real): x > -2 => proj_1(Vector_2(x)) > 0
+
+END Parnas_examples
+
+
+two_d_tables: THEORY
+
+
+BEGIN
+
+  IMPORTING Parnas_examples
+
+  normal2(y,x:real):real =
+    TABLE
+           %--------------------------------------------------%
+           |[ y=27           | y>27           | y<27          ]|
+     %--------------------------------------------------------%
+     | x=3 | 27+sqrt(27)     | 54+sqrt(27)    | y^2 +3        ||
+     %--------------------------------------------------------%
+     | x<3 | 27+sqrt(-(x-4)) | y+sqrt(-(x-5)) | y^2 + (x-3)^2 ||
+     %--------------------------------------------------------%
+     | x>3 | 27+sqrt(x-3)    | 2*y+sqrt(x-3)  | y^2 + (3-x)^2 ||
+     %--------------------------------------------------------%
+    ENDTABLE
+
+
+END two_d_tables
+
+blank_entries: THEORY
+BEGIN
+
+  subp((i: int), (j: {x: int | x <=i })): RECURSIVE nat =
+    TABLE
+      %-----|-----------------%
+      | i=j |        0       ||
+      %-----|-----------------%
+      | i>j | subp(i, j+1)+1 ||
+      %-----|-----------------%
+    ENDTABLE
+   MEASURE i-j
+
+  subp_blank((i: int), (j: {x: int | x <=i })): RECURSIVE nat =
+    TABLE
+      %-----|-----------------------%
+      | i<j |                      ||
+      %-----|-----------------------%
+      | i=j |           0          ||
+      %-----|-----------------------%
+      | i>j | subp_blank(i, j+1)+1 ||
+      %-----|-----------------------%
+    ENDTABLE
+   MEASURE i-j
+
+  subp_blank2((i: int), (j: {x: int | x <=i })): RECURSIVE nat =
+    TABLE
+      %-----|------------------------%
+      | i<j |                       ||
+      %-----|------------------------%
+      | i=j |            0          ||
+      %-----|------------------------%
+      |ELSE | subp_blank2(i, j+1)+1 ||
+      %-----|------------------------%
+    ENDTABLE
+   MEASURE i-j
+
+  bad_subp((i: int), (j: {x: int | x <=i })): RECURSIVE nat =
+    TABLE
+      %-----|---------------------%
+      | i<j |          0         ||
+      %-----|---------------------%
+      | i=j |                    ||
+      %-----|---------------------%
+      | i>j | bad_subp(i, j+1)+1 ||
+      %-----|---------------------%
+    ENDTABLE
+   MEASURE i-j
+
+  bang: CLAIM bad_subp(3, 3) = 99
+
+END blank_entries
