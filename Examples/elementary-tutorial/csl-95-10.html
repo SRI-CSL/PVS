@@ -1,0 +1,74 @@
+<HTML>
+<HEAD>
+<TITLE>
+A Less Elementary Tutorial for the PVS Specification and Verification System
+</TITLE>
+<BODY BGCOLOR="#FFFFFF">
+<CENTER>
+<IMG SRC="/images/csl_banner1.jpg">
+</CENTER>
+<HR SIZE=1 NOSHADE>
+<FONT SIZE=5 COLOR=0000FF><B>
+A Less Elementary Tutorial for the PVS Specification and Verification System
+</B></FONT>
+<HR SIZE=1 NOSHADE>
+
+<h3>John Rushby and David W.J. Stringer-Calvert</h3>
+
+<h4>Technical Report CSL-95-10, revised August 1996</h4>
+
+<h3>Abstract</h3>
+PVS is a verification system that provides a specification language
+integrated with support tools and a theorem-prover.  It has been used
+at SRI and elsewhere to perform verifications of several significant
+algorithms (primarily for fault-tolerance) and large hardware designs.
+<p>
+This tutorial introduces some of the more powerful strategies provided
+by the PVS theorem prover.  It consists of two parts: the first
+extends a previous tutorial by Ricky Butler
+(<a href="http://shemesh.larc.nasa.gov/ftp/larc/PVS-tutorial/revised-pvs-tutorial.dvi">dvi</a>
+or <a href="http://shemesh.larc.nasa.gov/ftp/larc/PVS-tutorial/revised-pvs-tutorial.ps">postscript</a>)
+demonstrating how his proofs may be performed in a more automated
+manner; the second uses the ``unwinding theorem'' from the
+noninterference formulation of security to introduce theorem-proving
+strategies for induction that cannot be demonstrated
+in the framework of Ricky Butler's example.<p>
+
+Using the more powerful strategies of PVS to automate easy proofs (and
+the easy parts of hard proofs) frees users to concentrate on truly
+difficult proofs.  Automation also makes proofs more robust to changes
+in the specification, thereby facilitating active design exploration
+and adaptation to changed requirements.<p>
+
+This tutorial also shows how specifications and proofs may be better
+presented using the LaTeX and PostScript generating facilities of
+PVS.
+
+<p>
+
+Paper:
+<BR>
+<a href="http://www.csl.sri.com/reports/postscript/csl-95-10.ps.gz"><IMG SRC="/icons/ps.gif" BORDER=0> postscript</a>
+<P>
+
+<a href="http://pvs.csl.sri.com/pvs/examples/elementary-tutorial/"><IMG SRC="/icons/generic.gif" BORDER=0> PVS specification files</a>
+<BR>
+<a href="http://shemesh.larc.nasa.gov/ftp/larc/PVS-tutorial/revised-specs.dmp"><IMG SRC="/icons/generic.gif" BORDER=0>Ricky Butler's original version</a> 
+<P>
+<a href=http://web.cs.ualberta.ca/~piotr/Mizar/FLT_DB/>Treatment in
+Mizar by Piotr Rudnicki</a> (cf. Appendix B to our tutorial)
+<br> There isn't much documentation on Mizar;  in addition to the
+papers at the link above,
+<a href=http://www.cl.cam.ac.uk/users/jrh/papers/mizar.html>
+A Mizar Mode for HOL</a> by John Harrison is a useful
+guide, and also of interest in its own right.
+
+<p>If you are completely new to PVS, the best place to start is with the
+<a href="http://pvs.csl.sri.com/pvs/examples/wift-tutorial/wift-tutorial.html">WIFT Tutorial</a><p>
+
+<HR SIZE=1 NOSHADE>
+<A HREF="http://www.csl.sri.com/fm.html">Return to the <b>Formal Methods Program</b> home page</a>
+<BR>
+<A HREF="http://www.csl.sri.com/">Return to the <b>Computer Science Laboratory</b> home page</a>
+</BODY>
+</HTML>

@@ -1,0 +1,303 @@
+<html><h1>
+PVS dump file airline.dmp
+</h1><xmp>
+
+%Patch files loaded: (patch2-test patch2) version 2.399
+
+$$$ops.pvs
+ops: THEORY
+
+BEGIN
+
+  IMPORTING basic_defs
+
+  flt:    VAR flight
+  pas:    VAR passenger
+  db:     VAR flt_db
+  a,b:    VAR seat_assignment
+  pref:   VAR preference
+  seat:   VAR [row,position]
+       
+  Cancel_assn(flt,pas,db): flt_db =
+          db WITH [(flt) := {a | member(a,db(flt)) AND pass(a) /= pas}]
+
+  pref_filled(db,flt,pref) : bool =
+       FORALL seat:  meets_pref(aircraft(flt), seat, pref)
+                   IMPLIES (EXISTS a: member(a, db(flt))
+                                      AND seat(a) = seat)
+
+  Next_seat: [flt_db, flight, preference -> [row,position]]
+
+  Next_seat_ax: AXIOM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+                seat_exists(aircraft(flt),Next_seat(db,flt,pref))
+
+  Next_seat_ax_2: AXIOM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+           (FORALL a: member(a,db(flt)) IMPLIES
+                seat(a) /= Next_seat(db,flt,pref)) 
+
+  Next_seat_ax_3: AXIOM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+                meets_pref(aircraft(flt),Next_seat(db,flt,pref),pref)
+
+%  meets_pref_prop: LEMMA meets_pref(aircraft(flt),seat(a),pref) IMPLIES
+%                       seat_exists(aircraft(flt),seat(a))
+
+  pass_on_flight(pas,flt,db): bool =
+        EXISTS a: pass(a) = pas AND member(a,db(flt))
+
+  Make_assn(flt,pas,pref,db): flt_db =
+        IF pref_filled(db, flt, pref) OR pass_on_flight(pas,flt,db) THEN 
+              db
+        ELSE LET a = (# seat := Next_seat(db,flt,pref), pass := pas #) IN
+              db WITH [(flt) := add(a, db(flt))]
+        ENDIF
+
+  Lookup(flt,pas,db):  [row,position] =
+          seat(epsilon({a | member(a,db(flt)) AND pass(a) = pas}))
+
+  Lookup2(flt, pas, (db : {d : flt_db | pass_on_flight(pas, flt, d)})):
+      [row,position] = seat(choose({a | member(a,db(flt)) AND pass(a) = pas}))
+                  
+%  Lookup_RWB(flt: flight, pas: passenger, db: flt_db): [row,position] =
+%          seat(choose({a | member(a,db(flt)) AND pass(a) = pas})) 
+
+% =======================================================================
+%                             Invariants
+% =======================================================================
+
+  existence(db): bool =
+        FORALL a,flt: member(a, db(flt)) IMPLIES
+                seat_exists(aircraft(flt), seat(a))
+  
+  uniqueness(db): bool =
+        FORALL a,b,flt: member(a, db(flt)) AND member(b, db(flt))
+           AND pass(a) = pass(b) IMPLIES a = b
+ 
+  one_per_seat(db): bool =
+       FORALL a,b,flt: member(a, db(flt)) AND member(b, db(flt))
+           AND seat(a) = seat(b) IMPLIES a = b
+ 
+ 
+  db_invariant(db): bool = 
+        existence(db) AND uniqueness(db)
+    
+  Cancel_assn_inv: THEOREM 
+        db_invariant(db) IMPLIES db_invariant(Cancel_assn(flt,pas,db))
+
+  MAe: THEOREM 
+        existence(db) IMPLIES existence(Make_assn(flt,pas,pref,db))
+
+  MAu: THEOREM 
+        uniqueness(db) IMPLIES uniqueness(Make_assn(flt,pas,pref,db))
+
+  Make_assn_inv: THEOREM 
+        db_invariant(db) IMPLIES db_invariant(Make_assn(flt,pas,pref,db))
+
+  initial_state_inv: THEOREM 
+        db_invariant(initial_state)
+
+% =======================================================================
+%                     Invariants Left To Reader
+% =======================================================================
+
+  Cancel_inv_one_per_seat: THEOREM 
+        one_per_seat(db) IMPLIES one_per_seat(Cancel_assn(flt,pas,db))
+
+% re-examine next (proof more complicated since changed the axiom)
+
+  Make_inv_one_per_seat: THEOREM 
+        one_per_seat(db) IMPLIES one_per_seat(Make_assn(flt,pas,pref,db))
+
+  initial_one_per_seat: THEOREM 
+        one_per_seat(initial_state)
+
+% =======================================================================
+%                    Putative Theorems
+% =======================================================================
+
+  Make_Cancel: THEOREM 
+        NOT pass_on_flight(pas,flt,db) IMPLIES
+                Cancel_assn(flt,pas,Make_assn(flt,pas,pref,db)) = db
+
+
+  % <<<<<< Following left to the reader >>>>>>
+
+  Cancel_putative: THEOREM 
+          NOT (EXISTS (a: seat_assignment):
+             member(a,Cancel_assn(flt,pas,db)(flt)) AND pass(a) = pas)
+
+  Make_putative: THEOREM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+          (EXISTS (x: seat_assignment):
+            member(x, Make_assn(flt, pas, pref, db)(flt)) AND pass(x) = pas)
+
+%  Lp2_lem: LEMMA   
+%        NOT (pref_filled(db, flt, pref) OR pass_on_flight(pas,flt,db)) 
+%                IMPLIES Next_seat(db, flt, pref) =
+%                        seat(epsilon({a: seat_assignment |
+%                              Make_assn(flt, pas, pref, db)(flt)(a)
+%                                AND pass(a) = pas}))
+
+  Lookup_putative: THEOREM 
+        NOT (pref_filled(db, flt, pref) OR
+                                  pass_on_flight(pas,flt,db)) IMPLIES
+      meets_pref(aircraft(flt), 
+                 Lookup(flt, pas, Make_assn(flt,pas,pref,db)),
+                 pref)
+
+  Lookup_putative2: THEOREM 
+        NOT (pref_filled(db, flt, pref) OR
+                                  pass_on_flight(pas,flt,db)) IMPLIES
+      meets_pref(aircraft(flt), 
+                 Lookup2(flt, pas, Make_assn(flt,pas,pref,db)),
+                 pref)
+
+Next_seat_defn(db,flt,pref) : [row, position] =
+  epsilon! (seat : [row,position]) : seat_exists(aircraft(flt),seat)
+     AND (FORALL a : member(a,db(flt)) IMPLIES seat(a) /= seat)
+     AND meets_pref(aircraft(flt),seat,pref)
+
+% new_ax: AXIOM meets_pref(aircraft(flt), seat, pref) 
+%          IMPLIES seat_exists(aircraft(flt), seat)
+
+new_ax: AXIOM meets_pref(aircraft(flt), seat, pref) 
+         IMPLIES seat_exists(aircraft(flt), seat)
+
+Next_seat_th : THEOREM
+        NOT pref_filled(db, flt, pref) IMPLIES
+                seat_exists(aircraft(flt),Next_seat_defn(db,flt,pref))
+
+Next_seat_th_2: THEOREM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+           (FORALL a: member(a,db(flt)) IMPLIES
+                seat(a) /= Next_seat_defn(db,flt,pref)) 
+
+Next_seat_th_3: THEOREM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+                meets_pref(aircraft(flt),Next_seat_defn(db,flt,pref),pref)
+
+
+END ops
+
+$$$ops.prf
+(|ops| (|Lookup2_TCC1| "" (SUBTYPE-TCC) NIL NIL)
+ (|Cancel_assn_inv| "" (LAZY-GRIND) NIL NIL)
+ (|MAe| "" (STEW :LAZY-MATCH? T :LEMMAS "Next_seat_ax") NIL NIL)
+ (|MAu| "" (STEW :LAZY-MATCH T) NIL NIL)
+ (|Make_assn_inv| "" (GRIND :DEFS NIL :REWRITES ("db_invariant" "MAu" "MAe"))
+  NIL NIL)
+ (|initial_state_inv| "" (GRIND) NIL NIL)
+ (|Cancel_inv_one_per_seat| "" (GRIND) NIL NIL)
+ (|Make_inv_one_per_seat| ""
+  (STEW :LAZY-MATCH T :IF-MATCH ALL :LEMMAS "Next_seat_ax_2") NIL NIL)
+ (|initial_one_per_seat| "" (GRIND) NIL NIL)
+ (|Make_Cancel| ""
+  (GRIND :DEFS NIL :REWRITES ("Cancel_assn" "pass_on_flight" "Make_assn"))
+  (("" (APPLY-EXTENSIONALITY :HIDE? T)
+    (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (STEW :LAZY-MATCH T) NIL NIL))
+      NIL))
+    NIL))
+  NIL)
+ (|Cancel_putative| "" (GRIND) NIL NIL) (|Make_putative| "" (GRIND) NIL NIL)
+ (|Lookup_putative| "" (GRIND :IF-MATCH NIL)
+  (("1" (GRIND) NIL NIL)
+   ("2" (USE "epsilon_ax[seat_assignment]")
+    (("2" (GROUND)
+      (("1" (GROUND)
+        (("1" (REPLACE -1 :DIR RL :HIDE? T)
+          (("1" (BETA *)
+            (("1" (USE "Next_seat_ax_3")
+              (("1" (GROUND) (("1" (INST?) (("1" (PROP) NIL NIL)) NIL)) NIL))
+              NIL))
+            NIL))
+          NIL)
+         ("2" (GRIND) NIL NIL))
+        NIL)
+       ("2" (GRIND) NIL NIL))
+      NIL))
+    NIL))
+  NIL)
+ (|Lookup_putative2_TCC1| "" (STEW :LEMMAS "Next_seat_ax_3") NIL NIL)
+ (|Lookup_putative2| ""
+  (STEW :LEMMAS ("Next_seat_ax_3" "choose_member[seat_assignment]")) NIL NIL)
+ (|Next_seat_th| "" (SKOSIMP)
+  (("" (EXPAND* "pref_filled" "Next_seat_defn")
+    (("" (SKOSIMP)
+      (("" (USE "epsilon_ax[[row,position]]")
+        (("" (GROUND)
+          (("1" (GROUND) NIL NIL)
+           ("2" (HIDE 3)
+            (("2" (INST 1 "seat!1")
+              (("2" (PROP)
+                (("1" (USE "new_ax") (("1" (PROP) NIL NIL)) NIL)
+                 ("2" (SKOLEM!) (("2" (INST?) (("2" (PROP) NIL NIL)) NIL))
+                  NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL))
+  NIL)
+ (|Next_seat_th_2| "" (GRIND :IF-MATCH NIL)
+  (("" (USE "epsilon_ax[[row,position]]")
+    (("" (GROUND)
+      (("1" (REDUCE) NIL NIL)
+       ("2" (INST?)
+        (("2" (GROUND)
+          (("1" (USE "new_ax") (("1" (ASSERT) NIL NIL)) NIL)
+           ("2" (SKOSIMP) (("2" (INST?) (("2" (ASSERT) NIL NIL)) NIL)) NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL))
+  NIL)
+ (|Next_seat_th_3| "" (GRIND)
+  (("" (USE "epsilon_ax[[row,position]]")
+    (("" (GROUND)
+      (("" (INST?) (("" (USE "new_ax") (("" (REDUCE) NIL NIL)) NIL)) NIL))
+      NIL))
+    NIL))
+  NIL))
+
+$$$basic_defs.pvs
+basic_defs: THEORY
+BEGIN
+
+  nrows:  posnat             % Max number of rows  
+  nposits: posnat            % Max number of positions per row  
+  
+  row:  TYPE = {n: posnat | 1 <= n AND n <= nrows} CONTAINING 1
+  position: TYPE = {n: posnat | 1 <= n AND n <= nposits} CONTAINING 1
+  
+  flight: TYPE               % Flight identifier
+  plane: NONEMPTY_TYPE       % Aircraft type  
+  preference: TYPE           % Position preference  
+  passenger: NONEMPTY_TYPE   % Passenger identifier  
+
+  seat_assignment: TYPE = [# seat: [row, position],
+                             pass: passenger #]
+  
+  flight_assignments: TYPE = set[seat_assignment]
+  
+  flt_db: TYPE = [flight -> flight_assignments]
+
+  initial_state(flt : flight): flight_assignments =
+		 emptyset[seat_assignment]
+
+% ==================================================================== 
+% Definitions that define attributes of a particular airplane
+% ==================================================================== 
+
+  seat_exists: pred[[plane, [row, position]]]
+  meets_pref: pred[[plane, [row, position], preference]]
+  aircraft: [flight -> plane]
+
+END basic_defs
+
+$$$basic_defs.prf
+(|basic_defs| (|row_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|position_TCC1| "" (SUBTYPE-TCC) NIL))

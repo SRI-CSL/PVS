@@ -1,0 +1,91 @@
+(more_preds)
+(noninterference
+ (run_TCC1 0
+  (run_TCC1-2 "" 3386564232 3506929546 ("" (termination-tcc) nil nil)
+   proved ((<< adt-def-decl "(well_founded?[list])" list_adt nil)) 219
+   68 t shostak)
+  (run_TCC1-1 nil 3386563927 nil
+   ("" (lemma "list_well_founded[action]")
+    (("" (replace-eta "list_adt[action].<<") nil)) nil)
+   proved ((<< adt-def-decl "(well_founded?[list])" list_adt nil)) nil
+   nil nil nil))
+ (refl_trans_rel_TCC1 0
+  (refl_trans_rel_TCC1-1 nil 3386563927 3506929546
+   ("" (subtype-tcc) nil nil) proved
+   ((reflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (eq const-decl "pred[[T, T]]" relations nil))
+   125 32 nil nil))
+ (divide_TCC1 0
+  (divide_TCC1-1 nil 3386563927 3506929546
+   ("" (termination-tcc) nil nil) proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (length def-decl "nat" list_props nil))
+   193 50 nil nil))
+ (divide_TCC2 0
+  (divide_TCC2-1 nil 3386563927 3506929546
+   ("" (termination-tcc) nil nil) proved
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (length def-decl "nat" list_props nil))
+   143 46 nil nil))
+ (lemma1 0
+  (lemma1-1 nil 3386563927 3506929547
+   ("" (grind :if-match nil)
+    (("" (inst?) (("" (assert) (("" (inst?) (("" (assert) nil))))))))
+    nil)
+   proved
+   ((action nonempty-type-decl nil noninterference nil)
+    (state nonempty-type-decl nil noninterference nil)
+    (list type-decl nil list_adt nil)
+    (action_list type-eq-decl nil noninterference nil)
+    (run def-decl "state" noninterference nil)
+    (s0 const-decl "state" noninterference nil)
+    (domain nonempty-type-decl nil noninterference nil)
+    (/ def-decl "action_list" noninterference nil)
+    (dom const-decl "domain" noninterference nil)
+    (secure const-decl "bool" noninterference nil)
+    (test const-decl "output" noninterference nil)
+    (view_consistent const-decl "bool" noninterference nil)
+    (do const-decl "state"  noninterference nil)
+    (\|> const-decl "bool" noninterference nil)
+    (output_consistent const-decl "bool" noninterference nil)
+    (view_equiv const-decl "bool" noninterference nil))
+   231 110 nil nil))
+ (lemma3 0
+  (lemma3-1 nil 3386563927 3506929547
+   ("" (expand "view_consistent")
+    (("" (flatten) (("" (induct-and-simplify "alpha") nil)))) nil)
+   proved
+   ((list type-decl nil list_adt nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (action_list type-eq-decl nil noninterference nil)
+    (domain nonempty-type-decl nil noninterference nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (\|> const-decl "bool" noninterference nil)
+    (state nonempty-type-decl nil noninterference nil)
+    (view_equiv const-decl "bool" noninterference nil)
+    (do const-decl "state"  noninterference nil)
+    (/ def-decl "action_list" noninterference nil)
+    (action nonempty-type-decl nil noninterference nil)
+    (list_induction formula-decl nil list_adt nil)
+    (run def-decl "state" noninterference nil)
+    (O const-decl "action_list" noninterference nil)
+    (local_respect const-decl "bool" noninterference nil)
+    (step_consistent const-decl "bool" noninterference nil)
+    (s0 const-decl "state" noninterference nil)
+    (view_consistent const-decl "bool" noninterference nil))
+   381 205 nil nil))
+ (unwinding 0
+  (unwinding-1 nil 3386563927 3506929547
+   ("" (grind :defs nil :rewrites ("lemma1" "lemma3")) nil nil) proved
+   ((lemma1 formula-decl nil noninterference nil)
+    (lemma3 formula-decl nil noninterference nil))
+   28 0 nil nil)))
+

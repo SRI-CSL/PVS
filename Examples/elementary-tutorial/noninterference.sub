@@ -1,0 +1,21 @@
+<html><h1>
+The LaTeX substitution file noninterference.sub for unwinding.dmp 
+</h1><pre>
+
+
+
+
+|>              2       1       {#1 \not\leadsto #2}
+security_policy id      1       {\leadsto}
+security_policy 2       1       {#1 \leadsto #2}
+view_equiv      (1 2)   1       {#2 \stackrel{#1}{\sim} #3}
+o               2       1       {#1 \circ #2}
+null            id      1       {\Lambda}
+=>              2       1       {#1 \supset #2}
+state           id      1       {\cal S}
+action          id      1       {\cal A}
+output          id      1       {\cal O}
+output          2       1       {\pvsid{output}(#1,#2)}
+domain          id      1       {\cal D}
+V               id      1       {\cal V}
+action_list     id      1       {{\cal A}^{*}}

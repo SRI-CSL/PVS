@@ -1,0 +1,31 @@
+PVS Example: Elementary Tutorial
+
+Description: csl-95-10.ps.gz
+  Presents two examples:
+   1. A less elementary version of the proofs in Ricky Butler's
+      seat reservation problem (which is available from
+       http://atb-www.larc.nasa.gov/ftp/larc/PVS-tutorial
+       Be sure to pick up the files labeled "revised" if you are using
+       PVS2.) 
+
+      Note: this file requires PVS 2.1
+      Dump file: airline.dmp
+        Use PVS command M-x undump-file airline.dmp
+      Strategy file: pvs-strategies
+        Add to your own pvs-strategy file
+
+   1a. A more advanced version of the specification for the seat
+      reservation problem (stimulated by Piotr Rudnicki's version in
+      Mizar, hence the name)
+
+      Dump file: mizar.dmp
+        Use PVS command M-x undump-file mizar.dmp
+
+   2. The unwinding theorem of noninterference security
+
+      Dump file: unwinding.dmp
+        Use PVS command M-x undump-file unwinding.dmp
+      LaTeX substitution file noninterference.sub
+        place in same directory as the specification and proof files
+
+

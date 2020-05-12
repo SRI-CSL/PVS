@@ -1,0 +1,14 @@
+(basic_defs
+ (row_TCC1 0
+  (row_TCC1-1 nil 3446684090 3506929524 ("" (subtype-tcc) nil nil)
+   proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   52 10 nil nil))
+ (position_TCC1 0
+  (position_TCC1-1 nil 3446684090 3506929524 ("" (subtype-tcc) nil nil)
+   proved
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   64 8 nil nil)))
+

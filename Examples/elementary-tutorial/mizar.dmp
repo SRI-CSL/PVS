@@ -1,0 +1,353 @@
+<html><h1>
+PVS dump file mizar.dmp
+</h1>
+
+Version of the seat reservation problem based on my understanding of
+Piotr Rudnicki's Mizar Versions 1 and 2.  John Rushby 7 August 1996.
+
+
+<br>NOTE: this specification requires a version of PVS that is not
+yet generally released (as of Jan 30, 1997).
+
+
+<xmp>
+
+%Patch files loaded: (patch2-test patch2) version 2.394
+
+$$$mizar.pvs
+rel_as_fun[A: TYPE, B: TYPE]: THEORY
+BEGIN
+  
+  a, b: VAR A
+  x, y: VAR B
+  
+  rel: TYPE = pred[[A, B]]
+  R: VAR rel
+  
+  domain(R): setof[A] = {a | EXISTS x: R(a, x)}
+  range(R): setof[B] = {x | EXISTS a: R(a, x)}
+  
+  functional(R): bool = FORALL a, x, y: R(a, x) & R(a, y) => x = y
+  injective(R): bool = FORALL a, b, x: R(a, x) & R(b, x) => a = b
+  
+  part_inj(R): bool = functional(R) AND injective(R)
+  
+  null_inj: (part_inj) = emptyset[[A, B]]
+  
+  reldel_1((R: (part_inj)), a): (part_inj) = {(b, y) | R(b, y) AND a /= b}
+  reldel_2((R: (part_inj)), x): (part_inj) = {(b, y) | R(b, y) AND x /= y}
+  
+  apply((R: (part_inj)), (a: (domain(R)))):
+      (range(R)) = choose! (x: (range(R))): R(a, x)
+  
+  invapply((R: (part_inj)), (x: (range(R)))):
+      (domain(R)) = choose! (a: (domain(R))): R(a, x)
+  
+  update_ok: LEMMA
+        LET newR = add((a, x), R) IN
+           part_inj(R) AND NOT member(a, domain(R)) AND NOT member(x, range(R))
+                IMPLIES part_inj(newR)
+                  AND apply(newR, a) = x AND invapply(newR, x) = a
+  
+END rel_as_fun
+
+
+new_flight_db: THEORY
+BEGIN
+  
+  seats, flights, planes, preferences, passengers: TYPE+
+  
+  s: VAR seats
+  flt: VAR flights
+  p: VAR planes
+  pref: VAR preferences
+  pass: VAR passengers
+  
+  seats_on_plane(p): (nonempty?[seats])
+  aircraft(flt): planes
+  seats_on_flight(flt): (nonempty?[seats]) = seats_on_plane(aircraft(flt))
+
+  meets_pref(p, pref): setof[(seats_on_plane(p))]
+  
+  IMPORTING rel_as_fun
+  
+  flight_db:
+      TYPE = [flt: flights -> (part_inj[(seats_on_flight(flt)), passengers])]
+  
+  initial_db(flt): (part_inj[(seats_on_flight(flt)), passengers]) = null_inj
+  
+  db: VAR flight_db
+  
+  pass_on_flight(pass, flt, db): bool = member(pass, range(db(flt)))
+  
+  seat_filled_on_flight(flt, db, (s: (seats_on_flight(flt)))): bool =
+    member(s, domain(db(flt)))
+
+  Cancel_assn(flt, pass, db): flight_db =
+    db WITH [(flt) := reldel_2(db(flt), pass)]
+  
+  pref_filled(db, flt, pref): bool =
+    FORALL (s: (seats_on_flight(flt))):
+      meets_pref(aircraft(flt), pref)(s) => seat_filled_on_flight(flt, db, s)
+  
+  Next_seat(db, flt, (pref: {p:preferences| not pref_filled(db,flt,p)})):
+    { (s: (seats_on_flight(flt))) | 
+      meets_pref(aircraft(flt), pref)(s)
+          AND NOT seat_filled_on_flight(flt, db, s)}
+
+  Next_seat_ax: LEMMA 
+        NOT pref_filled(db, flt, pref)
+           IMPLIES member(Next_seat(db, flt, pref), seats_on_flight(flt))
+
+  Next_seat_ax_2: LEMMA
+        NOT pref_filled(db, flt, pref)
+           IMPLIES NOT seat_filled_on_flight(flt, db, Next_seat(db, flt, pref))
+
+  Next_seat_ax_3: LEMMA
+        NOT pref_filled(db, flt, pref)
+            IMPLIES meets_pref(aircraft(flt), pref)(Next_seat(db, flt, pref))
+  
+  Make_assn(flt, pass, pref, db): flight_db =
+    IF pref_filled(db, flt, pref) OR pass_on_flight(pass, flt, db)
+      THEN db
+      ELSE db WITH [(flt) := add((Next_seat(db, flt, pref), pass), db(flt))]
+    ENDIF
+  
+  Make_Cancel: THEOREM
+        NOT pass_on_flight(pass, flt, db)
+            IMPLIES Cancel_assn(flt, pass, Make_assn(flt, pass, pref, db)) = db
+  
+  Cancel_putative: THEOREM
+        NOT pass_on_flight(pass, flt, Cancel_assn(flt, pass, db))
+  
+  Make_putative: THEOREM
+        NOT pref_filled(db, flt, pref)
+            IMPLIES pass_on_flight(pass, flt, Make_assn(flt, pass, pref, db))
+  
+  Lookup(flt, pass, (db: {d: flight_db | pass_on_flight(pass, flt, d)})):
+      (seats_on_flight(flt)) = invapply(db(flt), pass)
+  
+  Lookup_putative: THEOREM
+        NOT((pref_filled(db, flt, pref) OR pass_on_flight(pass, flt, db)))
+            IMPLIES
+          meets_pref(aircraft(flt),
+                     pref)(Lookup(flt, pass, Make_assn(flt, pass, pref, db)))
+  
+END new_flight_db
+
+
+
+$$$mizar.prf
+(|rel_as_fun| (|null_inj_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|reldel_1_TCC1| "" (GRIND :IF-MATCH NIL)
+  (("1" (HIDE -1 1 2) (("1" (REDUCE) NIL)))
+   ("2" (HIDE -2 1) (("2" (REDUCE) NIL)))))
+ (|reldel_2_TCC1| "" (GRIND :IF-MATCH NIL)
+  (("1" (HIDE -1 1) (("1" (REDUCE) NIL)))
+   ("2" (HIDE -2 1 2) (("2" (REDUCE) NIL)))))
+ (|apply_TCC1| "" (SUBTYPE-TCC) NIL) (|invapply_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|update_ok_TCC1| "" (SKOSIMP) (("" (HIDE -2 -3 1 2) (("" (GRIND) NIL)))))
+ (|update_ok_TCC2| "" (SKOSIMP) (("" (HIDE -2 -3 -4 1 2) (("" (GRIND) NIL)))))
+ (|update_ok| "" (STEW :LAZY-MATCH T :IF-MATCH ALL)
+  (("1" (USE "epsilon_ax[(domain(add((a!1, x!1), R!1)))]")
+    (("1" (REDUCE) NIL) ("2" (INST 1 "a!1") (("2" (REDUCE) NIL)))))
+   ("2" (HIDE -1 -2)
+    (("2" (USE "epsilon_ax[(range(add((a!1, x!1), R!1)))]")
+      (("1" (REDUCE :IF-MATCH ALL) NIL)
+       ("2" (INST 1 "x!1") (("2" (REDUCE) NIL))))))))))(|new_flight_db|
+                                                        (|seats_on_plane_TCC1|
+                                                         ""
+                                                         (INST
+                                                          1
+                                                          "lambda (x:planes): fullset[seats]")
+                                                         ((""
+                                                           (GRIND)
+                                                           ((""
+                                                             (INST
+                                                              -1
+                                                              "epsilon! (x:seats): true")
+                                                             NIL)))))
+                                                        (|seat_exists|
+                                                         ""
+                                                         (SKOSIMP)
+                                                         ((""
+                                                           (TYPEPRED
+                                                            "seats_on_flight(flt!1)")
+                                                           ((""
+                                                             (GRIND)
+                                                             ((""
+                                                               (INST 1 "x!1")
+                                                               NIL)))))))
+                                                        (|pref_filled_TCC1|
+                                                         ""
+                                                         (SUBTYPE-TCC)
+                                                         NIL)
+                                                        (|Next_seat_TCC1|
+                                                         ""
+                                                         (SUBTYPE-TCC)
+                                                         NIL)
+                                                        (|Next_seat_TCC2|
+                                                         ""
+                                                         (INST
+                                                          1
+                                                          "lambda
+ (db, flt, (pref: {p:preferences| not pref_filled(db,flt,p)})):
+      choose! (s: (seats_on_flight(flt))):
+      meets_pref(aircraft(flt), pref)(s)
+          AND NOT seat_filled_on_flight(flt, db, s)")
+                                                         (("1" (GRIND) NIL)
+                                                          ("2" (GRIND) NIL)))
+                                                        (|Next_seat_ax|
+                                                         ""
+                                                         (EXPAND "member")
+                                                         (("" (PROPAX) NIL)))
+                                                        (|Next_seat_ax_2|
+                                                         ""
+                                                         (REDUCE)
+                                                         NIL)
+                                                        (|Next_seat_ax_3_TCC1|
+                                                         ""
+                                                         (USE "Next_seat_ax")
+                                                         ((""
+                                                           (EXPAND
+                                                            "seats_on_flight")
+                                                           ((""
+                                                             (EXPAND "member")
+                                                             ((""
+                                                               (PROPAX)
+                                                               NIL)))))))
+                                                        (|Next_seat_ax_3|
+                                                         ""
+                                                         (REDUCE)
+                                                         NIL)
+                                                        (|Make_assn_TCC1|
+                                                         ""
+                                                         (SUBTYPE-TCC)
+                                                         NIL)
+                                                        (|Make_assn_TCC2|
+                                                         ""
+                                                         (SKOSIMP)
+                                                         ((""
+                                                           (TYPEPRED
+                                                            "db!1(flt!1)")
+                                                           ((""
+                                                             (STEW
+                                                              :EXCLUDE
+                                                              ("domain"
+                                                               "range"
+                                                               "apply"
+                                                               "invapply"
+                                                               "part_inj")
+                                                              :LEMMAS
+                                                              ("update_ok[(seats_on_flight(flt!1)),passengers]"))
+                                                             ((""
+                                                               (STEW
+                                                                :EXCLUDE
+                                                                ("domain"
+                                                                 "range"
+                                                                 "apply"
+                                                                 "invapply"
+                                                                 "part_inj")
+                                                                :LEMMAS
+                                                                ("update_ok[(seats_on_flight(flt!1)),passengers]"
+                                                                 "Next_seat_ax_2"))
+                                                               NIL)))))))
+                                                        (|Make_Cancel|
+                                                         ""
+                                                         (SKOSIMP)
+                                                         ((""
+                                                           (APPLY-EXTENSIONALITY
+                                                            :HIDE?
+                                                            T)
+                                                           ((""
+                                                             (APPLY-EXTENSIONALITY
+                                                              :HIDE?
+                                                              T)
+                                                             ((""
+                                                               (TYPEPRED
+                                                                "x!2")
+                                                               ((""
+                                                                 (GRIND)
+                                                                 NIL)))))))))
+                                                        (|Cancel_putative|
+                                                         ""
+                                                         (GRIND)
+                                                         NIL)
+                                                        (|Make_putative|
+                                                         ""
+                                                         (GRIND)
+                                                         ((""
+                                                           (INST? 3 :WHERE 3)
+                                                           (("1" (ASSERT) NIL)
+                                                            ("2"
+                                                             (REDUCE)
+                                                             NIL)))))
+                                                        (|Lookup_TCC1|
+                                                         ""
+                                                         (SUBTYPE-TCC)
+                                                         NIL)
+                                                        (|Lookup_putative_TCC1|
+                                                         ""
+                                                         (SKOSIMP)
+                                                         ((""
+                                                           (USE
+                                                            "Make_putative")
+                                                           ((""
+                                                             (ASSERT)
+                                                             NIL)))))
+                                                        (|Lookup_putative_TCC2|
+                                                         ""
+                                                         (SKOSIMP)
+                                                         ((""
+                                                           (TYPEPRED
+                                                            "Lookup(flt!1,
+                                               pass!1,
+                                               Make_assn(flt!1,
+                                                         pass!1,
+                                                         pref!1, db!1))")
+                                                           (("1"
+                                                             (EXPAND
+                                                              "seats_on_flight")
+                                                             (("1"
+                                                               (PROPAX)
+                                                               NIL)))
+                                                            ("2"
+                                                             (USE
+                                                              "Make_putative")
+                                                             (("2"
+                                                               (ASSERT)
+                                                               NIL)))))))
+                                                        (|Lookup_putative|
+                                                         ""
+                                                         (SKOSIMP)
+                                                         ((""
+                                                           (TYPEPRED
+                                                            "db!1(flt!1)")
+                                                           ((""
+                                                             (TYPEPRED
+                                                              "Next_seat(db!1, flt!1, pref!1)")
+                                                             (("1"
+                                                               (STEW
+                                                                :EXCLUDE
+                                                                ("domain"
+                                                                 "range"
+                                                                 "apply"
+                                                                 "invapply"
+                                                                 "part_inj")
+                                                                :LEMMAS
+                                                                ("update_ok[(seats_on_flight(flt!1)),passengers]"))
+                                                               NIL)
+                                                              ("2"
+                                                               (SKOSIMP)
+                                                               (("2"
+                                                                 (TYPEPRED
+                                                                  "s!1")
+                                                                 (("2"
+                                                                   (EXPAND
+                                                                    "seats_on_flight")
+                                                                   (("2"
+                                                                     (PROPAX)
+                                                                     NIL)))))))
+                                                              ("3"
+                                                               (PROPAX)
+                                                               NIL))))))))
