@@ -1,0 +1,3 @@
+(|cache2| (|one_TCC1| "" (SUBTYPE-TCC) NIL) (|p_init_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|invariant_ctl| "" (EXPAND "p_next") (("" (MODEL-CHECK) NIL)))
+ (|strong_invariant_ctl| "" (EXPAND "p_next") (("" (MODEL-CHECK) NIL))))

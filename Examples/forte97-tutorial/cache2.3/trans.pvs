@@ -1,0 +1,4 @@
+trans:theory
+begin
+   transactions : TYPE = {idle, read_shared, read_modified, write_back}
+end trans

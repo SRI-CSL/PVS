@@ -1,0 +1,90 @@
+cache2: THEORY
+BEGIN
+  
+  IMPORTING trans
+  
+  processor: TYPE = below(2)
+  
+  JUDGEMENT 1 HAS_TYPE below(2)
+
+  line_status: TYPE = {invalid, shared, exclusive}
+  
+  procs: TYPE = {a, b}
+  
+  protocol_state:
+      TYPE =
+        [# cache: [processor -> line_status],
+           transaction: transactions,
+           bus_master: procs #]
+  
+  p, q, r: VAR processor
+  
+  ps, ps0, ps1: VAR protocol_state
+  
+  p_init(ps): bool = invalid?(cache(ps)(0)) AND invalid?(cache(ps)(1))
+  
+  do_idle(ps0, ps1): bool = (ps1 = ps0)
+  
+  do_read_shared(ps0, ps1)(p): bool =
+    invalid?(cache(ps0)(p))
+        AND shared?(cache(ps1)(p))
+          AND
+        ((exclusive?(cache(ps0)(0))
+              AND NOT exclusive?(cache(ps1)(0))
+                AND exclusive?(cache(ps1)(1))
+                  = exclusive?(cache(ps0)(1))
+              OR exclusive?(cache(ps0)(1))
+                AND NOT exclusive?(cache(ps1)(1))
+                  AND exclusive?(cache(ps1)(0))
+                    = exclusive?(cache(ps0)(0)))
+             OR
+           (NOT exclusive?(cache(ps0)(0))
+                AND NOT exclusive?(cache(ps1)(0))
+                  AND NOT exclusive?(cache(ps0)(1))
+                    AND NOT exclusive?(cache(ps1)(1))))
+  
+  do_read_modified(ps0, ps1)(p): bool =
+    shared?(cache(ps0)(p))
+        AND
+      (LET q = 0
+         IN cache(ps1)(q)
+               = IF p = q THEN exclusive
+             ELSIF shared?(cache(ps0)(q)) THEN invalid
+             ELSE cache(ps0)(q)
+             ENDIF)
+          AND
+        (LET q = 1
+           IN cache(ps1)(q)
+                 = IF p = q THEN exclusive
+               ELSIF shared?(cache(ps0)(q)) THEN invalid
+               ELSE cache(ps0)(q)
+               ENDIF)
+  
+  do_write_back(ps0, ps1)(p): bool =
+    exclusive?(cache(ps0)(p))
+        AND cache(ps1) = cache(ps0) WITH [(p) := invalid]
+  
+  p_next(ps0, ps1): bool =
+    LET p = (IF a?(bus_master(ps0)) THEN 1 ELSE 0 ENDIF),
+        t = transaction(ps0)
+      IN (ps1 = ps0
+              OR (read_shared?(t) AND do_read_shared(ps0, ps1)(p))
+                OR
+              (read_modified?(t) AND do_read_modified(ps0, ps1)(p))
+                  OR (write_back?(t) AND do_write_back(ps0, ps1)(p)))
+  
+  p_safe(ps): bool =
+    NOT (exclusive?(cache(ps)(0)) AND exclusive?(cache(ps)(1)))
+  
+  p_safe_strong(ps): bool =
+    (exclusive?(cache(ps)(0)) IMPLIES invalid?(cache(ps)(1)))
+        AND (exclusive?(cache(ps)(1)) IMPLIES invalid?(cache(ps)(0)))
+  
+  IMPORTING ctlops[protocol_state]
+  
+  invariant_ctl: THEOREM p_init(ps) IMPLIES AG(p_next, p_safe)(ps)
+  
+  strong_invariant_ctl: THEOREM
+        p_init(ps) IMPLIES AG(p_next, p_safe_strong)(ps)
+  
+END cache2

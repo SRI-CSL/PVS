@@ -1,0 +1,35 @@
+refinement[N: posnat]  : THEORY
+BEGIN
+
+  IMPORTING abs_cache, cache_array[N]
+
+   p, q : VAR processor
+   ps, ps0, ps1: VAR protocol_state
+
+   abst_cache(c: [processor -> line_status]) : abstract_status =
+     IF (EXISTS p: exclusive?(c(p)))
+     THEN IF (EXISTS q: shared?(c(q)))
+          THEN exclusive_shared
+          ELSIF (EXISTS p:
+                  (FORALL q: exclusive?(c(q)) IMPLIES p = q))
+          THEN one_exclusive
+          ELSE many_exclusive ENDIF
+     ELSIF (EXISTS p: shared?(c(p)))
+     THEN some_shared
+     ELSE all_invalid ENDIF
+
+    abst(ps) : abstract_state =
+     (# cache := abst_cache(cache(ps)),
+        transaction := transaction(ps) #)
+
+   init_simulation: THEOREM
+      p_init(ps) IMPLIES a_init(abst(ps))
+
+   next_simulation: THEOREM
+      p_next(ps0, ps1) IMPLIES a_next(abst(ps0), abst(ps1))
+
+   safety_preserved: THEOREM a_safe(abst(ps)) => p_safe(ps)
+
+   strong_safety_preserved: THEOREM a_safe(abst(ps)) => strong_p_safe(ps)
+
+END refinement

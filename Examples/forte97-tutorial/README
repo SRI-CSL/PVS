@@ -1,0 +1,22 @@
+PVS Example: FORTE'97 Tutorial (Osaka, Japan, November 1997)
+
+   Proof Checking, and Model Checking for
+   Protocols and Distributed Systems with PVS
+
+  Web page: http://www.csl.sri.com/forte97.html
+
+  Documents: forte97.dvi.Z and forte97.ps.gz
+
+  Dump file: cache.dmp
+    Use PVS command M-x undump-file cache.dmp
+  Provides the following theories and associated proof files
+    cache_array: the full protocol specification
+      NOTE: the proof of "invariant" fails (due to the "postpone" command)
+      because the p_safe property is not inductive.   It needs to be
+      strengthened (which is what strong_invariant does)
+    cache2: the protocol specificaiton downscaled to just two
+      processors for model checking
+    abs_cache: a finite-state abstraction of the full protocol, also
+      suitable for model checking
+    refinement: establishes that abs_cache is a true abstraction of
+      cache_array

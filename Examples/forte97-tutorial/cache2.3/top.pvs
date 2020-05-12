@@ -1,0 +1,8 @@
+top: THEORY
+
+BEGIN
+
+  N: posint
+  IMPORTING cache_array[N], cache2, abs_cache, refinement[N]
+
+END top

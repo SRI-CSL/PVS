@@ -1,0 +1,2 @@
+(|abs_cache|
+ (|abs_invariant_ctl| "" (EXPAND "a_next") (("" (MODEL-CHECK) NIL))))

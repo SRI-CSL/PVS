@@ -1,0 +1,88 @@
+<TITLE>SRI-CSL: RECENT PAPERS</TITLE>
+<H1>SRI International Computer Science Laboratory</H1>
+<IMG src ="/images/border.gif" ALT="">
+
+<h2>
+Specification, Proof Checking, and Model Checking for
+Protocols and Distributed Systems with PVS
+
+
+</h2>
+
+<h3>
+John Rushby
+</h3>
+
+<h4>
+Tutorial Notes for FORTE/PSTV '97, Osaka, Japan, November 1997
+</h4>
+
+<h3>Abstract</h3> This tutorial uses a simple example to demonstrate
+some of the techniques and issues in the formal specification and
+analysis of protocols.  A simple cache-coherence protocol is formally
+specified as a transition relation in PVS and a desired property of
+the protocol is proposed.  The specification is then ``downscaled'' to
+create a finite-state instance with just two caches, and the property
+is examined using model checking.  An attempt is then made to
+establish the property for the full protocol using theorem proving,
+but it is discovered that the property is not inductive.  A
+strengthened invariant is then proposed, checked by model checking in
+the downscaled instance, and then established by theorem proving.
+Finally, an alternative approach is illustrated in which theorem
+proving is used to justify a property-preserving abstraction to finite
+state, which is then analyzed by model checking.
+<p>
+The tutorial is not intended as an introduction to PVS, but as an
+illustration of some topics in its application to protocols and as an
+introduction to the use of theorem proving and model checking
+techniques in combination.
+<p>
+This tutorial was developed in PVS version 2.2.  In version 2.3 the
+model checking theories have been incorporated into the prelude, and the
+proofs of cache_array.invariant and refinement.next_simulation needed
+adjustment because of other changes.  Make sure you get the dump file
+corresponding to the system you are using.
+<p>
+<IMG src ="/images/rightarrow.gif" ALT="">
+<a href="http:/pvs/examples/forte97-tutorial/forte97.dvi.Z">dvi</a> or
+<a href="http:/pvs/examples/forte97-tutorial/forte97.ps.gz">postscript</a>;
+<br>
+<IMG src ="/images/rightarrow.gif" ALT="">
+<a href="http://www.csl.sri.com/~rushby/slides/forte97.ps.gz">slides</a> and
+<a href="http://www.csl.sri.com/~rushby/slides/forte97-4.ps.gz">4-up slides</a> (both
+gzipped postscript)
+<br><IMG src ="/images/rightarrow.gif" ALT="">
+<a href="http:/pvs/examples/forte97-tutorial/cache.dmp">PVS 2.3 dump file</a>
+<br><IMG src ="/images/rightarrow.gif" ALT="">
+<a href="http:/pvs/examples/forte97-tutorial/cache2-2.dmp">PVS 2.2 dump file</a>
+<hr>
+<h3>Related Tutorials and Papers</h4>
+<ul>
+
+<li><a href=http://www.csl.sri.com/shankar/marktoberdorf96.ps.gz> Machine-Assisted
+Verification Using Theorem Proving and Model Checking </a> by
+N. Shankar (gzipped postscript): A more technical introduction to
+model checking and its mechanization in PVS;  <a
+href=http://www.csl.sri.com/~shankar/marktoberdorf/modelcheck.ps.gz>corresponding
+slides</a> (gzipped postscript)
+
+<li><a href=http://www.csl.sri.com/fme96.html>Experiments in Theorem
+Proving and Model Checking for Protocol Verification</a> by
+Klaus Havelund and N. Shankar: applies the methodology described in
+the tutorial to a harder example.
+
+<li><a href=http://www.csl.sri.com/reports/html/wift-tutorial.html>Basic tutorial introduction to PVS</a>
+
+<li><a href=http://pvs.csl.sri.com/tutorials.html>Other PVS Tutorials and Examples</a>
+</ul>
+
+<hr>
+
+<A HREF="http://www.csl.sri.com/fm.html"> 
+<IMG src ="/images/return.gif" ALT="">
+Return to the <b>Formal Methods Program</b> home page</a><p>
+
+<A HREF="http://www.csl.sri.com"> 
+<IMG src ="/images/return.gif" ALT="">
+Return to the <b>Computer Science Laboratory</b> home page</a>
+

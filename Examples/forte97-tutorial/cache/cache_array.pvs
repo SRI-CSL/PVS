@@ -1,0 +1,72 @@
+cache_array[N : posnat]  : THEORY
+
+BEGIN
+
+  IMPORTING trans
+
+   processor : TYPE = below(N)
+
+   line_status : TYPE = {invalid, shared, exclusive}
+
+   protocol_state : TYPE =
+     [# cache : [processor -> line_status],
+        transaction : transactions,
+        bus_master : processor #]
+
+   p, q, r : VAR processor
+
+   ps, ps0, ps1: VAR protocol_state
+
+% want shared (read) access
+
+  do_idle(ps0, ps1): bool = (ps1 = ps0)
+
+  do_read_shared(ps0, ps1)(p): bool  =
+    invalid?(cache(ps0)(p)) AND shared?(cache(ps1)(p))
+    AND ((EXISTS q: exclusive?(cache(ps0)(q))
+	    AND NOT exclusive?(cache(ps1)(q))
+	    AND (FORALL r: r/=q IMPLIES
+		   exclusive?(cache(ps1)(r)) =
+		   exclusive?(cache(ps0)(r))))
+	 OR (FORALL q: NOT exclusive?(cache(ps0)(q))
+		   AND NOT exclusive?(cache(ps1)(q))))
+
+% want to make my copy exclusive (writeable)
+
+  do_read_modified(ps0, ps1)(p): bool =
+    shared?(cache(ps0)(p))
+    AND (FORALL q: cache(ps1)(q) =
+            IF p = q THEN exclusive
+            ELSIF shared?(cache(ps0)(q)) THEN invalid
+            ELSE cache(ps0)(q) ENDIF)
+
+% want to write an exclusive copy back to memory
+
+  do_write_back(ps0, ps1)(p) : bool =
+     exclusive?(cache(ps0)(p))
+     AND cache(ps1) = cache(ps0) WITH [(p) := invalid]
+
+  p_next(ps0, ps1): bool =
+    LET p = bus_master(ps0), t=transaction(ps0) IN
+     (   (idle?(t) and do_idle(ps0, ps1))
+      OR (read_shared?(t) and do_read_shared(ps0, ps1)(p))
+      OR (read_modified?(t) and do_read_modified(ps0, ps1)(p))
+      OR (write_back?(t) and do_write_back(ps0, ps1)(p)))
+
+  p_init(ps): bool = FORALL p: invalid?(cache(ps)(p))
+
+  p_safe(ps): bool = 
+    FORALL p, q: exclusive?(cache(ps)(p)) AND exclusive?(cache(ps)(q))
+      IMPLIES p = q
+
+  invariant: THEOREM (p_init(ps) IMPLIES p_safe(ps))
+    AND (p_safe(ps0) AND p_next(ps0, ps1) IMPLIES p_safe(ps1))
+
+  strong_p_safe(ps): bool = 
+    FORALL p: exclusive?(cache(ps)(p))
+       IMPLIES FORALL q: q /= p IMPLIES invalid?(cache(ps)(q))
+
+  strong_invariant: THEOREM (p_init(ps) IMPLIES strong_p_safe(ps)) AND
+     (strong_p_safe(ps0) AND p_next(ps0, ps1) IMPLIES strong_p_safe(ps1))
+
+END cache_array

@@ -1,0 +1,417 @@
+<html><h1>
+PVS dump file cache.dmp
+</h1>
+
+See <a
+href=http://www.csl.sri.com/forte97.html>http://www.csl.sri.com/forte97.html</a>
+for description.  <p>
+
+To extract the specifications and proofs, download this file to
+cache.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (cache.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+
+%Patch files loaded: patch2 version 2.408
+%                    patch2-test version 1.659
+
+$$$top.pvs
+top: THEORY
+
+BEGIN
+
+  N: posint
+  IMPORTING cache_array[N], cache2, abs_cache, refinement[N]
+
+END top
+
+$$$refinement.pvs
+refinement[N: posnat]  : THEORY
+BEGIN
+
+  IMPORTING abs_cache, cache_array[N]
+
+   p, q : VAR processor
+   ps, ps0, ps1: VAR protocol_state
+
+   abst_cache(c: [processor -> line_status]) : abstract_status =
+     IF (EXISTS p: exclusive?(c(p)))
+     THEN IF (EXISTS q: shared?(c(q)))
+          THEN exclusive_shared
+          ELSIF (EXISTS p:
+                  (FORALL q: exclusive?(c(q)) IMPLIES p = q))
+          THEN one_exclusive
+          ELSE many_exclusive ENDIF
+     ELSIF (EXISTS p: shared?(c(p)))
+     THEN some_shared
+     ELSE all_invalid ENDIF
+
+    abst(ps) : abstract_state =
+     (# cache := abst_cache(cache(ps)),
+        transaction := transaction(ps) #)
+
+   init_simulation: THEOREM
+      p_init(ps) IMPLIES a_init(abst(ps))
+
+   next_simulation: THEOREM
+      p_next(ps0, ps1) IMPLIES a_next(abst(ps0), abst(ps1))
+
+   safety_preserved: THEOREM a_safe(abst(ps)) => p_safe(ps)
+
+   strong_safety_preserved: THEOREM a_safe(abst(ps)) => strong_p_safe(ps)
+
+END refinement
+
+$$$refinement.prf
+(|refinement| (|init_simulation| "" (GRIND) NIL)
+ (|next_simulation| "" (SKOSIMP)
+  (("" (EXPAND "p_next")
+    (("" (PROP)
+      (("1" (EXPAND "a_next")
+        (("1" (FLATTEN)
+          (("1" (HIDE 2 3 4) (("1" (GRIND :IF-MATCH NIL) NIL)))))))
+       ("2" (EXPAND "do_read_shared")
+        (("2" (PROP)
+          (("1" (EXPAND "a_next")
+            (("1" (FLATTEN)
+              (("1" (HIDE 1 3 4)
+                (("1" (GRIND :IF-MATCH NIL)
+                  (("1" (INST-CP -9 "p!2") (("1" (REDUCE :IF-MATCH ALL) NIL)))
+                   ("2" (REDUCE) NIL) ("3" (REDUCE) NIL)
+                   ("4" (REDUCE) NIL)))))))))
+           ("2" (EXPAND "a_next")
+            (("2" (FLATTEN)
+              (("2" (HIDE 1 3 4)
+                (("2" (GRIND :IF-MATCH NIL)
+                  (("1" (INST -3 "p!2") (("1" (ASSERT) NIL)))
+                   ("2" (INST? 2) NIL)
+                   ("3" (INST -2 "p!1") (("3" (ASSERT) NIL)))
+                   ("4" (INST? 2) NIL)))))))))))))
+       ("3" (EXPAND "a_next")
+        (("3" (FLATTEN)
+          (("3" (HIDE 1 2 4)
+            (("3" (EXPAND "do_read_modified")
+              (("3" (PROP)
+                (("1" (AUTO-REWRITE -3) (("1" (HIDE -3) (("1" (GRIND) NIL)))))
+                 ("2" (AUTO-REWRITE -3) (("2" (HIDE -3) (("2" (GRIND) NIL)))))
+                 ("3" (GRIND :IF-MATCH NIL)
+                  (("1" (AUTO-REWRITE -7)
+                    (("1" (INST - "q!1") (("1" (GRIND :IF-MATCH NIL) NIL)))))
+                   ("2" (INST 2 "bus_master(ps0!1)")
+                    (("2" (SKOSIMP*)
+                      (("2" (INST + "q!1")
+                        (("2" (INST - "q!1")
+                          (("2" (REDUCE :IF-MATCH NIL) NIL)))))))))
+                   ("3" (INST 2 "bus_master(ps0!1)")
+                    (("3" (INST - "bus_master(ps0!1)")
+                      (("3" (REDUCE :IF-MATCH NIL) NIL)))))))
+                 ("4" (GRIND :IF-MATCH NIL)
+                  (("1" (INST - "q!1") (("1" (REDUCE) NIL)))
+                   ("2" (INST? -4 :IF-MATCH ALL)
+                    (("2" (INST-CP - "p!1")
+                      (("2" (INST - "bus_master(ps0!1)")
+                        (("2" (GRIND) NIL)))))))
+                   ("3" (INST + "bus_master(ps0!1)") (("3" (REDUCE) NIL)))
+                   ("4" (INST?) NIL) ("5" (INST?) NIL)
+                   ("6" (INST?) NIL)))))))))))))
+       ("4" (EXPAND "do_write_back")
+        (("4" (EXPAND "a_next")
+          (("4" (FLATTEN)
+            (("4" (HIDE 1 2 3)
+              (("4" (GRIND :IF-MATCH NIL)
+                (("1" (INST? - :IF-MATCH ALL) (("1" (GROUND) NIL)))
+                 ("2" (INST?) NIL) ("3" (INST?) NIL)))))))))))))))))
+ (|safety_preserved| "" (GRIND :IF-MATCH NIL)
+    (("1" (INST-CP -4 "p!1") (("1" (INST -4 "q!1") (("1" (ASSERT) NIL)))))
+     ("2" (INST?) NIL)))
+ (|strong_safety_preserved| "" (GRIND :IF-MATCH NIL)
+  (("1" (INST 1 "q!1")
+    (("1" (INST-CP -4 "p!1") (("1" (INST -4 "q!1") (("1" (ASSERT) NIL)))))))
+   ("2" (INST?) NIL))))
+
+$$$abs_cache.pvs
+abs_cache: THEORY
+  BEGIN
+  
+  IMPORTING trans
+  
+  abstract_status:
+      TYPE =
+        {all_invalid, some_shared, 
+         one_exclusive, many_exclusive, exclusive_shared}
+  
+  abstract_state:
+      TYPE = [# cache: abstract_status, transaction: transactions #]
+  
+  IMPORTING MU@ctlops[abstract_state]
+  
+  as, as0, as1: VAR abstract_state
+  
+  a_safe(as): bool =
+    LET x = cache(as) IN
+      all_invalid?(x) OR some_shared?(x) OR one_exclusive?(x)
+  
+  a_init(as): bool = all_invalid?(cache(as))
+  
+  do_idle(as0, as1): bool = (as0 = as1)
+  
+  do_read_shared(as0, as1): bool =
+    (a_safe(as0) IMPLIES some_shared?(cache(as1)))
+  
+  do_read_modified(as0, as1): bool =
+    LET x = cache(as0), y = cache(as1) IN
+      (some_shared?(x) OR exclusive_shared?(x))
+      AND IF some_shared?(x)
+            THEN one_exclusive?(y)
+            ELSE many_exclusive?(y)
+          ENDIF
+  
+  do_write_back(as0, as1): bool =
+    LET x = cache(as0), y = cache(as1) IN
+      (one_exclusive?(x) OR many_exclusive?(x) OR exclusive_shared?(x))
+          AND
+        (one_exclusive?(cache(as0)) IMPLIES all_invalid?(cache(as1)))
+  
+  a_next(as0, as1): bool =
+    LET t = transaction(as0) IN
+     ((idle?(t) AND do_idle(as0, as1))
+       OR (read_shared?(t) AND do_read_shared(as0, as1))
+          OR (read_modified?(t) AND do_read_modified(as0, as1))
+             OR (write_back?(t) AND do_write_back(as0, as1)))
+  
+  abs_invariant_ctl: THEOREM a_init(as) IMPLIES AG(a_next, a_safe)(as)
+  
+  END abs_cache
+
+$$$abs_cache.prf
+(|abs_cache|
+ (|abs_invariant_ctl| "" (EXPAND "a_next") (("" (MODEL-CHECK) NIL))))
+
+$$$cache2.pvs
+cache2: THEORY
+BEGIN
+  
+  IMPORTING trans
+  
+  processor: TYPE = below(2)
+  
+  JUDGEMENT 1 HAS_TYPE below(2)
+
+  line_status: TYPE = {invalid, shared, exclusive}
+  
+  procs: TYPE = {a, b}
+  
+  protocol_state:
+      TYPE =
+        [# cache: [processor -> line_status],
+           transaction: transactions,
+           bus_master: procs #]
+  
+  p, q, r: VAR processor
+  
+  ps, ps0, ps1: VAR protocol_state
+  
+  p_init(ps): bool = invalid?(cache(ps)(0)) AND invalid?(cache(ps)(1))
+  
+  do_idle(ps0, ps1): bool = (ps1 = ps0)
+  
+  do_read_shared(ps0, ps1)(p): bool =
+    invalid?(cache(ps0)(p))
+        AND shared?(cache(ps1)(p))
+          AND
+        ((exclusive?(cache(ps0)(0))
+              AND NOT exclusive?(cache(ps1)(0))
+                AND exclusive?(cache(ps1)(1))
+                  = exclusive?(cache(ps0)(1))
+              OR exclusive?(cache(ps0)(1))
+                AND NOT exclusive?(cache(ps1)(1))
+                  AND exclusive?(cache(ps1)(0))
+                    = exclusive?(cache(ps0)(0)))
+             OR
+           (NOT exclusive?(cache(ps0)(0))
+                AND NOT exclusive?(cache(ps1)(0))
+                  AND NOT exclusive?(cache(ps0)(1))
+                    AND NOT exclusive?(cache(ps1)(1))))
+  
+  do_read_modified(ps0, ps1)(p): bool =
+    shared?(cache(ps0)(p))
+        AND
+      (LET q = 0
+         IN cache(ps1)(q)
+               = IF p = q THEN exclusive
+             ELSIF shared?(cache(ps0)(q)) THEN invalid
+             ELSE cache(ps0)(q)
+             ENDIF)
+          AND
+        (LET q = 1
+           IN cache(ps1)(q)
+                 = IF p = q THEN exclusive
+               ELSIF shared?(cache(ps0)(q)) THEN invalid
+               ELSE cache(ps0)(q)
+               ENDIF)
+  
+  do_write_back(ps0, ps1)(p): bool =
+    exclusive?(cache(ps0)(p))
+        AND cache(ps1) = cache(ps0) WITH [(p) := invalid]
+  
+  p_next(ps0, ps1): bool =
+    LET p = (IF a?(bus_master(ps0)) THEN 1 ELSE 0 ENDIF),
+        t = transaction(ps0)
+      IN (ps1 = ps0
+              OR (read_shared?(t) AND do_read_shared(ps0, ps1)(p))
+                OR
+              (read_modified?(t) AND do_read_modified(ps0, ps1)(p))
+                  OR (write_back?(t) AND do_write_back(ps0, ps1)(p)))
+  
+  p_safe(ps): bool =
+    NOT (exclusive?(cache(ps)(0)) AND exclusive?(cache(ps)(1)))
+  
+  p_safe_strong(ps): bool =
+    (exclusive?(cache(ps)(0)) IMPLIES invalid?(cache(ps)(1)))
+        AND (exclusive?(cache(ps)(1)) IMPLIES invalid?(cache(ps)(0)))
+  
+  IMPORTING MU@ctlops[protocol_state]
+  
+  invariant_ctl: THEOREM p_init(ps) IMPLIES AG(p_next, p_safe)(ps)
+  
+  strong_invariant_ctl: THEOREM
+        p_init(ps) IMPLIES AG(p_next, p_safe_strong)(ps)
+  
+END cache2
+
+$$$cache2.prf
+(|cache2| (|one_TCC1| "" (SUBTYPE-TCC) NIL) (|p_init_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|invariant_ctl| "" (EXPAND "p_next") (("" (MODEL-CHECK) NIL)))
+ (|strong_invariant_ctl| "" (EXPAND "p_next") (("" (MODEL-CHECK) NIL))))
+
+$$$trans.pvs
+trans:theory
+begin
+   transactions : TYPE = {idle, read_shared, read_modified, write_back}
+end trans
+
+$$$cache_array.pvs
+cache_array[N : posnat]  : THEORY
+
+BEGIN
+
+  IMPORTING trans
+
+   processor : TYPE = below(N)
+
+   line_status : TYPE = {invalid, shared, exclusive}
+
+   protocol_state : TYPE =
+     [# cache : [processor -> line_status],
+        transaction : transactions,
+        bus_master : processor #]
+
+   p, q, r : VAR processor
+
+   ps, ps0, ps1: VAR protocol_state
+
+% want shared (read) access
+
+  do_idle(ps0, ps1): bool = (ps1 = ps0)
+
+  do_read_shared(ps0, ps1)(p): bool  =
+    invalid?(cache(ps0)(p)) AND shared?(cache(ps1)(p))
+    AND ((EXISTS q: exclusive?(cache(ps0)(q))
+	    AND NOT exclusive?(cache(ps1)(q))
+	    AND (FORALL r: r/=q IMPLIES
+		   exclusive?(cache(ps1)(r)) =
+		   exclusive?(cache(ps0)(r))))
+	 OR (FORALL q: NOT exclusive?(cache(ps0)(q))
+		   AND NOT exclusive?(cache(ps1)(q))))
+
+% want to make my copy exclusive (writeable)
+
+  do_read_modified(ps0, ps1)(p): bool =
+    shared?(cache(ps0)(p))
+    AND (FORALL q: cache(ps1)(q) =
+            IF p = q THEN exclusive
+            ELSIF shared?(cache(ps0)(q)) THEN invalid
+            ELSE cache(ps0)(q) ENDIF)
+
+% want to write an exclusive copy back to memory
+
+  do_write_back(ps0, ps1)(p) : bool =
+     exclusive?(cache(ps0)(p))
+     AND cache(ps1) = cache(ps0) WITH [(p) := invalid]
+
+  p_next(ps0, ps1): bool =
+    LET p = bus_master(ps0), t=transaction(ps0) IN
+     (   (idle?(t) and do_idle(ps0, ps1))
+      OR (read_shared?(t) and do_read_shared(ps0, ps1)(p))
+      OR (read_modified?(t) and do_read_modified(ps0, ps1)(p))
+      OR (write_back?(t) and do_write_back(ps0, ps1)(p)))
+
+  p_init(ps): bool = FORALL p: invalid?(cache(ps)(p))
+
+  p_safe(ps): bool = 
+    FORALL p, q: exclusive?(cache(ps)(p)) AND exclusive?(cache(ps)(q))
+      IMPLIES p = q
+
+  invariant: THEOREM (p_init(ps) IMPLIES p_safe(ps))
+    AND (p_safe(ps0) AND p_next(ps0, ps1) IMPLIES p_safe(ps1))
+
+  strong_p_safe(ps): bool = 
+    FORALL p: exclusive?(cache(ps)(p))
+       IMPLIES FORALL q: q /= p IMPLIES invalid?(cache(ps)(q))
+
+  strong_invariant: THEOREM (p_init(ps) IMPLIES strong_p_safe(ps)) AND
+     (strong_p_safe(ps0) AND p_next(ps0, ps1) IMPLIES strong_p_safe(ps1))
+
+END cache_array
+
+$$$cache_array.prf
+(|cache_array|
+ (|invariant| "" (SKOSIMP)
+  (("" (GROUND)
+    (("1" (GRIND) NIL)
+     ("2" (EXPAND "p_next")
+      (("2" (GROUND)
+        (("1" (GRIND) NIL)
+         ("2" (GRIND :IF-MATCH NIL)
+          (("1" (INST -8 "q!2")
+            (("1" (ASSERT)
+              (("1" (INST -9 "q!1")
+                (("1" (ASSERT)
+                  (("1" (INST -9 "q!2") (("1" (ASSERT) NIL)))))))))))
+           ("2" (INST -6 "p!1") (("2" (ASSERT) NIL)))))
+         ("3" (POSTPONE) NIL) ("4" (GRIND :IF-MATCH ALL) NIL)))))))))
+ (|strong_invariant| "" (SKOSIMP)
+  (("" (GROUND)
+    (("1" (GRIND) NIL)
+     ("2" (EXPAND "p_next")
+      (("2" (GROUND)
+        (("1" (GRIND) NIL)
+         ("2" (GRIND :IF-MATCH NIL)
+          (("1" (INST -8 "p!1")
+            (("1" (ASSERT)
+              (("1" (INST -9 "p!1")
+                (("1" (ASSERT)
+                  (("1" (INST -9 "q!1") (("1" (ASSERT) NIL)))))))))))
+           ("2" (INST -6 "p!1") (("2" (ASSERT) NIL)))))
+         ("3" (GRIND :IF-MATCH NIL)
+          (("3" (INST -5 "p!1")
+            (("3" (LIFT-IF)
+              (("3" (GROUND)
+                (("1" (REVEAL -1)
+                  (("1" (INST -1 "q!1")
+                    (("1" (LIFT-IF)
+                      (("1" (GROUND)
+                        (("1" (INST -8 "q!1")
+                          (("1" (ASSERT)
+                            (("1" (INST -8 "p!1")
+                              (("1" (ASSERT) NIL)))))))))))))))
+                 ("2" (INST -6 "p!1")
+                  (("2" (ASSERT)
+                    (("2" (INST -6 "bus_master(ps0!1)")
+                      (("2" (ASSERT) NIL)))))))))))))))
+         ("4" (GRIND :IF-MATCH ALL) NIL))))))))))
+

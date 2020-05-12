@@ -1,0 +1,52 @@
+abs_cache: THEORY
+  BEGIN
+  
+  IMPORTING trans
+  
+  abstract_status:
+      TYPE =
+        {all_invalid, some_shared, 
+         one_exclusive, many_exclusive, exclusive_shared}
+  
+  abstract_state:
+      TYPE = [# cache: abstract_status, transaction: transactions #]
+  
+  IMPORTING ctlops[abstract_state]
+  
+  ast, as0, as1: VAR abstract_state
+  
+  a_safe(ast): bool =
+    LET x = cache(ast) IN
+      all_invalid?(x) OR some_shared?(x) OR one_exclusive?(x)
+  
+  a_init(ast): bool = all_invalid?(cache(ast))
+  
+  do_idle(as0, as1): bool = (as0 = as1)
+  
+  do_read_shared(as0, as1): bool =
+    (a_safe(as0) IMPLIES some_shared?(cache(as1)))
+  
+  do_read_modified(as0, as1): bool =
+    LET x = cache(as0), y = cache(as1) IN
+      (some_shared?(x) OR exclusive_shared?(x))
+      AND IF some_shared?(x)
+            THEN one_exclusive?(y)
+            ELSE many_exclusive?(y)
+          ENDIF
+  
+  do_write_back(as0, as1): bool =
+    LET x = cache(as0), y = cache(as1) IN
+      (one_exclusive?(x) OR many_exclusive?(x) OR exclusive_shared?(x))
+          AND
+        (one_exclusive?(cache(as0)) IMPLIES all_invalid?(cache(as1)))
+  
+  a_next(as0, as1): bool =
+    LET t = transaction(as0) IN
+     ((idle?(t) AND do_idle(as0, as1))
+       OR (read_shared?(t) AND do_read_shared(as0, as1))
+          OR (read_modified?(t) AND do_read_modified(as0, as1))
+             OR (write_back?(t) AND do_write_back(as0, as1)))
+  
+  abs_invariant_ctl: THEOREM a_init(ast) IMPLIES AG(a_next, a_safe)(ast)
+  
+  END abs_cache
