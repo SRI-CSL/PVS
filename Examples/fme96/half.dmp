@@ -1,0 +1,146 @@
+<html><h1>
+PVS dump file half.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+half.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (half.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: (patch2-test patch2) version 2.376
+
+$$$half.pvs
+half: THEORY
+
+BEGIN
+
+  even_nat: TYPE = {i:nat | EXISTS (j:nat): i = 2*j}
+
+% +(p,q:even_nat): even_nat = p+q
+
+  JUDGEMENT + HAS_TYPE [even_nat, even_nat ->  even_nat]
+  JUDGEMENT 2 HAS_TYPE even_nat
+  JUDGEMENT * HAS_TYPE [nat,      even_nat ->  even_nat]
+  JUDGEMENT * HAS_TYPE [even_nat, nat      ->  even_nat]
+
+  ee: VAR even_nat
+
+  half(ee): RECURSIVE nat =
+     IF ee=0 THEN 0 ELSE half(ee-2) + 1 ENDIF
+  MEASURE ee
+
+  i: VAR nat
+  half_twice: LEMMA  half(2 * i) = i
+
+  half_halves: THEOREM 2 * half(ee) = ee
+
+  test: THEOREM half(ee + ee) = ee
+
+  even_int?(k: int): bool = EXISTS (j: int): k = 2*j
+  even_int: TYPE = (even_int?)
+  ii: VAR even_int
+
+  even_prop: THEOREM forall (k:int): even_int?(k) OR even_int?(k-1)
+
+  even_prop2: THEOREM forall (k:int): NOT (even_int?(k) AND even_int?(k-1))
+
+  ihalf(ii): int = IF ii >= 0 THEN half(ii) ELSE -half(-ii) ENDIF
+
+  JUDGEMENT even_nat SUBTYPE_OF even_int
+
+  another_test: THEOREM 2 * ihalf(ee) = ee
+
+  ghalf(n: int): int = IF even_int?(n) THEN ihalf(n) ELSE ihalf(n-1) ENDIF
+
+  still_another: THEOREM ghalf(5) =2
+
+  nhalf(i): RECURSIVE nat =
+      IF i = 0 THEN 0 ELSIF i = 1 THEN 0 ELSE nhalf(i - 2) + 1 ENDIF
+        MEASURE i
+
+
+  twice_nhalf: THEOREM 2*nhalf(i) = i OR 2*nhalf(i) = i-1
+
+END half
+
+$$$half.prf
+(|half|
+ (|plus_TCC1| "" (GRIND :IF-MATCH NIL)
+  (("" (INST + "j!1+j!2") (("" (ASSERT) NIL)))))
+ (|two_TCC1| "" (INST + 1) (("" (ASSERT) NIL)))
+ (|times_TCC1| "" (GRIND :IF-MATCH NIL) (("" (INST + "j!1*x1!1") NIL)))
+ (|times_TCC2| "" (GRIND :IF-MATCH NIL) (("" (INST + "j!1*x2!1") NIL)))
+ (|half_TCC1| "" (GRIND :IF-MATCH NIL)
+  (("" (INST + "j!1-1") (("" (ASSERT) NIL)))))
+ (|half_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|half_twice| "" (INDUCT-AND-SIMPLIFY "i" :IF-MATCH ALL) NIL)
+ (|half_halves| "" (SKOLEM!)
+  (("" (TYPEPRED "ee!1")
+    (("1" (SKOLEM!)
+      (("1" (REPLACE -1 :HIDE? T) (("1" (REWRITE "half_twice") NIL)))))
+     ("2" (SKOSIMP*) (("2" (INST + 1) (("2" (ASSERT) NIL)))))))))
+ (|test| "" (SKOSIMP)
+  (("" (LEMMA "half_twice") (("" (INST?) (("" (ASSERT) NIL)))))))
+ (|even_prop| "" (SKOSIMP)
+  (("" (CASE "FORALL (n:nat): even_int?(n) OR even_int?(n-1)")
+    (("1" (CASE "k!1>=0")
+      (("1" (INST?) (("1" (ASSERT) NIL)))
+       ("2" (INST - "-k!1")
+        (("1" (EXPAND "even_int?")
+          (("1" (PROP)
+            (("1" (SKOSIMP) (("1" (INST 2 "-j!1") (("1" (ASSERT) NIL)))))
+             ("2" (SKOSIMP)
+              (("2" (INST 3 "-j!1-1") (("2" (ASSERT) NIL)))))))))
+         ("2" (ASSERT) NIL)))))
+     ("2" (HIDE 2 3)
+      (("2" (INDUCT "n")
+        (("1" (EXPAND "even_int?") (("1" (INST 1 0) (("1" (ASSERT) NIL)))))
+         ("2" (GRIND :IF-MATCH NIL)
+          (("2" (INST 1 "j!2+1") (("2" (ASSERT) NIL)))))))))))))
+ (|even_prop2| "" (ASSERT :FLUSH? T)
+  (("" (SKOSIMP)
+    (("" (EXPAND "even_int?")
+      (("" (SKOSIMP*)
+        (("" (REPLACE -1 :HIDE? T)
+          (("" (CASE "j!1-1/2=j!2")
+            (("1" (ASSERT) NIL) ("2" (ASSERT) NIL)))))))))))))
+ (|ihalf_TCC1| "" (GRIND :IF-MATCH NIL) (("" (INST + "j!1") NIL)))
+ (|ihalf_TCC2| "" (GRIND :IF-MATCH NIL :DEFS NIL)
+  (("" (EXPAND "even_int?")
+    (("" (SKOSIMP)
+      (("" (INST + "-j!1") (("1" (ASSERT) NIL) ("2" (ASSERT) NIL)))))))))
+ (SUBTYPE_TCC1 "" (SKOLEM-TYPEPRED)
+  (("1" (SKOSIMP) (("1" (EXPAND "even_int?") (("1" (INST + "j!1") NIL)))))
+   ("2" (SKOSIMP) (("2" (SKOSIMP) (("2" (INST + 1) (("2" (ASSERT) NIL)))))))))
+ (|another_test| "" (SKOSIMP)
+  (("" (EXPAND "ihalf") (("" (REWRITE "half_halves") NIL)))))
+ (|ghalf_TCC1| "" (SKOSIMP) (("" (USE "even_prop") (("" (ASSERT) NIL)))))
+ (|still_another| "" (EXPAND "ghalf")
+  (("" (LIFT-IF)
+    (("" (CASE "not even_int?(5)")
+      (("1" (ASSERT)
+        (("1" (EXPAND "ihalf")
+          (("1" (EXPAND "half")
+            (("1" (EXPAND "half")
+              (("1" (EXPAND "half") (("1" (PROPAX) NIL)))))))))))
+       ("2" (HIDE 1)
+        (("2" (LEMMA "even_prop2")
+          (("2" (INST -1 5)
+            (("2" (PROP)
+              (("2" (HIDE -1)
+                (("2" (EXPAND "even_int?")
+                  (("2" (INST 1 2) (("2" (ASSERT) NIL)))))))))))))))))))))
+ (|twice_half| "" (SKOSIMP)
+  (("" (EXPAND "ghalf")
+    (("" (LIFT-IF)
+      (("" (PROP) (("1" (POSTPONE) NIL) ("2" (POSTPONE) NIL)))))))))
+ (|nhalf_TCC1| "" (SUBTYPE-TCC) NIL) (|nhalf_TCC2| "" (TERMINATION-TCC) NIL)
+ (|twice_nhalf| ""
+  (INDUCT-AND-SIMPLIFY "i" :NAME "NAT_induction" :IF-MATCH NIL)
+  (("" (INST -1 "j!1-2")
+    (("1" (EXPAND "nhalf" +) (("1" (SMASH) NIL)))
+     ("2" (EXPAND "nhalf" +) (("2" (SMASH) NIL))))))))

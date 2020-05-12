@@ -1,0 +1,23 @@
+<!--#set var="title" value="A tutorial on some advanced features of PVS" -->
+<!--#set var="base" value="../../" -->
+<!--#include virtual="../../pvs-prelude.shtml" -->
+
+<h2>Sam Owre and John Rushby
+</h2>
+
+<h4>Presented at FME'96</h4>
+
+<h3>Abstract</h3>
+A tutorial on predicate subtypes and judgements.
+<p>
+
+<a href="../../papers/fme96-tutorial/fme96-tutorial.ps.gz"><img src="/icons/ps.gif" border="0"/> gzip'd postscript</a>
+<a href="../../papers/fme96-tutorial/fme96-tutorial.dvi.gz"><img src="/icons/dvi.gif" border="0"/> gzip'd DVI</a>
+<p>
+
+<a
+href="ftp://pvs.csl.sri.com/pub/pvs/examples/fme96/">Directory
+of dump files for the Elementary tutorial</a>
+
+
+<!--#include virtual="../../pvs-postlude.shtml" -->
