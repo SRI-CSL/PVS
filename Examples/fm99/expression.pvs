@@ -1,0 +1,9 @@
+expression: DATATYPE WITH SUBTYPES term, typ
+ BEGIN
+  base_type(n:nat): base_type? : typ
+  funtype(dom: typ, ran: typ): funtype? : typ
+  variable(n:nat): variable? : term
+  number(num:nat): number? : term
+  lam(v: (variable?), ty: typ, ex: term): lam? : term
+  app(op: term, arg: term): app? : term
+ END expression

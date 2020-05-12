@@ -1,0 +1,33 @@
+bijections: THEORY
+
+  BEGIN
+
+a,b,x,y: var int
+A,B,X,Y: var set[int]
+P: var pred[[int,int]]
+
+ wiggle(P)(A,B): inductive bool = (empty?(A) and empty?(B)) or 
+   (exists X,Y,a,b: A=add(a,X) and B=add(b,Y) and not member(a,X) and not member(b,Y) and P(a,b) and wiggle(P)(X,Y))
+
+ wig_sym: lemma symmetric?(P) => symmetric?(wiggle(P))
+
+ wig_tran: lemma transitive?(P) => transitive?(wiggle(P))
+
+  END bijections
+
+
+fermat: theory
+begin
+  a,b,m,n,p: var nat
+
+  mod(n,p): below(p)
+
+  modax: axiom exists (q:nat): n=q*p+mod(n,p)
+
+prime(p:posnat): bool = forall (x:below(p)): x>1 => mod(p,x)=x
+
+e_lem: lemma prime(p) and mod(a*b,p)=0 => mod(a,p)=0 or mod(b,p)=0
+
+flem: lemma  0<a and a<p and 1<=m and m<n and n<p => mod(n*a,p) /= mod(m*a,p)
+
+end fermat

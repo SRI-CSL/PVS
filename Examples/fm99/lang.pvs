@@ -1,0 +1,102 @@
+memories: THEORY
+BEGIN
+  n: nat = 1000
+  addrs: TYPE = upto(n)
+  memory: TYPE = [addrs -> int]
+END memories
+
+exprs: DATATYPE
+BEGIN
+ IMPORTING memories
+ const(n: int): num?
+ varbl(a: addrs): vbl?
+ +(x,y: exprs): sum?
+ -(x,y: exprs): diff?
+ ~(x: exprs): minus?
+END exprs
+
+statements: DATATYPE
+BEGIN
+ IMPORTING memories, exprs
+  assign(a:addrs, e:exprs): assign?
+  seq(p,q: statements): seq?
+  ifelse(t: exprs, i,e:statements): ifelse?
+  for(l: nat, b:statements): for?
+END statements
+
+eval: THEORY
+BEGIN
+  IMPORTING statements
+
+  valof(v: exprs)(mem: memory): RECURSIVE int =
+    CASES v OF
+      const(n): n,
+      varbl(a): mem(a),
+      +(x,y):   valof(x)(mem) + valof(y)(mem),
+      -(x,y):   valof(x)(mem) - valof(y)(mem),
+      ~(x):     - valof(x)(mem)
+    ENDCASES
+  MEASURE  v BY <<
+
+  arb: memory
+
+  test1: LEMMA valof(-(const(3), ~(const(4))))(arb) = 7
+  test2: LEMMA valof(const(3) - ~const(4))(arb) = 7
+
+  CONVERSION const
+  test3: lemma valof(3 - ~4)(arb) = 7
+
+  CONVERSION varbl
+  test4: lemma valof(3 - ~4)(arb) = 7
+  test4a: lemma valof(3 - ~4)(arb with [(3):=12, (4):=-5]) = 7
+
+%  meas(s,t:statements): bool = s << t or
+%      (for?(s) and for?(t) and b(s)=b(t) and l(s)<l(t))
+
+  runtime(s: statements): RECURSIVE posnat =
+  CASES s OF
+    assign(a, e):  1,
+    seq(a, b):     runtime(a) + runtime(b),
+    ifelse(t,i,e): max(runtime(i),runtime(e))+1,
+    for(l,b):      l*runtime(b)+1
+  ENDCASES
+  MEASURE s BY <<
+
+  exec(s: statements, mem: memory): RECURSIVE memory = 
+  CASES s OF
+    assign(a, e):  mem with [(a) := valof(e)(mem)],
+    seq(a, b):     exec(b, exec(a, mem)),
+    ifelse(t,i,e): IF valof(t)(mem) /= 0 THEN exec(i, mem)
+                   ELSE exec(i, mem) ENDIF,
+    for(l,b):      IF l = 0 then mem ELSE exec(for(l-1,b), exec(b, mem)) ENDIF
+  ENDCASES 
+  MEASURE runtime(s)
+
+  init: memory = id[addrs]
+
+  test5: lemma valof(varbl(3))(exec(assign(3, -(3, ~(4))),init)) = 7
+  test5a: LEMMA valof(3)(exec(assign(3, 3 - ~4),init)) = 7
+
+IMPORTING sum
+
+  CONVERSION+ K_conversion
+
+  zero: memory = 0 % K conversion
+
+  test_sum: LEMMA LET j = 10 IN
+    valof(0)(exec(
+         for(j+1,seq(assign(0, varbl(0) + varbl(1)),
+                     assign(1, varbl(1) + const(1)))),zero)) = sum_nats(j)
+
+  program_prop_lemma: LEMMA  FORALL (j:nat),(m:memory):
+    valof(0)(exec(
+         for(j+1,seq(assign(0, varbl(0) + varbl(1)),
+                     assign(1, varbl(1) + const(1)))),m)) = 
+         sum_nats(j) + m(0) + (j+1)*m(1)
+
+  program_prop: THEOREM  FORALL (j:nat):
+    valof(0)(exec(
+         for(j+1,seq(assign(0, varbl(0) + varbl(1)),
+                     assign(1, varbl(1) + const(1)))),zero)) =  sum_nats(j)
+
+END eval

@@ -1,0 +1,44 @@
+phone_3 : THEORY
+
+  BEGIN
+
+  N: TYPE                     % names
+  P: TYPE                     % phone numbers
+  B: TYPE = [N -> setof[P]]   % phone books
+  nm, x: VAR N
+  pn: VAR P
+  bk: VAR B
+
+  emptybook(nm): setof[P] = emptyset[P]
+
+  FindPhone(bk, nm): setof[P] = bk(nm)
+
+  AddPhone(bk, nm, pn): B = bk WITH [(nm) := add(pn, bk(nm))]
+
+  DelPhone(bk,nm): B = bk WITH [(nm) := emptyset[P]]
+
+  DelPhoneNum(bk,nm,pn): B = bk WITH [(nm) := remove(pn, bk(nm))]
+
+  FindAdd: CONJECTURE member(pn, FindPhone(AddPhone(bk, nm, pn), nm))
+
+  DelAdd: CONJECTURE DelPhoneNum(AddPhone(bk, nm, pn), nm, pn) =
+                DelPhoneNum(bk, nm, pn)
+
+  updates: VAR list[[N, P]]
+
+  AddList(bk, updates): RECURSIVE B = 
+    CASES updates OF
+      null: bk,
+      cons(upd, rest): AddList(AddPhone(bk, proj_1(upd), proj_2(upd)), rest)
+    ENDCASES
+    MEASURE length(updates)
+
+  AddList_member: CONJECTURE
+    member(pn, FindPhone(bk, nm)) =>
+      member(pn, FindPhone(AddList(bk, updates), nm))
+
+  FindList: CONJECTURE
+    (every! (upd:[N, P]): proj_1(upd)/=nm) (updates) =>
+       FindPhone(AddList(bk, updates), nm) = FindPhone(bk, nm)
+
+END phone_3

@@ -1,0 +1,25 @@
+% This is the stamps problem:
+% Given an unlimited quantity of 3 and 5 cent stamps, show that any
+% postage of 8 cents or more can be met.  The first one is easier to prove,
+% but as i ranges over nats, i+8 must be used in the expression.  The
+% second spec is more natural, but a little harder to prove since it
+% needs a special form of induction.
+
+stamps : THEORY
+   BEGIN
+  i, n3, n5: VAR nat
+
+  stamps: LEMMA (FORALL i: (EXISTS n3, n5: i+8 = 3*n3 + 5*n5))
+  
+  END stamps
+
+
+stamps2 : THEORY
+  BEGIN
+
+  n3, n5: VAR nat
+  i: VAR upfrom[8]
+
+  stamps: LEMMA (FORALL i: (EXISTS n3, n5: i = 3*n3 + 5*n5))
+  
+  END stamps2

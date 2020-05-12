@@ -1,0 +1,78 @@
+phone_4 : THEORY
+
+  BEGIN
+
+N: type = {a,b,c}
+P: type = upto(10)
+
+
+  B: TYPE = [N -> setof[P]]         % phone books
+  VB: TYPE = {b:B | (FORALL (x,y:N): x /= y => disjoint?(b(x), b(y)))}
+
+  nm, x: VAR N
+  pn: VAR P
+  bk: VAR VB
+
+  
+  emptybook: VB = (LAMBDA (x:N): emptyset[P])
+
+  FindPhone(bk,nm): setof[P] = bk(nm)
+
+  UnusedPhoneNum(bk,pn): bool =
+     (FORALL nm: NOT member(pn,FindPhone(bk,nm)))
+
+  AddPhone(bk,nm,pn): VB = 
+    IF UnusedPhoneNum(bk,pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
+      ELSE bk
+    ENDIF
+
+
+  DelPhone(bk,nm): VB = bk with [(nm) := emptyset[P]]
+
+  DelPhoneNum(bk,nm,pn): VB = bk WITH [(nm) := remove(pn, bk(nm))]
+
+  FindAdd: CONJECTURE UnusedPhoneNum(bk,pn) IMPLIES
+                   member(pn,FindPhone(AddPhone(bk,nm,pn),nm))
+
+  DelAdd: CONJECTURE DelPhoneNum(AddPhone(bk,nm,pn),nm,pn) =
+                DelPhoneNum(bk,nm,pn)
+
+  END phone_4
+
+phone : THEORY
+  BEGIN
+
+
+importing phone_4,print
+
+  nm, x: VAR N
+  pn: VAR P
+  bk: VAR VB
+
+  printset(a:setof[P]) : bool = sprint("{") and 
+    (forall (x:P): if member(x,a) then pvsprint(x,"P") and space else true endif)
+    and sprint("}")
+
+  printbook(bk:VB): bool = terpri and forall (nm:N): pvsprint(nm,"N") and sprint(" :  ")
+          and printset(bk(nm)) and terpri
+
+  lift((f: [VB,N,P->VB]),nm,pn): bool = 
+     let bk=read[VB], v=f(bk,nm,pn) in write(v) and printbook(v)
+
+  lift((f: [VB,N->VB]),nm): bool = 
+     let bk=read[VB], v=f(bk,nm) in write(v) and printbook(v)
+
+  addp(nm,pn): bool = lift(AddPhone,nm,pn)
+  delp(nm,pn): bool = lift(DelPhoneNum,nm,pn)
+  delp(nm): bool = lift(DelPhone,nm)
+
+  empty: bool = let bk = emptybook in write(bk) and printbook(bk)
+  findphone(nm): bool = printset(FindPhone(read,nm))
+  printb: bool = let b=read[VB] in printbook(b)
+%  addphone(nm,pn): bool = let bk=read[VB], v=AddPhone(bk,nm,pn) in write(v) and printbook(v)
+%  delphone(nm): bool = let bk=read[VB], v=DelPhone(bk,nm) in write(v) and printbook(v)
+%  delphonenum(nm,pn): bool = let bk=read[VB], v=DelPhoneNum(bk,nm,pn) in write(v) and printbook(v)
+
+end phone
+
+

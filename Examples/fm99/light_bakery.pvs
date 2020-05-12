@@ -1,0 +1,159 @@
+light_bakery : THEORY
+
+BEGIN
+
+location : type = {idle,entering,critical}
+
+staterec: type = [# pc1, pc2: location, y1,y2 : nat #]
+
+
+u,v,s,s1,s2,state,state1,state2: var staterec
+Q: var pred[staterec]
+
+   nextp1(state1,state2):boolean =
+   IF idle?(pc1(state1)) THEN (state2 = state1 WITH
+                                        [(y1) := y2(state1) + 1,
+                                          (pc1) := entering])
+   ELSIF
+   entering?(pc1(state1)) and
+      ( y2(state1)=0 OR y1(state1) <= y2(state1)) THEN
+                   state2 = state1 WITH [(pc1) := critical]
+   ELSIF
+   critical?(pc1(state1)) THEN
+         (state2 = state1 WITH [(pc1) := idle,(y1) := 0])
+   ELSE state2 = state1
+   ENDIF
+
+  nextp2(state1,state2):boolean =
+   IF idle?(pc2(state1)) THEN (state2 = state1 WITH
+                                        [(y2) := (y1(state1)) + 1,
+                                          (pc2) := entering])
+   ELSIF entering?(pc2(state1)) and
+      (y1(state1)=0 OR not(y1(state1) <= y2(state1))) THEN
+                   state2 = state1 WITH [(pc2) := critical]
+   ELSIF
+   critical?(pc2(state1)) THEN
+        (state2 = state1 WITH [(pc2) := idle,(y2) := 0])
+   ELSE state2 = state1
+   ENDIF
+
+
+
+ N(state1,state2):bool =
+  nextp1(state1,state2) OR
+  nextp2(state1,state2)
+
+ii(s): bool = idle?(pc1(s)) and idle?(pc2(s))
+
+it(s): bool = idle?(pc1(s)) and entering?(pc2(s)) and y2(s)/=0
+ic(s): bool = idle?(pc1(s)) and critical?(pc2(s)) and y2(s)/=0
+tc(s): bool = entering?(pc1(s)) and critical?(pc2(s)) and y1(s)/=0 and y2(s)/=0
+ and y1(s)>y2(s)
+
+tt(s): bool = entering?(pc1(s)) and entering?(pc2(s)) and y1(s)/=0 and y2(s)/=0
+
+ti(s): bool = entering?(pc1(s)) and idle?(pc2(s)) and y1(s)/=0
+ci(s): bool = critical?(pc1(s)) and idle?(pc2(s)) and y1(s)/=0
+ct(s): bool = critical?(pc1(s)) and entering?(pc2(s)) and y1(s)/=0 and y2(s)/=0
+ and y1(s)<=y2(s)
+
+
+ii_to_xx: lemma ii(s1) and N(s1,s2) => it(s2) or ti(s2)
+
+it_to_xx: lemma it(s1) and N(s1,s2) => it(s2) or ic(s2) or tt(s2)
+
+ti_to_xx: lemma ti(s1) and N(s1,s2) => ti(s2) or ci(s2) or tt(s2)
+
+ic_to_xx: lemma ic(s1) and N(s1,s2) => tc(s2) or ii(s2)
+
+ci_to_xx: lemma ci(s1) and N(s1,s2) => ct(s2) or ii(s2)
+
+tt_to_xx: lemma tt(s1) and N(s1,s2) => 
+  tc(s2) or ct(s2) or tt(s2)
+
+tc_to_ti: lemma tc(s1)   and N(s1,s2) => ti(s2) or tc(s2)
+
+ct_to_it: lemma ct(s1)   and N(s1,s2) => it(s2) or ct(s2)
+
+reachable(s):bool = ii(s) or it(s) or ti(s) or ic(s) or ci(s) or tt(s)
+or tc(s) or ct(s)
+
+r_is_r: lemma reachable(s1) and N(s1,s2) => reachable(s2)
+
+strong(s):bool = ((entering?(pc1(s)) or critical?(pc1(s))) => y1(s)/=0)
+  and ((entering?(pc2(s)) or critical?(pc2(s))) => y2(s)/=0)
+  and ((critical?(pc1(s)) and entering?(pc2(s))) =>  y1(s)<=y2(s))
+  and ((critical?(pc2(s)) and entering?(pc1(s))) =>  y1(s)>y2(s))
+and not (critical?(pc1(s)) and critical?(pc2(s)))
+
+s_is_s:lemma strong(s1) and N(s1,s2) => strong(s2)
+
+  init(state): boolean = idle?(pc1(state)) AND idle?(pc2(state))
+                           AND y1(state)=0 AND y2(state)=0
+
+
+
+useful1: THEOREM
+init(state) IMPLIES
+AG(N, LAMBDA state:  (entering?(pc1(state)) or critical?(pc1(state)) => y1(state)/=0))(state)
+
+useful2: THEOREM
+init(state) IMPLIES
+AG(N, LAMBDA state:  (entering?(pc2(state)) or critical?(pc2(state)) => y2(state)/=0))(state)
+
+
+INV, INIT: var pred[staterec]
+R:var pred[[staterec,staterec]]
+
+
+invariant(INV,INIT,R): bool = 
+  (forall s: INIT(s)=>INV(s))
+and   forall s1,s2: INV(s1) and R(s1,s2) => INV(s2)
+
+
+CTLinvariant(INV,INIT,R): bool = 
+ forall s: INIT(s) =>  AG(R, INV)(s)
+
+equivthm1: theorem invariant(INV,INIT,R) => CTLinvariant(INV,INIT,R)
+
+% following only true of the reachable states
+
+
+equivthm2: theorem invariant(INV,INIT,R) when CTLinvariant(INV,INIT,R)
+
+
+ N0(state1,state2):bool = true
+
+safe: THEOREM
+init(state) IMPLIES
+AG(N, LAMBDA state: NOT (critical?(pc1(state)) AND
+                         critical?(pc2(state))))(state)
+
+
+
+trans : lemma
+N(state1,state2)
+
+zozo : lemma
+EF(N, LAMBDA state:  (critical?(pc1(state)) AND
+                        critical?(pc2(state))))(state)
+
+% (abs-simp ("lambda(state) :y1(state)=0" 
+%             "lambda(state) :y2(state)=0" 
+%             "lambda(state) :y1(state) <= y2(state)"))
+
+
+% (abstract ("lambda(state) :y1(state)=0" "lambda(state) :y2(state)=0" "lambda(state) :y1(state) <= y2(state)"))
+
+
+% (interpret-and-prove ("lambda(state):y1(state)=0" "lambda(state):y2(state)=0" "lambda(state):y1(state)<=y2(state)"))
+%
+
+
+  END light_bakery 
+
+
+
+
+
+

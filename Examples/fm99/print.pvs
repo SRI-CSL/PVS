@@ -1,0 +1,61 @@
+printing[T : TYPE+]: THEORY
+BEGIN
+  printf(a:T, typ: string, fmt: string): bool = true
+      % attachment prints a as type typ with Lisp format string fmt
+
+  print(a:T, typ: string): bool = printf(a, typ, "~a ")
+
+  dumpf(a:T, fmt: string): bool = true
+      % attachment prints Lisp repn of a with Lisp format string fmt
+
+  dump(a:T): bool = dumpf(a, "~a ")
+
+END printing
+
+printstrings: THEORY
+BEGIN
+  IMPORTING printing[real]
+  prints(s:string): bool = true % attachmentr prints Lisp format string s
+  space: bool = prints(" ")
+  tab: bool = prints("~0,8T")
+  newline: bool = prints("
+")
+  printreal(a:real): bool = dumpf(a,"~g")
+END printstrings
+
+state[T: TYPE]: THEORY
+BEGIN
+  write(a:T): bool = true % attachment saves a in state
+  innerread(i:nat): T     % attachment returns saved state
+  read: T = innerread(3)  % argument is ignored
+END state
+
+sprint: theory
+begin
+  sprint(s:string): bool = true
+  space: bool = sprint(" ")
+  terpri: bool = sprint("
+")
+end sprint
+
+print[T : TYPE+]: THEORY
+BEGIN
+  importing sprint
+  x: T
+  print(a:T, s:string): bool = true
+  pvsprint(a:T, s:string): bool = true
+  printa(a:T): bool = print(a, " ~a")
+  read: T
+  write(a:T): bool = true
+  printset(a:setof[T]) : bool = forall (x:T): if member(x,a) then
+      printa(x) and space else true endif
+
+END print
+
+gprint: THEORY
+BEGIN
+IMPORTING print
+
+  printreal(x: number): bool = print(x, "~3g")
+
+END gprint

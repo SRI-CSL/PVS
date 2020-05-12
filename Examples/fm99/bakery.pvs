@@ -1,0 +1,125 @@
+bakery: THEORY
+BEGIN
+
+phase : TYPE = {idle, trying, critical}
+
+state: TYPE = [# pc1, pc2: phase, t1,t2: nat #]
+
+s, pre, post: VAR state
+
+P1_transition(pre, post): boolean = % pre = post OR
+   IF pre`pc1 = idle
+     THEN post = pre WITH [(t1) := pre`t2 + 1, (pc1) := trying]
+   ELSIF pre`pc1 = trying AND (pre`t2 = 0 OR pre`t1 < pre`t2)
+     THEN post = pre WITH [(pc1) := critical]
+   ELSIF pre`pc1 = critical
+     THEN post = pre WITH [(t1) := 0, (pc1) := idle]
+   ELSE post = pre
+   ENDIF
+
+P2_transition(pre, post): boolean = % pre = post OR
+   IF pre`pc2 = idle
+     THEN post = pre WITH [(t2) := pre`t1 + 1, (pc2) := trying]
+   ELSIF pre`pc2 = trying AND (pre`t1 = 0 OR pre`t1 > pre`t2)
+     THEN post = pre WITH [(pc2) := critical]
+   ELSIF pre`pc2 = critical
+     THEN post = pre WITH [(t2) := 0, (pc2) := idle]
+   ELSE post = pre
+   ENDIF
+
+transitions(pre, post): bool =  P1_transition(pre, post) OR P2_transition(pre, post)
+
+init(s): boolean = s`pc1 = idle AND s`pc2 = idle AND s`t1 = 0 AND s`t2 = 0
+
+safe(s): boolean = NOT (s`pc1 = critical AND s`pc2 = critical)
+
+INV, INIT: var pred[state]
+R: VAR pred[[state,state]]
+
+invariant(INV, INIT, R): bool = 
+  (FORALL s: INIT(s) => INV(s))
+    AND FORALL  pre,post: INV(pre) AND R(pre, post) => INV(post)
+
+first_try: LEMMA invariant(safe, init, transitions)
+
+strong_safe(s): bool = safe(s)
+   AND ((s`pc1 = trying OR s`pc1 = critical) => s`t1 /= 0)
+   AND ((s`pc2 = trying OR s`pc2 = critical) => s`t2 /= 0)
+
+second_try: LEMMA invariant(strong_safe, init, transitions)
+
+inductive_safe(s): bool = strong_safe(s)
+  AND ((s`pc1 = critical AND s`pc2 = trying) => s`t1 < s`t2)
+  AND ((s`pc2 = critical AND s`pc1 = trying) => s`t1 > s`t2)
+
+third_try: LEMMA invariant(inductive_safe, init, transitions)
+
+abstract_state: TYPE = 
+  [# pc1, pc2: phase, t1_is_0, t2_is_0, t1_lt_t2: bool #]
+
+a_s, a_pre, a_post: VAR abstract_state
+
+abst(s): abstract_state =
+  (# pc1 := s`pc1, pc2 := s`pc2,
+     t1_is_0 := s`t1 = 0, t2_is_0 := s`t2 = 0,
+     t1_lt_t2 := s`t1 < s`t2 #)
+
+a_init(a_s): bool = 
+   a_s`pc1 = idle AND a_s`pc2 = idle AND a_s`t1_is_0 AND a_s`t2_is_0
+
+a_safe(a_s): boolean = NOT (a_s`pc1 = critical AND a_s`pc2 = critical)
+
+a_P1_transition(a_pre, a_post): bool = % a_pre = a_post OR
+   IF a_pre`pc1 = idle
+     THEN a_post = a_pre WITH [(t1_is_0) := false,
+                               (t1_lt_t2) := false,
+                               (pc1) := trying]
+   ELSIF a_pre`pc1 = trying AND (a_pre`t2_is_0 OR a_pre`t1_lt_t2)
+     THEN a_post = a_pre WITH [(pc1) := critical]
+   ELSIF a_pre`pc1 = critical
+     THEN a_post = a_pre WITH [(t1_is_0) := true,
+                               (t1_lt_t2) := NOT a_pre`t2_is_0,
+                               (pc1) := idle]
+   ELSE a_post = a_pre
+   ENDIF
+
+a_P2_transition(a_pre, a_post): bool = % a_pre = a_post OR
+   IF a_pre`pc2 = idle
+     THEN a_post = a_pre WITH [(t2_is_0) := false,
+                               (t1_lt_t2) := true,
+                               (pc2) := trying]
+   ELSIF a_pre`pc2 = trying AND (a_pre`t1_is_0 OR NOT a_pre`t1_lt_t2)
+     THEN a_post = a_pre WITH [(pc2) := critical]
+   ELSIF a_pre`pc2 = critical
+     THEN a_post = a_pre WITH [(t2_is_0) := true,
+                               (t1_lt_t2) := false,
+                               (pc2) := idle]
+   ELSE a_post = a_pre
+   ENDIF
+
+a_trans(a_pre, a_post): bool = a_P1_transition(a_pre, a_post)
+                               OR a_P2_transition(a_pre, a_post)
+
+init_simulation: THEOREM
+   init(s) IMPLIES a_init(abst(s))
+
+trans_simulation: THEOREM
+   transitions(pre, post) IMPLIES a_trans(abst(pre), abst(post))
+
+not_eq(s): bool = s`t1 = s`t2 => s`t1=0
+
+extra: LEMMA invariant(not_eq, init, transitions)
+
+strong_trans_simulation: THEOREM
+   invariant(not_eq, init, transitions) and not_eq(pre) and
+   not_eq(post) and
+transitions(pre, post) IMPLIES a_trans(abst(pre), abst(post))
+
+safety_preserved: THEOREM a_safe(abst(s)) IMPLIES safe(s)
+
+abs_invariant_ctl: THEOREM
+   a_init(a_s) IMPLIES AG(a_trans, a_safe)(a_s)
+
+auto_abstract: THEOREM init(s) IMPLIES AG(transitions, safe)(s)
+
+END bakery 

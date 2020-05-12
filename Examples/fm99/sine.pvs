@@ -1,0 +1,25 @@
+
+test[D,R: type]: theory
+begin
+importing printing, printstrings
+t: type = upto(10)
+printfun(f:[D->R]): bool = forall (x:D): dump(f(x))
+end test
+
+sine: theory
+begin
+importing test
+n: var nat
+x: var real
+
+fac(n): recursive nat = if n=0 then 1 else n*fac(n-1) endif 
+measure n
+
+even?(n): recursive bool = if n=0 then true elsif n=1 then false else even?(n-2) endif measure n
+
+sin_ser(n) : real = IF even?(n) THEN 0 ELSE ((-1) ^ ((n - 1) / 2)) / fac(n) ENDIF
+
+sin(n, x): recursive real = if n=0 then 0 else sin_ser(n) * (x ^ n) +
+sin(n-1,x) endif measure n
+
+end sine

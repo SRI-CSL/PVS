@@ -1,0 +1,69 @@
+sum: THEORY
+BEGIN
+
+  sum_nats(n: nat): RECURSIVE nat =
+    IF n=0 THEN 0 ELSE n+sum_nats(n-1) ENDIF
+  MEASURE n
+
+  test: LEMMA sum_nats(3) = 6
+
+  closed_form: THEOREM FORALL (n:nat): sum_nats(n) = n*(n+1)/2
+
+  bigtest: LEMMA    sum_nats(100)    = 5050
+  biggertest: LEMMA sum_nats(200)    = 20100
+  hugetest: LEMMA   sum_nats(100000) = 5000050000
+
+END sum
+
+summations: THEORY
+  BEGIN
+
+   n: VAR nat
+   f, g: VAR [nat -> real]
+
+   summation(f, n): RECURSIVE real =
+    IF n = 0
+      THEN f(0)
+      ELSE f(n) + summation(f, n - 1)
+    ENDIF
+   MEASURE n
+
+  IMPORTING sum
+  summation_nats: LEMMA  summation(id[nat], n) = sum_nats(n)
+  summation_nats_closed_form: LEMMA  summation(id[nat], n) = n*(n+1)/2
+
+  r: VAR real
+  square(r: real): real = r*r
+
+  summation_squares: LEMMA
+    summation(square, n) = n * (n + 1) * (2*n + 1) / 6
+
+  cube(r): real = r*r*r 
+
+  summation_cubes: LEMMA
+    summation(cube, n) = n*n*(n+1)*(n+1)/4
+
+  summation_of_cubes_alt: LEMMA
+    summation(cube, n) = square(summation(id[nat],n))
+
+  summation_of_cubes_alt2: LEMMA
+    summation(cube, n) = square(summation(id[nat],n))
+
+  summation_of_sum: LEMMA
+    summation((lambda n: f(n) + g(n)), n) = summation(f, n) + summation(g, n)
+
+% summation_times: lemma forall (c: real):
+%   summation((lambda n: c*f(n)), n) = c * summation(f,n)
+
+%summation_split: lemma forall (i:nat): 0 <= i and i<=n implies
+%  summation(lambda n: if n<=i then 0 else f(n) endif,n) + 
+%  summation(lambda n: if n<=i then f(n) else 0 endif,n) =
+%   summation(f,n)
+
+  subtype_test: LEMMA summation(square, summation(id[nat],3)) = 91
+
+  summation_of_nat_is_nat: JUDGEMENT summation(g:[nat->nat], n) HAS_TYPE nat
+
+  judgement_test: LEMMA summation(square, summation(id[nat], 3)) = 91
+
+END summations
