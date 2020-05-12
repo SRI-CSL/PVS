@@ -1,0 +1,26 @@
+PVS Example: The Oral Messages Algorithm for Byzantine Agreement
+
+NOTE (4/26/96): Following haven't been checked with released version
+of the system owing to file system problems (I think there's one less
+TCC branch in some of the proofs that with earlier versions and so the
+scripts get out of synch)
+
+
+Description: csl-92-1.dvi.Z and csl-92-1.ps.gz describe the
+  formal specification and verification of the Interactive Consistency
+  (symmetric) version of this algorithm using EHDM.   
+
+  Appendix B sketches a Byzantine Agreement version.
+
+  The dump file presents this version in PVS.  Readers familiar with
+  PVS should be able to read the EHDM description, and vice-versa.
+
+LaTeX-printed specifications:
+  byzantine.dvi and byzantine.ps
+
+LaTeX-printed proofs (the two main lemmas):
+  C1.dvi and C1.ps
+  C2.dvi and C2.ps
+
+Dump file: byzantine.dmp
+  Use M-x undump-pvs-file byzantine.dmp

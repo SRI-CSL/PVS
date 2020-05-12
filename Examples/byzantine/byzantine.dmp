@@ -1,0 +1,233 @@
+<html><h1>
+PVS dump file byzantine.dmp
+</h1>
+
+To extract the specifications and proofs, download this file to
+byzantine.dmp and from a running PVS type the command
+<pre>
+   M-x undump-pvs-files
+</pre>
+You will be prompted for the dump file name (byzantine.dmp) and the
+directory in which to dump the extracted files.
+<hr>
+<xmp>
+%Patch files loaded: patch2 version 2.399
+
+$$$byzantine.pvs
+byzantine[m, n: nat, T: NONEMPTY_TYPE]: THEORY
+  BEGIN
+  
+  ASSUMING
+    
+    mn_prop: ASSUMPTION 3 * m < n
+    
+  ENDASSUMING
+  
+  npos: LEMMA n > 0
+  
+  proc: TYPE = below[n]
+  
+  rounds: TYPE = upto[m]
+  
+  vector: TYPE = [proc -> T]
+  
+  procset: TYPE = setof[proc]
+  
+  ok: procset
+  
+  IMPORTING cardinality@finite_cardinality[proc, n, id], 
+            cardinality@card_set[proc, n, id]
+  
+  G, p, q, z: VAR proc
+  
+  r: VAR rounds
+  
+  caucus: VAR procset
+  
+  v: VAR vector
+  
+  t: VAR T
+  
+  nok(caucus): procset = {z: proc | member(z, caucus) AND NOT ok(z)}
+  
+  allprocs: procset = fullset[proc]
+  
+  allset_card: LEMMA fincard(allprocs) = n
+  
+  max_faults: AXIOM fincard(nok(allprocs)) <= m
+  
+  remove_lemma: LEMMA
+    member(p, caucus) IMPLIES fincard(remove(p, caucus)) = fincard(caucus) - 1
+  
+  nok_lemma1: LEMMA
+    ok(p) IMPLIES fincard(nok(remove(p, caucus))) = fincard(nok(caucus))
+  
+  nok_lemma3: LEMMA
+    NOT ok(p) AND member(p, caucus)
+      IMPLIES fincard(nok(remove(p, caucus))) = fincard(nok(caucus)) - 1
+  
+  maj(caucus, v): T
+  
+  maj_ax: AXIOM
+    fincard(caucus) > 2 * fincard(nok(caucus))
+      AND (FORALL p: ok(p) AND member(p, caucus) => v(p) = t)
+      IMPLIES maj(caucus, v) = t
+  
+  maj_ext: AXIOM
+    FORALL (v1, v2: vector):
+      (FORALL p: member(p, caucus) => v1(p) = v2(p))
+        IMPLIES maj(caucus, v1) = maj(caucus, v2)
+  
+  send: [T, proc, proc -> T]
+  
+  send_ax: AXIOM ok(p) AND ok(q) => send(t, p, q) = t
+  
+  distr(t, p): vector = (LAMBDA (z: proc): send(t, p, z))  % distr(t,p)(q):t=send(t,p,q)
+  
+  arb: T
+  
+  OMBG(G, r, t, caucus) (p) : RECURSIVE T = 
+    IF r = 0
+      THEN IF member(G, caucus) AND member(p, caucus) THEN send(t, G, p)
+      ELSE arb
+      ENDIF
+    ELSE IF member(G, caucus) AND member(p, caucus)
+        THEN IF p = G
+          THEN send(t, G, G)
+        ELSE
+          maj(remove(G, caucus),
+              (LAMBDA q: OMBG(q, r - 1, send(t, G, q), remove(G, caucus))(p)))
+        ENDIF
+      ELSE arb
+      ENDIF
+    ENDIF
+   MEASURE r
+  
+  C2_prop(r): bool =
+      (FORALL p, G, t, caucus:
+         ok(p)
+           AND ok(G)
+                 AND member(p, caucus)
+                       AND member(G, caucus)
+                             AND fincard(caucus)
+                                   > 2 * fincard(nok(caucus)) + r
+           IMPLIES OMBG(G, r, t, caucus)(p) = t)
+  
+  C2: LEMMA C2_prop(r)
+  
+  C2_final: THEOREM ok(p) AND ok(G) IMPLIES OMBG(G, m, t, allprocs)(p) = t
+  
+  C1_prop(r): bool =
+      (FORALL p, q, G, caucus, t:
+         ok(p)
+           AND ok(q)
+                 AND member(p, caucus)
+                       AND member(q, caucus)
+                             AND member(G, caucus)
+                                   AND fincard(caucus) > 3 * r
+                                         AND r >= fincard(nok(caucus))
+           IMPLIES OMBG(G, r, t, caucus)(p) = OMBG(G, r, t, caucus)(q))
+  
+  C1: LEMMA C1_prop(r)
+  
+  C1_final: THEOREM
+    ok(p) AND ok(q) IMPLIES FORALL (G: proc):
+                              OMBG(G, m, t, allprocs)(p)
+                                = OMBG(G, m, t, allprocs)(q)
+  
+  END byzantine
+
+$$$byzantine.prf
+(|byzantine| (|npos| "" (USE "mn_prop") (("" (ASSERT) NIL)))
+ (|id_TCC1| "" (SUBTYPE-TCC) NIL) (IMPORTING1_TCC1 "" (USE "npos") NIL)
+ (|allset_card| "" (USE "fullset_fincard")
+  (("" (EXPAND "allprocs") (("" (PROPAX) NIL)))))
+ (|remove_lemma| "" (AUTO-REWRITE "npos" "member")
+  (("" (SKOSIMP) (("" (USE "fincard_remove") (("" (GROUND) NIL)))))))
+ (|nok_lemma1| "" (SKOSIMP)
+  (("" (USE "fincard_remove")
+    (("" (GROUND)
+      (("" (CASE-REPLACE "nok(remove(p!1, caucus!1)) = nok(caucus!1)")
+        (("" (HIDE -2 2)
+          (("" (APPLY-EXTENSIONALITY :HIDE? T)
+            (("" (EXPAND "nok") (("" (GRIND) NIL)))))))))))))))
+ (|nok_lemma3| "" (SKOSIMP)
+  (("" (CASE "nok(remove(p!1, caucus!1)) = remove(p!1, nok(caucus!1))")
+    (("1" (REPLACE -1 :HIDE? T)
+      (("1" (LEMMA "fincard_remove")
+        (("1" (INST -1 "p!1" "nok(caucus!1)")
+          (("1" (GROUND) (("1" (EXPAND "nok") (("1" (PROPAX) NIL)))))))))))
+     ("2" (HIDE 3)
+      (("2" (APPLY-EXTENSIONALITY :HIDE? T) (("2" (GRIND) NIL)))))))))
+ (OMBG_TCC1 "" (SUBTYPE-TCC) NIL) (OMBG_TCC2 "" (TERMINATION-TCC) NIL)
+ (C2 "" (AUTO-REWRITE "send_ax" "distr" "remove_lemma" "nok_lemma1")
+  (("" (INDUCT "r")
+    (("1" (ASSERT)
+      (("1" (EXPAND "C2_prop")
+        (("1" (SKOSIMP) (("1" (EXPAND "OMBG") (("1" (GROUND) NIL)))))))))
+     ("2" (SKOSIMP)
+      (("2" (EXPAND "C2_prop" +)
+        (("2" (SKOSIMP)
+          (("2" (EXPAND "OMBG")
+            (("2" (SMASH)
+              (("2" (REWRITE "maj_ax")
+                (("2" (HIDE -7 3)
+                  (("2" (SKOSIMP)
+                    (("2" (EXPAND "C2_prop")
+                      (("2" (INST?)
+                        (("2" (GROUND)
+                          (("1" (ASSERT) NIL)
+                           ("2" (GRIND) NIL)))))))))))))))))))))))))))
+ (|C2_final_TCC1| "" (TCC) NIL)
+ (|C2_final| "" (SKOSIMP)
+  (("" (LEMMA "C2")
+    (("" (EXPAND "C2_prop")
+      (("" (INST?)
+        (("" (GROUND)
+          (("1" (GRIND) NIL) ("2" (GRIND) NIL)
+           ("3" (REWRITE "allset_card")
+            (("3" (LEMMA "max_faults")
+              (("3" (LEMMA "mn_prop") (("3" (ASSERT) NIL)))))))))))))))))
+ (C1 "" (AUTO-REWRITE "send_ax" "distr")
+  (("" (INDUCT "r")
+    (("1" (EXPAND "C1_prop")
+      (("1" (SKOSIMP)
+        (("1" (ASSERT)
+          (("1" (CASE "ok(G!1)")
+            (("1" (EXPAND "OMBG") (("1" (ASSERT) NIL)))
+             ("2" (HIDE 2)
+              (("2" (TYPEPRED "fincard(nok(caucus!1))")
+                (("2" (USE "fincard_non_empty" :IF-MATCH T)
+                  (("2" (GROUND)
+                    (("2" (INST 1 "G!1")
+                      (("2" (EXPAND "nok")
+                        (("2" (PROPAX) NIL)))))))))))))))))))))
+     ("2" (SKOSIMP)
+      (("2" (EXPAND "C1_prop" +)
+        (("2" (SKOSIMP)
+          (("2" (ASSERT)
+            (("2" (CASE "ok(G!1)")
+              (("1" (LEMMA "C2")
+                (("1" (EXPAND "C2_prop")
+                  (("1" (AUTO-REWRITE -1) (("1" (ASSERT) NIL)))))))
+               ("2" (EXPAND "OMBG")
+                (("2" (GROUND)
+                  (("2" (REWRITE "maj_ext")
+                    (("2" (HIDE 3)
+                      (("2" (SKOSIMP)
+                        (("2" (EXPAND "C1_prop")
+                          (("2" (INST?)
+                            (("2"
+                              (GRIND :EXCLUDE "fincard" :REWRITES
+                               ("remove_lemma" "nok_lemma3"))
+                              NIL)))))))))))))))))))))))))))))
+ (|C1_final_TCC1| "" (TCC) NIL)
+ (|C1_final| "" (SKOSIMP*)
+  (("" (LEMMA "C1")
+    (("" (EXPAND "C1_prop")
+      (("" (INST?)
+        (("" (GROUND)
+          (("1" (GRIND) NIL) ("2" (GRIND) NIL) ("3" (GRIND) NIL)
+           ("4" (LEMMA "allset_card")
+            (("4" (LEMMA "mn_prop") (("4" (ASSERT) NIL)))))
+           ("5" (LEMMA "max_faults") (("5" (ASSERT) NIL))))))))))))))
