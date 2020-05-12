@@ -1,0 +1,14 @@
+VSTTE 2012 Competition
+  Sam Owre and N. Shankar {owre, shankar}@csl.sri.com
+
+All five problems are included here.
+
+The PVS commented PVS theories contain the solutions.
+Note that many of the properties are proven as a part of
+the proof obligation (TCC) generation of PVS.  All such
+obligations have been discharged.
+
+To rerun, get the latest version of PVS (5.0) from
+http://pvs.csl.sri.com, run, and change-context to
+each directory in turn, use C-c C-f for the file
+corresponding to the problem, and run M-x prove-theory.

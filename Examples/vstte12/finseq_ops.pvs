@@ -1,0 +1,21 @@
+finseq_ops  [ T: TYPE ]
+		: THEORY
+
+  BEGIN
+
+  g, h: VAR finseq[T]
+
+  nonempty?(g): bool = (g`length > 0)
+
+  nonempty: TYPE = (nonempty?)
+
+  ng, nh: VAR nonempty
+
+  first(ng): T = ng`seq(0)
+
+  rest(ng): finseq[T] =
+    (# length := ng`length - 1,
+       seq := (LAMBDA (j: below(ng`length - 1)): ng`seq(j+1))
+       #)
+
+  END finseq_ops

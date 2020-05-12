@@ -1,0 +1,129 @@
+  % Verification Tasks: Define bfs and verify soundness and completeness
+
+BFS[vertices: nat]:  THEORY
+  % The theory is parametric with respect to the number of vertices
+  BEGIN
+
+   % A vertex is a natural number from 0 to vertices - 1
+
+   vertex: TYPE = below(vertices)
+
+   u, v, w, x, y, z: VAR vertex
+
+   % The graph is just the successor relation on vertices
+
+   graph: TYPE = [vertex -> finite_set[vertex]]
+
+   f, g: VAR graph
+
+   ll, mm: VAR list[vertex]
+
+   % A path is a list of vertices w0...wk such that u->wk->...->w0->v
+
+   path(g, u, v)(ll: list[vertex]): RECURSIVE bool = 
+   (CASES ll OF
+     null: u = v,
+     cons(w, kk): member(v, g(w)) AND path(g, u, w)(kk)
+    ENDCASES)
+    MEASURE length(ll)
+
+   d: VAR upto(vertices)
+
+   % For a depth d, vertex v is reachable from u in d steps if there is a
+   % path of length at most d connecting u to v
+
+   d_reachable(g, d, u)(v): bool =
+     (EXISTS ll: path(g, u, v)(ll) AND length(ll) <= d)
+
+   X, Y, V, C, N: VAR finite_set[vertex]
+
+   % The post operator is the union over all the g(x) for x in X
+
+   post(g)(X): finite_set[vertex] = {y | EXISTS (x:(X)): g(x)(y)}
+
+   % The set of d+1 reachable vertices (from u) can be defined in terms of
+   % the post of the set of d reachable vertices
+
+   inc_d_reachable: LEMMA
+     (FORALL (d: below(vertices)): 
+       d_reachable(g, d+1, u) =
+       union(d_reachable(g, d, u), post(g)(d_reachable(g, d, u))))
+
+   % A vertex is s_reachable at depth d, if it is d reachable and not reachable
+   % for any depth below d
+
+   s_reachable(g, d, u)(v): bool =
+     (d_reachable(g, d, u)(v) AND (d = 0 OR NOT d_reachable(g, d - 1, u)(v)))
+
+   % If the set of d reachable vertices is fixpoint relative to post(g), then
+   % increasing the depth does not add any new vertices
+
+   d_reachable_fixpoint: LEMMA
+    post(g)(d_reachable(g, d, u)) = d_reachable(g, d, u)
+     IMPLIES
+      (FORALL (e: subrange[d, vertices]): d_reachable(g, e, u) = d_reachable(g, d, u))
+
+
+   p: VAR [upto(vertices)->bool]
+
+   % The cardinality of any set of vertices is bounded by vertices, and
+   % any non-fullset of vertices is strictly bounded by vertices.
+
+   card_vertex: LEMMA card(V) <= vertices
+
+   card_vertex_remove: LEMMA
+      NOT V(x) IMPLIES card(V) < vertices
+
+   % The qlift? higher-order predicate ensures that if x is bottom, then p is
+   % everywhere false, and otherwise, p holds of down(x).
+
+   qlift?(p)(x : lift[upto(vertices)]): bool =
+     CASES x OF
+      bottom: (FORALL (y:upto(vertices)): NOT p(y)),
+      up(y): p(y)
+     ENDCASES
+
+   % The main bfs procedure.  The main difference from the problem statement is
+   % that we merge N into V only when C is empty.  This leads to cleaner invariants
+   % without affecting the efficiency.  The correctness is captured by the qlift?
+   % constraint on the output that ensures that when bfs_rec returns bottom,
+   % v is not reachable at any depth (completeness), and otherwise, the result is 
+   % the shortest depth at which v is reachable (soundness).
+   % The invariants are expressed in the subtypes
+   % on the arguments V, d, C, and N.  The termination measure is a lexicographic
+   % combination so that either d increases toward vertices, or card(C) decreases
+   
+   bfs_rec(g)(u, v, V, (d : upto(card(V)) | V = d_reachable(g, d, u)), 
+              (C  | subset?(C, s_reachable(g, d, u)) AND
+	            NOT member(v, difference(V, C))),
+	      (N | post(g)(V) = union(V, union(N, post(g)(C))) AND
+	           disjoint?(N, V)))
+	: RECURSIVE (qlift?(LAMBDA d: s_reachable(g, d, u)(v)))
+     =			       
+    (IF nonempty?(C)
+      THEN
+        (LET x = choose(C)
+          IN
+	  IF x = v
+	   THEN up(d)
+	   ELSE
+            bfs_rec(g)(u, v, V, d, remove(x, C), union(difference(g(x), V), N))
+	    ENDIF)
+      ELSIF nonempty?(N) THEN bfs_rec(g)(u, v, union(V, N), d+1, N, emptyset)
+      ELSE bottom
+      ENDIF)
+      MEASURE lex2((vertices - d), card(C))
+
+   % To satisfy the invariants of bfs_rec, the main function bfs requires
+   % the source vertex to have an edge to itself in g.  This has no impact
+   % on the set of reachable vertices but makes it easier to state the
+   % search invariants.  For any graph, such an edge can be added prior to
+   % the search.  
+       
+   bfs(g)((u | g(u)(u)), v): (qlift?(LAMBDA d: s_reachable(g, d, u)(v)))
+    = bfs_rec(g)(u, v, singleton(u), 0, singleton(u), emptyset)
+   
+
+  
+
+  END BFS

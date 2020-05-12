@@ -1,0 +1,140 @@
+   % Verification tasks: Define the build operation and prove soundness, completeness,
+   % termination, and define a test harness
+tree_reconstruction
+		: THEORY
+
+  BEGIN
+
+  % The tree recursive datatype formalizes unlabelled binary trees
+
+    tree: DATATYPE
+     BEGIN
+      leaf: leaf?
+      node(l, r: tree):node?
+     END tree
+
+
+     X, Y, Z: VAR tree
+
+     d, n: VAR nat
+
+   % A recursive function computes the list of depths of a given
+   % unlabelled binary tree.  The list datatype is defined in the
+   % prelude.  The termination of the recursion is given by the MEASURE.
+
+     list_of_depths_rec(X, n): RECURSIVE list[nat]
+     =
+     (CASES X OF
+       leaf : (: n :),
+       node(Y, Z): append(list_of_depths_rec(Y, n + 1),
+                          list_of_depths_rec(Z, n + 1))
+      ENDCASES)
+      MEASURE X BY <<
+
+     list_of_depths(X): list[nat] = list_of_depths_rec(X, 0)
+
+     M, N, L: VAR list[nat]
+
+   % The size (relative to d) of a list of depths M is the length of M 
+   % plus the leading element monus d.  This is used in the termination
+   % argument for build_rec
+
+     size(d, M): nat =
+       (CASES M OF
+         null: 0,
+	 cons(i, N): max(0, i-d) + length(M)
+	 ENDCASES)
+
+   % The operation of reconstructing an unlabelled binary tree from
+   % the list of depths is defined recursively.  It returns a lifted
+   % pair, so that it either returns bottom, when there is
+   % no suitable tree, and a pair of a list (the unused suffix of input M)
+   % and the reconstructed tree.  The termination argument uses a lexicographic
+   % ordering on the length of M and the monus of the first element of M and d.
+
+     build_rec(d: nat, M): RECURSIVE lift[[{ N | length(N) < length(M)}, tree]]
+      = (CASES M OF
+          null: bottom,
+	  cons(i, N): (IF i < d
+	                THEN bottom
+			ELSIF i = d
+			  THEN up((N, leaf))
+			  ELSE (LET xx = build_rec(d+1, M)
+			        IN IF up?(xx)
+				    THEN (LET (L, Y) = down(xx),
+				             yy = build_rec(d + 1, L)
+					  IN
+					  IF up?(yy)
+					   THEN up(down(yy)`1, node(Y, down(yy)`2))
+					   ELSE bottom
+					   ENDIF)
+			            ELSE bottom
+				    ENDIF)
+		         ENDIF)
+	 ENDCASES)
+	 MEASURE lex2(length(M), (IF (cons?(M) AND car(M) > d)  THEN car(M) - d ELSE 0 ENDIF))
+
+   % In PVS, a recursive judgement establishes a refined type for a recursively
+   % defined operation by generating proof obligations that assume the 
+   % recursive calls already have this type.  Many theorems requiring induction
+   % can be proved this way without explicitly using induction.  The judgement
+   % below establishes the soundness by asserting that the list of depths of the
+   % tree constructed by build_rec when appended with the unused suffix yields
+   % the input list M.  Note `1 and `2 are the projection operators on tuples.
+   % A lifted type returns up(x) or bottom, and down(up(x)) = x. 
+			           
+       list_of_depths_build_rec: RECURSIVE JUDGEMENT
+        build_rec(d, M) HAS_TYPE
+	  {xx : lift[[list[nat], tree]] | 
+	    bottom?(xx) OR 
+              append(list_of_depths_rec(down(xx)`2, d), down(xx)`1) = M}
+
+   % The operation build(M) invokes build_rec but checks that the unused suffix
+   % is empty
+
+       build(M): lift[tree] =
+         (LET xx = build_rec(0, M)
+	   IN IF (up?(xx) AND null?(down(xx)`1))
+	       THEN up(down(xx)`2)
+	       ELSE bottom
+	       ENDIF)
+
+   % The soundness property is easily derived from the recursive judgement above	      
+
+       list_of_depths_build: LEMMA
+         (LET xx = build(M)
+	   IN
+	  (bottom?(xx) OR 
+            list_of_depths(down(xx)) = M))
+
+   % This lemma shows that the list of depths operation returns a nonempty list
+   % whose leading element is at least d
+
+      list_of_depths_rec_list: LEMMA
+        (LET M = list_of_depths_rec(X, d)
+	  IN cons?(M) AND (d <= car(M)))
+
+   % The main step in the completeness argument is in showing that when
+   % M is the list of depths of a tree X, then build_rec on append(M, N)
+   % constructs X with residue N.  This shows that when build_rec returns
+   % bottom on M, then there is no X such that M is the list of depths of X.
+   	    
+      build_rec_list_of_depths_rec: LEMMA
+      (LET M = list_of_depths_rec(X, d),
+      	   xx = build_rec(d, append(M, N))
+	 IN (up?(xx) AND down(xx)`1 = N))
+       	   
+      build_list_of_depths: LEMMA
+        (LET M = list_of_depths(X),
+      	     xx = build(M)
+	 IN up?(xx))
+
+   % The test harnesses are given below.  
+	 
+    build_1332: LEMMA
+      down(build((: 1, 3, 3, 2 :))) = node(leaf, node(node(leaf, leaf), leaf))
+
+    build_1322: LEMMA
+      build((: 1, 3, 2, 2 :)) = bottom
+
+  END tree_reconstruction

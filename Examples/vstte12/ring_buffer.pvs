@@ -1,0 +1,112 @@
+% 1. Safety.  Follows from type constraints
+% 2. Behavior.  We map to an unbounded sequence, and show push and pop are faithful
+% 3. Harness.   test is proven
+
+ring_buffer[T: TYPE+]: THEORY
+  BEGIN
+
+   % Dependent record type ensures array indices are in bounds
+   ring_buffer: TYPE =
+     [# size: posnat,
+	data: [below(size) -> T],
+	first: below(size),
+	len: below(size) #]
+
+   d: T
+   b: VAR ring_buffer
+   n: VAR posnat
+   x, y, z: VAR T
+
+   % For convenience, we create nonfull? and nonempty? predicates
+   % Note that because indices start at 0, full holds when len = size - 1
+   
+   full?(b): bool = b`len = b`size - 1
+   nonfull?(b): bool = b`len < b`size - 1
+   empty?(b): bool = b`len = 0
+   nonempty?(b): bool = b`len /= 0
+
+   % Empty record is created with default data values d
+   
+   create(n): (empty?) =
+     (# size := n, data := lambda (i: below(n)): d, len := 0, first := 0 #)
+
+   % clear sets len field to 0 while retaining other field values     
+
+   clear(b): ring_buffer = b WITH [`len := 0]
+
+   % head applies to nonempty buffers and returns the first element
+
+   head(b: (nonempty?)): T = b`data(b`first)
+
+   % push adds a new element to the end of a nonfull buffer and returns
+   % a nonempty buffer
+
+   push(b: (nonfull?), x: T): (nonempty?) =
+      b WITH [`len := b`len + 1,
+	      `data(mod(b`first + b`len, b`size)) := x]
+
+   % pop applies to a nonempty buffer and returns a pair of the
+   % head element and the popped, nonfull buffer
+
+   pop(b: (nonempty?)): [T, (nonfull?)] =
+      (head(b),
+       b WITH [`len := b`len - 1,
+	       `first := mod(b`first + 1, b`size)])
+
+   % To show behavior correctness, the FIFO semantics of the queue contents
+   % is given by an unbounded finite sequence computed by contents.
+   % The finite sequence operations empty_seq, first, add, and rest are
+   % defined in the prelude or in the finseq_ops theory imported below
+
+   IMPORTING finseq_ops[T]
+
+   contents(b): finseq[T] =
+     (# length := b`len,
+	seq := (LAMBDA (j: below(b`len)): b`data(mod(b`first + j, b`size))) #)
+
+   % The contents of create and the result of clear correspond to an empty sequence	
+
+   contents_create: LEMMA
+     contents(create(n)) = empty_seq[T]
+
+   contents_clear: LEMMA
+      contents(clear(b)) = empty_seq[T]
+
+   nb, nc: VAR (nonempty?)
+   nfb, nfc: VAR (nonfull?)
+
+   % The head element of a nonempty buffer is the first element of its contents
+
+   contents_head: LEMMA
+      head(nb) = first(contents(nb))
+
+   % The contents of the result of a push are those obtained by adding
+   % the new element to the end of the contents of the original buffer
+
+   contents_push: LEMMA
+      contents(push(nfb, x)) = add(x, contents(nfb))
+
+   % When a nonempty buffer is popped, the first component of the result
+   % is the first element of the contents of the buffer, and the contents of
+   % second component is the rest of the sequence corresponding to the contents
+   % of the original buffer
+
+   contents_pop: LEMMA
+     (LET (x, b) = pop(nb)
+       IN
+	 contents(b) = rest(contents(nb))
+	   AND first(contents(nb)) = x)
+
+   % test is the test harness in a single assignment form	   
+
+   test: LEMMA
+     let b0 = create(2),
+	 b1 = push(b0, x),
+	 b2 = push(b1, y),
+	 (h1, b3) = pop(b2),
+	 b4 = push(b3, z),
+	 (h2, b5) = pop(b4),
+	 (h3, b6) = pop(b5)
+      in h1 = x AND h2 = y AND h3 = z
+
+  END ring_buffer

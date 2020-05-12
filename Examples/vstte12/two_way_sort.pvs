@@ -1,0 +1,72 @@
+% 1. Safety. Every access is within bounds follows from the types
+% 2. Termination. follows from the termination TCC of two_way_sort_rec
+% 3. Behavior. a is sorted and a permutation by the result type of two_way_sort
+
+two_way_sort: THEORY
+BEGIN
+  barray: type = [# length: nat, barray: [below(length) -> bool] #]
+
+  a, b: VAR barray
+
+  % sorted_out? is used for the invariant of two_way_sort_rec
+  % It basically says that everything below i is false, and everything
+  % above j is true.  When i = j, the array is sorted - the value at i
+  % doesn't matter at that point.
+
+  sorted_out?(a, (i : below(a`length)), (j: subrange(i, a`length - 1))):
+    bool =
+    (FORALL (k: below(a`length)):
+       (IF k < i THEN NOT a`barray(k)
+        ELSIF k > j THEN  a`barray(k)
+	ELSE TRUE
+	ENDIF))
+
+  sorted?(a): bool
+     = (a`length = 0 OR (EXISTS (i:below(a`length)): sorted_out?(a, i, i)))
+
+
+  % b is a permutation of a
+
+  perm?(a)(b): bool =
+    (a`length = b`length AND
+     (EXISTS (p: (bijective?[below(a`length), below(a`length)])):
+        (FORALL (k : below(a`length)):
+	   a`barray(p(k)) = b`barray(k))))
+
+
+  % swap - as this is not imperative, no temp variable is needed
+  % The range subtype indicates that the result of the swap is a
+  % permutation of the input array
+
+  swap(a, (i, j: below(a`length))): (perm?(a)) = 
+     a with [`barray(i) := a`barray(j), `barray(j) := a`barray(i)]
+
+
+  % two_way_sort is defined as a call to a recursive function, where
+  % the sorted_out? invariant is embedded in the argument type.
+  % The result, as indicated by the range type, is a sorted array that
+  % is a permutation of the original.  The termination argument is
+  % given by the MEASURE, and proved when the termination TCCs are discharged
+
+  two_way_sort_rec(a: barray,
+                   i: below(a`length),
+                   j: subrange(i, a`length-1)
+                    | sorted_out?(a, i, j)) : RECURSIVE
+     {sa: barray | sorted?(sa) and perm?(a)(sa)}
+     =
+     (IF i < j
+       THEN IF NOT a`barray(i) THEN two_way_sort_rec(a, i+1, j)
+            ELSIF a`barray(j) THEN two_way_sort_rec(a, i, j-1)
+	    ELSIF j = i+1 THEN  swap(a, i, j)
+	    ELSE two_way_sort_rec(swap(a, i, j), i+1, j-1)
+	    ENDIF
+       ELSE a
+       ENDIF)
+     MEASURE j-i
+
+
+ two_way_sort(a: barray):
+      {sa: barray | sorted?(sa) and perm?(a)(sa)}
+    = (IF a`length = 0 THEN a ELSE two_way_sort_rec(a, 0, a`length - 1) ENDIF)
+     
+END two_way_sort
