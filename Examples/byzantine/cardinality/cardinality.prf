@@ -1,0 +1,353 @@
+(|cardinality| (|fin_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|cardi_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|cardi_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|cardi_TCC3| "" (TERMINATION-TCC) NIL)
+ (|cardi_TCC4| "" (SUBTYPE-TCC) NIL)
+ (|cardi_TCC5| "" (TERMINATION-TCC) NIL)
+ (|card_TCC1| "" (SUBTYPE-TCC) NIL))(|countable_cardinality| (|cfin_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|ccardi_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|ccardi_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|ccardi_TCC3| "" (TERMINATION-TCC) NIL)
+ (|ccardi_TCC4| "" (SUBTYPE-TCC) NIL)
+ (|ccardi_TCC5| "" (TERMINATION-TCC) NIL)
+ (|ccard_TCC1| "" (SUBTYPE-TCC) NIL))(|finite_cardinality| (|fincardi_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|fincardi_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|fincardi_TCC3| "" (TERMINATION-TCC) NIL)
+ (|fincardi_TCC4| "" (SUBTYPE-TCC) NIL)
+ (|fincardi_TCC5| "" (TERMINATION-TCC) NIL)
+ (|fincard_TCC1| "" (SUBTYPE-TCC) NIL))(|card_set|
+ (IMPORTING1_TCC1 "" (LEMMA "f_exists") (("" (PROPAX) NIL)))
+ (|fullset_fincard| "" (EXPAND "fullset")
+  (("" (EXPAND "fincard")
+    ((""
+      (LEMMA "below_induction"
+       ("pb"
+        "(lambda (j:below[n]): j>0 IMPLIES fincardi((LAMBDA (x: T): TRUE), j ) = j)"))
+      (("" (BETA)
+        (("" (ASSERT)
+          (("" (EXPAND "fincardi" 1)
+            (("" (ASSERT)
+              (("" (SPLIT)
+                (("1" (INST -1 "n-1")
+                  (("1" (ASSERT)
+                    (("1" (EXPAND "fincardi")
+                      (("1" (ASSERT) NIL)))))))
+                 ("2" (SKOSIMP)
+                  (("2" (ASSERT)
+                    (("2" (HIDE 2)
+                      (("2" (EXPAND "fincardi" +)
+                        (("2" (ASSERT)
+                          (("2" (ASSERT)
+                            (("2"
+                              (EXPAND "fincardi" +)
+                              (("2"
+                                (ASSERT)
+                                NIL)))))))))))))))))))))))))))))))
+ (|fincard_non_empty| "" (SKOSIMP)
+  (("" (EXPAND "fincard")
+    ((""
+      (LEMMA "below_induction"
+       ("pb"
+        "(lambda (j:below[n+1]): j>0 IMPLIES ((EXISTS (i:below[j]): m!1(f(i))) IFF fincardi(m!1, j ) /= 0))"))
+      (("" (BETA)
+        (("" (SPLIT)
+          (("1" (INST -1 "n")
+            (("1" (SPLIT)
+              (("1" (FLATTEN)
+                (("1" (PROP)
+                  (("1" (SKOSIMP) (("1" (INST 2 "f(i!1)") NIL)))
+                   ("2" (SKOSIMP)
+                    (("2" (TYPEPRED "f")
+                      (("2" (EXPAND "bijective?")
+                        (("2" (FLATTEN)
+                          (("2" (EXPAND "surjective?")
+                            (("2"
+                              (INST -2 "z!1")
+                              (("2"
+                                (SKOSIMP)
+                                (("2"
+                                  (INST 1 "x!1")
+                                  (("2"
+                                    (ASSERT)
+                                    NIL)))))))))))))))))))))
+               ("2" (ASSERT) NIL)))))
+           ("2" (HIDE 2) (("2" (FLATTEN) (("2" (ASSERT) NIL)))))
+           ("3" (HIDE 2)
+            (("3" (SKOSIMP)
+              (("3" (SPLIT 1)
+                (("1" (FLATTEN)
+                  (("1" (SKOSIMP)
+                    (("1" (CASE "i!1 = jb!1")
+                      (("1" (EXPAND "fincardi" -3)
+                        (("1" (LIFT-IF)
+                          (("1" (ASSERT) (("1" (ASSERT) NIL)))))))
+                       ("2" (SPLIT)
+                        (("1" (FLATTEN)
+                          (("1" (EXPAND "fincardi" -4)
+                            (("1"
+                              (LIFT-IF)
+                              (("1"
+                                (SPLIT -4)
+                                (("1" (FLATTEN) (("1" (ASSERT) NIL)))
+                                 ("2"
+                                  (FLATTEN)
+                                  (("2"
+                                    (HIDE -3)
+                                    (("2"
+                                      (SPLIT)
+                                      (("1" (ASSERT) NIL)
+                                       ("2"
+                                        (INST 1 "i!1")
+                                        (("2"
+                                          (ASSERT)
+                                          NIL)))))))))))))))))
+                         ("2" (ASSERT) NIL)))))))))
+                 ("2" (FLATTEN)
+                  (("2" (SPLIT)
+                    (("1" (FLATTEN)
+                      (("1" (HIDE -1)
+                        (("1" (SPLIT)
+                          (("1" (SKOSIMP) (("1" (INST 2 "i!1") NIL)))
+                           ("2" (EXPAND "fincardi" 2)
+                            (("2"
+                              (LIFT-IF)
+                              (("2"
+                                (PROP)
+                                (("2"
+                                  (INST 2 "jb!1")
+                                  NIL)))))))))))))
+                     ("2" (ASSERT)
+                      (("2" (EXPAND "fincardi")
+                        (("2" (LIFT-IF)
+                          (("2" (PROP)
+                            (("1" (INST 3 "jb!1") NIL)
+                             ("2"
+                              (EXPAND "fincardi" 2)
+                              (("2"
+                                (PROPAX)
+                                NIL)))))))))))))))))))))))))))))))
+ (|fincard_filter| "" (SKOSIMP)
+  (("" (EXPAND "fincard")
+    ((""
+      (LEMMA "below_induction"
+       ("pb"
+        "(lambda (j:below[n+1]): j>0 IMPLIES (fincardi(filter(m1!1, m2!1), j) <= fincardi(m1!1, j)))"))
+      (("" (BETA)
+        (("" (SPLIT)
+          (("1" (INST -1 "n") (("1" (ASSERT) NIL)))
+           ("2" (HIDE 2) (("2" (FLATTEN) (("2" (ASSERT) NIL)))))
+           ("3" (HIDE 2)
+            (("3" (SKOSIMP)
+              (("3" (SPLIT)
+                (("1" (EXPAND "fincardi" +)
+                  (("1" (LIFT-IF)
+                    (("1" (LIFT-IF)
+                      (("1" (PROP)
+                        (("1" (ASSERT) NIL) ("2" (ASSERT) NIL)
+                         ("3" (EXPAND "filter" -1)
+                          (("3" (ASSERT) NIL)))))))))))
+                 ("2" (ASSERT)
+                  (("2" (EXPAND "fincardi")
+                    (("2" (LIFT-IF)
+                      (("2" (LIFT-IF)
+                        (("2" (PROP)
+                          (("1" (EXPAND "fincardi")
+                            (("1" (ASSERT) NIL)))
+                           ("2" (EXPAND "fincardi")
+                            (("2" (ASSERT) NIL)))
+                           ("3" (EXPAND "filter" -1)
+                            (("3" (FLATTEN) (("3" (PROPAX) NIL)))))
+                           ("4" (EXPAND "fincardi")
+                            (("4"
+                              (ASSERT)
+                              NIL)))))))))))))))))))))))))))))
+ (|zero_fincard| "" (SKOSIMP)
+  (("" (LEMMA "fincard_filter")
+    (("" (INST?)
+      (("" (LEMMA "fincard_non_empty")
+        (("" (INST -1 "filter(m1!1, m2!1)")
+          (("" (FLATTEN)
+            (("" (ASSERT)
+              (("" (INST 1 "y!1")
+                (("" (EXPAND "filter" +)
+                  (("" (PROPAX) NIL)))))))))))))))))))
+ (|remove_prop| "" (SKOSIMP)
+  (("" (EXPAND "remove")
+    (("" (ASSERT) (("" (EXPAND "member") (("" (PROPAX) NIL)))))))))
+ (|fincard_remove| "" (SKOSIMP)
+  (("" (EXPAND "fincard")
+    ((""
+      (LEMMA "below_induction"
+       ("pb"
+        "(lambda (j:below[n+1]): j>0 IMPLIES (IF (EXISTS (i: below[j]): f(i) = z!1 and m!1(z!1)) THEN fincardi(remove(z!1, m!1), j) = fincardi(m!1, j) - 1 ELSE fincardi(remove(z!1, m!1), j) = fincardi(m!1, j) ENDIF))"))
+      (("" (BETA)
+        (("" (SPLIT -1)
+          (("1" (INST -1 "n")
+            (("1" (PROP -1)
+              (("1" (SKOSIMP) NIL)
+               ("2" (TYPEPRED "f")
+                (("2" (EXPAND "bijective?")
+                  (("2" (FLATTEN)
+                    (("2" (EXPAND "surjective?")
+                      (("2" (INST -2 "z!1")
+                        (("2" (SKOSIMP)
+                          (("2" (INST 2 "x!1")
+                            (("2" (ASSERT) NIL)))))))))))))))
+               ("3" (ASSERT) NIL) ("4" (ASSERT) NIL)))))
+           ("2" (HIDE 2) (("2" (FLATTEN) (("2" (ASSERT) NIL)))))
+           ("3" (HIDE 2)
+            (("3" (SKOSIMP)
+              (("3" (EXPAND "fincardi" +)
+                (("3" (PROP)
+                  (("1" (LIFT-IF)
+                    (("1" (LIFT-IF)
+                      (("1" (PROP)
+                        (("1" (ASSERT) NIL)
+                         ("2" (ASSERT)
+                          (("2" (EXPAND "remove" 1)
+                            (("2"
+                              (EXPAND "member")
+                              (("2"
+                                (HIDE -2)
+                                (("2"
+                                  (SKOSIMP)
+                                  (("2"
+                                    (TYPEPRED "f")
+                                    (("2"
+                                      (EXPAND "bijective?")
+                                      (("2"
+                                        (FLATTEN)
+                                        (("2"
+                                          (EXPAND "injective?")
+                                          (("2"
+                                            (INST -1 "jb!1" "i!1")
+                                            (("2"
+                                              (ASSERT)
+                                              NIL)))))))))))))))))))))
+                         ("3" (ASSERT)
+                          (("3" (EXPAND "remove" -1)
+                            (("3"
+                              (FLATTEN)
+                              (("3"
+                                (EXPAND "member")
+                                (("3" (PROPAX) NIL)))))))))))))))
+                   ("2" (LIFT-IF)
+                    (("2" (LIFT-IF)
+                      (("2" (PROP)
+                        (("1" (SKOSIMP)
+                          (("1" (INST 2 "i!1")
+                            (("1" (ASSERT) NIL)))))
+                         ("2" (SKOSIMP)
+                          (("2" (INST 3 "i!1")
+                            (("2" (ASSERT) NIL)))))
+                         ("3" (ASSERT) NIL)
+                         ("4" (SKOSIMP)
+                          (("4" (INST 4 "i!1")
+                            (("4" (ASSERT) NIL)))))))))))
+                   ("3" (LIFT-IF)
+                    (("3" (LIFT-IF)
+                      (("3" (SKOSIMP)
+                        (("3" (CASE "i!1 = jb!1")
+                          (("1" (HIDE 2)
+                            (("1"
+                              (ASSERT)
+                              (("1"
+                                (SPLIT)
+                                (("1"
+                                  (FLATTEN)
+                                  (("1"
+                                    (EXPAND "remove")
+                                    (("1" (PROPAX) NIL)))))
+                                 ("2"
+                                  (FLATTEN)
+                                  (("2" (PROPAX) NIL)))))))))
+                           ("2" (INST 3 "i!1")
+                            (("1" (ASSERT) NIL)
+                             ("2" (ASSERT) NIL)))))))))))
+                   ("4" (LIFT-IF)
+                    (("4" (LIFT-IF)
+                      (("4" (PROP)
+                        (("1" (ASSERT) NIL)
+                         ("2" (EXPAND "remove" 1)
+                          (("2" (EXPAND "member")
+                            (("2"
+                              (ASSERT)
+                              (("2"
+                                (INST 3 "jb!1")
+                                (("2" (ASSERT) NIL)))))))))
+                         ("3" (EXPAND "remove" -1)
+                          (("3" (FLATTEN)
+                            (("3"
+                              (EXPAND "member")
+                              (("3" (PROPAX) NIL)))))))))))))
+                   ("5" (LIFT-IF)
+                    (("5" (LIFT-IF)
+                      (("5" (SKOSIMP)
+                        (("5" (PROP)
+                          (("1" (EXPAND "remove" -1)
+                            (("1"
+                              (FLATTEN)
+                              (("1"
+                                (EXPAND "member")
+                                (("1" (ASSERT) NIL)))))))
+                           ("2" (ASSERT)
+                            (("2"
+                              (HIDE 1)
+                              (("2"
+                                (ASSERT)
+                                (("2"
+                                  (EXPAND "fincardi")
+                                  (("2" (PROPAX) NIL)))))))))
+                           ("3" (EXPAND "remove")
+                            (("3"
+                              (FLATTEN)
+                              (("3"
+                                (EXPAND "member")
+                                (("3" (PROPAX) NIL)))))))
+                           ("4" (EXPAND "remove" 1)
+                            (("4"
+                              (EXPAND "member")
+                              (("4" (ASSERT) NIL)))))))))))))
+                   ("6" (ASSERT)
+                    (("6" (LIFT-IF)
+                      (("6" (LIFT-IF)
+                        (("6" (PROP)
+                          (("1" (EXPAND "remove" -1)
+                            (("1"
+                              (FLATTEN)
+                              (("1"
+                                (EXPAND "member")
+                                (("1"
+                                  (ASSERT)
+                                  (("1"
+                                    (EXPAND "fincardi")
+                                    (("1" (PROPAX) NIL)))))))))))
+                           ("2" (EXPAND "remove" 1)
+                            (("2"
+                              (EXPAND "member")
+                              (("2"
+                                (ASSERT)
+                                (("2"
+                                  (ASSERT)
+                                  (("2" (INST 3 "0") NIL)))))))))
+                           ("3" (EXPAND "remove" -1)
+                            (("3"
+                              (FLATTEN)
+                              (("3"
+                                (EXPAND "member")
+                                (("3" (PROPAX) NIL)))))))
+                           ("4" (EXPAND "fincardi")
+                            (("4"
+                              (PROPAX)
+                              NIL)))))))))))))))))))))))))))))
+ (|remove_comm| "" (SKOSIMP)
+  (("" (EXPAND "filter")
+    (("" (APPLY-EXTENSIONALITY)
+      (("" (HIDE 2)
+        (("" (EXPAND "remove")
+          (("" (IFF)
+            (("" (PROP)
+              (("1" (EXPAND "member") (("1" (ASSERT) NIL)))
+               ("2" (EXPAND "member") (("2" (ASSERT) NIL)))
+               ("3" (EXPAND "member")
+                (("3" (ASSERT) NIL))))))))))))))))))

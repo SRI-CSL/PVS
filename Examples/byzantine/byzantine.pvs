@@ -1,0 +1,124 @@
+byzantine[m, n: nat, T: NONEMPTY_TYPE]: THEORY
+  BEGIN
+  
+  ASSUMING
+    
+    mn_prop: ASSUMPTION 3 * m < n
+    
+  ENDASSUMING
+  
+  npos: LEMMA n > 0
+  
+  proc: TYPE = below[n]
+  
+  rounds: TYPE = upto[m]
+  
+  vector: TYPE = [proc -> T]
+  
+  procset: TYPE = setof[proc]
+  
+  ok: procset
+  
+  id: (bijective?[proc, proc]) = (lambda (p: proc): p)
+  
+  IMPORTING cardinality@finite_cardinality[proc, n, id], 
+            cardinality@card_set[proc, n, id]
+  
+  G, p, q, z: VAR proc
+  
+  r: VAR rounds
+  
+  caucus: VAR procset
+  
+  v: VAR vector
+  
+  t: VAR T
+  
+  nok(caucus): procset = {z: proc | member(z, caucus) AND NOT ok(z)}
+  
+  allprocs: procset = fullset[proc]
+  
+  allset_card: LEMMA fincard(allprocs) = n
+  
+  max_faults: AXIOM fincard(nok(allprocs)) <= m
+  
+  remove_lemma: LEMMA
+    member(p, caucus) IMPLIES fincard(remove(p, caucus)) = fincard(caucus) - 1
+  
+  nok_lemma1: LEMMA
+    ok(p) IMPLIES fincard(nok(remove(p, caucus))) = fincard(nok(caucus))
+  
+  nok_lemma3: LEMMA
+    NOT ok(p) AND member(p, caucus)
+      IMPLIES fincard(nok(remove(p, caucus))) = fincard(nok(caucus)) - 1
+  
+  maj(caucus, v): T
+  
+  maj_ax: AXIOM
+    fincard(caucus) > 2 * fincard(nok(caucus))
+      AND (FORALL p: ok(p) AND member(p, caucus) => v(p) = t)
+      IMPLIES maj(caucus, v) = t
+  
+  maj_ext: AXIOM
+    FORALL (v1, v2: vector):
+      (FORALL p: member(p, caucus) => v1(p) = v2(p))
+        IMPLIES maj(caucus, v1) = maj(caucus, v2)
+  
+  send: [T, proc, proc -> T]
+  
+  send_ax: AXIOM ok(p) AND ok(q) => send(t, p, q) = t
+  
+  distr(t, p): vector = (LAMBDA (z: proc): send(t, p, z))  % distr(t,p)(q):t=send(t,p,q)
+  
+  arb: T
+  
+  OMBG(G, r, t, caucus) (p) : RECURSIVE T = 
+    IF r = 0
+      THEN IF member(G, caucus) AND member(p, caucus) THEN send(t, G, p)
+      ELSE arb
+      ENDIF
+    ELSE IF member(G, caucus) AND member(p, caucus)
+        THEN IF p = G
+          THEN send(t, G, G)
+        ELSE
+          maj(remove(G, caucus),
+              (LAMBDA q: OMBG(q, r - 1, send(t, G, q), remove(G, caucus))(p)))
+        ENDIF
+      ELSE arb
+      ENDIF
+    ENDIF
+   MEASURE r
+  
+  C2_prop(r): bool =
+      (FORALL p, G, t, caucus:
+         ok(p)
+           AND ok(G)
+                 AND member(p, caucus)
+                       AND member(G, caucus)
+                             AND fincard(caucus)
+                                   > 2 * fincard(nok(caucus)) + r
+           IMPLIES OMBG(G, r, t, caucus)(p) = t)
+  
+  C2: LEMMA C2_prop(r)
+  
+  C2_final: THEOREM ok(p) AND ok(G) IMPLIES OMBG(G, m, t, allprocs)(p) = t
+  
+  C1_prop(r): bool =
+      (FORALL p, q, G, caucus, t:
+         ok(p)
+           AND ok(q)
+                 AND member(p, caucus)
+                       AND member(q, caucus)
+                             AND member(G, caucus)
+                                   AND fincard(caucus) > 3 * r
+                                         AND r >= fincard(nok(caucus))
+           IMPLIES OMBG(G, r, t, caucus)(p) = OMBG(G, r, t, caucus)(q))
+  
+  C1: LEMMA C1_prop(r)
+  
+  C1_final: THEOREM
+    ok(p) AND ok(q) IMPLIES FORALL (G: proc):
+                              OMBG(G, m, t, allprocs)(p)
+                                = OMBG(G, m, t, allprocs)(q)
+  
+  END byzantine

@@ -1,0 +1,114 @@
+% cardinality provides the card function, which gives the cardinality of
+% a finite set.  The f parameter gives a mapping from the naturals to
+% the base type of the sets, and the m parameter gives an upper bound on
+% the cardinality.  This is the most general cardinality function,
+% making no assumptions on the base type T.  If T is known to be
+% countable or finite, then the corresponding cardinality theories are
+% probably more appropriate.
+
+cardinality[T: TYPE, m : nat, f : [below[m] -> T]] : THEORY
+ BEGIN
+
+  fin : TYPE =
+    {s : set[T] | (FORALL (x: (s)): (EXISTS (i:below[m]): f(i) = x)) AND
+                  (FORALL (i, j: below[m]): s(f(i)) AND
+                                       f(i) = f(j) IMPLIES i = j)}
+         CONTAINING emptyset[T]
+
+  cardi(s: fin, i: upto[m]) : RECURSIVE nat =
+    (IF i = 0 THEN 0
+              ELSIF s(f(i-1)) THEN cardi(s, i-1) + 1
+              ELSE cardi(s, i-1) ENDIF)
+    MEASURE (LAMBDA (s: fin), (i: upto[m]): i)
+
+  card(s: fin) : nat = cardi(s, m)
+
+ END cardinality
+
+
+% countable_cardinality provides the ccard function, which gives the
+% cardinality of a finite set whose base type is known to be countable.
+% The f parameter gives a bijective mapping from the naturals to the base
+% type of the sets, and the m parameter gives an upper bound on the
+% cardinality.  This form of cardinality is useful when the base type is
+% countable, as the finite subsets are easier to deal with.
+
+countable_cardinality[T: TYPE, m: nat, f : (injective?[below[m], T])] : THEORY
+ BEGIN
+
+  cfin : TYPE =
+    {s : set[T] | (FORALL (x: (s)) :(EXISTS (i: below[m]): f(i) = x))}
+    CONTAINING emptyset[T]
+
+  ccardi(s: cfin, i: upto[m]) : RECURSIVE nat =
+    (IF i = 0 THEN 0
+              ELSIF s(f(i-1)) THEN ccardi(s, i-1) + 1
+              ELSE ccardi(s, i-1) ENDIF)
+    MEASURE (LAMBDA (s: cfin), (i: upto[m]): i)
+
+  ccard(s: cfin) : nat = ccardi(s, m)
+
+ END countable_cardinality
+
+
+% finite_cardinality provides the fincard function, which gives the
+% cardinality of a finite set whose base type is known to be finite.
+% The f parameter gives an injective mapping from the naturals to the base
+% type of the sets, and the m parameter gives an upper bound on the
+% cardinality.  This form of cardinality is useful when the base type is
+% finite, as it is then known that every set defined on that type is
+% also finite.
+
+finite_cardinality[T: TYPE, m: nat, f: (bijective?[below[m], T])] : THEORY
+ BEGIN
+
+  fincardi(s: set[T], i: upto[m]) : RECURSIVE nat =
+    (IF i = 0 THEN 0
+              ELSIF s(f(i-1)) THEN fincardi(s, i-1) + 1
+              ELSE fincardi(s, i-1) ENDIF)
+    MEASURE (LAMBDA (s: set[T]), (i: upto[m]): i)
+
+  fincard(s: set[T]) : nat = fincardi(s, m)
+
+ END finite_cardinality
+
+
+% card_set provides a small set of standard lemmas
+% regarding finite cardinality, filters, and sets.  
+
+card_set[T: TYPE, n:posnat, f:(bijective?[below[n],T])] : THEORY   
+ BEGIN
+
+  IMPORTING finite_cardinality[T,n,f],
+            filters[below[n]]
+
+  fullset_fincard: LEMMA fincard(fullset[T]) = n 
+
+  fincard_non_empty: LEMMA
+    (FORALL (m:setof[T]):
+      (EXISTS (z:T): m(z)) IFF fincard(m) /= 0)
+
+  fincard_filter: LEMMA
+    (FORALL (m1,m2:setof[T]):
+      fincard(filter(m1,m2)) <= fincard(m1))
+	
+  zero_fincard: LEMMA
+    (FORALL (y:T),(m1,m2:setof[T]):
+       m1(y) AND fincard(filter(m1,m2)) <= 0 IMPLIES NOT m2(y))
+
+  remove_prop: LEMMA
+    (FORALL (y,z:T),(m:setof[T]):
+      m(z) AND (NOT y=z) IMPLIES remove(y, m)(z))
+
+  fincard_remove: LEMMA
+    (FORALL (z:T),(m:setof[T]):
+      IF m(z)
+      THEN fincard(remove(z, m)) = fincard(m) - 1
+      ELSE fincard(remove(z, m)) = fincard(m)
+      ENDIF)
+
+  remove_comm: LEMMA
+    (FORALL (z:T),(m1,m2:setof[T]):
+      filter(remove(z, m1),m2) = remove(z, filter(m1,m2)))
+
+ END card_set
