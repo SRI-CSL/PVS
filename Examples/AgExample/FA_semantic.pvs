@@ -1,0 +1,351 @@
+FA_semantic: THEORY
+
+  BEGIN
+
+    IMPORTING FA_Language
+  
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Especificación Ag.                                                            %
+    % Ag specification.                                                             %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %                                                                               %
+    % Addr: TYPE                                                                    %
+    % Data: TYPE                                                                    %
+    % Memory: TYPE = Addr -> Data                                                   %
+    % Cache: TYPE = Addr -> Data                                                    %
+    % Dirty: TYPE = set[Addr]                                                       %
+    % DirtyCache: TYPE = {dc: Cache +_circ Dirty |                                  %
+    %                          Dirty(dc) <= Dom(Cache(dc))}                         %
+    % DirtyCacheSystem: TYPE = {cs: Memory +_circ DirtyCache |                      %
+    %                                Dom(Cache(DirtyCache(cs)) <= Dom(Memory(cs))}  %
+    %                                                                               %
+
+    TypePred: TYPE = {%% Predicados característicos de los tipos de la especificación.
+                        %% Dependientes de la especificación.
+                      %% Predicates that characterices the specification types.
+                        %% Specification dependent.   
+                      Carrier, Addr, Data, Memory, 
+                      Cache, Dirty, DirtyCache,
+                      DirtyCacheSystem}
+
+    %% Construcción del dominio de la fork algebra.
+    %% Fork algebra domain construction.
+    Element: TYPE+
+    c_0: Element
+    c_1: Element
+    Addr_Element: PRED[Element]
+    Data_Element: PRED[Element]
+
+    non_empty_Addr: AXIOM
+             EXISTS (e: (Addr_Element)): TRUE
+
+    non_empty_Data: AXIOM
+             EXISTS (e: (Data_Element)): TRUE
+
+    empty_intersection_of_types: AXIOM 
+             FORALL (e: Element): 
+               (e = c_0 AND NOT e = c_1 AND NOT Addr_Element(e) AND NOT Data_Element(e)) OR
+               (NOT e = c_0 AND e = c_1 AND NOT Addr_Element(e) AND NOT Data_Element(e)) OR
+               (NOT e = c_0 AND NOT e = c_1 AND Addr_Element(e) AND NOT Data_Element(e)) OR
+               (NOT e = c_0 AND NOT e = c_1 AND NOT Addr_Element(e) AND Data_Element(e))
+
+    IMPORTING FA_Element_adt[Element]
+
+    %% Predicados característicos de los objetos de los tipos primitivos.
+    %% Characteristic predicates of the objects of the primitive types.
+    Addr: PRED[FA_Element] = LAMBDA (w: FA_Element):
+                               EXISTS (e: Element): 
+                                 Addr_Element(e) AND w = element(e)
+    Data: PRED[FA_Element] = LAMBDA (w: FA_Element): 
+                               EXISTS (e: Element): 
+                                 Data_Element(e) AND w = element(e)
+
+    Carrier: TYPE FROM PRED[[FA_Element, FA_Element]]
+
+    %% El algebra es point-dense
+    %% The algebra must be point-dense
+    carrier_point_dense: AXIOM
+       FORALL (a: FA_Element): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                                              wp`1 = a AND wp`2 = a) 
+       %% Axiomas sobre Carrier (constantes)
+       %% Axioms about Carrier (constants)
+       carrier_zero: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): FALSE)
+       carrier_one: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): TRUE)
+       carrier_one_prime: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): wp`1 = wp`2)
+       %% Más axiomas sobre Carrier (operaciones)
+       %% More axioms about Carrier (operations)
+       carrier_sum: AXIOM
+          FORALL (c0, c1: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                                                   c0(wp) OR c1(wp))
+       carrier_product: AXIOM
+          FORALL (c0, c1: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                                                   c0(wp) AND c1(wp))
+       carrier_complement: AXIOM
+          FORALL (c: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                                              NOT c(wp))
+       carrier_composition: AXIOM
+          FORALL (c0, c1: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                                                   EXISTS (x: FA_Element): 
+                                                     c0((wp`1, x)) AND c1((x, wp`2)))
+       carrier_converse: AXIOM
+          FORALL (c: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): c((wp`2, wp`1)))
+       carrier_fork: AXIOM
+          FORALL (c0, c1: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, (pair?)]): 
+                                                   c0((wp`1, el0(wp`2))) AND c1((wp`1, el1(wp`2))))
+
+    %% Definición de las constantes declaradas (fork algebra).
+    %% Definition of the declared constants (fork algebra).
+    zero: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): FALSE
+    one: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): TRUE
+    one_prime: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): wp`1 = wp`2
+
+    %% Definición de las funciones declaradas (fork algebra).
+    %% Definition of the declared functions (fork algebra).
+    sum(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): c0(wp) OR c1(wp)
+    product(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): c0(wp) AND c1(wp)
+    complement(c: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): NOT c(wp)
+    composition(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): 
+                                              EXISTS (x: FA_Element): c0((wp`1, x)) AND c1((x, wp`2)) 
+    converse(c: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): c((wp`2, wp`1))
+    fork(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, (pair?)]): 
+                                       c0((wp`1, el0(wp`2))) AND c1((wp`1, el1(wp`2)))
+
+    %% Definición de los predicados declarados (fork algebra).
+    %% Definition of the declared predicates (fork algebra).
+    Leq(c0, c1: Carrier): bool = sum(c0, c1) = c1
+    Functional(c: Carrier): bool = Leq(composition(converse(c), c), one_prime)
+    OneToOne(c: Carrier): bool = Functional(converse(c))
+    Pair(c: Carrier): bool = NOT (c = zero) AND Functional(c) AND OneToOne(c) AND
+                             composition(composition(c, one), c) = c
+    %% Más constantes, predicados y funciones (fork algebra).
+    %% More constants, predicates and functiones (fork algebra).
+       %% Más axiomas sobre Carrier (más constantes)
+       %% More axioms about Carrier (more constants)
+       carrier_C_0: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): wp`2 = element(c_0))
+       carrier_C_1: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): wp`2 = element(c_1))
+    %% Constantes.
+    %% Constants.
+    C_0: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): wp`2 = element(c_0)
+    C_1: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): wp`2 = element(c_1)
+    inl: Carrier = fork(C_0, one_prime)
+    inr: Carrier = fork(C_1, one_prime)
+    Pi_1: Carrier = converse(fork(one_prime, one))
+    Pi_2: Carrier = converse(fork(one, one_prime))
+    %% Funciones.
+    %% Functions.
+    Dom(c: Carrier): Carrier = product(composition(c, converse(c)), one_prime)
+    FunctionUndef(c0, c1: Carrier): Carrier = product(c0, complement(composition(c1, one)))
+    FunctionUpdate(c0, c1: Carrier): Carrier = sum(FunctionUndef(c0, c1), c1)
+    Neg(c: Carrier): Carrier = product(complement(c), one_prime)
+
+       %% Más axiomas sobre Carrier (identidades parciales)
+       %% More axioms about Carrier (parcial identities)
+       carrier_one_prime_C_0: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): one_prime(wp) AND wp`1 = element(c_0))
+       carrier_one_prime_C_1: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): one_prime(wp) AND wp`1 = element(c_1))
+       carrier_one_prime_Addr: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                         one_prime(wp) AND Addr(wp`1))
+       carrier_one_prime_Data: AXIOM
+          Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
+                         one_prime(wp) AND Data(wp`1))
+    %% Identidades parciales.
+    %% Partial identities.
+    one_prime_C_0: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): one_prime(wp) AND wp`1 = element(c_0)
+    one_prime_C_1: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): one_prime(wp) AND wp`1 = element(c_1)
+    one_prime_Addr: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): 
+                                one_prime(wp) AND Addr(wp`1)
+    one_prime_Data: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): 
+                                one_prime(wp) AND Data(wp`1)
+
+    %% Predicados característicos de los tipos de la especificación.
+      %% Dependientes de la especificación.
+    %% Predicates that characterices the specification types.
+      %% Specification dependent.   
+    Carrier: PRED[Carrier] = LAMBDA (c: Carrier): TRUE
+    Addr: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                      Pair(c) AND Leq(c, one_prime_Addr)  
+    Data: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                      Pair(c) AND Leq(c, one_prime_Data)   
+    Memory: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                        Leq(c, composition(composition(one_prime_Addr, 
+                                                                       one), 
+                                                           one_prime_Data)) AND 
+                                        Functional(c)
+    Cache: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                        Leq(c, composition(composition(one_prime_Addr, 
+                                                                       one), 
+                                                           one_prime_Data)) AND 
+                                        Functional(c)
+    Dirty: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                        Leq(c, one_prime_Addr)
+    Cache(c: Carrier): Carrier = composition(composition(inl, c), converse(inl))
+    Dirty(c: Carrier): Carrier = composition(composition(inr, c), converse(inr))
+    DirtyCache: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                  EXISTS (ca: (Cache), d: (Dirty)):
+                                 c = sum(composition(fork(composition(Pi_1, one_prime_C_0), 
+                                                          composition(Pi_2, composition(ca, inl))), 
+                                                     Pi_2), 
+                                         composition(fork(composition(Pi_1, one_prime_C_1), 
+                                                          composition(Pi_2, composition(d, inr))), 
+                                                     Pi_2)) AND
+                                 Leq(Dirty(c), Dom(Cache(c)))
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    Cache_Dirty_DirtyCache: LEMMA
+       FORALL (dc: (DirtyCache), c: (Cache), d: (Dirty)):
+         dc = sum(composition(fork(composition(Pi_1, one_prime_C_0), 
+                                                     composition(Pi_2, composition(c, inl))), 
+                                               Pi_2), 
+                                   composition(fork(composition(Pi_1, one_prime_C_1), 
+                                                    composition(Pi_2, composition(d, inr))), 
+                                               Pi_2)) IMPLIES
+         c = Cache(dc) AND d = Dirty(dc)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    Memory(c: Carrier): Carrier = composition(composition(inl, c), converse(inl)) 
+    DirtyCache(c: Carrier): Carrier = composition(composition(inr, c), converse(inr))
+    DirtyCacheSystem: PRED[Carrier] = LAMBDA (c: Carrier): 
+                                        EXISTS (mem: (Memory), dca: (DirtyCache)):
+                                      c = sum(composition(fork(composition(Pi_1, one_prime_C_0), 
+                                                               composition(Pi_2, composition(mem, inl))),
+                                                          Pi_2), 
+                                              composition(fork(composition(Pi_1, one_prime_C_1), 
+                                                               composition(Pi_2, composition(dca, inr))),
+                                                          Pi_2)) AND
+                                      Leq(Dom(Cache(DirtyCache(c))), Dom(Memory(c)))
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    Memory_DirtyCache_DirtyCacheSystem: LEMMA
+       FORALL (dcs: (DirtyCacheSystem), mem: (Memory), dca: (DirtyCache)):
+         dcs = sum(composition(fork(composition(Pi_1, one_prime_C_0), 
+                                                      composition(Pi_2, composition(mem, inl))), 
+                                                Pi_2), 
+                                    composition(fork(composition(Pi_1, one_prime_C_1), 
+                                                     composition(Pi_2, composition(dca, inr))), 
+                                                Pi_2)) IMPLIES
+         mem = Memory(dcs) AND dca = DirtyCache(dcs)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    %% Definición de la "meaning function" para los predicados característicos 
+    %%     de los tipos de la especificación.
+      %% Dependientes de la especificación.
+    %% Definition of the meaning function for predicates that characterices the
+    %%     types of the specification.
+      %% Specification dependant.
+    mTypePred: [TypePred -> [Carrier -> bool]] =
+          LAMBDA (t: TypePred): CASES t
+                                  OF Carrier: Carrier,
+                                     Addr: Addr,
+                                     Data: Data,
+                                     Memory: Memory,
+                                     Cache: Cache,
+                                     Dirty: Dirty,
+                                     DirtyCache: DirtyCache,
+                                     DirtyCacheSystem: DirtyCacheSystem
+                                  ENDCASES
+
+    %% Definición de las funciones que asigna tipos a las metavariables y variables.
+      %% Dependientes de la especificación.
+    %% Definition of the functions that assigns types to metavariables and variables.
+      %% Specification dependant.
+    TPMetavariable: [Metavariable -> TypePred] = 
+          LAMBDA (m: Metavariable): CASES m
+                                      OF cs0: DirtyCacheSystem
+                                      ENDCASES
+    TPVariable: [Variable -> TypePred] =
+          LAMBDA (v: Variable): CASES v
+                                  OF cs: DirtyCacheSystem,
+                                     addr: Addr,
+                                     data: Data
+                                  ENDCASES
+
+    %% Definición de la "meaning function" para constantes, predicados y funciones.
+    %% Definition of the meaning function for constants, predicates and functions.
+    %% Definición de la "meaning function" para las constantes.
+    %% Definition of the meaning function for constants.
+    mConstant: [Constant -> Carrier] = 
+          LAMBDA (c: Constant): CASES c 
+                                  OF zero: zero,
+                                     one: one,
+                                     one_prime: one_prime,
+                                     C_0: C_0, 
+                                     C_1: C_1, 
+                                     inl: inl, 
+                                     inr: inr, 
+                                     Pi_1: Pi_1, 
+                                     Pi_2: Pi_2,
+                                     one_prime_C_0: one_prime_C_0,
+                                     one_prime_C_1: one_prime_C_1,
+                                     one_prime_Addr: one_prime_Addr,
+                                     one_prime_Data: one_prime_Data
+                                  ENDCASES
+    %% Definición de la "meaning function" para los predicados.
+    %% Definition of the meaning function for predicates.
+    mPredicate: [P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]] = 
+          LAMBDA (P: Predicate): CASES P 
+                                   OF Leq: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}): 
+                                          Leq(nth(l, 0), nth(l, 1)),
+                                      Functional: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Functional(nth(l, 0)),
+                                      OneToOne: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          OneToOne(nth(l, 0)),
+                                      Pair: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Pair(nth(l, 0))
+                                    ENDCASES
+    %% Definición de la "meaning function" para las funciones.
+    %% Definition of the meaning function for functions.
+    mFunction_: [F: Function_ -> [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]] = 
+          LAMBDA (F: Function_): CASES F 
+                                   OF sum: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}): 
+                                          sum(nth(l, 0), nth(l, 1)), 
+                                      product: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}): 
+                                          product(nth(l, 0), nth(l, 1)), 
+                                      complement: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          complement(nth(l, 0)), 
+                                      composition: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}):
+                                          composition(nth(l, 0), nth(l, 1)), 
+                                      converse: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          converse(nth(l, 0)), 
+                                      fork: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}): 
+                                          fork(nth(l, 0), nth(l, 1)),
+                                      Dom: 
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Dom(nth(l, 0)),
+                                      FunctionUpdate:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}): 
+                                          FunctionUpdate(nth(l, 0), nth(l, 1)),
+                                      FunctionUndef:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 2}): 
+                                          FunctionUndef(nth(l, 0), nth(l, 1)),
+                                      Neg:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Neg(nth(l, 0)),
+                                      Memory:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Memory(nth(l, 0)),
+                                      DirtyCache:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          DirtyCache(nth(l, 0)),
+                                      Cache:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Cache(nth(l, 0)),
+                                      Dirty:
+                                        LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
+                                          Dirty(nth(l, 0))
+                                   ENDCASES
+
+  END FA_semantic

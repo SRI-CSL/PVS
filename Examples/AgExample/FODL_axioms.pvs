@@ -1,0 +1,79 @@
+FODL_axioms[Constant: TYPE, 
+            Metavariable: TYPE, 
+            Variable: TYPE,
+            Predicate: TYPE, sigPredicate: [Predicate -> nat], 
+            Function_: TYPE, sigFunction_: [Function_ -> nat],
+            TypePred: TYPE,
+            TPMetavariable: [Metavariable -> TypePred], 
+            TPVariable: [Variable -> TypePred],
+            Carrier: TYPE+, 
+            mTypePred: [TypePred -> [Carrier -> bool]],
+            mConstant: [Constant -> Carrier], 
+            mPredicate: [P: Predicate -> 
+                           [{l: list[Carrier] | sigPredicate(P) = length(l)} -> 
+                              bool]],
+            mFunction_: [F: Function_ ->
+                           [{l: list[Carrier] | sigFunction_(F) = length(l)} ->
+                              Carrier]]]: THEORY
+
+  BEGIN
+
+    ASSUMING
+      non_empty_types: ASSUMPTION
+         FORALL (t: TypePred): EXISTS (c: (mTypePred(t))): TRUE 
+    ENDASSUMING
+
+    IMPORTING FODL_semantic[Constant, 
+                            Metavariable,
+                            Variable, 
+                            Predicate, sigPredicate,
+                            Function_, sigFunction_,
+                            TypePred,
+                            TPMetavariable, TPVariable,
+                            Carrier,
+                            mTypePred,
+                            mConstant, 
+                            mPredicate, 
+                            mFunction_],
+              FODL_conversions[Constant, 
+                               Metavariable,
+                               Variable, 
+                               Predicate, sigPredicate,
+                               Function_, sigFunction_,
+                               TypePred,
+                               TPMetavariable, TPVariable,
+                               Carrier,
+                               mTypePred,
+                               mConstant, 
+                               mPredicate, 
+                               mFunction_]
+
+   PDL_1: LEMMA
+     FORALL (f_0, f_1: wf_Formula_, P: wf_Program_):
+       (◇(P, f_0) AND □(P, f_1)) IMPLIES ◇(P, f_0 AND f_1)
+
+   PDL_2: LEMMA
+     FORALL (f_0, f_1: wf_Formula_, P: wf_Program_):
+       ◇(P, f_0 OR f_1) IFF (◇(P, f_0) OR ◇(P, f_1))
+
+   PDL_3: LEMMA
+     FORALL (f: wf_Formula_, P_0, P_1: wf_Program_):
+       ◇(P_0 + P_1, f) IFF (◇(P_0, f) OR ◇(P_1, f))
+
+   PDL_4: LEMMA
+     FORALL (f: wf_Formula_, P_0, P_1: wf_Program_):
+       ◇(P_0 // P_1, f) IFF ◇(P_0, ◇(P_1, f))
+
+   PDL_5: LEMMA
+     FORALL (f_0: {f: wf_Formula_ | no_metavariable(f)}, f_1: wf_Formula_):
+       ◇(T?(f_0), f_1) IFF (f_0 AND f_1)
+
+   PDL_6: LEMMA
+     FORALL (f: wf_Formula_, P: wf_Program_):
+       (f OR ◇(P, ◇(*(P), f))) IMPLIES ◇(*(P), f)
+
+   PDL_7: LEMMA
+     FORALL (f: wf_Formula_, P: wf_Program_):
+       ◇(*(P), f) IMPLIES (f OR ◇(*(P), NOT f AND ◇(P, f)))
+
+  END FODL_axioms

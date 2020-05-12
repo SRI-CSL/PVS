@@ -1,0 +1,32 @@
+SpecPredicates: THEORY
+
+  BEGIN
+
+    IMPORTING FA_Language, 
+              wf_FODL_Language[Constant, 
+                               Metavariable,
+                               Variable, 
+                               Predicate, sigPredicate,
+                               Function_, sigFunction_]
+
+    %                                                                               %
+    % DirtyCacheConsistent: PRED[DirtyCacheSystem]                                  %
+    % DirtyCacheConsistent(cs) = Cache(DirtyCache(cs)) <= Memory(cs)                %
+    DirtyCacheConsistent: [wf_Term_ -> wf_Formula_] = 
+       LAMBDA (t: wf_Term_): wf_P(Leq, (:wf_F(Cache, (:wf_F(DirtyCache, (:t:)):)), 
+                                         wf_F(Memory, (:t:)):))
+    %                                                                               %
+    % NonDirtyCache: PRED[DirtyCacheSystem]                                         %
+    % NonDirtyCache(cs) = (Neg Dirty(DirtyCache(cs)));Cache(DirtyCache(cs)) <=      %
+    %                       Memory(cs)                                              %
+    NonDirtyCache: [wf_Term_ -> wf_Formula_] =  
+       LAMBDA (t: wf_Term_): wf_P(Leq, 
+                                  (:wf_F(composition, 
+                                         (:wf_F(Neg, 
+                                                (:wf_F(Dirty, 
+                                                       (:wf_F(DirtyCache, 
+                                                              (:t:)):)):)), 
+                                           wf_F(Cache, (:wf_F(DirtyCache, (:t:)):)):)),
+                                    wf_F(Memory, (:t:)):))
+
+ END SpecPredicates

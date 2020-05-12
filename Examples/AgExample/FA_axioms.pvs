@@ -1,0 +1,73 @@
+FA_axioms: THEORY
+
+  BEGIN
+
+    %% Construcción de la semántica de la fork algebra de la especificación Ag.
+    %% Construction of the fork algebra corresponding to the Ag specification.
+    IMPORTING FA_semantic
+
+    %% Definición de los axiomas de la fork algebra como lemmas.
+    %% Definition of the fork algebra axioms as lemmas.
+    BA_1: LEMMA 
+        FORALL (x: Carrier): sum(x, x) = x
+    BA_2: LEMMA 
+        FORALL (x: Carrier): product(x, x) = x
+    BA_3: LEMMA 
+        FORALL (x, y: Carrier): sum(x, y) = sum(y, x)
+    BA_4: LEMMA 
+        FORALL (x, y: Carrier): product(x, y) = product(y, x)
+    BA_5: LEMMA 
+        FORALL (x, y, z: Carrier): sum(x, sum(y, z)) = sum(sum(x, y), z)
+    BA_6: LEMMA 
+        FORALL (x, y, z: Carrier): product(x, product(y, z)) = product(product(x, y), z)
+    BA_7: LEMMA 
+        FORALL (x, y: Carrier): sum(x, product(x, y)) = x
+    BA_8: LEMMA 
+        FORALL (x, y: Carrier): product(x, sum(x, y)) = x
+    BA_9: LEMMA 
+        FORALL (x, y, z: Carrier): product(x, sum(y, z)) = sum(product(x, y), product(x, z))
+    BA_10: LEMMA 
+        FORALL (x, y, z: Carrier): sum(x, product(y, z)) = product(sum(x, y), sum(x, z))
+    BA_11: LEMMA 
+        FORALL (x: Carrier): product(x, zero) = zero
+    BA_12: LEMMA 
+        FORALL (x: Carrier): sum(x, one) = one
+    BA_13: LEMMA 
+        FORALL (x: Carrier): product(x, complement(x)) = zero
+    BA_14: LEMMA 
+        FORALL (x: Carrier): sum(x, complement(x)) = one
+    RA_1: LEMMA 
+        FORALL (x, y, z: Carrier): composition(x, composition(y, z)) = 
+                                     composition(composition(x, y), z)
+    RA_2: LEMMA 
+        FORALL (x, y, z: Carrier): composition(sum(x, y), z) = 
+                                     sum(composition(x, z), composition(y, z))
+    RA_3: LEMMA 
+        FORALL (x, y: Carrier): converse(sum(x, y)) = 
+                                  sum(converse(x), converse(y))
+    RA_4: LEMMA 
+        FORALL (x, y: Carrier): converse(composition(x, y)) = 
+                                  composition(converse(y), converse(x))
+    RA_5: LEMMA 
+        FORALL (x: Carrier): converse(converse(x)) = x
+    RA_6: LEMMA 
+        FORALL (x: Carrier): composition(x, one_prime) = x
+    RA_7: LEMMA 
+        FORALL (x, y, z: Carrier): ((product(composition(x, y), z) = zero) IFF 
+                                      (product(composition(z, converse(y)), x) = zero)) 
+                                     AND 
+                                   ((product(composition(z, converse(y)), x) = zero) IFF
+                                      (product(composition(converse(x), z), y) = zero))
+    FA_1: LEMMA 
+        FORALL (x, y: Carrier): fork(x, y) = product(composition(x, fork(one_prime, one)), 
+                                                     composition(y, fork(one, one_prime)))
+    FA_2: LEMMA 
+        FORALL (w, x, y, z: Carrier): composition(fork(w, x), converse(fork(y, z))) =
+                                        product(composition(w, converse(y)), 
+                                                composition(x, converse(z)))
+    FA_3: LEMMA 
+        sum(fork(converse(fork(one_prime, one)), 
+                 converse(fork(one, one_prime))), 
+            one_prime) = one_prime 
+
+  END FA_axioms

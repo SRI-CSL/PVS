@@ -1,0 +1,45 @@
+FODL_conversions[Constant: TYPE, 
+                 Metavariable: TYPE, 
+                 Variable: TYPE,
+                 Predicate: TYPE, sigPredicate: [Predicate -> nat], 
+                 Function_: TYPE, sigFunction_: [Function_ -> nat],
+                 TypePred: TYPE,
+                 TPMetavariable: [Metavariable -> TypePred], 
+                 TPVariable: [Variable -> TypePred],
+                 Carrier: TYPE+,
+                 mTypePred: [TypePred -> [Carrier -> bool]], 
+                 mConstant: [Constant -> Carrier], 
+                 mPredicate: [P: Predicate -> 
+                                [{l: list[Carrier] | sigPredicate(P) = length(l)} -> 
+                                   bool]],
+                 mFunction_: [F: Function_ ->
+                                [{l: list[Carrier] | sigFunction_(F) = length(l)} ->
+                                   Carrier]]]: THEORY
+
+  BEGIN
+
+    ASSUMING
+      non_empty_types: ASSUMPTION
+         FORALL (t: TypePred): EXISTS (c: (mTypePred(t))): TRUE 
+    ENDASSUMING
+
+    IMPORTING FODL_semantic[Constant,
+                            Metavariable,
+                            Variable,
+                            Predicate, sigPredicate,
+                            Function_, sigFunction_,
+                            TypePred,
+                            TPMetavariable, 
+                            TPVariable,
+                            Carrier,
+                            mTypePred, 
+                            mConstant, 
+                            mPredicate,
+                            mFunction_]
+  
+    meaning_conv: MACRO [wf_Formula_ -> bool] = 
+       LAMBDA (f: wf_Formula_): FORALL (w: World_): meaningF(f)(w)
+
+    CONVERSION+ meaning_conv
+
+  END FODL_conversions

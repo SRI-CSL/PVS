@@ -1,0 +1,8 @@
+RTC[T: TYPE]: THEORY
+
+  BEGIN
+
+    RTC(P: PRED[[T, T]])(tp: [T, T]): INDUCTIVE bool = 
+             tp`1 = tp`2 OR EXISTS (t: T): RTC(P)(tp`1, t) AND P(t, tp`2)
+
+  END RTC

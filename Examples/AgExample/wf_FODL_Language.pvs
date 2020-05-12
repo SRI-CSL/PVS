@@ -1,0 +1,207 @@
+wf_FODL_Language[Constant: TYPE, 
+                 Metavariable: TYPE, 
+                 Variable: TYPE, 
+                 Predicate: TYPE, sigPredicate: [Predicate -> nat], 
+                 Function_: TYPE, sigFunction_: [Function_ -> nat]]: THEORY
+
+  BEGIN
+
+    IMPORTING FODL_Language_adt[Constant, 
+                                Metavariable, 
+                                Variable, 
+                                Predicate, sigPredicate, 
+                                Function_, sigFunction_],
+              list_max_map
+
+    complexity(l: FODL_Language): nat =
+        reduce_nat(LAMBDA (c: Constant): 0, 
+                   LAMBDA (m: Metavariable): 0,
+                   LAMBDA (v: Variable): 0,
+                   LAMBDA (f: Function_, l: list[nat]): 1 + max(l), 
+                   0, 
+                   0,
+                   LAMBDA (n: nat): n + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (p: Predicate, l: list[nat]): 1 + max(l),
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat): n + 1,
+                   LAMBDA (pre_post: [nat, nat]): 1 + pre_post`1 + pre_post`2,
+                   0, 
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1,
+                   LAMBDA (n: nat, m: nat): n + m + 1, 
+                   LAMBDA (n: nat): n + 1)(l)
+
+    no_metavariable(l: FODL_Language): RECURSIVE boolean =
+      CASES l
+        OF c(c_var): TRUE,
+           m(m_var): FALSE,
+           v(v_var): TRUE,
+	   % F(f_var, list_var): every[Term_](no_metavariable)(list_var),
+           % Recursive conversion doesn't work here, gets wrong domain 
+           F(f_var, list_var):
+              every(λ (x: Term_ | complexity(x) < complexity(l)):
+                        no_metavariable(x))(list_var),
+           TRUE: TRUE,
+           FALSE: TRUE,
+           NOT(f_var): no_metavariable(f_var),
+           IMPLIES(f1_var, f2_var):
+             no_metavariable(f1_var) AND no_metavariable(f2_var),
+           OR(f1_var, f2_var):
+             no_metavariable(f1_var) AND no_metavariable(f2_var),
+           AND(f1_var, f2_var):
+             no_metavariable(f1_var) AND no_metavariable(f2_var),
+           IFF(f1_var, f2_var):
+             no_metavariable(f1_var) AND no_metavariable(f2_var),
+           % P(pred_var, list_var): every(no_metavariable)(list_var),
+           % Recursive conversion doesn't work here, gets wrong domain 
+           P(pred_var, list_var):
+              every(λ (x: Term_ | complexity(x) < complexity(l)):
+                        no_metavariable(x))(list_var),
+           =(t0_var, t1_var):
+             no_metavariable(t0_var) AND no_metavariable(t1_var),
+           EXISTS_(var_var, f_var): no_metavariable(f_var),
+           FORALL_(var_var, f_var): no_metavariable(f_var),
+           ◇(P_var, f_var): no_metavariable(P_var),
+           □(P_var, f_var): no_metavariable(P_var),
+           T?(f_var): no_metavariable(f_var),
+           A(pp): TRUE,
+           SKIP: TRUE,
+           <|(var_var, term_var): no_metavariable(term_var),
+           //(P1_var, P2_var):
+             no_metavariable(P1_var) AND no_metavariable(P2_var),
+           +(P1_var, P2_var):
+             no_metavariable(P1_var) AND no_metavariable(P2_var),
+           *(P_var): no_metavariable(P_var)
+        ENDCASES
+      MEASURE complexity
+
+    wf(l: FODL_Language): RECURSIVE boolean =
+      CASES l
+        OF c(c_var): TRUE,
+           m(m_var): TRUE,
+           v(v_var): TRUE,
+           % F(f_var, list_var): every[FODL_Language](wf)(list_var),
+           F(f_var, list_var):
+              every(λ (x: Term_ | complexity(x) < complexity(l)):
+                        wf(x))(list_var),
+           TRUE: TRUE,
+           FALSE: TRUE,
+           NOT(f_var): wf(f_var),
+           IMPLIES(f1_var, f2_var): wf(f1_var) AND wf(f2_var),
+           OR(f1_var, f2_var): wf(f1_var) AND wf(f2_var),
+           AND(f1_var, f2_var): wf(f1_var) AND wf(f2_var),
+           IFF(f1_var, f2_var): wf(f1_var) AND wf(f2_var),
+           % P(pred_var, list_var): every[FODL_Language](wf)(list_var),
+           P(pred_var, list_var):
+              every(λ (x: Term_ | complexity(x) < complexity(l)):
+                        wf(x))(list_var),
+           =(t0_var, t1_var): wf(t0_var) AND wf(t1_var),
+           EXISTS_(var_var, f_var): wf(f_var),
+           FORALL_(var_var, f_var): wf(f_var),
+           ◇(P_var, f_var):
+             (wf(P_var) AND no_metavariable(P_var)) AND wf(f_var),
+           □(P_var, f_var):
+             (wf(P_var) AND no_metavariable(P_var)) AND wf(f_var),
+           T?(f_var): wf(f_var) AND no_metavariable(f_var),
+           A(pp): wf(pp`1) AND wf(pp`2),
+           SKIP: TRUE,
+           <|(var_var, term_var): wf(term_var) AND no_metavariable(term_var),
+           //(P1_var, P2_var):
+             (wf(P1_var) AND no_metavariable(P1_var)) AND
+             (wf(P2_var) AND no_metavariable(P2_var)),
+           +(P1_var, P2_var):
+             (wf(P1_var) AND no_metavariable(P1_var)) AND
+             (wf(P2_var) AND no_metavariable(P2_var)),
+           *(P_var): wf(P_var) AND no_metavariable(P_var)
+        ENDCASES
+      MEASURE complexity
+
+    wf_Term_: TYPE = {t: Term_ | wf(t)}
+    wf_Formula_: TYPE = {f: Formula_ | wf(f)}
+    wf_Program_: TYPE = {P: Program_ | wf(P)}
+    wf_FODL_Language: TYPE = {l: FODL_Language | wf(l)}
+
+    % Judgements about lists of wf_Term_
+    list_wf_Term_null: JUDGEMENT
+         null HAS_TYPE list[wf_Term_]
+    list_wf_Term_cons: JUDGEMENT
+         cons(t: wf_Term_, l: list[wf_Term_]) HAS_TYPE list[wf_Term_]
+    % Judgements about wf_Term_ type
+    wf_Term_Constant: JUDGEMENT
+         c(c: Constant) HAS_TYPE wf_Term_
+    wf_Term_Constant_type: JUDGEMENT
+         (c?) SUBTYPE_OF wf_Term_
+    wf_Term_Metavariable: JUDGEMENT
+         m(m: Metavariable) HAS_TYPE wf_Term_
+    wf_Term_Metavariable_type: JUDGEMENT
+         (m?) SUBTYPE_OF wf_Term_
+    wf_Term_Variable: JUDGEMENT
+         v(v: Variable) HAS_TYPE wf_Term_
+    wf_Term_Variable_type: JUDGEMENT
+         (v?) SUBTYPE_OF wf_Term_
+    wf_Term_FunctionApp: JUDGEMENT
+         F(f: Function_, l: {l: list[wf_Term_] | length(l) = sigFunction_(f)}) HAS_TYPE wf_Term_
+    % Judgements about wf_Formula_ type
+    wf_Formula_TRUE: JUDGEMENT
+         TRUE HAS_TYPE wf_Formula_
+    wf_Formula_FALSE: JUDGEMENT
+         FALSE HAS_TYPE wf_Formula_
+    wf_Formula_NOT: JUDGEMENT
+         NOT(f: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_IMPLIES: JUDGEMENT
+         IMPLIES(f_0, f_1: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_OR: JUDGEMENT
+         OR(f_0, f_1: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_AND: JUDGEMENT
+         AND(f_0, f_1: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_IFF: JUDGEMENT
+         IFF(f_0, f_1: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_PredicateApp: JUDGEMENT
+         P(p: Predicate, l: {l: list[wf_Term_] | length(l) = sigPredicate(p)}) HAS_TYPE wf_Formula_
+    wf_Formula_EQ: JUDGEMENT
+         =(t_0, t_1: wf_Term_) HAS_TYPE wf_Formula_
+    wf_Formula_EXISTS_: JUDGEMENT
+         EXISTS_(v: (v?), f: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_FORALL_: JUDGEMENT
+         FORALL_(v: (v?), f: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_DIAMOND: JUDGEMENT
+         ◇(P: wf_Program_, f: wf_Formula_) HAS_TYPE wf_Formula_
+    wf_Formula_BOX: JUDGEMENT
+         □(P: wf_Program_, f: wf_Formula_) HAS_TYPE wf_Formula_
+    % Judgements about wf_Program_ type
+    wf_Program_T??: JUDGEMENT
+         T?(f: {f: wf_Formula_ | no_metavariable(f)}) HAS_TYPE wf_Program_
+    wf_Program_A: JUDGEMENT
+         A(pre, post: wf_Formula_) HAS_TYPE wf_Program_
+    wf_Program_SKIP: JUDGEMENT
+         SKIP HAS_TYPE wf_Program_
+    wf_Program_ASSIGNMENT: JUDGEMENT
+         <|(v: (v?), t: {t: wf_Term_ | no_metavariable(t)}) HAS_TYPE wf_Program_
+    wf_Program_COMPOSITION: JUDGEMENT
+         //(P_0, P_1: wf_Program_) HAS_TYPE wf_Program_
+    wf_Program_CHOICE: JUDGEMENT
+         +(P_0, P_1: wf_Program_) HAS_TYPE wf_Program_
+    wf_Program_ITERATION: JUDGEMENT
+         *(P: wf_Program_) HAS_TYPE wf_Program_
+    % Judgements about wf_FODL_Language type
+    wf_FODL_Language_Term_: JUDGEMENT
+         wf_Term_ SUBTYPE_OF wf_FODL_Language
+    wf_FODL_Language_Formula_: JUDGEMENT
+         wf_Formula_ SUBTYPE_OF wf_FODL_Language
+    wf_FODL_Language_Program_: JUDGEMENT
+         wf_Program_ SUBTYPE_OF wf_FODL_Language
+
+    wf_P: [[p: Predicate, {l: list[wf_Term_] | length(l) = sigPredicate(p)}] -> wf_Formula_] =
+         LAMBDA (p: Predicate, l: {l: list[wf_Term_] | length(l) = sigPredicate(p)}): P(p, l)
+    wf_F: [[f: Function_, {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] -> wf_Term_] = 
+         LAMBDA (f: Function_, l: {l: list[wf_Term_] | length(l) = sigFunction_(f)}): F(f, l)
+
+  END wf_FODL_Language

@@ -1,0 +1,20 @@
+list_max: THEORY
+
+  BEGIN
+
+    max(l: list[nat]): RECURSIVE nat =
+      IF null?(l) THEN 0 ELSE max(car(l), max(cdr(l))) ENDIF
+       MEASURE length
+
+  END list_max
+
+list_max_map[t: type]: theory
+begin
+  importing list_max
+  f: var [t -> nat]
+  l: var list[t]
+
+  max_map: lemma
+    forall (i: below(length(l))):
+      f(nth(l, i)) <= max(map(f)(l))
+end list_max_map

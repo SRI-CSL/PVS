@@ -1,0 +1,164 @@
+FODL_semantic[Constant: TYPE, 
+              Metavariable: TYPE, 
+              Variable: TYPE,
+              Predicate: TYPE, sigPredicate: [Predicate -> nat], 
+              Function_: TYPE, sigFunction_: [Function_ -> nat],
+              TypePred: TYPE,
+              TPMetavariable: [Metavariable -> TypePred], 
+              TPVariable: [Variable -> TypePred],
+              Carrier: TYPE+,
+              mTypePred: [TypePred -> [Carrier -> bool]], 
+              mConstant: [Constant -> Carrier], 
+              mPredicate: [P: Predicate -> 
+                             [{l: list[Carrier] | sigPredicate(P) = length(l)} -> 
+                                bool]],
+              mFunction_: [F: Function_ ->
+                             [{l: list[Carrier] | sigFunction_(F) = length(l)} ->
+                                Carrier]]]: THEORY
+
+  BEGIN
+
+    ASSUMING
+      non_empty_types: ASSUMPTION
+         FORALL (t: TypePred): EXISTS (c: (mTypePred(t))): TRUE 
+    ENDASSUMING
+
+    IMPORTING wf_FODL_Language[Constant,
+                               Metavariable,
+                               Variable,
+                               Predicate, sigPredicate,
+                               Function_, sigFunction_], 
+              list_max
+
+    World_: TYPE = [v: Variable -> (mTypePred(TPVariable(v)))]
+    anyWorld_: World_ = 
+       LAMBDA (v: Variable): epsilon({c: (mTypePred(TPVariable(v))) | TRUE})
+
+    IMPORTING RTC[World_]
+
+    AssMetavariable: TYPE = [m: Metavariable -> (mTypePred(TPMetavariable(m)))]
+    anyAssMetavariable: AssMetavariable = 
+       LAMBDA (m: Metavariable): epsilon({c: (mTypePred(TPMetavariable(m))) | TRUE})
+
+    mTerm(mMetavariable: AssMetavariable, w: World_)(t: wf_Term_):
+        RECURSIVE Carrier =
+      CASES t
+        OF c(c_var): mConstant(c_var),
+           m(m_var): mMetavariable(m_var),
+           v(v_var): w(v_var),
+           F(f_var, list_var):
+             mFunction_(f_var)(map(mTerm(mMetavariable, w))(list_var))
+        ENDCASES
+      MEASURE complexity(t)
+
+    m(mMetavariable: AssMetavariable)(l: union[wf_Formula_, wf_Program_]):
+        RECURSIVE {u: union[PRED[World_], PRED[[World_, World_]]] |
+           CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES} =
+      CASES l
+        OF inl(f):
+             CASES f
+               OF TRUE: inl({w: World_ | TRUE}),
+                  FALSE: inl({w: World_ | FALSE}),
+                  NOT(f_var):
+                    inl({w: World_ |
+                           NOT left(m(mMetavariable)(inl(f_var)))(w)}),
+                  IMPLIES(f1_var, f2_var):
+                    inl({w: World_ |
+                           left(m(mMetavariable)(inl(f1_var)))(w) IMPLIES
+                           left(m(mMetavariable)(inl(f2_var)))(w)}),
+                  OR(f1_var, f2_var):
+                    inl({w: World_ |
+                           left(m(mMetavariable)(inl(f1_var)))(w) OR
+                           left(m(mMetavariable)(inl(f2_var)))(w)}),
+                  AND(f1_var, f2_var):
+                    inl({w: World_ |
+                           left(m(mMetavariable)(inl(f1_var)))(w) AND
+                           left(m(mMetavariable)(inl(f2_var)))(w)}),
+                  IFF(f1_var, f2_var):
+                    inl({w: World_ |
+                           left(m(mMetavariable)(inl(f1_var)))(w) IFF
+                           left(m(mMetavariable)(inl(f2_var)))(w)}),
+                  P(pred_var, list_var):
+                    inl({w: World_ |
+                           mPredicate(pred_var)
+                                   (map(mTerm(mMetavariable, w))(list_var))}),
+                  =(t0_var, t1_var):
+                    inl({w: World_ |
+                           mTerm(mMetavariable, w)(t0_var) =
+                           mTerm(mMetavariable, w)(t1_var)}),
+                  EXISTS_(var_var, f_var):
+                    inl({w: World_ |
+                           EXISTS (t: (mTypePred(TPVariable(v(var_var))))):
+                             left(m(mMetavariable)(inl(f_var)))
+                                (w WITH [(v(var_var)) := t])}),
+                  FORALL_(var_var, f_var):
+                    inl({w: World_ |
+                           FORALL (t: (mTypePred(TPVariable(v(var_var))))):
+                             left(m(mMetavariable)(inl(f_var)))
+                                (w WITH [(v(var_var)) := t])}),
+                  ◇(P_var, f_var):
+                    inl({w: World_ |
+                           EXISTS (wPrime: World_):
+                             right(m(mMetavariable)(inr(P_var)))(w, wPrime)
+                              AND
+                             left(m(mMetavariable)(inl(f_var)))(wPrime)}),
+                  □(P_var, f_var):
+                    inl({w: World_ |
+                           FORALL (wPrime: World_):
+                             right(m(mMetavariable)(inr(P_var)))(w, wPrime)
+                              IMPLIES
+                             left(m(mMetavariable)(inl(f_var)))(wPrime)})
+               ENDCASES,
+           inr(P):
+             CASES P
+               OF T?(f_var):
+                    inr({wp: [World_, World_] |
+                          wp`1 = wp`2 AND
+                          left(m(mMetavariable)(inl(f_var)))(wp`1)}),
+                  A(pp):
+                    inr({wp: [World_, World_] |
+                         FORALL (mMetavariable: AssMetavariable):
+                           left(m(mMetavariable)(inl(pp`1)))(wp`1) AND
+                           left(m(mMetavariable)(inl(pp`2)))(wp`2)}),
+                  SKIP: inr({wp: [World_, World_] | wp`1 = wp`2}),
+                  <|(var_var, term_var):
+                    inr({wp: [World_, World_] |
+                          wp`2 = wp`1 WITH [(v(var_var)) := 
+                                IF mTypePred(TPVariable(v(var_var)))(mTerm(mMetavariable, wp`1)(term_var))
+                                  THEN mTerm(mMetavariable, wp`1)(term_var) 
+                                  ELSE wp`1(v(var_var)) 
+                                ENDIF]}),
+                  //(P1_var, P2_var):
+                    inr({wp: [World_, World_] |
+                         EXISTS (w: World_):
+                           right(m(mMetavariable)(inr(P1_var)))(wp`1, w)
+                            AND
+                           right(m(mMetavariable)(inr(P2_var)))(w, wp`2)}),
+                  +(P1_var, P2_var):
+                    inr({wp: [World_, World_] |
+                         right(m(mMetavariable)(inr(P1_var)))(wp) OR
+                         right(m(mMetavariable)(inr(P2_var)))(wp)}),
+                  *(P_var):
+                    inr({w: [World_, World_] |
+                         (LAMBDA (x: [World_, World_]):
+                            mu[[World_, World_]]
+                                (LAMBDA (p: PRED[[World_, World_]]):
+                                   {wp: [World_, World_] | 
+                                     ({wpPrime: [World_, World_] | wpPrime`1 = wpPrime`2})(wp)
+                                       OR
+                                     ({wpPrime: [World_, World_] |
+                                         EXISTS (w: World_):
+                                           right(m(mMetavariable)(inr(P_var)))(wpPrime`1, w)
+                                       AND
+                                     p(w, wpPrime`2)})
+                                   (wp)})
+                                (x))
+                             (w)})
+               ENDCASES
+        ENDCASES
+      MEASURE complexity(CASES l OF inl(f): f, inr(P): P ENDCASES)
+
+    meaningF(f: wf_Formula_): PRED[World_] =
+      {w: World_ | FORALL (mMetavariable: AssMetavariable): left(m(mMetavariable)(inl(f)))(w)}
+ 
+  END FODL_semantic

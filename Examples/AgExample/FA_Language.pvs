@@ -1,0 +1,85 @@
+FA_Language: THEORY
+
+  BEGIN
+  
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Especificación Ag.                                                            %
+    % Ag specification.                                                             %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %                                                                               %
+    % Addr: TYPE                                                                    %
+    % Data: TYPE                                                                    %
+    % Memory: TYPE = Addr -> Data                                                   %
+    % Cache: TYPE = Addr -> Data                                                    %
+    % Dirty: TYPE = set[Addr]                                                       %
+    % DirtyCache: TYPE = {dc: Cache +_circ Dirty |                                  %
+    %                          Dirty(dc) <= Dom(Cache(dc))}                         %
+    % DirtyCacheSystem: TYPE = {cs: Memory +_circ DirtyCache |                      %
+    %                                Dom(Cache(DirtyCache(cs)) <= Dom(Memory(cs))}  %
+    %                                                                               %
+
+    % Declaración de los símbolos que denotan constantes.
+    % Declaration of the constants symbols.
+    Constant: TYPE = {%% Constantes de la fork algebra. %% Obligatorio.
+                      %% Fork algebra constants. %% Mandatory.
+                      zero, one, one_prime, C_0, C_1, inl, inr, 
+                      Pi_1, Pi_2, one_prime_C_0, one_prime_C_1,
+                      %% Identidades parciales. %% Dependientes de la especificación.
+                      %% Partial identities. %% Specification dependent.   
+                      one_prime_Addr, one_prime_Data}
+
+    %% Declaración de los símbolos que denotan metavariables.
+    %% Declaration of the metavariables symbols.
+    Metavariable: TYPE = {cs0}
+
+    %% Declaración de los símbolos que denotan variables.
+    %% Declaration of the variables symbols.
+    Variable: TYPE = {cs, addr, data}
+
+    %% Declaración de los símbolos de denotan predicados.
+    %% Declaration of the predicate symbols.
+    Predicate: TYPE = {%% Predicados de la fork algebra. %% Obligatorio. 
+                       %% Fork algebra predicates. %% Mandatory.
+                       Leq, Functional, OneToOne, Pair}
+    %% Definición de la función que retorna la aridad de los predicados.
+    %% Definition of the function that yields the arity of the predicates.
+    sigPredicate: [Predicate -> nat] =
+            LAMBDA (P: Predicate): CASES P 
+                                     OF Leq: 2,
+                                        Functional: 1,
+                                        OneToOne: 1,
+                                        Pair: 1
+                                      ENDCASES
+
+    %% Declaración de los símbolos de denotan funciones.
+    %% Declaration of the function symbols.
+    Function_: TYPE = {%% Funciones de la fork algebra. %% Obligatorio. 
+                       %% Fork algebra functions. %% Mandatory.
+                       sum, product, complement, composition, converse, fork,
+                       Dom, FunctionUpdate, FunctionUndef, Neg,
+                       %% Funciones de la especificación.
+                         %% Dependientes de la especificación.
+                       %% Specification functions.
+                         %% Specification dependent.   
+                       Memory, DirtyCache, Cache, Dirty}
+    %% Definición de la función que retorna la aridad de las functiones.
+    %% Definition of the function that yields the arity of the functions.
+    sigFunction_: [Function_ -> nat] =
+            LAMBDA (F: Function_): CASES F 
+                                     OF sum: 2,
+                                        product: 2,
+                                        complement: 1, 
+                                        composition: 2, 
+                                        converse: 1, 
+                                        fork: 2,
+                                        Dom: 1,
+                                        FunctionUpdate: 2,
+                                        FunctionUndef: 2,
+                                        Neg: 1,
+                                        Memory: 1,
+                                        DirtyCache: 1,
+                                        Cache: 1,
+                                        Dirty: 1
+                                     ENDCASES
+
+  END FA_Language

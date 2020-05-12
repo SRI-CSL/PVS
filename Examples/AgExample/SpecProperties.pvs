@@ -1,0 +1,125 @@
+SpecProperties: THEORY
+
+  BEGIN
+
+    IMPORTING FA_Language, 
+              wf_FODL_Language[Constant, 
+                               Metavariable,
+                               Variable, 
+                               Predicate, sigPredicate,
+                               Function_, sigFunction_]
+
+    %% Predicados de la especificación Ag.
+    %% Predicates of the Ag specification.
+    IMPORTING SpecPredicates
+
+    %% Acciones atómicas de la especificación Ag.
+    %% Atomic actions of the Ag specification.
+    IMPORTING SpecActions
+
+    %                                                                               %
+    % DirtyCacheWrite_preserves_NonDirtyCache: LEMMA                                %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [DirtyCacheWrite(cs)]NonDirtyCache(cs)                                     %
+    DirtyCacheWrite_preserves_NonDirtyCache: wf_Formula_ = 
+                 FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                              □(DirtyCacheWrite(v(cs)), NonDirtyCache(v(cs))))
+    %                                                                               %
+    % DirtyFlush_preserves_NonDirtyCache: LEMMA                                     %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [DirtyFlush(cs)]NonDirtyCache(cs)                                          %
+    DirtyFlush_preserves_NonDirtyCache: wf_Formula_ = 
+                 FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                              □(DirtyFlush(v(cs)), NonDirtyCache(v(cs))))
+    %                                                                               %
+    % DirtyLoad_preserves_NonDirtyCache: LEMMA                                      %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [DirtyLoad(cs)]NonDirtyCache(cs)                                           %
+    DirtyLoad_preserves_NonDirtyCache: wf_Formula_ = 
+                 FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                              □(DirtyLoad(v(cs)), NonDirtyCache(v(cs))))
+    %                                                                               %
+    % DirtySetFlush_preserves_NonDirtyCache: LEMMA                                  %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [DirtySetFlush(cs)]NonDirtyCache(cs)                                       %
+    DirtySetFlush_preserves_NonDirtyCache: wf_Formula_ = 
+                 FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                              □(DirtySetFlush(v(cs)), NonDirtyCache(v(cs))))
+    %                                                                               %
+    % AllStar_preserves_NonDirtyCache: LEMMA                                        %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [(DirtyCacheWrite(cs)+DirtyFlush(cs)+DirtyLoad(cs)+                        %
+    %      DirtySetFlush(cs))*]NonDirtyCache(cs)                                    %
+    AllStar_preserves_NonDirtyCache: wf_Formula_ = 
+                 FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                              □(*(DirtyCacheWrite(v(cs))+DirtyFlush(v(cs))+
+                                   DirtyLoad(v(cs))+DirtySetFlush(v(cs))), 
+                                 NonDirtyCache(v(cs))))
+    %                                                                               %
+    % DirtySetFlush_leaves_DirtyCacheConsistent: LEMMA                              %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [DirtySetFlush(cs)]DirtyCacheConsistent(cs)                                %
+    DirtySetFlush_leaves_DirtyCacheConsistent: wf_Formula_ = 
+                 FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                              □(DirtySetFlush(v(cs)), DirtyCacheConsistent(v(cs))))
+    %                                                                               %
+    % Consistency_criteria: THEOREM                                                 %
+    % FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+    %    [(DirtyCacheWrite(cs)+DirtyFlush(cs)+DirtyLoad(cs)+                        %
+    %      DirtySetFlush(cs))*;DirtySetFlush(cs)]DirtyCacheConsistent(cs)           %
+    Consistency_criteria: wf_Formula_ = FORALL_(v(cs), NonDirtyCache(v(cs)) IMPLIES 
+                                □(*(DirtyCacheWrite(v(cs))+DirtyFlush(v(cs))+
+                                     DirtyLoad(v(cs))+DirtySetFlush(v(cs)))//DirtySetFlush(v(cs)), 
+                                   DirtyCacheConsistent(v(cs))))
+    %                                                                               %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    IMPORTING FA_lemmas,
+              FODL_lemmas[Constant, 
+                          Metavariable,
+                          Variable, 
+                          Predicate, sigPredicate,
+                          Function_, sigFunction_,
+                          TypePred,
+                          TPMetavariable, TPVariable,
+                          Carrier,
+                          mTypePred,
+                          mConstant, 
+                          mPredicate, 
+                          mFunction_]
+
+    IMPORTING FODL_conversions[Constant, 
+                               Metavariable,
+                               Variable, 
+                               Predicate, sigPredicate,
+                               Function_, sigFunction_,
+                               TypePred,
+                               TPMetavariable, TPVariable,
+                               Carrier,
+                               mTypePred,
+                               mConstant, 
+                               mPredicate, 
+                               mFunction_]
+
+    DirtyCacheWrite_preserves_NonDirtyCache: LEMMA
+       DirtyCacheWrite_preserves_NonDirtyCache
+ 
+    DirtyFlush_preserves_NonDirtyCache: LEMMA
+       DirtyFlush_preserves_NonDirtyCache
+ 
+    DirtyLoad_preserves_NonDirtyCache: LEMMA
+       DirtyLoad_preserves_NonDirtyCache
+ 
+    DirtySetFlush_preserves_NonDirtyCache: LEMMA
+       DirtySetFlush_preserves_NonDirtyCache
+ 
+    AllStar_preserves_NonDirtyCache: LEMMA
+       AllStar_preserves_NonDirtyCache
+
+    DirtySetFlush_leaves_DirtyCacheConsistent: LEMMA
+       DirtySetFlush_leaves_DirtyCacheConsistent
+ 
+    Consistency_criteria: THEOREM
+       Consistency_criteria
+
+ END SpecProperties

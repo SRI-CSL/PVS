@@ -1,0 +1,6 @@
+FA_Element[T: TYPE]: DATATYPE
+
+  BEGIN
+    element(t: T): element?
+    pair(el0, el1: FA_Element): pair?
+  END FA_Element

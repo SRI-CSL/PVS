@@ -1,0 +1,37 @@
+FODL_Language[Constant: TYPE, 
+              Metavariable: TYPE, 
+              Variable: TYPE,
+              Predicate: TYPE, sigPredicate: [Predicate -> nat], 
+              Function_: TYPE, sigFunction_: [Function_ -> nat]]: 
+        DATATYPE WITH SUBTYPES Term_, Formula_, Program_
+
+  BEGIN
+
+    c(c: Constant): c?: Term_
+    m(m: Metavariable): m?: Term_
+    v(v: Variable): v?: Term_
+    F(f: Function_, lF:
+      {lPrime: list[Term_] | sigFunction_(f) = length(lPrime)}): F?: Term_
+    TRUE: TRUE?: Formula_
+    FALSE: FALSE?: Formula_
+    NOT(f: Formula_): NOT?: Formula_
+    IMPLIES(f_0, f_1: Formula_): IMPLIES?: Formula_
+    OR(f_0, f_1: Formula_): OR?: Formula_
+    AND(f_0, f_1: Formula_): AND?: Formula_
+    IFF(f_0, f_1: Formula_): IFF?: Formula_
+    P(p: Predicate, lP:
+      {lPrime: list[Term_] | sigPredicate(p) = length(lPrime)}): P?: Formula_
+    =(t_0: Term_, t_1: Term_): EQ?: Formula_
+    EXISTS_(x: (v?), f: Formula_): EXISTS?: Formula_
+    FORALL_(x: (v?), f: Formula_): FORALL?: Formula_
+    ◇(P: Program_, f: Formula_): DIAMOND?: Formula_
+    □(P: Program_, f: Formula_): BOX?: Formula_
+    T?(f: Formula_): T??: Program_
+    A(pre_post: [Formula_, Formula_]): A?: Program_
+    SKIP: SKIP?: Program_
+    <|(x: (v?), t: Term_): ASSIGNMENT?: Program_
+    //(P_0, P_1: Program_): COMPOSITION?: Program_
+    +(P_0, P_1: Program_): CHOICE?: Program_
+    *(P: Program_): ITERATION?: Program_
+ 
+  END FODL_Language

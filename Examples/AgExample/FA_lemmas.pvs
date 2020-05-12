@@ -1,0 +1,7 @@
+FA_lemmas: THEORY
+
+  BEGIN
+
+    IMPORTING FA_axioms
+
+  END FA_lemmas

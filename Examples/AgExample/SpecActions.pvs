@@ -1,0 +1,106 @@
+SpecActions: THEORY
+
+  BEGIN
+
+    IMPORTING FA_Language,
+              wf_FODL_Language[Constant, 
+                               Metavariable,
+                               Variable, 
+                               Predicate, sigPredicate,
+                               Function_, sigFunction_]
+
+    %% Definición de las acciones atómicas de la especificación Ag.
+    %% Definition of the atomic actions of the Ag specification.
+    %                                                                               %
+    % DirtyCacheWrite: Ag Action[cs: DirtyCacheSystem]                              %
+    % cs = cs0 => [DirtyCacheWrite] EXISTS (a: Addr, d: Data):                      %
+    %           Cache(DirtyCache(cs)) =                                             %         
+    %              FunctionUpdate(Cache(DirtyCache(cs0)), <a, d>) AND               %  
+    %           Dirty(DirtyCache(cs)) = Dirty(DirtyCache(cs0)) U a) AND             %
+    %           Memory(cs) = Memory(cs0)                                            %
+    pre_DirtyCacheWrite: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): v = m(cs0)
+    post_DirtyCacheWrite: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): 
+         EXISTS_(v(addr), 
+           (EXISTS_(v(data), 
+              (wf_F(Cache, (:wf_F(DirtyCache, (:v:)):)) = 
+                 wf_F(FunctionUpdate, (:wf_F(Cache, (:wf_F(DirtyCache, (:m(cs0):)):)), 
+                                        wf_F(composition, (:wf_F(composition, (:v(addr), c(one):)), 
+                                                            v(data):)):)) AND 
+               wf_F(Dirty, (:wf_F(DirtyCache, (:v:)):)) = 
+                 wf_F(sum, (:wf_F(Dirty, (:wf_F(DirtyCache, (:m(cs0):)):)), v(addr):)) AND
+               wf_F(Memory, (:v:)) = wf_F(Memory, (:m(cs0):))))))
+    DirtyCacheWrite: [(v?) -> wf_Program_] = 
+       LAMBDA (v: (v?)): A(pre_DirtyCacheWrite(v), post_DirtyCacheWrite(v))
+    %                                                                               %
+    % DirtyFlush: Ag Action[DirtyCacheSystem -> DirtyCacheSystem]                   % 
+    % cs = cs0 => [DirtyFlush] EXISTS (a: Addr):                                    %
+    %           Cache(DirtyCache(cs)) =                                             %
+    %              FunctionUndef(Cache(DirtyCache(cs0)), a;1) AND                   %
+    %           Dirty(DirtyCache(cs)) = Dirty(DirtyCache(cs0)) / a                  %
+    %           Memory(cs) =                                                        %
+    %              FunctionUpdate(Memory(cs0), <a, a;Cache(DirtyCache(cs0))>)       %
+    pre_DirtyFlush: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): v = m(cs0)
+    post_DirtyFlush: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): 
+         EXISTS_(v(addr),
+           (wf_F(Cache, (:wf_F(DirtyCache, (:v:)):)) = 
+              wf_F(FunctionUndef, (:wf_F(Cache, (:wf_F(DirtyCache, (:m(cs0):)):)), 
+                                    wf_F(composition, (:v(addr), c(one):)):)) AND 
+            wf_F(Dirty, (:wf_F(DirtyCache, (:v:)):)) = 
+              wf_F(product, (:wf_F(Dirty, (:wf_F(DirtyCache, (:m(cs0):)):)), 
+                              wf_F(complement, (:v(addr):)):)) AND
+            wf_F(Memory, (:v:)) = wf_F(FunctionUpdate, (:wf_F(Memory, (:m(cs0):)), 
+                      wf_F(composition, 
+                           (:wf_F(composition, (:v(addr), c(one):)), 
+                             wf_F(composition, (:v(addr), 
+                                                 wf_F(Cache, 
+                                                      (:wf_F(DirtyCache, (:m(cs0):)):)):)):)):))))
+    DirtyFlush: [(v?) -> wf_Program_] =  
+       LAMBDA (v: (v?)): A(pre_DirtyFlush(v), post_DirtyFlush(v))
+    %                                                                               %
+    % DirtyLoad: Ag Action[DirtyCacheSystem -> DirtyCacheSystem]                    %
+    % cs = cs0 => [DirtyLoad] EXISTS (a: Addr):                                     %
+    %           Cache(DirtyCache(cs)) =                                             %
+    %              FunctionUpdate(Cache(DirtyCache(cs0)), <a, a;Memory(cs0)>) AND   %
+    %           Dirty(DirtyCache(cs)) = Dirty(DirtyCache(cs0)) AND                  %
+    %           Memory(cs) = Memory(cs0)                                            %
+    pre_DirtyLoad: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): v = m(cs0)
+    post_DirtyLoad: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): 
+         EXISTS_(v(addr), 
+           (wf_F(Cache, (:wf_F(DirtyCache, (:v:)):)) =  
+              wf_F(FunctionUpdate, (:wf_F(Cache, (:wf_F(DirtyCache, (:m(cs0):)):)), 
+                                     wf_F(composition, (:wf_F(composition, (:v(addr), c(one):)), 
+                                          wf_F(composition, (:v(addr), 
+                                                              wf_F(Memory, (:m(cs0):)):)):)):)) AND
+            wf_F(Dirty, (:wf_F(DirtyCache, (:v:)):)) = 
+              wf_F(Dirty, (:wf_F(DirtyCache, (:m(cs0):)):)) AND
+            wf_F(Memory, (:v:)) = wf_F(Memory, (:m(cs0):))))
+    DirtyLoad: [(v?) -> wf_Program_] =   
+       LAMBDA (v: (v?)): A(pre_DirtyLoad(v), post_DirtyLoad(v))
+    %                                                                               %
+    % DirtySetFlush: Ag Action[DirtyCacheSystem -> DirtyCacheSystem]                %
+    % cs = cs0 => [DirtySetFlush]                                                   %
+    %           Cache(DirtyCache(cs)) = Cache(DirtyCache(cs0)) AND                  %
+    %           Dirty(DirtyCache(cs)) = emptyset AND                                %
+    %           Memory(cs) = FunctionUpdate(Memory(cs0),                            %
+    %                               Dirty(DirtyCache(cs0));Cache(DirtyCache(cs0)))  %
+    pre_DirtySetFlush: [(v?) -> wf_Formula_] = 
+       LAMBDA (v: (v?)): v = m(cs0)
+    post_DirtySetFlush: [(v?) -> wf_Formula_] =
+       LAMBDA (v: (v?)): 
+         wf_F(Cache, (:wf_F(DirtyCache, (:v:)):)) = wf_F(Cache, (:wf_F(DirtyCache, (:m(cs0):)):)) AND
+         wf_F(Dirty, (:wf_F(DirtyCache, (:v:)):)) = c(zero) AND
+         wf_F(Memory, (:v:)) = wf_F(FunctionUpdate, 
+                                    (:wf_F(Memory, (:m(cs0):)),   
+                                      wf_F(composition, 
+                                           (:wf_F(Dirty, (:wf_F(DirtyCache, (:m(cs0):)):)), 
+                                             wf_F(Cache, (:wf_F(DirtyCache, (:m(cs0):)):)):)):))
+    DirtySetFlush: [(v?) -> wf_Program_] =    
+       LAMBDA (v: (v?)): A(pre_DirtySetFlush(v), post_DirtySetFlush(v))
+
+ END SpecActions
