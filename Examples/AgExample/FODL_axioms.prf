@@ -1,0 +1,1262 @@
+(FODL_axioms
+ (IMP_FODL_semantic_TCC1 0
+  (IMP_FODL_semantic_TCC1-1 nil 3295920137 3506928747
+   ("" (use "non_empty_types") nil nil) proved
+   ((non_empty_types formula-decl nil FODL_axioms nil)) 54 0 nil nil))
+ (PDL_1 0
+  (PDL_1-1 nil 3295920137 3506928749
+   ("" (expand-meaning)
+    (("" (skosimp*)
+      (("" (expand-meaning)
+        (("" (prop)
+          (("" (expand-meaning)
+            (("" (skosimp*)
+              (("" (expand-meaning -)
+                (("" (skosimp*)
+                  (("" (inst 1 "wPrime!1")
+                    (("" (prop)
+                      (("" (expand-meaning 1)
+                        (("" (prop)
+                          (("" (inst -3 "wPrime!1")
+                            (("" (prop) nil nil)) nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (length def-decl "nat" list_props nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (list type-decl nil list_adt nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (meaningF const-decl "PRED[World_]" FODL_semantic nil))
+   1324 1246 nil nil))
+ (PDL_2 0
+  (PDL_2-1 nil 3295920137 3506928751
+   ("" (expand-meaning)
+    (("" (skosimp*)
+      (("" (expand-meaning)
+        (("" (prop)
+          (("1" (expand-meaning)
+            (("1" (flatten)
+              (("1" (expand-meaning +)
+                (("1" (skosimp*)
+                  (("1" (expand-meaning -2)
+                    (("1" (prop)
+                      (("1" (inst 1 "wPrime!1") (("1" (prop) nil nil))
+                        nil)
+                       ("2" (inst 2 "wPrime!1") (("2" (prop) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand-meaning)
+            (("2" (split)
+              (("1" (expand-meaning -1)
+                (("1" (skosimp*)
+                  (("1" (inst?)
+                    (("1" (prop)
+                      (("1" (expand-meaning 1) (("1" (prop) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil)
+               ("2" (expand-meaning -1)
+                (("2" (skosimp*)
+                  (("2" (inst?)
+                    (("2" (prop)
+                      (("2" (expand-meaning 1) (("2" (prop) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (length def-decl "nat" list_props nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (list type-decl nil list_adt nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (meaningF const-decl "PRED[World_]" FODL_semantic nil))
+   1750 1562 nil nil))
+ (PDL_3 0
+  (PDL_3-1 nil 3295920137 3506928752
+   ("" (expand-meaning)
+    (("" (skosimp*)
+      (("" (expand-meaning)
+        (("" (prop)
+          (("1" (expand-meaning)
+            (("1" (skosimp*)
+              (("1" (expand-meaning -1)
+                (("1" (prop)
+                  (("1" (expand-meaning 1)
+                    (("1" (inst 1 "wPrime!1") (("1" (prop) nil nil))
+                      nil))
+                    nil)
+                   ("2" (expand-meaning 2)
+                    (("2" (inst 2 "wPrime!1") (("2" (prop) nil nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand-meaning)
+            (("2" (prop)
+              (("1" (expand-meaning -1)
+                (("1" (skosimp*)
+                  (("1" (inst 1 "wPrime!1")
+                    (("1" (prop)
+                      (("1" (expand-meaning 1) (("1" (prop) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil)
+               ("2" (expand-meaning -1)
+                (("2" (skosimp*)
+                  (("2" (inst 1 "wPrime!1")
+                    (("2" (prop)
+                      (("2" (expand-meaning 1) (("2" (prop) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (list type-decl nil list_adt nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (length def-decl "nat" list_props nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (meaningF const-decl "PRED[World_]" FODL_semantic nil))
+   1707 1552 nil nil))
+ (PDL_4 0
+  (PDL_4-1 nil 3295920137 3506928754
+   ("" (expand-meaning)
+    (("" (skosimp*)
+      (("" (expand-meaning)
+        (("" (prop)
+          (("1" (expand-meaning)
+            (("1" (skosimp*)
+              (("1" (expand-meaning -1)
+                (("1" (skosimp*)
+                  (("1" (inst 1 "w!2")
+                    (("1" (prop)
+                      (("1" (expand-meaning 1)
+                        (("1" (inst 1 "wPrime!1")
+                          (("1" (prop) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand-meaning)
+            (("2" (skosimp*)
+              (("2" (expand-meaning -2)
+                (("2" (skosimp*)
+                  (("2" (inst 1 "wPrime!2")
+                    (("2" (prop)
+                      (("2" (expand-meaning 1)
+                        (("2" (inst 1 "wPrime!1")
+                          (("2" (prop) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (length def-decl "nat" list_props nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (list type-decl nil list_adt nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (meaningF const-decl "PRED[World_]" FODL_semantic nil))
+   1675 1420 nil nil))
+ (PDL_5 0
+  (PDL_5-1 nil 3295920137 3506928755
+   ("" (expand-meaning)
+    (("" (skosimp*)
+      (("" (expand-meaning)
+        (("" (prop)
+          (("1" (expand-meaning)
+            (("1" (skosimp*)
+              (("1" (prop)
+                (("1" (expand-meaning -1) (("1" (prop) nil nil)) nil)
+                 ("2" (expand-meaning -1)
+                  (("2" (prop)
+                    (("2" (replace -1) (("2" (propax) nil nil)) nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand-meaning)
+            (("2" (prop)
+              (("2" (inst 1 "w!1")
+                (("2" (prop) (("2" (expand-meaning 1) nil nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (length def-decl "nat" list_props nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (list type-decl nil list_adt nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (meaningF const-decl "PRED[World_]" FODL_semantic nil))
+   1432 1296 nil nil))
+ (PDL_6 0
+  (PDL_6-1 nil 3295920137 3506928757
+   ("" (skosimp*)
+    (("" (expand-meaning)
+      (("" (skosimp*)
+        (("" (expand-meaning)
+          (("" (prop)
+            (("" (expand-meaning)
+              (("" (prop)
+                (("1" (inst 1 "w!1")
+                  (("1" (prop)
+                    (("1" (hide -1)
+                      (("1" (expand-meaning)
+                        (("1" (expand "mu")
+                          (("1" (expand "lfp")
+                            (("1" (expand "glb")
+                              (("1"
+                                (expand "member")
+                                (("1"
+                                  (expand "<=")
+                                  (("1"
+                                    (skosimp*)
+                                    (("1"
+                                      (inst -1 "(w!1, w!1)")
+                                      nil
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil)
+                 ("2" (expand-meaning -1)
+                  (("2" (skosimp*)
+                    (("2" (expand-meaning -2)
+                      (("2" (skosimp*)
+                        (("2" (inst 1 "wPrime!2")
+                          (("2" (prop)
+                            (("2" (hide -3)
+                              (("2"
+                                (expand-meaning -2)
+                                (("2"
+                                  (expand-meaning 1)
+                                  (("2"
+                                    (expand "mu")
+                                    (("2"
+                                      (expand "lfp")
+                                      (("2"
+                                        (expand "glb")
+                                        (("2"
+                                          (expand "member")
+                                          (("2"
+                                            (expand "<=")
+                                            (("2"
+                                              (skosimp*)
+                                              (("2"
+                                                (inst -3 "p!1")
+                                                (("2"
+                                                  (prop)
+                                                  (("2"
+                                                    (inst
+                                                     -2
+                                                     "(w!1, wPrime!2)")
+                                                    (("2"
+                                                      (prop)
+                                                      (("2"
+                                                        (inst
+                                                         2
+                                                         "wPrime!1")
+                                                        (("2"
+                                                          (prop)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((meaningF const-decl "PRED[World_]" FODL_semantic nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (pred type-eq-decl nil defined_types nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (list type-decl nil list_adt nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (length def-decl "nat" list_props nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (mu const-decl "pred[T]" mucalculus nil)
+    (glb const-decl "pred[T]" mucalculus nil)
+    (<= const-decl "bool" mucalculus nil)
+    (member const-decl "bool" sets nil)
+    (lfp const-decl "pred[T]" mucalculus nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil))
+   1556 1412 nil nil))
+ (PDL_7 0
+  (PDL_7-3 "Final proof" 3295923874 3506928761
+   ("" (skosimp*)
+    (("" (expand-meaning)
+      (("" (skosimp*)
+        (("" (expand-meaning)
+          (("" (prop)
+            (("" (expand-meaning -1)
+              (("" (skosimp*)
+                (("" (expand-meaning -1)
+                  (("" (lemma "lfp_induction[[World_, World_]]")
+                    (("" (expand "mu")
+                      (("" (expand-meaning 1)
+                        (("" (flatten)
+                          ((""
+                            (inst -1 _
+                             "LAMBDA (p: PRED[[World_, World_]]):
+                  {wp: [World_, World_] |
+                     wp`1 = wp`2 OR
+                      (EXISTS (w: World_):
+                         right(m(mMetavariable!1)(inr(P!1)))(wp`1, w) AND
+                          p(w, wp`2))}")
+                            (("1" (expand "<=")
+                              (("1"
+                                (inst
+                                 -1
+                                 "LAMBDA (wp2: [World_, World_]):
+             (left(m(mMetavariable!1)(inl(NOT f!1)))(wp2`1) AND
+              left(m(mMetavariable!1)(inl(f!1)))(wp2`2)) IMPLIES
+             EXISTS (w1,w2 : World_):
+             (right(m(mMetavariable!1)(inr(*(P!1))))(wp2`1, w1) AND
+              right(m(mMetavariable!1)(inr(P!1)))(w1, w2) AND
+              left(m(mMetavariable!1)(inl(NOT f!1)))(w1) AND
+              left(m(mMetavariable!1)(inl(f!1)))(w2))")
+                                (("1"
+                                  (prop)
+                                  (("1"
+                                    (inst?)
+                                    (("1"
+                                      (assert)
+                                      (("1"
+                                        (prop)
+                                        (("1"
+                                          (skosimp*)
+                                          (("1"
+                                            (expand-meaning 2)
+                                            (("1"
+                                              (inst?)
+                                              (("1"
+                                                (assert)
+                                                (("1"
+                                                  (expand-meaning 2)
+                                                  (("1"
+                                                    (expand-meaning 2)
+                                                    (("1"
+                                                      (inst?)
+                                                      (("1"
+                                                        (assert)
+                                                        nil
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil)
+                                         ("2"
+                                          (expand-meaning 1)
+                                          nil
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil)
+                                   ("2"
+                                    (skosimp*)
+                                    (("2"
+                                      (prop)
+                                      (("1"
+                                        (expand-meaning -2)
+                                        (("1" (assert) nil nil))
+                                        nil)
+                                       ("2"
+                                        (skosimp*)
+                                        (("2"
+                                          (prop)
+                                          (("1"
+                                            (skosimp*)
+                                            (("1"
+                                              (inst?)
+                                              (("1"
+                                                (assert)
+                                                (("1"
+                                                  (hide-all-but
+                                                   (-1 -5 1))
+                                                  (("1"
+                                                    (expand-meaning -1)
+                                                    (("1"
+                                                      (expand-meaning
+                                                       1)
+                                                      (("1"
+                                                        (expand "mu")
+                                                        (("1"
+                                                          (expand
+                                                           "lfp")
+                                                          (("1"
+                                                            (expand
+                                                             "<=")
+                                                            (("1"
+                                                              (expand
+                                                               "glb")
+                                                              (("1"
+                                                                (skosimp*)
+                                                                (("1"
+                                                                  (expand
+                                                                   "member")
+                                                                  (("1"
+                                                                    (inst
+                                                                     -1
+                                                                     "p!1")
+                                                                    (("1"
+                                                                      (prop)
+                                                                      (("1"
+                                                                        (inst
+                                                                         -3
+                                                                         "(s!1`1, w1!1)")
+                                                                        (("1"
+                                                                          (prop)
+                                                                          (("1"
+                                                                            (inst?)
+                                                                            (("1"
+                                                                              (assert)
+                                                                              nil
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (inst?)
+                                            (("2"
+                                              (assert)
+                                              (("2"
+                                                (expand-meaning 1)
+                                                (("2"
+                                                  (assert)
+                                                  (("2"
+                                                    (hide-all-but 1)
+                                                    (("2"
+                                                      (grind)
+                                                      nil
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2" (hide-all-but 1)
+                              (("2"
+                                (expand "monotonic?")
+                                (("2"
+                                  (skosimp*)
+                                  (("2"
+                                    (expand "<=")
+                                    (("2"
+                                      (skosimp*)
+                                      (("2"
+                                        (assert)
+                                        (("2"
+                                          (skosimp*)
+                                          (("2"
+                                            (inst?)
+                                            (("2"
+                                              (inst?)
+                                              (("2" (assert) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((meaningF const-decl "PRED[World_]" FODL_semantic nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (mu const-decl "pred[T]" mucalculus nil)
+    (<= const-decl "bool" mucalculus nil)
+    (wf_Formula_AND application-judgement "wf_Formula_
+    [Constant, Metavariable, Variable, Predicate, sigPredicate, Function_,
+     sigFunction_]" FODL_axioms nil)
+    (wf_Formula_DIAMOND application-judgement "wf_Formula_
+    [Constant, Metavariable, Variable, Predicate, sigPredicate, Function_,
+     sigFunction_]" FODL_axioms nil)
+    (lfp const-decl "pred[T]" mucalculus nil)
+    (glb const-decl "pred[T]" mucalculus nil)
+    (member const-decl "bool" sets nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (left adt-accessor-decl "[(inl?) -> T1]" union_adt nil)
+    (NOT adt-constructor-decl "[Formula_ -> (NOT?)]" FODL_Language_adt
+     nil)
+    (* adt-constructor-decl "[Program_ -> (ITERATION?)]"
+       FODL_Language_adt nil)
+    (wf_Formula_NOT application-judgement "wf_Formula_
+    [Constant, Metavariable, Variable, Predicate, sigPredicate, Function_,
+     sigFunction_]" FODL_axioms nil)
+    (wf_Program_ITERATION application-judgement "wf_Program_
+    [Constant, Metavariable, Variable, Predicate, sigPredicate, Function_,
+     sigFunction_]" FODL_axioms nil)
+    (pred type-eq-decl nil defined_types nil)
+    (predicate_transformer type-eq-decl nil mucalculus nil)
+    (monotonic? const-decl "bool" mucalculus nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (union type-decl nil union_adt nil)
+    (inr? adt-recognizer-decl "[union -> boolean]" union_adt nil)
+    (right adt-accessor-decl "[(inr?) -> T2]" union_adt nil)
+    (AssMetavariable type-eq-decl nil FODL_semantic nil)
+    (FODL_Language type-decl nil FODL_Language_adt nil)
+    (every adt-def-decl "boolean" union_adt nil)
+    (TRUE? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (FALSE? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (NOT? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (IMPLIES? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (OR? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (AND? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (IFF? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (P? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (EQ? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (EXISTS? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (FORALL? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (DIAMOND? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (BOX? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (T?? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (A? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (SKIP? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (ASSIGNMENT? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (COMPOSITION? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (CHOICE? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (ITERATION? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (Formula_ type-eq-decl nil FODL_Language_adt nil)
+    (wf_Formula_ type-eq-decl nil wf_FODL_Language nil)
+    (Program_ type-eq-decl nil FODL_Language_adt nil)
+    (wf_Program_ type-eq-decl nil wf_FODL_Language nil)
+    (inl? adt-recognizer-decl "[union -> boolean]" union_adt nil)
+    (inl adt-constructor-decl "[T1 -> (inl?)]" union_adt nil)
+    (inr adt-constructor-decl "[T2 -> (inr?)]" union_adt nil)
+    (mMetavariable!1 skolem-const-decl "AssMetavariable
+    [Constant, Metavariable, Variable, Predicate, sigPredicate, Function_,
+     sigFunction_, TypePred, TPMetavariable, TPVariable, Carrier,
+     mTypePred, mConstant, mPredicate, mFunction_]" FODL_axioms nil)
+    (P!1 skolem-const-decl "wf_Program_
+    [Constant, Metavariable, Variable, Predicate, sigPredicate, Function_,
+     sigFunction_]" FODL_axioms nil)
+    (lfp_induction formula-decl nil mucalculus nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (list type-decl nil list_adt nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (length def-decl "nat" list_props nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (World_ type-eq-decl nil FODL_semantic nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" FODL_axioms nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" FODL_axioms nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" FODL_axioms nil))
+   3745 3412 t shostak)
+  (PDL_7-2 nil 3295923772 nil
+   ("" (skosimp*)
+    (("" (expand-meaning)
+      (("" (skosimp*)
+        (("" (expand-meaning)
+          (("" (prop)
+            (("" (expand-meaning -1)
+              (("" (skosimp*)
+                (("" (expand-meaning -1)
+                  (("" (lemma "lfp_induction[[World_, World_]]")
+                    (("" (expand "mu")
+                      (("" (expand-meaning 1)
+                        (("" (flatten)
+                          ((""
+                            (inst -1 _
+                             "LAMBDA (p: PRED[[World_, World_]]):
+                  {wp: [World_, World_] |
+                     wp`1 = wp`2 OR
+                      (EXISTS (w: World_):
+                         right(m(mMetavariable!1)(inr(P!1)))(wp`1, w) AND
+                          p(w, wp`2))}")
+                            (("1" (expand "<=")
+                              (("1"
+                                (inst
+                                 -1
+                                 "LAMBDA (wp2: [World_, World_]):
+             (left(m(mMetavariable!1)(inl(NOT f!1)))(wp2`1) AND
+              left(m(mMetavariable!1)(inl(f!1)))(wp2`2)) IMPLIES
+             EXISTS (w1,w2 : World_):
+             (right(m(mMetavariable!1)(inr(*(P!1))))(wp2`1, w1) AND
+              right(m(mMetavariable!1)(inr(P!1)))(w1, w2) AND
+              left(m(mMetavariable!1)(inl(NOT f!1)))(w1) AND
+              left(m(mMetavariable!1)(inl(f!1)))(w2))")
+                                (("1"
+                                  (prop)
+                                  (("1"
+                                    (inst?)
+                                    (("1"
+                                      (assert)
+                                      (("1"
+                                        (prop)
+                                        (("1"
+                                          (skosimp*)
+                                          (("1"
+                                            (expand-meaning 2)
+                                            (("1"
+                                              (inst?)
+                                              (("1"
+                                                (assert)
+                                                (("1"
+                                                  (expand-meaning 2)
+                                                  (("1"
+                                                    (expand-meaning 2)
+                                                    (("1"
+                                                      (inst?)
+                                                      (("1"
+                                                        (assert)
+                                                        nil)))))))))))))))
+                                         ("2"
+                                          (expand-meaning 1)
+                                          nil)))))))
+                                   ("2"
+                                    (skosimp*)
+                                    (("2"
+                                      (prop)
+                                      (("1"
+                                        (expand-meaning -2)
+                                        (("1" (assert) nil)))
+                                       ("2"
+                                        (skosimp*)
+                                        (("2"
+                                          (prop)
+                                          (("1"
+                                            (skosimp*)
+                                            (("1"
+                                              (inst?)
+                                              (("1"
+                                                (assert)
+                                                (("1"
+                                                  (hide-all-but
+                                                   (-1 -5 1))
+                                                  (("1"
+                                                    (expand-meaning -1)
+                                                    (("1"
+                                                      (expand-meaning
+                                                       1)
+                                                      (("1"
+                                                        (expand "mu")
+                                                        (("1"
+                                                          (expand
+                                                           "lfp")
+                                                          (("1"
+                                                            (expand
+                                                             "<=")
+                                                            (("1"
+                                                              (expand
+                                                               "glb")
+                                                              (("1"
+                                                                (skosimp*)
+                                                                (("1"
+                                                                  (expand
+                                                                   "member")
+                                                                  (("1"
+                                                                    (inst
+                                                                     -1
+                                                                     "p!1")
+                                                                    (("1"
+                                                                      (prop)
+                                                                      (("1"
+                                                                        (inst
+                                                                         -3
+                                                                         "(s!1`1, w1!1)")
+                                                                        (("1"
+                                                                          (prop)
+                                                                          (("1"
+                                                                            (inst?)
+                                                                            (("1"
+                                                                              (assert)
+                                                                              nil)))))))))))))))))))))))))))))))))))
+                                           ("2"
+                                            (inst?)
+                                            (("2"
+                                              (assert)
+                                              (("2"
+                                                (expand-meaning 1)
+                                                (("2"
+                                                  (assert)
+                                                  (("2"
+                                                    (hide-all-but 1)
+                                                    (("2"
+                                                      (grind)
+                                                      nil)))))))))))))))))))))))))
+                             ("2" (hide-all-but 1)
+                              (("2"
+                                (expand "monotonic?")
+                                (("2"
+                                  (skosimp*)
+                                  (("2"
+                                    (expand "<=")
+                                    (("2"
+                                      (skosimp*)
+                                      (("2"
+                                        (assert)
+                                        (("2"
+                                          (skosimp*)
+                                          (("2"
+                                            (inst?)
+                                            (("2"
+                                              (inst?)
+                                              (("2"
+                                                (assert)
+                                                nil))))))))))))))))))))))))))))))))))))))))))))
+    nil)
+   proved
+   ((World_ type-eq-decl nil FODL_semantic nil)
+    (mFunction_ formal-const-decl "[F: Function_ ->
+   [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]]"
+     FODL_axioms nil)
+    (mPredicate formal-const-decl
+     "[P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]]"
+     FODL_axioms nil)
+    (length def-decl "nat" list_props nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (list type-decl nil list_adt nil)
+    (mConstant formal-const-decl "[Constant -> Carrier]" FODL_axioms
+     nil)
+    (TPMetavariable formal-const-decl "[Metavariable -> TypePred]"
+     FODL_axioms nil)
+    (sigFunction_ formal-const-decl "[Function_ -> nat]" FODL_axioms
+     nil)
+    (Function_ formal-type-decl nil FODL_axioms nil)
+    (sigPredicate formal-const-decl "[Predicate -> nat]" FODL_axioms
+     nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate formal-type-decl nil FODL_axioms nil)
+    (Metavariable formal-type-decl nil FODL_axioms nil)
+    (Constant formal-type-decl nil FODL_axioms nil)
+    (TPVariable formal-const-decl "[Variable -> TypePred]" FODL_axioms
+     nil)
+    (mTypePred formal-const-decl "[TypePred -> [Carrier -> bool]]"
+     FODL_axioms nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (TypePred formal-type-decl nil FODL_axioms nil)
+    (Carrier formal-nonempty-type-decl nil FODL_axioms nil)
+    (Variable formal-type-decl nil FODL_axioms nil)
+    (lfp_induction formula-decl nil mucalculus nil)
+    (inr adt-constructor-decl "[T2 -> (inr?)]" union_adt nil)
+    (inl adt-constructor-decl "[T1 -> (inl?)]" union_adt nil)
+    (inl? adt-recognizer-decl "[union -> boolean]" union_adt nil)
+    (wf_Program_ type-eq-decl nil wf_FODL_Language nil)
+    (Program_ type-eq-decl nil FODL_Language_adt nil)
+    (wf_Formula_ type-eq-decl nil wf_FODL_Language nil)
+    (Formula_ type-eq-decl nil FODL_Language_adt nil)
+    (ITERATION? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (CHOICE? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (COMPOSITION? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (ASSIGNMENT? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (SKIP? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (A? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (T?? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (BOX? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (DIAMOND? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (FORALL? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (EXISTS? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (EQ? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (P? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (IFF? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (AND? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (OR? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (IMPLIES? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (NOT? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (FALSE? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (TRUE? adt-recognizer-decl "[FODL_Language -> boolean]"
+     FODL_Language_adt nil)
+    (FODL_Language type-decl nil FODL_Language_adt nil)
+    (AssMetavariable type-eq-decl nil FODL_semantic nil)
+    (right adt-accessor-decl "[(inr?) -> T2]" union_adt nil)
+    (inr? adt-recognizer-decl "[union -> boolean]" union_adt nil)
+    (union type-decl nil union_adt nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (monotonic? const-decl "bool" mucalculus nil)
+    (predicate_transformer type-eq-decl nil mucalculus nil)
+    (pred type-eq-decl nil defined_types nil)
+    (* adt-constructor-decl "[Program_ -> (ITERATION?)]"
+       FODL_Language_adt nil)
+    (NOT adt-constructor-decl "[Formula_ -> (NOT?)]" FODL_Language_adt
+     nil)
+    (left adt-accessor-decl "[(inl?) -> T1]" union_adt nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (member const-decl "bool" sets nil)
+    (glb const-decl "pred[T]" mucalculus nil)
+    (lfp const-decl "pred[T]" mucalculus nil)
+    (<= const-decl "bool" mucalculus nil)
+    (mu const-decl "pred[T]" mucalculus nil)
+    (m def-decl "{u: union[PRED[World_], PRED[[World_, World_]]] |
+         CASES l OF inl(f): inl?(u), inr(P): inr?(u) ENDCASES}"
+     FODL_semantic nil)
+    (meaningF const-decl "PRED[World_]" FODL_semantic nil))
+   nil nil nil nil)
+  (PDL_7-1 nil 3295920137 3295920509 ("" (postpone) nil nil) unfinished
+   nil 7 0 nil nil)))
+

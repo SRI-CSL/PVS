@@ -1,0 +1,82 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Especificación Ag.                                                            %
+% Ag specification.                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                               %
+% Addr: TYPE                                                                    %
+% Data: TYPE                                                                    %
+% Memory: TYPE = Addr -> Data                                                   %
+% Cache: TYPE = Addr -> Data                                                    %
+% Dirty: TYPE = set[Addr]                                                       %
+% DirtyCache: TYPE = {dc: Cache +_circ Dirty |                                  %
+%                          Dirty(dc) <= Dom(Cache(dc))}                         %
+% DirtyCacheSystem: TYPE = {cs: Memory +_circ DirtyCache |                      %
+%                                Dom(Cache(DirtyCache(cs)) <= Dom(Memory(cs))}  %
+%                                                                               %
+% DirtyCacheWrite: Ag Action[cs: DirtyCacheSystem]                              %
+% cs = cs0 => [DirtyCacheWrite] EXISTS (a: Addr, d: Data):                      %
+%           Cache(DirtyCache(cs)) =                                             %
+%              FunctionUpdate(Cache(DirtyCache(cs0)), <a, d>) AND               %
+%           Dirty(DirtyCache(cs)) = Dirty(DirtyCache(cs0)) U a) AND             %
+%           Memory(cs) = Memory(cs0)                                            %
+%                                                                               %
+% DirtyFlush: Ag Action[cs: DirtyCacheSystem]                                   %
+% cs = cs0 => [DirtyFlush] EXISTS (a: Addr):                                    %
+%           Cache(DirtyCache(cs)) =                                             %
+%              FunctionUndef(Cache(DirtyCache(cs0)), a;1) AND                   %
+%           Dirty(DirtyCache(cs)) = Dirty(DirtyCache(cs0)) / a                  %
+%           Memory(cs) =                                                        %
+%              FunctionUpdate(Memory(cs0), <a, a;Cache(DirtyCache(cs0))>)       %
+%                                                                               %
+% DirtyLoad: Ag Action[cs: DirtyCacheSystem]                                    %
+% cs = cs0 => [DirtyLoad] EXISTS (a: Addr):                                     %
+%           Cache(DirtyCache(cs)) =                                             %
+%              FunctionUpdate(Cache(DirtyCache(cs0)), <a, a;Memory(cs0)>) AND   %
+%           Dirty(DirtyCache(cs)) = Dirty(DirtyCache(cs0)) AND                  %
+%           Memory(cs) = Memory(cs0)                                            %
+%                                                                               %
+% DirtySetFlush: Ag Action[cs: DirtyCacheSystem]                                %
+% cs = cs0 => [DirtySetFlush]                                                   %
+%           Cache(DirtyCache(cs)) = Cache(DirtyCache(cs0)) AND                  %
+%           Dirty(DirtyCache(cs)) = emptyset AND                                %
+%           Memory(cs) = FunctionUpdate(Memory(cs0),                            %
+%                               Dirty(DirtyCache(cs0));Cache(DirtyCache(cs0)))  %
+%                                                                               %
+% DirtyCacheConsistent: PRED[DirtyCacheSystem]                                  %
+% DirtyCacheConsistent(cs) = Cache(DirtyCache(cs)) <= Memory(cs)                %
+%                                                                               %
+% NonDirtyCache: PRED[DirtyCacheSystem]                                         %
+% NonDirtyCache(cs) = (NEG Dirty(DirtyCache(cs)));Cache(DirtyCache(cs)) <=      %
+%                       Memory(cs)                                              %
+%                                                                               %
+% DirtyCacheWrite_preserves_NonDirtyCache: LEMMA                                %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [DirtyCacheWrite(cs)]NonDirtyCache(cs)                                     %
+%                                                                               %
+% DirtyFlush_preserves_NonDirtyCache: LEMMA                                     %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [DirtyFlush(cs)]NonDirtyCache(cs)                                          %
+%                                                                               %
+% DirtyLoad_preserves_NonDirtyCache: LEMMA                                      %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [DirtyLoad(cs)]NonDirtyCache(cs)                                           %
+%                                                                               %
+% DirtySetFlush_preserves_NonDirtyCache: LEMMA                                  %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [DirtySetFlush(cs)]NonDirtyCache(cs)                                       %
+%                                                                               %
+% AllStar_preserves_NonDirtyCache: LEMMA                                        %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [(DirtyCacheWrite(cs)+DirtyFlush(cs)+DirtyLoad(cs)+                        %
+%      DirtySetFlush(cs))*]NonDirtyCache(cs)                                    %
+%                                                                               %
+% DirtySetFlush_leaves_DirtyCacheConsistent: LEMMA                              %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [DirtySetFlush(cs)]DirtyCacheConsistent(cs)                                %
+%                                                                               %
+% Consistency_criteria: THEOREM                                                 %
+% FORALL (cs: DirtyCacheSystem): NonDirtyCache(cs) =>                           %
+%    [(DirtyCacheWrite(cs)+DirtyFlush(cs)+DirtyLoad(cs)+                        %
+%      DirtySetFlush(cs))*;DirtySetFlush(cs)]DirtyCacheConsistent(cs)           %
+%                                                                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

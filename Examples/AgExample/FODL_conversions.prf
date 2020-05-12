@@ -1,0 +1,7 @@
+(FODL_conversions
+ (IMP_FODL_semantic_TCC1 0
+  (IMP_FODL_semantic_TCC1-1 nil 3446682780 3506928839
+   ("" (use "non_empty_types") nil nil) proved
+   ((non_empty_types formula-decl nil FODL_conversions nil)) 54 10 nil
+   nil)))
+

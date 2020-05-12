@@ -1,0 +1,5 @@
+(typecheck "FODL_Language")
+(typecheck "FA_Element")
+(typecheck "SpecProperties")
+(let ((current-prefix-arg t))
+  (prove-importchain "SpecProperties"))

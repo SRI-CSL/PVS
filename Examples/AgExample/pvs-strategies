@@ -1,0 +1,110 @@
+(defhelper install-theories-to-rewrite (theories)
+  (let ((th (car theories)) (ths (cdr theories)))
+    (if theories
+	(then
+	 (auto-rewrite-theory th :always? !!)
+	 (install-theories-to-rewrite ths))
+      (skip)))
+  "Installs theories to rewrite"
+  "Installing the theories to rewrite"
+)
+
+(defstep purify-fodl (&optional fnum induct &rest theories)
+  (then
+   (if theories
+       (install-theories-to-rewrite theories)
+     (install-theories-to-rewrite ("SpecProperties" "SpecActions" "SpecPredicates")))
+   (auto-rewrite "wf_P" "wf_F")
+   (auto-rewrite-theory "FODL_semantic" :always? !!)
+   (auto-rewrite-theory "mucalculus" :always? !!)
+   (auto-rewrite-theory "sets" :always? !!)   
+   (auto-rewrite "mConstant" "mPredicate" "mFunction_")
+   (auto-rewrite "map" "nth")
+   #+pvs3.2
+   (if fnum
+       (assert fnum :quant-simp? t)
+     (assert :quant-simp? t))
+   #-pvs3.2
+   (if fnum
+       (assert fnum)
+     (assert))
+   (stop-rewrite))
+  "Purifies a first-order dynamic logic formula"
+  "Purifying using first-order dynamic logic"
+)
+
+(defstep prove-wf (fnum)
+  (then
+   (if theories
+       (install-theories-to-rewrite theories)
+     (install-theories-to-rewrite ("SpecProperties" "SpecActions" "SpecPredicates")))
+   (auto-rewrite-theory "wf_FODL_Language" :always? !!) 
+   (auto-rewrite "every")
+   #+pvs3.2
+   (assert fnum :quant-simp? t)
+   #-pvs3.2
+   (assert fnum)
+   (stop-rewrite))
+  "Proves that a formula is well formed"
+  "Proving that a formula is well formed"
+)
+
+(defstep prove-no_metavariable (fnum &rest theories)
+  (then
+   (if theories
+       (install-theories-to-rewrite theories)
+     (install-theories-to-rewrite ("SpecProperties" "SpecActions" "SpecPredicates")))
+   (auto-rewrite-theory "wf_FODL_Language" :always? !!) 
+   (auto-rewrite "every")
+   #+pvs3.2
+   (assert fnum :quant-simp? t)
+   #-pvs3.2
+   (assert fnum)
+   (stop-rewrite))
+  "Proves that a formula has no metavariable"
+  "Proving that a formula has no metavariable"
+)
+
+(defstep purify-fa (&optional fnum strong)
+  (then
+   (if strong
+       (auto-rewrite-theory "FA_semantic" :always? !!)
+     (auto-rewrite-theory "FA_semantic" :exclude ("zero" "one" "one_prime"
+						  "C_0" "C_1" "one_prime_C_0"
+						  "one_prime_C_1" "one_prime_Addr"
+						  "one_prime_Data"
+						  "sum" "product" "complement"
+						  "composition" "converse" "fork")
+			  :always? !!))
+   #+pvs3.2
+   (if fnum
+       (assert fnum :quant-simp? t)
+     (assert :quant-simp? t))
+   #-pvs3.2
+   (if fnum
+       (assert fnum)
+     (assert))
+   (stop-rewrite))
+  "Purifies a fork algebra formula"
+  "Purifying using fork algebra"
+)
+
+(defstep purify-ag (&optional fnum strong &rest theories)
+  (then
+   (purify-fodl fnum theories)
+   (purify-fa fnum strong))
+  "Purifies an Ag formula"
+  "Purifying using Ag"
+)
+
+(defstep expand-meaning (&optional (fnum *) ocurrence)
+  (try
+   (expand "meaningF" fnum ocurrence)
+   (skip)
+   (try
+    (expand "m" fnum ocurrence)
+    (skip)
+    (skip)))
+  "Expands the meaning of a first-order dynamic logic formula"
+  "Expanding the meaning of a first-order dynamic logic formula"
+)  

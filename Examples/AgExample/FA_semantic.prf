@@ -1,0 +1,1478 @@
+(FA_semantic
+ (zero_TCC1 0
+  (zero_TCC1-1 nil 3295305175 3506928721
+   ("" (use "carrier_zero") nil nil) proved
+   ((carrier_zero formula-decl nil FA_semantic nil)) 38 10 t shostak))
+ (one_TCC1 0
+  (one_TCC1-1 nil 3295305175 3506928721
+   ("" (use "carrier_one") nil nil) proved
+   ((carrier_one formula-decl nil FA_semantic nil)) 42 0 t shostak))
+ (one_prime_TCC1 0
+  (one_prime_TCC1-1 nil 3295305175 3506928721
+   ("" (use "carrier_one_prime") nil nil) proved
+   ((carrier_one_prime formula-decl nil FA_semantic nil)) 42 0 t
+   shostak))
+ (sum_TCC1 0
+  (sum_TCC1-1 nil 3295305176 3506928721
+   ("" (use "carrier_sum") nil nil) proved
+   ((carrier_sum formula-decl nil FA_semantic nil)) 23 10 t shostak))
+ (product_TCC1 0
+  (product_TCC1-1 nil 3295305176 3506928721
+   ("" (use "carrier_product") nil nil) proved
+   ((carrier_product formula-decl nil FA_semantic nil)) 23 0 t
+   shostak))
+ (complement_TCC1 0
+  (complement_TCC1-1 nil 3295305176 3506928721
+   ("" (use "carrier_complement") nil nil) proved
+   ((carrier_complement formula-decl nil FA_semantic nil)) 23 10 t
+   shostak))
+ (composition_TCC1 0
+  (composition_TCC1-1 nil 3295305176 3506928721
+   ("" (use "carrier_composition") nil nil) proved
+   ((carrier_composition formula-decl nil FA_semantic nil)) 23 0 t
+   shostak))
+ (converse_TCC1 0
+  (converse_TCC1-1 nil 3295305176 3506928722
+   ("" (use "carrier_converse") nil nil) proved
+   ((carrier_converse formula-decl nil FA_semantic nil)) 48 6 t
+   shostak))
+ (fork_TCC1 0
+  (fork_TCC1-1 nil 3295305176 3506928722
+   ("" (use "carrier_fork") nil nil) proved
+   ((carrier_fork formula-decl nil FA_semantic nil)) 23 0 t shostak))
+ (C_0_TCC1 0
+  (C_0_TCC1-1 nil 3295305175 3506928722
+   ("" (use "carrier_C_0") nil nil) proved
+   ((carrier_C_0 formula-decl nil FA_semantic nil)) 23 10 t shostak))
+ (C_1_TCC1 0
+  (C_1_TCC1-1 nil 3295305175 3506928722
+   ("" (use "carrier_C_1") nil nil) proved
+   ((carrier_C_1 formula-decl nil FA_semantic nil)) 43 0 t shostak))
+ (one_prime_C_0_TCC1 0
+  (one_prime_C_0_TCC1-1 nil 3295305175 3506928722
+   ("" (use "carrier_one_prime_C_0") nil nil) proved
+   ((carrier_one_prime_C_0 formula-decl nil FA_semantic nil)) 22 10 t
+   shostak))
+ (one_prime_C_1_TCC1 0
+  (one_prime_C_1_TCC1-1 nil 3295305176 3506928722
+   ("" (use "carrier_one_prime_C_1") nil nil) proved
+   ((carrier_one_prime_C_1 formula-decl nil FA_semantic nil)) 22 10 t
+   shostak))
+ (one_prime_Addr_TCC1 0
+  (one_prime_Addr_TCC1-1 nil 3295427650 3506928722
+   ("" (use "carrier_one_prime_Addr") nil nil) proved
+   ((carrier_one_prime_Addr formula-decl nil FA_semantic nil)) 22 0 t
+   shostak))
+ (one_prime_Data_TCC1 0
+  (one_prime_Data_TCC1-1 nil 3295427650 3506928722
+   ("" (use "carrier_one_prime_Data") nil nil) proved
+   ((carrier_one_prime_Data formula-decl nil FA_semantic nil)) 20 0 t
+   shostak))
+ (Cache_Dirty_DirtyCache 0
+  (Cache_Dirty_DirtyCache-3 "" 3355153300 3506928724
+   ("" (skosimp*)
+    (("" (replace -1)
+      (("" (hide -1)
+        (("" (prop)
+          (("1" (purify-fa 1 t)
+            (("1" (apply-extensionality 1)
+              (("1" (hide 2)
+                (("1" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_0), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_0), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 2)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_0), pair(element(c_0), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t) nil nil)) nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t)
+                            (("2" (replace -2 -5)
+                              (("2"
+                                (replace -2 -6)
+                                (("2"
+                                  (decompose-equality -6)
+                                  (("2"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("2"
+                                      (inst -1 "c_1")
+                                      (("2"
+                                        (prop)
+                                        (("2" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (purify-fa 1 t)
+            (("2" (apply-extensionality 1)
+              (("2" (hide 2)
+                (("2" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_1), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_1), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 1)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_1), pair(element(c_1), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t)
+                            (("1" (replace -2 -5)
+                              (("1"
+                                (replace -2 -6)
+                                (("1"
+                                  (decompose-equality -6)
+                                  (("1"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("1"
+                                      (inst -1 "c_0")
+                                      (("1"
+                                        (prop)
+                                        (("1" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (Dirty const-decl "PRED[Carrier]" FA_semantic nil)
+    (c_1 const-decl "Element" FA_semantic nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (el1 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (c_0 const-decl "Element" FA_semantic nil)
+    (element adt-constructor-decl "[T -> (element?)]" FA_Element_adt
+     nil)
+    (element? adt-recognizer-decl "[FA_Element -> boolean]"
+     FA_Element_adt nil)
+    (el0 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (extend const-decl "R" extend nil)
+    (FALSE const-decl "bool" booleans nil)
+    (pair? adt-recognizer-decl "[FA_Element -> boolean]" FA_Element_adt
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Cache const-decl "PRED[Carrier]" FA_semantic nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (pair adt-constructor-decl "[[FA_Element, FA_Element] -> (pair?)]"
+     FA_Element_adt nil)
+    (t adt-accessor-decl "[(element?) -> T]" FA_Element_adt nil)
+    (empty_intersection_of_types formula-decl nil FA_semantic nil)
+    (C_1 const-decl "Carrier" FA_semantic nil)
+    (inr const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_1 const-decl "Carrier" FA_semantic nil)
+    (C_0 const-decl "Carrier" FA_semantic nil)
+    (inl const-decl "Carrier" FA_semantic nil)
+    (Pi_2 const-decl "Carrier" FA_semantic nil)
+    (one const-decl "Carrier" FA_semantic nil)
+    (one_prime const-decl "Carrier" FA_semantic nil)
+    (converse const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_0 const-decl "Carrier" FA_semantic nil)
+    (Pi_1 const-decl "Carrier" FA_semantic nil)
+    (fork const-decl "Carrier" FA_semantic nil)
+    (composition const-decl "Carrier" FA_semantic nil)
+    (sum const-decl "Carrier" FA_semantic nil)
+    (Cache const-decl "Carrier" FA_semantic nil)
+    (Dirty const-decl "Carrier" FA_semantic nil))
+   2430 2308 t shostak)
+  (Cache_Dirty_DirtyCache-2 "Needed :quant-simp? t for smash"
+   3295897094 3296021767
+   ("" (skosimp*)
+    (("" (replace -1)
+      (("" (hide -1)
+        (("" (prop)
+          (("1" (purify-fa 1 t)
+            (("1" (apply-extensionality 1)
+              (("1" (hide 2)
+                (("1" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_0), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_0), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 2)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_0), pair(element(c_0), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t) nil nil)) nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t)
+                            (("2" (replace -2 -5)
+                              (("2"
+                                (replace -5 -6)
+                                (("2"
+                                  (decompose-equality -6)
+                                  (("2"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("2"
+                                      (inst -1 "c_1")
+                                      (("2"
+                                        (prop)
+                                        (("2" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (purify-fa 1 t)
+            (("2" (apply-extensionality 1)
+              (("2" (hide 2)
+                (("2" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_1), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_1), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 1)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_1), pair(element(c_1), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t)
+                            (("1" (replace -2 -5)
+                              (("1"
+                                (replace -5 -6)
+                                (("1"
+                                  (decompose-equality -6)
+                                  (("1"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("1"
+                                      (inst -1 "c_0")
+                                      (("1"
+                                        (prop)
+                                        (("1" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (Dirty const-decl "PRED[Carrier]" FA_semantic nil)
+    (c_1 const-decl "Element" FA_semantic nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (el1 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (c_0 const-decl "Element" FA_semantic nil)
+    (element adt-constructor-decl "[T -> (element?)]" FA_Element_adt
+     nil)
+    (element? adt-recognizer-decl "[FA_Element -> boolean]"
+     FA_Element_adt nil)
+    (el0 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (extend const-decl "R" extend nil)
+    (FALSE const-decl "bool" booleans nil)
+    (pair? adt-recognizer-decl "[FA_Element -> boolean]" FA_Element_adt
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Cache const-decl "PRED[Carrier]" FA_semantic nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (pair adt-constructor-decl "[[FA_Element, FA_Element] -> (pair?)]"
+     FA_Element_adt nil)
+    (t adt-accessor-decl "[(element?) -> T]" FA_Element_adt nil)
+    (empty_intersection_of_types formula-decl nil FA_semantic nil)
+    (C_1 const-decl "Carrier" FA_semantic nil)
+    (inr const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_1 const-decl "Carrier" FA_semantic nil)
+    (C_0 const-decl "Carrier" FA_semantic nil)
+    (inl const-decl "Carrier" FA_semantic nil)
+    (Pi_2 const-decl "Carrier" FA_semantic nil)
+    (one const-decl "Carrier" FA_semantic nil)
+    (one_prime const-decl "Carrier" FA_semantic nil)
+    (converse const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_0 const-decl "Carrier" FA_semantic nil)
+    (Pi_1 const-decl "Carrier" FA_semantic nil)
+    (fork const-decl "Carrier" FA_semantic nil)
+    (composition const-decl "Carrier" FA_semantic nil)
+    (sum const-decl "Carrier" FA_semantic nil)
+    (Cache const-decl "Carrier" FA_semantic nil)
+    (Dirty const-decl "Carrier" FA_semantic nil))
+   1088784 30810 t shostak)
+  (Cache_Dirty_DirtyCache-1 nil 3295305175 3295305868
+   ("" (skosimp*)
+    (("" (replace -1)
+      (("" (hide -1)
+        (("" (prop)
+          (("1" (purify-fa 1 t)
+            (("1" (apply-extensionality 1)
+              (("1" (hide 2)
+                (("1" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_0), x!2)")
+                      (("1" (smash)
+                        (("1" (inst 1 "pair(element(c_0), x!1)")
+                          (("1" (smash)
+                            (("1" (hide 2)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_0), pair(element(c_0), x!2))")
+                                (("1" (smash) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash)
+                        (("1" (skosimp*) (("1" (smash) nil nil)) nil)
+                         ("2" (skosimp*)
+                          (("2" (smash)
+                            (("2" (replace -2 -5)
+                              (("2"
+                                (replace -6 -5)
+                                (("2"
+                                  (decompose-equality -5)
+                                  (("2"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("2"
+                                      (inst -1 "c_1")
+                                      (("2" (prop) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (purify-fa 1 t)
+            (("2" (apply-extensionality 1)
+              (("2" (hide 2)
+                (("2" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_1), x!2)")
+                      (("1" (smash)
+                        (("1" (inst 1 "pair(element(c_1), x!1)")
+                          (("1" (smash)
+                            (("1" (hide 1)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_1), pair(element(c_1), x!2))")
+                                (("1" (smash) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash)
+                        (("1" (skosimp*)
+                          (("1" (smash)
+                            (("1" (replace -2 -5)
+                              (("1"
+                                (replace -6 -5)
+                                (("1"
+                                  (decompose-equality -5)
+                                  (("1"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("1"
+                                      (inst -1 "c_0")
+                                      (("1" (prop) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skosimp*) (("2" (smash) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (Dirty const-decl "PRED[Carrier]" FA_semantic nil)
+    (c_1 const-decl "Element" FA_semantic nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (el1 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (c_0 const-decl "Element" FA_semantic nil)
+    (element adt-constructor-decl "[T -> (element?)]" FA_Element_adt
+     nil)
+    (element? adt-recognizer-decl "[FA_Element -> boolean]"
+     FA_Element_adt nil)
+    (el0 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (extend const-decl "R" extend nil)
+    (FALSE const-decl "bool" booleans nil)
+    (pair? adt-recognizer-decl "[FA_Element -> boolean]" FA_Element_adt
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Cache const-decl "PRED[Carrier]" FA_semantic nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (pair adt-constructor-decl "[[FA_Element, FA_Element] -> (pair?)]"
+     FA_Element_adt nil)
+    (empty_intersection_of_types formula-decl nil FA_semantic nil)
+    (t adt-accessor-decl "[(element?) -> T]" FA_Element_adt nil)
+    (C_1 const-decl "Carrier" FA_semantic nil)
+    (inr const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_1 const-decl "Carrier" FA_semantic nil)
+    (C_0 const-decl "Carrier" FA_semantic nil)
+    (inl const-decl "Carrier" FA_semantic nil)
+    (Pi_2 const-decl "Carrier" FA_semantic nil)
+    (one const-decl "Carrier" FA_semantic nil)
+    (one_prime const-decl "Carrier" FA_semantic nil)
+    (converse const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_0 const-decl "Carrier" FA_semantic nil)
+    (Pi_1 const-decl "Carrier" FA_semantic nil)
+    (fork const-decl "Carrier" FA_semantic nil)
+    (composition const-decl "Carrier" FA_semantic nil)
+    (sum const-decl "Carrier" FA_semantic nil)
+    (Cache const-decl "Carrier" FA_semantic nil)
+    (Dirty const-decl "Carrier" FA_semantic nil))
+   15972 2740 nil nil))
+ (Memory_DirtyCache_DirtyCacheSystem 0
+  (Memory_DirtyCache_DirtyCacheSystem-3 "" 3355153420 3506928727
+   ("" (skosimp*)
+    (("" (replace -1)
+      (("" (hide -1)
+        (("" (prop)
+          (("1" (purify-fa 1 t)
+            (("1" (apply-extensionality 1)
+              (("1" (hide 2)
+                (("1" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_0), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_0), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 2)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_0), pair(element(c_0), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t) nil nil)) nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t)
+                            (("2" (replace -2 -5)
+                              (("2"
+                                (replace -2 -6)
+                                (("2"
+                                  (decompose-equality -6)
+                                  (("2"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("2"
+                                      (inst -1 "c_1")
+                                      (("2"
+                                        (prop)
+                                        (("2" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (purify-fa 1 t)
+            (("2" (apply-extensionality 1)
+              (("2" (hide 2)
+                (("2" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_1), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_1), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 1)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_1), pair(element(c_1), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t)
+                            (("1" (replace -2 -5)
+                              (("1"
+                                (replace -2 -6)
+                                (("1"
+                                  (decompose-equality -6)
+                                  (("1"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("1"
+                                      (inst -1 "c_0")
+                                      (("1"
+                                        (prop)
+                                        (("1" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (DirtyCache const-decl "PRED[Carrier]" FA_semantic nil)
+    (c_1 const-decl "Element" FA_semantic nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (el1 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (c_0 const-decl "Element" FA_semantic nil)
+    (element adt-constructor-decl "[T -> (element?)]" FA_Element_adt
+     nil)
+    (element? adt-recognizer-decl "[FA_Element -> boolean]"
+     FA_Element_adt nil)
+    (el0 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (extend const-decl "R" extend nil)
+    (FALSE const-decl "bool" booleans nil)
+    (pair? adt-recognizer-decl "[FA_Element -> boolean]" FA_Element_adt
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Memory const-decl "PRED[Carrier]" FA_semantic nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (pair adt-constructor-decl "[[FA_Element, FA_Element] -> (pair?)]"
+     FA_Element_adt nil)
+    (t adt-accessor-decl "[(element?) -> T]" FA_Element_adt nil)
+    (empty_intersection_of_types formula-decl nil FA_semantic nil)
+    (C_1 const-decl "Carrier" FA_semantic nil)
+    (inr const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_1 const-decl "Carrier" FA_semantic nil)
+    (C_0 const-decl "Carrier" FA_semantic nil)
+    (inl const-decl "Carrier" FA_semantic nil)
+    (Pi_2 const-decl "Carrier" FA_semantic nil)
+    (one const-decl "Carrier" FA_semantic nil)
+    (one_prime const-decl "Carrier" FA_semantic nil)
+    (converse const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_0 const-decl "Carrier" FA_semantic nil)
+    (Pi_1 const-decl "Carrier" FA_semantic nil)
+    (fork const-decl "Carrier" FA_semantic nil)
+    (composition const-decl "Carrier" FA_semantic nil)
+    (sum const-decl "Carrier" FA_semantic nil)
+    (Memory const-decl "Carrier" FA_semantic nil)
+    (DirtyCache const-decl "Carrier" FA_semantic nil))
+   2499 2310 t shostak)
+  (Memory_DirtyCache_DirtyCacheSystem-2
+   "Needed :quant-simp? t for smash" 3295897204 3296022138
+   ("" (skosimp*)
+    (("" (replace -1)
+      (("" (hide -1)
+        (("" (prop)
+          (("1" (purify-fa 1 t)
+            (("1" (apply-extensionality 1)
+              (("1" (hide 2)
+                (("1" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_0), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_0), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 2)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_0), pair(element(c_0), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t) nil nil)) nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t)
+                            (("2" (replace -2 -5)
+                              (("2"
+                                (replace -5 -6)
+                                (("2"
+                                  (decompose-equality -6)
+                                  (("2"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("2"
+                                      (inst -1 "c_1")
+                                      (("2"
+                                        (prop)
+                                        (("2" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (purify-fa 1 t)
+            (("2" (apply-extensionality 1)
+              (("2" (hide 2)
+                (("2" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_1), x!2)")
+                      (("1" (smash :quant-simp? t)
+                        (("1" (inst 1 "pair(element(c_1), x!1)")
+                          (("1" (smash :quant-simp? t)
+                            (("1" (hide 1)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_1), pair(element(c_1), x!2))")
+                                (("1" (smash :quant-simp? t) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash :quant-simp? t)
+                        (("1" (skosimp*)
+                          (("1" (smash :quant-simp? t)
+                            (("1" (replace -2 -5)
+                              (("1"
+                                (replace -5 -6)
+                                (("1"
+                                  (decompose-equality -6)
+                                  (("1"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("1"
+                                      (inst -1 "c_0")
+                                      (("1"
+                                        (prop)
+                                        (("1" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skosimp*)
+                          (("2" (smash :quant-simp? t) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (DirtyCache const-decl "PRED[Carrier]" FA_semantic nil)
+    (c_1 const-decl "Element" FA_semantic nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (el1 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (c_0 const-decl "Element" FA_semantic nil)
+    (element adt-constructor-decl "[T -> (element?)]" FA_Element_adt
+     nil)
+    (element? adt-recognizer-decl "[FA_Element -> boolean]"
+     FA_Element_adt nil)
+    (el0 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (extend const-decl "R" extend nil)
+    (FALSE const-decl "bool" booleans nil)
+    (pair? adt-recognizer-decl "[FA_Element -> boolean]" FA_Element_adt
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Memory const-decl "PRED[Carrier]" FA_semantic nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (pair adt-constructor-decl "[[FA_Element, FA_Element] -> (pair?)]"
+     FA_Element_adt nil)
+    (t adt-accessor-decl "[(element?) -> T]" FA_Element_adt nil)
+    (empty_intersection_of_types formula-decl nil FA_semantic nil)
+    (C_1 const-decl "Carrier" FA_semantic nil)
+    (inr const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_1 const-decl "Carrier" FA_semantic nil)
+    (C_0 const-decl "Carrier" FA_semantic nil)
+    (inl const-decl "Carrier" FA_semantic nil)
+    (Pi_2 const-decl "Carrier" FA_semantic nil)
+    (one const-decl "Carrier" FA_semantic nil)
+    (one_prime const-decl "Carrier" FA_semantic nil)
+    (converse const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_0 const-decl "Carrier" FA_semantic nil)
+    (Pi_1 const-decl "Carrier" FA_semantic nil)
+    (fork const-decl "Carrier" FA_semantic nil)
+    (composition const-decl "Carrier" FA_semantic nil)
+    (sum const-decl "Carrier" FA_semantic nil)
+    (Memory const-decl "Carrier" FA_semantic nil)
+    (DirtyCache const-decl "Carrier" FA_semantic nil))
+   352733 15150 t shostak)
+  (Memory_DirtyCache_DirtyCacheSystem-1 nil 3295305175 3295305871
+   ("" (skosimp*)
+    (("" (replace -1)
+      (("" (hide -1)
+        (("" (prop)
+          (("1" (purify-fa 1 t)
+            (("1" (apply-extensionality 1)
+              (("1" (hide 2)
+                (("1" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_0), x!2)")
+                      (("1" (smash)
+                        (("1" (inst 1 "pair(element(c_0), x!1)")
+                          (("1" (smash)
+                            (("1" (hide 2)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_0), pair(element(c_0), x!2))")
+                                (("1" (smash) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash)
+                        (("1" (skosimp*) (("1" (smash) nil nil)) nil)
+                         ("2" (skosimp*)
+                          (("2" (smash)
+                            (("2" (replace -2 -5)
+                              (("2"
+                                (replace -6 -5)
+                                (("2"
+                                  (decompose-equality -5)
+                                  (("2"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("2"
+                                      (inst -1 "c_1")
+                                      (("2" (prop) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (purify-fa 1 t)
+            (("2" (apply-extensionality 1)
+              (("2" (hide 2)
+                (("2" (bddsimp)
+                  (("1" (expand "extend")
+                    (("1" (inst 1 "pair(element(c_1), x!2)")
+                      (("1" (smash)
+                        (("1" (inst 1 "pair(element(c_1), x!1)")
+                          (("1" (smash)
+                            (("1" (hide 1)
+                              (("1"
+                                (inst
+                                 1
+                                 "pair(element(c_1), pair(element(c_1), x!2))")
+                                (("1" (smash) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (expand "extend")
+                    (("2" (skosimp*)
+                      (("2" (smash)
+                        (("1" (skosimp*)
+                          (("1" (smash)
+                            (("1" (replace -2 -5)
+                              (("1"
+                                (replace -6 -5)
+                                (("1"
+                                  (decompose-equality -5)
+                                  (("1"
+                                    (lemma
+                                     "empty_intersection_of_types")
+                                    (("1"
+                                      (inst -1 "c_0")
+                                      (("1" (prop) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skosimp*) (("2" (smash) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (DirtyCache const-decl "PRED[Carrier]" FA_semantic nil)
+    (c_1 const-decl "Element" FA_semantic nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (el1 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (c_0 const-decl "Element" FA_semantic nil)
+    (element adt-constructor-decl "[T -> (element?)]" FA_Element_adt
+     nil)
+    (element? adt-recognizer-decl "[FA_Element -> boolean]"
+     FA_Element_adt nil)
+    (el0 adt-accessor-decl "[(pair?) -> FA_Element]" FA_Element_adt
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (extend const-decl "R" extend nil)
+    (FALSE const-decl "bool" booleans nil)
+    (pair? adt-recognizer-decl "[FA_Element -> boolean]" FA_Element_adt
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Memory const-decl "PRED[Carrier]" FA_semantic nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (pair adt-constructor-decl "[[FA_Element, FA_Element] -> (pair?)]"
+     FA_Element_adt nil)
+    (empty_intersection_of_types formula-decl nil FA_semantic nil)
+    (t adt-accessor-decl "[(element?) -> T]" FA_Element_adt nil)
+    (C_1 const-decl "Carrier" FA_semantic nil)
+    (inr const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_1 const-decl "Carrier" FA_semantic nil)
+    (C_0 const-decl "Carrier" FA_semantic nil)
+    (inl const-decl "Carrier" FA_semantic nil)
+    (Pi_2 const-decl "Carrier" FA_semantic nil)
+    (one const-decl "Carrier" FA_semantic nil)
+    (one_prime const-decl "Carrier" FA_semantic nil)
+    (converse const-decl "Carrier" FA_semantic nil)
+    (one_prime_C_0 const-decl "Carrier" FA_semantic nil)
+    (Pi_1 const-decl "Carrier" FA_semantic nil)
+    (fork const-decl "Carrier" FA_semantic nil)
+    (composition const-decl "Carrier" FA_semantic nil)
+    (sum const-decl "Carrier" FA_semantic nil)
+    (Memory const-decl "Carrier" FA_semantic nil)
+    (DirtyCache const-decl "Carrier" FA_semantic nil))
+   3045 2780 nil nil))
+ (mPredicate_TCC1 0
+  (mPredicate_TCC1-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 22 10 nil nil))
+ (mPredicate_TCC2 0
+  (mPredicate_TCC2-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 30 10 nil nil))
+ (mPredicate_TCC3 0
+  (mPredicate_TCC3-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved
+   ((sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   106 40 nil nil))
+ (mPredicate_TCC4 0
+  (mPredicate_TCC4-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 53 10 nil nil))
+ (mPredicate_TCC5 0
+  (mPredicate_TCC5-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved
+   ((sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   60 40 nil nil))
+ (mPredicate_TCC6 0
+  (mPredicate_TCC6-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 50 10 nil nil))
+ (mPredicate_TCC7 0
+  (mPredicate_TCC7-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved
+   ((sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   82 36 nil nil))
+ (mPredicate_TCC8 0
+  (mPredicate_TCC8-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 51 10 nil nil))
+ (mPredicate_TCC9 0
+  (mPredicate_TCC9-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved
+   ((sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   81 40 nil nil))
+ (mFunction__TCC1 0
+  (mFunction__TCC1-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 35 10 nil nil))
+ (mFunction__TCC2 0
+  (mFunction__TCC2-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 52 20 nil nil))
+ (mFunction__TCC3 0
+  (mFunction__TCC3-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   83 60 nil nil))
+ (mFunction__TCC4 0
+  (mFunction__TCC4-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 63 12 nil nil))
+ (mFunction__TCC5 0
+  (mFunction__TCC5-1 nil 3295305175 3506928727
+   ("" (subtype-tcc) nil nil) proved nil 33 20 nil nil))
+ (mFunction__TCC6 0
+  (mFunction__TCC6-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   76 50 nil nil))
+ (mFunction__TCC7 0
+  (mFunction__TCC7-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 35 20 nil nil))
+ (mFunction__TCC8 0
+  (mFunction__TCC8-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   101 60 nil nil))
+ (mFunction__TCC9 0
+  (mFunction__TCC9-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 32 10 nil nil))
+ (mFunction__TCC10 0
+  (mFunction__TCC10-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 33 20 nil nil))
+ (mFunction__TCC11 0
+  (mFunction__TCC11-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   102 56 nil nil))
+ (mFunction__TCC12 0
+  (mFunction__TCC12-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 37 20 nil nil))
+ (mFunction__TCC13 0
+  (mFunction__TCC13-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   77 60 nil nil))
+ (mFunction__TCC14 0
+  (mFunction__TCC14-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 31 10 nil nil))
+ (mFunction__TCC15 0
+  (mFunction__TCC15-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 42 10 nil nil))
+ (mFunction__TCC16 0
+  (mFunction__TCC16-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   106 70 nil nil))
+ (mFunction__TCC17 0
+  (mFunction__TCC17-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 39 20 nil nil))
+ (mFunction__TCC18 0
+  (mFunction__TCC18-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   76 60 nil nil))
+ (mFunction__TCC19 0
+  (mFunction__TCC19-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 34 10 nil nil))
+ (mFunction__TCC20 0
+  (mFunction__TCC20-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 36 20 nil nil))
+ (mFunction__TCC21 0
+  (mFunction__TCC21-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   120 60 nil nil))
+ (mFunction__TCC22 0
+  (mFunction__TCC22-1 nil 3295305175 3506928728
+   ("" (subtype-tcc) nil nil) proved nil 51 20 nil nil))
+ (mFunction__TCC23 0
+  (mFunction__TCC23-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved nil 53 10 nil nil))
+ (mFunction__TCC24 0
+  (mFunction__TCC24-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   107 60 nil nil))
+ (mFunction__TCC25 0
+  (mFunction__TCC25-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved nil 52 10 nil nil))
+ (mFunction__TCC26 0
+  (mFunction__TCC26-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   124 60 nil nil))
+ (mFunction__TCC27 0
+  (mFunction__TCC27-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved nil 52 10 nil nil))
+ (mFunction__TCC28 0
+  (mFunction__TCC28-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   107 50 nil nil))
+ (mFunction__TCC29 0
+  (mFunction__TCC29-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved nil 52 20 nil nil))
+ (mFunction__TCC30 0
+  (mFunction__TCC30-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   125 60 nil nil))
+ (mFunction__TCC31 0
+  (mFunction__TCC31-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved nil 33 10 nil nil))
+ (mFunction__TCC32 0
+  (mFunction__TCC32-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   76 60 nil nil))
+ (mFunction__TCC33 0
+  (mFunction__TCC33-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved nil 37 20 nil nil))
+ (mFunction__TCC34 0
+  (mFunction__TCC34-1 nil 3295305175 3506928729
+   ("" (subtype-tcc) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Carrier type-from-decl nil FA_semantic nil)
+    (Carrier_pred const-decl
+     "[[[FA_Element[Element], FA_Element[Element]] -> boolean] -> boolean]"
+     FA_semantic nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (FA_Element type-decl nil FA_Element_adt nil)
+    (Element nonempty-type-decl nil FA_semantic nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   81 60 nil nil)))
+

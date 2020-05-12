@@ -1,0 +1,1222 @@
+(SpecActions
+ (pre_DirtyCacheWrite_TCC1 0
+  (pre_DirtyCacheWrite_TCC1-1 nil 3311025773 3506928687
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   581 470 nil nil))
+ (post_DirtyCacheWrite_TCC1 0
+  (post_DirtyCacheWrite_TCC1-1 nil 3311025773 3506928688
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   548 470 nil nil))
+ (post_DirtyCacheWrite_TCC2 0
+  (post_DirtyCacheWrite_TCC2-1 nil 3311025773 3506928688
+   ("" (grind) nil nil) proved
+   ((length def-decl "nat" list_props nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil))
+   543 462 nil nil))
+ (post_DirtyCacheWrite_TCC3 0
+  (post_DirtyCacheWrite_TCC3-1 nil 3311025773 3506928689
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil))
+   664 536 nil nil))
+ (post_DirtyCacheWrite_TCC4 0
+  (post_DirtyCacheWrite_TCC4-1 nil 3311025773 3506928689
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   500 446 nil nil))
+ (post_DirtyCacheWrite_TCC5 0
+  (post_DirtyCacheWrite_TCC5-1 nil 3311025773 3506928690
+   ("" (grind) nil nil) proved
+   ((length def-decl "nat" list_props nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   515 476 nil nil))
+ (post_DirtyCacheWrite_TCC6 0
+  (post_DirtyCacheWrite_TCC6-1 nil 3311025773 3506928691
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   672 616 nil nil))
+ (post_DirtyCacheWrite_TCC7 0
+  (post_DirtyCacheWrite_TCC7-1 nil 3311025773 3506928691
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   488 460 nil nil))
+ (post_DirtyCacheWrite_TCC8 0
+  (post_DirtyCacheWrite_TCC8-1 nil 3311025773 3506928692
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   587 550 nil nil))
+ (post_DirtyCacheWrite_TCC9 0
+  (post_DirtyCacheWrite_TCC9-1 nil 3311025773 3506928692
+   ("" (grind) nil nil) proved
+   ((length def-decl "nat" list_props nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   517 476 nil nil))
+ (post_DirtyCacheWrite_TCC10 0
+  (post_DirtyCacheWrite_TCC10-1 nil 3311025773 3506928693
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   617 556 nil nil))
+ (post_DirtyCacheWrite_TCC11 0
+  (post_DirtyCacheWrite_TCC11-1 nil 3311025773 3506928694
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   669 606 nil nil))
+ (post_DirtyCacheWrite_TCC12 0
+  (post_DirtyCacheWrite_TCC12-1 nil 3311025773 3506928694
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   734 706 nil nil))
+ (post_DirtyCacheWrite_TCC13 0
+  (post_DirtyCacheWrite_TCC13-1 nil 3311025773 3506928695
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil))
+   574 526 nil nil))
+ (post_DirtyCacheWrite_TCC14 0
+  (post_DirtyCacheWrite_TCC14-1 nil 3385060402 3506928696
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   620 586 t nil))
+ (post_DirtyCacheWrite_TCC15 0
+  (post_DirtyCacheWrite_TCC15-1 nil 3385060402 3506928696
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   581 550 t nil))
+ (post_DirtyCacheWrite_TCC16 0
+  (post_DirtyCacheWrite_TCC16-1 nil 3385060402 3506928697
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   686 640 t nil))
+ (post_DirtyCacheWrite_TCC17 0
+  (post_DirtyCacheWrite_TCC17-1 nil 3385060402 3506928697
+   ("" (grind) nil nil) proved
+   ((length def-decl "nat" list_props nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil))
+   552 466 t nil))
+ (post_DirtyCacheWrite_TCC18 0
+  (post_DirtyCacheWrite_TCC18-1 nil 3385060402 3506928698
+   ("" (grind) nil nil) proved
+   ((length def-decl "nat" list_props nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   595 486 t nil))
+ (post_DirtyCacheWrite_TCC19 0
+  (post_DirtyCacheWrite_TCC19-1 nil 3385060402 3506928700
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1534 1322 t nil))
+ (DirtyCacheWrite_TCC1 0
+  (DirtyCacheWrite_TCC1-2 "" 3311026099 3506928701 ("" (grind) nil nil)
+   proved
+   ((pre_DirtyCacheWrite const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtyCacheWrite const-decl "[(v?) -> wf_Formula_]"
+     SpecActions nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1400 1336 t shostak)
+  (DirtyCacheWrite_TCC1-1 nil 3311025778 nil ("" (subtype-tcc) nil nil)
+   proved
+   ((pre_DirtyCacheWrite const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtyCacheWrite const-decl "[(v?) -> wf_Formula_]"
+     SpecActions nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   nil nil nil nil))
+ (post_DirtyFlush_TCC1 0
+  (post_DirtyFlush_TCC1-1 nil 3311025773 3506928702
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   700 654 nil nil))
+ (post_DirtyFlush_TCC2 0
+  (post_DirtyFlush_TCC2-1 nil 3311025773 3506928702
+   ("" (grind) nil nil) proved
+   ((length def-decl "nat" list_props nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   505 480 nil nil))
+ (post_DirtyFlush_TCC3 0
+  (post_DirtyFlush_TCC3-1 nil 3311025773 3506928703
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   675 650 nil nil))
+ (post_DirtyFlush_TCC4 0
+  (post_DirtyFlush_TCC4-1 nil 3311025773 3506928704
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   676 630 nil nil))
+ (post_DirtyFlush_TCC5 0
+  (post_DirtyFlush_TCC5-1 nil 3311025773 3506928704
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   743 710 nil nil))
+ (post_DirtyFlush_TCC6 0
+  (post_DirtyFlush_TCC6-1 nil 3311025773 3506928705
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   897 836 nil nil))
+ (post_DirtyFlush_TCC7 0
+  (post_DirtyFlush_TCC7-1 nil 3311025773 3506928707
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1667 1566 nil nil))
+ (DirtyFlush_TCC1 0
+  (DirtyFlush_TCC1-2 "" 3311026133 3506928709 ("" (grind) nil nil)
+   proved
+   ((pre_DirtyFlush const-decl "[(v?) -> wf_Formula_]" SpecActions nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtyFlush const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1688 1592 t shostak)
+  (DirtyFlush_TCC1-1 nil 3311025778 nil ("" (subtype-tcc) nil nil)
+   proved
+   ((pre_DirtyFlush const-decl "[(v?) -> wf_Formula_]" SpecActions nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtyFlush const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   nil nil nil nil))
+ (post_DirtyLoad_TCC1 0
+  (post_DirtyLoad_TCC1-1 nil 3311025773 3506928709 ("" (grind) nil nil)
+   proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   648 606 nil nil))
+ (post_DirtyLoad_TCC2 0
+  (post_DirtyLoad_TCC2-1 nil 3311025773 3506928710 ("" (grind) nil nil)
+   proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   819 676 nil nil))
+ (post_DirtyLoad_TCC3 0
+  (post_DirtyLoad_TCC3-1 nil 3311025773 3506928711 ("" (grind) nil nil)
+   proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   875 796 nil nil))
+ (post_DirtyLoad_TCC4 0
+  (post_DirtyLoad_TCC4-1 nil 3311025773 3506928712 ("" (grind) nil nil)
+   proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1384 1322 nil nil))
+ (DirtyLoad_TCC1 0
+  (DirtyLoad_TCC1-2 "" 3311026159 3506928714 ("" (grind) nil nil)
+   proved
+   ((pre_DirtyLoad const-decl "[(v?) -> wf_Formula_]" SpecActions nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtyLoad const-decl "[(v?) -> wf_Formula_]" SpecActions nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1497 1352 t shostak)
+  (DirtyLoad_TCC1-1 nil 3311025778 nil ("" (subtype-tcc) nil nil)
+   proved
+   ((pre_DirtyLoad const-decl "[(v?) -> wf_Formula_]" SpecActions nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtyLoad const-decl "[(v?) -> wf_Formula_]" SpecActions nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   nil nil nil nil))
+ (post_DirtySetFlush_TCC1 0
+  (post_DirtySetFlush_TCC1-1 nil 3311025773 3506928715
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   701 656 nil nil))
+ (post_DirtySetFlush_TCC2 0
+  (post_DirtySetFlush_TCC2-1 nil 3311025773 3506928715
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (length def-decl "nat" list_props nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions nil)
+    (wf_Program_SKIP name-judgement "wf_Program_" SpecActions nil)
+    (wf_Formula_FALSE name-judgement "wf_Formula_" SpecActions nil)
+    (wf_Formula_TRUE name-judgement "wf_Formula_" SpecActions nil))
+   775 736 nil nil))
+ (post_DirtySetFlush_TCC3 0
+  (post_DirtySetFlush_TCC3-1 nil 3311025773 3506928717
+   ("" (grind) nil nil) proved
+   ((sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1217 1166 nil nil))
+ (DirtySetFlush_TCC1 0
+  (DirtySetFlush_TCC1-2 "" 3311026189 3506928718 ("" (grind) nil nil)
+   proved
+   ((pre_DirtySetFlush const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtySetFlush const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (wf def-decl "boolean" wf_FODL_Language nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list_wf_Term_null name-judgement "list[wf_Term_]" SpecActions
+     nil))
+   1318 1172 t shostak)
+  (DirtySetFlush_TCC1-1 nil 3311025778 nil ("" (subtype-tcc) nil nil)
+   proved
+   ((pre_DirtySetFlush const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (sigFunction_ const-decl "[Function_ -> nat]" FA_Language nil)
+    (Function_ type-decl nil FA_Language nil)
+    (sigPredicate const-decl "[Predicate -> nat]" FA_Language nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (Predicate type-decl nil FA_Language nil)
+    (Variable type-decl nil FA_Language nil)
+    (Metavariable type-decl nil FA_Language nil)
+    (Constant type-decl nil FA_Language nil)
+    (wf_F const-decl "[[f: Function_,
+  {lPrime: list[wf_Term_] | length(lPrime) = sigFunction_(f)}] ->
+   wf_Term_]" wf_FODL_Language nil)
+    (post_DirtySetFlush const-decl "[(v?) -> wf_Formula_]" SpecActions
+     nil)
+    (wf def-decl "boolean" wf_FODL_Language nil))
+   nil nil nil nil)))
+

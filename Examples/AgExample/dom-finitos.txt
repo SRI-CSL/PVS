@@ -1,0 +1,14 @@
+% Dominio finito.
+%    Element: TYPE = {c_0, c_1,
+%                     a_0, a_1, a_2, a_3, a_4, a_5,
+%                     d_0, d_1, d_2, d_3, d_4, d_5}
+
+% Dominio finito
+%    Addr: PRED[FA_Element] = LAMBDA (w: FA_Element): 
+%                               w = element(a0) OR w = element(a1) OR 
+%                               w = element(a2) OR w = element(a3) OR 
+%                               w = element(a4) 
+%    Data: PRED[FA_Element] = LAMBDA (w: FA_Element): 
+%                               w = element(d0) OR w = element(d1) OR 
+%                               w = element(d2) OR w = element(d3) OR 
+%                               w = element(d4) 
