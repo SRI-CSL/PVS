@@ -1,0 +1,156 @@
+% <xmp>
+%Patch files loaded: patch2 version 2.414
+
+$$$pvs-strategies
+(defstep use-lemma (lemma &optional subst (if-match best))
+  (then (use lemma :subst subst :if-match if-match)
+	(if *new-fmla-nums*
+	    (let ((fnum (car *new-fmla-nums*)))
+	      (spread (split fnum)
+		      ((then (let ((fnums *new-fmla-nums*))
+			       (flatten fnums))
+			     (let ((new-fnums *new-fmla-nums*))
+			       (then (replace* new-fnums)
+				     (delete new-fnums)))))))
+	    (skip)))
+  "Introduce LEMMA instance, then does BETA, INST?, and SPLIT on this,
+and then on the main branch a REPLACE* followed by a deletion of any
+remnants of the lemma."
+  "Using and discarding")
+
+(defun cleanup-fnums (fnums)
+  (cond ((consp fnums)(loop for fnum in fnums
+			    collect (if (stringp fnum)
+					(intern fnum)
+					fnum)))
+	((stringp fnums) (list (intern fnums)))
+	((memq fnums '(* + -)) fnums)
+	(t (list fnums))))
+
+(defun gather-fnums (sforms yesnums nonums
+		       &optional (pred #'(lambda (x) T))
+		       (pos 1) (neg -1))
+  (let ((yesnums (cleanup-fnums yesnums))
+	(nonums (cleanup-fnums nonums)))
+    (gather-fnums* sforms yesnums nonums pred pos neg)))
+
+(defun gather-fnums* (seq yesnums nonums
+		       pred pos neg)
+   (cond ((null seq) nil)
+	 ((not-expr? (formula (car seq)))
+	  (if (and (in-sformnums? (car seq) pos neg yesnums)
+		   (not (in-sformnums? (car seq) pos neg nonums))
+		   (funcall pred (car seq)))
+	      (cons neg
+		    (gather-fnums* (cdr seq) yesnums nonums pred
+				pos (1- neg)))
+	      (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)))) 
+	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
+		     (not (in-sformnums? (car seq) pos neg nonums))
+		     (funcall pred (car seq)))
+	      (cons pos
+		    (gather-fnums* (cdr seq) yesnums nonums
+				pred (1+ pos) neg))
+	      (gather-fnums* (cdr seq) yesnums nonums pred
+			  (1+ pos)  neg)))))
+
+(defstep auto-rewrite-antecedents ()
+   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+                              '- nil)))
+      (auto-rewrite :names fnums))
+    "Help string with examples"
+    "Commentary string")
+
+
+$$$detect110.pvs
+detect110: THEORY
+
+  BEGIN
+
+   IMPORTING components, quantifier_rules
+
+  t: VAR time
+
+  e, a, l1, l2, l3, q4, l5, l6, q7: VAR signal[bool]
+
+  detect110_spec(e, a): bool =
+    (FORALL t: a(t+2) = (NOT e(t+2) & e(t+1) & e(t)))
+
+  
+  detect110_imp(e, a): bool =
+    (EXISTS (l1, l2, l3, q4, l5, l6, q7):
+      (FORALL t: NOTp(e(t), l1(t)) &
+                 NOTp(l5(t), l6(t)) &
+                 ANDp(e(t), l5(t), l2(t)) &
+                 ANDp(e(t), l6(t), l3(t)) &
+                 DELAY(l2, q4) &
+                 DELAY(l3, q7) &
+                 ANDp(l1(t), q4(t), a(t)) &
+                 ORp(q4(t), q7(t), l5(t))))
+
+   detect110_correct: LEMMA
+      detect110_imp(e, a) IMPLIES detect110_spec(e, a)
+
+  END detect110
+
+
+$$$detect110.prf
+(|detect110| (|detect110_correct| "" (SKOSIMP) (("" (AUTO-REWRITE-THEORIES "detect110" "components" "quantifier_rules") (("" (ASSERT *) (("" (SKOSIMP*) (("" (AUTO-REWRITE-ANTECEDENTS) (("" (ASSERT *) (("" (BDDSIMP) (("" (PROPAX) NIL))))))))))))))))
+
+$$$quantifier_rules.pvs
+quantifier_rules: THEORY
+
+  BEGIN
+  IMPORTING signal
+
+   forall_and: LEMMA (FORALL (A, B: signal[bool]):
+                     (FORALL (t : time): A(t) & B(t)) =
+                     ((FORALL (t: time) : A(t)) &
+                      (FORALL (t : time) : B(t))))
+
+   forall_triv: LEMMA (FORALL (A : bool):
+                (FORALL (t : time) : A) = A)
+
+  END quantifier_rules
+
+$$$quantifier_rules.prf
+(|quantifier_rules| (|forall_and| "" (GRIND) NIL)
+ (|forall_triv| "" (SKOSIMP*)
+  (("" (IFF)
+    (("" (PROP) (("1" (INST -1 0) NIL) ("2" (SKOSIMP*) NIL))))))))
+
+$$$time.pvs
+time: THEORY
+
+  BEGIN
+
+   time: TYPE = nat
+
+  END time
+
+$$$signal.pvs
+signal[val: TYPE]: THEORY
+
+  BEGIN
+   IMPORTING time
+ 
+   signal: TYPE = [time -> val]
+
+  END signal
+
+$$$components.pvs
+components: THEORY
+
+  BEGIN
+    IMPORTING signal
+
+  t: VAR time
+  i, j, i0, j0: VAR bool
+  e, a: VAR signal[bool]
+
+  NOTp(i, j): bool = (j IFF NOT i)
+  ANDp(i0, j0, i): bool = (i IFF (i0 & j0))
+  ORp(i0, j0, i): bool = (i IFF (i0 OR j0))
+  DELAY(e, a): bool = (FORALL t: (a(0) = FALSE) & (a(t+1) = e(t)))
+
+  END components

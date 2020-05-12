@@ -1,0 +1,728 @@
+% For HTML <xmp>
+%Patch files loaded: patch2 version 2.414
+
+$$$pvs-strategies
+(defstep use-lemma (lemma &optional subst (if-match best))
+  (then (use lemma :subst subst :if-match if-match)
+	(if *new-fmla-nums*
+	    (let ((fnum (car *new-fmla-nums*)))
+	      (spread (split fnum)
+		      ((then (let ((fnums *new-fmla-nums*))
+			       (flatten fnums))
+			     (let ((new-fnums *new-fmla-nums*))
+			       (then (replace* new-fnums)
+				     (delete new-fnums)))))))
+	    (skip)))
+  "Introduce LEMMA instance, then does BETA, INST?, and SPLIT on this,
+and then on the main branch a REPLACE* followed by a deletion of any
+remnants of the lemma."
+  "Using and discarding")
+
+(defun cleanup-fnums (fnums)
+  (cond ((consp fnums)(loop for fnum in fnums
+			    collect (if (stringp fnum)
+					(intern fnum)
+					fnum)))
+	((stringp fnums) (list (intern fnums)))
+	((memq fnums '(* + -)) fnums)
+	(t (list fnums))))
+
+(defun gather-fnums (sforms yesnums nonums
+		       &optional (pred #'(lambda (x) T))
+		       (pos 1) (neg -1))
+  (let ((yesnums (cleanup-fnums yesnums))
+	(nonums (cleanup-fnums nonums)))
+    (gather-fnums* sforms yesnums nonums pred pos neg)))
+
+(defun gather-fnums* (seq yesnums nonums
+		       pred pos neg)
+   (cond ((null seq) nil)
+	 ((not-expr? (formula (car seq)))
+	  (if (and (in-sformnums? (car seq) pos neg yesnums)
+		   (not (in-sformnums? (car seq) pos neg nonums))
+		   (funcall pred (car seq)))
+	      (cons neg
+		    (gather-fnums* (cdr seq) yesnums nonums pred
+				pos (1- neg)))
+	      (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)))) 
+	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
+		     (not (in-sformnums? (car seq) pos neg nonums))
+		     (funcall pred (car seq)))
+	      (cons pos
+		    (gather-fnums* (cdr seq) yesnums nonums
+				pred (1+ pos) neg))
+	      (gather-fnums* (cdr seq) yesnums nonums pred
+			  (1+ pos)  neg)))))
+
+(defstep auto-rewrite-antecedents ()
+   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+                              '- nil)))
+      (auto-rewrite :names fnums))
+    "Help string with examples"
+    "Commentary string")
+
+
+$$$verification.pvs
+verification [wordt, addrt: TYPE+]: THEORY
+
+BEGIN
+
+IMPORTING trace_equiv,
+      wordth[wordt, addrt],
+      soft[wordt, addrt],
+      hard2[wordt, addrt],
+      verification_rewrites[wordt, addrt],
+      microrom_rewrite[wordt, addrt]
+    
+ hs: VAR hard_statet
+ ir, acc: VAR wordt
+ mpc: VAR microaddrt
+ opcode: VAR opcodet
+ i,j,k: VAR nat
+
+ iteratehard ((hs: hard_statet), (cycle: nat)): RECURSIVE hard_statet
+   = (IF cycle = 0 THEN hs
+      ELSE iteratehard(hardstep(hs), cycle-1) ENDIF)
+      MEASURE (LAMBDA hs, i: i)
+
+ start_condn ((hs: hard_statet)): bool
+   = (mpcp(hs) = 0)
+
+  visible_hard_state: TYPE = {hs: hard_statet | start_condn(hs)}
+
+  vhs: VAR visible_hard_state
+
+  oracle(vhs): nat =
+   LET opcode = instr_part((memp(vhs))(addr_part(pcp(vhs))))
+    IN IF jump_op?(opcode) THEN 4
+       ELSIF jump_zero_op?(opcode) THEN IF is_zero(accp(vhs)) THEN 5 ELSE 6 ENDIF
+       ELSIF load_op?(opcode) THEN 6
+       ELSIF store_op?(opcode) THEN 6
+       ELSIF add_op?(opcode) THEN 8
+       ELSIF nop?(opcode) THEN 5
+       ELSE 8 ENDIF
+
+  I(vhs): visible_hard_state = iteratehard(vhs, oracle(vhs))
+
+ abs (vhs): soft_statet
+   = (# mempart := memp(vhs),
+        pcpart := pcp(vhs),
+        accpart := accp(vhs) #)
+
+  mem_abs: LEMMA mempart(abs(vhs)) = memp(vhs)
+  pc_abs: LEMMA pcpart(abs(vhs)) = pcp(vhs)
+  acc_abs: LEMMA accpart(abs(vhs)) = accp(vhs)
+
+  verif: THEORY = trace_equiv[soft_statet, softstep,
+                              visible_hard_state, I,
+                              abs]
+
+END verification   
+
+$$$verification.prf
+(|verification| (|iteratehard_TCC1| "" (GROUND) (("" (SKOLEM!) (("" (APPLY (THEN (GROUND) (ASSERT))) NIL))))) (|iteratehard_TCC2| "" (TERMINATION-TCC) NIL) (I_TCC1 "" (SKOSIMP) (("" (TYPEPRED "vhs!1") (("" (AUTO-REWRITE-THEORIES ("verification" :EXCLUDE ("oracle")) "verification_rewrites[wordt, addrt]" ("soft[wordt, addrt]" :EXCLUDE ("softstep")) ("hard2[wordt, addrt]" :EXCLUDE ("hardstep"))) (("" (AUTO-REWRITE! "oracle") (("" (ASSERT) (("" (LIFT-IF) (("" (PROP) (("1" (RECORD) (("1" (ASSERT) NIL))) ("2" (RECORD) (("2" (ASSERT) NIL))) ("3" (RECORD) (("3" (ASSERT) NIL))) ("4" (RECORD) (("4" (ASSERT) NIL))) ("5" (RECORD) (("5" (ASSERT) NIL))) ("6" (RECORD) (("6" (ASSERT) NIL))) ("7" (RECORD) (("7" (ASSERT) NIL))) ("8" (RECORD) (("8" (ASSERT) NIL))))))))))))))))) (|mem_abs| "" (SKOSIMP) (("" (EXPAND "abs") (("" (PROPAX) NIL))))) (|pc_abs| "" (SKOSIMP) (("" (EXPAND "abs") (("" (PROPAX) NIL))))) (|acc_abs| "" (SKOSIMP) (("" (EXPAND "abs") (("" (PROPAX) NIL))))) (|verif_TCC1| "" (EXPAND "surjective?") (("" (SKOSIMP) (("" (INST 1 "(epsilon[hard_statet](LAMBDA (hs: hard_statet): TRUE))
+                       WITH [mpcp := 0,
+                             memp := mempart(y!1),
+                             pcp  := pcpart(y!1),
+                             accp := accpart(y!1)]") (("1" (EXPAND "abs") (("1" (ASSERT) (("1" (APPLY-EXTENSIONALITY) NIL))))) ("2" (EXPAND "start_condn") (("2" (PROPAX) NIL))))))))) (|verif_TCC2| "" (SKOSIMP) (("" (TYPEPRED "s!1") (("" (APPLY (THEN@ (AUTO-REWRITE! "oracle" "abs" "I" "start_condn") (ASSERT) (LIFT-IF) (ASSERT -) (AUTO-REWRITE -1) (HIDE -1) (THEN* (PROP) (THEN@ (AUTO-REWRITE-THEORIES "verification" "verification_rewrites[wordt, addrt]" "soft[wordt, addrt]" ("hard2[wordt, addrt]" :EXCLUDE ("hardstep" "microrom")) "microrom_rewrite[wordt, addrt]") (RECORD) (REPEAT (ASSERT)))))) NIL))))))
+
+$$$microrom_rewrite.pvs
+microrom_rewrite[wordt, addrt: TYPE+]: THEORY
+
+BEGIN
+
+IMPORTING hard2[wordt, addrt]
+
+  src0: LEMMA src(microrom(0)) = pc
+  dstn0: LEMMA dstn(microrom(0)) = mar
+  test0: LEMMA test(microrom(0)) = inc_microp
+  next0: LEMMA next(microrom(0)) = 0
+
+  src1: LEMMA src(microrom(1)) = mem
+  dstn1: LEMMA dstn(microrom(1)) = ir
+  test1: LEMMA test(microrom(1)) = inc_microp
+  next1: LEMMA next(microrom(1)) = 0
+
+  src2: LEMMA src(microrom(2)) = ir
+  dstn2: LEMMA dstn(microrom(2)) = mar
+  test2: LEMMA test(microrom(2)) = jop_microp
+  next2: LEMMA next(microrom(2)) = 0
+
+  src3: LEMMA src(microrom(3)) = none
+  dstn3: LEMMA dstn(microrom(3)) = none
+  test3: LEMMA test(microrom(3)) = jnz_microp
+  next3: LEMMA next(microrom(3)) = 10
+
+  src4: LEMMA src(microrom(4)) = ir
+  dstn4: LEMMA dstn(microrom(4)) = pc
+  test4: LEMMA test(microrom(4)) = jmp_microp
+  next4: LEMMA next(microrom(4)) = 0
+
+  src5: LEMMA src(microrom(5)) = acc
+  dstn5: LEMMA dstn(microrom(5)) = arg
+  test5: LEMMA test(microrom(5)) = jmp_microp
+  next5: LEMMA next(microrom(5)) = 12
+
+  src6: LEMMA src(microrom(6)) = acc
+  dstn6: LEMMA dstn(microrom(6)) = arg
+  test6: LEMMA test(microrom(6)) = jmp_microp
+  next6: LEMMA next(microrom(6)) = 13
+
+  src7: LEMMA src(microrom(7)) = mem
+  dstn7: LEMMA dstn(microrom(7)) = acc
+  test7: LEMMA test(microrom(7)) = jmp_microp
+  next7: LEMMA next(microrom(7)) = 10
+
+  src8: LEMMA src(microrom(8)) = acc
+  dstn8: LEMMA dstn(microrom(8)) = mem
+  test8: LEMMA test(microrom(8)) = jmp_microp
+  next8: LEMMA next(microrom(8)) = 10
+
+  src9: LEMMA src(microrom(9)) = none
+  dstn9: LEMMA dstn(microrom(9)) = none
+  test9: LEMMA test(microrom(9)) = inc_microp
+  next9: LEMMA next(microrom(9)) = 0
+
+  src10: LEMMA src(microrom(10)) = pc
+  dstn10: LEMMA dstn(microrom(10)) = alu_inc
+  test10: LEMMA test(microrom(10)) = inc_microp
+  next10: LEMMA next(microrom(10)) = 0
+
+  src11: LEMMA src(microrom(11)) = buf
+  dstn11: LEMMA dstn(microrom(11)) = pc
+  test11: LEMMA test(microrom(11)) = jmp_microp
+  next11: LEMMA next(microrom(11)) = 0
+
+  src12: LEMMA src(microrom(12)) = mem
+  dstn12: LEMMA dstn(microrom(12)) = alu_add
+  test12: LEMMA test(microrom(12)) = jmp_microp
+  next12: LEMMA next(microrom(12)) = 14
+
+  src13: LEMMA src(microrom(13)) = mem
+  dstn13: LEMMA dstn(microrom(13)) = alu_sub
+  test13: LEMMA test(microrom(13)) = inc_microp
+  next13: LEMMA next(microrom(13)) = 0
+
+  src14: LEMMA src(microrom(14)) = buf
+  dstn14: LEMMA dstn(microrom(14)) = acc
+  test14: LEMMA test(microrom(14)) = jmp_microp
+  next14: LEMMA next(microrom(14)) = 10
+
+
+
+END microrom_rewrite
+
+$$$microrom_rewrite.prf
+(|microrom_rewrite| (IMPORTING1_TCC1 "" (EXISTENCE-TCC)) (IMPORTING1_TCC2 "" (EXISTENCE-TCC)) (|src0_TCC1| "" (SUBTYPE-TCC) NIL) (|src0| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn0| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test0| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next0| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src1_TCC1| "" (SUBTYPE-TCC) NIL) (|src1| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn1| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test1| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next1| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src2_TCC1| "" (SUBTYPE-TCC) NIL) (|src2| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn2| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test2| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next2| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src3_TCC1| "" (SUBTYPE-TCC) NIL) (|src3| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn3| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test3| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next3| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src4_TCC1| "" (SUBTYPE-TCC) NIL) (|src4| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn4| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test4| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next4| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src5_TCC1| "" (SUBTYPE-TCC) NIL) (|src5| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn5| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test5| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next5| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src6_TCC1| "" (SUBTYPE-TCC) NIL) (|src6| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn6| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test6| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next6| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src7_TCC1| "" (SUBTYPE-TCC) NIL) (|src7| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn7| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test7| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next7| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src8_TCC1| "" (SUBTYPE-TCC) NIL) (|src8| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn8| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test8| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next8| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src9_TCC1| "" (SUBTYPE-TCC) NIL) (|src9| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn9| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test9| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next9| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src10_TCC1| "" (SUBTYPE-TCC) NIL) (|src10| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn10| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test10| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next10| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src11_TCC1| "" (SUBTYPE-TCC) NIL) (|src11| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn11| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test11| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next11| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src12_TCC1| "" (SUBTYPE-TCC) NIL) (|src12| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn12| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test12| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next12| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src13_TCC1| "" (SUBTYPE-TCC) NIL) (|src13| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn13| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test13| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next13| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|src14_TCC1| "" (SUBTYPE-TCC) NIL) (|src14| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|dstn14| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|test14| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))) (|next14| "" (AUTO-REWRITE-THEORY "hard2[wordt, addrt]") (("" (ASSERT) NIL))))
+$$$verification_rewrites.pvs
+verification_rewrites[wordt, addrt: TYPE+]: THEORY
+
+BEGIN
+
+  IMPORTING hard2[wordt, addrt]
+
+  hs: VAR hard_statet
+        
+   mem_hard: LEMMA
+   memp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_mem(omem, minstrn, omar, busvalue)
+
+   pc_hard: LEMMA
+   pcp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_pc(opc, busvalue, minstrn)
+
+   acc_hard: LEMMA
+   accp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_acc(oacc, busvalue, minstrn)
+
+   ir_hard: LEMMA
+   irp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_ir(oir, busvalue, minstrn)
+
+   mar_hard: LEMMA
+   marp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_mar(omar, busvalue, minstrn)
+
+   arg_hard: LEMMA
+   argp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_arg(oarg, busvalue, minstrn)
+
+   buf_hard: LEMMA
+   bufp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_buf(oarg, busvalue, minstrn)
+
+   mpc_hard: LEMMA
+   mpcp(hardstep(hs)) =
+     LET omem = memp(hs),
+          opc = pcp(hs),
+          oacc = accp(hs),
+          oir = irp(hs),
+          omar = marp(hs),
+          oarg = argp(hs),
+          obuf = bufp(hs),
+          ompc = mpcp(hs),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN update_mpc(ompc, oacc, oir, microrom(ompc))
+
+END verification_rewrites
+
+$$$verification_rewrites.prf
+(|verification_rewrites| (IMPORTING1_TCC1 "" (EXISTENCE-TCC)) (IMPORTING1_TCC2 "" (EXISTENCE-TCC)) (|mem_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|pc_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|acc_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|ir_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|mar_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|arg_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|buf_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))) (|mpc_hard| "" (SKOSIMP) (("" (AUTO-REWRITE "hardstep") (("" (ASSERT) NIL))))))
+$$$hard2.pvs
+hard2[wordt, addrt: TYPE+]: THEORY
+ BEGIN
+   IMPORTING wordth[wordt, addrt]
+ 
+ %% The Hardware
+ %% The ALU Instruction Codes
+
+% aluopt: TYPE = {inc, add, sub}
+ 
+  srcNdstn:
+    TYPE = {pc, mem, ir, acc,% source and destn for bus
+       buf,% source only
+       mar, arg, alu_add, alu_sub, alu_inc,% destn only
+       none}
+  
+  alu((aluop: srcNdstn), (arg1: wordt), (arg2: wordt)): wordt =
+    CASES aluop OF
+       alu_inc: word_add1(arg2),
+       alu_add: word_plus(arg1, arg2),
+       alu_sub: word_diff(arg1, arg2)
+       ELSE anything ENDCASES
+  
+  srconly: pred[[srcNdstn]] = (LAMBDA (x: srcNdstn): buf?(x))
+  
+  dstnonly: pred[[srcNdstn]] =
+    (LAMBDA (x: srcNdstn): CASES x OF
+                    mar : TRUE,
+                    arg : TRUE,
+                    alu_add: TRUE,
+                    alu_sub: TRUE,
+                    alu_inc: TRUE
+                    ELSE FALSE ENDCASES)
+  
+  fromt: TYPE = srcNdstn %{x: srcNdstn | NOT (dstnonly(x))}
+  
+  tot: TYPE = srcNdstn %{x: srcNdstn | NOT (srconly(x))}
+  
+  testt: TYPE = {inc_microp, jnz_microp, jop_microp, jmp_microp}
+  
+  microaddrt: TYPE = {i: nat | 0 <= i & i < 15} CONTAINING 0
+  
+  microinstrnt:
+    TYPE = [# src: fromt, dstn: tot, test: testt, next: microaddrt #]
+  
+  microrom: [microaddrt -> microinstrnt] =
+    (LAMBDA (mpc: microaddrt):
+      IF mpc = 0
+        THEN (# src := pc,
+                dstn := mar,
+                test := inc_microp,
+                next := 0 #)
+      ELSIF mpc = 1 THEN
+        (# src := mem,
+           dstn := ir,
+           test := inc_microp,
+           next := 0 #)
+      ELSIF mpc = 2 THEN
+        (# src := ir,
+           dstn := mar,
+           test := jop_microp,
+           next := 0 #)
+      ELSIF mpc = 3 THEN
+        (# src := none,
+           dstn := none,
+           test := jnz_microp,
+           next := 10 #)
+      ELSIF mpc = 4 THEN
+        (# src := ir,
+           dstn := pc,
+           test := jmp_microp,
+           next := 0 #)
+      ELSIF mpc = 5 THEN
+        (# src := acc,
+           dstn := arg,
+           test := jmp_microp,
+           next := 12 #)
+      ELSIF mpc = 6 THEN
+        (# src := acc,
+           dstn := arg,
+           test := jmp_microp,
+           next := 13 #)
+      ELSIF mpc = 7 THEN
+        (# src := mem,
+           dstn := acc,
+           test := jmp_microp,
+           next := 10 #)
+      ELSIF mpc = 8 THEN
+        (# src := acc,
+           dstn := mem,
+           test := jmp_microp,
+           next := 10 #)
+      ELSIF mpc = 9 THEN
+        (# src := none,
+           dstn := none,
+           test := inc_microp,
+           next := 0 #)
+      ELSIF mpc = 10 THEN
+        (# src := pc,
+           dstn := alu_inc,
+           test := inc_microp,
+           next := 0 #)
+      ELSIF mpc = 11 THEN
+        (# src := buf,
+           dstn := pc,
+           test := jmp_microp,
+           next := 0 #)
+      ELSIF mpc = 12 THEN
+        (# src := mem,
+           dstn := alu_add,
+           test := jmp_microp,
+           next := 14 #)
+      ELSIF mpc = 13 THEN
+        (# src := mem,
+           dstn := alu_sub,
+           test := inc_microp,
+           next := 0 #)
+      ELSE (# src := buf,
+           dstn := acc,
+           test := jmp_microp,
+           next := 10 #)
+ %    ELSE (# src := none, dstn := none, test := jmp_microp, next := 0 #)
+      ENDIF
+    )
+  
+   %The bus value
+   bus ((src: fromt), (memv: memt),
+        (pcv, accv, irv, marv, argv, bufv: wordt)): wordt =
+     CASES src OF
+      mem : memv(addr_part(marv)),
+      pc : pcv,
+      ir : irv,
+      mar: marv,
+      arg: argv,
+      buf: bufv,
+      acc: accv
+      ELSE anything ENDCASES
+ 
+   update_mem ((memv: memt), (minstrn: microinstrnt),
+               (mar, bus: wordt)): memt =
+     CASES (dstn(minstrn)) OF
+        mem: memv WITH [(addr_part(mar)) := bus]
+        ELSE memv ENDCASES
+
+   update_buf ((arg, bus: wordt), (minstrn: microinstrnt)): wordt =
+     alu(dstn(minstrn), arg, bus)
+   
+   update_arg ((argv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES (dstn(minstrn)) OF
+       arg: bus
+       ELSE argv ENDCASES
+
+   update_mar ((marv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       mar: bus
+       ELSE marv ENDCASES
+
+  rel_entry_point ((opcode: opcodet)): microaddrt =
+    CASES opcode OF
+       jump_zero_op: 0,
+       jump_op: 1,
+       add_op: 2,
+       sub_op: 3,
+       load_op: 4,
+       store_op: 5     
+       ELSE 7 ENDCASES
+
+
+  update_mpc ((mpc: microaddrt), (acc, ir: wordt),
+               (minstrn: microinstrnt)): nat =
+     CASES test(minstrn) OF
+       inc_microp: mpc+1,
+       jnz_microp: IF is_zero(acc) THEN mpc+1
+                     ELSE next(minstrn) ENDIF,
+       jop_microp: (mpc + 1) + rel_entry_point(instr_part(ir))
+       ELSE next(minstrn) ENDCASES
+
+  update_ir ((irv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       ir: bus
+       ELSE irv ENDCASES
+
+  update_acc ((accv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       acc: bus
+       ELSE accv ENDCASES
+
+  update_pc ((pcv, bus: wordt), (minstrn: microinstrnt)): wordt =
+     CASES dstn(minstrn) OF
+       pc: bus
+       ELSE pcv ENDCASES
+
+  hard_statet: TYPE =
+    [# memp: memt, pcp, accp, irp, marp, argp, bufp: wordt,
+                                           mpcp: microaddrt #]
+
+  hardstep ((hard_state: hard_statet)): hard_statet
+    = LET omem = memp(hard_state),
+          opc = pcp(hard_state),
+          oacc = accp(hard_state),
+          oir = irp(hard_state),
+          omar = marp(hard_state),
+          oarg = argp(hard_state),
+          obuf = bufp(hard_state),
+          ompc = mpcp(hard_state),
+          minstrn = microrom(ompc),
+          busvalue = bus(src(minstrn), omem, opc, oacc,
+                         oir, omar, oarg, obuf)
+      IN
+        (# memp := update_mem(omem, minstrn, omar, busvalue),
+           pcp := update_pc(opc, busvalue, minstrn),
+           accp := update_acc(oacc, busvalue,  minstrn),
+           irp := update_ir(oir, busvalue, minstrn),
+           marp := update_mar(omar, busvalue, minstrn),
+           argp := update_arg(oarg, busvalue, minstrn),
+           bufp := update_buf(oarg, busvalue, minstrn),
+           mpcp := update_mpc(ompc, oacc, oir, microrom(ompc)) #)
+        
+       
+   
+
+  
+ END hard2
+
+$$$hard2.prf
+(|hard2| (|microaddrt_TCC1| "" (SUBTYPE-TCC) NIL) (|microrom_TCC1| "" (GROUND) NIL) (|microrom_TCC2| "" (SUBTYPE-TCC) NIL) (|microrom_TCC3| "" (SUBTYPE-TCC) NIL) (|microrom_TCC4| "" (SUBTYPE-TCC) NIL) (|microrom_TCC5| "" (SUBTYPE-TCC) NIL) (|microrom_TCC6| "" (SUBTYPE-TCC) NIL) (|microrom_TCC7| "" (SUBTYPE-TCC) NIL) (|rel_entry_point_TCC1| "" (SUBTYPE-TCC) NIL) (|rel_entry_point_TCC2| "" (SUBTYPE-TCC) NIL) (|rel_entry_point_TCC3| "" (SUBTYPE-TCC) NIL) (|rel_entry_point_TCC4| "" (SUBTYPE-TCC) NIL) (|rel_entry_point_TCC5| "" (SUBTYPE-TCC) NIL) (|rel_entry_point_TCC6| "" (SUBTYPE-TCC) NIL) (|hardstep_TCC1| "" (SKOSIMP) (("" (TYPEPRED "mpcp(hard_state!1)") (("" (AUTO-REWRITE! "update_mpc" "microrom") (("" (ASSERT) (("" (LIFT-IF) (("" (APPLY (THEN* (LIFT-IF) (ASSERT))) (("" (EXPAND "rel_entry_point") (("" (APPLY (REPEAT (LIFT-IF) (ASSERT))) (("" (GROUND) NIL))))))))))))))))))
+$$$soft.pvs
+soft[wordt, addrt: TYPE+]: THEORY
+ BEGIN
+ IMPORTING wordth[wordt, addrt]
+ 
+ current_instr((pc: wordt), (mem: memt)): wordt = mem(addr_part(pc))
+ 
+ current_instr_type((pc: wordt), (mem: memt)):
+   opcodet = instr_part(current_instr(pc, mem))
+ 
+ current_instr_addr((pc: wordt), (mem: memt)):
+   addrt = addr_part(current_instr(pc, mem))
+
+  soft_update_mem((mem: memt), (pc: wordt), (acc: wordt)): memt =
+   CASES current_instr_type(pc, mem) OF
+      store_op: mem WITH [(addr_part(current_instr(pc, mem))) := acc]
+      ELSE mem ENDCASES
+  
+   soft_update_pc((mem: memt), (pc: wordt), (acc: wordt)): wordt =
+     CASES current_instr_type(pc, mem) OF
+       jump_op: (current_instr(pc, mem)),
+       jump_zero_op: IF is_zero(acc) THEN current_instr(pc, mem)
+                       ELSE word_add1(pc) ENDIF
+       ELSE word_add1(pc) ENDCASES
+   
+   soft_update_acc((mem: memt), (pc: wordt), (acc: wordt)): wordt =
+     LET
+       opcode = current_instr_type(pc, mem),
+       operand = mem(current_instr_addr(pc, mem))
+      IN
+       CASES opcode OF
+         load_op: operand,
+         add_op : word_plus(acc, operand),
+         sub_op : word_diff(acc, operand)
+         ELSE acc ENDCASES
+
+ 
+  soft_statet: TYPE = [# mempart: memt, pcpart: wordt, accpart: wordt #]
+ 
+  softstep((soft_state: soft_statet)): soft_statet =
+    LET
+       omem = mempart(soft_state), opc = pcpart(soft_state), oacc = accpart(soft_state)
+      IN
+      (# mempart := soft_update_mem(omem, opc, oacc),
+         pcpart := soft_update_pc(omem, opc, oacc),
+         accpart := soft_update_acc(omem, opc, oacc) #)
+
+END soft
+
+$$$wordth.pvs
+wordth [wordt1, addrt1: TYPE+]: THEORY
+BEGIN
+
+ opcodet:
+
+ TYPE = {jump_op, jump_zero_op, add_op, sub_op, load_op, store_op, nop}
+ 
+ w1, w2: VAR wordt1	
+ instr_part: [wordt1 -> opcodet]
+ 
+ memt: TYPE = [addrt1 -> wordt1]
+
+  addr_part: [wordt1 -> addrt1]
+  word_add1: [wordt1 -> wordt1]
+  word_plus: [wordt1, wordt1 -> wordt1]
+  word_diff: [wordt1, wordt1 -> wordt1]
+  is_zero: [wordt1 -> bool]
+
+  anything: wordt1
+
+  word_axiom: AXIOM
+               (addr_part(w1) = addr_part(w2)) IMPLIES
+                      (addr_part(word_add1(w1)) = addr_part(word_add1(w2)))
+
+END wordth
+
+$$$wordth.prf
+(|wordth| (|addr_part_TCC1| "" (EXISTENCE-TCC)) (|word_add1_TCC1| "" (EXISTENCE-TCC)) (|word_plus_TCC1| "" (EXISTENCE-TCC)) (|anything_TCC1| "" (EXISTENCE-TCC)))
+$$$traces.pvs
+traces [state: TYPE]: THEORY
+
+BEGIN
+
+  i, n: VAR nat
+
+  next_type: TYPE = function[state -> state]
+
+  next: VAR next_type
+
+  s: VAR state
+
+  next_to_the_n (next, s, n): RECURSIVE state =
+    IF n = 0 THEN s
+       ELSE next_to_the_n(next, next(s), n-1)
+    ENDIF
+  MEASURE (LAMBDA next, s, n: n)
+
+    next_to_the_n_lem_0: LEMMA
+      next_to_the_n(next, next(s), n) = next_to_the_n(next, s, n+1)
+
+ next_to_the_n_lem_1: LEMMA
+   next_to_the_n (next, s, n) =
+    IF n = 0 THEN s
+       ELSE next_to_the_n(next, next(s), n-1)
+    ENDIF
+
+  next_to_the_n_lem: LEMMA
+     n > 0 IMPLIES
+       next_to_the_n(next, s, n) = next(next_to_the_n(next, s, n-1))
+
+  trace(next, s): sequence[state] =
+    (LAMBDA i: next_to_the_n(next, s, i))
+
+END traces
+
+$$$traces.prf
+(|traces| (|next_to_the_n_TCC1| "" (SUBTYPE-TCC) NIL) (|next_to_the_n_TCC2| "" (TERMINATION-TCC) NIL) (|next_to_the_n_lem_0| "" (SKOSIMP) (("" (NAME-REPLACE "blah" "next_to_the_n(next!1, next!1(s!1), n!1)") (("" (EXPAND "next_to_the_n") (("" (REVEAL -1) (("" (REPLACE -1 * RL) (("" (PROPAX) NIL))))))))))) (|next_to_the_n_lem_1| "" (SKOSIMP) (("" (REWRITE "next_to_the_n") NIL))) (|next_to_the_n_lem_TCC1| "" (SUBTYPE-TCC) NIL) (|next_to_the_n_lem| "" (INDUCT-AND-REWRITE! "n" 1) (("" (CASE "j!1 = 0") (("1" (STOP-REWRITE) (("1" (EXPAND "next_to_the_n") (("1" (ASSERT) NIL))))) ("2" (NAME-REPLACE "blah" "next_to_the_n(next!1, next!1(s!1), j!1)") (("2" (EXPAND "next_to_the_n" 2) (("2" (ASSERT) NIL))))))))))
+
+$$$trace_equiv.pvs
+trace_equiv [Astate: TYPE, 
+             A: [Astate -> Astate],
+             Istate: TYPE,
+             I: [Istate -> Istate],
+             Abst:  (surjective?[Istate, Astate])]: THEORY
+BEGIN
+
+ASSUMING
+
+  Commutes: ASSUMPTION
+     FORALL (s: Istate): Abst(I(s)) = A(Abst(s))
+
+ENDASSUMING
+
+IMPORTING traces[Astate], traces[Istate]
+
+  r : VAR Astate
+  s : VAR Istate
+
+  Atrace(r): sequence[Astate] =
+    traces[Astate].trace(A, r)
+
+  Itrace(s): sequence[Istate] =
+    traces[Istate].trace(I, s)
+
+  trace_equiv_aux: LEMMA FORALL (i: nat):
+    map(Abst, Itrace(s))(i) = Atrace(Abst(s))(i)
+
+  trace_equiv: THEOREM map(Abst, Itrace(s)) = Atrace(Abst(s))
+
+END trace_equiv
+
+$$$trace_equiv.prf
+(|trace_equiv| (|trace_equiv_aux| "" (INDUCT "i" 1) (("1" (SKOSIMP) (("1" (AUTO-REWRITE-DEFS :ALWAYS? T) (("1" (ASSERT) NIL))))) ("2" (SKOSIMP) (("2" (SKOSIMP) (("2" (LEMMA "Commutes") (("2" (AUTO-REWRITE -1) (("2" (HIDE -1) (("2" (AUTO-REWRITE-DEFS :ALWAYS? T) (("2" (STOP-REWRITE "next_to_the_n") (("2" (AUTO-REWRITE "next_to_the_n") (("2" (AUTO-REWRITE "next_to_the_n_lem") (("2" (ASSERT) (("2" (INST?) (("2" (ASSERT) NIL))))))))))))))))))))))))) (|trace_equiv| "" (SKOSIMP) (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (AUTO-REWRITE "trace_equiv_aux") (("" (ASSERT) NIL))))))))

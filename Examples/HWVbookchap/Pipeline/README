@@ -1,0 +1,54 @@
+This directory contains PVS files associated with the simple pipelined
+microprocessor example described in section 5.6. and 5.7. The dump
+file for the entire example is pipe.dump.
+
+Notes
+-----
+
+(1) We would like to point out a descrepancy between the top-level
+theory pipe given section 5.6, page 188 of the book and the theory
+contained in this directory.  The parameters to the theory pipe in the
+book are declared to be of TYPE, whereas the one in this directory is
+declared to be of TYPE+.  The book's version is incorrect due to an
+unfortunate oversight.  TYPE+ denotes a non-empty type and the
+parameters have to be non-empty in the current situation for the
+specification to be type correct.
+
+(2) In the following, we explain how the proof of the main correctness
+condition for pipelined design is constructed in terms of the
+"standard pattern" of proof for proving microprocessor verification
+conditions described in section 5.7 (page 189) of the book.  The
+standard proof pattern, which is suitable for proving properties of
+"bounded-length straight-line" computation, consists of the following
+sequence of proof tasks:
+
+Task 1: Quantifier Elimination
+
+Task 2: Unfolding definitions
+
+Task 3: Case analysis and simplification
+
+The actual proof used is the following:
+
+1:(""
+2: (SKOSIMP)
+3: (AUTO-REWRITE-THEORY-ALWAYS* ("new_pipe"))
+4: (APPLY (REPEAT (ASSERT)))
+5:  (APPLY (THEN* (REPEAT (LIFT-IF :UPDATES? NIL)) (ASSERT))))
+
+
+Line 2 performs Task 1.
+
+The strategy AUTO-REWRITE-THEORY-ALWAYS* on Line 3 sets up the
+definitions/axioms/lemmas needed to perform Task 2.
+
+Line 4 performs Task 2.
+
+Line 5 performs Task 3.
+
+Setting the tag :UPDATES? to NIL in the LIFT-IF command inhibits
+conversion of record update expressions (WITH) into IF-THEN-ELSE
+expressions.  This improvisation is used for efficiency purposes (to
+reduce the number of cases to be considered) as the decision
+procedures of PVS can simplify update expressions even without such a
+conversion.

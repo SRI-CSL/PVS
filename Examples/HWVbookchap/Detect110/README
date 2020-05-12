@@ -1,0 +1,13 @@
+This directory contains PVS files associated with the example
+detect110 described in section 4.1.  The dump file for the entire
+example is detect110.dump.
+
+
+Notes:
+------
+
+The strategy auto-rewrite-antecedents* used in the proof shown on
+section 4.1, page 168 in the book is actually named
+auto-rewrite-antecedents in the proofs in this directory.
+
+

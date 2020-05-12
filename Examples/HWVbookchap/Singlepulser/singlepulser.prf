@@ -1,0 +1,7 @@
+(|singlepulser| (|char1| "" (MODEL-CHECK) NIL)
+ (|char2| "" (AUTO-REWRITE-THEORY "fairctlops[state]")
+  (("" (MODEL-CHECK) NIL)))
+ (|char22| "" (AUTO-REWRITE-THEORY "fairctlops[state]")
+  (("" (MODEL-CHECK) NIL)))
+ (|char3| "" (AUTO-REWRITE-THEORY "fairctlops[state]")
+  (("" (MODEL-CHECK) NIL))))

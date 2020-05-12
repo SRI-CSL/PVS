@@ -1,0 +1,119 @@
+% For HTML <xmp>
+%Patch files loaded: patch2 version 2.414
+%                    patch2-test version 1.698
+
+$$$pvs-strategies
+(defstep use-lemma (lemma &optional subst (if-match best))
+  (then (use lemma :subst subst :if-match if-match)
+	(if *new-fmla-nums*
+	    (let ((fnum (car *new-fmla-nums*)))
+	      (spread (split fnum)
+		      ((then (let ((fnums *new-fmla-nums*))
+			       (flatten fnums))
+			     (let ((new-fnums *new-fmla-nums*))
+			       (then (replace* new-fnums)
+				     (delete new-fnums)))))))
+	    (skip)))
+  "Introduce LEMMA instance, then does BETA, INST?, and SPLIT on this,
+and then on the main branch a REPLACE* followed by a deletion of any
+remnants of the lemma."
+  "Using and discarding")
+
+(defun cleanup-fnums (fnums)
+  (cond ((consp fnums)(loop for fnum in fnums
+			    collect (if (stringp fnum)
+					(intern fnum)
+					fnum)))
+	((stringp fnums) (list (intern fnums)))
+	((memq fnums '(* + -)) fnums)
+	(t (list fnums))))
+
+(defun gather-fnums (sforms yesnums nonums
+		       &optional (pred #'(lambda (x) T))
+		       (pos 1) (neg -1))
+  (let ((yesnums (cleanup-fnums yesnums))
+	(nonums (cleanup-fnums nonums)))
+    (gather-fnums* sforms yesnums nonums pred pos neg)))
+
+(defun gather-fnums* (seq yesnums nonums
+		       pred pos neg)
+   (cond ((null seq) nil)
+	 ((not-expr? (formula (car seq)))
+	  (if (and (in-sformnums? (car seq) pos neg yesnums)
+		   (not (in-sformnums? (car seq) pos neg nonums))
+		   (funcall pred (car seq)))
+	      (cons neg
+		    (gather-fnums* (cdr seq) yesnums nonums pred
+				pos (1- neg)))
+	      (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)))) 
+	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
+		     (not (in-sformnums? (car seq) pos neg nonums))
+		     (funcall pred (car seq)))
+	      (cons pos
+		    (gather-fnums* (cdr seq) yesnums nonums
+				pred (1+ pos) neg))
+	      (gather-fnums* (cdr seq) yesnums nonums pred
+			  (1+ pos)  neg)))))
+
+(defstep auto-rewrite-antecedents ()
+   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+                              '- nil)))
+      (auto-rewrite :names fnums))
+    "Help string with examples"
+    "Commentary string")
+
+
+$$$singlepulser.pvs
+singlepulser: THEORY
+
+BEGIN
+
+   state: TYPE = [# x, dff: bool #]
+
+   s, curr, next: VAR state
+
+   x(s)  : bool = x(s)
+   dff(s): bool = dff(s)
+
+   IMPORTING MU@ctlops[state], MU@fairctlops[state], MU@connectives
+
+   rising_edge: pred[state] = x AND NOT dff
+
+   init: pred[state] = NOT dff
+  
+   N(curr, next): bool =
+     next = curr WITH [dff := x(curr)]
+
+   y: pred[state] = x AND NOT dff
+
+   is: VAR (init)
+
+  % -- A rising edge eventually leads to an output pulse:
+
+   char1: LEMMA
+     AG(N, rising_edge IMPLIES AF(N, y))
+       (is)
+
+  % -- There is at most one output pulse for each rising edge:
+
+    char2: LEMMA
+      AG(N, y IMPLIES AX(N, fairAU(N, NOT(y), rising_edge)(rising_edge)))
+        (is)
+
+  % -- There is at most one rising edge for each output pulse:
+
+    char3: LEMMA
+      AG(N, rising_edge IMPLIES
+              (NOT(y) IMPLIES AX(N, AU(N, NOT(rising_edge), y))))
+        (is)
+
+END singlepulser
+
+$$$singlepulser.prf
+(|singlepulser| (|char1| "" (MODEL-CHECK) NIL)
+ (|char2| "" (AUTO-REWRITE-THEORY "fairctlops[state]")
+  (("" (MODEL-CHECK) NIL)))
+ (|char22| "" (AUTO-REWRITE-THEORY "fairctlops[state]")
+  (("" (MODEL-CHECK) NIL)))
+ (|char3| "" (AUTO-REWRITE-THEORY "fairctlops[state]")
+  (("" (MODEL-CHECK) NIL))))

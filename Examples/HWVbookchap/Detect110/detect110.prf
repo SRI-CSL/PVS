@@ -1,0 +1,1 @@
+(|detect110| (|detect110_correct| "" (SKOSIMP) (("" (AUTO-REWRITE-THEORIES "detect110" "components" "quantifier_rules") (("" (ASSERT *) (("" (SKOSIMP*) (("" (AUTO-REWRITE-ANTECEDENTS) (("" (ASSERT *) (("" (BDDSIMP) (("" (PROPAX) NIL))))))))))))))))

@@ -1,0 +1,5 @@
+(|sum| (|sum_rec_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|sum_rec_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|sum_rec_TCC3| "" (SUBTYPE-TCC) NIL)
+ (|sum_rec_TCC4| "" (TERMINATION-TCC) NIL)
+ (|sum_TCC1| "" (SUBTYPE-TCC) NIL))

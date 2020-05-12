@@ -1,0 +1,59 @@
+This directory contains PVS files associated with the Tamarack example
+described in section 5.5 and 5.7. The dump file for the entire example
+is tamarack.dump.
+
+Notes
+-----
+
+In the following, we explain how the proof of the main correctness
+condition ("commutes condition") for Tamarack is constructed in terms
+of the "standard pattern" of proof for proving microprocessor
+verification conditions described in section 5.7 (page 189) of the
+book.  The standard proof pattern, which is suitable for proving
+properties of "bounded-length straight-line" computation, consists of
+the following sequence of proof tasks:
+
+Task 1: Quantifier Elimination
+
+Task 2: Unfolding definitions
+
+Task 3: Case analysis and simplification
+
+
+The actual proof used for the commutes condition, which is generated
+as the TCC Verif_TCC2 of the theory verification is given below.
+
+1:(""
+2: (SKOSIMP)
+3: (TYPEPRED "s!1")
+4: (APPLY (THEN@ 
+5:    (AUTO-REWRITE! "oracle" "abs" "I" "start_condn") (ASSERT) (LIFT-IF)
+6:    (ASSERT -) (AUTO-REWRITE -1) (HIDE -1)
+7:    (THEN* (PROP)
+8:      (THEN@
+9:         (AUTO-REWRITE-THEORIES
+10:             "verification" "verification_rewrites[wordt, addrt]"
+11:             "soft[wordt, addrt]" ("hard2[wordt, addrt]"
+12:                 :EXCLUDE ("hardstep" "microrom"))
+13:             "microrom_rewrite[wordt, addrt]")
+14:          (RECORD)
+15:          (REPEAT (ASSERT)))))))
+
+
+Line 2 of the proof performs the first task of the standard proof pattern.
+
+To use the standard proof pattern for verifying Verif_TCC2, it is
+necessary to split the proof into a finite number of cases one for
+every Tamarack instruction.  Lines 4-7 perform this splitting task.
+The function oracle gives the length of the microcode executed for
+every instruction.
+
+Line 3 brings in an invariant condition that is true at the start
+of every instruction execution.
+
+Lines 8-14 set up the rewrites for performing Task 2.  (RECORD is needed
+to record the result of case-splitting done by PROP.)
+
+Line 15 performs Task 2 as well as Task 3.  In this case, ASSERT itself
+performs the necessary conditional simplification without the need
+for a GROUND.

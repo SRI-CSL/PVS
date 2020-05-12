@@ -1,0 +1,34 @@
+This directory contains the complete proofs and theories of some of
+the examples that appear in the chapter Hardware Verification Using
+PVS in the book Formal Hardware Verification Methods and Systems in
+Comparison, Edited by Thomas Kropf, Springer, LNCS 1287.
+
+This directory is organized as follows.  The files associated with
+each example are stored in a separate sub-directory.  Every
+sub-directory has its own README that describes how that sub-directory
+is organized.  The sub-directories contained in this directory and the
+examples they are associated with are given below.  The examples
+contained in these directories run under PVS Version 2.1 (patch level
+2.414, 1.698).
+
+
+(1) Arbiter -  Arbiter example of section 7.2
+
+(2) Blackjack - Black-Jack design of section 7.3
+
+(3) Detect110 - "110" Detecting circuit discussed in section 4.1
+
+(4) Fir_filter5 - FIR filter of section 7.4 and 4.2
+
+(5) Pipeline - Pipelined processor described in sections 5.6 and 5.7
+
+(6) Singlepulser - Single Pulser example of section 7.1
+
+(7) Tamarack - Tamarack processor described in sections 5.5 and 5.7
+
+
+Web page: http://www.csl.sri.com/FHV97.html
+
+
+
+

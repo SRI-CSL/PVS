@@ -1,0 +1,19 @@
+(|blackjack|
+ (IMPORTING1_TCC1 "" (EXISTENCE-TCC)
+  ((""
+    (INST 1
+     "(# cardready := true, hitme := true, stand := true, broke := true, card := 1, anyaces := true, count := 0, idle := true #)")
+    NIL)))
+ (|t2_1_TCC1| "" (SKOSIMP) (("" (ASSERT) NIL)))
+ (|init| "" (SKOSIMP)
+  (("" (AUTO-REWRITE-THEORIES "blackjack" "transition[state]")
+    (("" (TYPEPRED "is!1") (("" (ASSERT) (("" (GROUND) NIL)))))))))
+ (|step| "" (SKOSIMP)
+  (("" (AUTO-REWRITE-THEORIES "blackjack" "transition[state]")
+    (("" (AUTO-REWRITE "NOT" "OR" "AND")
+      (("" (ASSERT)
+        ((""
+          (APPLY (THEN* (SPLIT -)
+                  (THEN@ (FLATTEN) (AUTO-REWRITE -1) (ASSERT) (LIFT-IF)
+                   (GROUND))))
+          NIL))))))))))

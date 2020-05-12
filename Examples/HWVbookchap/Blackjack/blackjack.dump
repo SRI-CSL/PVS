@@ -1,0 +1,249 @@
+<xmp>
+%Patch files loaded: patch2 version 2.414
+%                    patch2-test version 1.698
+
+$$$pvs-strategies
+(defstep use-lemma (lemma &optional subst (if-match best))
+  (then (use lemma :subst subst :if-match if-match)
+	(if *new-fmla-nums*
+	    (let ((fnum (car *new-fmla-nums*)))
+	      (spread (split fnum)
+		      ((then (let ((fnums *new-fmla-nums*))
+			       (flatten fnums))
+			     (let ((new-fnums *new-fmla-nums*))
+			       (then (replace* new-fnums)
+				     (delete new-fnums)))))))
+	    (skip)))
+  "Introduce LEMMA instance, then does BETA, INST?, and SPLIT on this,
+and then on the main branch a REPLACE* followed by a deletion of any
+remnants of the lemma."
+  "Using and discarding")
+
+(defun cleanup-fnums (fnums)
+  (cond ((consp fnums)(loop for fnum in fnums
+			    collect (if (stringp fnum)
+					(intern fnum)
+					fnum)))
+	((stringp fnums) (list (intern fnums)))
+	((memq fnums '(* + -)) fnums)
+	(t (list fnums))))
+
+(defun gather-fnums (sforms yesnums nonums
+		       &optional (pred #'(lambda (x) T))
+		       (pos 1) (neg -1))
+  (let ((yesnums (cleanup-fnums yesnums))
+	(nonums (cleanup-fnums nonums)))
+    (gather-fnums* sforms yesnums nonums pred pos neg)))
+
+(defun gather-fnums* (seq yesnums nonums
+		       pred pos neg)
+   (cond ((null seq) nil)
+	 ((not-expr? (formula (car seq)))
+	  (if (and (in-sformnums? (car seq) pos neg yesnums)
+		   (not (in-sformnums? (car seq) pos neg nonums))
+		   (funcall pred (car seq)))
+	      (cons neg
+		    (gather-fnums* (cdr seq) yesnums nonums pred
+				pos (1- neg)))
+	      (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)))) 
+	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
+		     (not (in-sformnums? (car seq) pos neg nonums))
+		     (funcall pred (car seq)))
+	      (cons pos
+		    (gather-fnums* (cdr seq) yesnums nonums
+				pred (1+ pos) neg))
+	      (gather-fnums* (cdr seq) yesnums nonums pred
+			  (1+ pos)  neg)))))
+
+(defstep auto-rewrite-antecedents ()
+   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+                              '- nil)))
+      (auto-rewrite :names fnums))
+    "Help string with examples"
+    "Commentary string")
+
+
+$$$blackjack.pvs
+blackjack: THEORY
+
+  BEGIN
+
+   ace: posnat = 1
+
+   cardval      : TYPE = subrange[1, 10]
+   scorerange   : TYPE = nat
+   handtype     : TYPE = [# anyaces: bool, count: scorerange #]
+
+
+  % -- State
+
+   state: TYPE = [# cardready, 
+                    hitme, 
+                    stand, 
+                    broke  : bool,
+                    card   : cardval,
+                    anyaces: bool, 
+                    count  : scorerange,
+                    idle   : bool #]
+
+   s, s0, s1, pre, post: VAR state
+
+   cardready(s): bool       = cardready(s)  % Accessor are not functions
+   hitme(s)    : bool       = hitme(s)
+   stand(s)    : bool       = stand(s)
+   broke(s)    : bool       = broke(s)
+   card(s)     : cardval    = card(s)
+   anyaces(s)  : bool       = anyaces(s)
+   count(s)    : scorerange = count(s) 
+   idle(s)     : bool       = idle(s)
+
+   hand(s): handtype   = (# anyaces := anyaces(s), count := count(s) #)
+
+  % -- Definitions
+
+   evallow(h: handtype): scorerange =  count(h)
+
+   evalhigh(h: handtype): scorerange =
+     count(h) + IF anyaces(h) THEN 10 ELSE 0 ENDIF
+
+   standrange(s: scorerange): bool =
+     (16 < s) AND (s <= 21)
+
+   fourphase(a, b: pred[state])(pre, post: state): bool =
+        ((a(pre) /= a(post)) IMPLIES (a(post) /= b(post)))
+    AND ((b(pre) /= b(post)) IMPLIES (b(post) = a(post)))
+
+
+  % -- Invariant
+   
+   I(s): bool =
+     NOT(broke(s) AND stand(s)) AND 
+     NOT(broke(s) AND hitme(s)) AND 
+     NOT(stand(s) AND hitme(s)) AND
+     NOT(idle(s)  AND hitme(s)) AND
+     (count(s) <= 26) AND
+     (IF idle(s) THEN
+       NOT(stand(s) OR broke(s)) IMPLIES
+              (evallow(hand(s)) <= 16) AND NOT(standrange(evalhigh(hand(s))))
+      ELSE
+        (broke(s) IMPLIES (evallow(hand(s)) > 21)) AND
+        (stand(s) IMPLIES (standrange(evallow(hand(s)))
+                           OR standrange(evalhigh(hand(s))))) AND
+        (hitme(s) IMPLIES ((evallow(hand(s)) <= 16)
+                           AND NOT(standrange(evalhigh(hand(s))))))
+      ENDIF)
+
+    P(s0, s1): bool =
+        fourphase(idle, cardready)(s0, s1)
+     AND (NOT(broke(s0) OR stand(s0)) IMPLIES 
+              fourphase(cardready, hitme)(s0, s1))
+     AND (NOT(hitme(s0) OR stand(s0)) IMPLIES 
+              fourphase(cardready, broke)(s0, s1))
+     AND (NOT(hitme(s0) OR broke(s0)) IMPLIES 
+              fourphase(cardready, stand)(s0, s1))
+
+   % -- Initial
+
+    init(s): bool =
+      idle(s) AND NOT(hitme(s)) AND NOT(stand(s)) AND
+      NOT(broke(s)) AND NOT(anyaces(s)) AND (count(s) = 0)
+
+   % -- Next State Relation
+
+     IMPORTING MU@connectives[state], MU@connectives[[state, state]],
+               transition[state]
+
+    t1: pred[[state, state]] =
+     [| idle AND (broke OR stand) AND NOT cardready,
+        LAMBDA s: s WITH [(anyaces):= FALSE,
+                          (count)  := 0,
+                          (broke)  := FALSE,
+                          (stand)  := FALSE] |]
+         
+    t2_1: pred[[state, state]] =
+         [| idle AND NOT(broke OR stand) AND cardready AND (LAMBDA s: card(s) = ace),
+              LAMBDA s: s WITH [(idle) := FALSE,
+                                (count) := count(s) + card(s),
+                                (anyaces) := TRUE] |]
+
+    t2_2: pred[[state, state]] =
+         [| idle AND NOT(broke OR stand) AND cardready AND (LAMBDA s: card(s) /= ace),
+            LAMBDA s: s WITH [(idle) := FALSE,
+                              (count) := count(s) + card(s)] |]
+ 
+    t3_1: pred[[state, state]] =
+        [| (NOT idle AND cardready) AND (LAMBDA s: evallow(hand(s)) > 21),
+               LAMBDA s: s WITH [(broke) := TRUE] |]
+
+    t3_2: pred[[state, state]] =
+        [| (NOT idle) AND cardready AND
+              (LAMBDA s: standrange(evallow(hand(s))) OR standrange(evalhigh(hand(s)))),
+           LAMBDA s: s WITH [(stand) := TRUE] |]
+
+    t3_3: pred[[state, state]] =
+        [| (NOT idle) AND cardready AND 
+             (LAMBDA s: evallow(hand(s)) <= 16 AND NOT standrange(evalhigh(hand(s)))),
+           LAMBDA s: s WITH [(hitme) := TRUE] |]
+
+    t4_1: pred[[state, state]] =
+         [|  (NOT idle AND NOT cardready AND hitme),
+               LAMBDA s: s WITH [(idle) := TRUE,
+                                 (hitme) := FALSE] |]
+
+    t4_2: pred[[state, state]] =
+         [| NOT idle AND NOT cardready AND (broke OR stand),
+            LAMBDA s: s WITH [(idle) := TRUE] |]
+   
+    t: pred[[state, state]] =
+     t1 OR t2_1 OR t2_2 OR t3_1 OR t3_2 OR t3_3 OR t4_1 OR t4_2
+     
+   % -- To verify
+
+    is: VAR (init)
+
+    init : THEOREM I(is)
+    step : THEOREM (I(s0) AND t(s0, s1)) IMPLIES (I(s1) AND P(s0, s1))
+
+  END blackjack
+
+$$$blackjack.prf
+(|blackjack|
+ (IMPORTING1_TCC1 "" (EXISTENCE-TCC)
+  ((""
+    (INST 1
+     "(# cardready := true, hitme := true, stand := true, broke := true, card := 1, anyaces := true, count := 0, idle := true #)")
+    NIL)))
+ (|t2_1_TCC1| "" (SKOSIMP) (("" (ASSERT) NIL)))
+ (|init| "" (SKOSIMP)
+  (("" (AUTO-REWRITE-THEORIES "blackjack" "transition[state]")
+    (("" (TYPEPRED "is!1") (("" (ASSERT) (("" (GROUND) NIL)))))))))
+ (|step| "" (SKOSIMP)
+  (("" (AUTO-REWRITE-THEORIES "blackjack" "transition[state]")
+    (("" (AUTO-REWRITE "NOT" "OR" "AND")
+      (("" (ASSERT)
+        ((""
+          (APPLY (THEN* (SPLIT -)
+                  (THEN@ (FLATTEN) (AUTO-REWRITE -1) (ASSERT) (LIFT-IF)
+                   (GROUND))))
+          NIL))))))))))
+
+$$$transition.pvs
+transition[state: TYPE+]: THEORY
+
+BEGIN
+
+ % -- Transitions consist of a Precondition and an Effect
+
+  transition: TYPE = [pred[state], [state -> state]]   
+  
+  t, t0, t1: VAR transition
+
+  pre(t)   : pred[state]    = proj_1(t)
+  effect(t): [state->state] = proj_2(t)
+
+ % -- Semantics of Transitions in terms of state predicates
+
+  [||](t)(s0, s1: state): bool =
+       (s1 = effect(t)(s0)) AND pre(t)(s0)
+
+END transition

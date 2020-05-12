@@ -1,0 +1,4 @@
+(|quantifier_rules| (|forall_and| "" (GRIND) NIL)
+ (|forall_triv| "" (SKOSIMP*)
+  (("" (IFF)
+    (("" (PROP) (("1" (INST -1 0) NIL) ("2" (SKOSIMP*) NIL))))))))

@@ -1,0 +1,3 @@
+This directory contains PVS files associated with the example
+black-jack described in section 7.3.  The dump file for the entire
+example is blackjack.dump.

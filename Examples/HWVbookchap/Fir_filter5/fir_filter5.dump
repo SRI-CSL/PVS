@@ -1,0 +1,158 @@
+% <xmp>
+%Patch files loaded: patch2 version 2.414
+%                    patch2-test version 1.698
+
+$$$pvs-strategies
+(defstep use-lemma (lemma &optional subst (if-match best))
+  (then (use lemma :subst subst :if-match if-match)
+	(if *new-fmla-nums*
+	    (let ((fnum (car *new-fmla-nums*)))
+	      (spread (split fnum)
+		      ((then (let ((fnums *new-fmla-nums*))
+			       (flatten fnums))
+			     (let ((new-fnums *new-fmla-nums*))
+			       (then (replace* new-fnums)
+				     (delete new-fnums)))))))
+	    (skip)))
+  "Introduce LEMMA instance, then does BETA, INST?, and SPLIT on this,
+and then on the main branch a REPLACE* followed by a deletion of any
+remnants of the lemma."
+  "Using and discarding")
+
+(defun cleanup-fnums (fnums)
+  (cond ((consp fnums)(loop for fnum in fnums
+			    collect (if (stringp fnum)
+					(intern fnum)
+					fnum)))
+	((stringp fnums) (list (intern fnums)))
+	((memq fnums '(* + -)) fnums)
+	(t (list fnums))))
+
+(defun gather-fnums (sforms yesnums nonums
+		       &optional (pred #'(lambda (x) T))
+		       (pos 1) (neg -1))
+  (let ((yesnums (cleanup-fnums yesnums))
+	(nonums (cleanup-fnums nonums)))
+    (gather-fnums* sforms yesnums nonums pred pos neg)))
+
+(defun gather-fnums* (seq yesnums nonums
+		       pred pos neg)
+   (cond ((null seq) nil)
+	 ((not-expr? (formula (car seq)))
+	  (if (and (in-sformnums? (car seq) pos neg yesnums)
+		   (not (in-sformnums? (car seq) pos neg nonums))
+		   (funcall pred (car seq)))
+	      (cons neg
+		    (gather-fnums* (cdr seq) yesnums nonums pred
+				pos (1- neg)))
+	      (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)))) 
+	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
+		     (not (in-sformnums? (car seq) pos neg nonums))
+		     (funcall pred (car seq)))
+	      (cons pos
+		    (gather-fnums* (cdr seq) yesnums nonums
+				pred (1+ pos) neg))
+	      (gather-fnums* (cdr seq) yesnums nonums pred
+			  (1+ pos)  neg)))))
+
+(defstep auto-rewrite-antecedents ()
+   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+                              '- nil)))
+      (auto-rewrite :names fnums))
+    "Help string with examples"
+    "Commentary string")
+
+
+$$$fir_filter5.pvs
+fir_filter5[w: [subrange(1, 5) -> real]]: THEORY
+
+BEGIN
+
+   IMPORTING time, signal[real], sum
+
+   t: VAR time
+
+  % -- Signal Declarations
+
+   x: signal
+   y: signal
+
+   D(i: subrange(1, 8)): signal
+
+  % -- Behavior
+
+   ax1: AXIOM FORALL (i: subrange(1, 4)): 
+                D(i)(t + 1) = w(i) * x(t)
+
+   ax2: AXIOM D(5)(t + 2) = w(5) * x(t)
+
+   ax3: AXIOM FORALL (i: subrange(6, 8)):
+                D(i)(t + 1) = D(10 - i)(t) + D(i - 1)(t)
+
+   ax4: AXIOM y(t) = D(1)(t) + D(8)(t)
+
+  % -- Invariant
+
+   fir_filter_char: THEOREM
+      FORALL (t: upfrom(5)):
+        y(t) = sum(LAMBDA (i: subrange(1, 5)): w(i) * x(t - i))
+
+END fir_filter5
+
+$$$fir_filter5.prf
+(|fir_filter5| (|ax1_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|ax1_TCC2| "" (SUBTYPE-TCC) NIL) (|ax2_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|ax2_TCC2| "" (SUBTYPE-TCC) NIL) (|ax3_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|ax3_TCC2| "" (SUBTYPE-TCC) NIL) (|ax3_TCC3| "" (SUBTYPE-TCC) NIL)
+ (|ax4_TCC1| "" (SUBTYPE-TCC) NIL) (|ax4_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|fir_filter_char_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|fir_filter_char_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|fir_filter_char_TCC3| "" (SUBTYPE-TCC) NIL)
+ (|fir_filter_char| "" (SKOSIMP)
+  (("" (AUTO-REWRITE-THEORIES "sum[1, 5]" "fir_filter5")
+    (("" (ASSERT) NIL))))))
+
+$$$sum.pvs
+sum[n: nat, m: upfrom[n]]: THEORY
+
+   BEGIN
+
+     f: VAR [subrange(n, m) -> real]
+     j: VAR subrange(n, m)
+
+     sum_rec(j, f): RECURSIVE real =
+       IF j = m THEN
+          f(m)
+       ELSE
+          f(j) + sum_rec(j + 1, f)
+       ENDIF
+     MEASURE m - j
+
+     sum(f): real = sum_rec(n, f)
+
+   END sum
+
+$$$sum.prf
+(|sum| (|sum_rec_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|sum_rec_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|sum_rec_TCC3| "" (SUBTYPE-TCC) NIL)
+ (|sum_rec_TCC4| "" (TERMINATION-TCC) NIL)
+ (|sum_TCC1| "" (SUBTYPE-TCC) NIL))
+$$$signal.pvs
+signal[val: TYPE]: THEORY
+
+  BEGIN
+   IMPORTING time
+ 
+   signal: TYPE = [time -> val]
+
+  END signal
+
+$$$time.pvs
+time: THEORY
+
+  BEGIN
+
+   time: TYPE = nat
+
+  END time

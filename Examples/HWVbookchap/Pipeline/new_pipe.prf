@@ -1,0 +1,6 @@
+(|new_pipe|
+ (|correctness| "" (SKOSIMP)
+  (("" (AUTO-REWRITE-THEORY-ALWAYS* ("new_pipe"))
+    (("" (APPLY (REPEAT (ASSERT)))
+      (("" (APPLY (THEN* (REPEAT (LIFT-IF :UPDATES? NIL)) (ASSERT)))
+        NIL))))))))
