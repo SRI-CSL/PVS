@@ -1,0 +1,175 @@
+ops: THEORY
+
+BEGIN
+
+  IMPORTING basic_defs
+
+  flt:    VAR flight
+  pas:    VAR passenger
+  db:     VAR flt_db
+  a,b:    VAR seat_assignment
+  pref:   VAR preference
+  seat:   VAR [row,position]
+       
+  Cancel_assn(flt,pas,db): flt_db =
+          db WITH [(flt) := {a | member(a,db(flt)) AND pass(a) /= pas}]
+
+  pref_filled(db,flt,pref) : bool =
+       FORALL seat:  meets_pref(aircraft(flt), seat, pref)
+                   IMPLIES (EXISTS a: member(a, db(flt))
+                                      AND seat(a) = seat)
+
+  Next_seat: [flt_db, flight, preference -> [row,position]]
+
+  Next_seat_ax: AXIOM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+                seat_exists(aircraft(flt),Next_seat(db,flt,pref))
+
+  Next_seat_ax_2: AXIOM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+           (FORALL a: member(a,db(flt)) IMPLIES
+                seat(a) /= Next_seat(db,flt,pref)) 
+
+  Next_seat_ax_3: AXIOM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+                meets_pref(aircraft(flt),Next_seat(db,flt,pref),pref)
+
+%  meets_pref_prop: LEMMA meets_pref(aircraft(flt),seat(a),pref) IMPLIES
+%                       seat_exists(aircraft(flt),seat(a))
+
+  pass_on_flight(pas,flt,db): bool =
+        EXISTS a: pass(a) = pas AND member(a,db(flt))
+
+  Make_assn(flt,pas,pref,db): flt_db =
+        IF pref_filled(db, flt, pref) OR pass_on_flight(pas,flt,db) THEN 
+              db
+        ELSE LET a = (# seat := Next_seat(db,flt,pref), pass := pas #) IN
+              db WITH [(flt) := add(a, db(flt))]
+        ENDIF
+
+  Lookup(flt,pas,db):  [row,position] =
+          seat(epsilon({a | member(a,db(flt)) AND pass(a) = pas}))
+
+  Lookup2(flt, pas, (db : {d : flt_db | pass_on_flight(pas, flt, d)})):
+      [row,position] = seat(epsilon({a | member(a,db(flt)) AND pass(a) = pas}))
+                  
+%  Lookup_RWB(flt: flight, pas: passenger, db: flt_db): [row,position] =
+%          seat(epsilon({a | member(a,db(flt)) AND pass(a) = pas})) 
+
+% =======================================================================
+%                             Invariants
+% =======================================================================
+
+  existence(db): bool =
+        FORALL a,flt: member(a, db(flt)) IMPLIES
+                seat_exists(aircraft(flt), seat(a))
+  
+  uniqueness(db): bool =
+        FORALL a,b,flt: member(a, db(flt)) AND member(b, db(flt))
+           AND pass(a) = pass(b) IMPLIES a = b
+ 
+  one_per_seat(db): bool =
+       FORALL a,b,flt: member(a, db(flt)) AND member(b, db(flt))
+           AND seat(a) = seat(b) IMPLIES a = b
+ 
+ 
+  db_invariant(db): bool = 
+        existence(db) AND uniqueness(db)
+    
+  Cancel_assn_inv: THEOREM 
+        db_invariant(db) IMPLIES db_invariant(Cancel_assn(flt,pas,db))
+
+  MAe: THEOREM 
+        existence(db) IMPLIES existence(Make_assn(flt,pas,pref,db))
+
+  MAu: THEOREM 
+        uniqueness(db) IMPLIES uniqueness(Make_assn(flt,pas,pref,db))
+
+  Make_assn_inv: THEOREM 
+        db_invariant(db) IMPLIES db_invariant(Make_assn(flt,pas,pref,db))
+
+  initial_state_inv: THEOREM 
+        db_invariant(initial_state)
+
+% =======================================================================
+%                     Invariants Left To Reader
+% =======================================================================
+
+  Cancel_inv_one_per_seat: THEOREM 
+        one_per_seat(db) IMPLIES one_per_seat(Cancel_assn(flt,pas,db))
+
+% re-examine next (proof more complicated since changed the axiom)
+
+  Make_inv_one_per_seat: THEOREM 
+        one_per_seat(db) IMPLIES one_per_seat(Make_assn(flt,pas,pref,db))
+
+  initial_one_per_seat: THEOREM 
+        one_per_seat(initial_state)
+
+% =======================================================================
+%                    Putative Theorems
+% =======================================================================
+
+  Make_Cancel: THEOREM 
+        NOT pass_on_flight(pas,flt,db) IMPLIES
+                Cancel_assn(flt,pas,Make_assn(flt,pas,pref,db)) = db
+
+
+  % <<<<<< Following left to the reader >>>>>>
+
+  Cancel_putative: THEOREM 
+          NOT (EXISTS (a: seat_assignment):
+             member(a,Cancel_assn(flt,pas,db)(flt)) AND pass(a) = pas)
+
+  Make_putative: THEOREM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+          (EXISTS (x: seat_assignment):
+            member(x, Make_assn(flt, pas, pref, db)(flt)) AND pass(x) = pas)
+
+%  Lp2_lem: LEMMA   
+%        NOT (pref_filled(db, flt, pref) OR pass_on_flight(pas,flt,db)) 
+%                IMPLIES Next_seat(db, flt, pref) =
+%                        seat(epsilon({a: seat_assignment |
+%                              Make_assn(flt, pas, pref, db)(flt)(a)
+%                                AND pass(a) = pas}))
+
+  Lookup_putative: THEOREM 
+        NOT (pref_filled(db, flt, pref) OR
+                                  pass_on_flight(pas,flt,db)) IMPLIES
+      meets_pref(aircraft(flt), 
+                 Lookup(flt, pas, Make_assn(flt,pas,pref,db)),
+                 pref)
+
+  Lookup_putative2: THEOREM 
+        NOT (pref_filled(db, flt, pref) OR
+                                  pass_on_flight(pas,flt,db)) IMPLIES
+      meets_pref(aircraft(flt), 
+                 Lookup2(flt, pas, Make_assn(flt,pas,pref,db)),
+                 pref)
+
+Next_seat_defn(db,flt,pref) : [row, position] =
+  epsilon! (seat : [row,position]) : seat_exists(aircraft(flt),seat)
+     AND (FORALL a : member(a,db(flt)) IMPLIES seat(a) /= seat)
+     AND meets_pref(aircraft(flt),seat,pref)
+
+% new_ax: AXIOM meets_pref(aircraft(flt), seat, pref) 
+%          IMPLIES seat_exists(aircraft(flt), seat)
+
+new_ax: AXIOM meets_pref(aircraft(flt), seat, pref) 
+         IMPLIES seat_exists(aircraft(flt), seat)
+
+Next_seat_th : THEOREM
+        NOT pref_filled(db, flt, pref) IMPLIES
+                seat_exists(aircraft(flt),Next_seat_defn(db,flt,pref))
+
+Next_seat_th_2: THEOREM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+           (FORALL a: member(a,db(flt)) IMPLIES
+                seat(a) /= Next_seat_defn(db,flt,pref)) 
+
+Next_seat_th_3: THEOREM 
+        NOT pref_filled(db, flt, pref) IMPLIES
+                meets_pref(aircraft(flt),Next_seat_defn(db,flt,pref),pref)
+
+
+END ops

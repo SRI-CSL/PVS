@@ -1,0 +1,33 @@
+basic_defs: THEORY
+BEGIN
+
+  nrows:  posnat             % Max number of rows  
+  nposits: posnat            % Max number of positions per row  
+  
+  row:  TYPE = {n: posnat | 1 <= n AND n <= nrows} CONTAINING 1
+  position: TYPE = {n: posnat | 1 <= n AND n <= nposits} CONTAINING 1
+  
+  flight: TYPE               % Flight identifier
+  plane: NONEMPTY_TYPE       % Aircraft type  
+  preference: TYPE           % Position preference  
+  passenger: NONEMPTY_TYPE   % Passenger identifier  
+
+  seat_assignment: TYPE = [# seat: [row, position],
+                             pass: passenger #]
+  
+  flight_assignments: TYPE = set[seat_assignment]
+  
+  flt_db: TYPE = [flight -> flight_assignments]
+
+  initial_state(flt : flight): flight_assignments =
+		 emptyset[seat_assignment]
+
+% ==================================================================== 
+% Definitions that define attributes of a particular airplane
+% ==================================================================== 
+
+  seat_exists: pred[[plane, [row, position]]]
+  meets_pref: pred[[plane, [row, position], preference]]
+  aircraft: [flight -> plane]
+
+END basic_defs

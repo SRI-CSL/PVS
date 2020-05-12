@@ -1,0 +1,108 @@
+more_preds[T:type]: THEORY
+BEGIN
+  t: VAR T
+  p,q: VAR pred[T]
+ ;AND(p,q)(t): bool = p(t) AND q(t)
+ ;OR(p,q)(t): bool = p(t) OR q(t)
+ ;IMPLIES(p,q)(t): bool = p(t) IMPLIES q(t)
+END more_preds
+
+%
+% The following is included in the PVS 2.3 prelude
+%
+%K_conversion[T1, T2: TYPE]: THEORY
+%BEGIN
+%  t1: VAR T1
+%  t2: VAR T2
+
+%  K(t1)(t2): T1 = t1
+
+%  CONVERSION  K
+
+%END K_conversion
+
+noninterference: THEORY
+BEGIN
+
+  CONVERSION+ K_conversion
+  state, action, output: TYPE+
+  s0: state
+  s, t: VAR state
+  a, b: VAR action
+  
+  step(s, a): state
+  output(s, a): output
+
+  action_list: type = list[action]
+  alpha, beta: VAR action_list
+
+
+ ;o(a, alpha): action_list = cons(a, alpha)
+  
+  run(s, beta): RECURSIVE state = 
+    CASES beta OF
+      null: s,
+      cons(a, alpha): step(run(s, alpha), a)
+    ENDCASES
+   MEASURE beta by <<
+  
+  domain: TYPE+
+  u, v: VAR domain
+
+IMPORTING K_conversion
+ % IMPORTING  more_preds
+
+   test:[PRED[[domain, domain]] -> bool] = (reflexive?[domain] AND transitive?[domain])
+
+   refl_trans_rel: TYPE = (reflexive?[domain] AND transitive?[domain]) CONTAINING eq[domain]
+
+  security_policy: refl_trans_rel
+  |>(u, v): bool = NOT  security_policy(u, v)
+
+  dom(a): domain
+
+  /(beta, u): RECURSIVE action_list =
+    CASES beta OF
+      null: null,
+      cons(a, alpha): IF dom(a) = u THEN alpha / u
+                      ELSE a o (alpha / u) ENDIF
+    ENDCASES
+   MEASURE length(beta)
+  
+  do(alpha): state = run(s0, alpha)
+
+  test(alpha, a): output = output(do(alpha), a)
+  
+  secure: bool = FORALL a, u, alpha:
+    u |> dom(a) => test(alpha, a) = test(alpha / u, a)
+  
+  V: TYPE+
+  
+  view(u, s): V
+  
+  view_equiv(u)(s, t): bool = view(u, s) = view(u, t)
+  
+  output_consistent: bool = FORALL a, s, t:
+    view_equiv(dom(a))(s, t) => output(s, a) = output(t, a)
+  
+  view_consistent: bool = FORALL u, v, alpha:
+    u |> v => view_equiv(v)(do(alpha), do(alpha / u))
+  
+  lemma1: LEMMA
+    output_consistent AND view_consistent => secure
+
+  local_respect: bool = FORALL v, s, a:
+    dom(a) |> v => view_equiv(v)(s, step(s, a))
+  
+  step_consistent: bool = FORALL u, s, t, a:
+    view_equiv(u)(s, t) => view_equiv(u)(step(s, a), step(t, a))
+  
+%  lemma2: LEMMA step(do(alpha),a) = do(a o alpha)
+
+  lemma3: LEMMA 
+    local_respect AND step_consistent => view_consistent
+
+  unwinding: THEOREM
+    local_respect AND step_consistent AND output_consistent => secure
+  
+END noninterference

@@ -1,0 +1,121 @@
+rel_as_fun[A: TYPE, B: TYPE]: THEORY
+BEGIN
+  
+  a, b: VAR A
+  x, y: VAR B
+  
+  rel: TYPE = pred[[A, B]]
+  R: VAR rel
+  
+  domain(R): setof[A] = {a | EXISTS x: R(a, x)}
+  range(R): setof[B] = {x | EXISTS a: R(a, x)}
+  
+  functional(R): bool = FORALL a, x, y: R(a, x) & R(a, y) => x = y
+  injective(R): bool = FORALL a, b, x: R(a, x) & R(b, x) => a = b
+  
+  part_inj(R): bool = functional(R) AND injective(R)
+  
+  null_inj: (part_inj) = emptyset[[A, B]]
+  
+  reldel_1((R: (part_inj)), a): (part_inj) = {(b, y) | R(b, y) AND a /= b}
+  reldel_2((R: (part_inj)), x): (part_inj) = {(b, y) | R(b, y) AND x /= y}
+  
+  apply((R: (part_inj)), (a: (domain(R)))):
+      (range(R)) = choose! (x: (range(R))): R(a, x)
+  
+  invapply((R: (part_inj)), (x: (range(R)))):
+      (domain(R)) = choose! (a: (domain(R))): R(a, x)
+  
+  update_ok: LEMMA
+        LET newR = add((a, x), R) IN
+           part_inj(R) AND NOT member(a, domain(R)) AND NOT member(x, range(R))
+                IMPLIES part_inj(newR)
+                  AND apply(newR, a) = x AND invapply(newR, x) = a
+  
+END rel_as_fun
+
+
+new_flight_db: THEORY
+BEGIN
+  
+  seats, flights, planes, preferences, passengers: TYPE+
+  
+  s: VAR seats
+  flt: VAR flights
+  p: VAR planes
+  pref: VAR preferences
+  pass: VAR passengers
+  
+  seats_on_plane(p): (nonempty?[seats])
+  aircraft(flt): planes
+  seats_on_flight(flt): (nonempty?[seats]) = seats_on_plane(aircraft(flt))
+
+  meets_pref(p, pref): setof[(seats_on_plane(p))]
+  
+  IMPORTING rel_as_fun
+  
+  flight_db:
+      TYPE = [flt: flights -> (part_inj[(seats_on_flight(flt)), passengers])]
+  
+  initial_db(flt): (part_inj[(seats_on_flight(flt)), passengers]) = null_inj
+  
+  db: VAR flight_db
+  
+  pass_on_flight(pass, flt, db): bool = member(pass, range(db(flt)))
+  
+  seat_filled_on_flight(flt, db, (s: (seats_on_flight(flt)))): bool =
+    member(s, domain(db(flt)))
+
+  Cancel_assn(flt, pass, db): flight_db =
+    db WITH [(flt) := reldel_2(db(flt), pass)]
+  
+  pref_filled(db, flt, pref): bool =
+    FORALL (s: (seats_on_flight(flt))):
+      meets_pref(aircraft(flt), pref)(s) => seat_filled_on_flight(flt, db, s)
+  
+  Next_seat(db, flt, (pref: {p:preferences| not pref_filled(db,flt,p)})):
+    { (s: (seats_on_flight(flt))) | 
+      meets_pref(aircraft(flt), pref)(s)
+          AND NOT seat_filled_on_flight(flt, db, s)}
+
+  Next_seat_ax: LEMMA 
+        NOT pref_filled(db, flt, pref)
+           IMPLIES member(Next_seat(db, flt, pref), seats_on_flight(flt))
+
+  Next_seat_ax_2: LEMMA
+        NOT pref_filled(db, flt, pref)
+           IMPLIES NOT seat_filled_on_flight(flt, db, Next_seat(db, flt, pref))
+
+  Next_seat_ax_3: LEMMA
+        NOT pref_filled(db, flt, pref)
+            IMPLIES meets_pref(aircraft(flt), pref)(Next_seat(db, flt, pref))
+  
+  Make_assn(flt, pass, pref, db): flight_db =
+    IF pref_filled(db, flt, pref) OR pass_on_flight(pass, flt, db)
+      THEN db
+      ELSE db WITH [(flt) := add((Next_seat(db, flt, pref), pass), db(flt))]
+    ENDIF
+  
+  Make_Cancel: THEOREM
+        NOT pass_on_flight(pass, flt, db)
+            IMPLIES Cancel_assn(flt, pass, Make_assn(flt, pass, pref, db)) = db
+  
+  Cancel_putative: THEOREM
+        NOT pass_on_flight(pass, flt, Cancel_assn(flt, pass, db))
+  
+  Make_putative: THEOREM
+        NOT pref_filled(db, flt, pref)
+            IMPLIES pass_on_flight(pass, flt, Make_assn(flt, pass, pref, db))
+  
+  Lookup(flt, pass, (db: {d: flight_db | pass_on_flight(pass, flt, d)})):
+      (seats_on_flight(flt)) = invapply(db(flt), pass)
+  
+  Lookup_putative: THEOREM
+        NOT((pref_filled(db, flt, pref) OR pass_on_flight(pass, flt, db)))
+            IMPLIES
+          meets_pref(aircraft(flt),
+                     pref)(Lookup(flt, pass, Make_assn(flt, pass, pref, db)))
+  
+END new_flight_db
+
+
