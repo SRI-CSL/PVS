@@ -1,0 +1,13 @@
+(sum
+ (sum_TCC1 0
+  (sum_TCC1-2 "" 3581699332 ("" (skosimp) (("" (assert) nil nil)) nil)
+   nil shostak)
+  (sum_TCC1-1 nil 3581698126 ("" (subtype-tcc) nil nil)
+   ((int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (sum_TCC2 0
+  (sum_TCC2-1 nil 3581698126 ("" (termination-tcc) nil nil)
+   ((id const-decl "(bijective?[T, T])" identity nil)) nil)))
+
