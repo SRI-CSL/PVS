@@ -1,0 +1,99 @@
+<HTML>
+<HEAD>
+<TITLE>
+Analyzing Tabular and State-Transition Requirements Specifications in PVS
+</TITLE>
+<BODY BGCOLOR="#FFFFFF">
+<CENTER>
+<IMG SRC="/images/csl_banner1.jpg">
+</CENTER>
+<HR SIZE=1 NOSHADE>
+<FONT SIZE=5 COLOR=0000FF><B>
+Analyzing Tabular and State-Transition Requirements Specifications in PVS
+</B></FONT>
+<HR SIZE=1 NOSHADE>
+
+
+<h3>Sam Owre, John Rushby, and Natarajan Shankar</h3>
+
+<h4>CSL Technical Report CSL-95-12</h4>
+Note: this revised edition of the report differs significantly
+from the draft issued in June 1995.
+
+<p>A <a href=http://www.csl.sri.com/tacas97.html>shorter version</a> was published in
+TACAS 97.
+
+
+<h3>Abstract</h3>
+
+We describe PVS's capabilities for representing tabular
+specifications of the kind advocated by Parnas and others, and show
+how PVS's Type Correctness Conditions (TCCs) are used to ensure
+certain well-formedness properties.
+<p>
+
+We then show how these and other capabilities of PVS can be used to
+represent the AND/OR tables of Leveson and the Decision Tables of
+Sherry, and we demonstrate how PVS's TCCs can expose and help isolate
+errors in the latter.
+<p>
+
+We extend this approach to represent the mode transition tables of
+the Software Cost Reduction (SCR) method in an attractive manner.  We
+show how PVS can check these tables for well-formedness, and how
+PVS's model checking capabilities can be used to verify invariants
+and reachability properties of SCR requirements specifications, and
+inclusion relations between the behaviors of different
+specifications.
+<p>
+
+These examples demonstrate how several capabilities of the PVS
+language and verification system can be used in combination to
+provide customized support for specific methodologies for documenting
+and analyzing requirements.  Because they use only the standard
+capabilities of PVS, users can adapt and extend these customizations
+to suit their own needs.  Those developing dedicated tools for
+individual methodologies may find these constructions in PVS helpful
+for prototyping purposes, or as a useful adjunct to a dedicated tool
+when the capabilities of a full theorem prover are required.
+<p>
+
+The examples also illustrate the power and utility of an integrated
+general-purpose system such as PVS.  For example, there was no need
+to adapt or extend the PVS model checker in order to make it work with
+SCR specifications described using the PVS TABLE construct: the
+model checker is applicable to any transition relation,
+independently of the PVS language constructs used in its definition.
+<p>
+
+<p>
+<a href="http://www.csl.sri.com/reports/csl-95-12.dvi.Z"><IMG SRC="/icons/dvi.gif" BORDER=0> dvi</a>
+<BR>
+<a href="http://www.csl.sri.com/reports/postscript/csl-95-12.ps.gz"><IMG SRC="/icons/ps.gif" BORDER=0> postscript</a>
+<BR>
+<a href="/pvs/examples/tables/"><IMG SRC="/icons/generic.gif" BORDER=0> PVS specification files</a>
+
+
+<h4>BibTeX Entry</h4>
+<pre>
+@techreport{Owre95:tables,
+	TITLE = {Analyzing Tabular and State-Transition Specifications
+		in {PVS}},
+	AUTHOR = {Sam Owre and John Rushby and Natarajan Shankar},
+	NUMBER = {SRI-CSL-95-12},
+	INSTITUTION = {Computer Science Laboratory, SRI International},
+	ADDRESS = {Menlo Park, CA},
+	MONTH = jul,
+	YEAR = 1995,
+	NOTE = {Revised May 1996.
+                Available, with specification files, from 
+                \url{http://www.csl.sri.com/csl-95-12.html}}
+}
+</pre>
+
+<HR SIZE=1 NOSHADE>
+<A HREF="http://www.csl.sri.com/fm.html">Return to the <b>Formal Methods Program</b> home page</a>
+<BR>
+<A HREF="http://www.csl.sri.com/">Return to the <b>Computer Science Laboratory</b> home page</a>
+</BODY>
+</HTML>
