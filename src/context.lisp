@@ -546,8 +546,23 @@ declaration-entry has slots
   (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   (let ((ce (get-context-file-entry filename)))
     (when ce
-      (setf (cdddr (pvs-context *workspace-session*)) (remove ce (pvs-context-entries)))
+      (remove-context-entry-deps ce)
       (setf (pvs-context-changed *workspace-session*) t))))
+
+(defun remove-context-entry-deps (filename)
+  "removes filename from (pvs-context-entries) and recursively does the
+same for any element of (pvs-context-entries) for which ce is in
+its dependencies."
+  (let ((ce (typecase filename
+	      (context-entry filename)
+	      (string (get-context-file-entry filename))
+	      (t (error "bad filename ~a: ~a" filename (type-of filename))))))
+    (unless (context-entry-p ce)
+      (break "Check this"))
+    (setf (cdddr (current-pvs-context)) (remove ce (pvs-context-entries)))
+    (dolist (ce2 (pvs-context-entries))
+      (when (some #'(lambda (dep) (string= dep (ce-file ce))) (ce-dependencies ce2))
+	(remove-context-entry-deps ce2)))))
 
 (defun update-context-proof-status (fdecl)
   (unless (or (from-prelude? fdecl)
@@ -2776,6 +2791,7 @@ each context, the theories are in alphabetic order."
 	(sort eltids #'string<)))))
 
 (defun find-all-usedbys (theoryref)
+  "Returns theory ids for theories that depend on this theoryref"
   (let ((tid (ref-to-id theoryref))
 	(usedbys nil))
     (mapc #'(lambda (fe)
