@@ -14,7 +14,6 @@
 pvs-patches/patch*
 autom4te.cache
 bin/*
-Examples/*
 lib/why/*
 
 emacs/emacs23
@@ -33,8 +32,6 @@ src/cl-json/_darcs
 orphaned-proofs.prf
 pvsbin
 
-*.pvs
-*.tgz
 *.log
 *.status
 *~
@@ -50,7 +47,6 @@ pvsbin
 .pvscontext
 *_adt.pvs
 *.out
-*.tgz
 *.aux
 *.dvi
 *.cp
