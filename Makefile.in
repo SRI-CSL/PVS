@@ -82,8 +82,7 @@ SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(SBCLISP_FILES)
 SYSTEM_FILES = README.md README.GUI INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	pvs pvsio pvs-gui proveit provethem emacs/pvs.xpm \
 	pvs-tex.sub pvs.sty bin/pvs-platform \
-	$(bindir)/b64 bin/tar-b64-mail Examples/README \
-	$(wildcard Examples/*.pvs Examples/*.prf) \
+	$(bindir)/b64 bin/tar-b64-mail Examples \
 	$(wildcard lib/*.pvs lib/*.prf lib/*.help) \
 	lib/pvs.grammar lib/pvs.bnf lib/pvs-style.css \
 	wish/pvs-support.tcl \
