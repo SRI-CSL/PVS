@@ -717,7 +717,7 @@ use binfiles."
   (multiple-value-bind (new-theories time)
       (let ((*no-obligations-allowed* t))
 	(parse :file file))
-    (check-for-theory-clashes new-theories filename)
+    (check-for-theory-clashes new-theories filename forced?)
     ;;(check-import-circularities new-theories)
     (let ((changed
 	   (update-parsed-file filename file theories new-theories forced?)))
@@ -729,10 +729,11 @@ use binfiles."
       (values (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)
 	      changed))))
 
-(defun check-for-theory-clashes (new-theories filename)
+(defun check-for-theory-clashes (new-theories filename forced?)
+  "Parsing filename gives the new-theories, we check for problems here"
   (check-for-duplicate-theories new-theories)
   (check-for-prelude-theory-clashes new-theories)
-  (check-for-context-theory-clashes new-theories filename))
+  (check-for-context-theory-clashes new-theories filename forced?))
 
 (defun check-for-duplicate-theories (new-theories)
   (when (cdr new-theories)
@@ -753,18 +754,16 @@ use binfiles."
 	  (id clash) (if (datatype? clash) "datatype" "theory")))
       (check-for-prelude-theory-clashes (cdr new-theories)))))
 
-(defun check-for-context-theory-clashes (new-theories filename)
+(defun check-for-context-theory-clashes (new-theories filename forced?)
   (unless *generating-adt*
     (let ((clashes (collect-theory-clashes new-theories filename)))
       (when clashes
 	;; clashes is an assoc list with (new-theory . oldfilename) entries
-	(unless (pvs-yes-or-no-p
-		 "~d theor~@P clash~:[~;es~] with those in other files - continue? "
-		 (length clashes) (length clashes) (eql (length clashes) 1))
+	(unless forced?
 	  (parse-error (caar clashes)
-	    "Theory ~a has been declared previously in file ~a.pvs"
+	    "Theory ~a has been declared previously in file ~a.pvs:~
+           ~%  cannot have two theories of the same name in one context."
 	    (id (caar clashes)) (cdar clashes)))
-	;; At some point, should spit out pvs-info here.
 	(dolist (clfname (remove-duplicates (mapcar #'cdr clashes)
 			   :test #'string=))
 	  (dolist (clth (get-theories clfname))
@@ -1041,6 +1040,7 @@ use binfiles."
 		     (setq kept? t)
 		     (copy-lex oth nth))
 		    ((and (consp diff)
+			  (module? oth)
 			  (memq (car diff) (all-decls oth)))
 		     ;; Copies lexical info from new to old, up to diff.
 		     ;; This is info that can't change the meaning, like
