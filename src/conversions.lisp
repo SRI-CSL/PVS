@@ -932,28 +932,31 @@ that are not the K_covnersion."
 
 
 (defmethod find-conversions-for ((atype recordtype) (etype recordtype))
-  (append (call-next-method)
-	  (when (and (= (length (fields atype)) (length (fields etype)))
-		     (every #'(lambda (afld)
-				(some #'(lambda (efld)
-					  (eq (id afld) (id efld)))
-				      (fields etype)))
-			    (fields atype)))
-	    ;; Create a conversion of the form
-	    ;; LAMBDA (x: atype): (# f1 := conv(x`f1) ... #)
-	    (let* ((aid (make-new-variable '|x| (list atype etype)))
-		   (abd (make-bind-decl aid atype))
-		   (avar (make-variable-expr abd)))
-	      (multiple-value-bind (assigns convs)
-		  (find-record-assignment-conversions
-		   (fields atype) (fields etype) avar
-		   (dependent? atype) (dependent? etype))
-		(when assigns
-		  (list (change-class
-			 (make!-lambda-expr (list abd)
-			   (make!-record-expr assigns etype))
-			 'rectype-conversion
-			 'conversions convs))))))))
+  (let ((nconvs (call-next-method)))
+    (append nconvs
+	    (when (and (fully-instantiated? atype)
+		       (fully-instantiated? etype)
+		       (= (length (fields atype)) (length (fields etype)))
+		       (every #'(lambda (afld)
+				  (some #'(lambda (efld)
+					    (eq (id afld) (id efld)))
+					(fields etype)))
+			      (fields atype)))
+	      ;; Create a conversion of the form
+	      ;; LAMBDA (x: atype): (# f1 := conv(x`f1) ... #)
+	      (let* ((aid (make-new-variable '|x| (list atype etype)))
+		     (abd (make-bind-decl aid atype))
+		     (avar (make-variable-expr abd)))
+		(multiple-value-bind (assigns convs)
+		    (find-record-assignment-conversions
+		     (fields atype) (fields etype) avar
+		     (dependent? atype) (dependent? etype))
+		  (when assigns
+		    (list (change-class
+			      (make!-lambda-expr (list abd)
+				(make!-record-expr assigns etype))
+			      'rectype-conversion
+			    'conversions convs)))))))))
 
 (defun find-record-assignment-conversions (afields efields avar adep? edep?
 						   &optional assigns convs)
