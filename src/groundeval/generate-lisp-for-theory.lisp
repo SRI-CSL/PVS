@@ -79,19 +79,20 @@
   
 
 (defun generate-lisp-for-theory (theoryname)
-  (let ((theory (get-theory theoryname)))
-    (load-pvs-attachments)
+  (let* ((theory (get-theory theoryname))
+	 (basename (when theory
+		     (format nil "~a~a" (context-path theory) (id theory)))))
     (cond ((null theory)
 	   (pvs-message "Theory ~a is not typechecked" theoryname))
 	  (t
-	   (with-open-file (*standard-output* (format nil "~a.complog" theoryname)
+	   (load-pvs-attachments)
+	   (with-open-file (*standard-output* (format nil "~a.complog" basename)
 					      :direction :output
 					      :if-exists :supersede
 					      :if-does-not-exist :create)
 	     (let ((*error-output* *standard-output*))
 	       (pvs2cl-theory theory)))
-	   (print-lisp-defns theoryname (format nil "~a.lisp" theoryname)
-			     t)))))
+	   (print-lisp-defns theoryname (format nil "~a.lisp" basename) t)))))
 
 (defun evaluation-mode (theoryref)
   (with-pvs-file (fname thname) theoryref
