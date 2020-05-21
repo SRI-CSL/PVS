@@ -739,7 +739,7 @@
 (defmethod collect-conds ((expr application)  &optional  boundvars)
   (if (and *lift-if-updates*
 	   (update-expr? (operator* expr))
-	   (null (intersection (freevars (update-application* expr))
+	   (null (intersection (freevars expr) ;NSH(5-20-20): was (update-application* expr)
 			       boundvars
 			       :test #'same-declaration)))
       (let ((nexpr (translate-update-to-if expr)))
