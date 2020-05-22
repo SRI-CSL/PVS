@@ -918,14 +918,15 @@ its dependencies."
 
 (defvar *file-dependencies*)
 
-(defun get-pvs-file-dependencies (filename)
-  (if (gethash filename (current-pvs-files))
-      ;; Things have been parsed, we can use that information
-      (let ((*file-dependencies* nil))
-	(get-pvs-file-dependencies* filename)
-	*file-dependencies*)
-      ;; Not even parsed - must go by the .pvscontext information
-      (cons filename (file-dependencies filename))))
+(defun get-pvs-file-dependencies (fileref)
+  (with-pvs-file (filename) fileref
+    (if (gethash filename (current-pvs-files))
+	;; Things have been parsed, we can use that information
+	(let ((*file-dependencies* nil))
+	  (get-pvs-file-dependencies* filename)
+	  *file-dependencies*)
+	;; Not even parsed - must go by the .pvscontext information
+	(cons filename (file-dependencies filename)))))
 
 (defun get-pvs-file-dependencies* (filename)
   (unless (member filename *file-dependencies* :test #'string=)
