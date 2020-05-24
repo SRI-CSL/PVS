@@ -167,31 +167,7 @@
    ("" (skolem!) (("" (apply-extensionality) nil nil)) nil)
    ((D formal-type-decl nil functions nil)
     (R formal-type-decl nil functions nil))
-   nil))
- (bij_is_inj 0
-  (bij_is_inj-1 nil 3755267854 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (D formal-type-decl nil functions nil)
-    (R formal-type-decl nil functions nil)
-    (bijective? const-decl "bool" functions nil)
-    (surjective? const-decl "bool" functions nil)
-    (injective? const-decl "bool" functions nil))
-   shostak
-   (bij_is_inj subtype "functions.x" "(functions.injective?)")))
- (bij_is_surj 0
-  (bij_is_surj-1 nil 3755267854 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (D formal-type-decl nil functions nil)
-    (R formal-type-decl nil functions nil)
-    (bijective? const-decl "bool" functions nil)
-    (injective? const-decl "bool" functions nil)
-    (surjective? const-decl "bool" functions nil))
-   shostak
-   (bij_is_surj subtype "functions.x" "(functions.surjective?)"))))
+   nil)))
 (functions_alt)
 (transpose)
 (restrict
@@ -320,111 +296,8 @@
    ((identity const-decl "(bijective?[T, T])" identity nil)) nil
    (identity_preserves subtype
     "identity[identity_props.T].identity(identity_props.x)" "S"))))
-(relations
- (equiv_is_reflexive 0
-  (equiv_is_reflexive-1 nil 3755267854 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil relations nil)
-    (PRED type-eq-decl nil defined_types nil)
-    (equivalence? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (symmetric? const-decl "bool" relations nil)
-    (reflexive? const-decl "bool" relations nil))
-   shostak
-   (equiv_is_reflexive subtype "relations.x"
-    "(relations.reflexive?)")))
- (equiv_is_symmetric 0
-  (equiv_is_symmetric-1 nil 3755267855
-   ("" (skeep :preds? t)
-    (("" (expand "equivalence?") (("" (flatten) nil nil)) nil)) nil)
-   ((equivalence? const-decl "bool" relations nil)) shostak
-   (equiv_is_symmetric subtype "relations.x"
-    "(relations.symmetric?)")))
- (equiv_is_transitive 0
-  (equiv_is_transitive-1 nil 3755267855
-   ("" (skeep :preds? t)
-    (("" (expand "equivalence?") (("" (flatten) nil nil)) nil)) nil)
-   ((equivalence? const-decl "bool" relations nil)) shostak
-   (equiv_is_transitive subtype "relations.x"
-    "(relations.transitive?)"))))
+(relations)
 (orders
- (preorder_is_reflexive 0
-  (preorder_is_reflexive-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (preorder? const-decl "bool" orders nil)
-    (transitive? const-decl "bool" relations nil)
-    (reflexive? const-decl "bool" relations nil))
-   shostak
-   (preorder_is_reflexive subtype "orders.x"
-    "(relations[orders.T].reflexive?)")))
- (preorder_is_transitive 0
-  (preorder_is_transitive-1 nil 3755267855
-   ("" (skeep :preds? t)
-    (("" (expand "preorder?") (("" (flatten) nil nil)) nil)) nil)
-   ((preorder? const-decl "bool" orders nil)) shostak
-   (preorder_is_transitive subtype "orders.x"
-    "(relations[orders.T].transitive?)")))
- (equiv_is_preorder 0
-  (equiv_is_preorder-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (PRED type-eq-decl nil defined_types nil)
-    (equivalence? const-decl "bool" relations nil)
-    (symmetric? const-decl "bool" relations nil)
-    (reflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (preorder? const-decl "bool" orders nil))
-   shostak
-   (equiv_is_preorder subtype "orders.x" "(orders.preorder?)")))
- (po_is_preorder 0
-  (po_is_preorder-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (partial_order? const-decl "bool" orders nil)
-    (antisymmetric? const-decl "bool" relations nil)
-    (reflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (preorder? const-decl "bool" orders nil))
-   shostak (po_is_preorder subtype "orders.x" "(orders.preorder?)")))
- (po_is_antisymmetric 0
-  (po_is_antisymmetric-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (partial_order? const-decl "bool" orders nil)
-    (reflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (preorder? const-decl "bool" orders nil)
-    (antisymmetric? const-decl "bool" relations nil))
-   shostak
-   (po_is_antisymmetric subtype "orders.x"
-    "(relations[orders.T].antisymmetric?)")))
- (strict_is_irreflexive 0
-  (strict_is_irreflexive-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (strict_order? const-decl "bool" orders nil)
-    (transitive? const-decl "bool" relations nil)
-    (irreflexive? const-decl "bool" relations nil))
-   shostak
-   (strict_is_irreflexive subtype "orders.x"
-    "(relations[orders.T].irreflexive?)")))
  (strict_order_is_antisymmetric 0
   (strict_order_is_antisymmetric-1 nil 3252220963
    ("" (grind :if-match nil)
@@ -443,34 +316,6 @@
    shostak
    (strict_order_is_antisymmetric subtype "orders.x"
     "(relations[orders.T].antisymmetric?)")))
- (strict_is_transitive 0
-  (strict_is_transitive-1 nil 3755267855
-   ("" (skeep :preds? t)
-    (("" (expand "strict_order?") (("" (flatten) nil nil)) nil)) nil)
-   ((strict_order? const-decl "bool" orders nil)) shostak
-   (strict_is_transitive subtype "orders.x"
-    "(relations[orders.T].transitive?)")))
- (total_is_po 0
-  (total_is_po-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (total_order? const-decl "bool" orders nil)
-    (dichotomous? const-decl "bool" orders nil)
-    (reflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (preorder? const-decl "bool" orders nil)
-    (antisymmetric? const-decl "bool" relations nil)
-    (partial_order? const-decl "bool" orders nil))
-   shostak (total_is_po subtype "orders.x" "(orders.partial_order?)")))
- (total_is_dichotomous 0
-  (total_is_dichotomous-1 nil 3755267855
-   ("" (skeep :preds? t)
-    (("" (expand "total_order?") (("" (flatten) nil nil)) nil)) nil)
-   ((total_order? const-decl "bool" orders nil)) shostak
-   (total_is_dichotomous subtype "orders.x" "(orders.dichotomous?)")))
  (linear_is_total 0
   (linear_is_total-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((linear_order? const-decl "bool" orders nil)
@@ -490,98 +335,7 @@
  (total_is_linear 0
   (total_is_linear-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((linear_order? const-decl "bool" orders nil)) nil
-   (total_is_linear subtype "orders.x" "(orders.linear_order?)")))
- (strict_total_is_strict 0
-  (strict_total_is_strict-1 nil 3755267855 ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (strict_total_order? const-decl "bool" orders nil)
-    (trichotomous? const-decl "bool" orders nil)
-    (irreflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (strict_order? const-decl "bool" orders nil))
-   shostak
-   (strict_total_is_strict subtype "orders.x"
-    "(orders.strict_order?)")))
- (strict_total_is_trichotomous 0
-  (strict_total_is_trichotomous-1 nil 3755267855
-   ("" (skeep :preds? t)
-    (("" (expand "strict_total_order?") (("" (flatten) nil nil)) nil))
-    nil)
-   ((strict_total_order? const-decl "bool" orders nil)) shostak
-   (strict_total_is_trichotomous subtype "orders.x"
-    "(orders.trichotomous?)")))
- (strict_well_founded_is_strict 0
-  (strict_well_founded_is_strict-1 nil 3755267855
-   ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (strict_well_founded? const-decl "bool" orders nil)
-    (well_founded? const-decl "bool" orders nil)
-    (irreflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (strict_order? const-decl "bool" orders nil))
-   shostak
-   (strict_well_founded_is_strict subtype "orders.x"
-    "(orders.strict_order?)")))
- (strict_well_founded_is_well_founded 0
-  (strict_well_founded_is_well_founded-1 nil 3755267855
-   ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (strict_well_founded? const-decl "bool" orders nil)
-    (irreflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (strict_order? const-decl "bool" orders nil)
-    (well_founded? const-decl "bool" orders nil))
-   shostak
-   (strict_well_founded_is_well_founded subtype "orders.x"
-    "(orders.well_founded?)")))
- (well_ordered_is_strict_total 0
-  (well_ordered_is_strict_total-1 nil 3755267855
-   ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (well_ordered? const-decl "bool" orders nil)
-    (well_founded? const-decl "bool" orders nil)
-    (irreflexive? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
-    (strict_order? const-decl "bool" orders nil)
-    (trichotomous? const-decl "bool" orders nil)
-    (strict_total_order? const-decl "bool" orders nil))
-   shostak
-   (well_ordered_is_strict_total subtype "orders.x"
-    "(orders.strict_total_order?)")))
- (well_ordered_is_well_founded 0
-  (well_ordered_is_well_founded-1 nil 3755267855
-   ("" (judgement-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil orders nil)
-    (pred type-eq-decl nil defined_types nil)
-    (well_ordered? const-decl "bool" orders nil)
-    (strict_total_order? const-decl "bool" orders nil)
-    (trichotomous? const-decl "bool" orders nil)
-    (strict_order? const-decl "bool" orders nil)
-    (transitive? const-decl "bool" relations nil)
-    (irreflexive? const-decl "bool" relations nil)
-    (well_founded? const-decl "bool" orders nil))
-   shostak
-   (well_ordered_is_well_founded subtype "orders.x"
-    "(orders.well_founded?)"))))
+   (total_is_linear subtype "orders.x" "(orders.linear_order?)"))))
 (orders_alt
  (least_upper_bound_is_upper_bound 0
   (least_upper_bound_is_upper_bound-1 nil 3237052399
@@ -1231,7 +985,6 @@
     nil)
    ((NOT const-decl "[bool -> bool]" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
-    (TRUE const-decl "bool" booleans nil)
     (epsilon const-decl "T" epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (singleton? const-decl "bool" sets nil)
@@ -1252,14 +1005,6 @@
       nil))
     nil)
    nil nil (the existence "" "[p: (sets.singleton?) -> (p)]")))
- (the_lem_TCC1 0
-  (the_lem_TCC1-1 nil 3737147868 ("" (existence-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (T formal-type-decl nil sets nil) (set type-eq-decl nil sets nil)
-    (singleton? const-decl "bool" sets nil))
-   shostak (the_lem existence "" "sets.T")))
  (the_lem 0
   (the_lem-2 "" 3737148469
    ("" (skolem-typepred)
@@ -1288,7 +1033,6 @@
     (pred type-eq-decl nil defined_types nil)
     (epsilon const-decl "T" epsilons nil)
     (p!1 skolem-const-decl "(singleton?)" sets nil)
-    (TRUE const-decl "bool" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (singleton? const-decl "bool" sets nil)
     (set type-eq-decl nil sets nil) (T formal-type-decl nil sets nil)
@@ -1426,7 +1170,6 @@
     (a!1 skolem-const-decl "set" sets nil)
     (pred type-eq-decl nil defined_types nil)
     (epsilon_ax formula-decl nil epsilons nil)
-    (TRUE const-decl "bool" booleans nil)
     (member const-decl "bool" sets nil) (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -1559,7 +1302,6 @@
     (a!1 skolem-const-decl "set" sets nil)
     (pred type-eq-decl nil defined_types nil)
     (epsilon_ax formula-decl nil epsilons nil)
-    (TRUE const-decl "bool" booleans nil)
     (singleton? const-decl "bool" sets nil))
    shostak)
   (singleton_elt_def-2 "" 3425350533
@@ -1683,7 +1425,6 @@
     (singleton? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
-    (TRUE const-decl "bool" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (singleton_elt const-decl "T" sets nil))
@@ -33717,12 +33458,12 @@
     (bijective? const-decl "bool" functions nil)
     (composition_injective judgement-tcc nil function_props nil)
     (O const-decl "T3" function_props nil)
+    (inj!1 skolem-const-decl "(injective?[D, R])" function_image_aux
+     nil)
     (f!1 skolem-const-decl
      "[(image(inj!1, S!1)) -> below(card(image(inj!1, S!1)))]"
      function_image_aux nil)
     (restrict const-decl "R" restrict nil)
-    (inj!1 skolem-const-decl "(injective?[D, R])" function_image_aux
-     nil)
     (f!2 skolem-const-decl "[below(card(S!1)) -> (S!1)]"
      function_image_aux nil)
     (S!1 skolem-const-decl "finite_set[D]" function_image_aux nil)
@@ -35680,6 +35421,900 @@
      "(strict_total_order?[real])" real_props nil)
     (lex2 const-decl "ordinal" lex2 nil))
    nil)))
+(lex3
+ (lex3_TCC1 0
+  (lex3_TCC1-1 nil 3768751962 ("" (subtype-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil (lex3 subtype "lex3.m" "posnat")))
+ (lex3_TCC2 0
+  (lex3_TCC2-1 nil 3768751962
+   ("" (skeep) (("" (expand "ordinal?") (("" (grind) nil nil)) nil))
+    nil)
+   ((ordinal? def-decl "bool" ordinals nil)
+    (lex2 const-decl "ordinal" lex2 nil)
+    (< def-decl "bool" ordinals nil))
+   nil
+   (lex3 subtype
+    "ordstruct_adt.add(lex3.m, ordstruct_adt.add(2, ordstruct_adt.add(2, ordstruct_adt.zero, ordstruct_adt.zero), ordstruct_adt.zero), lex2.lex2(lex3.n, lex3.p))"
+    "ordinal")))
+ (wtf? 0
+  (wtf?-1 nil 3768765387 ("" (decompose-equality) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (ordstruct type-decl nil ordstruct_adt nil)
+    (nonzero? adt-recognizer-decl "[ordstruct -> boolean]"
+     ordstruct_adt nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (coef adt-accessor-decl "[(nonzero?) -> posnat]" ordstruct_adt nil)
+    (add adt-constructor-decl
+     "[[posnat, ordstruct, ordstruct] -> (nonzero?)]" ordstruct_adt
+     nil)
+    (zero? adt-recognizer-decl "[ordstruct -> boolean]" ordstruct_adt
+     nil)
+    (zero adt-constructor-decl "(zero?)" ordstruct_adt nil)
+    (exp adt-accessor-decl "[(nonzero?) -> ordstruct]" ordstruct_adt
+         nil)
+    (rest adt-accessor-decl "[(nonzero?) -> ordstruct]" ordstruct_adt
+          nil))
+   shostak))
+ (lex3_lt 0
+  (lex3_lt-1 nil 3768752051
+   ("" (skeep)
+    (("" (grind-with-ext)
+      (("1" (name "A" "add(1, zero, zero)")
+        (("1" (name "B" "add(2, add(2, zero, zero), zero)")
+          (("1" (replace -1 * LR)
+            (("1" (replace -2 * LR)
+              (("1" (case "1 = 2")
+                (("1" (assert) nil nil)
+                 ("2" (hide 2 3 4 5 6)
+                  (("2" (hide -7 -5 -4 -3)
+                    (("2" (case "coef(A) = 1")
+                      (("1" (case "coef(B) = 2")
+                        (("1" (replace -5 -1 LR)
+                          (("1" (assert) nil nil)) nil)
+                         ("2" (grind)
+                          (("2" (replace -2 1 RL)
+                            (("2" (assert) nil nil)) nil))
+                          nil))
+                        nil)
+                       ("2" (replace -2 1 RL) (("2" (assert) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("2" (lemma "wtf?") (("2" (propax) nil nil)) nil)
+       ("3" (lemma "wtf?") (("3" (propax) nil nil)) nil)
+       ("4" (lemma "wtf?") (("4" (propax) nil nil)) nil)
+       ("5" (lemma "wtf?") (("5" (propax) nil nil)) nil)
+       ("6" (lemma "wtf?") (("6" (propax) nil nil)) nil)
+       ("7" (lemma "wtf?") (("7" (propax) nil nil)) nil)
+       ("8" (lemma "wtf?") (("8" (propax) nil nil)) nil))
+      nil))
+    nil)
+   ((< def-decl "bool" ordinals nil)
+    (lex2 const-decl "ordinal" lex2 nil)
+    (lex3 const-decl "ordinal" lex3 nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (coef adt-accessor-decl "[(nonzero?) -> posnat]" ordstruct_adt nil)
+    (ordstruct type-decl nil ordstruct_adt nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (nonzero? adt-recognizer-decl "[ordstruct -> boolean]"
+     ordstruct_adt nil)
+    (add adt-constructor-decl
+     "[[posnat, ordstruct, ordstruct] -> (nonzero?)]" ordstruct_adt
+     nil)
+    (zero? adt-recognizer-decl "[ordstruct -> boolean]" ordstruct_adt
+     nil)
+    (zero adt-constructor-decl "(zero?)" ordstruct_adt nil)
+    (wtf? formula-decl nil lex3 nil))
+   shostak)))
+(lex4
+ (lex4_TCC1 0
+  (lex4_TCC1-1 nil 3768930415 ("" (subtype-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil (lex4 subtype "lex4.m" "posnat")))
+ (lex4_TCC2 0
+  (lex4_TCC2-1 nil 3768930415
+   ("" (skeep)
+    (("" (expand "lex3")
+      (("" (lift-if)
+        (("" (split)
+          (("1" (flatten) (("1" (grind) nil nil)) nil)
+           ("2" (flatten) (("2" (grind) nil nil)) nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((lex3 const-decl "ordinal" lex3 nil)
+    (< def-decl "bool" ordinals nil)
+    (ordinal? def-decl "bool" ordinals nil)
+    (lex2 const-decl "ordinal" lex2 nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   nil
+   (lex4 subtype
+    "ordstruct_adt.add(lex4.m, ordstruct_adt.add(3, ordstruct_adt.add(2, ordstruct_adt.add(1, ordstruct_adt.zero, ordstruct_adt.zero), ordstruct_adt.zero), ordstruct_adt.zero), lex3.lex3(lex4.n, lex4.p, lex4.q))"
+    "ordinal")))
+ (wtf? 0
+  (wtf?-1 nil 3768930878
+   ("" (case "coef(add(1, zero, zero)) = 1")
+    (("1"
+      (case "coef(add(3, add(2, add(1, zero, zero), zero), zero)) = 3")
+      (("1" (replace -3 -2 RL)
+        (("1" (replace -1 -2 LR) (("1" (assert) nil nil)) nil)) nil)
+       ("2" (assert) nil nil))
+      nil)
+     ("2" (assert) nil nil))
+    nil)
+   ((number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (ordstruct type-decl nil ordstruct_adt nil)
+    (nonzero? adt-recognizer-decl "[ordstruct -> boolean]"
+     ordstruct_adt nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (coef adt-accessor-decl "[(nonzero?) -> posnat]" ordstruct_adt nil)
+    (add adt-constructor-decl
+     "[[posnat, ordstruct, ordstruct] -> (nonzero?)]" ordstruct_adt
+     nil)
+    (zero? adt-recognizer-decl "[ordstruct -> boolean]" ordstruct_adt
+     nil)
+    (zero adt-constructor-decl "(zero?)" ordstruct_adt nil))
+   shostak))
+ (same_coefs 0
+  (same_coefs-1 nil 3768931344 ("" (skeep) (("" (grind) nil nil)) nil)
+   nil shostak))
+ (lex4_lt 0
+  (lex4_lt-1 nil 3768930553
+   ("" (skeep)
+    (("" (grind)
+      (("1" (hide -1 -2 -3 -4 -5 -7 1 2 3 4 5)
+        (("1" (name-replace "B" "add(1, zero, zero)")
+          (("1" (name-replace "A" "add(3, add(2, B, zero), zero)")
+            (("1" (case "coef(A) = 3")
+              (("1" (case "coef(B) = 1")
+                (("1" (replace -3 -2 LR) (("1" (assert) nil nil)) nil)
+                 ("2" (grind)
+                  (("2" (reveal -2)
+                    (("2" (replace -1 1 RL) (("2" (assert) nil nil))
+                      nil))
+                    nil))
+                  nil))
+                nil)
+               ("2" (reveal -1)
+                (("2" (replace -1 1 RL) (("2" (assert) nil nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("2" (lemma "same_coefs")
+        (("2"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("2" (assert) nil nil)) nil))
+        nil)
+       ("3" (lemma "same_coefs")
+        (("3"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("3" (assert) nil nil)) nil))
+        nil)
+       ("4" (lemma "same_coefs")
+        (("4"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("4" (assert) nil nil)) nil))
+        nil)
+       ("5" (lemma "same_coefs")
+        (("5"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("5" (assert) nil nil)) nil))
+        nil)
+       ("6" (lemma "same_coefs")
+        (("6"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("6" (assert) nil nil)) nil))
+        nil)
+       ("7" (lemma "same_coefs")
+        (("7"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("7" (assert) nil nil)) nil))
+        nil)
+       ("8" (lemma "same_coefs")
+        (("8"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("8" (assert) nil nil)) nil))
+        nil)
+       ("9" (lemma "same_coefs")
+        (("9"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("9" (assert)
+            (("9" (lemma "same_coefs")
+              (("9"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("9" (assert)
+                  (("9" (lemma "same_coefs")
+                    (("9"
+                      (inst -1
+                       "add(3, add(2, add(1, zero, zero), zero), zero)"
+                       "add(1, zero, zero)")
+                      (("9" (assert)
+                        (("9" (lemma "same_coefs")
+                          (("9"
+                            (inst -1
+                             "add(3, add(2, add(1, zero, zero), zero), zero)"
+                             "add(1, zero, zero)")
+                            (("9" (assert)
+                              (("9"
+                                (lemma "same_coefs")
+                                (("9"
+                                  (inst
+                                   -1
+                                   "add(3, add(2, add(1, zero, zero), zero), zero)"
+                                   "add(1, zero, zero)")
+                                  (("9"
+                                    (assert)
+                                    (("9"
+                                      (lemma "same_coefs")
+                                      (("9"
+                                        (inst
+                                         -1
+                                         "add(3, add(2, add(1, zero, zero), zero), zero)"
+                                         "add(1, zero, zero)")
+                                        (("9"
+                                          (assert)
+                                          (("9"
+                                            (lemma "same_coefs")
+                                            (("9"
+                                              (inst
+                                               -1
+                                               "add(3, add(2, add(1, zero, zero), zero), zero)"
+                                               "add(1, zero, zero)")
+                                              (("9"
+                                                (assert)
+                                                (("9"
+                                                  (lemma "same_coefs")
+                                                  (("9"
+                                                    (assert)
+                                                    (("9"
+                                                      (lemma
+                                                       "same_coefs")
+                                                      (("9"
+                                                        (inst
+                                                         -1
+                                                         "add(3, add(2, add(1, zero, zero), zero), zero)"
+                                                         "add(2, add(2, zero, zero), zero)")
+                                                        (("9"
+                                                          (assert)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("10" (lemma "same_coefs")
+        (("10"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("10" (assert) nil nil)) nil))
+        nil)
+       ("11" (lemma "same_coefs")
+        (("11"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("11" (assert) nil nil)) nil))
+        nil)
+       ("12" (lemma "same_coefs")
+        (("12"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("12" (assert) nil nil)) nil))
+        nil)
+       ("13" (lemma "same_coefs")
+        (("13"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("13" (assert)
+            (("13" (lemma "same_coefs")
+              (("13"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("13" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("14" (lemma "same_coefs")
+        (("14"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("14" (assert) nil nil)) nil))
+        nil)
+       ("15" (lemma "same_coefs")
+        (("15"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("15" (assert) nil nil)) nil))
+        nil)
+       ("16" (lemma "same_coefs")
+        (("16"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("16" (assert) nil nil)) nil))
+        nil)
+       ("17" (lemma "same_coefs")
+        (("17"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("17" (assert)
+            (("17" (lemma "same_coefs")
+              (("17"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("17" (assert)
+                  (("17" (lemma "same_coefs")
+                    (("17"
+                      (inst -1
+                       "add(3, add(2, add(1, zero, zero), zero), zero)"
+                       "add(2, add(2, zero, zero), zero)")
+                      (("17" (assert) nil nil)) nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("18" (lemma "same_coefs")
+        (("18"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("18" (assert) nil nil)) nil))
+        nil)
+       ("19" (lemma "same_coefs")
+        (("19"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("19" (assert) nil nil)) nil))
+        nil)
+       ("20" (lemma "same_coefs")
+        (("20"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("20" (assert) nil nil)) nil))
+        nil)
+       ("21" (lemma "same_coefs")
+        (("21"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("21" (assert) nil nil)) nil))
+        nil)
+       ("22" (lemma "same_coefs")
+        (("22"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("22" (assert)
+            (("22" (lemma "same_coefs")
+              (("22"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("22" (assert)
+                  (("22" (lemma "same_coefs")
+                    (("22"
+                      (inst -1
+                       "add(3, add(2, add(1, zero, zero), zero), zero)"
+                       "add(1, zero, zero)")
+                      (("22" (assert) nil nil)) nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("23" (lemma "same_coefs")
+        (("23"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("23" (assert)
+            (("23" (lemma "same_coefs")
+              (("23"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("23" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("24" (lemma "same_coefs")
+        (("24"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("24" (assert) nil nil)) nil))
+        nil)
+       ("25" (lemma "same_coefs")
+        (("25"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("25" (assert)
+            (("25" (lemma "same_coefs")
+              (("25"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("25" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("26" (lemma "same_coefs")
+        (("26"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("26" (assert) nil nil)) nil))
+        nil)
+       ("27" (lemma "same_coefs")
+        (("27"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("27" (assert) nil nil)) nil))
+        nil)
+       ("28" (lemma "same_coefs")
+        (("28"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("28" (assert) nil nil)) nil))
+        nil)
+       ("29" (lemma "same_coefs")
+        (("29"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("29" (assert) nil nil)) nil))
+        nil)
+       ("30" (lemma "same_coefs")
+        (("30"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("30" (assert) nil nil)) nil))
+        nil)
+       ("31" (lemma "same_coefs")
+        (("31"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("31" (assert)
+            (("31" (lemma "same_coefs")
+              (("31"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("31" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("32" (lemma "same_coefs")
+        (("32"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("32" (assert)
+            (("32" (lemma "same_coefs")
+              (("32"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("32" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("33" (lemma "same_coefs")
+        (("33"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("33" (assert) nil nil)) nil))
+        nil)
+       ("34" (lemma "same_coefs")
+        (("34"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("34" (assert)
+            (("34" (lemma "same_coefs")
+              (("34"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("34" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("35" (lemma "same_coefs")
+        (("35"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("35" (assert) nil nil)) nil))
+        nil)
+       ("36" (lemma "same_coefs")
+        (("36"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("36" (assert) nil nil)) nil))
+        nil)
+       ("37" (lemma "same_coefs")
+        (("37"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("37" (assert) nil nil)) nil))
+        nil)
+       ("38" (lemma "same_coefs")
+        (("38"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("38" (assert) nil nil)) nil))
+        nil)
+       ("39" (lemma "same_coefs")
+        (("39"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("39" (assert) nil nil)) nil))
+        nil)
+       ("40" (lemma "same_coefs")
+        (("40"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("40" (assert) nil nil)) nil))
+        nil)
+       ("41" (lemma "same_coefs")
+        (("41"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("41" (assert) nil nil)) nil))
+        nil)
+       ("42" (lemma "same_coefs")
+        (("42"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("42" (assert)
+            (("42" (lemma "same_coefs")
+              (("42"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("42" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("43" (lemma "same_coefs")
+        (("43"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("43" (assert)
+            (("43" (lemma "same_coefs")
+              (("43"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("43" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("44" (lemma "same_coefs")
+        (("44"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("44" (assert)
+            (("44" (lemma "same_coefs")
+              (("44"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(1, zero, zero)")
+                (("44" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("45" (lemma "same_coefs")
+        (("45"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("45" (assert) nil nil)) nil))
+        nil)
+       ("46" (lemma "same_coefs")
+        (("46"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("46" (assert)
+            (("46" (lemma "same_coefs")
+              (("46"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("46" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("47" (lemma "same_coefs")
+        (("47"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("47" (assert)
+            (("47" (lemma "same_coefs")
+              (("47"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("47" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("48" (lemma "same_coefs")
+        (("48"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("48" (assert)
+            (("48" (lemma "same_coefs")
+              (("48"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("48" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("49" (lemma "same_coefs")
+        (("49"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("49" (assert)
+            (("49" (lemma "same_coefs")
+              (("49"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("49" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("50" (lemma "same_coefs")
+        (("50"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("50" (assert) nil nil)) nil))
+        nil)
+       ("51" (lemma "same_coefs")
+        (("51"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("51" (assert) nil nil)) nil))
+        nil)
+       ("52" (lemma "same_coefs")
+        (("52"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("52" (assert)
+            (("52" (lemma "same_coefs")
+              (("52"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("52" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("53" (lemma "same_coefs")
+        (("53"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("53" (assert)
+            (("53" (lemma "same_coefs")
+              (("53"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("53" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("54" (lemma "same_coefs")
+        (("54"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("54" (assert)
+            (("54" (lemma "same_coefs")
+              (("54"
+                (inst -1
+                 "add(3, add(2, add(1, zero, zero), zero), zero)"
+                 "add(2, add(2, zero, zero), zero)")
+                (("54" (assert) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("55" (lemma "same_coefs")
+        (("55"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("55" (assert) nil nil)) nil))
+        nil)
+       ("56" (lemma "same_coefs")
+        (("56"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(2, add(2, zero, zero), zero)")
+          (("56" (assert) nil nil)) nil))
+        nil)
+       ("57" (lemma "same_coefs")
+        (("57"
+          (inst -1 "add(3, add(2, add(1, zero, zero), zero), zero)"
+           "add(1, zero, zero)")
+          (("57" (assert) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   ((< def-decl "bool" ordinals nil)
+    (lex2 const-decl "ordinal" lex2 nil)
+    (lex3 const-decl "ordinal" lex3 nil)
+    (lex4 const-decl "ordinal" lex4 nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (ordstruct type-decl nil ordstruct_adt nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (nonzero? adt-recognizer-decl "[ordstruct -> boolean]"
+     ordstruct_adt nil)
+    (add adt-constructor-decl
+     "[[posnat, ordstruct, ordstruct] -> (nonzero?)]" ordstruct_adt
+     nil)
+    (zero? adt-recognizer-decl "[ordstruct -> boolean]" ordstruct_adt
+     nil)
+    (zero adt-constructor-decl "(zero?)" ordstruct_adt nil)
+    (coef adt-accessor-decl "[(nonzero?) -> posnat]" ordstruct_adt nil)
+    (ordinal? def-decl "bool" ordinals nil)
+    (ordinal nonempty-type-eq-decl nil ordinals nil)
+    (same_coefs formula-decl nil lex4 nil))
+   shostak)))
 (list)
 (list_props
  (length_TCC1 0
@@ -42270,14 +42905,22 @@
   (max64_TCC1-1 nil 3750736729 ("" (grind) nil nil)
    ((real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
+    (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (int_times_even_is_even application-judgement "even_int" integers
+     nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (nil application-judgement "above(n)" exp2 nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
     (exp2 def-decl "posnat" exp2 nil))
-   nil (max64 subtype "18446744073709551615" "uint64")))
+   nil
+   (max64 subtype
+    "(number_fields.+)((number_fields.*(9223372036854775807, 2)), 1)"
+    "uint64")))
  (u8plus_TCC1 0
   (u8plus_TCC1-1 nil 3750736729 ("" (grind) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -45316,7 +45959,6 @@
     (upto nonempty-type-eq-decl nil naturalnumbers nil)
     (A!1 skolem-const-decl "finite_set[T]" finite_sets_of_sets nil)
     (<= const-decl "bool" reals nil)
-    (TRUE const-decl "bool" booleans nil)
     (pred type-eq-decl nil defined_types nil)
     (IFF const-decl "[bool, bool -> bool]" booleans nil)
     (below type-eq-decl nil naturalnumbers nil)
@@ -45368,11 +46010,9 @@
      integers nil)
     (int_times_even_is_even application-judgement "even_int" integers
      nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (empty? const-decl "bool" sets nil)
-    (empty_card formula-decl nil finite_sets nil))
+    (NOT const-decl "[bool -> bool]" booleans nil))
    shostak))
  (powerset_natfun_inj 0
   (powerset_natfun_inj-4 "" 3658948800
