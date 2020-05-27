@@ -223,12 +223,13 @@ if called."
 
 ;;String literals are translated directly to strings. 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
-  (call-next-method))
-;;gave up on this: strings are treated like any other finseq.  
-  ;; (declare (ignore bindings livevars))
-  ;; (let ((str (string-value expr)))
-  ;;   `(pvs2cl_record (length ,str) ,str))
-  ;; ;;(concatenate 'string "\"" (string-value expr) "\"")
+  ;;  (call-next-method)
+  (declare (ignore bindings livevars))
+;  (break "string-expr")
+  (let ((str (string-value expr)))
+    str))
+;;   `(pvs2cl_record (length ,str) ,str)))
+;;;    (concatenate 'string "\"" (string-value expr) "\"")
 
 
   
@@ -826,12 +827,20 @@ if called."
   (let ((args (pvs2cl_up* (exprs expr) bindings livevars)))
     `(pvs2cl_tuple ,@args)))
 
+(defun make-pvslisp-string (size expr)
+  (let ((charlist (loop for i from 0 to (1- size) collect (pvs-funcall expr i))))
+  (coerce charlist 'string)))
+  
+
 (defmethod pvs2cl_up* ((expr record-expr) bindings livevars)
   ;;add special case for strings
   (let ((args (pvs2cl_up* (mapcar #'expression
 			    (sort-assignments (assignments expr)))
-			  bindings livevars)))
-    `(pvs2cl_record ,@args)))
+			  bindings livevars))
+	(stype (find-supertype (type expr))))
+        (if (tc-eq stype *string-type*)
+	    `(make-pvslist-string ,(car args) ,(cadr args))
+	  `(pvs2cl_record ,@args))))
 
 (defmethod pvs2cl_up* ((expr projection-application) bindings livevars)
     `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
@@ -852,8 +861,11 @@ if called."
 (defmethod pvs2cl_up*  ((expr field-application) bindings livevars)
   (let* ((clarg (pvs2cl_up* (argument expr) bindings livevars))
 	 (argtype (find-supertype (type (argument expr))))
-	 (nonstr `(project ,(1+ (get-field-num (id expr) argtype)) ,clarg)))
-    nonstr))
+	 (fieldnum (get-field-num (id expr) argtype)))
+    (if (tc-eq argtype *string-type*)
+	(if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
+      `(project ,(1+ fieldnum) ,clarg))))
+
 
 
 (defmethod no-livevars? ((expr update-expr) livevars assignments)
@@ -2164,7 +2176,10 @@ if called."
 (defmethod pvs2cl-lisp-type* ((type cotupletype))
   nil)
 
-(defmethod pvs2cl-lisp-type*  ((type recordtype)) '(simple-array t))
+(defmethod pvs2cl-lisp-type*  ((type recordtype))
+  (if (tc-eq type *string-type*)
+      'string
+    '(simple-array t)))
 
 (defun subrange-index (type)
   (let ((below (simple-below? type)))
