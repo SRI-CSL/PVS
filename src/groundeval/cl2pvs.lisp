@@ -55,10 +55,22 @@
 	  *false*)
       (error 'cl2pvs-error :sexpr sexpr :type type))))
 
+(defun dom-subrange? (sexpr type)
+    (if (excl::simple-array-p sexpr)
+      (let* ((typeof (type-of sexpr))
+	     (elemtype (cadr typeof))
+	     (length (caaddr typeof)))
+	(if (eq (cadr (type-of sexpr)) 'character)
+	    (cons 0 (1- length))))
+      (let ((bnds (simple-subrange? (domtype type))))
+	(and bnds (number-expr? (car bnds))(number-expr? (cdr bnds))
+	     (cons (number (car bnds))(number (cdr bnds)))))))
+
+
 (defmethod cl2pvs* (sexpr (type funtype) context)
   (declare (ignore context))
   (let* ((ub (simple-below? (domtype type)))
-	 (ubnum (when ub (number ub))))
+	 (ubnum (when (number-expr? ub) (number ub))))
     (if (and ubnum
 	     (tc-eq (range type) *boolean*))
 	;; We have a bitvector - create a form like bv(0b11001010)
@@ -69,10 +81,10 @@
 	  ;; No easy way to find out if this came from a bitvector-conversion
 	  ;; Use the bv form to be on the safe side.
 	  (tc-expr (format nil "bv[~d](0b~b)" ubnum num)))
-	(let ((bnds (simple-subrange? (domtype type))))
+	(let ((bnds (dom-subrange? sexpr type)))
 	  (if bnds
 	      (let* ((nvar (make-new-variable '|ii| type))
-		     (conds (make-subrange-conds (number (car bnds)) (number (cdr bnds))
+		     (conds (make-subrange-conds  (car bnds)  (cdr bnds)
 						 nvar sexpr (range type)
 						 (when (dep-binding? (domain type))
 						   (domain type))
@@ -217,8 +229,8 @@
 	((list-type? type)
 	 (cl2pvs*-list sexpr (type-value (car (actuals (find-supertype type))))
 		       context))
-	;; ((char-type? type) ;;NSH(12/20/19): commented out so that it is treated
-	;;  (cl2pvs*-char sexpr type context));;like any other datatype
+	((char-type? type) ;;NSH(12/20/19): commented out so that it is treated
+	 (cl2pvs*-char sexpr type context));;like any other datatype
 	((enumtype? (adt type))
 	 (nth sexpr (constructors type)))
 	(t
@@ -252,11 +264,10 @@
 
 (defun cl2pvs*-char (expr type context)
   (declare (ignore type context))
-  (with-slots (code) expr
-    ;(assert (standard-char-p code))
+      ;(assert (standard-char-p code))
     (make-instance 'application
 		   'operator (make-instance 'constructor-name-expr 'id '|char|)
-		   'argument (make-instance 'number-expr 'number code))))
+		   'argument (make-instance 'number-expr 'number (char-code expr))))
 
 (defun cl2pvs*-list (exprs eltype context)  
   (if exprs
