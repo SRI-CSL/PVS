@@ -223,6 +223,7 @@
   (cond ((eq x y) t)
         ((and (symbolp x) (symbolp y)) nil)
         ((characterp x) (and (characterp y) (char-equal x y)))
+	((stringp x) (and (stringp y)(string= x y)))
         ((numberp x) (and (numberp y) (= x y)))
         ((consp x)
          (and (consp y)
