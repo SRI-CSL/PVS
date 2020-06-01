@@ -3639,7 +3639,9 @@ type of the lhs."
 
 (defmethod set-type* ((ex list-expr) expected)
   (let ((etype (dep-binding-type expected)))
-    (unless (type ex)
+    (unless (or (type ex)
+		(null (ptypes ex))
+		(not (some #'(lambda (ty) (compatible? ty expected)) (ptypes ex))))
       (typecheck* ex etype nil nil))
     (or (type ex)
 	(call-next-method))))
