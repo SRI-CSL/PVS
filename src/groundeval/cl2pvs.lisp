@@ -56,7 +56,7 @@
       (error 'cl2pvs-error :sexpr sexpr :type type))))
 
 (defun dom-subrange? (sexpr type)
-    (if (excl::simple-array-p sexpr)
+    (if (simple-array-p sexpr)
       (let* ((typeof (type-of sexpr))
 	     (elemtype (cadr typeof))
 	     (length (caaddr typeof)))
