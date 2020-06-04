@@ -35,7 +35,7 @@
 	  current-theory current-theory-name current-using-hash file-older
 	  find-supertype get-theory lf make-new-context mapappend operator*
 	  prover-status put-decl pvs-current-directory resolution show assq tc-term
-	  formals pvs-git-description))
+	  formals pvs-git-description ref-to-id))
 
 (declaim (notinline current-theory))
 

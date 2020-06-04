@@ -1492,33 +1492,22 @@ use binfiles."
 	    (assuming theory)
 	    (theory theory))))
 
-(defun get-tccs (thref)
-  (let* ((thstr (typecase thref
-		 (cons ;; should be assoc list with cars
-		  ;; :fileName, :fileExtension, :theoryName, :contextFolder
-		  (unless (assq :fileName thref)
-		    (error "bad thref: ~a" thref))
-		  (format nil "~a/~a~a#~a"
-		    (cdr (assq :contextFolder thref))
-		    (cdr (assq :fileName thref))
-		    (cdr (assq :fileExtension thref))
-		    (cdr (assq :theoryName thref))))
-		 (pathname (namestring thref))
-		 (string thref)))
-	 (theory (cond (thstr
-			(get-typechecked-theory thstr))
-		       ((datatype-or-module? thref)
-			thref)
-		       (t (error "get-tccs: bad thref"))))
-	 (tccs (collect-tccs theory)))
-    (mapcar #'(lambda (tcc)
+(defun get-tccs (thref &optional thname)
+  (with-pvs-file (name thn) thref
+    (unless thname
+      (if thn
+	  (setq thname thn)
+	  (error "get-tccs: missing theory name?")))
+    (let* ((theory (get-typechecked-theory thname))
+	   (tccs (collect-tccs theory)))
+      (mapcar #'(lambda (tcc)
 		  `((id . ,(id tcc))
 		    (theory . ,(id (module tcc)))
 		    (comment . ,(newline-comment tcc))
 		    (from-decl . ,(get-unique-id (generated-by tcc)))
 		    (definition . ,(str (definition tcc)))
 		    (proved . ,(proved? tcc))))
-	tccs)))
+	tccs))))
 
 (defmethod proved? ((fdecl formula-decl))
   (or (and (member (proof-status fdecl)
@@ -2685,14 +2674,12 @@ If formname is nil, then formref should resolve to a unique formula name."
     (unless (or formname fname thname name)
       (error "get-proof-script missing formula name?"))
     ;; Check for no dir, or it's already the current context-path
-    (if formname
-	(unless thname
-	  (setf thname (or name fname)))
-	(if fname
-	    (setf formname fname
-		  thname (or thname name))
-	    (setf formname thname
-		  thname name)))
+    (unless formname
+      (if fname
+	  (setf formname fname
+		thname (or thname name))
+	  (setf formname thname
+		thname name)))
     (let ((fdecls (get-matching-prove-formulas name thname formname)))
       (cond ((cdr fdecls)
 	     (let ((locdecls (remove-if-not

@@ -178,12 +178,17 @@
 		    ((string= msg "Init error") 5)
 		    (t 0)))
 	(plist (pvs:place-list place)))
-    (error 'pvs-error
-	   :code code
-	   :kind msg
-	   :error-string errstring
-	   :file-name (when fbname (namestring fbname))
-	   :place plist)))
+    (cond (*in-checker*
+	   ;; Add the error to the commentary string, as calling error does
+	   ;; not work correctly while in the prover.
+	   (pvs:commentary errstring)
+	   (pvs:restore))
+	  (t (error 'pvs-error
+		    :code code
+		    :kind msg
+		    :error-string errstring
+		    :file-name (when fbname (namestring fbname))
+		    :place plist)))))
 
 (defun json-pvs-error (id c)
   (with-slots (code kind error-string file-name place) c
