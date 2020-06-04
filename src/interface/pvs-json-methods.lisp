@@ -58,9 +58,9 @@
     (pvs:save-context)
     (xmlrpc-theories theories)))
 
-(defrequest typecheck (filename)
+(defrequest typecheck (filename &optional force?)
   "Typecheck a file"
-  (let ((theories (pvs:typecheck-file filename)))
+  (let ((theories (pvs:typecheck-file filename force?)))
     (pvs:save-context)
     (xmlrpc-theories theories)))
 
@@ -134,9 +134,10 @@
 		(gen-id (pvs:kind-of decl)))))
     `((:id . ,id)
       (:kind . ,(pvs:kind-of decl))
+      ;;(:class . ,(class-name (class-of decl)))
       (:type . ,(pvs:str (pvs:type decl)))
       ,@(when (pvs:generated-by decl)
-	  `((:generated-by . ,(pvs:generated-by decl))))
+	  `((:generated-by . ,(pvs:ref-to-id (pvs:generated-by decl)))))
       (:place . ,(pvs:place-list decl)))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:declaration))
@@ -409,6 +410,7 @@ to the associated declaration."
 		   loc1)))
     (multiple-value-bind (term containing-terms)
 	(pvs:get-term-at file loc1 loc2 typecheck?)
+      (declare (ignore containing-terms)) ; might be useful later
       (json-term term))))
 
 (defun json-term (term)

@@ -99,10 +99,17 @@
  not not pvsWhen pvsIff (+) (-) (*) (/) pvsNumberFieldPred (<) (<=) (>)
  (>=) pvsRealPred pvsIntegerPred pvsIntegerPred pvsRationalsPred pvsFloor pvsCeiling
  nrem rem / pvsEven? pvsOdd? pvsCons hd tl isCons [!!] isNull pvsRestrict
- length isMember (!!) (++) reverse))
+ length isMember (!!) (++) reverse Char))
 
 (defparameter *pvsclean-primitives-map*
+<<<<<<< HEAD
   (pairlis *pvs2clean-primitives* *clean-primitives*))
+=======
+  ;; Changed to mapcar, as there are now more *pvs2cl-primitives* than
+  ;; *clean-primitives* and haven't had time to lookup the last few.  Since
+  ;; the added primitives were at the end, this shouldn't cause problems.
+  (mapcar #'cons *pvs2cl-primitives* *clean-primitives*))
+>>>>>>> e6c6cf700f8c841f89fb4ecc76b5efb2174cbba7
 
 (defvar *clean-record-defns* nil)
 

@@ -307,8 +307,8 @@
 
 (defmacro error-format-if (string &rest args)
   `(if *suppress-printing*
-    (set-strategy-errors (format nil ,string ,@args))
-    (commentary ,string ,@args)))
+       (set-strategy-errors (format nil ,string ,@args))
+       (commentary ,string ,@args)))
 
 (defmacro format-nif (string &rest args)
   ;; Like format-if, but not in commentary
@@ -580,7 +580,7 @@
 	 (*pp-print-lines* *prover-print-lines*)
 	 (*default-char-width* (or *prover-print-right-margin*
 				   *default-char-width*)))
-    (commentary "~a" ,ps)))
+    (format-nif "~a" ,ps)))
 
 
 (defmacro print-proofstate-if (ps)
@@ -591,7 +591,7 @@
 				   *default-char-width*)))
      (unless (and (consp (current-input ,ps))
 		  (eq (car (current-input ,ps)) 'lisp))
-       (format-if "~a" ,ps))))
+       (format-nif "~a" ,ps))))
 
 (defmacro safe-parse-integer (string)
   `(if (every #'digit-char-p ,string) (parse-integer ,string) 0))
