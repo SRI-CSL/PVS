@@ -870,6 +870,41 @@ pvs-tex.sub files from your home directory."
 	 (pvs-mail-send-and-exit ,to ,subject ,file-string)))
     (use-local-map lkeymap)))
 
+(defpvs tar-pvs-workspace dump-files (&optional workspace)
+  "Creates a tar file of the workspace (defaults to current workspace).  If
+the workspace is \"/home/rsimpson/pvs-test\", then the tar file is created
+as \"/home/rsimpson/pvs-test.tgz\", containing all files and subdirectories,
+excluding binfiles, of the pvs-test subdirectory."
+  (let* ((ws (remove-trailing-slash
+	      (if workspace
+		  (if (file-directory-p workspace)
+		      (file-truename workspace)
+		      (error "Invalid directory: %s" workspace))
+		  pvs-current-directory)))
+	 ;; No trailing slash makes file-name-nondirectory work
+	 (wsname (file-name-nondirectory ws))
+	 (wsparent (file-name-directory ws)))
+    (process-file "tar" nil nil nil
+    		  "czv" "-C" wsparent "-f" (concat ws ".tgz")
+    		  "--exclude=binfile" wsname)))
+
+;; (defun zip-pvs-workspace (&optional workspace)
+;;   "Creates a zip file of the workspace (defaults to current workspace).
+;; This tarfile contains all files and subdirectories, excluding binfiles."
+;;   (let* ((ws (remove-trailing-slash
+;; 	      (if workspace
+;; 		  (if (file-directory-p workspace)
+;; 		      (file-truename workspace)
+;; 		      (error "Invalid directory: %s" workspace))
+;; 		  pvs-current-directory)))
+;; 	 ;; No trailing slash makes file-name-nondirectory work
+;; 	 (wsname (file-name-nondirectory ws))
+;; 	 (wsparent (file-name-directory ws)))
+;;     (process-file "zip" nil nil nil
+;;     		  "-r" "-C" wsparent "-f" (concat ws ".tgz")
+;;     		  "--exclude=binfile" wsname)))
+      
+
 (defun pvs-mail-send-and-exit (to subject file-string)
   (let ((homedir (or (pvs-copy-home-directory-files) "")))
     (goto-char (point-min))

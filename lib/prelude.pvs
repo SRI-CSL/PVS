@@ -4747,6 +4747,52 @@ lex2: THEORY
 
  END lex2
 
+% lex3 provides a lexical ordering for triples of natural numbers.
+
+lex3: THEORY
+  BEGIN
+
+  i, j, k, m, n, p: VAR nat
+
+  lex3(m, n, p): ordinal =
+    IF (m = 0)
+    THEN lex2(n, p)
+    ELSE add(m, add(2, add(2, zero, zero), zero), lex2(n, p))
+    ENDIF
+
+  wtf?: LEMMA
+    NOT (add(2, add(2, zero, zero), zero) = add(1, zero, zero))
+
+  lex3_lt: LEMMA
+    (lex3(i, j, k) < lex3(m, n, p)) =
+      ((i < m) OR ((i = m) AND (lex2(j,k) < lex2(n, p))))
+
+ END lex3
+
+% lex4 provides a lexical ordering for quadruples of natural numbers.
+
+lex4: THEORY
+  BEGIN
+  i, j, k, l, m, n, p, q: VAR nat
+
+  lex4(m, n, p, q): ordinal =
+    IF (m = 0)
+    THEN lex3(n, p, q)
+    ELSE add(m, add(3, add(2, add(1, zero, zero), zero), zero), lex3(n, p, q))
+    ENDIF
+
+  wtf?: LEMMA
+    NOT (add(3, add(2, add(1, zero, zero), zero), zero) = add(1, zero, zero))
+
+  same_coefs: LEMMA
+    ∀ (A, B:ordinal) : nonzero?(A) ∧ nonzero?(B) ⇒ (A = B ⇒ coef(A) = coef(B))
+    
+  lex4_lt: LEMMA
+    (lex4(i, j, k, l) < lex4(m, n, p, q)) =
+      ((i < m) OR ((i = m) AND (lex3(j, k, l) < lex3(n, p, q))))
+
+ END lex4
+
 
 % list provides the datatype definition for lists.
 

@@ -2094,6 +2094,11 @@ existence and time differences to be whitespace")
       (setq comps (cdr comps)))
     sdir))
 
+(defun remove-trailing-slash (dir)
+  (if (= (aref dir (1- (length dir))) ?/)
+      (substring dir 0 (1- (length dir)))
+      dir))
+
 (defun pvs-title-string ()
   nil)
 

@@ -2627,6 +2627,9 @@ formname is nil, then formref should resolve to a unique name."
       (let ((theories (typecheck-file name)))
 	(if thname
 	    (let ((theory (find thname theories :test #'string= :key #'id)))
+	      (unless theory
+		(pvs-error "Typecheck-error"
+		  (format nil "~a is not a theory in file ~a" thname (make-specpath name))))
 	      (dolist (d (all-decls theory))
 		(when (and (formula-decl? d)
 			   (string= (id d) formname))

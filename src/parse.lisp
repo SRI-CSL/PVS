@@ -191,7 +191,7 @@
 	 (endid (ds-vid (term-arg0 endidop))))
     (unless (or (null id)
 		(eq id endid))
-      (parse-error (term-arg2 datatype)
+      (parse-error endidop
 	"End id ~a does not match datatype id ~a" endid id))
     (multiple-value-bind (imps assuming adtcases)
 	(xt-adtbody (term-args adtbody))
