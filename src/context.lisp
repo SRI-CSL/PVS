@@ -2066,7 +2066,7 @@ Note that the lists might not be the same length."
 	  (with-open-file (input prf-file :direction :input)
 	    (let ((proofs (read-proof-file-stream input)))
 	      (make-current-proofs-sexps proofs)))
-	(file-error (condition)
+	(error (condition)
 	  (pvs-message "Error reading proof file ~a:~%  ~a"
 	    (namestring prf-file) condition)
 	  nil)))))
