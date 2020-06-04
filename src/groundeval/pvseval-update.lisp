@@ -840,7 +840,9 @@ if called."
 	(stype (find-supertype (type expr))))
         (if (tc-eq stype *string-type*)
 	    `(make-pvslist-string ,(car args) ,(cadr args))
-	  `(pvs2cl_record ,@args))))
+	  (if (finseq-type? stype)
+	      `(pvs2cl_finseq ,(car args) ,(cadr args))
+	    `(pvs2cl_record ,@args)))))
 
 (defmethod pvs2cl_up* ((expr projection-application) bindings livevars)
     `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
@@ -1008,33 +1010,46 @@ if called."
   (let* ((args1 (car args))
 	 (id (id (car args1)))
 	 (fields (sort-fields (fields type)))
-	 (field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
-	 (cl-expr-var (gentemp "E"))	 
-	 (newexpr `(svref ,cl-expr-var ,field-num))
-	 (field-type (type (find id fields :key #'id) ))
- 	 (dep-fields (sort-fields (fields type) t));;dependent sort
- 	 (new-bindings (pvs2cl-add-dep-field-bindings  dep-fields fields id
-						  cl-expr-var bindings))
-	 (other-updateable-types ;;to prevent updates to aliases
-	  (loop for fld in (fields type)
-		when (not (eq id (id fld)))
-		nconc (top-updateable-types (type fld) nil)))
-	 (rhs-var (gentemp "R"))
-	 (newrhs  (if (null (cdr args))
-		      rhs
-		      (if (member field-type
-				  other-updateable-types
-				  :test #'compatible?)
-			  (pvs2cl-update-nd-type
-			   field-type newexpr (cdr args) rhs
-			   new-bindings livevars)
+	 (cl-expr-var (gentemp "E"))
+	 (rhs-var (gentemp "R")))
+    (if (tc-eq type *string-type*)
+	(if (eq id 'seq)
+	    (if (cdr args) ;;if the index i of the string is being updated
+		(let ((index-var (gentemp "I"))
+		      (index-expr (pvs2cl_up* (caadr args) bindings
+					      livevars)))
+		  `(let ((,cl-expr-var ,cl-expr)
+			 (,index-var ,index-expr))
+		     (setf (aref ,cl-expr-var ,index-var) ,rhs)
+		     ,cl-expr-var))
+	      `(coerce ,rhs 'string)) ;replacing the entire seq field
+	  cl-expr); can't update length field of a string in isolation
+      (let* ((field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
+	     (newexpr `(svref ,cl-expr-var ,field-num))
+	     (field-type (type (find id fields :key #'id) ))
+ 	     (dep-fields (sort-fields (fields type) t))	;;dependent sort
+ 	     (new-bindings (pvs2cl-add-dep-field-bindings  dep-fields fields id
+							   cl-expr-var bindings))
+	     (other-updateable-types ;;to prevent updates to aliases
+	      (loop for fld in (fields type)
+		    when (not (eq id (id fld)))
+		    nconc (top-updateable-types (type fld) nil)))
+	     (rhs-var (gentemp "R"))
+	     (newrhs  (if (null (cdr args))
+			  rhs
+			(if (member field-type
+				    other-updateable-types
+				    :test #'compatible?)
+			    (pvs2cl-update-nd-type
+			     field-type newexpr (cdr args) rhs
+			     new-bindings livevars)
 			  (pvs2cl-update-assign-args
 			   field-type newexpr (cdr args) rhs
 			   new-bindings livevars)))))
-    `(let* ((,cl-expr-var ,cl-expr)
-	   (,rhs-var ,newrhs))
-       (rec-tup-update ,cl-expr-var ,field-num ,rhs-var)
-       ,cl-expr-var)))
+	`(let* ((,cl-expr-var ,cl-expr)
+		(,rhs-var ,newrhs))
+	   (rec-tup-update ,cl-expr-var ,field-num ,rhs-var)
+	   ,cl-expr-var)))))
 ;     `(let ((,cl-expr-var ,cl-expr))
 ;        (declare (simple-array ,cl-expr-var))
 ;        (setf ,newexpr ,newrhs)
@@ -1462,7 +1477,8 @@ if called."
     (break "generate-pvs2cl-mapped-function")))
 
 (defun datatype-constant? (expr)
-  (adt-name-expr? expr))
+  (and (adt-name-expr? expr)
+       (not (pvs2cl-primitive? expr))))
 
 (defun pvs2cl-resolution2 (expr)
   (pvs2cl-resolution expr)
@@ -2033,6 +2049,9 @@ if called."
 	(mk-name '|nth| nil '|list_props|)
 	(mk-name '|append| nil '|list_props|)
 	(mk-name '|reverse| nil '|list_props|)
+	(mk-name '|char| nil '|character_adt|)
+	(mk-name '|code| nil '|character_adt|)
+	(mk-name '|char?| nil '|character_adt|)
 	))
 
 (defun same-primitive?  (n i)

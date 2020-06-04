@@ -146,6 +146,9 @@
 (defun |pvs_rational_pred| (x) (rationalp x))
 (defun |pvs_integer_pred| (x) (integerp x))
 (defun |pvs_integer?| (i) (integerp i))
+(defun |pvs_char| (x) (code-char x))
+(defun |pvs_char?| (x) (characterp x))
+(defun |pvs_code| (x) (char-code x))
 
 ;;multiary macro versions of primitives
 (defmacro |pvs__=| (x y)
@@ -583,6 +586,17 @@
 (defmacro pvs2cl_record (&rest args)
   (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
     `(vector ,@protected-args)))
+
+(defmacro pvs2cl_finseq (length seq);;not accurate - revisit in 7.2
+  `(let* ((length (trap-undefined ,length))
+	  (seq (trap-undefined ,seq))
+	  (seqtypeof (type-of seq)))
+    (if (and (typep seq 'simple-array)
+	     (listp seqtypeof)
+	     (> (length seqtypeof) 1)
+	     (eq (cadr seqtypeof) 'character))
+	(make-pvslist-string length seq)
+      (pvs2cl_record length seq))))
 
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)

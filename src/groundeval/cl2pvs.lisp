@@ -56,11 +56,12 @@
       (error 'cl2pvs-error :sexpr sexpr :type type))))
 
 (defun dom-subrange? (sexpr type)
-    (if (simple-array-p sexpr)
+  (if #+allegro (excl::simple-array-p sexpr)
+      #-allegro (simple-array-p sexpr)
       (let* ((typeof (type-of sexpr))
-	     (elemtype (cadr typeof))
+	     ;(elemtype (cadr typeof))
 	     (length (caaddr typeof)))
-	(if (eq (cadr (type-of sexpr)) 'character)
+	(if (eq (cadr typeof) 'character)
 	    (cons 0 (1- length))))
       (let ((bnds (simple-subrange? (domtype type))))
 	(and bnds (number-expr? (car bnds))(number-expr? (cdr bnds))
@@ -148,11 +149,20 @@
 (defmethod finseq-type? ((type recordtype))
   (with-slots (fields) type
     (and (= (length fields) 2)
-	 (let ((lenfieldtype (type (car fields)))
-	       (seqfieldtype (type (cadr fields))))
-	   (and (tc-eq lenfieldtype *naturalnumber*)
-		(get-seq-range-type seqfieldtype lenfieldtype))))))
+	 (let* ((lfield (and (eq (id (car fields)) '|length|)
+			     (car fields)))
+		(sfield (and (eq (id (cadr fields)) '|seq|)
+			     (cadr fields)))
+		(sfieldtype (find-supertype (type sfield))))
+	   (and (compatible-type (type lfield) *naturalnumber*)
+		(funtype? sfieldtype)
+		(simple-below? (domain sfieldtype))
+		(range sfieldtype)))))) ;;returns range
 
+(defmethod finseq-type? ((type subtype))
+  (with-slots (supertype) type
+    (finseq-type? supertype)))
+			  
 (defmethod finseq-type? (type)
   (declare (ignore type))
   nil)
@@ -164,6 +174,10 @@
 	   (type domtype)
 	   (tc-eq (type domtype) domaindep)
 	   (range type)))))
+
+(defmethod get-seq-range-type ((type subtype) domaindep)
+  (with-slots (supertype predicate) type
+    (get-seq-range-type supertype domaindep)))
   
 (defmethod get-seq-range-type ((type t) domaindep)
   (declare (ignore domaindep))
@@ -187,20 +201,22 @@
 ; about places
 (defun cl2pvs*-string (str)
   (let ((ne (mk-name-expr '|char?|))
-	(charlist (if (stringp str)   ;;NSH(12/21/19): extracts list of character codes
-		      (xt-string-to-codes str 0 (length str) '#(0 0 0 0) nil)
-		    ;;else assuming it's a record-vector
-		    (loop for i from 0 to (1- (svref str 0))
-			  collect (funcall (char-code-accessor)
-					   (funcall (svref str 1) i))))))
+	(charcodelist (if (stringp str)   ;;NSH(12/21/19): extracts list of character codes
+			  (xt-string-to-codes str 0 (length str) '#(0 0 0 0) nil)
+			;;else assuming it's a record-vector
+			(loop for i from 0 to (1- (svref str 0))
+			      collect (let ((chari (funcall (svref str 1) i)))
+					(or (and (characterp chari) (char-code chari))
+					    (funcall (char-code-accessor)
+						     chari)))))))
     (setf (parens ne) 1)
     (make-instance 'string-expr
 		   'string-value (or (and (stringp str) str)
 				     (format nil "~{~a~}"
-					     (loop for chcode in charlist
+					     (loop for chcode in charcodelist
 						   collect (code-char chcode))))
       'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
-      'argument (cl2pvs*-string* charlist))))
+      'argument (cl2pvs*-string* charcodelist))))
 
 (defun cl2pvs*-string* (codes)
   (if (null codes)
