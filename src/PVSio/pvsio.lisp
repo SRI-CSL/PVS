@@ -48,8 +48,8 @@
   help                 : Print this message
   quit                 : Exit the evaluator with confirmation
   exit                 : Exit the evaluator without confirmation
-  debug                : Turn on printing ofg debugging information
-  nodebug              : Turn off printing ofg debugging information
+  debug                : Turn on printing of debugging information
+  nodebug              : Turn off printing of debugging information
   timing               : Turn on timing information per evaluation
   notiming             : Turn off timing information
   tccs                 : Turn on TCCs generation per evaluation 
@@ -129,15 +129,21 @@ To change output prompt '~a':
        (have-first-space nil)
        (instr nil)
        (fstr  (make-string-output-stream))
+       (parens 0)
        (c     (read-char input-stream nil nil)
 	      (read-char input-stream nil nil)))
       ((and (eq c #\;)
-	    (not instr))
-       (string-trim '(#\Space #\Tab #\Newline)
+	    (not instr)
+	    (= parens))
+	 (string-trim '(#\Space #\Tab #\Newline)
 		    (get-output-stream-string fstr)))
     (when (null c)
       (assert (find-restart 'pvsio-quit))
       (invoke-restart 'pvsio-quit))
+    (when (eq c #\()
+      (setq parens (1+ parens)))
+    (when (eq c #\))
+      (setq parens (1- parens)))
     (when (and (not instr)
 	       have-real-char
 	       (not have-first-space)
@@ -155,7 +161,9 @@ To change output prompt '~a':
 		     have-first-space nil))
 	      (t (loop for ch across pref do (write-char ch fstr))
 		 (setq have-first-space t)))))
-    (when (and (eq c #\!) (not instr))
+    (when (and (eq c #\!)
+	       (not instr)
+	       (= parens 0))
       (clear-input)
       (return
 	(read-from-string 
@@ -209,7 +217,7 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	(invoke-restart 'return-to-pvsio)))
     (let ((cl-input (pvs2cl tc-input)))
       (when *evaluator-debug*
-	(format t "~%PVS expression ~a translates to Common Lisp expression:~%~a~%" 
+	(format t "~%PVS expression ~a translates to the Common Lisp expression:~%~a~%" 
 	  tc-input cl-input))
       (handler-case
 	  (let ((cl-eval
@@ -234,8 +242,10 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
   (when (not input-stream)
     (format t "~%~a" *pvsio-promptin*)
     (force-output))
-  (let ((input (read-expr input-stream)))
-    (cond ((member input '("quit" "q" "(quit)") :test #'string-equal)
+  (let((input (read-expr input-stream)))
+    (if (stringp input)
+	(cond
+	 ((member input '("quit" "q" "(quit)") :test #'string-equal)
 	   (clear-input)
 	   (when (pvs-y-or-n-p "Do you really want to quit? ")
 	     (unless (find-restart 'pvsio-quit)
@@ -284,15 +294,15 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 		   :test #'string-equal)
 	   (load-pvs-attachments t)
 	   (read-pvsio input-stream))
-	  ((stringp input) input)
-	  (t  (multiple-value-bind 
-		  (val err)
-		  (progn ;ignore-errors
-		    (eval input))
-		(if err (format t "ERROR (lisp): ~a" err)
-		  (format t "~a" val))
-		(fresh-line)
-		(read-pvsio input-stream))))))
+	  (t input))
+      (multiple-value-bind 
+	  (val err)
+	  (progn ;ignore-errors
+	    (eval input))
+	(if err (format t "ERROR (lisp): ~a" err)
+	  (format t "~a" val))
+	(fresh-line)
+	(read-pvsio input-stream)))))
 
 #+allegro
 (defmacro pvstrace (&rest specs)

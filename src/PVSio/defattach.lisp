@@ -16,13 +16,21 @@
 
 (in-package :pvs)
 
-(defparameter *pvsio-attachments* (make-hash-table :test #'equal))
+(defvar *pvsio-attachments* (make-hash-table :test #'equal))
 
 (defun pvsio-version ()
   (pvs-message *pvsio-version*))
 
 ;; Primitive attachments are TRUSTED
 (defstruct attachment theory name args primitive symbol)
+
+(defun remove-attachments (name)
+  "Remove all the attachments that matches the provided name."
+  (let ((new-hash (make-hash-table :size (hash-table-size *pvsio-attachments*) :test #'equal)))
+    (loop for attachments being the hash-value of *pvsio-attachments* using (hash-key theory)
+	  do (let ((new-att (remove-if (lambda(att) (string= (attachment-name att) name)) attachments)))
+	       (setf (gethash theory new-hash) new-att)))
+    (setf *pvsio-attachments* new-hash)))
 
 (defun find-attachments (name)
   (loop for attachments being the hash-value of *pvsio-attachments*
@@ -78,11 +86,8 @@
 		 *pvsio-attachments* 
 		 collect (cons (format nil "~a" theory)
 			       (format nil "Theory ~a: ~{~a~^, ~}.~2%" theory 
-				       (mapcar #'attachment-name-prim 
-					       (sort attachments #'(lambda (x y)
-								     (string-lessp
-								      (attachment-name x)
-								      (attachment-name y))))))))))
+				       (sort (mapcar #'attachment-name-prim 
+					       attachments) #'string-lessp))))))
     (if l (format nil "Semantic attachments loaded in current context:~2%~{~a~}" 
 		  (mapcar #'cdr (sort l #'(lambda(x y) (string-lessp (car x) (car y))))))
       (format nil "No semantics attachments loaded in current context.~2%"))))
