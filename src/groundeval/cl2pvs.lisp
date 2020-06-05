@@ -153,8 +153,9 @@
 			     (car fields)))
 		(sfield (and (eq (id (cadr fields)) '|seq|)
 			     (cadr fields)))
-		(sfieldtype (find-supertype (type sfield))))
-	   (and (compatible-type (type lfield) *naturalnumber*)
+		(sfieldtype (when sfield (find-supertype (type sfield)))))
+	   (and lfield sfieldtype
+		(compatible-type (type lfield) *naturalnumber*)
 		(funtype? sfieldtype)
 		(simple-below? (domain sfieldtype))
 		(range sfieldtype)))))) ;;returns range
