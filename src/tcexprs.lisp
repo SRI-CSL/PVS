@@ -1900,7 +1900,115 @@ field-decls, etc."
 	     ;;(break "maplet case")
 	     (find-update-commontypes expr)))
 	  (t (assert (singleton? (ptypes (expression expr))))
-	     (ptypes (expression expr))))))
+	     (let* ((etype (car (ptypes (expression expr))))
+		    (ty (get-update-expr-type etype expr)))
+	       (when (not (subsetp (freevars ty) (freevars etype)
+				   :test #'same-declaration))
+		 (break "update-expr-types freevars?"))
+	       ;;(break "update-expr-types: ~a ==> ~a" etype ty)
+	       (list ty))))))
+
+(defun get-update-expr-type (te ex)
+  "Given updex expression 'e WITH [x := y, ...]', te the type of 'e', returns te
+with dependencies lifted up to the update expr depth."
+  (lift-dependencies te (update-expr-depth ex)))
+
+;;; Classes that allow updates, so need methods defined:
+;;;  subtype, funtype, record-or-struct-subtype, tuple-or-struct-subtype,
+;;;  datatype-subtype, adt-type-name
+
+(defun lift-dependencies (te update-depth)
+  "Returns te with dependencies lifted up to depth."
+  (lift-dependencies* te 0 update-depth nil))
+
+(defmethod lift-dependencies* :around (te cdepth update-depth deps)
+  (if (<= cdepth update-depth)
+      (call-next-method)
+      te))
+
+(defmethod lift-dependencies* ((te type-name) cdepth update-depth deps)
+  (if (freevars-in-deps? te deps)
+      (break "lift-dependencies* type-name")
+      te))
+
+(defun freevars-in-deps? (ex deps)
+  (some #'(lambda (fv) (memq (declaration fv) deps)) (freevars ex)))
+
+(defmethod lift-dependencies* ((te subtype) cdepth update-depth deps)
+  (let ((suptype (lift-dependencies* (supertype te) cdepth update-depth deps)))
+    (if (and (eq suptype (supertype te))
+	     (not (freevars-in-deps? (predicate te) deps)))
+	te
+	suptype)))
+
+(defmethod lift-dependencies* ((te funtype) cur-depth update-depth deps)
+  (let* ((domtype (dep-binding-type (domain te)))
+	 (dtype (if (freevars-in-deps? (domain te) deps)
+		    (lift-dependencies* domtype cur-depth update-depth deps)
+		    domtype))
+	 (rtype (lift-dependencies* (range te)
+				    (1+ cur-depth) update-depth
+				    (if (and (dep-binding? (domain te))
+					     (not (eq domtype dtype)))
+					(cons (domain te) deps)
+					deps))))
+    (if (eq dtype domtype)
+	(if (eq rtype (range te))
+	    te
+	    (if (dep-binding? (domain te))
+		(mk-funtype (domain te) rtype)
+		(mk-funtype dtype rtype)))
+	(mk-funtype dtype rtype))))
+
+(defmethod lift-dependencies* ((te record-or-struct-subtype) cdepth update-depth deps)
+  (let* ((fld-deps nil)
+	 (fld-types (mapcar #'(lambda (fld)
+				(let ((fty (lift-dependencies* (type fld) (1+ cdepth) update-depth
+							       (append fld-deps deps))))
+				  (unless (eq fty (type fld))
+				    (push fld fld-deps))
+				  fty))
+		      (fields te)))
+	 (flds (mapcar #'(lambda (fld fty)
+			   (if (eq fty (type fld))
+			       fld
+			       (mk-field-decl (id fld) fty fty)))
+		 (fields te) fld-types)))
+    (assert (not (freevars-in-deps? flds deps)))
+    (copy te :fields flds :dependent? nil :print-type nil)))
+
+(defmethod lift-dependencies* ((te tuple-or-struct-subtype) cdepth update-depth deps)
+  (let* ((tup-deps nil)
+	 (tup-types (mapcar #'(lambda (tupty)
+				(let ((ty (lift-dependencies* (dep-binding-type tupty)
+							      (1+ cdepth) update-depth
+							      (append tup-deps deps))))
+				  (if (dep-binding? tupty)
+				      (if (eq ty (dep-binding-type tupty))
+					  tupty
+					  (push tupty tup-deps))
+				      ty)))
+		      (types te))))
+    (copy te :types tup-types :print-type nil)))
+
+(defmethod lift-dependencies* ((te datatype-subtype) cdepth update-depth deps)
+  (if (freevars-in-deps? te deps)
+      (let ((dtype (lift-dependencies* (declared-type te) cdepth update-depth deps)))
+	(break "lift-dependencies* datatype-subtype"))
+      te))
+
+(defmethod lift-dependencies* ((te adt-type-name) cdepth update-depth deps)
+  (if (freevars-in-deps? te deps)
+      (break)
+      (call-next-method)))
+
+(defun update-expr-depth (ex)
+  "This returns the maximum depth of the update-expr ex"
+  (reduce #'max
+	  (mapcar #'(lambda (ass)
+		      (length (arguments ass)))
+	    (assignments ex))))
+  
 
 (defun find-update-commontypes (expr)
   (assert (singleton? (ptypes (expression expr))))
