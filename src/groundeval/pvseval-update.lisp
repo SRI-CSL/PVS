@@ -341,12 +341,44 @@ if called."
   (let* ((op    (operator* expr))
 	 (args* (arguments* expr));;NSH(1-17-17)
 	 (args  (append expr-actuals (loop for arg in args* append arg)))
-	 (nargs (length args))
-	 (fn    (cond (pvsiosymb pvsiosymb)
-		      ((> nargs 1) (pvs2cl-primitive2 op))
-		      (t           (pvs2cl-primitive op))))
-	 (xtra  (when pvsiosymb (list (type op)))))
-    (mk-funapp fn (append (pvs2cl_up* args bindings livevars) xtra))))
+	 (xtra  (when pvsiosymb (list (type op))))
+	 (nargs (length args)))
+    (cond (pvsiosymb (mk-funapp pvsiosymb (append (pvs2cl_up* args bindings livevars) xtra)))
+	  ((> nargs 1)
+	   (if (equality-disequality? op)
+	       (pvs2cl-equality op args bindings livevars)
+	     (mk-funapp (pvs2cl-primitive2 op)
+		        (pvs2cl_up* args bindings livevars))))
+	  (t (mk-funapp (pvs2cl-primitive op)
+			(pvs2cl_up* args bindings livevars))))))
+
+(defun pvs2cl-equality (op args bindings livevars);;op is either = or /=
+  (let* ((id (id op))
+	 (modinst  (module-instance op))
+	 (acts (when modinst (actuals modinst)))
+	 (stype (find-supertype (type-value (car acts))))
+	 (arg1 (car args))
+	 (arg2 (cadr args)))
+    (cond ((tc-eq  (type-value (car acts)) *number*) id)
+	  ((funtype? stype)
+	   (let* ((xid (make-new-variable '|x| nil))
+		  (xbnd (make-bind-decl xid (domain stype)))
+		  (xvar (make-variable-expr xbnd))
+		  (equality (make-equation (make-application arg1 xvar)
+					   (make-application arg2 xvar)))
+		  (allexpr (if (eq id '=)
+			       (make-forall-expr (list xbnd) equality)
+			     (make-exists-expr  (list xbnd) (make-negation equality)))))
+	     (pvs2cl_up* allexpr bindings livevars)))
+	  (t (mk-funapp (pvs2cl-primitive2 op)
+			(pvs2cl_up* args bindings livevars))))))
+
+
+(defun equality-disequality? (op)
+  (let ((id (id op))
+	(modinst (module-instance op)))
+    (or (and (eq id '=)(eq (id modinst) '|equalities|))
+	(and (eq id '/=)(eq (id modinst) '|notequal|)))))
 
 (defmethod reverse-list-expr ((expr list-expr) accum)
   (reverse-list-expr (args2 expr) (cons (args1 expr) accum)))
@@ -1341,7 +1373,11 @@ if called."
 				   bindings)
 			   nil))) ;;NSH(6-26-02) was livevars
     (if (eql (length bind-ids) 1)
-	`(function (lambda ,bind-ids ,cl-body))
+	(let ((size (array-bound (type (car bind-decls))))
+	      (fun `(function (lambda ,bind-ids ,cl-body))))
+	  (if size
+	      (mk-pvs-array-closure size fun)
+	    fun))
 	(let* ((lamvar
 		(pvs2cl-newid 'lamvar bindings))
 	       (letbind
@@ -2083,15 +2119,9 @@ if called."
 	 (intern (format nil "pvs_--") :pvs))
 	(t (intern (format nil "pvs_~a" (id expr)) :pvs))))
 
-(defun pvs2cl-primitive2 (expr) ;;assuming expr is an id
-  (let* ((id (id expr))
-	 (modinst  (module-instance expr))
-	 (acts (when modinst (actuals modinst))))
-    (if (and (eq id '=)
-	     (eq (id modinst) '|equalities|)
-	     (tc-eq  (type-value (car acts)) *number*))
-	'=
-	(intern (format nil "pvs__~a" id) :pvs))))
+(defun pvs2cl-primitive2 (expr) ;;assuming expr is an id but not = or /=
+  (let* ((id (id expr)))
+    (intern (format nil "pvs__~a" id) :pvs)))
 
 ;;;
 ;;; this clearing is now done automatically by untypecheck
