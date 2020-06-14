@@ -789,10 +789,10 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 	  (if (and xv (xterval-ub xv)) (xterval-ub xv) "oo")
 	  (and xv (xterval-ub-closed xv))))
 
-(defun get-var-range-from-interval (var fmexpr) 
+(defun get-var-range-from-interval (var fmexpr)
   (let* ((expr (extra-get-expr fmexpr))
 	 (val  (extra-add-evalexpr expr)))
-    (when (record-expr? val)
+    (when (and (record-expr? val) (name-expr? var))
       (let* ((lb (extra-get-number-from-expr (get-expr-from-obj val 'lb) t))
 	     (ub (extra-get-number-from-expr (get-expr-from-obj val 'ub) t))
 	     (bb (get-expr-from-obj val 'bounded_below))
@@ -876,7 +876,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 
 ;; Put a variable bound in the hash table *extra-varranges*
 (defun extra-insert-range (var val islb isclosed)
-  (let* ((var (format nil "~a" var))
+  (let* ((var (format nil "~a" (id var)))
 	 (xv  (or (gethash var *extra-varranges*)
 		  (make-xterval)))
 	 (did (if islb 
