@@ -367,7 +367,7 @@
     (unintern name)))
 
 (defun eval-undef (name)
-  (when (and name (fboundp name))
+  (when (and name (symbolp name) (fboundp name))
     (fmakunbound name)))
    
 (defmethod untypecheck-theory ((decl def-decl))
