@@ -3440,7 +3440,9 @@ nil is returned in that case."
 		       *generating-adt*
 		       (and *current-context*
 			    (eq *current-context* *working-current-context*)))
-		   (get-theory thname))
+		   (let ((th (get-theory thname)))
+		     (when (and th (typechecked? th))
+		       th)))
 	      (let ((theory (get-parsed-theory thname t t)))
 		(when theory
 		  (unless (or *in-checker*
