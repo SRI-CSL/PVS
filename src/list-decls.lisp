@@ -1120,10 +1120,11 @@ place set."
 ;;     (when value
 ;;       (json-read-from-string value))))
 
-(defun names-info (pvs-file)
-  (let ((info (collect-pvs-file-decls-info pvs-file))
-	(json:*lisp-identifier-name-to-json* #'identity))
-    (json:encode-json-to-string info)))
+(defun names-info (fileref)
+  (with-pvs-file (pvs-file) fileref
+    (let ((info (collect-pvs-file-decls-info pvs-file))
+	  (json:*lisp-identifier-name-to-json* #'identity))
+      (json:encode-json-to-string info))))
 
 (defun collect-pvs-file-decls-info (pvs-file)
   (if (member pvs-file '("prelude" "pvsio_prelude") :test #'string=)
@@ -1153,8 +1154,8 @@ place set."
 ;;     (json:encode-json-to-string alist)))
 
 (defmethod theory-filename ((obj datatype-or-module))
-  (if (lib-datatype-or-theory? obj)
-      (format nil "~a/~a.pvs" (context-path obj) (filename obj))
+  (if (context-path obj)
+      (format nil "~a~a.pvs" (context-path obj) (filename obj))
       (format nil "~a.pvs" (filename obj))))
 
 (defvar *visible-decl-info*)

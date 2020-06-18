@@ -124,7 +124,9 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (let ((*print-escape* nil))
 	(format stream "~@<#<context ~w~@[~w.pvs~]~@[#~w~]~@[.~w~]>~:>"
-	  *default-pathname-defaults*
+	  (if (theory ctx)
+	      (context-path (theory ctx))
+	      *default-pathname-defaults*)
 	  (when (theory ctx)
 	    (filename (theory ctx)))
 	  (when (theory ctx)
