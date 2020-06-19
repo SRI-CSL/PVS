@@ -359,7 +359,8 @@ if called."
 	 (stype (find-supertype (type-value (car acts))))
 	 (arg1 (car args))
 	 (arg2 (cadr args)))
-    (cond ((tc-eq  (type-value (car acts)) *number*) id)
+    (cond ((tc-eq  (type-value (car acts)) *number*) `(,id ,(pvs2cl_up* arg1 bindings livevars)
+							  ,(pvs2cl_up* arg2 bindings livevars)))
 	  ((funtype? stype)
 	   (let* ((xid (make-new-variable '|x| nil))
 		  (xbnd (make-bind-decl xid (domain stype)))
@@ -432,8 +433,8 @@ if called."
 	      (set-list-expr? (args2 expr)))
 	 (let ((set1 (pvs2cl_up* (exprs (args1 expr)) bindings livevars))
 	       (set2 (pvs2cl_up* (exprs (args2 expr)) bindings livevars)))
-	   `(and (subsetp ',set1 ',set2 :test #'equalp)  ;;roll into pvs_equalp
-		 (subsetp ',set2 ',set1 :test #'equalp))))
+	   `(and (subsetp ,set1 ,set2 :test #'equalp)  ;;roll into pvs_equalp
+		 (subsetp ,set2 ,set1 :test #'equalp))))
 	(t (call-next-method))))
 
 (defmethod pvs2cl_up* ((expr disequation) bindings livevars)
@@ -441,8 +442,8 @@ if called."
 	      (set-list-expr? (args2 expr)))
 	 (let ((set1 (pvs2cl_up* (exprs (args1 expr)) bindings livevars))
 	       (set2 (pvs2cl_up* (exprs (args2 expr)) bindings livevars)))
-	   `(not (and (subsetp ',set1 ',set2 :test #'equalp) ;;roll into pvs_equalp
-		      (subsetp ',set2 ',set1 :test #'equalp)))))
+	   `(not (and (subsetp ,set1 ,set2 :test #'equalp) ;;roll into pvs_equalp
+		      (subsetp ,set2 ,set1 :test #'equalp)))))
 	(t (call-next-method))))
 
 (defun pvs2cl-datatype-application (operator expr bindings livevars)
