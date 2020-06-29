@@ -847,6 +847,16 @@ that are not the K_covnersion."
 	  (setf (argument expr) nexpr)
 	  (setf (operator expr)
 		(raise-actuals (copy (expr (car conversions))) 1))
+	  ;; (assert (actuals (operator expr)))
+	  ;; (assert (actuals (module-instance (operator expr))))
+	  (mapc #'(lambda (act mact)
+		    (set-extended-place (expr act) nexpr
+	  				"creating actual ~a for conversion ~a"
+	  				act (expr (car conversions)))
+		    (setf (place (expr mact)) (place (expr act)))
+		    (setf (place act) (place (expr act)))
+		    (setf (place mact) (place (expr act))))
+		(actuals (operator expr)) (actuals (module-instance (operator expr))))
 	  (setf (type expr) nil (types expr) nil)
 	  (set-type-actuals-and-maps (operator expr)
 				     (module (declaration (operator expr))))

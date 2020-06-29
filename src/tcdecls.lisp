@@ -69,7 +69,15 @@
 			       (unwind-protect
 				   (typecheck* decl nil nil nil)
 				 (cleanup-datatype decl))))))
+      ;;(sort-and-rename-tccs decl)
       (typecheck-decls (cdr decls)))))
+
+(defun sort-and-rename-tccs (decl)
+  ;; (let ((dtccs (reverse (remove-if (complement #'tcc?) (generated decl)))))
+  ;;   (when (cdr dtccs)
+  ;;     (break)))
+  )
+
 
 (defun typecheck-decl (decl)
   ;; This check is needed because typechecking an importing may remove
@@ -2023,8 +2031,12 @@ The dependent types are created only when needed."
 		      (type (domain type))
 		      (domain type)))
 	     (vid (make-new-variable '|z| (cons decl domtypes)))
-	     (bd (make-bind-decl vid dom))
-	     (avar (make-variable-expr bd))
+	     (bd (make!-bind-decl vid dom))
+	     (avar (let ((var (make-variable-expr bd)))
+		     (set-extended-place var (measure decl)
+					 "creating var ~a for domain ~a"
+					 var dom)
+		     var))
 	     (arg1 (make-lhs-measure-application
 		    (measure decl) (reverse domtypes) avar decl))
 	     (arg2 (make-rhs-measure-application decl))
@@ -2065,15 +2077,35 @@ The dependent types are created only when needed."
 		 domtypes)))))
 
 (defun make-lhs-measure-application (meas domtypes var decl)
+  (assert (place meas))
   (if (null domtypes)
-      (make!-application meas var)
+      (let ((mapp (make!-application meas var)))
+	(set-extended-place mapp meas
+			    "creating measure application ~a" mapp)
+	mapp)
       (make-lhs-measure-application
-       (let ((dvar (make-variable-expr (car domtypes))))
-	 (make!-application meas dvar))
+       (let* ((dvar (make-variable-expr (car domtypes)))
+	      (mapp (make!-application meas dvar)))
+	 (set-extended-place dvar meas
+			     "creating measure variable ~a" dvar)
+	 (set-extended-place mapp meas
+			     "creating measure application ~a" mapp)
+	 mapp)
        (cdr domtypes) var decl)))
 
 (defun make-rhs-measure-application (decl)
-  (make!-recursive-application (measure decl) (outer-arguments decl)))
+  (let ((abindings (append (formals decl)
+			    (bindings* (definition decl))))
+	(oargs (outer-arguments decl)))
+    (mapc #'(lambda (args bindings)
+	      (mapc #'(lambda (arg binding)
+			(assert (place binding))
+			(set-extended-place arg binding
+					    "making arg ~a from binding ~a"
+					    arg binding))
+		    args bindings))
+	  oargs abindings)
+    (make!-recursive-application (measure decl) oargs)))
 
 (defun recursive-calls-without-enough-args (decl)
   (let ((depth (measure-depth decl))
@@ -4054,12 +4086,16 @@ The dependent types are created only when needed."
   ;; need to change decl to an application-judgement.
   (let* ((ctype (unless (forall-expr? (expr decl))
 		  (let ((*generate-tccs* 'none)
-			(*no-conversions-allowed* t))
-		    (typecheck* (copy-all (declared-type decl)) nil nil nil))))
+			(*no-conversions-allowed* t)
+			(dtype (copy-all (declared-type decl))))
+		    (copy-lex (declared-type decl) dtype)
+		    (typecheck* dtype nil nil nil))))
 	 (cexpr (when ctype
 		  (let ((*generate-tccs* 'none)
-			(*no-conversions-allowed* t))
-		    (typecheck* (copy-all (expr decl)) ctype nil nil))))
+			(*no-conversions-allowed* t)
+			(cex (copy-all (expr decl))))
+		    (copy-lex (expr decl) cex)
+		    (typecheck* cex ctype nil nil))))
 	 (mexpr (and cexpr (or (from-macro cexpr) cexpr))))
     ;; expr-judgement basically just has an expr and declared-type may want
     ;; to treat as appl-judgement, with name and formals, in the special

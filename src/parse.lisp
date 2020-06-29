@@ -738,6 +738,7 @@
 		 (appl-judgement-form? (term-arg0 jdecl)))
 		(ex (xt-expr (term-arg0 jdecl)))
 		(type (xt-convert-expr-to-type-expr ex)))
+	   (assert (place type))
 	   (make-instance 'subtype-judgement
 	     :declared-subtype type
 	     :declared-type dtype
@@ -753,7 +754,11 @@
 	     :place place)))))
 
 (defun xt-convert-expr-to-type-expr (ex)
-  (xt-convert-expr-to-type-expr* ex))
+  (let ((etype (xt-convert-expr-to-type-expr* ex)))
+    (unless (place etype)
+      (setf (place etype) (place ex)))
+    etype))
+
 
 (defmethod xt-convert-expr-to-type-expr* :around ((ex expr))
   (if (plusp (parens ex))
@@ -2050,13 +2055,17 @@
 
 (defun xt-ifappl (expr)
   (let ((if-name (mk-name-expr 'IF))
-	(args (term-arg0 expr)))
+	(args (term-arg0 expr))
+	(place (term-place expr)))
+    (setf (place if-name)
+	  (vector (svref place 0) (svref place 1)
+		  (+ (svref place 0) 2) (svref place 1)))
     (unless (is-sop 'TUPLE-EXPR args)
       (parse-error expr "Argument to IF without THEN must have parens"))
     (make-instance 'application
       :operator if-name
       :argument (xt-arg-expr (term-args args))
-      :place (term-place expr))))
+      :place place)))
 
 (defun projection? (id)
   (when (symbolp id)
@@ -2328,13 +2337,21 @@
      body bexpr)))
 
 (defun xt-name-bind-expr (bexpr)
-  (let ((op (term-arg0 bexpr))
-	(body (term-arg1 bexpr)))
+  (let* ((op (term-arg0 bexpr))
+	 (nop (make-instance 'name-expr
+		:id (ds-id op)
+		:place (term-place op)))
+	 (body (term-arg1 bexpr))
+	 (arg (make-xt-bind-expr 'LAMBDA body nil)))
+    (assert (term-place body))
+    (setf (place arg)
+	  (concatenate 'vector
+	    (term-place body)
+	    (list (format nil "parsing a named binding expression for '~a'" nop))))
+    (assert (place arg))
     (make-instance 'binding-application
-      :operator (make-instance 'name-expr
-		  :id (ds-id op)
-		  :place (term-place op))
-      :argument (make-xt-bind-expr 'LAMBDA body nil)
+      :operator nop
+      :argument arg
       :place (term-place bexpr))))
 
 (defun xt-skovar (expr)

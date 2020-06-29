@@ -70,6 +70,7 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
+    (set-actuals-places name res)
     (when (and (cdr res)
 	       (resolution name)
 	       (member (resolution name) res :test #'tc-eq))
@@ -79,6 +80,12 @@
       (dolist (r res)
 	(unless (ghost? (type r))
 	  (setf (type r) (copy (type r) :ghost? t)))))
+    (when (and (type-name? name)
+	       (place name))
+      (dolist (r res)
+	(when (and (type-name? (print-type (type r)))
+		   (null (place (print-type (type r)))))
+	  (setf (place (print-type (type r))) (place name)))))
     (when (and (null res)
 	       args
 	       (eq k 'expr))
@@ -540,7 +547,8 @@
 					    (not (mod-id (print-type ty))))
 				       (copy ty
 					 :print-type (copy (print-type ty)
-						       :mod-id thid)))
+						       :mod-id thid
+						       :place (place ty))))
 				      (t ty))))
 		    (list (mk-resolution decl thname tynew)))))
 	      (let* ((modinsts (decl-args-compatible? decl args mappings))
@@ -997,7 +1005,9 @@ decl, args, and mappings."
 			     :expr (copy name
 				     :mod-id nil
 				     :id (makesym "~a.~a"
-						  (mod-id name) (id name))))))
+						  (mod-id name) (id name))
+				     :place (place name))
+			     :place (place act))))
 		(if (with-no-type-errors (typecheck* nact expected kind arguments))
 		    (setf (mod-id name) nil
 			  (id name) (id (expr nact))
@@ -1030,7 +1040,8 @@ decl, args, and mappings."
 			     (ptypes (expr act))))
 	      (setf (type-value act)
 		    (typecheck* (make-instance 'expr-as-type
-				  :expr (copy-untyped (expr act)))
+				  :expr (copy-untyped (expr act))
+				  :place (place act))
 				nil nil nil))))
 	  (when tres
 	    (if (type-value act)
@@ -1215,6 +1226,7 @@ decl, args, and mappings."
 		      (cdr actuals) (cdr formals)
 		      (let ((nact (copy-all (car actuals))))
 			(setf (place nact) (place (car actuals)))
+			(setf (place (expr nact)) (place (car actuals)))
 			(cons nact nacts))
 		      nalist)
 		     (compatible-parameters?**
@@ -1226,6 +1238,8 @@ decl, args, and mappings."
 		    (car actuals)
 		    (let ((uact (copy-untyped (car actuals)))
 			  (*generate-tccs* 'none))
+		      (setf (place uact) (place (car actuals)))
+		      (setf (place (expr uact)) (place (car actuals)))
 		      (typecheck* uact nil nil nil)
 		      (set-type-actual uact (car formals))
 		      uact))))
@@ -1966,9 +1980,12 @@ decl, args, and mappings."
     bindings))
 
 (defun mk-res-actual (expr modinst)
-  (if (member (id modinst) '(|equalities| |notequal|))
-      (mk-actual (find-supertype expr))
-      (mk-actual expr)))
+  (let ((act (if (member (id modinst) '(|equalities| |notequal|))
+		 (mk-actual (find-supertype expr))
+		 (mk-actual expr))))
+    (setf (place act) (place expr))
+    (setf (place (expr act)) (place expr))
+    act))
 
 
 ;;; Compatible-args? checks that there is some assignment of the

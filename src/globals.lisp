@@ -223,6 +223,7 @@ order is important")
 (defvar *set-type-formal* nil)
 
 (defvar *set-type-actuals-name* nil)
+(defvar *set-type-subtype* nil)
 
 (defvar *loading-prelude* nil "A flag indicating the obvious")
 
