@@ -11,6 +11,8 @@
 
 #include<gmp.h>
 
+#include<string.h>
+
 //exit codes
 #define PVS2C_EXIT_OUT_OF_MEMORY   16
 #define PVS2C_EXIT_SYNTAX_ERROR    17
@@ -28,6 +30,7 @@ typedef __int128_t int128_t;
 typedef  __uint128_t uint128_t;
 typedef mpz_ptr mpz_ptr_t;
 typedef mpq_ptr mpq_ptr_t;
+
 
 
 /*
@@ -236,6 +239,14 @@ struct funtable_s {
 typedef struct funtable_s * funtable_t;
 
 typedef void * any_t;
+
+struct string_s {
+  uint32_t count;
+  char[] strval
+} string_s;
+typedef struct string_s * string_t;
+
+
 
 //------------------------------------------------------------------
 /* static inline uint8_t u8plus(uint8_t x, uint8_t y){return (uint8_t)(x + y);}; */

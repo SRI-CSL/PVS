@@ -221,6 +221,38 @@
 (def-c-attach-primitive "ieee754_double" "eq_double" "bool" '(x y) '(double double)
   "{return (bool_t)(x == y);}")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;C attachments for pvsio_prelude theories stdstr and stdio
+
+(def-c-attach-primitive "stdstr" "charcode" "string" '(x) '(uint8)
+  "{char c = (char) x;~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + 2*sizeof(char));~
+ ~%~8T result->count = 1; result->strval[0] = c; ~%~8T result->strval[1] = '\0';~
+  ~%~8T return result;}")
+
+
+(def-c-attach-primitive "stdstr" "emptystr" "string" '() '()
+  "{~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + sizeof(char));~
+ ~%~8T result->count = 1; result->strval[0] = '\0';~
+  ~%~8T return result;}")
+
+(def-c-attach-primitive "stdstr" "space" "string" '() '()
+  "{~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + sizeof(char));~
+ ~%~8T result->count = 1; result->strval[0] = ' ';~
+  ~%~8T return result;}")
+
+(def-c-attach-primitive "stdstr" "newline" "string" '() '()
+  "{~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + sizeof(char));~
+ ~%~8T result->count = 1; result->strval[0] = '\n';~
+  ~%~8T return result;}")
+
+(def-c-attach-primitive "stdstr" "tab" "string" '() '()
+  "{~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + sizeof(char));~
+ ~%~8T result->count = 1; result->strval[0] = '\0';~
+  ~%~8T return result;}")
+
+
+
+
 
 
 
