@@ -1066,26 +1066,35 @@
 
 (defun make-cases-table-expr (table-expr expr headings table-entries)
   (let* ((else? (eq (car (last headings)) 'else))
-	 (selections (mapcar #'(lambda (ch te)
-				 (when te
-				   (if (typep ch 'name-expr)
+	 (selections
+	  (mapcar #'(lambda (ch te)
+		      (when te
+			(assert (place te))
+			(let ((sel (if (typep ch 'name-expr)
 				       (make-instance 'selection
 					 :constructor ch
 					 :expression te)
 				       (make-instance 'selection
 					 :constructor (operator ch)
-					 :args (mapcar #'(lambda (a)
-							   (change-class
-							    (copy a)
-							    'bind-decl))
-						       (arguments ch))
+					 :args (mapcar
+						   #'(lambda (a)
+						       (let ((bd (change-class (copy a) 'bind-decl)))
+							 (set-extended-place bd a
+									     "creating table cases selection arg ~a"
+									     bd)
+							 bd))
+						 (arguments ch))
 					 :expression te))))
-			     (if else?
-				 (butlast headings)
-				 headings)
-			     (if else?
-				 (butlast table-entries)
-				 table-entries))))
+			  (set-extended-place sel ch
+					      "creating table cases selection ~a"
+					      sel)
+			  sel)))
+	    (if else?
+		(butlast headings)
+		headings)
+	    (if else?
+		(butlast table-entries)
+		table-entries))))
     (cond (table-expr
 	   (change-class table-expr 'cases-table-expr)
 	   (setf (expression table-expr) expr)
@@ -1093,19 +1102,28 @@
 	   (when else?
 	     (setf (else-part table-expr) (car (last table-entries))))
 	   table-expr)
-	  (t (make-instance 'cases-expr
-	       :expression expr
-	       :selections selections
-	       :else-part (when else? (car (last table-entries))))))))
+	  (t (let ((casesex (make-instance 'cases-expr
+			      :expression expr
+			      :selections selections
+			      :else-part (when else? (car (last table-entries))))))
+	       (set-extended-place casesex table-expr
+				   "creating table cases expr")
+	       casesex)))))
 
 (defun make-cond-table-expr (table-expr expr headings table-entries)
   (let* ((condition (if (and expr
 			     (not (typep (car headings) 'else-condition)))
-			(mk-application '= expr (car headings))
+			(let ((appl (mk-application '= expr (car headings))))
+			  (set-extended-place appl (car headings)
+					      "creating table condition for ~a" appl)
+			  appl)
 			(car headings)))
 	 (then-part (car table-entries))
 	 (else-cond (when (eq (car (last headings)) 'else)
-		      (mk-else-condition expr (butlast headings))))
+		      (let ((econd (mk-else-condition expr (butlast headings))))
+			(set-extended-place econd expr
+					    "creating table else condition for ~a" expr)
+			econd)))
 	 (else-part (if else-cond
 			(make-cond-table-expr*
 			 expr
@@ -1118,44 +1136,65 @@
     (cond (table-expr
 	   (change-class table-expr 'cond-table-expr)
 	   (cond (then-part
-		  (setf (operator table-expr) (mk-name-expr 'IF))
+		  (setf (operator table-expr)
+			(let ((if-name (mk-name-expr 'IF)))
+			  (set-extended-place if-name table-expr "creating cond-table-expr")
+			  if-name))
 		  (setf (argument table-expr)
-			(make-instance 'arg-tuple-expr
-			  :exprs (list condition then-part else-part))))
+			(let ((arg (make-instance 'arg-tuple-expr
+				     :exprs (list condition then-part else-part))))
+			  (set-extended-place arg table-expr "creating cond-table-expr")
+			  arg)))
 		 (t (setf (operator table-expr) (operator else-part))
 		    (setf (argument table-expr) (argument else-part))))
 	   table-expr)
-	  (t (make-instance 'first-cond-expr
-	       :operator (mk-name-expr 'IF)
-	       :argument (make-instance 'arg-tuple-expr
-			   :exprs (list condition then-part else-part)))))))
+	  (t (let* ((if-name (mk-name-expr 'IF))
+		    (arg (make-instance 'arg-tuple-expr
+			   :exprs (list condition then-part else-part)))
+		    (fcond (make-instance 'first-cond-expr
+			     :operator if-name
+			     :argument arg)))
+	       (set-extended-place if-name table-expr "creating first cond-table-expr")
+	       (set-extended-place arg table-expr "creating first cond-table-expr")
+	       (set-extended-place fcond table-expr "creating first cond-table-expr")
+	       fcond)))))
+	       
 
 (defun make-cond-table-expr* (expr headings table-entries)
   (when headings
     (let ((condition (if (and expr
 			      (not (typep (car headings) 'else-condition)))
-			 (mk-application '= expr (car headings))
+			 (let ((appl (mk-application '= expr (car headings))))
+			   (set-extended-place appl (car headings)
+					       "creating table condition for ~a" appl)
+			   appl)
 			 (car headings)))
 	  (then-part (car table-entries))
 	  (else-part (make-cond-table-expr* expr
 					    (cdr headings)
 					    (cdr table-entries))))
       (cond ((and then-part else-part)
-	     (make-instance 'cond-expr
-	       :operator (mk-name-expr 'IF)
-	       :argument (make-instance 'arg-tuple-expr
-			   :exprs (list condition
-					then-part
-					else-part)
-			   :place (place condition))))
+	     (let* ((arg (make-instance 'arg-tuple-expr
+			  :exprs (list condition
+				       then-part
+				       else-part)))
+		    (cexpr (make-instance 'cond-expr
+			     :operator (mk-name-expr 'IF)
+			     :argument arg)))
+	       (set-extended-place arg condition "creating table if-expr for ~a" condition)
+	       (set-extended-place cexpr condition "creating table if-expr for ~a" condition)
+	       cexpr))
 	    (then-part
-	     (make-instance 'last-cond-expr
-	       :operator (mk-name-expr 'IF)
-	       :argument (make-instance 'arg-tuple-expr
+	     (let* ((arg (make-instance 'arg-tuple-expr
 			   :exprs (list condition
 					then-part
-					then-part)
-			   :place (place condition))))
+					then-part)))
+		    (tpart (make-instance 'last-cond-expr
+			     :operator (mk-name-expr 'IF)
+			     :argument arg)))
+	       (set-extended-place arg condition "creating table if-expr for ~a" condition)
+	       (set-extended-place tpart condition "creating table if-expr for ~a" condition)
+	       tpart))
 	    (else-part else-part)))))
 
 (defun make-cases-row-exprs (expr headings table-entries &optional result)
@@ -1165,14 +1204,18 @@
 	     (else? (eq (car (last headings)) 'else))
 	     (selections
 	      (mapcar #'(lambda (ch te)
-			  (if (typep ch 'name-expr)
-			      (make-instance 'selection
-				:constructor ch
-				:expression te)
-			      (make-instance 'selection
-				:constructor (operator ch)
-				:args (arguments ch)
-				:expression te)))
+			  (let ((sel (if (typep ch 'name-expr)
+					 (make-instance 'selection
+					   :constructor ch
+					   :expression te)
+					 (make-instance 'selection
+					   :constructor (operator ch)
+					   :args (arguments ch)
+					   :expression te))))
+			    (set-extended-place sel ch
+						"creating row case selection ~a for table"
+						sel)
+			    sel))
 		      (if else?
 			  (butlast headings)
 			  headings)
@@ -1181,12 +1224,14 @@
 			  row))))
 	(make-cases-row-exprs
 	 expr headings (cdr table-entries)
-	 (cons (make-instance 'cases-expr
-		 :expression expr
-		 :selections selections
-		 :else-part (when else?
-			      (car (last row))))
-	       result)))))
+	 (let ((casesex (make-instance 'cases-expr
+			  :expression expr
+			  :selections selections
+			  :else-part (when else?
+				       (car (last row))))))
+	   (set-extended-place casesex expr
+			       "creating cases expression for table")
+	   (cons casesex result))))))
 
 (defun make-cond-row-exprs (expr headings table-entries &optional result)
   (if (null table-entries)
@@ -1210,13 +1255,27 @@
 	     result)))))
 
 (defun mk-else-condition (expr headings)
-  (change-class (mk-negation
-		 (mk-disjunction
-		  (if expr
-		      (mapcar #'(lambda (h) (mk-application '= expr h))
-			      headings)
-		      headings)))
-		'else-condition))
+  (let* ((hdngs (if expr
+		    (mapcar #'(lambda (h)
+				(let ((app (mk-application '= expr h)))
+				  (set-extended-place app expr "making else condition")
+				  app))
+		      headings)
+		    headings))
+	 (disj (mk-else-disjunction hdngs))
+	 (neg (mk-negation disj)))
+    (set-extended-place neg expr "making else condition")
+    (set-extended-place (operator neg) expr "making else condition")
+    (change-class neg 'else-condition)))
+
+(defun mk-else-disjunction (hdngs)
+  (if (null (cdr hdngs))
+      (car hdngs)
+      (let* ((rhs (mk-else-disjunction (cdr hdngs)))
+	     (disj (mk-application 'OR (car hdngs) rhs)))
+	(set-extended-place (operator disj) (car hdngs) "making else disjunction")
+	(set-extended-place disj (car hdngs) "making else disjunction")
+	disj)))
 
 ;;; Application - First typecheck* the arguments.  Then typecheck* the
 ;;; operator with arguments.  Finally the types slot of the expr is set
@@ -1900,33 +1959,22 @@ field-decls, etc."
 	     ;;(break "maplet case")
 	     (find-update-commontypes expr)))
 	  (t (assert (singleton? (ptypes (expression expr))))
-	     (let* ((etype (car (ptypes (expression expr))))
-		    (ty (get-update-expr-type etype expr)))
-	       (when (not (subsetp (freevars ty) (freevars etype)
-				   :test #'same-declaration))
-		 (break "update-expr-types freevars?"))
-	       ;;(break "update-expr-types: ~a ==> ~a" etype ty)
-	       (list ty))))))
+	     (ptypes (expression expr))))))
 
 (defun get-update-expr-type (te ex)
   "Given updex expression 'e WITH [x := y, ...]', te the type of 'e', returns te
 with dependencies lifted up to the update expr depth."
-  (lift-dependencies te (update-expr-depth ex)))
+  (lift-dependencies te))
 
 ;;; Classes that allow updates, so need methods defined:
 ;;;  subtype, funtype, record-or-struct-subtype, tuple-or-struct-subtype,
 ;;;  datatype-subtype, adt-type-name
 
-(defun lift-dependencies (te update-depth)
-  "Returns te with dependencies lifted up to depth."
-  (lift-dependencies* te 0 update-depth nil))
+(defun lift-dependencies (te &optional deps)
+  "Returns te with dependencies lifted."
+  (lift-dependencies* te deps))
 
-(defmethod lift-dependencies* :around (te cdepth update-depth deps)
-  (if (<= cdepth update-depth)
-      (call-next-method)
-      te))
-
-(defmethod lift-dependencies* ((te type-name) cdepth update-depth deps)
+(defmethod lift-dependencies* ((te type-name) deps)
   (if (freevars-in-deps? te deps)
       (break "lift-dependencies* type-name")
       te))
@@ -1934,20 +1982,19 @@ with dependencies lifted up to the update expr depth."
 (defun freevars-in-deps? (ex deps)
   (some #'(lambda (fv) (memq (declaration fv) deps)) (freevars ex)))
 
-(defmethod lift-dependencies* ((te subtype) cdepth update-depth deps)
-  (let ((suptype (lift-dependencies* (supertype te) cdepth update-depth deps)))
+(defmethod lift-dependencies* ((te subtype) deps)
+  (let ((suptype (lift-dependencies* (supertype te) deps)))
     (if (and (eq suptype (supertype te))
 	     (not (freevars-in-deps? (predicate te) deps)))
 	te
 	suptype)))
 
-(defmethod lift-dependencies* ((te funtype) cur-depth update-depth deps)
+(defmethod lift-dependencies* ((te funtype) deps)
   (let* ((domtype (dep-binding-type (domain te)))
 	 (dtype (if (freevars-in-deps? (domain te) deps)
-		    (lift-dependencies* domtype cur-depth update-depth deps)
+		    (lift-dependencies* domtype deps)
 		    domtype))
 	 (rtype (lift-dependencies* (range te)
-				    (1+ cur-depth) update-depth
 				    (if (and (dep-binding? (domain te))
 					     (not (eq domtype dtype)))
 					(cons (domain te) deps)
@@ -1960,10 +2007,10 @@ with dependencies lifted up to the update expr depth."
 		(mk-funtype dtype rtype)))
 	(mk-funtype dtype rtype))))
 
-(defmethod lift-dependencies* ((te record-or-struct-subtype) cdepth update-depth deps)
+(defmethod lift-dependencies* ((te record-or-struct-subtype) deps)
   (let* ((fld-deps nil)
 	 (fld-types (mapcar #'(lambda (fld)
-				(let ((fty (lift-dependencies* (type fld) (1+ cdepth) update-depth
+				(let ((fty (lift-dependencies* (type fld)
 							       (append fld-deps deps))))
 				  (unless (eq fty (type fld))
 				    (push fld fld-deps))
@@ -1977,11 +2024,10 @@ with dependencies lifted up to the update expr depth."
     (assert (not (freevars-in-deps? flds deps)))
     (copy te :fields flds :dependent? nil :print-type nil)))
 
-(defmethod lift-dependencies* ((te tuple-or-struct-subtype) cdepth update-depth deps)
+(defmethod lift-dependencies* ((te tuple-or-struct-subtype) deps)
   (let* ((tup-deps nil)
 	 (tup-types (mapcar #'(lambda (tupty)
 				(let ((ty (lift-dependencies* (dep-binding-type tupty)
-							      (1+ cdepth) update-depth
 							      (append tup-deps deps))))
 				  (if (dep-binding? tupty)
 				      (if (eq ty (dep-binding-type tupty))
@@ -1991,13 +2037,13 @@ with dependencies lifted up to the update expr depth."
 		      (types te))))
     (copy te :types tup-types :print-type nil)))
 
-(defmethod lift-dependencies* ((te datatype-subtype) cdepth update-depth deps)
+(defmethod lift-dependencies* ((te datatype-subtype) deps)
   (if (freevars-in-deps? te deps)
-      (let ((dtype (lift-dependencies* (declared-type te) cdepth update-depth deps)))
+      (let ((dtype (lift-dependencies* (declared-type te) deps)))
 	(break "lift-dependencies* datatype-subtype"))
       te))
 
-(defmethod lift-dependencies* ((te adt-type-name) cdepth update-depth deps)
+(defmethod lift-dependencies* ((te adt-type-name) deps)
   (if (freevars-in-deps? te deps)
       (break)
       (call-next-method)))
@@ -2658,8 +2704,11 @@ with dependencies lifted up to the update expr depth."
 	       (type-error decl
 		 "Variable ~a not previously declared" (id decl)))
 	      ((singleton? vdecls)
-	       (setf (type decl) (type (car vdecls))
-		     ;;(declared-type decl) (declared-type (car vdecls))
-		     ))
+	       (let ((te (copy (type (car vdecls)))))
+		 (assert (place decl))
+		 (set-extended-place te decl
+				     "making type from var-decl ~a" (id (car vdecls)))
+		 ;; don't set declared-type
+		 (setf (type decl) te)))
 	      (t (type-error decl "Variable ~a is ambiguous" (id decl))))))
   decl)

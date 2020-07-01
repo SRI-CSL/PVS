@@ -70,6 +70,20 @@
 	       (append (newline-comment ,cdecl)
 		       (list (format nil "% ~@?" ,ctl ,@args))))))))
 
+(defmacro set-extended-place (term from-term fmt-str &rest args)
+  (let ((mterm (gensym))
+	(fterm (gensym))
+	(place (gensym)))
+    `(let* ((,mterm ,term)
+	    (,fterm ,from-term)
+	    (,place (concatenate 'vector
+		      (if (> (length (place ,fterm)) 4)
+			  (subseq (place ,fterm) 0 4)
+			  (place ,fterm))
+		      (list (format nil ,fmt-str ,@args)))))
+       (setf (place ,mterm) ,place)
+       (when (actual? ,mterm) (setf (place (expr ,mterm)) ,place)))))
+
 ;;; Courtesy of Tim Winkler
 
 ;#+gcl

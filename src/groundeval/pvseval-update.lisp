@@ -453,7 +453,7 @@ if called."
 	(pvs2cl-datatype operator))
     (let* ((domtyp (domain (declared-type (declaration operator))))
 	   (args (if (and (or (type-name? domtyp)
-			      (and (tupletype? domtyp)
+			      (and (tupletype? (find-supertype domtyp))
 				   (type-name? (print-type domtyp))))
 			  (> (length (arguments expr)) 1))
 		     (argument* expr)

@@ -4833,6 +4833,9 @@ space")
 	(string-equal x y))
       (equalp x y)))
 
+(defmethod print-type ((te dep-binding))
+  (print-type (type te)))
+
 (defmethod dep-binding-type ((te dep-binding))
   (type te))
 

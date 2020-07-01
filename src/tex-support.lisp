@@ -210,8 +210,8 @@ useful if more than one specification is to be included in one document")
 \\setmainfont[Numbers=OldStyle, Ligatures=TeX]{TeX Gyre Termes}
 \\setmathfont[Numbers=Lining]{TeX Gyre Termes Math}
 \\setmathfont[range=\\bigstar]{XITS Math}
-\\setmathfont[range=\\leadsto]{XITS Math}
-\\setmathfont[range=\\int]{TeX Gyre Termes Math} % just to get parameters from this font
+%\\setmathfont[range=\\leadsto]{XITS Math}
+%\\setmathfont[range=\\int]{TeX Gyre Termes Math} % just to get parameters from this font
 \\begin{document}
 ~{\\input{~a}~%~}
 ~:{\\markright{~a}\\label{~a}~:*\\input{~a}\\newpage

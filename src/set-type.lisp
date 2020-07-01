@@ -40,13 +40,12 @@
 
 (defvar *appl-tcc-conditions* nil)
 
-(defvar *tccs-generated-for* nil)
-
 (defmethod set-type ((ex expr) expected)
   (assert *current-context*)
   (assert *generate-tccs*)
   (let ((*added-recursive-def-conversion* nil)
-	(*tccs-generated-for* nil))
+	(*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				*tccs-generated-for*)))
     (cond ((or (not (type ex))
                (eq *generate-tccs* 'all))
            (set-type* ex expected))
@@ -56,12 +55,14 @@
 (defmethod set-type ((te type-expr) expected)
   (assert *current-context*)
   (let ((*added-recursive-def-conversion* nil)
-	(*tccs-generated-for* nil))
+	(*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				*tccs-generated-for*)))
     (set-type* te expected)))
 
 (defmethod set-type ((te dep-binding) expected)
   (let ((*added-recursive-def-conversion* nil)
-	(*tccs-generated-for* nil))
+	(*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				*tccs-generated-for*)))
     (set-type* te expected)))
 
 (defmethod typed? ((expr expr))
@@ -125,39 +126,40 @@ required a context.")
         (setf (macro-subtype-tcc-args-alist (current-theory))
               (delete tcc-args-list-entry
 		      (macro-subtype-tcc-args-alist (current-theory)))))))
-  (cond ((and (type ex)
-	      (fully-instantiated? ex))
-         (unless (compatible? (type ex) expected)
-           (type-incompatible ex (list (type ex)) expected))
-         (when (eq *generate-tccs* 'all)
-           (check-for-tccs ex expected (list ex))))
-        (t (cond ((some #'(lambda (ty)
-                            (and (type-expr? ty)
-                                 (not (from-conversion ty))
-                                 (compatible? ty expected)))
-                        (ptypes ex))
-                  (call-next-method))
-                 ((and (not *no-conversions-allowed*)
-                       (some #'(lambda (ty)
-                                 (and (from-conversion ty)
-                                      (compatible? ty expected)))
-                             (ptypes ex))
-                       (change-to-conversion ex expected)))
-                 ((and (not *no-conversions-allowed*)
-                       (look-for-conversion ex expected)))
-                 (t (call-next-method)
-                    (check-type-incompatible ex expected)))
-           (reset-types ex)))
-  #+pvsdebug (assert (fully-typed? ex))
-  (assert (fully-instantiated? ex))
-  (unless (typep ex '(or branch lambda-expr update-expr
-                      cases-expr let-expr where-expr))
-    (if *added-recursive-def-conversion*
-        (let ((*added-recursive-def-conversion* nil))
-          (check-for-tccs ex (if (application? ex) (type ex) expected)))
-        (check-for-subtype-tcc ex expected)))
-  (set-ghost-type ex expected)
-  )
+  (let ((*set-type-expr* (if (place ex) ex *set-type-expr*)))
+    (cond ((and (type ex)
+		(fully-instantiated? ex))
+           (unless (compatible? (type ex) expected)
+             (type-incompatible ex (list (type ex)) expected))
+           (when (eq *generate-tccs* 'all)
+             (check-for-tccs ex expected (list ex))))
+          (t (cond ((some #'(lambda (ty)
+                              (and (type-expr? ty)
+                                   (not (from-conversion ty))
+                                   (compatible? ty expected)))
+                          (ptypes ex))
+                    (call-next-method))
+                   ((and (not *no-conversions-allowed*)
+			 (some #'(lambda (ty)
+                                   (and (from-conversion ty)
+					(compatible? ty expected)))
+                               (ptypes ex))
+			 (change-to-conversion ex expected)))
+                   ((and (not *no-conversions-allowed*)
+			 (look-for-conversion ex expected)))
+                   (t (call-next-method)
+                      (check-type-incompatible ex expected)))
+             (reset-types ex)))
+    #+pvsdebug (assert (fully-typed? ex))
+    (assert (fully-instantiated? ex))
+    (unless (typep ex '(or branch lambda-expr update-expr
+			cases-expr let-expr where-expr))
+      (if *added-recursive-def-conversion*
+          (let ((*added-recursive-def-conversion* nil))
+            (check-for-tccs ex (if (application? ex) (type ex) expected)))
+          (check-for-subtype-tcc ex expected)))
+    (set-ghost-type ex expected)
+    ))
 
 (defmethod ghost? ((db dep-binding))
   (ghost? (type db)))
@@ -359,6 +361,7 @@ required a context.")
     (when (or (actuals (module-instance ex))
               (dactuals (module-instance ex))
               (mappings (module-instance ex)))
+      (set-actuals-places ex)
       (setf (module-instance (resolution ex))
             (set-type-actuals-and-maps ex (module (declaration (resolution ex))))))
     (change-name-expr-class-if-needed (declaration res) ex)
@@ -375,6 +378,32 @@ required a context.")
           (type-incompatible ex (list (type res)) expected)))
     (set-type-name-expr* ex res)
     (check-set-type-recursive-name ex)))
+
+(defun set-actuals-places (name &optional (res (resolutions name)))
+  (when (place name)
+    (dolist (r res)
+      (if (and (actuals name) (every #'place (actuals name)))
+	  (mapc #'(lambda (nact iact)
+		    (cond ((string= (str nact) (str iact))
+			   (setf (place iact) (place nact))
+			   (setf (place (expr iact)) (place nact)))
+			  (t (set-extended-place iact nact
+						 "actual created from actual ~a" nact))))
+		(actuals name) (actuals (module-instance r)))
+	  (dolist (act (actuals (module-instance r)))
+	    (unless (place act)
+	      (set-extended-place act name "actual created for name ~a" name))))
+      (if (and (dactuals name) (every #'place (dactuals name)))
+	  (mapc #'(lambda (nact iact)
+		    (cond ((string= (str nact) (str iact))
+			   (setf (place iact) (place nact))
+			   (setf (place (expr iact)) (place nact)))
+			  (t (set-extended-place iact nact
+						 "actual created from actual ~a" nact))))
+		(dactuals name) (dactuals (module-instance r)))
+	  (dolist (act (dactuals (module-instance r)))
+	    (unless (place act)
+	      (set-extended-place act name "actual created for name ~a" name)))))))
 
 (defun check-set-type-recursive-name (ex)
   ;; No need to do anything if not in a recursive decl
@@ -454,6 +483,8 @@ required a context.")
                     :index (index ex)
                     :type (mk-funtype cotuptype *boolean*)))
          (insubtype (make!-expr-as-type inrec)))
+    (set-extended-place inrec ex
+			"creating injection recognizer ~a" inrec)
     (setf (type ex) (mk-funtype (domain (find-supertype etype)) insubtype))))
 
 (defmethod set-type* ((ex injection?-expr) expected)
@@ -537,8 +568,12 @@ resolution with a macro matching the signature of the arguments."
 			       (eq *generate-tccs* 'none))
 		      (check-for-application-macro-tccs (argument* ex) def ex))
                     (change-class ex (class-of appl))
-                    (copy-slots ex appl)
+		    (copy-slots ex appl)
                     (setf (from-macro ex) orig)
+                    (set-extended-place ex orig
+					"making lambda expr ~a from macro ~a.~a"
+					ex (id (module (declaration nop)))
+					(id (declaration nop)))
                     (assert (eq (from-macro ex) orig))))
 		(unless (eq *generate-tccs* 'none)
 		  (call-next-method))))
@@ -827,13 +862,17 @@ resolution with a macro matching the signature of the arguments."
 
 (defun set-type-actuals-and-maps (name theory &optional decl)
   (assert theory)
-  (prog1 (set-type-actuals name theory decl)
-    (set-type-maps name theory)))
+  (let ((*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				*tccs-generated-for*)))
+    (prog1 (set-type-actuals name theory decl)
+      (set-type-maps name theory))))
 
 (defmethod set-type-actuals ((thinst modname) &optional th decl)
   (assert (or (resolution thinst) th))
   (assert (or (null (dactuals thinst)) decl))
-  (let* ((tdecl (declaration thinst))
+  (let* ((*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				 *tccs-generated-for*))
+	 (tdecl (declaration thinst))
 	 (theory (if tdecl
 		     (if (declaration? tdecl) (module tdecl) tdecl)
 		     th))
@@ -861,7 +900,9 @@ resolution with a macro matching the signature of the arguments."
   #+bad-assert (assert (null *set-type-actuals-name*))
   (unless (module-instance expr)
     (type-ambiguity expr))
-  (let* ((thinst (module-instance expr))
+  (let* ((*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				 *tccs-generated-for*))
+	 (thinst (module-instance expr))
 	 (decl (declaration expr))
          (theory (if (module? decl) decl (module decl)))
          (*typecheck-using* nil)
@@ -1041,6 +1082,10 @@ resolution with a macro matching the signature of the arguments."
          (*tcc-conditions* (cons vb *tcc-conditions*))
          (svar (mk-name-expr vid nil nil
                              (make-resolution vb (current-theory-name) tact))))
+    (when (place act)
+      (set-extended-place svar act
+			  "variable ~a as proxy for actual ~a"
+			  svar act))
     (check-for-subtype-tcc svar (supertype texp))))
 
 (defmethod set-type-actual (act (formal formal-struct-subtype-decl))
@@ -1096,7 +1141,9 @@ resolution with a macro matching the signature of the arguments."
 
 (defun set-type-mappings (thinst theory)
   (when (mappings thinst)
-    (let* ((athinst (if (recursive-type? theory)
+    (let* ((*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				   *tccs-generated-for*))
+	   (athinst (if (recursive-type? theory)
                         (typecheck* (copy thinst
                                       :id (id (adt-theory theory))
                                       :resolutions nil)
@@ -1720,7 +1767,9 @@ type of the lhs."
               (fully-instantiated? ex)))
   #+pvsdebug (assert (fully-typed? ex))
   (unless (subtype-of? (type ex) expected)
-    (let ((type (type ex)))
+    (let ((*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				  *tccs-generated-for*))
+	  (type (type ex)))
       (or (and (not (strict-compatible? type expected))
                (not (some #'(lambda (jty) (subtype-of? jty expected))
                           (judgement-types+ ex)))
@@ -1728,7 +1777,8 @@ type of the lhs."
           (unless (or (eq *generate-tccs* 'none)
 		      (member (list ex expected) *tccs-generated-for*
 			      :test #'(lambda (x y)
-					(and (eq (car x) (car y)) (tc-eq (cadr x) (cadr y))))))
+					(and (eq (car x) (car y))
+					     (tc-eq (cadr x) (cadr y))))))
 	    (push (list ex expected) *tccs-generated-for*)
             (let* ((jtypes (let ((*generate-tccs* 'none))
                              (judgement-types+ ex)))
@@ -1889,23 +1939,63 @@ type of the lhs."
   (assert (fully-instantiated? (constructor sel)))
   (assert (fully-instantiated? (args sel)))
   (assert (fully-instantiated? (expression expr)))
-  (let ((*generate-tccs* 'none))
-    (make-equation
-     (expression expr)
-     (typecheck* (if (args sel)
-		     (if (injection-expr? (constructor sel))
-			 (make-instance 'injection-application
-			   :id (id (constructor sel))
-			   :index (index (constructor sel))
-			   :argument (if (cdr (args sel))
-					 (make-instance 'arg-tuple-expr
-					   :exprs (mapcar #'mk-name-expr
-						    (args sel)))
-					 (mk-name-expr (car (args sel)))))
-			 (mk-application* (copy (constructor sel))
-			   (mapcar #'mk-name-expr (args sel))))
-		     (copy (constructor sel)))
-		 (find-supertype (type (expression expr))) nil nil))))
+  (assert (or *adt* (place sel)))
+  (assert (or *adt* (place expr)))
+  (let* ((*generate-tccs* 'none)
+	 (rhs (typecheck*
+	       (if (args sel)
+		   (if (injection-expr? (constructor sel))
+		       (let* ((arg (if (cdr (args sel))
+				       (let ((tupex
+					      (make-instance 'arg-tuple-expr
+						:exprs (mapcar
+							   #'(lambda (a)
+							       (let ((nex (mk-name-expr a)))
+								 (assert (or *adt* (place a)))
+								 (unless *adt*
+								   (set-extended-place
+								    nex a
+								    "creating arg ~a for selection ~a"
+								    a sel))
+								 nex))
+							 (args sel)))))
+					 (unless *adt*
+					   (set-extended-place tupex sel "creating tuple for selection ~a" sel))
+					 tupex)
+				       (let ((nex (mk-name-expr (car (args sel)))))
+					 (assert (or *adt* (place (car (args sel)))))
+					 (unless *adt*
+					   (set-extended-place nex (car (args sel))
+							       "creating name for selection arg ~a" (car (args sel))))
+					 nex)))
+			      (injapp (make-instance 'injection-application
+					:id (id (constructor sel))
+					:index (index (constructor sel))
+					:argument arg)))
+			 (unless *adt*
+			   (set-extended-place injapp sel
+					       "creating injection application from selection ~a" sel))
+			 injapp)
+		       (let ((appl (mk-application* (copy (constructor sel))
+				     (mapcar #'(lambda (a)
+						 (assert (or *adt* (place a)))
+						 (let ((nex (mk-name-expr a)))
+						   (unless *adt*
+						     (set-extended-place nex a
+									 "creating name for selection arg ~a" a))
+						   nex))
+				       (args sel)))))
+			 (unless *adt*
+			   (set-extended-place appl sel
+					       "creating application from selection ~a" sel))
+			 appl))
+		   (copy (constructor sel)))
+	       (find-supertype (type (expression expr))) nil nil))
+	 (eqn (make-equation (expression expr) rhs)))
+    (unless *adt*
+      (set-extended-place eqn expr
+			  "creating equation for selection ~a" sel))
+    eqn))
 
 (defun make-else-cases-conditions (expr)
   (typecase (find-supertype (type (expression expr)))
@@ -1924,11 +2014,15 @@ type of the lhs."
                                    type))
                         (id (if (typep (predicate rtype) 'coercion)
                                 (id (args1 (predicate rtype)))
-                                (id (predicate rtype)))))
-                   (typecheck* (mk-application 'NOT
-                                 (mk-application id
-                                   (expression expr)))
-                               *boolean* nil nil)))
+                                (id (predicate rtype))))
+			(ex (typecheck* (mk-application 'NOT
+					  (mk-application id
+					    (expression expr)))
+					*boolean* nil nil)))
+		   (set-extended-place ex s
+				       "creating else case for selection ~a"
+				       (constructor s))
+		   ex))
        (selections expr)))))
 
 
@@ -2312,6 +2406,8 @@ type of the lhs."
                 (current-theory-name) (recursive-signature recdecl)))
          (name (make!-name-expr (id recdecl) nil nil res))
          (depth (measure-depth recdecl)))
+    (set-extended-place name recdecl
+			"making name for recursive defn conversion")
     (recursive-def-conversion* name (recursive-signature recdecl) depth)))
 
 (defun recursive-def-conversion* (ex recsig depth)
@@ -2321,10 +2417,17 @@ type of the lhs."
       (let* ((dtype (dep-binding-type (domain recsig)))
              (id (make-new-variable '|x| (cons ex dtype)))
              (bd (typecheck* (mk-bind-decl id dtype) nil nil nil))
-             (var (mk-name-expr id nil nil (make-resolution bd nil dtype))))
-        (make!-lambda-expr (list bd)
-          (recursive-def-conversion*
-           (make!-application ex var) (range recsig) (1- depth))))))
+             (var (mk-name-expr id nil nil (make-resolution bd nil dtype)))
+	     (appl (make!-application ex var)))
+	(set-extended-place var ex
+			    "making name for recursive defn conversion")
+	(set-extended-place appl ex
+			    "making application ~a for recursive defn conversion" appl)
+	(let* ((recdef (recursive-def-conversion* appl (range recsig) (1- depth)))
+	       (lex (make!-lambda-expr (list bd) recdef)))
+          (set-extended-place lex ex
+			      "making lambda expression for recursive defn conversion")
+	  lex))))
 
 
 ;; Here we set the operator type for LET and WHERE expressions.  These
@@ -3337,6 +3440,7 @@ type of the lhs."
 (defmethod subst-dep-range* ((domain dep-binding) range expr)
   (let* ((nres (make-resolution domain (theory-name *current-context*)))
          (nname (mk-name-expr (id domain) nil nil nres)))
+    (break "subst-dep-range*")
     #+pvsdebug (assert (fully-typed? expr))
     (substit range (list (cons nname expr)))))
 
@@ -3383,23 +3487,28 @@ type of the lhs."
                                                      (current-declaration)))))
                            frees)))
          (nbindings (tc-match type (type res) bindings)))
-    (if (and nbindings
-             (every #'cdr nbindings))
-        (let ((nres (subst-for-formals res nbindings)))
-          (if (fully-instantiated? nres)
-              nres
-              (if *dont-worry-about-full-instantiations*
-                  nres
-                  (type-error ex
-                    "Could not determine the full theory instance for ~a~
+    (cond ((and nbindings
+		(every #'cdr nbindings))
+	   (dolist (bd nbindings)
+	     (unless (place (cdr bd))
+	       (set-extended-place (cdr bd) ex
+				   "matching ~a formal ~a to the type ~a"
+				   ex (id (car bd)) type)))
+	   (let ((nres (subst-for-formals res nbindings)))
+             (if (fully-instantiated? nres)
+		 nres
+		 (if *dont-worry-about-full-instantiations*
+                     nres
+                     (type-error ex
+                       "Could not determine the full theory instance for ~a~
                      ~%  Theory instance: ~a"
-                    ex (full-name (module-instance nres))))))
-        (if *dont-worry-about-full-instantiations*
-            res
-            (type-error ex
-              "Could not determine the full theory instance for ~a~
+                       ex (full-name (module-instance nres)))))))
+	  (t (if *dont-worry-about-full-instantiations*
+		 res
+		 (type-error ex
+		   "Could not determine the full theory instance for ~a~
                 ~%  Theory instance: ~a"
-              ex (full-name (module-instance res)))))))
+		   ex (full-name (module-instance res))))))))
 
 (defun all-formals-from-same-decls (formals &optional decl)
   (or (null formals)
@@ -3563,7 +3672,8 @@ type of the lhs."
                                       ;; mk-res-actual lifts equality
                                       (mk-res-actual (cdr a) theory))
                             (ldiff bindings rem))
-                 :dactuals (mapcar #'(lambda (a) (mk-actual (cdr a)))
+                 :dactuals (mapcar #'(lambda (a)
+				       (mk-actual (cdr a)))
                              (ldiff rem drem)))
                modinsts)
          (acons theory decl theories)))))
@@ -4160,7 +4270,7 @@ type of the lhs."
           (type-error badass "Field not found")))
       (let ((args-list (mapcar #'arguments ass))
             (values (mapcar #'expression ass)))
-        (set-assignment-arg-types args-list values nil sexpected)))
+        (set-assignment-arg-types args-list values nil expr sexpected)))
     (setf (type expr)
           (mk-recordtype
            (mapcar #'(lambda (a)
@@ -4198,30 +4308,9 @@ type of the lhs."
 		 (if (some #'maplet? assignments)
 		     (contract-expected expr atype)
 		     expected))
-      (multiple-value-bind (largs-list lvalues)
-	  (lift-field-updates args-list values expression)
-	(multiple-value-bind (cargs-list cvalues)
-	    (complete-assignments largs-list lvalues expression expected)
-	  (set-assignment-arg-types cargs-list cvalues expr expected)))
+      (set-assignment-arg-types args-list values expression expr expected)
       (setf (type expr) atype))))
 
-(defun lift-field-updates (args-list values expression &optional largs-list lvalues)
-  (if (null args-list)
-      (values (nreverse largs-list) (nreverse lvalues))
-      (let ((args (car args-list))
-	    (val (car values)))
-	;; expression = St, args = ((`scaf) (St`pos) (n)), val = loop
-	;; generate St`scaf WITH [(St`pos)(n) := loop]
-	(if (cdr args)
-	    (let* ((fldappl (make-field-application (caar args) expression))
-		   (updexpr (mk-update-expr fldappl (list (make-assignment (cdr args) val)))))
-	      (setf (types updexpr) (mapcar #'find-supertype (ptypes fldappl)))
-	      (lift-field-updates (cdr args-list) (cdr values) expression
-				  (cons (list (car args)) largs-list)
-				  (cons updexpr lvalues)))
-	    (lift-field-updates (cdr args-list) (cdr values) expression
-				  (cons args largs-list)
-				  (cons val lvalues))))))
 
 (defmethod set-type* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
@@ -4244,7 +4333,7 @@ type of the lhs."
 		 (if (some #'maplet? assignments)
 		     (contract-expected expr atype)
 		     expected))
-      (set-assignment-arg-types args-list values expression expected)
+      (set-assignment-arg-types args-list values expression expr expected)
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected funtype))
@@ -4265,7 +4354,7 @@ type of the lhs."
              (values (mapcar #'expression assignments)))
         (set-type* expression
 		   (if (some #'maplet? assignments) axtype expected))
-        (set-assignment-arg-types args-list values expression expected)
+        (set-assignment-arg-types args-list values expression expr expected)
         (setf (type expr) atype)))))
 
 (defmethod set-type* ((expr update-expr) (expected datatype-subtype))
@@ -4293,7 +4382,7 @@ type of the lhs."
 		 (if (some #'maplet? (assignments expr))
 		     dtype
 		     expected))
-      (set-assignment-arg-types args-list values (expression expr) atype)
+      (set-assignment-arg-types args-list values (expression expr) expr atype)
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
@@ -4351,87 +4440,107 @@ type of the lhs."
     etypes))
   
 
-(defun set-assignment-arg-types (args-list values ex expected)
-  (set-assignment-arg-types* args-list values ex expected))
+(defun set-assignment-arg-types (args-list values ex expr expected)
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  (assert (type-expr? expected))
+  (set-assignment-arg-types* args-list values ex expr expected))
 
-(defmethod set-assignment-arg-types* (args-list values ex expected)
+(defmethod set-assignment-arg-types* (args-list values ex expr expected)
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  (assert (type-expr? expected))
   (when args-list
-    (set-assignment-arg-type (car args-list) (car values) ex expected)
-    (set-assignment-arg-types* (cdr args-list) (cdr values) ex expected)))
+    (set-assignment-arg-type (car args-list) (car values) ex expr expected)
+    (set-assignment-arg-types* (cdr args-list) (cdr values) ex expr expected)))
 
-(defmethod set-assignment-arg-types* (args-list values ex (expected subtype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected subtype))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (let ((stype (find-adt-supertype expected)))
     (typecase stype
       ((or funtype recordtype tupletype adt-type-name datatype-subtype)
-       (set-assignment-arg-types* args-list values ex stype)
-       (let ((*generate-tccs* 'all))
-	 (mapc #'(lambda (a v)
+       (set-assignment-arg-types* args-list values ex expr stype)
+       ;;(let ((*generate-tccs* 'all))
+       (mapc #'(lambda (a v)
 		   (unless a
 		     (check-for-subtype-tcc v expected)))
-               args-list values)))
+             args-list values)
+       ;;)
+      )
       (t (call-next-method)))))
 
-(defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected recordtype))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (fields) expected
     (if (every #'null args-list)
         (call-next-method)
-        (set-assignment-arg-types-recordtype fields args-list values ex expected))))
+        (set-assignment-arg-types-recordtype fields args-list values ex expr expected))))
 
-(defmethod set-assignment-arg-types* (args-list values ex (expected struct-sub-recordtype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected struct-sub-recordtype))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (fields) expected
     (if (every #'null args-list)
         (call-next-method)
-        (set-assignment-arg-types-recordtype fields args-list values ex expected))))
+        (set-assignment-arg-types-recordtype fields args-list values ex expr expected))))
 
 ;; Dependent record types are tricky
 ;; R: type = [# a: [nat -> nat], b: #]
 ;; r: R
 ;; r with [`a(0) := 3, `b
 
-(defun set-assignment-arg-types-recordtype (fields args-list values ex expected)
+(defun set-assignment-arg-types-recordtype (fields args-list values ex expr expected)
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (mapc #'(lambda (a v) (unless a (set-type* v expected)))
         args-list values)
   ;; This is wrong - if we're going to recurse we need to make all
   ;; arguments homogeneous, i.e., r WITH [`a`x := 3, `a := e] leads to e
   ;; being set-typed above, but then need to construct the args-list for
   ;; `a`x := e`x, etc.
-  (set-assignment-rec-arg-types args-list values ex fields fields
-				(mapcar #'(lambda (a) (id (caar a))) args-list)))
+  (multiple-value-bind (cargs-list cvalues)
+      (complete-assignments args-list values ex expr expected)
+    (set-assignment-rec-arg-types cargs-list cvalues ex fields fields 
+				  (mapcar #'(lambda (a) (id (caar a))) args-list)
+				  expr)))
 
-(defmethod set-assignment-arg-types* (args-list values ex (expected tupletype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected tupletype))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (types) expected
     (if (every #'null args-list)
         (call-next-method)
-        (set-assignment-arg-types-tupletype types args-list values ex expected))))
+        (set-assignment-arg-types-tupletype types args-list values ex expr expected))))
 
-(defmethod set-assignment-arg-types* (args-list values ex (expected struct-sub-tupletype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected struct-sub-tupletype))
   (with-slots (types) expected
-    (set-assignment-arg-types-tupletype types args-list values ex expected)))
+    (set-assignment-arg-types-tupletype types args-list values ex expr expected)))
 
-(defun set-assignment-arg-types-tupletype (types args-list values ex expected)
+(defun set-assignment-arg-types-tupletype (types args-list values ex expr expected)
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  ;; recurse down the expected tuple types, which may be dependent..
   (multiple-value-bind (cargs-list cvalues)
-      (complete-assignments args-list values ex expected)
-    (set-assignment-tup-arg-types cargs-list cvalues ex types 1)))
+      (complete-assignments args-list values ex expr expected)
+    (set-assignment-tup-arg-types cargs-list cvalues ex types 1 expr)))
 
-(defmethod set-assignment-arg-types* (args-list values ex (expected funtype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected funtype))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (domain range) expected
     (if (every #'null args-list)
         (call-next-method)
-        (set-assignment-fun-arg-types args-list values ex expected))))
+        (set-assignment-fun-arg-types args-list values ex expr expected))))
 
-(defmethod set-assignment-arg-types* (args-list values ex
+(defmethod set-assignment-arg-types* (args-list values ex expr
                                                 (expected datatype-subtype))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (if (every #'null args-list)
-      (set-assignment-arg-type (car args-list) (car values) ex expected)
-      (set-assignment-update-arg-types args-list values ex expected)))
+      (set-assignment-arg-type (car args-list) (car values) ex expr expected)
+      (set-assignment-update-arg-types args-list values ex expr expected)))
 
-(defmethod set-assignment-arg-types* (args-list values ex
+(defmethod set-assignment-arg-types* (args-list values ex expr
                                                 (expected adt-type-name))
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (if (every #'null args-list)
       (call-next-method)
-      (set-assignment-update-arg-types args-list values ex expected)))
+      (set-assignment-update-arg-types args-list values ex expr expected)))
 
-(defun set-assignment-update-arg-types (args-list values ex expected)
+(defun set-assignment-update-arg-types (args-list values ex expr expected)
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (let* ((ass-accs (mapcar #'caar args-list))
          (constrs (remove-if #'(lambda (c)
                                  (not (every #'(lambda (a)
@@ -4447,17 +4556,17 @@ type of the lhs."
     (mapc #'(lambda (a v)
               (unless a (set-type* v expected)))
           args-list values)
-    (set-assignment-update-arg-types* constrs args-list values ex)))
+    (set-assignment-update-arg-types* constrs args-list values ex expr)))
 
-(defun set-assignment-update-arg-types* (constrs args-list values ex)
+(defun set-assignment-update-arg-types* (constrs args-list values ex expr)
   (assert constrs)
   (let ((cpreds (mapcar #'(lambda (c) (make!-application (recognizer c) ex))
                   constrs)))
-    (set-constructors-update-arg-types constrs args-list values ex cpreds)))
+    (set-constructors-update-arg-types constrs args-list values ex cpreds expr)))
 
 ;; When multiple constructors are involved we need to collect the TCCs for
 ;; each one, and form the disjunction.
-(defun set-constructors-update-arg-types (constrs args-list values ex cpreds
+(defun set-constructors-update-arg-types (constrs args-list values ex cpreds expr
                                                   &optional tccs recs)
   (if (null constrs)
       (unless (eq *generate-tccs* 'none)
@@ -4491,7 +4600,7 @@ type of the lhs."
                     (judgement-types ex)
                   (setf (gethash ex jhash)
                         (list (cons rectype jtypes) jdecls)))
-                (set-assignment-accessor-arg-types cargs-list cvalues ex accs))
+                (set-assignment-accessor-arg-types cargs-list cvalues ex accs expr))
             (let ((jtypes&jdecls (gethash ex jhash)))
               (setf (gethash ex jhash)
                     (list (cdr (car jtypes&jdecls)) (cadr jtypes&jdecls)))))
@@ -4506,7 +4615,7 @@ type of the lhs."
                  (tcc (make!-conjunction* ntccs)))
             (setf (parens tcc) 1)
             (set-constructors-update-arg-types
-             (cdr constrs) args-list values ex cpreds
+             (cdr constrs) args-list values ex cpreds expr
              (cons tcc tccs) (cons (recognizer c) recs)))))))
 
 ;;; Set the assignment types.  This is complicated by 
@@ -4515,8 +4624,9 @@ type of the lhs."
 ;;; args-list and values are expanded from the original update-expr,
 ;;; to include dependencies.
 
-(defun set-assignment-rec-arg-types (args-list values ex fields orig-fields changed-fields
+(defun set-assignment-rec-arg-types (args-list values ex fields orig-fields changed-fields expr
 				     &optional cargs cvalues)
+  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (when args-list
     (let* ((pos (position (car fields) args-list :test #'same-id :key #'caar))
            (args (when pos (nth pos args-list)))
@@ -4543,15 +4653,23 @@ type of the lhs."
 			  (make!-field-application (car fields) ex)))
 		 (fldtype (type (car fields)))
 		 (ftype (find-supertype fldtype)))
-	    (set-assignment-arg-types* cdr-args cdr-vals fappl fldtype)
+	    (when fappl
+	      (set-extended-place fappl ex
+				  "creating field application from ~a and ~a"
+				  ex (car fields)))
+	    ;;; different in check-assignment-rec-arg-types:
+	    ;;; should it be (nreverse (cons value cvalues)) instead of cdr-vals?
+	    (set-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
 	    (when (and fappl
-		       (funtype? ftype))
+		       (funtype? (find-supertype ftype)))
 	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
 		     (bd (make-bind-decl bid (domtype ftype)))
 		     (bvar (make-variable-expr bd))
 		     (deqn (if (cdr (caar cdr-args))
 			       ;; Should have a tuple domtype with matching length
 			       (let ((tup (make!-tuple-expr* (caar cdr-args))))
+				 (set-extended-place tup (caaar cdr-args)
+						     "creating tuple ~a for record type" tup)
 				 (make!-disequation bvar tup))
 			       (make!-disequation bvar (caaar cdr-args))))
 		     (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
@@ -4560,6 +4678,12 @@ type of the lhs."
 				   (substit (range ftype)
 				     (acons (domain ftype) bvar nil))
 				   (range ftype))))
+		(set-extended-place bvar ex
+				    "creating variable ~a for recordtype"
+				    bvar)
+		(set-extended-place deqn (caaar cdr-args)
+				    "creating disequation ~a for recordtype"
+				    deqn)
 		(set-type* app expected))))))
       (let ((nfields (if done-with-field?
                          (if (some #'(lambda (fld)
@@ -4570,6 +4694,10 @@ type of the lhs."
                                  (let* ((fapp (make!-field-application (car fields) ex))
                                         (ass (make-assignment (car cdr-args) (car cdr-vals)))
                                         (val (make-update-expr fapp (list ass))))
+				   ;; (assert (place ex))
+				   ;; ;; (push (list fapp ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
+				   ;; ;; (push (list val ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
+				   ;; (break)
                                    (subst-rec-dep-type val (car fields) (cdr fields)))
                                  (subst-rec-dep-type value (car fields) (cdr fields)))
                              (cdr fields))
@@ -4577,12 +4705,12 @@ type of the lhs."
         (if nfields
             (set-assignment-rec-arg-types rem-args rem-values ex nfields
 					  (if done-with-field? (cdr orig-fields) orig-fields)
-					  changed-fields
+					  changed-fields expr
                                           (unless done-with-field? (cons args cargs))
                                           (unless done-with-field? (cons value cvalues)))
-            (set-assignment-rec-arg-maplet-types rem-args rem-values ex))))))
+            (set-assignment-rec-arg-maplet-types rem-args rem-values ex expr))))))
 
-(defun set-assignment-rec-arg-maplet-types (args-list values ex)
+(defun set-assignment-rec-arg-maplet-types (args-list values ex expr)
   (when args-list
     (let ((args (car args-list))
           (value (car values)))
@@ -4594,9 +4722,9 @@ type of the lhs."
       (if (singleton? (ptypes value))
           (set-type* value (car (ptypes value)))
           (type-ambiguity value)))
-    (set-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex)))
+    (set-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex expr)))
 
-(defun set-assignment-tup-arg-types (args-list values ex types index
+(defun set-assignment-tup-arg-types (args-list values ex types index expr
                                                &optional cargs cvalues)
   (when args-list
     (let* ((pos (position index args-list
@@ -4612,15 +4740,18 @@ type of the lhs."
                                               (when a (number (caar a))))))))
       (when args
         (when done-with-index?
-          (let ((nargs (nreverse (cons args cargs))))
+          (let ((nargs (nreverse (cons args cargs)))
+		(projapp (make!-projection-application index ex)))
+	    (set-extended-place projapp ex
+				"creating projection ~a for a tuple type"
+				projapp)
             (dolist (a nargs)
               (when (caar a)
                 (setf (type (caar a)) *naturalnumber*)))
             (set-assignment-arg-types*
              (mapcar #'cdr nargs)
              (nreverse (cons value cvalues))
-             (make!-projection-application index ex)
-             (car types)))))
+             projapp expr (dep-binding-type (car types))))))
       (set-assignment-tup-arg-types
        rem-args rem-values ex
        (if done-with-index?
@@ -4631,12 +4762,13 @@ type of the lhs."
        (if done-with-index?
            (1+ index)
            index)
+       expr
        (unless done-with-index?
          (cons args cargs))
        (unless done-with-index?
          (cons value cvalues))))))
 
-(defun set-assignment-fun-arg-types (args-list values ex funtype)
+(defun set-assignment-fun-arg-types (args-list values ex expr funtype)
   (when args-list
     (multiple-value-bind (cargs cvalues rem-args rem-values)
         (collect-same-first-fun-assignment-args args-list values)
@@ -4651,13 +4783,17 @@ type of the lhs."
          (mapcar #'cdr cargs)
          cvalues
          (when (and ex arg)
-           (make!-application ex arg))
+           (let ((app (make!-application ex arg)))
+	     (set-extended-place app expr
+				 "making application ~a" app)
+	     app))
+	 expr
          (if arg
              (if (dep-binding? (domain funtype))
                  (substit (range funtype) (acons (domain funtype) arg nil))
                  (range funtype))
              funtype)))
-      (set-assignment-fun-arg-types rem-args rem-values ex funtype))))
+      (set-assignment-fun-arg-types rem-args rem-values ex expr funtype))))
 
 (defun collect-same-first-fun-assignment-args (args-list values
                                                          &optional cargs cvalues)
@@ -4671,7 +4807,7 @@ type of the lhs."
        (cons (car args-list) cargs)
        (cons (car values) cvalues))))
 
-(defun set-assignment-accessor-arg-types (args-list values ex accessors
+(defun set-assignment-accessor-arg-types (args-list values ex accessors expr
                                                     &optional cargs cvalues)
   (when args-list
     (let* ((pos (position (car accessors) args-list :test #'same-id :key #'caar))
@@ -4695,6 +4831,7 @@ type of the lhs."
            (mapcar #'cdr (nreverse (cons args cargs)))
            (nreverse (cons value cvalues))
            (when ex (make!-application (car accessors) ex))
+	   expr
            (if (dep-binding? (domain (type (car accessors))))
                (substit (range (type (car accessors)))
                  (acons (domain (type (car accessors))) ex nil))
@@ -4704,16 +4841,17 @@ type of the lhs."
        (if done-with-acc?
            (subst-acc-dep-type value (car accessors) (cdr accessors))
            accessors)
+       expr
        (unless done-with-acc?
          (cons args cargs))
        (unless done-with-acc?
          (cons value cvalues))))))
 
-(defun set-assignment-arg-type (args value ex expected)
-  (set-assignment-arg-type* args value ex expected))
+(defun set-assignment-arg-type (args value ex expr expected)
+  (set-assignment-arg-type* args value ex expr expected))
 
-(defmethod set-assignment-arg-type* ((args null) value ex expected)
-  (declare (ignore ex))
+(defmethod set-assignment-arg-type* ((args null) value ex expr expected)
+  (declare (ignore ex expr))
   (set-type* value expected))
 
 (defmethod contract-expected (expr (expected recordtype))
@@ -4865,6 +5003,7 @@ type of the lhs."
              (ran (gensubst (range (type accessor))
                     #'(lambda (ex) (cdr (assoc ex nbindings :test #'tc-eq)))
                     #'(lambda (ex) (assoc ex nbindings :test #'tc-eq)))))
+	(break "subst-acc-dep-type*")
         (if (eq ran (range (type accessor)))
             (values accessor bindings)
             (let* ((dom (if (occurs-in bd ran)
@@ -4927,6 +5066,7 @@ type of the lhs."
              (id (make-new-variable '|x| (cons type bindings)))
              (bd (typecheck* (mk-bind-decl id dtype) nil nil nil))
              (var (mk-name-expr id nil nil (make-resolution bd nil dtype))))
+	(break "make-assignment-bindings")
         (make-assignment-bindings (cdr args)
                                   (if dep?
                                       (substit ran (acons dom var nil))
@@ -4951,6 +5091,7 @@ type of the lhs."
   (if (null bindings)
       expr
       (let ((nproj (mk-application proj (car vars))))
+	(break "make-assignment-lambda-expr*")
         (mk-lambda-expr (list (car bindings))
           (add-parens
            (mk-if-expr (make-assignment-equality (car vars) (car args))
@@ -4964,6 +5105,7 @@ type of the lhs."
   expr)
 
 (defun make-assignment-projection (proj vars)
+  (break "make-assignment-projection")
   (if (null vars)
       proj
       (make-assignment-projection (mk-application proj (car vars))
@@ -4977,7 +5119,21 @@ type of the lhs."
           types
           (append (ldiff types (cdr rest)) srest)))))
 
-(defmethod complete-assignments (args-list values ex (rtype recordtype))
+(defmethod complete-assignments (args-list values ex expr (rtype recordtype))
+  (assert (or (null ex) (place ex)))
+  ;; Used to check for dependent?, but we really need all assignments if
+  ;; we're going to generate correct TCCs.
+  ;; Since field-decls don't point to their associated recordtypes
+  ;; (they can't, since they may appear in several different ones due
+  ;; to copying and dependent substitutions), we create the
+  ;; association list in *field-records*.
+  (if (dependent? rtype)
+      (let ((*field-records* (mapcar #'(lambda (fld) (cons fld rtype))
+			       (fields rtype))))
+	(complete-rec-assignments args-list values (fields rtype) ex expr nil nil))
+      (values args-list values)))
+
+(defmethod complete-assignments (args-list values ex expr (rtype struct-sub-recordtype))
   ;; Used to check for dependent?, but we really need all assignments if
   ;; we're going to generate correct TCCs.
   ;; Since field-decls don't point to their associated recordtypes
@@ -4986,49 +5142,46 @@ type of the lhs."
   ;; association list in *field-records*.
   (let ((*field-records* (mapcar #'(lambda (fld) (cons fld rtype))
                            (fields rtype))))
-    (complete-rec-assignments args-list values (fields rtype) ex nil nil)))
+    (complete-rec-assignments args-list values (fields rtype) ex expr nil nil)))
 
-(defmethod complete-assignments (args-list values ex (rtype struct-sub-recordtype))
-  ;; Used to check for dependent?, but we really need all assignments if
-  ;; we're going to generate correct TCCs.
-  ;; Since field-decls don't point to their associated recordtypes
-  ;; (they can't, since they may appear in several different ones due
-  ;; to copying and dependent substitutions), we create the
-  ;; association list in *field-records*.
-  (let ((*field-records* (mapcar #'(lambda (fld) (cons fld rtype))
-                           (fields rtype))))
-    (complete-rec-assignments args-list values (fields rtype) ex nil nil)))
-
-(defun complete-rec-assignments (args-list values fields ex cargs cvalues)
+(defun complete-rec-assignments (args-list values fields ex expr cargs cvalues)
+  (assert (or (null ex) (place ex)))
   (if (null fields)
-      (values (nreverse cargs)
-              (nreverse cvalues))
-      (let ((pos (position (car fields) args-list
-                           :test #'same-id :key #'caar)))
-        (complete-rec-assignments
-         args-list values (cdr fields) ex
-	 (cons (if pos
-		   (nth pos args-list)
-		   (list (list (make-instance 'field-assign
-                                 :id (id (car fields))))))
-	       cargs)
-	 (cons (if pos
-		   (nth pos values)
-		   (make!-field-application (car fields) ex))
-	       cvalues)))))
+      (values (append args-list (nreverse cargs))
+              (append values (nreverse cvalues)))
+      (let* ((pos (position (car fields) args-list
+			    :test #'same-id :key #'caar))
+	     (args (if pos
+		       cargs
+		       (let ((fldass (make-instance 'field-assign
+				       :id (id (car fields)))))
+			 (set-extended-place fldass expr
+					     "completing field assignment for ~a"
+					     (id (car fields)))
+			 (cons (list (list fldass)) cargs))))
+	     (vals (if pos
+		       cvalues
+		       (let ((fappl (make!-field-application (car fields) ex)))
+			 (assert (place ex))
+			 (set-extended-place fappl ex
+					     "completing field application for ~a"
+					     fappl)
+			 (cons fappl cvalues)))))
+        (complete-rec-assignments args-list values (cdr fields) ex expr args vals))))
 
 (defun make-rec-assignment (field expr)
+  (break "make-rec-assignment")
   (mk-assignment 'uni
     (list (list (make-instance 'field-assign :id (id field))))
     (make!-field-application field expr)))
 
-(defmethod complete-assignments (args-list values ex (type tupletype))
-  (complete-tup-assignments args-list values (types type) ex 1 nil nil))
+(defmethod complete-assignments (args-list values ex expr (type tupletype))
+  (complete-tup-assignments args-list values (types type) ex 1 expr nil nil))
 
-(defmethod complete-assignments (args-list values ex (type struct-sub-tupletype))
-  (complete-tup-assignments args-list values (types type) ex 1 nil nil))
+(defmethod complete-assignments (args-list values ex expr (type struct-sub-tupletype))
+  (complete-tup-assignments args-list values (types type) ex 1 expr nil nil))
 
-(defun complete-tup-assignments (args-list values types ex num cargs cvalues)
+(defun complete-tup-assignments (args-list values types ex num expr cargs cvalues)
   (if (null types)
       (values (append args-list (nreverse cargs))
               (append values (nreverse cvalues)))
@@ -5036,13 +5189,22 @@ type of the lhs."
                        :test #'eql :key #'(lambda (a)
                                             (when a (number (caar a)))))))
         (complete-tup-assignments
-         args-list values (cdr types) ex (1+ num)
+         args-list values (cdr types) ex (1+ num) expr
          (if arg
              cargs
-             (cons (list (list (make!-number-expr num))) cargs))
+	     (let ((prass (make-instance 'proj-assign
+			    :number num)))
+	       (set-extended-place prass expr
+				   "completing proj assignment for ~a"
+				   num)
+	       (cons (list (list prass)) cargs)))
          (if arg
              cvalues
-             (cons (make!-projection-application num ex) cvalues))))))
+	     (let ((prappl (make!-projection-application num ex)))
+	       (set-extended-place prappl ex
+				   "completing proj application for ~a"
+				   prappl)
+	       (cons prappl cvalues)))))))
 
 (defun make-tup-assignment (expr num)
   (let ((type (nth (1- num) (types (find-supertype (type expr))))))
@@ -5069,6 +5231,7 @@ type of the lhs."
           (cons (make!-application (car accessors) ex) cvalues)))))
 
 (defun make-datatype-assignment (acc expr)
+  (break "make-datatype-assignment")
   (let* ((appl (make!-application acc expr)))
     (setf (place appl) (place expr))
     (mk-assignment 'uni (list (list acc)) appl)))
@@ -5141,6 +5304,7 @@ type of the lhs."
             (let* ((mi (mk-modname (id (current-theory)) nil nil nil (mk-dactuals dfmls)
                                    (current-declaration)))
                    (nex (subst-mod-params ex mi (current-theory) adecl)))
+	      (break "maybe-instantiate-from-decl-formals*")
               (when (fully-instantiated? nex)
                 (setf (resolutions ex) (resolutions nex)
                       (actuals ex) (actuals nex)
@@ -5222,16 +5386,17 @@ type of the lhs."
   ;;   (when (print-type te)
   ;;     (let ((*generate-tccs* 'none))
   ;;       (set-type* (print-type te) expected)))
-  (when (supertype te)
-    (set-type* (supertype te) expected))
-  (when (predicate te)
-    (if (and (type (predicate te))
-	     (fully-instantiated? (predicate te)))
-        (when (eq *generate-tccs* 'all)
-          (check-for-tccs (predicate te) (type (predicate te))))
-        (set-type* (predicate te)
-                   (mk-funtype (list (typecheck* (supertype te) nil 'type nil))
-                               *boolean*)))))
+  (let ((*set-type-subtype* (if (place te) te *set-type-subtype*)))
+    (when (supertype te)
+      (set-type* (supertype te) expected))
+    (when (predicate te)
+      (if (and (type (predicate te))
+	       (fully-instantiated? (predicate te)))
+          (when (eq *generate-tccs* 'all)
+            (check-for-tccs (predicate te) (type (predicate te))))
+          (set-type* (predicate te)
+                     (mk-funtype (list (typecheck* (supertype te) nil 'type nil))
+				 *boolean*))))))
 
 (defmethod set-type* ((te expr-as-type) expected)
   (declare (ignore expected))
@@ -5486,3 +5651,10 @@ type of the lhs."
          (push-tcc-condition* (cdr conds) tcc-conditions))
         (t (push-tcc-condition* (cdr conds)
                                (cons (car conds) tcc-conditions)))))
+
+(defun set-place-from (expr origin reason)
+  (assert (place origin))
+  (setf (place expr)
+	(concatenate 'vector
+	  (subseq (place origin) 0 4)
+	  (list origin reason))))

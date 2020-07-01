@@ -543,20 +543,30 @@
     (if sformal
 	(let ((spred (subtype-pred subtype (type-value sformal))))
 	  (when spred
+	    (unless (place spred)
+	      (set-extended-place spred actual
+				  "creating predicate between ~a and ~a"
+				  subtype (type-value sformal)))
 	    (cons (find-if #'(lambda (c) (typep c 'const-decl))
 		    (generated formal))
 		  (make-instance 'actual
-		    :expr spred))))
+		    :expr spred
+		    :place (place spred)))))
 	(let* ((fstype (subst-mod-params* 
 			(supertype (type-value formal))
 			modinst bindings))
 	       (spred (when (compatible? subtype fstype)
 			(subtype-pred subtype fstype))))
 	  (when spred
+	    (unless (place spred)
+	      (set-extended-place spred actual
+				  "creating predicate between ~a and ~a"
+				  subtype fstype))
 	    (cons (find-if #'(lambda (c) (typep c 'const-decl))
 		    (generated formal))
 		  (make-instance 'actual
-		    :expr spred)))))))
+		    :expr spred
+		    :place (place spred))))))))
 
 (defmethod make-subst-mod-params-pred-binding (modinst formal actual bindings)
   (declare (ignore modinst formal actual bindings))

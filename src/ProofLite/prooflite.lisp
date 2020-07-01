@@ -12,7 +12,8 @@
 ;; Rights Reserved.
 ;;
 
-(defun associate-proof-with-formulas (theory-name formula-name strategy force)
+(defun associate-proof-with-formulas (theory-name formula-name strategy force &optional (overwrite-default-proof? t))
+  ;; overwrite-default-proof? is meaninless if force is nil
   (let ((theory (get-typechecked-theory theory-name)))
     (if theory
 	(let* ((fname  (match-formula-name formula-name))
@@ -31,14 +32,16 @@
 		(if fdecls
 		    (associate-proof-with-formula 
 		     theory regexp (instantiate-script strategy args 1 "#") 
-		     fdecls)
+		     fdecls
+		     overwrite-default-proof?)
 		  (pvs-message 
 		   "\"~a\" does not match any ~aformula" name str)))
 	    (pvs-message 
 	     "\"~a\" is not a valid proof script header" formula-name)))
       (pvs-message "Theory ~a not found" theory-name))))
 
-(defun associate-proof-with-formula (theory regexp strategy fdecls)
+(defun associate-proof-with-formula (theory regexp strategy fdecls &optional (overwrite-default-proof? t))
+  "This function overwrites the default proof in FDECLS if OVERWRITE-DEFAULT-PROOF? is t (default)."
   (when fdecls
     (let* ((fdecl  (car fdecls))
            (match  (pregexp-match regexp (format nil "~a" (id fdecl))))
@@ -57,8 +60,14 @@
 			  strat))))
 	  (unless just
 	    (type-error script 
-	      "Bad form for script~%  ~s" script))
-	  (setf (justification fdecl) just)
+			"Bad form for script~%  ~s" script))
+
+	  (if overwrite-default-proof?
+	      (setf (justification fdecl) just)
+	    (let ((nextid (next-proof-id fdecl)))
+	      (format t "~%~a~%" nextid)
+	      (make-default-proof fdecl (extract-justification-sexp just) nextid)))
+	  
 	  (save-all-proofs theory)
 	  (pvs-message "Proof script ~a was installed" (id fdecl)))))
     (associate-proof-with-formula theory regexp strategy (cdr fdecls))))
@@ -177,15 +186,15 @@ is replaced with replacement."
 	    (trim (subseq str (cdar match) (length str)))))))
 
 (defun match-qed (str)
-  (let ((match (pregexp-match "^(.*)\\b(?i:qed)$" str)))
+  (let ((match (pregexp-match "^(.*)\\b(?i:qed).*$" str)))
     (when match
       (trim (cadr match)))))
 
-(defun install-script (theory script formulas force)
+(defun install-script (theory script formulas force &optional (overwrite-default-proof? t))
   (when formulas 
     (associate-proof-with-formulas theory (car formulas) 
-				  (format nil "(\"\" ~a)" script) force)
-    (install-script theory script (cdr formulas) force)))
+				  (format nil "(\"\" ~a)" script) force overwrite-default-proof?)
+    (install-script theory script (cdr formulas) force overwrite-default-proof?)))
 
 (defun new-script (script new)
   (let ((notempty (> (length new) 0)))
@@ -272,6 +281,64 @@ is replaced with replacement."
 			 (setq str nil))
 			(t (setq str nil))))))))))
 
+(defun install-prooflite-scripts-from-prite-file (filename theory force &optional (plain-script? t))
+  (let*((tokens (split filename #\.))
+	(filename (car tokens))
+	(ext (if (> (length tokens) 1)
+		 (cadr tokens)
+	       "prite")))
+    (with-open-file 
+     (file (make-specpath filename ext) :direction :input)
+     (pvs-message "Installing proof scripts from file \"~a.~a\" into theory \"~a\." filename ext theory)
+     (do ((str (read-line file nil))
+	  (formulas)
+	  (script))
+	 ((null str))
+	 (let ((proofcomment (if plain-script?
+				 (trim-left str)
+			       (is-proof-comment str))))
+	   (cond (proofcomment
+		  (let* ((proof     (match-proof proofcomment))
+			 (formula   (car proof))
+			 (qed       (match-qed proofcomment)))
+		    (cond 
+		     (formula
+		      (when script
+			(pvs-message 
+			 "QED is missing in proof script(s) ~a [Theory: ~a]"
+			 formulas theory))
+		      (setq str (format nil "~a" (cdr proof)))
+		      (setq formulas (cons formula 
+					   (when (not script) formulas)))
+		      (setq script nil))
+		     (qed
+		      (let ((newscript (new-script script qed))) 
+			(when (and newscript formulas)
+			  (install-script theory newscript 
+					  (reverse formulas) 
+					  force))
+			(cond ((not formulas) 
+			       (pvs-message 
+				"No script was installed [Theory: ~a]" 
+				theory)
+			       (setq str nil))
+			      (t
+			       (setq str (read-line file nil))
+			       (setq formulas nil)
+			       (setq script nil)))))
+		     (t (setq str (read-line file nil))
+			(setq script (new-script script proofcomment))))))
+		 ((is-comment str)
+		  (setq str (read-line file nil)))
+		 (t 
+		  (when formulas
+		    (pvs-message 
+		     "QED is missing in proof script(s) ~a [Theory: ~a]"
+		     formulas theory))
+		  (setq str (read-line file nil))
+		  (setq formulas nil)
+		  (setq script nil))))))))
+
 (defun then-prooflite (script)
   (cond ((and
 	  (cdr script)
@@ -307,14 +374,10 @@ is replaced with replacement."
        "ProofLite"
        (with-output-to-string
 	 (out)
-	 (format out "~a : PROOF~%" (id fdecl))
-	 (write (prooflite-script fdecl)
-		:stream out :pretty t :escape t
-		:level nil :length nil
-		:pprint-dispatch *proof-script-pprint-dispatch*)
-	 (format out "~%QED~%")))
+	 (write-prooflite-script fdecl out)))
       (list (aref (place fdecl) 2)))))
-       
+
+
 (defun find-formula (theory-name formula)
   (let ((theory (get-typechecked-theory theory-name)))
     (when theory
@@ -337,9 +400,26 @@ is replaced with replacement."
        "ProofLite"
        (with-output-to-string
 	 (out)
-	 (format out "~a : PROOF~%" (id fdecl))
-	 (write (prooflite-script fdecl)
-		:stream out :pretty t :escape t
-		:level nil :length nil
-		:pprint-dispatch *proof-script-pprint-dispatch*)
-	 (format out "~%QED~%"))))))
+	 (write-prooflite-script fdecl out))))))
+
+(defun write-prooflite-script (fdecl &optional (outstream t))
+  (format outstream "~a : PROOF~%" (id fdecl))
+  (write (prooflite-script fdecl)
+	 :stream outstream :pretty t :escape t
+	 :level nil :length nil
+	 :pprint-dispatch *proof-script-pprint-dispatch*)
+  (format outstream "~%QED ~a~%" (id fdecl)))
+
+(defun write-all-prooflite-scripts-to-file (theoryname)
+  "Writes the proofscripts of all declarations in the theory (including TCCs) 
+into a file with extension prite. Overwrites the file if it already exists."
+  (let ((pritefname (format nil "~a.prite" theoryname)))
+    (with-open-file (outs pritefname :direction :output :if-exists :supersede)
+		    (loop for d in (all-declarations(get-typechecked-theory theoryname)) 
+			  when (formula-decl? d) 
+			  do (write-prooflite-script d outs)))))
+
+(defun get-default-proof-script (theory-name formula)
+  (let ((formula-declaration (find-formula theory-name formula)))
+    (when formula-declaration
+      (script (default-proof formula-declaration)))))
