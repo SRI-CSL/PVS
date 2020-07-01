@@ -553,7 +553,8 @@ there is no such bind-decl."
 			    "Recursive judgement")))
 	     (place (or (place *set-type-actuals-name*)
 			(place* expr) (place type)
-			;;(and genby (place (car genby)))
+			(place *set-type-expr*)
+			(place *set-type-subtype*)
 			))
 	     (plstr (when place
 		      (format nil "(at line ~d, column ~d) "
