@@ -242,9 +242,17 @@ typedef void * any_t;
 
 struct string_s {
   uint32_t count;
-  char[] strval
+  uint16_t size;
+  char strval[];
 } string_s;
 typedef struct string_s * string_t;
+
+enum mode_t {r, w, a};
+
+struct stream_s {
+  uint32_t count;
+  FILE * strm;
+};
 
 
 

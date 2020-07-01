@@ -1128,7 +1128,13 @@
     (setf (ir-function-name (ir einfo)) (mk-ir-function (id decl) decl))
     (setf (ir-defn (ir einfo)) (mk-ir-const-formal (id decl) (pvs2ir-type (type decl))))
     (id decl)))
-	    
+
+(defun pvs2ir-formals (irvars pvars bindings);irvars and pvars (pvsvars) are same length
+  (cond ((and (consp irvars)(consp pvars))
+	 (let ((ir-variable (mk-ir-variable (car irvars) (pvs2ir-type (type (car pvars)) bindings) (id (car pvars)))))
+	  (cons ir-variable
+		(pvs2ir-formals (cdr irvars)(cdr pvars) (acons (declaration (car pvars)) ir-variable bindings)))))
+	(t nil)))
 
 
 (defmethod pvs2ir-decl* ((decl const-decl))
@@ -1176,9 +1182,7 @@
 		     (args (if (and (null defn) formals)
 			       (let* ((topformals (car formals))
 				      (binding-vars (new-irvars (length topformals)))
-				      (ir-formals (loop for irvar in binding-vars
-							as var in topformals
-							collect (mk-ir-variable irvar (pvs2ir-type (type var) nil) (id var)))));NSH(1/17/20)
+				      (ir-formals (pvs2ir-formals binding-vars topformals nil)));NSH(1/17/20)
 				 ir-formals)
 			     (when (ir-lambda? ir-defn-with-tformals)
 			       (ir-vartypes ir-defn-with-tformals))))
@@ -2286,6 +2290,26 @@
 (defun mk-ir-subtraction (ir-expr1 ir-expr2)
   (mk-ir-apply (mk-ir-primitive-function '-)
 	       (list ir-expr1 ir-expr2)))
+
+(defun extract-type-lower-bound (bound-expr bindings)
+  (or (pvseval-integer bound-expr)
+      (let* ((type-ir (pvs2ir-type (type bound-expr) bindings))
+	     (judgement-type-irs (loop for type in (judgement-types bound-expr)
+				       collect (pvs2ir-type type bindings)))
+	     (lo-subrange (loop for ir-type in (cons type-ir judgement-type-irs)
+				when (and (ir-subrange? ir-type)(numberp (ir-low ir-type)))
+				collect (ir-low ir-type))))
+	(if lo-subrange (apply #'min lo-subrange) '*))))
+
+(defun extract-type-upper-bound (bound-expr bindings)
+  (or (pvseval-integer bound-expr)
+      (let* ((type-ir (pvs2ir-type (type bound-expr) bindings))
+	     (judgement-type-irs (loop for type in (judgement-types bound-expr)
+				       collect (pvs2ir-type type)))
+	     (hi-subrange (loop for ir-type in (cons type-ir judgement-type-irs)
+				when (and (ir-subrange? ir-type)(numberp (ir-high ir-type)))
+				collect (ir-high ir-type))))
+	(if hi-subrange (apply #'max hi-subrange) '*))))
 
 ;returns a pair of the lower and upper bound
 (defun pvs2ir-subrange-index (type bindings)
