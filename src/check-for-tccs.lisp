@@ -45,7 +45,9 @@
 (defun check-for-tccs (expr expected &optional skip-exprs)
   (unless (compatible? (type expr) expected)
     (type-incompatible expr (list (type expr)) expected))
-  (let ((*no-conversions-allowed* (not (memq expr *conversions-allowed*)))
+  (let ((*tccs-generated-for* (when (boundp '*tccs-generated-for*)
+				*tccs-generated-for*))
+	(*no-conversions-allowed* (not (memq expr *conversions-allowed*)))
 	(*skip-tcc-check-exprs* skip-exprs))
     (check-for-tccs* expr expected)))
 
@@ -66,16 +68,16 @@
 	  "Incompatible types for ~a~%     Found: ~a~%  Expected: ~a"
 	  ex (type ex) expected *checking-implicit-conversion*)
 	(type-incompatible ex (list (type ex)) expected)))
-  (call-next-method)
-  (unless (or (typep ex '(or branch lambda-expr update-expr
-			     cases-expr let-expr where-expr))
-	      (memq ex *skip-tcc-check-exprs*))
-    (if *added-recursive-def-conversion*
-	(let ((*added-recursive-def-conversion* nil))
-	  (check-for-tccs ex (if (application? ex) (type ex) expected)))
-	(check-for-subtype-tcc ex expected)))
-  (set-ghost-type ex expected)
-  )
+  (let ((*set-type-expr* (if (place ex) ex *set-type-expr*)))
+    (call-next-method)
+    (unless (or (typep ex '(or branch lambda-expr update-expr
+			    cases-expr let-expr where-expr))
+		(memq ex *skip-tcc-check-exprs*))
+      (if *added-recursive-def-conversion*
+	  (let ((*added-recursive-def-conversion* nil))
+	    (check-for-tccs ex (if (application? ex) (type ex) expected)))
+	  (check-for-subtype-tcc ex expected)))
+    (set-ghost-type ex expected)))
 
 (defmethod check-for-tccs* ((ex modname) expected)
   (declare (ignore expected))
@@ -370,12 +372,12 @@
     (call-next-method)))
 
 (defmethod check-for-tccs* ((expr application) expected)
-  #+pvsdebug
-  (assert (every #'(lambda (x) (or (not (consp x))
-				   (and (bind-decl? (car x))
-					(memq (car x) *tcc-conditions*))))
-		 *tcc-conditions*))
   (with-slots (operator argument type) expr
+    #+pvsdebug
+    (assert (every #'(lambda (x) (or (not (consp x))
+				     (and (bind-decl? (car x))
+					  (memq (car x) *tcc-conditions*))))
+		   *tcc-conditions*))
     (let ((optype (find-supertype (type operator))))
       (check-for-tccs* (argument expr) (domain optype))
       (when (some #'recursive-defn-conversion? (arguments expr))

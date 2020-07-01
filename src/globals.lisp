@@ -224,6 +224,7 @@ order is important")
 
 (defvar *set-type-actuals-name* nil)
 (defvar *set-type-subtype* nil)
+(defvar *set-type-expr* nil)
 
 (defvar *loading-prelude* nil "A flag indicating the obvious")
 
@@ -325,6 +326,8 @@ collected in *tccforms*")
 ;; Used to keep track of which expression have already gone through
 ;; check-type-actuals processing
 (defvar *exprs-generating-actual-tccs* nil)
+
+(defvar *tccs-generated-for*)
 
 ;;; Associate old tcc names with new tccs, so that proofs may be restored.
 (defvar *old-tcc-names* nil)
