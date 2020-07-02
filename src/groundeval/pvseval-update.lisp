@@ -1377,7 +1377,7 @@ if called."
 	(let ((size (array-bound (type (car bind-decls))))
 	      (fun `(function (lambda ,bind-ids ,cl-body))))
 	  (if size
-	      (mk-pvs-array-closure size fun)
+	      `(mk-pvs-array-closure ,(pvs2cl_up* size bindings nil) ,fun)
 	    fun))
 	(let* ((lamvar
 		(pvs2cl-newid 'lamvar bindings))

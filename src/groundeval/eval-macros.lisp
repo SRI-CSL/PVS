@@ -215,11 +215,13 @@
     `(let ((,funval ,fun))
        (if (arrayp ,funval)
 	   (aref ,funval ,@args)
-	 (if (pvs-outer-array-p ,funval)
-	     (pvs-outer-array-lookup ,funval ,@args)
-	   (if (pvs-closure-hash-p ,funval);;NSH(9-19-12)
-	       (pvs-closure-hash-lookup ,funval ,@args)
-	     (funcall ,funval ,@args)))))))
+	 (if (pvs-array-closure-p ,funval)
+	     (pvs-array-closure-lookup ,funval ,@args)
+	   (if (pvs-outer-array-p ,funval)
+	       (pvs-outer-array-lookup ,funval ,@args)
+	     (if (pvs-closure-hash-p ,funval) ;;NSH(9-19-12)
+		 (pvs-closure-hash-lookup ,funval ,@args)
+	       (funcall ,funval ,@args))))))))
 
 (defun pvs_equalp (x y)
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"
@@ -341,8 +343,12 @@
   size closure)
 
 (defmacro mk-pvs-array-closure (size closure)
-  `(make-pvs-array-closure :size ,size
-			  :closure ,closure))
+  (let ((sz (gentemp))
+	(cl (gentemp)))
+    `(let ((,sz ,size)
+	   (,cl ,closure))
+       (make-pvs-array-closure :size ,sz
+			  :closure ,cl))))
 
 (defmacro pvs-array-closure-lookup (array index)
   `(funcall (pvs-array-closure-closure ,array) ,index))
