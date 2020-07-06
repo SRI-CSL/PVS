@@ -246,6 +246,7 @@
 			(insert-var-into-conditions vdecl conditions)
 			conditions)
 		    substs nil)))
+	;;(break "add-tcc-conditions")
 	(universal-closure tform)))))
 
 (defun insert-var-into-conditions (vdecl conditions)
@@ -264,38 +265,27 @@ there is no such bind-decl."
     
 
 (defun add-tcc-conditions* (expr conditions substs antes)
+  "Walks down the conditions, wrapping them around the expr.
+Conditions are conses, bind-decls, or boolean terms."
   (cond ((null conditions)
-	 (let ((ex (substit
-		       (if antes
-			   (make!-implication
-			    (make!-conjunction* (nreverse antes)) expr)
-			   expr)
-		     substs)))
-	   (assert (type ex))
-	   ex))
+	 (let* ((ex (if antes
+			(make!-implication (make!-conjunction* (reverse antes)) expr)
+			expr))
+		(form (substit ex substs)))
+	   (assert (type form))
+	   form))
 	((consp (car conditions))
 	 ;; bindings from a lambda-expr application (e.g., let-expr)
+	 ;; in general, a let-binding shows up as a cons followed by its
+	 ;; bind-decl.
 	 (assert (and (bind-decl? (caar conditions))
 		      (memq (caar conditions) (cdr conditions))))
 	 (cond (*substitute-let-bindings*
-		(add-tcc-conditions*
-		 expr
-		 (cdr conditions)
-		 (cons (car conditions) substs)
-		 antes))
-	       ;; (*tcc-make-let-exprs*
-	       ;; 	(let* ((pos (position-if-not #'consp conditions))
-	       ;; 	       (rem-conditions (when pos (nthcdr pos conditions)))
-	       ;; 	       (let-bindings (ldiff conditions rem-conditions)))
-	       ;; 	  (break "Need to convert to let-expr")))
-	       (t (add-tcc-conditions*
-		   expr
-		   (cdr conditions)
-		   substs
-		   (let ((eqn (make!-equation
-			       (mk-name-expr (caar conditions))
-			       (cdar conditions))))
-		     (cons eqn antes))))))
+		;; Just add to the substs
+		(add-tcc-conditions* expr (cdr conditions) (cons (car conditions) substs) antes))
+	       (t (multiple-value-bind (eqns rem-conditions)
+		      (collect-let-equations conditions)
+		    (add-tcc-conditions* expr rem-conditions substs (append eqns antes))))))
 	((typep (car conditions) 'bind-decl)
 	 ;; Binding from a binding-expr
 	 (add-tcc-bindings expr conditions substs antes))
@@ -304,6 +294,16 @@ there is no such bind-decl."
 	 (add-tcc-conditions* expr (cdr conditions)
 			      substs
 			      (cons (car conditions) antes)))))
+
+(defun collect-let-equations (conditions &optional eqns bind-decls)
+  (typecase (car conditions)
+    (cons (assert (memq (caar conditions) (cdr conditions)))
+	  (let ((eqn (make!-equation
+		      (mk-name-expr (caar conditions))
+		      (cdar conditions))))
+	    (collect-let-equations (cdr conditions) (cons eqn eqns) bind-decls)))
+    (bind-decl (collect-let-equations (cdr conditions) eqns (cons (car conditions) bind-decls)))
+    (t (values eqns (append (nreverse bind-decls) conditions)))))
 
 
 ;;; This creates a substitution from the bindings in *tcc-conditions*
@@ -390,7 +390,7 @@ there is no such bind-decl."
       ;; Now we can build the universal closure
       (let* ((nbody (substit (if antes
 				 (make!-implication
-				  (make!-conjunction* (reverse antes))
+				  (make!-conjunction* antes)
 				  expr)
 				 expr)
 		      substs))
