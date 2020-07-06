@@ -628,6 +628,15 @@
     (typecase stype
       ((or funtype recordtype tupletype adt-type-name datatype-subtype)
        (check-assignment-arg-types* args-list values ex expr stype)
+       (let* ((assns (mapcan #'(lambda (a v)
+				 (unless (null a)
+				   (list (make-assignment a v))))
+		       args-list values))
+	      (updex (when assns (make!-update-expr ex assns))))
+	 (when updex
+	   (set-extended-place updex ex
+			       "creating update-expr for subtype check")
+	   (check-for-subtype-tcc updex expected)))
        (mapc #'(lambda (a v)
 		 (unless a (check-for-subtype-tcc v expected)))
 	     args-list values))

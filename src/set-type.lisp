@@ -4449,7 +4449,9 @@ type of the lhs."
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (assert (type-expr? expected))
   (when args-list
-    (set-assignment-arg-type (car args-list) (car values) ex expr expected)
+    ;; We're not at an updateable type, should have no more args
+    (assert (null (car args-list)))
+    (set-type* (car values) expected)
     (set-assignment-arg-types* (cdr args-list) (cdr values) ex expr expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr (expected subtype))
@@ -4458,14 +4460,20 @@ type of the lhs."
     (typecase stype
       ((or funtype recordtype tupletype adt-type-name datatype-subtype)
        (set-assignment-arg-types* args-list values ex expr stype)
-       ;;(let ((*generate-tccs* 'all))
+       (let* ((assns (mapcan #'(lambda (a v)
+				 (unless (null a)
+				   (list (make-assignment a v))))
+		       args-list values))
+	      (updex (when assns (make!-update-expr ex assns))))
+	 (when updex
+	   (set-extended-place updex ex
+			       "creating update-expr for subtype check")
+	   (check-for-subtype-tcc updex expected)))
        (mapc #'(lambda (a v)
 		   (unless a
 		     (check-for-subtype-tcc v expected)))
-             args-list values)
-       ;;)
-      )
-      (t (call-next-method)))))
+             args-list values))
+       (t (call-next-method)))))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr (expected recordtype))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
@@ -4529,7 +4537,7 @@ type of the lhs."
                                                 (expected datatype-subtype))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (if (every #'null args-list)
-      (set-assignment-arg-type (car args-list) (car values) ex expr expected)
+      (set-type* (car values) expected)
       (set-assignment-update-arg-types args-list values ex expr expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr
@@ -4846,13 +4854,6 @@ type of the lhs."
          (cons args cargs))
        (unless done-with-acc?
          (cons value cvalues))))))
-
-(defun set-assignment-arg-type (args value ex expr expected)
-  (set-assignment-arg-type* args value ex expr expected))
-
-(defmethod set-assignment-arg-type* ((args null) value ex expr expected)
-  (declare (ignore ex expr))
-  (set-type* value expected))
 
 (defmethod contract-expected (expr (expected recordtype))
   (contract-expected-recordtype expr expected))
