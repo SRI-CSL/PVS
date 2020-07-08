@@ -5642,7 +5642,7 @@ type of the lhs."
 
 (defun push-tcc-condition (condition tcc-conditions)
   (let ((conds (and!+ condition)))
-    (push-tcc-condition* (reverse conds) tcc-conditions)))
+    (push-tcc-condition* conds tcc-conditions)))
 
 (defun push-tcc-condition* (conds tcc-conditions)
   (cond ((null conds)
@@ -5651,7 +5651,7 @@ type of the lhs."
              (member (car conds) tcc-conditions :test #'tc-eq))
          (push-tcc-condition* (cdr conds) tcc-conditions))
         (t (push-tcc-condition* (cdr conds)
-                               (cons (car conds) tcc-conditions)))))
+				(cons (car conds) tcc-conditions)))))
 
 (defun set-place-from (expr origin reason)
   (assert (place origin))

@@ -114,6 +114,8 @@
 				  *bound-variables*))
 	   (true-conc? (tcc-evaluates-to-true conc))
 	   (tform (unless true-conc?
+		    ;; Note that add-tcc-conditions does not change *tcc-conditions*,
+		    ;; so this form may be called repeatedly during debugging.
 		    (add-tcc-conditions conc)))
 	   (sform (unless true-conc?
 		    (if thinst
@@ -228,26 +230,18 @@
   (multiple-value-bind (conditions srec-expr vdecl ch?)
       (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal)
 			  expr)
-    (let* ((osubsts (get-tcc-binding-substitutions
-		     (reverse (cons srec-expr conditions))))
-	   (substs (if vdecl
-		       (acons vdecl
-			      (lcopy vdecl
-				'type (substit (type vdecl) osubsts)
-				'declared-type (substit (declared-type vdecl)
-						 osubsts))
-			      osubsts)
-		       osubsts)))
-      (when (and vdecl *rec-judgement-extra-conditions*)
-	(break "Need to add extra conditions"))
-      (let ((tform (add-tcc-conditions*
-		    (raise-actuals srec-expr)
-		    (if (and vdecl ch?)
-			(insert-var-into-conditions vdecl conditions)
-			conditions)
-		    substs nil)))
-	;;(break "add-tcc-conditions")
-	(universal-closure tform)))))
+    (when (and vdecl *rec-judgement-extra-conditions*)
+      (break "Need to add extra conditions"))
+    (let ((tform (add-tcc-conditions*
+		  (raise-actuals srec-expr)
+		  (if (and vdecl ch?)
+		      (insert-var-into-conditions vdecl conditions)
+		      conditions)
+		  nil nil)))
+      (when (and (forall-expr? tform)
+		 (duplicates? (bindings tform) :key #'id))
+	(break "repeated bindings in add-tcc-conditions"))
+      (universal-closure tform))))
 
 (defun insert-var-into-conditions (vdecl conditions)
   "Inserts the vdecl into the conditions list, just before the first
@@ -274,10 +268,12 @@ Conditions are conses, bind-decls, or boolean terms."
 		(form (substit ex substs)))
 	   (assert (type form))
 	   form))
+	((typep (car conditions) 'bind-decl)
+	 ;; Binding from a binding-expr
+	 (add-tcc-bindings expr conditions substs antes))
 	((consp (car conditions))
-	 ;; bindings from a lambda-expr application (e.g., let-expr)
-	 ;; in general, a let-binding shows up as a cons followed by its
-	 ;; bind-decl.
+	 ;; bindings from a lambda-expr application (e.g., let-expr).  A
+	 ;; let-binding is a cons eventually followed by its bind-decl.
 	 (assert (and (bind-decl? (caar conditions))
 		      (memq (caar conditions) (cdr conditions))))
 	 (cond (*substitute-let-bindings*
@@ -286,9 +282,6 @@ Conditions are conses, bind-decls, or boolean terms."
 	       (t (multiple-value-bind (eqns rem-conditions)
 		      (collect-let-equations conditions)
 		    (add-tcc-conditions* expr rem-conditions substs (append eqns antes))))))
-	((typep (car conditions) 'bind-decl)
-	 ;; Binding from a binding-expr
-	 (add-tcc-bindings expr conditions substs antes))
 	(t ;; We collect antes so we can form (A & B) => C rather than
 	 ;; A => (B => C)
 	 (add-tcc-conditions* expr (cdr conditions)
@@ -305,89 +298,16 @@ Conditions are conses, bind-decls, or boolean terms."
     (bind-decl (collect-let-equations (cdr conditions) eqns (cons (car conditions) bind-decls)))
     (t (values eqns (append (nreverse bind-decls) conditions)))))
 
-
-;;; This creates a substitution from the bindings in *tcc-conditions*
-;;; The substitution associates the given binding with one that has
-;;;  1. unique ids
-;;;  2. lifted actuals
-;;;  3. types are made explicit
-;;; Anytime a binding is modified for one of these reasons, it must be
-;;; substituted for in the other substitutions.  Because of this the
-;;; conditions are the reverse of *tcc-conditions*.
-
-(defun get-tcc-binding-substitutions (conditions &optional substs prior)
-  (cond ((null conditions)
-	 (nreverse substs))
-	((typep (car conditions) 'bind-decl)
-	 (let ((nbd (car conditions)))
-	   (when (untyped-bind-decl? nbd)
-	     (let ((dtype (or (declared-type nbd)
-			      (and (type nbd) (print-type (type nbd)))
-			      (type nbd))))
-	       (setq nbd (change-class (copy nbd 'declared-type dtype)
-				       'bind-decl))))
-	   (let* ((dtype (raise-actuals (declared-type nbd)))
-		  (prtype (when (print-type (type nbd))
-			    (if (tc-eq (print-type (type nbd))
-				       (declared-type nbd))
-				dtype
-				(raise-actuals (print-type (type nbd))))))
-		  (ptype (when prtype (or (print-type prtype) prtype))))
-	     (assert (typep ptype '(or null type-name type-application
-				    expr-as-type type-extension))
-		     () "get-tcc-binding-substitutions: bad print-type")
-	     (unless (and (eq dtype (declared-type nbd))
-			  (or (null ptype)
-			      (eq ptype dtype)
-			      (eq ptype (print-type (type nbd)))))
-	       (if (eq nbd (car conditions))
-		   (setq nbd (copy (car conditions)
-			       'declared-type dtype
-			       'type (copy (type nbd) 'print-type ptype)))
-		   (setf (declared-type nbd) dtype
-			 (type nbd) (copy (type nbd) 'print-type ptype)))))
-	   (when (binding-id-is-bound (id nbd) prior)
-	     (let ((nid (make-new-variable (id nbd) conditions 1)))
-	       (if (eq nbd (car conditions))
-		   (setq nbd (copy (car conditions) 'id nid))
-		   (setf (id nbd) nid))))
-	   (let ((*pseudo-normalizing* t))
-	     (setq nbd (substit-binding nbd substs)))
-	   (get-tcc-binding-substitutions
-	    (cdr conditions)
-	    (if (eq nbd (car conditions))
-		substs
-		(acons (car conditions) nbd substs))
-	    (cons (car conditions) prior))))
-	(t (get-tcc-binding-substitutions (cdr conditions) substs
-					  (cons (car conditions) prior)))))
-
 (defun add-tcc-bindings (expr conditions substs antes &optional bindings)
+  "Walks down conditions as long as there are bind-decls, those that had to
+be changed are in substs.  Sometimes variables need to be named apart, by
+looking in bindings and substs."
   (if (typep (car conditions) 'bind-decl)
-      ;; Recurse till there are no more bindings, so we build
-      ;;  FORALL x, y ... rather than FORALL x: FORALL y: ...
       (let* ((bd (car conditions))
-	     (nbd (or (cdr (assq bd substs)) bd)))
-;; 	(assert (or (member bd (freevars expr) :key #'declaration)
-;; 		    (not (occurs-in bd expr))))
-;; 	(assert (eq (and (member bd (freevars bindings) :key #'declaration) t)
-;; 		    (and (occurs-in bd bindings) t)))
-;; 	(assert (eq (and (member bd (freevars antes) :key #'declaration) t)
-;; 		    (and (occurs-in bd antes) t)))
-;; 	(assert (eq (and (assq bd substs) t)
-;; 		    (and (occurs-in bd substs) t)))
-	(add-tcc-bindings expr (cdr conditions) substs antes
-			  (if (or (member bd (freevars expr)
-					  :key #'declaration)
-				  (member bd (freevars bindings)
-					  :key #'declaration)
-				  (member bd (freevars antes)
-					  :key #'declaration)
-				  (assq bd substs)
-				  (possibly-empty-type? (type bd)))
-			      (cons nbd bindings)
-			      bindings)))
-      ;; Now we can build the universal closure
+	     (nsubsts (add-tcc-binding bd conditions substs))
+	     (nbindings (cons bd bindings)))
+	(add-tcc-bindings expr (cdr conditions) nsubsts antes nbindings))
+      ;; Not a bind-decl; build the universal closure
       (let* ((nbody (substit (if antes
 				 (make!-implication
 				  (make!-conjunction* antes)
@@ -396,21 +316,61 @@ Conditions are conses, bind-decls, or boolean terms."
 		      substs))
 	     ;; note that make!-implication may not return an implication if
 	     ;; antes or expr reduce to TRUE or FALSE.
-	     ;; (sexpr (if antes
-	     ;; 		(if (implication? nbody)
-	     ;; 		    (args2 nbody)
-	     ;; 		    nbody)
-	     ;; 		nbody))
-	     (nbindings (get-tcc-closure-bindings bindings nbody))
+	     (nbindings (mapcar #'(lambda (bd) (or (cdr (assq bd substs)) bd)) bindings))
 	     (nexpr (if nbindings
 			(make!-forall-expr nbindings nbody)
 			nbody)))
+	(when (duplicates? nbindings :key #'id)
+	  (break "add-tcc-bindings duplicates"))
 	;; (unless (eq sexpr expr)
 	;;   (push (list sexpr expr :substit) *set-type-generated-terms*))
 	(add-tcc-conditions* nexpr conditions substs nil))))
 
+(defun add-tcc-binding (bd conditions substs)
+  (let* ((typed-bd (if (untyped-bind-decl? bd)
+		       (let ((dtype (or (declared-type bd)
+					(and (type bd) (print-type (type bd)))
+					(type bd))))
+			 (change-class (copy bd 'declared-type dtype) 'bind-decl))
+		       bd))
+	 (dtype (raise-actuals (declared-type typed-bd)))
+	 (prtype (when (print-type (type typed-bd))
+		   (if (tc-eq (print-type (type typed-bd))
+			      (declared-type typed-bd))
+		       dtype
+		       (raise-actuals (print-type (type typed-bd))))))
+	 (ptype (when prtype (or (print-type prtype) prtype)))
+	 (ptyped-bd (cond ((and (eq dtype (declared-type typed-bd))
+				(or (null ptype)
+				    (eq ptype dtype)
+				    (eq ptype (print-type (type typed-bd)))))
+			   typed-bd)
+			  ((eq typed-bd (car conditions))
+			   (copy (car conditions)
+			     'declared-type dtype
+			     'type (copy (type typed-bd) 'print-type ptype)))
+			  (t (setf (declared-type typed-bd) dtype
+				   (type typed-bd) (copy (type typed-bd) 'print-type ptype))
+			     typed-bd)))
+	 (duped-bd (if (or (member (id bd) (cdr conditions)
+				   :key #'(lambda (c) (and (bind-decl? c) (id c))))
+			   (some #'(lambda (subst) (eq (id bd) (id (cdr subst)))) substs))
+		       (let ((nid (make-new-variable (id ptyped-bd) (append conditions substs) 1)))
+			 (copy ptyped-bd 'id nid))
+		       ptyped-bd))
+	 (nsubsts (if (eq duped-bd bd)
+		      substs
+		      (let ((ssubsts (mapcar #'(lambda (sbst)
+						 (cons (car sbst)
+						       (substit (cdr sbst) `((,bd . ,duped-bd)))))
+				       substs)))
+			(acons bd duped-bd ssubsts)))))
+    nsubsts))
+
+
 
 (defun binding-id-is-bound (id expr)
+  "Checks if symbol id occurs in expr as a bind-decl, excluding types."
   (let ((found nil))
     (mapobject #'(lambda (ex)
 		   (or found
@@ -838,9 +798,9 @@ Conditions are conses, bind-decls, or boolean terms."
 				      (or thinst (current-theory-name))
 				    cth cdecl)))
 			 (unless (eq ord (ordering decl))
-			   (set-extended-place ord ordering
+			   (set-extended-place ord (ordering decl)
 					"creating substitution ~a for ordering ~a"
-					ord ordering))
+					ord (ordering decl)))
 			 ord))
 	     (var1 (make-new-variable '|x| ordering))
 	     (var2 (make-new-variable '|y| ordering))
