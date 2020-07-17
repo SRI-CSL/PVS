@@ -2556,12 +2556,21 @@ type of the lhs."
 
 (defun let-tcc-condition-bindings (bindings argument)
   (if (cdr bindings)
-      (if (typep argument 'tuple-expr)
-          (append (reverse (opairlis bindings (exprs argument)))
-                  (reverse bindings))
-          (append (reverse (opairlis bindings (make-projections argument)))
-                  (reverse bindings)))
-      (cons (cons (car bindings) argument) bindings)))
+      (let ((name-exprs (mapcar #'(lambda (bd)
+				    (make!-name-expr (id bd) nil nil
+						     (make-resolution bd nil (type bd))))
+			  bindings)))
+	(if (tuple-expr? argument)
+	    (let* ((eqns (mapcar #'make!-equation name-exprs (exprs argument)))
+		   (conj (make!-conjunction* eqns)))
+	      (cons conj (reverse bindings)))
+	    (let* ((tupex (make-tuple-expr name-exprs))
+		   (eqn (make!-equation tupex argument)))
+	      (cons eqn (reverse bindings)))))
+      (let* ((bd (car bindings))
+	     (name-expr (make!-name-expr (id bd) nil nil (make-resolution bd nil (type bd))))
+	     (eqn (make!-equation name-expr argument)))
+	(cons eqn bindings))))
 
 ;;; Similar to pairlis, but ensures results are in the same order
 (defun opairlis (keys data &optional result)
@@ -2851,11 +2860,7 @@ type of the lhs."
 
 (defmethod appl-tcc-conditions ((op lambda-expr) argument)
   (with-slots (bindings) op
-    (if (cdr bindings)
-        (if (typep argument 'tuple-expr)
-            (append (pairlis bindings (exprs argument)) bindings)
-            (append (pairlis bindings (make-projections argument)) bindings))
-        (cons (cons (car bindings) argument) bindings))))
+    (let-tcc-condition-bindings bindings argument)))
 
 (defmethod appl-tcc-conditions (op argument)
   (declare (ignore op argument))
