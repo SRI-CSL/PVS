@@ -443,7 +443,7 @@
 
 
 (defun mk-ir-variable (ir-name ir-type &optional ir-pvsid)
-;  (when (not ir-type) (break "mk-ir-variable"))
+  (when (not ir-type) (break "mk-ir-variable"))
   (make-instance 'ir-variable
 		 :ir-name ir-name
 		 :ir-vtype ir-type
@@ -1586,7 +1586,7 @@
 
 (defmethod get-ir-domain-types ((ir-type ir-funtype))
   (with-slots (ir-domain) ir-type
-    (if (ir-recordtype? ir-domain)
+    (if (ir-tupletype? ir-domain)
 	(loop for irft in (ir-field-types ir-domain)
 	      collect (ir-ftype irft))
       (list ir-domain))))
@@ -1696,7 +1696,8 @@
 	       (op-var (new-irvartype op-ir-type))
 	       (op-ir (pvs2ir* op bindings))
 	       (arg-vartypes (loop for irft in (get-ir-domain-types op-ir-type)
-				collect (mk-ir-variable (new-irvar) irft))))
+				   collect (mk-ir-variable (new-irvar) irft))))
+;;	  (when (not (eql (length arg-vartypes)(length arg-types))) (break "pvs2-ir-application: arg-vartypes: ~s, ~% argtypes: ~s" arg-vartypes arg-types))
 	  (if (ir-array? op-ir-type)
 	      (mk-ir-let op-var op-ir
 			 (mk-ir-let (car arg-vartypes)(car args-ir)
@@ -1767,7 +1768,7 @@
   (cond ((consp selections)
 	 (let* ((sel (car selections))
 		(selexpr (expression sel))
-		(stype (find-declared-adt-supertype (type selexpr)))
+		(stype (find-declared-adt-supertype (type expression-var)))
 		(dec-stype (declaration stype))
 		(modinst (module-instance stype))
 		(accs (subst-mod-params (accessors (constructor sel))
@@ -3183,7 +3184,7 @@
 		(append assign-instrs (append refcount-get-instr release-record-instr)))))
 
   
-(defvar *max-PVS-array-size* 32768);;Chosen arbitrarily to be 2^15, but tunable by the user
+(defvar *max-PVS-array-size* (expt 2 28)) ;;32768;;Chosen arbitrarily to be 2^15, but tunable by the user
 
 (defmethod ir-index? ((ir-typ ir-subrange))
   (with-slots (ir-low ir-high ir-high-expr) ir-typ

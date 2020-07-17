@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #
 # provethem.in
-# Release: ProofLite-7.0.0 (04/24/20)
+# Release: ProofLite-7.0.0 (07/14/20)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -27,7 +27,7 @@ $PVSPATH="@PVSPATH@";
 @prelude = ("bitvector", "finite_sets");
 
 $OUTPUT_AUTOFLUSH=1;
-$VERSION="ProofLite-7.0.0 (04/24/20)";
+$VERSION="ProofLite-7.0.0 (07/14/20)";
 $PROVEIT="$PVSPATH/proveit";
 $PROVETHEMVERSION="provethem - $VERSION";
 
@@ -79,7 +79,7 @@ form <file><postfix>.grandtotals is used.
 The <postfix> depends on the options -do,-but,-from,-to,-after,-before
 given to the script.
 Unless the option -out is explictly use, an output file is not created when
-the options -cleanbin, -execute or -test are given.
+the options -clean-*, -execute or -test are given.
 EOF
   exit;
 }
@@ -146,14 +146,35 @@ if (!$file) {
 
 die "$usageln\n" if shift; 
 
+my @all_theories=();
+open (all_theories_file,$file) || die "File $file doesn't exist\n";
+while (<all_theories_file>) {
+  $line = $_;
+  $line =~ s/\#.*$//;
+  $line = trim($line);
+  if ($line) {
+    @list = split /:/,$line;
+    $lib = trim($list[0]);
+    push(@all_theories,$lib);
+  }
+}
+close(all_theories_file);
+
 @dolist = split /,/,join(',',@do);
 foreach (@dolist) {
   $_ =~ s/\/$//;
+  my $dolib = $_;
+  die "ERROR: Library $dolib (mentioned in -do paremeter) not found in the current folder.\n" if(! -d $dolib);
+  die "ERROR: Library $dolib (mentioned in -do paremeter) not found in the $file file.\n" if(! grep { $dolib eq $_ } @all_theories);
 }
+
 
 @butlist = split /,/,join(',',@but);
 foreach (@butlist) {
   $_ =~ s/\/$//;
+  my $butlib = $_;
+  print "Warning: Library $butlib (mentioned in -but paremeter) not found in the current folder.\n" if(! -d $butlib);
+  print "Warning: Library $butlib (mentioned in -but paremeter) not found in the $file file.\n" if(! grep { $butlib eq $_ } @all_theories);
 }
 
 $disablelist = join(',',@disable);
@@ -277,24 +298,37 @@ while (<INFILE>) {
             $beginln = sprintf "%-25s",$lib;
 	    $beginln .= "[";
 	    print $beginln if !$execute;
-	    $proveout=`$command`;
-	    $fail = ($? != 0);
-	    print OUTFILE "$proveout\n" if $out;
+	    my $fail_msg;
+	    if (! -d $lib) {
+	      $fail = 1;
+	      $fail_msg = "Library not found";
+	      $proveout="Library $lib not found\n";
+	      print OUTFILE "$proveout\n" if $out;
+	    } else {
+	      $proveout=`$command`;
+	      $fail += $?;
+	      print OUTFILE "$proveout\n" if $out;
+	    }
 	    if ($execute) {
 	      print "$proveout" if !$out;
 	    } else {
-	      if ($fail) {
+	      if ($fail > 0) {
 		$status = "FAIL";
 		if ($color) {
 		  print DARK RED $status; 
 		} else {
 		  print $status;
 		}
-		print ": $act]\n";
-		$summary .= "$beginln$status: $act]\n";
+		if ($fail_msg) {
+		  print ": $fail_msg]\n";
+		  $summary .= "$beginln$status: $fail_msg]\n";
+		} else {
+		  print ": $act]\n";
+		  $summary .= "$beginln$status: $act]\n";
+		}
 	      }
-	      last if !$force && $fail;
-	      if (!$fail) {
+	      last if !$force && ($fail > 1);
+	      if ($fail == 0) {
 		if ($cleanall || $clean || $typecheckonly) {
 		  $status = "OK";
 		  if ($color) {
@@ -361,6 +395,8 @@ while (<INFILE>) {
 		    print "*** Warning: File $depfile not found\n";
 		  } 
 		}
+	      } else {
+		$fail=0;
 	      }
 	    }
 	  }
