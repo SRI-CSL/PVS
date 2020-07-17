@@ -126,8 +126,7 @@
 	(when (and current (not (eq (status-flag ps) '*)))
 	  (let ((subsubs (x-subgoals current cur)))
 	    (if (and subsubs (null (wish-current-rule current)));;(strat-proofstate? current)
-		(setq subs (append (x-subgoals current cur)
-				   subs))
+		(setq subs (append subsubs subs))
 		(pushnew current subs))))
 	(when (> (length subs) 1)
 	  (setf subs (sort (copy-list subs) #'<
