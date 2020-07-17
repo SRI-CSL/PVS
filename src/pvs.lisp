@@ -2932,6 +2932,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 
 (defun edit-proof-at (fileref declname line origin buffer
 		      prelude-offset full-label)
+  "Pops up a 'Proof' buffer with the corresponding proof script inside."
   (with-pvs-file (filename) fileref
     (multiple-value-bind (fdecl place)
 	(formula-decl-to-prove filename declname line origin)
@@ -2947,6 +2948,16 @@ If formname is nil, then formref should resolve to a unique formula name."
 	     (pvs-message "Formula ~a has no proof to edit"
 	       (id fdecl)))
 	    (t (pvs-message "Unable to find formula declaration"))))))
+
+(defun get-current-proof-buffer ()
+  "We're already in a proof, but the Proof buffer was not created (or was destroyed) earlier."
+  (if *ps*
+      (if (justification (current-declaration))
+	  (pvs-buffer "Proof"
+	    (get-proof-script-output-string (current-declaration))
+	    'popto)
+	  (pvs-message "No proof script available"))
+      (pvs-message "No proof is running")))
 
 (defun get-proof-script-output-string (fdecl &optional full-label)
   (with-output-to-string (out)
