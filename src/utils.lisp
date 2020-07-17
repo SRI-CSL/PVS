@@ -2735,9 +2735,11 @@ prove itself from the mapped axioms."
 			     (module (declaration x))))
 		   (get-library-id (context-path (module (declaration x))))))
     'actuals (mapcar #'(lambda (act)
-			 (full-name (lcopy act :type-value nil)
-				    (when *full-name-depth*
-				      (1- *full-name-depth*))))
+			 (let ((fname (full-name (lcopy act :type-value nil)
+						 (when *full-name-depth*
+						   (1- *full-name-depth*)))))
+			   (setf (type-value fname) (type-value act))
+			   fname))
 	       (actuals (module-instance (resolution x))))
     'mappings (mappings (module-instance (resolution x)))))
 
