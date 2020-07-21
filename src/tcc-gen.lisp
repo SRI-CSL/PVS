@@ -228,7 +228,7 @@
 
 (defun add-tcc-conditions (expr)
   (multiple-value-bind (conditions srec-expr vdecl ch?)
-      (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal)
+      (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'tc-eq)
 			  expr)
     (when (and vdecl *rec-judgement-extra-conditions*)
       (break "Need to add extra conditions"))
