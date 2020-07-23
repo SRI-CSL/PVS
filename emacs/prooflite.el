@@ -12,6 +12,24 @@
 ;; Rights Reserved.
 ;;
 
+(defpvs write-prooflite-scripts-to-file edit-proof ()
+  "Write prooflite scripts for all the proof obligations in the current theory."
+  (interactive)
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (let* ((theory (second (split-string (current-theory) "#")))
+	 (file   (current-pvs-file))
+	 (*pvs-error* nil))
+    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+			   file)
+		       nil 'tc 'dont-care)
+    (unless *pvs-error*
+      (pvs-send-and-wait
+       (format "(write-all-prooflite-scripts-to-file \"%s\")" theory)))
+    (unless *pvs-error*
+      (pvs-message "Finished writing scripts to prl file."))))
+
 (defpvs install-prooflite-scripts-theory edit-proof ()
   "Install ProofLite scripts of non-proved formulas in theory
 
@@ -21,16 +39,19 @@ for formulas that are already proved."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (let* ((theory (current-theory))
+  (let* ((theory (second (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (*pvs-error* nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			   file)
 		       nil 'tc 'dont-care)
     (unless *pvs-error*
-      (pvs-send-and-wait 
-       (format "(install-prooflite-scripts \"%s\" \"%s\" 0 nil)"
-	   file theory)))))
+      (pvs-send-and-wait
+       (format "(progn
+		 (install-prooflite-scripts-from-prl-file \"%s\" nil)
+                 (install-prooflite-scripts \"%s\" \"%s\" 0 nil))" theory file theory)))
+    (unless *pvs-error*
+      (pvs-message "Finished scripts installation."))))
 
 (defpvs install-prooflite-script edit-proof ()
   "Install ProofLite script at the cursor position of non-proved formula
@@ -63,16 +84,19 @@ default proofs even if formulas are already proved."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (let* ((theory (current-theory))
+  (let* ((theory (when (current-theory) (second (split-string (current-theory) "#"))))
 	 (file   (current-pvs-file))
  	 (*pvs-error* nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			   file)
 		       nil 'tc 'dont-care)
     (unless *pvs-error*
-      (pvs-send-and-wait 
-       (format "(install-prooflite-scripts \"%s\" \"%s\" 0 t)"
-	   file theory)))))
+      (pvs-send-and-wait
+       (format "(progn
+		 (install-prooflite-scripts-from-prl-file \"%s\" t)
+                 (install-prooflite-scripts \"%s\" \"%s\" 0 t))" theory file theory))
+      (unless *pvs-error*
+	(pvs-message "Finished scripts installation.")))))
 
 (defpvs install-prooflite-script! edit-proof ()
   "Install ProofLite script at the cursor position 
