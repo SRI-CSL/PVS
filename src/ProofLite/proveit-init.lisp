@@ -1,6 +1,6 @@
 ;;
 ;; proveit-init.lisp
-;; Release: ProofLite-7.0.0 (06/30/19)
+;; Release: ProofLite-7.0.0 (07/27/20)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -315,24 +315,25 @@
 					(id x))
 				      (id x)))
 			      (immediate-theories-in-theory idth))))))
-	(if typecheckonly
-	    (if pvsfile (format t "~%File ~a.pvs typechecked" pvsfile)
-	      (format t "~%Typechecked ~a" proveitarg))
-	  (let ((pvstheories 
-		 (remove-if #'(lambda (th) (typep th '(or datatype codatatype)))
-			    pvstheories)))
-	    (when (or scripts write-scripts)
-	      (dolist (theory pvstheories)
-		(progn
-		  (when scripts
-		    (install-prooflite-scripts-from-prl-file (format nil "~a" (id theory)) force)
-		    (install-prooflite-scripts (filename theory) (id theory) 0 force)))))
-	    (proveit-theories pvstheories force thfs traces txtproofs texproofs nil
-			      ;; if auto-fix?, save proofs
-			      auto-fix?)
-	    (when write-scripts
-	      (dolist (theory pvstheories)
-		(write-all-prooflite-scripts-to-file (format nil "~a" (id theory)))))
-	    (proveit-status-proof-theories pvstheories thfs)))))
-      (save-context)
-      (bye 0)))
+	(let ((pvstheories 
+	       (remove-if #'(lambda (th) (typep th '(or datatype codatatype)))
+			  pvstheories)))
+	  (if typecheckonly
+	      (if pvsfile (format t "~%File ~a.pvs typechecked" pvsfile)
+		(format t "~%Typechecked ~a" proveitarg))
+	    (progn
+	      (when scripts
+		(dolist (theory pvstheories)
+		  (progn
+		    (when scripts
+		      (install-prooflite-scripts-from-prl-file (format nil "~a" (id theory)) force)
+		      (install-prooflite-scripts (filename theory) (id theory) 0 force)))))
+	      (proveit-theories pvstheories force thfs traces txtproofs texproofs nil
+				;; if auto-fix?, save proofs
+				auto-fix?)
+	      (proveit-status-proof-theories pvstheories thfs)))
+	  (save-context)
+	  (when write-scripts
+	    (dolist (theory pvstheories)
+	      (write-all-prooflite-scripts-to-file (format nil "~a" (id theory)))))))
+      (bye 0)))) 
