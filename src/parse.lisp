@@ -827,13 +827,18 @@
 			 (arguments* ex)))
 	      ;; Found a typed-name need to convert other name-exprs to
 	      ;; untyped-bind-decls
-	      (let ((formals (create-formals-from-arguments (arguments* ex))))
-		(make-instance 'application-judgement
-		  :name (operator* ex)
-		  :formals formals
-		  :declared-type dtype
-		  :chain? t
-		  :place place))
+	      (let* ((invalid-arg (find-if #'(lambda (args) (find-if-not #'name? args))
+				    (arguments* ex)))
+		     (formals (unless invalid-arg
+				(create-formals-from-arguments (arguments* ex)))))
+		(if invalid-arg
+		    (parse-error invalid-arg "Must use bindings for application judgements")
+		    (make-instance 'application-judgement
+		      :name (operator* ex)
+		      :formals formals
+		      :declared-type dtype
+		      :chain? t
+		      :place place)))
 	      (make-instance 'expr-judgement
 		:declared-type dtype
 		:chain? t
