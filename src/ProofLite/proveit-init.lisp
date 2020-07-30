@@ -1,6 +1,6 @@
 ;;
 ;; proveit-init.lisp
-;; Release: ProofLite-7.0.0 (06/30/19)
+;; Release: ProofLite-7.0.0 (07/27/20)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -217,6 +217,8 @@
 		   (when envstr (read-from-string envstr))))
 	 (scripts (let ((envstr (environment-variable "PROVEITLISPSCRIPTS")))
 		    (when envstr (read-from-string envstr))))
+	 (write-scripts (let ((envstr (environment-variable "PROVEITLISPWRITESCRIPTS")))
+		    (when envstr (read-from-string envstr))))
 	 (traces (let ((envstr (environment-variable "PROVEITLISPTRACES")))
 		   (when envstr (read-from-string envstr))))
 	 (force (let ((envstr (environment-variable "PROVEITLISPFORCE")))
@@ -312,22 +314,26 @@
 					(context-path x)
 					(id x))
 				      (id x)))
-			    (immediate-theories-in-theory idth))))))
-	(if typecheckonly
-	    (if pvsfile (format t "~%File ~a.pvs typechecked" pvsfile)
+			      (immediate-theories-in-theory idth))))))
+	(let ((pvstheories 
+	       (remove-if #'(lambda (th) (typep th '(or datatype codatatype)))
+			  pvstheories)))
+	  (if typecheckonly
+	      (if pvsfile (format t "~%File ~a.pvs typechecked" pvsfile)
 		(format t "~%Typechecked ~a" proveitarg))
-	    (let ((pvstheories 
-		   (remove-if #'(lambda (th) (typep th '(or datatype codatatype)))
-		     pvstheories)))
-	      (when scripts 
+	    (progn
+	      (when scripts
 		(dolist (theory pvstheories)
-		  (install-prooflite-scripts (filename theory) (id theory) 0 
-					     force)))
-	      ;;(format t "~%Calling proveit-theories on ~a~%" pvstheories)
+		  (progn
+		    (when scripts
+		      (install-prooflite-scripts-from-prl-file (format nil "~a" (id theory)) force)
+		      (install-prooflite-scripts (filename theory) (id theory) 0 force)))))
 	      (proveit-theories pvstheories force thfs traces txtproofs texproofs nil
 				;; if auto-fix?, save proofs
 				auto-fix?)
-	      (proveit-status-proof-theories pvstheories thfs))))
-      (save-context)
-      (bye 0))))
-
+	      (proveit-status-proof-theories pvstheories thfs)))
+	  (save-context)
+	  (when write-scripts
+	    (dolist (theory pvstheories)
+	      (write-all-prooflite-scripts-to-file (format nil "~a" (id theory)))))))
+      (bye 0)))) 

@@ -711,7 +711,14 @@ list of interface names that are currently open."
 	  (let ((ps-string (json:encode-json-alist-to-string ps-json)))
 	    (emacs-output-proofstate ps-string)))
 	(when *ps-control-info*
-	  (xmlrpc-output-proofstate ps-json))))))
+	  (xmlrpc-output-proofstate ps-json)
+	  ;; (let ((siblings (when (parent-proofstate ps)
+	  ;; 		    (mapcan #'(lambda (sps)
+	  ;; 				(unless (eq sps ps)
+	  ;; 				  (list (pvs2json sps))))
+	  ;; 		      (all-subgoals-sorted (parent-proofstate ps))))))
+	  ;;   (xmlrpc-output-proofstate (cons ps-json siblings)))
+	  )))))
 
 (defun emacs-output-proofstate (ps-string)
   (let* ((*output-to-emacs*
