@@ -363,8 +363,13 @@
   hash closure size) ;size can be nil to indicate that it is unbounded or not an array
 
 (defmacro mk-pvs-closure-hash (hash closure)
-  `(make-pvs-closure-hash :hash ,hash
-			  :closure ,closure))
+  `(let ((vclosure ,closure))
+     (if (functionp vclosure)
+       (make-pvs-closure-hash :hash ,hash
+			      :closure vclosure)
+     (let ((fclosure #'(lambda (x) (pvs-funcall vclosure x))))
+       (make-pvs-closure-hash :hash ,hash
+			      :closure fclosure)))))
 
 (defmacro pvs-closure-hash-lookup (function argument)
   `(let ((funval ,function)
