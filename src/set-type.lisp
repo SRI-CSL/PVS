@@ -1066,7 +1066,7 @@ resolution with a macro matching the signature of the arguments."
       #+pvsdebug (assert (fully-typed? (actuals (expr act))))))
   ;; Note that (expr act) now has its actuals and maps set,
   ;; but that (type-value act) and act itself may still not be fully typed.
-  (assert (fully-typed? (type-value act)))
+  ;;(assert (fully-typed? (type-value act)))
   (when (nonempty-type-decl? formal)
     ;; May need to generate existence TCC
     (unless (eq *generate-tccs* 'none)
