@@ -706,6 +706,9 @@ BUFFER is the buffer speedbar is requesting buttons for."
 
 (defvar pvs-sequent-font-lock-keywords pvs-sequent-font-lock-keywords-1)
 
+(unless (boundp 'lisp-el-font-lock-keywords-1)
+  (defvaralias 'lisp-el-font-lock-keywords-1 'lisp-font-lock-keywords-1))
+
 (defconst pvs-lisp-font-lock-keywords-1
   (append
    `((("^  |-------$") 0 info-title-1))
