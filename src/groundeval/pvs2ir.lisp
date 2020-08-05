@@ -821,7 +821,7 @@
 (defmethod pvs2ir* ((expr actual) bindings)
   (with-slots (expr type-value) expr
 	      (if type-value ;then it's a type actual
-		  (mk-ir-type-actual (pvs2ir-type type-value))
+		  (mk-ir-type-actual (pvs2ir-type type-value bindings))
 		(mk-ir-const-actual (pvs2ir* expr bindings)))))
 
 (defun pvs2ir-formal-types (formals ir-actuals bindings)
@@ -1334,14 +1334,23 @@
 	(t nil)))
 
 (defun get-eval-info (declaration)
-  (or (eval-info declaration)
-      (let ((new-einfo (if (adt-constructor-decl? declaration)
-			   (make-instance 'constructor-eval-info)
-			 (if (adt-accessor-decl? declaration)
-			     (make-instance 'accessor-eval-info)
-			   (make-instance 'eval-info)))))
-	(setf (eval-info declaration) new-einfo)
-	new-einfo)))
+  (let ((einfo (eval-info declaration)))
+    (when (and einfo (adt-accessor-decl? declaration)) (break "get-eval-info"))
+    (cond (einfo (let ((new-einfo
+			(if (adt-constructor-decl? declaration)
+			    (change-class einfo 'constructor-eval-info)
+			  (if (adt-accessor-decl? declaration)
+			      (change-class einfo 'accessor-eval-info)
+			    einfo))))
+		   (setf (eval-info declaration) new-einfo)
+		   new-einfo))
+	  (t (let ((new-einfo (if (adt-constructor-decl? declaration)
+				  (make-instance 'constructor-eval-info)
+				(if (adt-accessor-decl? declaration)
+				    (make-instance 'accessor-eval-info)
+				  (make-instance 'eval-info)))))
+	       (setf (eval-info declaration) new-einfo)
+	       new-einfo)))))
 
 (defun pvs2ir-adt-enum-recognizer (rdecl index index-id index-type 
 					 adt-type-name)
@@ -1859,7 +1868,7 @@
   (let* ((expressions (exprs expr))
 	 (ir-assignments (pvs2ir*  expressions bindings))
 	 (ir-field-vars (new-irvars (length expressions)))
-	 (ir-field-types (pvs2ir-type (mapcar #'type expressions)))
+	 (ir-field-types (pvs2ir-type (mapcar #'type expressions) bindings))
 	 (ir-field-var-types (mk-vartype-list  ir-field-vars
 					       ir-field-types))
 	 (ir-fields (loop for i from 1 to (length expressions)
@@ -2306,7 +2315,7 @@
   (or (pvseval-integer bound-expr)
       (let* ((type-ir (pvs2ir-type (type bound-expr) bindings))
 	     (judgement-type-irs (loop for type in (judgement-types bound-expr)
-				       collect (pvs2ir-type type)))
+				       collect (pvs2ir-type type bindings)))
 	     (hi-subrange (loop for ir-type in (cons type-ir judgement-type-irs)
 				when (and (ir-subrange? ir-type)(numberp (ir-high ir-type)))
 				collect (ir-high ir-type))))
@@ -2342,7 +2351,7 @@
 			(hi (or (pvseval-integer (cdr x))
 				(let* ((type-ir (pvs2ir-type (type (cdr x)) bindings))
 				       (judgement-type-irs (loop for type in (judgement-types (cdr x))
-								 collect (pvs2ir-type type)))
+								 collect (pvs2ir-type type bindings)))
 				       (hi-subrange (loop for ir-type in (cons type-ir judgement-type-irs)
 							  when (and (ir-subrange? ir-type)(numberp (ir-high ir-type)))
 							  collect (ir-high ir-type))))
