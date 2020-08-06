@@ -204,7 +204,7 @@ intervenes."
   (setq ilisp-program (format "%s --noinform --no-userinit" (pvs-program)))
   (setq ilisp-reset ":abort")
   (setq comint-prompt-regexp
-	"^\\([0-9]+\\]+\\|[0-9]+\\[[0-9]+\\]\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
+	"^\\([0-9]+\\]+\\|[0-9]+\\[[0-9]+\\]\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter\\|Defining.*\\* ")
   (setq comint-interrupt-regexp  "^  Interactive interrupt at")
   (setq comint-continue ":continue")
   (setq ilisp-error-regexp "^[ \t]restarts (invokable by number or by possibly-abbreviated name):$")
