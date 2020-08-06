@@ -132,30 +132,13 @@
 
 ;; Executes command in the operating system and returns a pair (status . string)
 
-(defun extra-system-call (command) 
-  (let ((status nil)
-	(tmp-file (pvs-tmp-file)))
-    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-		    (setq status
-			  #+allegro
-			  (excl:run-shell-command command
-						  :input "//dev//null"
-						  :output out
-						  :error-output :output)
-			  #+sbcl
-			  (sb-ext:run-program command
-					      nil
-					      :input "//dev//null"
-					      :output out
-					      :error out)
-			  #+cmu
-			  (extensions:run-program command
-						  nil
-						  :input "//dev//null"
-						  :output out
-						  :error out))
-		    (cons status (string-trim '(#\Space #\Newline) (file-contents tmp-file))))))
+(defun extra-system-call (command)
+  (multiple-value-bind (out err status)
+      (uiop:run-program command
+	:input "//dev//null"
+	:output '(:string :stripped t)
+	:error-output :output) ; shared out string; err will be nil
+    (cons status (string-trim '(#\Space #\Newline) out))))
 
 ;; Get the absolute path to the PVS NASA library
 (defun extra-pvs-nasalib ()
