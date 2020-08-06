@@ -924,9 +924,8 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 ;;; Printing and commenting
 
 (defstrat printf (msg &rest args)
-  (let ((msg (format nil "~%~a" msg))
-	(xxx (apply 'format (cons t (cons msg args)))))
-    (skip))
+  (let ((xxx (apply 'format (cons nil (cons msg args)))))
+    (skip-msg xxx))
   "[Extrategies] Prints the Lisp formatted string MSG using the format arguments
 ARGS. ARGS must be constant values.")
 
