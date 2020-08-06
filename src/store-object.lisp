@@ -583,7 +583,7 @@
 (defun fetch-packaged-symbol ()
   (let ((package (fetch-obj (stored-word 1)))
 	(name (fetch-temp-string 2)))
-    (intern name package)))
+    (intern name (or package :pvs))))
 
 #-gcl
 (defmethod store-object* ((obj hash-table))
