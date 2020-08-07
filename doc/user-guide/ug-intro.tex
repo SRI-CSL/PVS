@@ -9,7 +9,7 @@ analysis of formal specifications, and supports a wide range of activities
 involved in creating, analyzing, modifying, managing, and documenting
 theories and proofs.  This manual describes the system, including the
 system commands, the computing environment, how to get and install PVS,
-customization, and a short tutorial on Emacs.  The complete set of manuals
+customization, and a short tutorial on Emacs.  The main set of manuals
 for the PVS system consists of this manual, the language
 reference~\cite{PVS:language}, and the prover guide~\cite{PVS:prover}.
 There are also several supporting technical reports: the formal semantics
@@ -17,6 +17,11 @@ of PVS~\cite{PVS:semantics}, an advanced
 tutorial~\cite{Rushby&Stringer-Calvert95}, and a description of the
 abstract datatypes mechanism~\cite{PVS-ADT:TR}.  All of these manuals (and
 much more!) are available online at \url{http://pvs.csl.sri.com/}
+
+\textbf{NOTE:} This manual is in the process of being updated, and much is
+out of date; mostly by being incomplete, as over the years many new
+features have been added to PVS.  The release notes should be consulted
+for the most current information.
 
 The rest of this chapter provides a broad overview of PVS; the facilities
 provided by the system are discussed in the order you are likely to
@@ -26,12 +31,13 @@ encounter them.
 \index{PVS environment@{PVS environment}}
 \index{environment|see{PVS environment}}
 
-PVS runs under most versions of Unix (Linux, MacOSX, etc.).  PVS is
+PVS runs under 64-bit versions of Linux and MacOSX.  It can be run on
+other 64-bit platforms using virtualbox or VMWare.  PVS is
 implemented in Common Lisp\index{Common Lisp}, but it is not necessary to
 know Lisp to effectively use the system.\footnote{The only exception to
   this is in writing complex prover strategies.}  PVS runs best using the
 X window system, though it is not required.  The Emacs
-(\gnuemacs\index{Gnu Emacs} or XEmacs\index{XEmacs}) editors provide the
+(\gnuemacs\index{Gnu Emacs} or XEmacs\index{XEmacs}) editors provide one
 interface to PVS; familiarity with Emacs and access to the GNU Emacs
 manual~\cite{emacs20} (usually available as an info file) are desirable.
 % A brief introduction to Emacs is provided in Appendix~\ref{emacs-intro} on

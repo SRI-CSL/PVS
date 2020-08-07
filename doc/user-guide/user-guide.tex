@@ -27,18 +27,21 @@
 \usepackage{fontspec}
 %\setmainfont[Ligatures=TeX]{Linux Libertine O}
 %\setsansfont{Computer Modern Bright}
-%\setmonofont{DejaVu Sans Mono}
 % \fontspec{Cambria Math}
 % \fontspec{TeX Gyre Pagella Math}
 % \fontspec{Latin Modern Math}
+%\setmainfont[Numbers=OldStyle, Ligatures=TeX]{XITS}
+\setmainfont[Ligatures=TeX]{XITS}
+\setmonofont{DejaVu Sans Mono}[Scale=MatchLowercase]
 \usepackage[math-style=ISO]{unicode-math}
+\renewcommand{\leadsto}{\rightsquigarrow}
+\setmathfont{XITS Math}
 
-\setmainfont[Numbers=OldStyle, Ligatures=TeX]{TeX Gyre Termes}
 
-\setmathfont[Numbers=Lining]{TeX Gyre Termes Math}
-\setmathfont[range=\bigstar]{XITS Math}
-\setmathfont[range=\leadsto]{XITS Math}
-\setmathfont[range=\int]{TeX Gyre Termes Math} % just to get parameters from this font
+%% \setmathfont[Numbers=Lining]{TeX Gyre Termes Math}
+%% \setmathfont[range=\bigstar]{XITS Math}
+%% \setmathfont[range=\leadsto]{XITS Math}
+%% \setmathfont[range=\int]{TeX Gyre Termes Math} % just to get parameters from this font
 
 \topmargin -10pt
 \textheight 8.5in
@@ -80,7 +83,7 @@
 \textbf{\pvstitle PVS System Guide}
 \end{center}
 \begin{flushright}
-{\Large Version 3.2 {\smaller$\bullet$} September 2004}
+{\Large Version 7.1 {\smaller$\bullet$} August 2020}
 \end{flushright}
 \rule[1in]{\textwidth}{2pt}
 \vspace*{2in}
