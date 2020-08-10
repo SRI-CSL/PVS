@@ -234,12 +234,22 @@ t]} are equivalent; see Section~\ref{tuple-exprs} for more details.
 
 \index{type!tuple|)}\index{tuple types|)}
 
-\section{Cotuple Types}
+\section{Cotuple Types}\label{cotuple-types}
+\index{cotuple types|(}\index{type!cotuple|(}
+\index{coproduct types|see{cotuple type}}
+\index{sum types|see{cotuple type}}
 
-Cotuple types (also known as coproduct or sum types) provide a way to
-provide a disjoint union of types.  The syntax is similar to that for
-tuple types, but with the comma replaced by a \texttt{+}.  For
-example,
+\emph{Cotuple types} (also called \emph{coproduct} or \emph{sum} types)
+provide a way to form the disjoint union of types.  The syntax is similar
+to that for tuple types, but with `\texttt{+}' in place of `\texttt{,}',
+so have the form \texttt{[t$_1$ + \ldots + t$_n$]}.  Elements of this type
+are essentially pairs consisting of an index and a value for the type
+corresponding to the index.  In PVS the syntax for this is
+\texttt{IN\_$i(e)$}, where $e$ is an expression of type \texttt{t$_i$}.
+For example, \texttt{IN\_2(3)} is an expression of type \texttt{[bool + int
++ [int -> int]]}, or any other cotuple type whose second component type
+contains \texttt{3}.  A cotuple type is empty iff all its component types
+are empty.
 
 \begin{pvsex}
 cT: TYPE = [int + bool + [int -> int]]
@@ -313,6 +323,8 @@ LAMBDA (x: [int, int]): PROJ_1(x)
 Note that the prover handles cotuple extensionality and reduction rules as
 expected.
 
+\index{type!cotuple|)}\index{cotuple types|)}
+
 
 \section{Record Types}\label{record-types}
 \index{record types|(}\index{type!record|(}
@@ -382,24 +394,34 @@ well-formed in PVS:
 This generates unprovable \tccs.  In practice this is rarely a problem.
 
 \index{type!dependent|)}\index{dependent types|)}
-\section{Cotuple Types}\label{cotuple-types}
-\index{cotuple types|(}\index{type!cotuple|(}
-\index{coproduct types|see{cotuple type}}
-\index{sum types|see{cotuple type}}
 
-\emph{Cotuple types} (also called \emph{coproduct} or \emph{sum} types)
-provide a way to form the disjoint union of types.  The syntax is similar
-to that for tuple types, but with `\texttt{+}' in place of `\texttt{,}',
-so have the form \texttt{[t$_1$ + \ldots + t$_n$]}.  Elements of this type
-are essentially pairs consisting of an index and a value for the type
-corresponding to the index.  In PVS the syntax for this is
-\texttt{IN\_$i(e)$}, where $e$ is an expression of type \texttt{t$_i$}.
-For example, \texttt{IN\_2(3)} is an expression of type \texttt{[bool + int
-+ [int -> int]]}, or any other cotuple type whose second component type
-contains \texttt{3}.  A cotuple type is empty iff all its component types
-are empty.
+\section{Record and Tuple Type Extensions}\label{type-extensions}
+\index{type!extension|(}
 
-\index{type!cotuple|)}\index{cotuple types|)}
+Record and tuple types may now be extended using the \texttt{WITH}
+keyword. Thus, one may create colored points and moving points from
+simple points as follows.
+\begin{pvsex}
+  point: TYPE = [# x, y: real #]
+  colored_point: TYPE = point WITH [# color: Color #]
+  moving_point: TYPE = point WITH [# vx, vy: real #]
+\end{pvsex}
+Similarly, tuples may be extended:
+\begin{pvsex}
+  R3: TYPE = [real, real, real]
+  R5: TYPE = R3 WITH [real, real]
+\end{pvsex}
+For record types, it is an error to extend with new field names that
+match any field names in the base record type.  The extensions may not
+be dependent on the base type, though they may introduce dependencies
+within themselves.
+\begin{pvsex}
+  dep_bad: TYPE = point WITH [# z: {r: real | x*x + y*y < 1} #]
+  dep_ok: TYPE = point WITH [# a: int, b: below(a) #]
+\end{pvsex}
+Note that the extension is a type expression, and may appear anywhere
+that a type is allowed.
+\index{type!extension|)}
 
 \index{type|)}
 

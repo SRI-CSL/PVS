@@ -4,12 +4,12 @@
 \production{TypeExpr}
 {\hlink{TypeName} \\[-0.1in]
 & \choice & \hlink{EnumerationType} \\[-0.1in]
-& \choice & \hlink{Subtype \opt{\lit{WITH} TypeExpr}} \\[-0.1in]
-& \choice & \hlink{TypeApplication \opt{\lit{WITH} TypeExpr}} \\[-0.1in]
+& \choice & \hlink{Subtype} \\[-0.1in]
+& \choice & \hlink{TypeApplication} \\[-0.1in]
 & \choice & \hlink{FunctionType} \\[-0.1in]
-& \choice & \hlink{TupleType \opt{\lit{WITH} TypeExpr}} \\[-0.1in]
+& \choice & \hlink{TupleType} \\[-0.1in]
 & \choice & \hlink{CotupleType} \\[-0.1in]
-& \choice & \hlink{RecordType \opt{\lit{WITH} TypeExpr}}}
+& \choice & \hlink{RecordType}}
 
 \production{TypeName}
 {\hlink{Name} \opt{\lit{WITH} TypeExpr}}

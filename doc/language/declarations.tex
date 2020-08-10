@@ -172,7 +172,7 @@ PVS has support for structural subtyping for record and tuple types.  A
 record type \texttt{S} is a structural subtype of record type \texttt{R}
 if every field of \texttt{R} occurs in \texttt{S}, and similarly, a tuple
 type \texttt{T} is a structural subtype of a tuple type forming a prefix
-of \texttt{T}.  Section \ref{Record and Tuple Type Extensions} gives
+of \texttt{T}.  Section \ref{type-extensions} gives
 examples, as \texttt{colored\_point} is a structural subtype of
 \texttt{point}, and \texttt{R5} is a structural subtype of \texttt{R3}.
 Structural subtypes are akin to the class hierarchy of object-oriented
@@ -290,7 +290,7 @@ datatype specification
 \begin{pvsex}
   enum: DATATYPE
     e_1: e_1?
-         \vdots
+         \(\vdots\)
     e_n: e_n?
   END enum
 \end{pvsex}

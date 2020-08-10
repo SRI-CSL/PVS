@@ -7,7 +7,7 @@
 \usepackage{boxedminipage}
 \usepackage{url}
 \usepackage{../../pvs}
-\usepackage{makebnf}
+\usepackage{../makebnf}
 %\usepackage{latexsym}
 %\usepackage{showidx} % shows index entries in the margin
 \usepackage[chapter]{tocbibind}
@@ -35,8 +35,11 @@
 % \setmathfont{xits math}
 
 \usepackage{fontspec}
-\setmainfont[Ligatures=TeX]{Linux Libertine O}
-
+\setmainfont[Ligatures=TeX]{XITS}
+\setmonofont{DejaVu Sans Mono}[Scale=MatchLowercase]
+\usepackage[math-style=ISO]{unicode-math}
+\renewcommand{\leadsto}{\rightsquigarrow}
+\setmathfont{XITS Math}
 
 \topmargin -10pt
 \textheight 8.5in
