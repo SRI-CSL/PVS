@@ -2850,7 +2850,7 @@
 	(make-instance 'last-cond-expr
 	  :operator (mk-name-expr 'IF)
 	  :argument (make-instance 'arg-tuple-expr
-		      :exprs (list (mk-else-condition nil conditions)
+		      :exprs (list (mk-else-condition nil conditions else)
 				   else
 				   else)
 		      :place (place else))))))

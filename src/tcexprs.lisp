@@ -1111,6 +1111,7 @@
 	       casesex)))))
 
 (defun make-cond-table-expr (table-expr expr headings table-entries)
+  (assert (place expr))
   (let* ((condition (if (and expr
 			     (not (typep (car headings) 'else-condition)))
 			(let ((appl (mk-application '= expr (car headings))))
@@ -1234,6 +1235,7 @@
 	   (cons casesex result))))))
 
 (defun make-cond-row-exprs (expr headings table-entries &optional result)
+  (assert (place expr))
   (if (null table-entries)
       (nreverse result)
       (let* ((row (car table-entries))
@@ -1254,7 +1256,8 @@
 		   result)
 	     result)))))
 
-(defun mk-else-condition (expr headings)
+(defun mk-else-condition (expr headings &optional else)
+  (assert (if (null expr) (and else (place else)) (place expr)))
   (let* ((hdngs (if expr
 		    (mapcar #'(lambda (h)
 				(let ((app (mk-application '= expr h)))
@@ -1264,8 +1267,8 @@
 		    headings))
 	 (disj (mk-else-disjunction hdngs))
 	 (neg (mk-negation disj)))
-    (set-extended-place neg expr "making else condition")
-    (set-extended-place (operator neg) expr "making else condition")
+    (set-extended-place neg (or expr else) "making else condition")
+    (set-extended-place (operator neg) (or expr else) "making else condition")
     (change-class neg 'else-condition)))
 
 (defun mk-else-disjunction (hdngs)
