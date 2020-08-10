@@ -46,7 +46,7 @@ indicated, but even those can be redefined, as PVS supports overloading.
 \begin{center}
 \smaller
 \topcaption{Unicode Aliases} \label{unicode:aliases}
-\tablehead{\rmfamily\bfseries Uni & Input & Equiv & \larger{Unicode Name} \\ \hline}
+\tablehead{\hline\rmfamily\bfseries Uni & Input & Equiv & \larger{Unicode Name} \\ \hline}
 \begin{xtabular}{|ll>{\ttfamily}l>{\smaller\ttfamily}l|}\hline
   $λ$ & \verb|\lambda| & LAMBDA & GREEK SMALL LETTER LAMDA \\
   $∀$ & \verb|\forall| & FORALL & FOR ALL \\
@@ -76,7 +76,7 @@ term, and equivalent to ``□(φ)''.
 \begin{center}
 \smaller
 \topcaption{Unicode Unary Operators} \label{unicode:unaryops}
-\tablehead{\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
+\tablehead{\hline\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
   \textrm{\textbf{\larger{Unicode Name}}} \\ \hline}
 \begin{tabular}{|ll>{\smaller\ttfamily}l|}\hline
   \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{<>}} \\ \hline
@@ -111,9 +111,11 @@ operator, given in square brackets.
 \begin{center}
 \smaller
 \topcaption{Unicode Binary Operators} \label{unicode:binops}
-\tablehead{\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
+\tablehead{\hline\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
   \textrm{\textbf{\larger{Unicode Name}}} \\ \hline}
-\begin{xtabular}{|ll>{\smaller\ttfamily}l|}\hline
+\tabletail{\hline \multicolumn{3}{|r|}{{Continued on next page}} \\ \hline}
+\tablelasttail{\hline \hline}
+  \begin{xtabular}{|ll>{\smaller\ttfamily}l|}\hline
   \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{|-}} \\ \hline
   $⊢$ & \verb|\vdash| & RIGHT TACK \\
   $⊨$ & \verb|\vDash| & TRUE \\ \hline
@@ -221,9 +223,9 @@ between), then they can be used as brackets.  For example:
 \begin{center}
 \smaller
 \topcaption{Unicode Bracketing Operators} \label{unicode:brackets}
-\tablehead{\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
+\tablehead{\hline\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
   \textrm{\textbf{\larger{Unicode Name}}} \\ \hline}
-\begin{xtabular}{|ll>{\smaller\ttfamily}l|}\hline
+\begin{tabular}{|ll>{\smaller\ttfamily}l|}\hline
 $⟨ ⟩$ & \verb|\langle \rangle|) & MATHEMATICAL LEFT/RIGHT ANGLE BRACKET \\
 $⟦ ⟧$ & \verb|\mlbracket \mrbracket| & MATHEMATICAL LEFT/RIGHT WHITE SQUARE BRACKET \\
 $« »$ & \verb|\"< \">| & LEFT/RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK\\
@@ -231,8 +233,8 @@ $⟪ ⟫$ & \verb|\mldata \mrdata| & MATHEMATICAL LEFT/RIGHT DOUBLE ANGLE BRACKE
 $⌈ ⌉$ & \verb|\lceil \rceil| & LEFT/RIGHT CEILING \\
 $⌊ ⌋$ & \verb|\lfloor \rfloor| & LEFT/RIGHT FLOOR \\
 $⌜ ⌝$ & \verb|\ulcorner \urcorner| & TOP LEFT/RIGHT CORNER \\
-$⌞ ⌟$ & \verb|\llcorner \lrcorner| & BOTTOM LEFT/RIGHT CORNER \\
-\end{xtabular}
+$⌞ ⌟$ & \verb|\llcorner \lrcorner| & BOTTOM LEFT/RIGHT CORNER \\ \hline
+\end{tabular}
 \end{center}
 
 \section{Emacs and Unicode}
