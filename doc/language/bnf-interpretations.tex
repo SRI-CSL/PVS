@@ -1,0 +1,43 @@
+\begin{bnf}
+
+\production{TheoryName}
+{\opt{Id \lit{@}} Id \opt{Actuals} \opt{Mappings}}
+
+\production{TheoryDeclName}
+{\opt{Id \lit{@}} Id \opt{Actuals} \opt{TheoryMaps}}
+
+\production{Name}
+{\opt{\hlink{Id} \lit{@}} \hlink{IdOp} \opt{\hlink{Actuals}} \opt{\hlink{Mappings}} \opt{\lit{.} \hlink{IdOp}}}
+
+\production{Mappings}
+{\lit{\mapb{}} \ites{Mapping}{,} \lit{\mape{}}}
+
+\production{Mapping}
+{MappingLhs MappingRhs}
+
+\production{MappingLhs}
+{IdOp \rep{Bindings} \opt{\lit{:} \brc{\lit{TYPE} \choice \lit{THEORY}
+\choice TypeExpr}}}
+
+\production{MappingRhs}
+{\lit{:=} \brc{Expr \choice TypeExpr}}
+
+\production{TheoryMaps}
+{\lit{\mapb{}} \ites{TheoryMap}{,} \lit{\mape{}}}
+
+\production{TheoryMap}
+{MappingLhs TheoryMapRhs}
+
+\production{TheoryMapRhs}
+{MapSubst \choice MapDef \choice MapRename}
+
+\production{MapSubst}
+{\lit{:=} \brc{Expr \choice TypeExpr}}
+
+\production{MapDef}
+{\lit{=} \brc{Expr \choice TypeExpr}}
+
+\production{MapRename}
+{\lit{::=} \brc{IdOp \choice Number}}
+
+\end{bnf}

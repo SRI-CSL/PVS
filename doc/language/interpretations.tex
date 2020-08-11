@@ -1,0 +1,47 @@
+\chapter{Theory Interpretations}\label{interpretations}
+\index{theory interpretations|(} \emph{Theory interpretations} are fully
+described in a technical report~\cite{PVS:interpretations}.  Here we give
+just the basics, for quick reference.
+
+Theory interpretations in PVS follow the notion from logic, meaning that
+it allows uninterpreted types and constants of a given theory to be given
+interpretations.  Such interpretations are given by including a
+\emph{mapping}\index{mapping} with a name reference.  For example, here is
+one possible definition of a group theory:
+\begin{pvsex}
+ group: THEORY
+  BEGIN
+  G: TYPE+
+  +: [G, G -> G]
+  0: G
+  -: [G -> G]
+  x, y, z: VAR G
+  associative_ax: AXIOM FORALL x, y, z: x + (y + z) = (x + y) + z
+  identity_ax: AXIOM FORALL x: x + 0 = x
+  inverse_ax: AXIOM FORALL x: x + -x = 0 AND -x + x = 0
+  idempotent_is_identity: LEMMA x + x = x => x = 0
+ END group
+\end{pvsex}
+The uninterpreted types and constants of this theory are \texttt{G},
+\texttt{+}, \texttt{0}, and \texttt{-}.  An example mapping for this is
+\begin{pvsex}
+group_inst: THEORY
+BEGIN
+ IMPORTING group{{ G := int, + := +, 0 := 0, - := - }} AS intG
+ realG: THEORY = group{{ G := nzreal, + := *, 0 := 1, -(x: nzreal) := 1/x }}
+END group_inst
+\end{pvsex}
+
+This illustrates the usual ways theory instances are used: \texttt{intG} is a
+theory abbreviation, and \texttt{realG} is a theory declaration.  The
+difference is that a theory abbreviation does not create new declarations;
+it is pretty much the same as treating the uninterpreted types and
+constants as formal parameters.  On the other hand, \texttt{realG} is an
+inlined copy of the \texttt{group} theory, referenced as
+\texttt{group\_inst.realG}.  This leads to the possibility of nested
+theory declarations, and this is handled in PVS by allowing multiple dots,
+for example, \texttt{group\_inst.realG.inverse\_ax}.
+
+\pvsbnf{bnf-interpretations}{Interpretation Syntax}
+
+\index{theory interpretations|)}
