@@ -1,29 +1,15 @@
+LATEXMK = latexmk
+LATEXMKFLAGS = -pdf -pdflatex='lualatex -file-line-error -synctex=1'
+
 sources = prover.tex
 
-all : prover.dvi prover.ps prover.ps.gz prover.pdf
-
-prover.dvi: $(sources)
-	latex $<;
-	makeindex -c prover.idx
-	bibtex prover || echo
-	latex $<
-	latex $<
-
-prover.ps.gz : prover.ps
-	gzip -c $< > $@
-
-prover.ps : prover.dvi
-	dvips -o $@ $<
+all : prover.pdf
 
 prover.pdf : ${sources}
-	pdflatex $<
-	makeindex -c prover.idx
-	bibtex prover || echo
-	pdflatex $<
-	pdflatex $<
+	$(LATEXMK) $(LATEXMKFLAGS) prover.tex
 
 .PHONY: clean
 clean :
-	rm -f prover.dvi prover.pdf prover.ps prover.ps.gz \
+	rm -f prover.pdf \
               *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux \
               *.toc *.idx *.brf *.out
