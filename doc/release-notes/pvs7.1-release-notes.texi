@@ -767,6 +767,10 @@ of that context that are not being interpreted.
 @node    7.1 Incompatibilities
 @section Incompatibilities
 
+There were a couple of corner cases where TCCs were not being generated.
+In fixing this, it was decided to rewrite the code to make TCCs easier to
+understand and work with.
+
 There are three primary sources of incompatibilities with this release.
 This first is due to more rigorous checking of arguments in proof
 commands.  In the past, if there were left over arguments after pairing

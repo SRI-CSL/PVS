@@ -89,6 +89,7 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE LICENSE-SRI NOTICES install-
 	python doc/release-notes/pvs-release-notes.info \
 	doc/release-notes/pvs-release-notes*.html doc/release-notes/pvs-release-notes.ps \
 	doc/release-notes/pvs-release-notes.pdf \
+	doc/user-guide/user-guide.pdf doc/language/language.pdf doc/prover/prover.pdf \
 	doc/PVSio-2.d.pdf doc/manip-guide.pdf doc/extrategies.pdf doc/ProofLite-4.2.pdf \
 	wish/gray.xbm wish/sequent.xbm \
 	$(wildcard lib/finite_sets/*.pvs lib/finite_sets/*.prf) \
