@@ -137,7 +137,8 @@
       (uiop:run-program command
 	:input "//dev//null"
 	:output '(:string :stripped t)
-	:error-output :output) ; shared out string; err will be nil
+	:error-output :output ; shared out string; err will be nil
+	:ignore-error-status t)
     (cons status (string-trim '(#\Space #\Newline) out))))
 
 ;; Get the absolute path to the PVS NASA library
