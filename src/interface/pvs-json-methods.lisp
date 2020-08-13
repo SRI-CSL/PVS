@@ -235,7 +235,8 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   ;; We do this in this thread, as error messages are easier to deal with.
   ;; Thus we make sure we're not in the checker, that the theory typechecks,
   ;; and that the formula exists in that theory.
-  (when (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+  (when (and *pvs-lisp-process*
+	     (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
     (pvs-error "Prove-formula error" "Must exit the prover first"))
   (pvs:get-formula-decl theory formula)
   ;;   ;; FIXME - may want to save the proof, or ask what to do
@@ -278,7 +279,8 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 
 (defrequest proof-command (form)
   "Sends a command to the prover"
-  (unless (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+  (unless (and *pvs-lisp-process*
+	       (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
     (pvs-error "Proof-command error" "Prover is not running: start it with prove-formula"))
   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
@@ -322,13 +324,11 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 
 (defrequest prover-status ()
   "Checks the status of the prover: active or inactive."
-  (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
-	(ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*)))
-    (pvs:prover-status top-ps ps)
-    ;; (pvs:prover-status (sys:global-symbol-value 'pvs:*ps*)
-    ;; 		     (sys:global-symbol-value 'pvs:*top-proofstate*)
-    ;; 		     (sys:global-symbol-value 'pvs:*last-proof*))
-    ))
+  (if *pvs-lisp-process*
+      (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
+	    (ps (mp:symeval-in-process '*ps* *pvs-lisp-process*)))
+	(pvs:prover-status ps top-ps))
+      :inactive))
 
 (defrequest proof-status (formref &optional formname)
   "Checks the status of the given formula, proved, unchecked, unfininshed,
