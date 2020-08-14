@@ -661,12 +661,11 @@
 (defmethod prover-read :around ()
   "Called from prover qread function, which is how the "
   (cond (*ps-control-info*
-	 (format t "~%prover-read: about to wait")
+	 ;; bad idea(format t "~%prover-read: about to wait")
 	 #+allegro
 	 (mp:process-wait
 	  "Prover Waiting"
 	  #'(lambda ()
-	      (format t "~%prover-read: about to wait")
 	      (or (and *ps-control-info*
 		       (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
 		       (psinfo-command *ps-control-info*))
