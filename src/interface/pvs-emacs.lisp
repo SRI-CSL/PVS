@@ -652,7 +652,7 @@
 (defun add-psinfo (psi ps-json)
   #+allegro
   (mp:with-process-lock ((psinfo-lock psi))
-    (format t "~%add-psinfo: Setting result to ~a~%" result)
+    (format t "~%add-psinfo: Setting result to ~a~%" ps-json)
     (setf (psinfo-json-result psi) ps-json)
     (format t "~%add-psinfo: opening res-gate~%")
     (mp:open-gate (psinfo-res-gate psi))))
