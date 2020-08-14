@@ -230,8 +230,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   json-result
   lock
   cmd-gate
-  res-gate
-"
+  res-gate"
   ;; We do this in this thread, as error messages are easier to deal with.
   ;; Thus we make sure we're not in the checker, that the theory typechecks,
   ;; and that the formula exists in that theory.
@@ -239,6 +238,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	     (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
     (pvs-error "Prove-formula error" "Must exit the prover first"))
   (pvs:get-formula-decl theory formula)
+  (format t "~%prove-formula: after get-formula-decl")
   ;;   ;; FIXME - may want to save the proof, or ask what to do
   ;;   (format t "~%About to quit prover~%")
   ;;   (throw 'pvs:quit nil)
@@ -259,11 +259,12 @@ Creates a ps-control-info struct to control the interaction.  It has slots
     ;; process-interrupt interrupts the main pvs process proc, and invokes
     ;; prove-formula
     (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
+    (format t "~%prove-formula: after process-interrupt, about to wait")
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
-    ;;(format t "~%prove-formula: Done waiting...~%")
+    (format t "~%prove-formula: Done waiting...~%")
     (mp:with-process-lock (lock)
       (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))
-	;;(format t "~%prove-formula: returning json-result ~a~%" json-result)
+	(format t "~%prove-formula: returning json-result ~a~%" json-result)
 	(setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
 	(mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	json-result))))

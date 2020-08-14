@@ -652,23 +652,26 @@
 (defun add-psinfo (psi ps-json)
   #+allegro
   (mp:with-process-lock ((psinfo-lock psi))
-    ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
+    (format t "~%add-psinfo: Setting result to ~a~%" result)
     (setf (psinfo-json-result psi) ps-json)
-    ;;(format t "~%add-psinfo: opening res-gate~%")
+    (format t "~%add-psinfo: opening res-gate~%")
     (mp:open-gate (psinfo-res-gate psi))))
 
 ;;; Support for displaying proofs
 (defmethod prover-read :around ()
   "Called from prover qread function, which is how the "
   (cond (*ps-control-info*
+	 (format t "~%prover-read: about to wait")
 	 #+allegro
 	 (mp:process-wait
 	  "Prover Waiting"
 	  #'(lambda ()
+	      (format t "~%prover-read: about to wait")
 	      (or (and *ps-control-info*
 		       (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
 		       (psinfo-command *ps-control-info*))
 		  (excl:read-no-hang-p *terminal-io*))))
+	 (format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
 	 #+allegro
 	 (if (and *ps-control-info*
 		  (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
@@ -711,6 +714,7 @@ list of interface names that are currently open."
 	  (let ((ps-string (json:encode-json-alist-to-string ps-json)))
 	    (emacs-output-proofstate ps-string)))
 	(when *ps-control-info*
+	  (format t "~%output-proofstate: calling xmlrpc-output-proofstate")
 	  (xmlrpc-output-proofstate ps-json)
 	  ;; (let ((siblings (when (parent-proofstate ps)
 	  ;; 		    (mapcan #'(lambda (sps)
@@ -728,7 +732,7 @@ list of interface names that are currently open."
     (to-emacs)))
 
 (defun xmlrpc-output-proofstate (ps-json)
-  ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
+  (format t "~%xmlrpc-output-proofstate called: ~a~%" *ps-control-info*)
   ;; *ps-control-info* is used for XML-RPC control - set when the prover
   ;; starts or a command is given for a running proof.
   (add-psinfo *ps-control-info* ps-json))
