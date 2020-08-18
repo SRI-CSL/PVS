@@ -238,13 +238,13 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	     (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
     (pvs-error "Prove-formula error" "Must exit the prover first"))
   (pvs:get-formula-decl theory formula)
-  (format t "~%prove-formula: after get-formula-decl")
+  ;;(format t "~%prove-formula: after get-formula-decl")
   ;;   ;; FIXME - may want to save the proof, or ask what to do
   ;;   (format t "~%About to quit prover~%")
   ;;   (throw 'pvs:quit nil)
   ;;   (format t "~%After quitting prover~%"))
-  (let ((res-gate (mp:make-gate nil))
-	(cmd-gate (mp:make-gate nil))
+  (let ((res-gate (mp:make-gate nil)) ;; initially closed
+	(cmd-gate (mp:make-gate nil)) ;;   "
 	(lock (mp:make-process-lock))
 	(proc (mp:process-name-to-process "Initial Lisp Listener")))
     (setq pvs:*multiple-proof-default-behavior* :noquestions)
@@ -259,12 +259,13 @@ Creates a ps-control-info struct to control the interaction.  It has slots
     ;; process-interrupt interrupts the main pvs process proc, and invokes
     ;; prove-formula
     (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
-    (format t "~%prove-formula: after process-interrupt, about to wait")
+    ;;(format t "~%prove-formula: after process-interrupt, about to wait")
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
-    (format t "~%prove-formula: Done waiting...~%")
+    ;; (format t "~%prove-formula: Done waiting... , lock-locker = ~a~%"
+    ;;   (mp:process-lock-locker lock))
     (mp:with-process-lock (lock)
       (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))
-	(format t "~%prove-formula: returning json-result ~a~%" json-result)
+	;;(format t "~%prove-formula: returning json-result ~a~%" json-result)
 	(setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
 	(mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	json-result))))
@@ -439,3 +440,8 @@ to the associated declaration."
   `((:kind . :expr)
     (:string . ,(str term))
     (:place . ,(place-list (place term)))))
+
+(defmethod json:encode-json (any &optional (stream json:*json-output*))
+  ;; Just return nil in this case, there's a problem on some Macs that this deals with.
+  (declare (ignore any stream))
+  nil)
