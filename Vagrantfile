@@ -75,20 +75,12 @@ Vagrant.configure(2) do |config|
     VBoxClient --seamless
     VBoxClient --clipboard
     sudo apt-get install -y emacs
-    # Install PVS and Yices - downloaded from www.csl.sri.com/~owre/drop/pvs-snapshots
-    # once I learn how (lftp comes close)
-    pvsvers=851
-    # curl "http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.0-${pvsvers}.*.tgz"
-    # vagrant /home/vagrant/pvs-7.0.${pvsvers} /home/vagrant/pvslib-master
-    tar xf /vagrant/pvs7.0-${pvsvers}-*-ix86_64-Linux-allegro.tgz
-    (cd /home/vagrant/pvs-7.0.${pvsvers}; ./install-sh)
-    PATH=/home/vagrant/pvs-7.0.${pvsvers}:/home/vagrant/pvs-7.0.${pvsvers}/bin/ix86_64-Linux:$PATH
-    echo "PATH=/home/vagrant/pvs-7.0.${pvsvers}:/home/vagrant/pvs-7.0.${pvsvers}/bin/ix86_64-Linux:$PATH" >> /home/vagrant/.bashrc
-    # Inatall NASA's pvslib
-    echo "(re)installing pvslib-master"
-    unzip -o -q /vagrant/pvslib-master.zip
-    echo "Changing ownership to vagrant user and group"
-    sudo chown -R vagrant /home/vagrant/pvs-7.0.${pvsvers} /home/vagrant/pvslib-master
-    sudo chgrp -R vagrant /home/vagrant/pvs-7.0.${pvsvers} /home/vagrant/pvslib-master
+    # Install PVS
+    (cd /home/vagrant/pvs-7.1.0; ./install-sh)
+    PATH=/home/vagrant/pvs-7.1.0:/home/vagrant/pvs-7.1.0/bin/ix86_64-Linux:$PATH
+    echo "PATH=/home/vagrant/pvs-7.1.0:/home/vagrant/pvs-7.1.0/bin/ix86_64-Linux:$PATH" >> /home/vagrant/.bashrc
+    # Install NASA's pvslib
+    echo "installing NASA pvslib"
+    git clone https://github.com/nasa/pvslib.git
   SHELL
 end
