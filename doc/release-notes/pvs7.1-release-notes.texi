@@ -784,10 +784,10 @@ included in the mapping, e.g.,
 @verbatim
 eq [A:TYPE+]: [A -> [A -> bool]]
 
-logic_sttfa_pvs : THEORY = logic_sttfa {{
+logic_sttfa_pvs : THEORY = logic_sttfa @{@{
     connectives_sttfa_th := connectives_sttfa_pvs,
     eq[T:TYPE+](x:T)(y:T) := x=y
-  }}
+  @}@}
 @end verbatim
 
 Second, the context is updated with the theory without mappings when
