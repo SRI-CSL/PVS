@@ -87,8 +87,8 @@ restore_sigint(void)
 }
 
 
-int debug;
-int warnings;
+extern int debug;
+extern int warnings;
 int negate = 0;
 /*
 #define ODD(n)			((n)  & 1)
@@ -110,8 +110,6 @@ int negate = 0;
 /* dummy definitions */
 void yyerror (const char *format, ...) { fputs ("", stderr); } 
 void yywarning (const char *format, ...) { fputs ("", stderr); } 
-HASHTAB *var_table;              /* primary variable names */
-FILE *bdd_output_stream;
 //static const char *bdd_output_strings ;
 
 /* setting flags */
