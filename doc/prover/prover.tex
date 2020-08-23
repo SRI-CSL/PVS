@@ -10,9 +10,7 @@
 %\usepackage{../../pvs}
 \usepackage{../makebnf}
 \usepackage[chapter]{tocbibind}
-
-\usepackage[dvipsnames,usenames]{color}
-\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
+\usepackage{fancyvrb}
 
 \usepackage{fontspec}
 \setmainfont[Ligatures=TeX]{XITS}
@@ -24,6 +22,13 @@
 \newcommand{\hugett}[1]{\Large\tt #1}
 %% \font\largett=cmtt10 scaled\magstep2
 %% \font\hugett=cmtt10 scaled\magstep4
+
+\usepackage{fancyhdr}
+
+\input{../pvstex}
+
+\usepackage[dvipsnames,usenames]{color}
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
 
 \topmargin -10pt
 \textheight 8.5in
@@ -39,14 +44,14 @@
 \setcounter{totalnumber}{10}
 \renewcommand{\textfraction}{.01}
 \renewcommand{\floatpagefraction}{.01}
-\usepackage{fancyhdr}
 \pagestyle{fancy}
 \raggedbottom
 
+
 \newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
 
-\def\optl{{\smaller\sc {\smaller\smaller \&}optional}}
-\def\rest{{\smaller\sc {\smaller\smaller \&}rest}}
+\def\optl{{\smaller\sc{\&}optional}}
+\def\rest{{\smaller\sc{\&}rest}}
 \def\default#1{\textrm{[\texttt{#1}]}}
 \def\bkt#1{{$\langle$#1$\rangle$}}
 \newcommand{\ii}[1]{{\textit{\hyperpage{#1}}}}
@@ -87,7 +92,6 @@
 \newenvironment{pagegroup}{}{}
 %\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
 \newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
-\input{../pvstex}
 %\input{/project/pvs/doc/jmacros}
 \newcommand{\Infrule}[3]{
 {{\displaystyle\strut #1}\over{\displaystyle\strut #2}}\;\mbox{\scriptsize$\bf #3$}
@@ -103,6 +107,7 @@
 
 \begin{document}
 
+\pagenumbering{Alph}
 \begin{titlepage}
 \vspace*{1in}
 \noindent
@@ -139,11 +144,10 @@ Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park
 \rhead[\leftmark]{\thepage}
 \setcounter{secnumdepth}{1} 
 \setcounter{tocdepth}{2}
-\pagenumbering{roman}
 \thispagestyle{empty}
 
 \newpage
-\renewcommand{\thepage}{ack}
+%\renewcommand{\thepage}{ack}
 
 \noindent\textbf{NOTE:} This manual is in the process of being updated.
 Almost everything stated here is still correct, but incomplete due to the
@@ -156,10 +160,12 @@ Subsequent enhancements were partially funded by SRI and by NASA
 Contracts NAS1-18969 and NAS1-20334, NRL Contract N00014-96-C-2106,
 NSF Grants CCR-9300044, CCR-9509931, and CCR-9712383, AFOSR contract
 F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
-\newpage\setcounter{page}{1}
 
+\newpage\setcounter{page}{1}
+\pagenumbering{roman}
 \tableofcontents
 \cleardoublepage
+
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
@@ -468,7 +474,7 @@ performed.}
 
 \clearpage
 \noindent
-\begin{smallsession}\indskobang\indextt{lemma}
+\begin{pvsex}
 sum_plus :  
 
   |-------
@@ -484,7 +490,7 @@ sum_plus :
 \{1\}   sum(LAMBDA n: f!1(n) + g!1(n), n1!1) =
        sum(f!1, n1!1) + sum(g!1, n1!1)
 
-Rule? (lemma "nat_induction")
+Rule? (lemma "nat_induction")\indskobang\indextt{lemma}
 Applying nat_induction where 
 this simplifies to: 
 sum_plus :  
@@ -495,24 +501,24 @@ sum_plus :
   |-------
 [1]   sum(LAMBDA n: f!1(n) + g!1(n), n1!1) =
        sum(f!1, n1!1) + sum(g!1, n1!1)
-\end{smallsession}
+\end{pvsex}
 
 The next step is to instantiate the induction scheme with a suitable
 induction predicate.  This instantiation is supplied manually using
 the \indtt{inst} command.   
-\begin{smallsession}\indextt{inst}
-Rule? (inst - "(LAMBDA n: sum((LAMBDA (n: nat): f!1(n) + g!1(n)), n)
+\begin{pvsex}
+Rule? (inst - "(LAMBDA n: sum((LAMBDA (n: nat): f!1(n) + g!1(n)), n)\indextt{inst}
           = sum(f!1, n) + sum(g!1, n))")
 Instantiating the top quantifier in - with the terms: 
  (LAMBDA n: sum((LAMBDA (n: nat): f!1(n) + g!1(n)), n)
           = sum(f!1, n) + sum(g!1, n)),
 this simplifies to:
-\end{smallsession}
+\end{pvsex}
 The effect of \indtt{inst} command is to generate a subgoal
 where the universally quantified variable \texttt{p} has been
 replaced by the given induction predicate.  After substitution the result
 was beta reduced.
-\begin{smallsession}
+\begin{pvsex}
 sum_plus :  
 
 \{-1\}   (sum((LAMBDA (n: nat): f!1(n) + g!1(n)), 0) =
@@ -531,7 +537,7 @@ sum_plus :
   |-------
 [1]   sum(LAMBDA n: f!1(n) + g!1(n), n1!1) =
        sum(f!1, n1!1) + sum(g!1, n1!1)
-\end{smallsession}
+\end{pvsex}
 
 Applying the conjunctive splitting command \indtt{split} to the goal
 yields three subgoals.  The first goal is to demonstrate that the
@@ -540,8 +546,8 @@ conjecture following the introduction of Skolem constants.  The second
 subgoal is the base case, and the third subgoal is the induction step.
 The first subgoal is easily proved by using the heuristic instantiation
 command \indtt{inst?}.
-\begin{smallsession}\indextt{split}
-Rule? (split)
+\begin{pvsex}
+Rule? (split)\indextt{split}
 Splitting conjunctions,
 this yields  3 subgoals: 
 sum_plus.1 :  
@@ -561,7 +567,7 @@ Using template: sum((LAMBDA (n: nat): f!1(n) + g!1(n)), i) =
 Instantiating quantified variables,
 
 This completes the proof of sum_plus.1.
-\end{smallsession}
+\end{pvsex}
 
 The second subgoal, the base case, contains an irrelevant formula numbered
 \texttt{2} which was only needed for the first subgoal proved
@@ -569,7 +575,7 @@ above.  This formula can be suppressed with the \indtt{hide} command.
 The hidden formulas can be examined using the Emacs command
 \emacstt{show-hidden-formulas}, and revealed or reintroduced into the
 sequent using the \indtt{reveal} command. 
-\begin{smallsession}\indextt{hide}
+\begin{pvsex}
 sum_plus.2 :  
 
   |-------
@@ -578,7 +584,7 @@ sum_plus.2 :
 [2]   sum(LAMBDA n: f!1(n) + g!1(n), n1!1) =
        sum(f!1, n1!1) + sum(g!1, n1!1)
 
-Rule? (hide 2)
+Rule? (hide 2)\indextt{hide}
 Hiding formulas:  2,
 this simplifies to: 
 sum_plus.2 :  
@@ -586,14 +592,14 @@ sum_plus.2 :
   |-------
 [1]   sum((LAMBDA (n: nat): f!1(n) + g!1(n)), 0) =
        sum(f!1, 0) + sum(g!1, 0)
-\end{smallsession}
+\end{pvsex}
  We are then left with the formula numbered \texttt{1} which is easily
 proved by expanding the definition of \texttt{sum} using the
 \indtt{expand} command.  Notice that this command uses the PVS decision
 procedures to simplify the definition of \texttt{sum} and to reduce the
 equality to \texttt{TRUE}\@.
-\begin{smallsession}\indextt{expand}
-Rule? (expand "sum")
+\begin{pvsex}
+Rule? (expand "sum")\indextt{expand}
 Expanding the definition of sum,
 this simplifies to: 
 sum_plus.2 :  
@@ -603,12 +609,12 @@ sum_plus.2 :
 
 which is trivially true.
 
-\end{smallsession}
+\end{pvsex}
 
 The remaining subgoal is the induction step.  It too contains the
 irrelevant formula numbered \texttt{2} that is again suppressed using the
 \indtt{hide} command.  
-\begin{smallsession}\indextt{hide}
+\begin{pvsex}
 sum_plus.3 :  
 
   |-------
@@ -621,7 +627,7 @@ sum_plus.3 :
 [2]   sum(LAMBDA n: f!1(n) + g!1(n), n1!1) =
        sum(f!1, n1!1) + sum(g!1, n1!1)
 
-Rule? (hide 2)
+Rule? (hide 2)\indextt{hide}
 Hiding formulas:  2,
 this simplifies to: 
 sum_plus.3 :  
@@ -633,14 +639,14 @@ sum_plus.3 :
          IMPLIES
          sum((LAMBDA (n: nat): f!1(n) + g!1(n)), j + 1) =
           sum(f!1, j + 1) + sum(g!1, j + 1)
-\end{smallsession}
+\end{pvsex}
 Applying the \indtt{skosimp} command, which is
 a compound of the \skobang{} and \indtt{flatten} commands,
 the resulting simplified sequent contains an antecedent formula,
 the induction hypothesis, and a consequent formula, the induction
 conclusion.
-\begin{smallsession}\indextt{skosimp}
-Rule? (skosimp)
+\begin{pvsex}
+Rule? (skosimp)\indextt{skosimp}
 Skolemizing and flattening,
 this simplifies to: 
 sum_plus.3 :  
@@ -650,15 +656,15 @@ sum_plus.3 :
   |-------
 \{1\}   sum((LAMBDA (n: nat): f!1(n) + g!1(n)), j!1 + 1) =
        sum(f!1, j!1 + 1) + sum(g!1, j!1 + 1)
-\end{smallsession}
+\end{pvsex}
 If we apply the \indtt{expand} command selectively to expand those
 occurrences of \texttt{sum} on the consequent side, we get a sequent that
 is tautologously true.  Notice, once again, that the expand command makes
 significant use of type information within the PVS decision procedures in
 order to simplify not only the expanded definition of \texttt{sum} but
 also the resulting equality between arithmetic expressions.
-\begin{smallsession}\indextt{expand}
-Rule? (expand "sum" +)
+\begin{pvsex}
+Rule? (expand "sum" +)\indextt{expand}
 Expanding the definition of sum,
 this simplifies to: 
 sum_plus.3 :  
@@ -678,7 +684,7 @@ Q.E.D.
 
 Run time  = 0.79 secs.
 Real time = 38.10 secs.
-\end{smallsession}
+\end{pvsex}
 
 This successfully completes the proof attempt.  The CPU time
 and wall clock time for the proof attempt are displayed above.
@@ -691,7 +697,7 @@ of the above proof can actually be captured as a strategy.  The strategy
 given induction variable and then completes the proof by expanding the
 functions used in the theorem and applying heuristic instantiation and the
 decision procedures.
-\begin{smallsession}
+\begin{pvsex}
 sum_plus :  
 
   |-------
@@ -717,7 +723,7 @@ Q.E.D.
 
 Run time  = 0.85 secs.
 Real time = 6.47 secs.
-\end{smallsession}
+\end{pvsex}
 
 Such high-level strategies might not always succeed.  When a strategy
 fails to complete a proof, it is possible to continue proving the
@@ -950,17 +956,16 @@ $\Infrule{\Gamma \vdash A\{x\gets t\}, \Delta}
 
 \section{Rules for \indtt{IF}}
 
-It is extremely useful to have the branching operation \indtt{IF} in the
-language for expressing conditional expressions.  For each type
-$\alpha$, there is an \indtt{IF} operation with the signature $[\texttt{bool}, \alpha, \alpha \rightarrow \alpha]$.    The
-transformation of $A[e]$ to $A[b]$ represents the replacement of the
-highlighted occurrences of $e$ in $A$ by $b$.  
-Note that for the ${\indtt{IF}\uparrow\:\vdash}$ and
-${\vdash\:\texttt{IF}\uparrow}$ rules, the  $A$ in
-$B[\texttt{IF}(A, b, c)]$ must not contain any free variable occurrences
-that are bound in $B[\texttt{IF}(A, b, c)]$.  
-The inference rules for
-\indtt{IF} are:
+It is useful to have the branching operation \indtt{IF} in the language
+for expressing conditional expressions.  For each type $\alpha$, there is
+an \indtt{IF} operation with the signature
+$[\texttt{bool}, \alpha, \alpha \rightarrow \alpha]$.  The transformation
+of $A[e]$ to $A[b]$ represents the replacement of the highlighted
+occurrences of $e$ in $A$ by $b$.  Note that for the
+${\indtt{IF}\uparrow\:\vdash}$ and ${\vdash\:\texttt{IF}\uparrow}$ rules,
+the $A$ in $B[\texttt{IF}(A, b, c)]$ must not contain any free variable
+occurrences that are bound in $B[\texttt{IF}(A, b, c)]$.  The inference
+rules for \indtt{IF} are:
 
 \begin{center}
 \begin{tabular}{c@{\hspace{0.5in}}c}
@@ -1128,9 +1133,9 @@ value.  If the  \cargdflt{}{[default]} part of an optional parameter is
 missing, it is taken to be \texttt{nil}.  A rule with its formal parameter
 list is presented in the form:
 \begin{center}
-  \texttt{(\carg{\bkt{rulename} \bkt{required}$^{\textstyle *}$
+  \texttt{(\textrm{\emph{\bkt{rulename} \bkt{required}$^{\textstyle *}$
         \optl\ \bkt{\textrm{\emph{optional}}\default{default}}$^{\textstyle *}$
-        \rest\ \bkt{argument}})}
+        \rest\ \bkt{argument}}})}
 \end{center}
 The \optl\ and \rest\ are metalanguage keywords used in this reference
 guide to indicate how the arguments are to 
@@ -1424,17 +1429,17 @@ ones.
 
 \begin{usage}{}
 \item[\texttt{(label uniqueness -3)} :] Labels the formula numbered
-\texttt{-3} by the label \texttt{uniqueness}.
+\texttt{-3} by the label \texttt{unique\-ness}.
 
 \item[\texttt{(label type-constraints (-1 -3 -4))} :] Labels the formulas
-numbered \texttt{-1}, \texttt{-3}, and \texttt{-4} by the label
+numbered \texttt{-1}, \mbox{\texttt{-3}}, and \texttt{-4} by the label
 \texttt{type-constraints}.
 
 \item[\texttt{(label antecedents - :push? t)} :] Adds the label
 \texttt{type-constraints} in addition to any other labels on the formulas
 numbered \texttt{-1}, \texttt{-3}, and \texttt{-4}.
 
-\item[\texttt{(bddsimp type-constraints)} :] Applies BDD-based
+\item[\texttt{(bddsimp type-constraints)} :] Does BDD-based
 propositional simplification to the formulas labelled
 \texttt{type-constraints}.
 \end{usage}
@@ -1570,7 +1575,7 @@ subgoals of the current subgoal in an emacs buffer.
 
 \item[syntax:] \texttt{(quit)}
 
-\item[effect:] Terminates the current proof attempt, and queries whether
+\item[effect:] Terminates the current proof attempt, and asks whether
 the partial proof in progress should be saved.  This way, it is possible
 to break and resume a long proof attempt by saving the partial proof and
 rerunning it when the proof attempt is resumed.
@@ -1662,9 +1667,10 @@ message.
 \begin{description}
 \item[syntax:] \texttt{(skip-msg \carg{msg} \optl\ \carg{force-printing?})}
 
-\item[effect:] Has no effect on the proof but prints the given \emph{msg} string.  The main use of \texttt{skip-msg} is in generating error
-messages from within strategies, typically as: \texttt{(if good?(input)
-\ldots (skip-msg "Bad input."))}.
+\item[effect:] Has no effect on the proof but prints the \emph{msg}
+  string.  The main use of \texttt{skip-msg} is in generating error
+  messages from within strategies, typically as: \texttt{(if good?(input)
+    \ldots (skip-msg "Bad input."))}.
 
 \begin{usage}{}
 \item[\texttt{(skip-msg "Not enough terms given.")}]: Does nothing but
@@ -1739,7 +1745,7 @@ partial or completed proof.
 
 
 \item[usage:] \texttt{(track-rewrite "assoc" "append" "reverse\_append" )}:
-Tracks the given rewrite rules during 
+Tracks the given re\-write rules during 
 simplification and reports any failures corresponding to when the rewrites
 are unsuccessful.
 
@@ -1802,7 +1808,7 @@ issued or applied.
 where \texttt{skolem!} was issued.
 
 \item[\texttt{(undo "assoc.2")}] :  Undoes back to the lowest ancestor node
-labelled with \texttt{assoc.2}, unless \texttt{assoc.2} labels the current node in
+labeled \texttt{assoc.2}, unless \texttt{assoc.2} labels the current node in
 which case there is no change.
 \end{usage}
 
@@ -1846,7 +1852,7 @@ be tracked during simplification, \texttt{untrack-rewrite} behaves like a
 saved as part of the partial or completed proof.
 
 \begin{usage}{}
-\item[\texttt{(untrack-rewrite "assoc" "append" "reverse\_append" )}:]
+\item[\texttt{(untrack-rewrite "assoc" "append" "reverse\_append")}:]
 Disables tracking on the given rewrite rules. 
 
 \item[\texttt{(untrack-rewrite)}:]  Disables tracking on all currently
@@ -1877,7 +1883,6 @@ more cautious form of \indtt{delete}, where certain sequent formulas can
 be suppressed and recovered later in the proof using the \indtt{reveal}
 rule.  The emacs command \emacstt{show-hidden-formulas} displays hidden
 formulas along with their numbers.
-
 \begin{tabularx}{\textwidth}{|l|l|X|}\hline
 \indttdol{copy} & \emph{defined} & insert a copy of a sequent formula \\\hline
 \indtt{delete} & \emph{primitive} &  delete selected formulas from a goal sequent\\\hline
@@ -2105,7 +2110,7 @@ This command is extremely useful for transforming an undesirable
 expression $t$ into a more desirable form $s$ when this cannot be achieved
 by the other proof commands.  The command \texttt{(case "$t$ = $s$")}
 followed by \indtt{replace} can achieve the desired transformation.  This
-combination is encapsulated in the defined rule \indtt{case-replace}
+combination is used in the defined rule \indtt{case-replace}
 (page~\pageref{case-replace})\@.
 
 
@@ -2331,7 +2336,7 @@ f(\texttt{IF}(C, D,E)))$, reflecting the selection of the conditionals of
 the leftmost-innermost \texttt{IF}-expression.  Note that
 $f($\texttt{IF}$(A,$ \texttt{IF}$(B, C, D),$ \texttt{IF}$(E, F, G)))$ is
 transformed to $\texttt{IF}(A, \texttt{IF}(B, f(C), f(D)), \texttt{IF}(E,
-f(F), f(G)))$ reflecting the preservation of the contiguous
+f(F),$ $f(G)))$ reflecting the preservation of the contiguous
 \texttt{IF}-branching structure.  It is more effective to lift a
 contiguous block of \indtt{IF} branches since it more accurately reflects
 the case structure of the resulting argument and results in a more
@@ -2541,8 +2546,8 @@ to a maximum of two levels.
 
 \item[notes:]
 \begin{itemize}
-\item This command causes branching, so should be used with
-caution; otherwise you will find yourself doing essentially the same
+\item This command causes branching and should be used with
+caution; otherwise you will end up doing essentially the same
 proof on many different branches.
 
 \item The \indtt{split} command corresponds to the $\vdash\wedge$,
@@ -2594,10 +2599,10 @@ inference rules which cause branching.
 \item[syntax:] \texttt{(detuple-boundvars \optl\ \cargdflt{fnums}{*}
 \carg{singles?})}
 
-\item[effect:] A top-level sequent formula of the form \texttt{(FORALL
-(x:\ [S1, S2]):\ g(x))} or \texttt{(FORALL (x:\ [\# s:\ S, t:\ T \#]):\
-g(x))} is replaced by \texttt{(FORALL (x1:\ S1), (x2:\ S2):\ g(x1, x2))}
-and \texttt{(FORALL (x1:\ S), (x2:\ T)):\ g((\# s := x1, t := x2 \#)))}\@.
+\item[effect:] A top-level sequent formula of the form {\smaller\texttt{(FORALL
+(x:\ [S1, S2]):\ g(x))}} or {\smaller\texttt{(FORALL (x:\ [\# s:\ S, t:\ T \#]):\
+g(x))}} is replaced by {\smaller\texttt{(FORALL (x1:\ S1), (x2:\ S2):\ g(x1, x2))}}
+and {\smaller\texttt{(FORALL (x1:\ S), (x2:\ T)):\ g((\# s := x1, t := x2 \#)))}}\@.
 This decomposition of tuple and record quantification is needed, for
 example, to carry out an induction over one of the components.  Tuple
 quantification can be introduced when instantiating parameterized theories
@@ -2617,7 +2622,7 @@ within the \indtt{measure-induct} strategy.
 \texttt{a1(t), a2(t) $\vdash$ c1(t), c2(t)}, then applying the
 \indtt{generalize} 
 term \texttt{t} with variable \texttt{x} yields a sequent of the form
-\texttt{$\vdash$ (FORALL x:~(a1(x) AND a2(x)) IMPLIES (c1(x) OR c2(x)))}\@.
+{\smaller\texttt{$\vdash$ (FORALL x:~(a1(x) AND a2(x)) IMPLIES (c1(x) OR c2(x)))}}\@.
 More specifically, the \indtt{generalize} command collects together
 all the sequent formulas from the given \emph{fnums} containing the
 term \emph{term}, applies \indtt{merge-fnums} to obtain a single
@@ -2657,7 +2662,7 @@ rule where the quantified formula is not copied and the terms are
 given in \rest\ form.
 
 \item[usage:] \texttt{(inst - "a + 3" "\_" "b")}: Instantiates the first
-universally quantified antecedent formula with exactly
+universally quantified antece\-dent formula with exactly
 three bound variables with \texttt{a + 3} for the first bound variable and
 \texttt{b} for the third bound variable while leaving the second bound
 variable uninstantiated.  
@@ -2807,10 +2812,10 @@ quantifier can be reused by revealing the hidden formulas using the \texttt{reve
 \item[\texttt{(instantiate * ("x + 3" "y - z"))}] : Finds the first formula in the
 sequent that is either an antecedent formula of the form $(\forall x_1,
 x_2 : A)$, or a consequent formula of the form $(\exists x_1, x_2 : A)$
-and replaces this formula with $A[\texttt{x + 3}/x_1, \texttt{y - z}/x_2]$.
+and replaces it with $A[\texttt{x + 3}/x_1, \texttt{y - z}/x_2]$.
 
 \item[\texttt{(instantiate - ("x + 3" "y - z"))}] : Searches for the first suitable
-antecedent formula in the current sequent, and has the same effect as
+antece\-dent formula in the current sequent, and has the same effect as
 the above invocation of \indtt{instantiate}.
 
 \item[\texttt{(instantiate -3 ("x + 3" "y - z") T)}] :  Has the same
@@ -2824,8 +2829,8 @@ is a formula of the form $(\forall x_1, x_2 : A)$.
 \item[errors:]
 \begin{description}
 
-\item[{\bf No suitable quantified formula found}:] There was no formula
-of existential strength in the range given by \emph{fnum} with the same
+\item[{\bf No suitable quantified formula found}:] No formula
+of existential strength was found in the range given by \emph{fnum} with the same
 number of bound variables as the length of the supplied list of \emph{terms}.
 
 \item[{\bf Expecting \ldots\ terms, but \ldots\ terms provided}:]\hfill Wrong
@@ -2833,7 +2838,7 @@ number of terms given in the \emph{terms} argument.
 
 \item[{\bf The supplied terms should not contain free variables}:] There
 can be no free variables in a PVS sequent and none are allowed to
-sneak in through the \indtt{instantiate} rule.
+sneak in through the \indtt{instanti\-ate} rule.
 
 \item[{\bf The types of the substituted variables contain free occurrences
 \ldots}:]  If $x$ and $y$
@@ -2876,23 +2881,25 @@ situations where \texttt{instantiate} would never terminate.
 \item[syntax:] \texttt{(skolem \carg{fnum} \carg{constants} \optl\
 \carg{skolem-typepreds?})}
 
-\item[effect:] If the formula in the current sequent indicated by \emph{fnum} is either an antecedent formula of the form $(\exists
-x_1,\ldots, x_n : A)$ or a consequent formula of the form $(\forall x_1,
-\ldots, x_n : A)$, and \emph{constants} is a list of new identifiers of
-the form \texttt{($c_1$ \ldots $c_n$)}, then the \indtt{skolem} rule
-generates a subgoal where the indicated formula has been replaced by
-$A[c_1/x_1,\ldots, c_n/x_n]$.\footnote{This is slightly inaccurate since
-in PVS, the type for the bound variable $x_i$ in $(\forall x_1,
-\ldots, x_n : A)$ can contain free occurrences of $x_j$ where $j<i$
-which is not reflected by the substitution instance $A[c_1/x_1,\ldots,
-c_n/x_n]$.}   When \emph{fnum} is \texttt{*}, then the
-first appropriate sequent formula (\ie\ either an antecedent existential
-formula or a consequent universal formula binding $n$ variables) is
-chosen for quantifier elimination.  The parameter \emph{fnum} can also be
-either \texttt{+} or \texttt{-}.  If any of the $c_i$ are given as \texttt{"\_"},
-then those bound variables are left alone and no corresponding skolem
-constants are introduced.  If \emph{skolem-typepreds?}\ is \texttt{t}, then
-typepreds will be introduced for the new constants.
+\item[effect:] If the formula in the current sequent indicated by
+  \emph{fnum} is either an antecedent formula of the form
+  $(\exists x_1,\ldots, x_n : A)$ or a consequent formula of the form
+  $(\forall x_1, \ldots, x_n : A)$, and \emph{constants} is a list of new
+  identifiers of the form \texttt{($c_1$ \ldots $c_n$)}, then the
+  \indtt{skolem} rule generates a subgoal where the formula has
+  been replaced by $A[c_1/x_1,\ldots, c_n/x_n]$.\footnote{This is slightly
+    inaccurate since in PVS, the type for the bound variable $x_i$ in
+    $(\forall x_1, \ldots, x_n : A)$ can contain free occurrences of $x_j$
+    where $j<i$ which is not reflected by the substitution instance
+    $A[c_1/x_1,\ldots, c_n/x_n]$.}  When \emph{fnum} is \texttt{*}, then
+  the first appropriate sequent formula (\ie\ either an antecedent
+  existential formula or a consequent universal formula binding $n$
+  variables) is chosen for quantifier elimination.  The parameter
+  \emph{fnum} can also be either \texttt{+} or \texttt{-}.  If any of the
+  $c_i$ are given as \texttt{"\_"}, then those bound variables are left
+  alone and no corresponding skolem constants are introduced.  If
+  \emph{skolem-typepreds?}\ is \texttt{t}, then typepreds will be
+  introduced for the new constants.
 
 \begin{usage}{}
 
@@ -2940,7 +2947,7 @@ not a name or was already present in the context.
 \item[{\bf Duplicate use of skolem constants}:] The list of skolem
 constants contained a duplicate.
 
-\item[\textbf{The types of the skolemized variables contain free \ldots}:]
+\item[\textbf{The types of the skolemized variables contain free\ldots}:]
 This error is triggered when the top quantifier binds variables $x$ and
 $y$ where the type of $y$ contains a free occurrence of $x$.  It is not
 legal in this situation to supply a skolem constant for $y$ without
@@ -3401,7 +3408,7 @@ its branches.
 
 
 \item[\texttt{(expand "sum" :assert?\ T)}] : Expands \texttt{sum}, but
-uses \indtt{assert} instead of \indtt{simplify} in the simplification process. 
+uses \indtt{assert} instead of \indtt{simpli\-fy} in the simplification process. 
 \end{usage}
 
 \item[errors:]
@@ -3574,7 +3581,7 @@ formula
 to the antecedent of the current sequent.
 
 \item[\texttt{(lemma "assoc[list[nat]]")}] : Adds the statement of the
-associativity of \texttt{append} for lists of natural numbers to the
+associativity of \texttt{app\-end} for lists of natural numbers to the
 antecedent of the current sequent.
 \end{usage}
 
@@ -3650,9 +3657,9 @@ for the lemma \texttt{assoc}
 that extends the given substitution
 but only rewrites with this instance over the antecedent formulas.
 
-\item[\texttt{(rewrite "assoc" :dir RL :order OUT)}:]
+\item[\texttt{(rewrite "assoc" :dir rl :order out)}:]
 Searches for a matching instance of the right-hand side of the
-lemma \texttt{assoc} in a leftmost-outermost order and rewrites
+lemma \texttt{assoc} in a leftmost-outermost order and re\-writes
 the  instance of the right-hand side by the corresponding
 instance of the left-hand side.
 \end{description}
@@ -4110,6 +4117,7 @@ skolemization, rewriting, decision procedures, if-lifting, and heuristic
 instantiation.
 
 \item[\texttt{(induct-and-rewrite "x" :rewrites ("append" "reverse"))}] :
+  
 Same as above.  
 \end{usage}
 
@@ -4156,8 +4164,9 @@ performs instantiation.  The provided instantiator may accept the
 \emph{if-match} argument, which is as in the \texttt{inst?}\ command.
 
 \begin{usage}{}
-\item[]\texttt{(induct-and-simplify "i" :defs !\ :theories "real\_props"
-:rewrites "assoc" :exclude ("div\_times" "add\_div"))}:
+\item[]\texttt{(induct-and-simplify "i" :defs !\ :theories "real\_props"}\newline
+\texttt{:rewrites "assoc" :exclude ("div\_times" "add\_div"))}:
+
 If \texttt{i} has type \texttt{nat}, then the natural number induction
 scheme is instantiated with a predicate constructed from sequent
 formula \texttt{1}, and the resulting cases are simplified using
@@ -4362,7 +4371,7 @@ rel}(c_1, \ldots, c_n), \ldots$$ The generated (co)induction schemes
 corresponding to a (co)inductive relation \emph{rel} are
 \texttt{\emph{rel}\_weak\_induction} and \texttt{\emph{rel}\_induction}
 (or \texttt{\emph{rel}\_weak\_coinduction} and
-\texttt{\emph{rel}\_coinduction}).
+\texttt{\emph{rel}\_co\-induction}).
 
 This command applies repeated skolemization and flattening to the
 specified \emph{fnum} (or the first positive, skolemizable consequent or
@@ -4459,6 +4468,7 @@ be very different.  For example, though \indtt{grind} invokes
 \indtt{assert}, and \indtt{replace*}.  And \indtt{bash} is defined
 independently of \indtt{smash}.
 
+\noindent
 \begin{tabularx}{\textwidth}{|l|l|X|}\hline
 \indttdol{assert} & \emph{defined}
   & use decision procedures to simplify sequent formulas \\\hline
@@ -4978,7 +4988,7 @@ command has any effect.  The arguments are as in \indtt{reduce}.
 \item[effect:] \indtt{simplify} is a primitive command used in the
 definition of \indtt{assert}, \indtt{do-rewrite}, and \texttt{record}.
 \indtt{simplify} includes the arguments to \indtt{assert} along
-with two flags: \emph{record?}, and \emph{rewrite?}.  For the
+with two flags: \emph{re\-cord?}, and \emph{rewrite?}.  For the
 \indtt{assert} command, \emph{record?}\ and \emph{rewrite?}\ must be
 \texttt{t}.  To get the \indtt{do-rewrite} command, \emph{record?}\ must
 be \texttt{nil} and \emph{rewrite?}\ must be \texttt{t}.  To get the
@@ -5139,7 +5149,7 @@ simplified, including the following examples.
 \end{tabular}
 
 The last two simplifications only happen when the type \texttt{t} is known
-to be nonempty.
+to be non\-empty.
 \item Rewriting:  The simplifications include conditional rewriting with
 respect to the rewrite rules installed by means of \indtt{auto-rewrite},
 \indttbang{auto-rewrite}, 
@@ -5409,17 +5419,17 @@ to those listed below.
 \item[{\bf No resolutions for \ldots}:] The system was unable to find
 declarations corresponding to the given names.
 
-\item[{\bf Can't rewrite using \ldots: LHS key \ldots is bad.}]
-Rewrite rules are arranged by a key which in the case of an application
-is the left-most operator name or expression type such as a
-record constructor, tuple constructor, update expression,
-tuple projection, record field access, cases expression, and lambda,
-forall, and exists expressions.   Note that having too many rewrite rules
-attached to a single key can slow down rewrite lookup.  
+\item[{\bf Can't rewrite using \ldots: LHS key \ldots is bad.} :]
+  Rewrite rules are arranged by a key which in the case of an application
+  is the left-most operator name or expression type such as a record
+  constructor, tuple constructor, update expression, tuple projection,
+  record field access, cases expression, and lambda, forall, and exists
+  expressions.  Note that having too many rewrite rules attached to a
+  single key can slow down rewrite lookup.
 
 \item[{\bf RHS free variables must be contained in the LHS free
-variables}:] Since the matching for rewriting is done using the left-hand
-side of the rewrite rule, there should be no free variables left in the
+variables} :] The matching for rewriting is done using the left-hand
+side of the rewrite rule, so there should be no free variables left in the
 formula that are not instantiated during such a match.
 
 \item[{\bf Hypothesis free variables must be contained in the LHS free
@@ -5704,11 +5714,12 @@ type-constraint predicate in $\tau$.
 \begin{usage}{}
 
 \item[\texttt{(typepred "i+j")}] : If \texttt{i} and \texttt{j} are natural
-numbers, then the antecedent formula \texttt{i + j >= 0} is added to the
-current sequent along with the assertions \texttt{integer\_pred(i + j)},
+numbers, then the antecedent formula \mbox{\texttt{i + j >= 0}} is added to the
+current sequent along with the assertions \newline
+\mbox{\texttt{integer\_pred(i + j)}},
 \texttt{rational\_pred(i + j)}, and \texttt{real\_pred(i + j)}.
 
-\item[\texttt{(typepred "cons(i, null)")}] : Adds the antecedent formula\linebreak
+\item[\texttt{(typepred "cons(i, null)")}] : Adds the antecedent formula \newline
 \texttt{cons?[nat](cons(i, null))} to the current sequent.
 
 \end{usage}
@@ -5843,7 +5854,7 @@ success or failure of the proof effort.
 \item[effect:]  This command constructs an abstraction 
 of the mu-calculus formulas in the given goal using
 \indtt{install-rewrites} to install various rewrites,
-\indtt{assert} to apply these rewrites and other simplifications,
+\indtt{assert} to apply these re\-writes and other simplifications,
 and \indtt{abs-simp} to actually construct the abstraction. 
 
 The mu-calculus formulas in the goal that contain quantification
@@ -5961,10 +5972,11 @@ assertion fails.
 
 \begin{usage}{}
 \item[\texttt{(model-check :theories ("transitions" "props")
-:irredundant?\ T)}]: Translates the given sequent containing CTL or
-mu-calculus assertions into a Boolean mu-calculus, invokes a BDD-based
-symbolic model checker on this, and either proves the result or returns a
-collection of subgoals.
+    :irredundant?\ T)} :] \mbox{\hspace{1em}}
+  Translates the given sequent containing CTL or mu-calculus assertions
+  into a Boolean mu-calculus, invokes a BDD-based symbolic model checker
+  on this, and either proves the result or returns a collection of
+  subgoals.
 
 \item[\texttt{(model-check :dynamic-ordering? nil)}]: Invokes CTL/mu-calculus
 model checking procedure on the subgoal but with dynamic reordering of
@@ -6037,7 +6049,8 @@ is retained.
 \begin{usage}{}
 
 \item[\texttt{(apply (then (skolem 2 ("a4" "b5")) (beta) (flatten)}]
-\texttt{"Skolemizing and beta-reducing")} : 
+  \texttt{"Skolemizing} \newline
+  \texttt{and beta-reducing")} : 
 The \indtt{then} strategy performs each of the steps given by its
 arguments in sequence.  Wrapping this strategy in an \indtt{apply} ensures
 that the intermediate steps in the sequence are hidden.
@@ -6489,14 +6502,15 @@ backtracking mechanism for proof search that can be controlled by
 appropriately signalling failure.  The following identities describe the
 behavior of the \indtt{try} strategy (assuming that the \texttt{lemma}
 step succeeds):
-\begin{enumerate}\label{trypage}
+{\smaller\begin{enumerate}\label{trypage}
 \item \texttt{(try (skip) (assert) (split)) = (split)}
 \item \texttt{(try (try (skip) (assert) (fail)) (split) (flatten)) = (flatten)} 
 \item \texttt{(try (try (lemma "assoc") (fail) (assert)) (split) (flatten))
 = (flatten)}
-\item \texttt{(try (try (lemma "assoc") (assert) (fail)) (split) (flatten))
+\item \texttt{(try (try (lemma "assoc") (assert) (fail)) (split)
+    (flatten)) \newline
 = (then (lemma "assoc") (assert) (split))}
-\end{enumerate}
+\end{enumerate}}
 
 The important thing to note is that if step $A$ succeeds on the current
 goal, then applying \texttt{(try $A$ $B$ $C$)} causes the alternative $C$
@@ -6505,14 +6519,14 @@ closed) alternative.
 
 \begin{usage}{}
 
-\item[\texttt{(try (flatten) (propax) (split))}] : Applies the disjunctive
+\item[{\smaller\texttt{(try (flatten) (propax) (split))}}] : Applies the disjunctive
 simplification step to the current goal.  If the goal does disjunctively
 simplify, then the \texttt{(propax)} step is applied to the resulting
 subgoal.  Otherwise the conjunctive splitting step is applied to the
 current goal.
 
-\item[]\texttt{(try (try (flatten) (fail) (skolem 1 ("a" "b"))) (postpone)
-(prop))} : If the current goal disjunctively simplifies, then backtrack
+\item[{\smaller\texttt{(try (try (flatten) (fail) (skolem 1 ("a" "b"))) (postpone)
+(prop))}}] : If the current goal disjunctively simplifies, then backtrack
 and apply \texttt{(prop)}, otherwise introduce skolem constants and if that
 fails, try propositional simplification, otherwise postpone.  Notice how
 \texttt{(fail)} is used to trigger backtracking from a subgoal.
