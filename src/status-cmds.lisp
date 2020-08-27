@@ -113,16 +113,17 @@
 
 ;;; Using Status
 
-(defun show-importchain (theory)
-  (let ((te (get-context-theory-entry theory)))
-    (if te
-	(let ((*modules-visited* nil)
-	      (*disable-gc-printout* t))
-	  (pvs-buffer "PVS Status"
-	    (with-output-to-string (*standard-output*)
-	      (show-importchain* (id te)))
-	    t))
-	(pvs-message "~a is not in the current context" theory))))
+(defun show-importchain (theoryref)
+  (with-pvs-file (file theoryname) theoryref
+    (let ((te (get-context-theory-entry (or theoryname file))))
+      (if te
+	  (let ((*modules-visited* nil)
+		(*disable-gc-printout* t))
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(show-importchain* (id te)))
+	      t))
+	  (pvs-message "~a is not in the current context" theory)))))
 
 (defun show-importchain* (tid &optional (indent 0))
   (let* ((th (get-theory tid)))
@@ -646,50 +647,50 @@
 			     (mapcar #'fe-id (te-formula-info te))))
 	     (ce-theories ce))))))
 
-(defun show-proofs-theory (theoryname &optional all?)
-  (let* ((file (context-file-of theoryname))
-	 (all-proofs (when file (read-pvs-file-proofs file)))
-	 (proofs (if all-proofs
-		     (if all?
-			 all-proofs
-			 (proofs-with-associated-decls file all-proofs))
-		     (when file
-		       (let ((th (get-theory theoryname)))
-			 (when th
-			   (collect-theories-proofs (list th))))))))
-    (cond (proofs
-	   (setq *displayed-proofs* proofs)
-	   (pvs-buffer "Show Proofs"
-	     (with-output-to-string (outstr)
-	       (format outstr "Proof scripts for theory ~a:" theoryname)
-	       (let ((valid? (valid-proofs-file (context-entry-of theoryname)))
-		     (thproofs (assq (intern theoryname :pvs) proofs)))
-		 (show-all-proofs-theory (car thproofs) (cdr thproofs)
-					 outstr valid?)))
-	     'popto t)
-	   t)
-	  (file (pvs-message "No proofs found in this theory"))
-	  (t (pvs-message "Theory not found in context; may need to retypecheck.")))))
+(defun show-proofs-theory (theoryref &optional all?)
+  (with-pvs-file (file theoryname) theoryref
+    (let* ((th (get-theory (or theoryname file)))
+	   (proofs (if th
+		       (collect-theories-proofs (list th))
+		       (let ((all-proofs (when file (read-pvs-file-proofs file))))
+			  (if all-proofs
+			      (if all?
+				  all-proofs
+				  (proofs-with-associated-decls file all-proofs)))))))
+      (cond (proofs
+	     (setq *displayed-proofs* proofs)
+	     (pvs-buffer "Show Proofs"
+	       (with-output-to-string (outstr)
+		 (format outstr "Proof scripts for theory ~a:" theoryname)
+		 (let ((valid? (or th (valid-proofs-file (context-entry-of theoryname))))
+		       (thproofs (assq (intern theoryname :pvs) proofs)))
+		   (show-all-proofs-theory (car thproofs) (cdr thproofs)
+					   outstr valid?)))
+	       'popto t)
+	     t)
+	    (file (pvs-message "No proofs found in this theory"))
+	    (t (pvs-message "Theory not found in context; may need to retypecheck."))))))
 
-(defun show-proofs-importchain (theoryname &optional all?)
-  (let* ((imports (context-usingchain theoryname))
-	 (files (delete-duplicates (mapcar #'context-file-of imports)
-				   :test #'string=))
-	 (valid? (every #'(lambda (ff)
-			    (let ((ce (context-entry-of ff)))
-			      (and ce (valid-proofs-file ce))))
-			files))
-	 (proofs (get-importchain-proofs theoryname imports files all?)))
-    (cond (proofs
-	   (setq *displayed-proofs* proofs)
-	   (pvs-buffer "Show Proofs"
-	     (with-output-to-string (outstr)
-	       (format outstr "Proof scripts for importchain of theory ~a:"
-		 theoryname)
-	       (show-all-proofs-file proofs outstr valid?))
-	     'popto t)
-	   t)
-	  (t (pvs-message "No proofs found in this file")))))
+(defun show-proofs-importchain (theoryref &optional all?)
+  (with-pvs-file (file theoryname) theoryref
+    (let* ((imports (context-usingchain (or theoryname file)))
+	   (files (delete-duplicates (mapcar #'context-file-of imports)
+				     :test #'string=))
+	   (valid? (every #'(lambda (ff)
+			      (let ((ce (context-entry-of ff)))
+				(and ce (valid-proofs-file ce))))
+			  files))
+	   (proofs (get-importchain-proofs theoryname imports files all?)))
+      (cond (proofs
+	     (setq *displayed-proofs* proofs)
+	     (pvs-buffer "Show Proofs"
+	       (with-output-to-string (outstr)
+		 (format outstr "Proof scripts for importchain of theory ~a:"
+		   theoryname)
+		 (show-all-proofs-file proofs outstr valid?))
+	       'popto t)
+	     t)
+	    (t (pvs-message "No proofs found in this file"))))))
 
 (defun get-importchain-proofs (theoryname imports files &optional all?)
   (declare (ignore theoryname))
@@ -716,16 +717,17 @@
     (show-all-proofs-theory (caar proofs) (cdar proofs) outstr valid?)
     (show-all-proofs-file (cdr proofs) outstr valid?)))
 
-(defun show-all-proofs-theory (theory proofs outstr valid?)
-  (let* ((te (get-context-theory-entry theory))
-	 (finfo (when te (te-formula-info te)))
-	 (th (get-theory theory)))
-    (cond (th
-	   (show-all-proofs-theory* outstr proofs (all-decls th) th))
-	  (finfo
-	   (show-all-proofs-theory-ctx outstr proofs finfo theory valid?))
-	  (t
-	   (show-all-proofs-nostatus outstr theory proofs)))))
+(defun show-all-proofs-theory (theoryref proofs outstr valid?)
+  (with-pvs-file (file theoryname) theoryref
+    (let* ((te (get-context-theory-entry (or theoryref file)))
+	   (finfo (when te (te-formula-info te)))
+	   (th (get-theory theory)))
+      (cond (th
+	     (show-all-proofs-theory* outstr proofs (all-decls th) th))
+	    (finfo
+	     (show-all-proofs-theory-ctx outstr proofs finfo theory valid?))
+	    (t
+	     (show-all-proofs-nostatus outstr theory proofs))))))
 
 ;; (defun show-all-proofs-nostatus (outstr theoryid proofs)
 ;;   (dolist (prf proofs)
