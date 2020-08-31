@@ -39,8 +39,8 @@ and one named \ecmd{\textit{foo}-theory}.
 \section{Exiting PVS}
 
 \begin{pvscmds}
-\icmd{exit-pvs} & \ikey{C-x C-c} & Terminate PVS session \\
-\icmd{suspend-pvs} & \ikey{C-x C-z} & Suspend PVS \\
+\icmd{exit-pvs} & \key{C-x C-c} & Terminate PVS session \\
+\icmd{suspend-pvs} & \key{C-x C-z} & Suspend PVS \\
 \end{pvscmds}
 
 The \cmd{exit-pvs} command first saves the context information (see the
@@ -65,28 +65,28 @@ number.\footnote{This assumes you are running the \texttt{csh} or
 
 \section{Getting Help}
 \begin{pvscmds}
-\icmd{help-pvs}, \icmd{pvs-help} & \ikey{C-c h} & Display the PVS help
+\icmd{help-pvs}, \icmd{pvs-help} & \key{C-c h} & Display the PVS help
   buffer \\
-\icmd{help-pvs-bnf}, \icmd{pvs-help-bnf} & \ikey{C-c C-h b} & Display the
+\icmd{help-pvs-bnf}, \icmd{pvs-help-bnf} & \key{C-c C-h b} & Display the
   pvs grammar \\
-\icmd{help-pvs-language}, & \ikey{C-c C-h l} & Display help for the PVS
+\icmd{help-pvs-language}, & \key{C-c C-h l} & Display help for the PVS
   language \\
 \quad\icmd{pvs-help-language} & & \\
-\icmd{help-pvs-prover}, & \ikey{C-c C-h p} & Display help for the prover
+\icmd{help-pvs-prover}, & \key{C-c C-h p} & Display help for the prover
   commands \\
 \quad\icmd{pvs-help-prover} & & \\
-\icmd{help-pvs-prover-command}, & \ikey{C-c C-h c} &
+\icmd{help-pvs-prover-command}, & \key{C-c C-h c} &
   Display help for prover command \\
 \quad\icmd{pvs-help-prover-command} & & \\
-\icmd{help-pvs-prover-strategy}, & \ikey{C-c C-h s} &
+\icmd{help-pvs-prover-strategy}, & \key{C-c C-h s} &
   Displays the specified prover strategy \\
 \quad\icmd{pvs-help-prover-strategy} & & \\
 \icmd{x-prover-commands} & & Displays the prover commands in a \\
 & & \quad Tcl/Tk window \\
-\icmd{help-pvs-prover-emacs}, & \ikey{C-c C-h e} &
+\icmd{help-pvs-prover-emacs}, & \key{C-c C-h e} &
   Display help for prover emacs commands \\
 \quad\icmd{pvs-help-prover-emacs} & & \\
-\icmd{pvs-release-notes}, & \ikey{C-c C-h r} & Display PVS release notes \\
+\icmd{pvs-release-notes}, & \key{C-c C-h r} & Display PVS release notes \\
 \end{pvscmds}
 
 The \cmd{help-pvs} command displays a summary of PVS commands in the
@@ -123,10 +123,10 @@ buffer.
 \section{Editing PVS Files}
 
 \begin{pvscmds}
-\icmd{forward-theory} & \ikey{M-\char125} & Move forward to beginning of next theory \\
-\icmd{backward-theory} & \ikey{M-\char123} & Move backward to beginning of previous theory \\
-\icmd{find-unbalanced-pvs} & \ikey{C-c ]} & Find unbalanced delimiters \\
-\icmd{comment-region} & \ikey{C-c ;} & Comment out all lines in the current region \\
+\icmd{forward-theory} & \key{M-\char125} & Move forward to beginning of next theory \\
+\icmd{backward-theory} & \key{M-\char123} & Move backward to beginning of previous theory \\
+\icmd{find-unbalanced-pvs} & \key{C-c ]} & Find unbalanced delimiters \\
+\icmd{comment-region} & \key{C-c ;} & Comment out all lines in the current region \\
  & & \emph{Arg:} Uncomment all lines in the current region\\
 \end{pvscmds}
 
@@ -198,7 +198,7 @@ messages.  See the \cmd{show-theory-messages} command
 \subsection{Typechecking}
 
 \begin{pvscmds}
-\icmd{typecheck} & \icmd{tc}, \ikey{C-c C-t} & Typecheck theories in current buffer \\
+\icmd{typecheck} & \icmd{tc}, \key{C-c C-t} & Typecheck theories in current buffer \\
 & & \emph{Arg:} Force reparsing and retypechecking \\
 \icmd{typecheck-importchain} & \icmd{tci} & Typecheck importchain of theories \\
 & & \emph{Arg:} Force reparsing and retypechecking \\
@@ -231,7 +231,7 @@ error occurred.  If that doesn't help, try forcing with
 unless it is a true typecheck error.  If it is not a simple typecheck
 error, send a bug report to \texttt{pvs-bugs@csl.sri.com}.
 
-The typechecker will automatically attempt to typecheck any theories
+The typechecker will attempt to typecheck any theories
 appearing in \texttt{IMPORTING} clauses.  If the theories appear in the
 current context, then the associated file is typechecked, otherwise
 PVS tries to find a file with the same name as the theory.  For
@@ -286,7 +286,8 @@ context, especially if it is tailored to the specifications in that
 context.
 
 \item[Use judgements\index{judgements} to cut down on the number of
-\tccs.]  The language manual describes how to do this.
+  \tccs.]  The language manual describes \newline
+  how to do this.
 
 \item[Use \texttt{NONEMPTY\_TYPE} or \texttt{CONTAINING} in type
 declarations]  This is also described in the language manual.
@@ -372,18 +373,18 @@ to the ``unchecked'' state.}
 \label{prove-commands}
 
 \begin{pvscmds}
-\icmd{prove} & \icmd{pr}, \ikey{C-c p} & Prove formula pointed to by cursor
+\icmd{prove} & \icmd{pr}, \key{C-c p} & Prove formula pointed to by cursor
 \\
-\icmd{x-prove} & \icmd{xpr}, \ikey{C-c C-p x} & Start proof along with X
+\icmd{x-prove} & \icmd{xpr}, \key{C-c C-p x} & Start proof along with X
 display \\
-\icmd{step-proof} & \icmd{prs}, \ikey{C-c C-p s} & Set up proof stepper for
+\icmd{step-proof} & \icmd{prs}, \key{C-c C-p s} & Set up proof stepper for
 current formula \\
-\icmd{x-step-proof} & \icmd{xsp}, \ikey{C-c C-p X} & Combines \cmd{x-prove} and \cmd{step-proof} \\
-\icmd{redo-proof} & \icmd{prr} \ikey{C-c C-p r} & Redo the proof of formula at cursor \\
+\icmd{x-step-proof} & \icmd{xsp}, \key{C-c C-p X} & Combines \cmd{x-prove} and \cmd{step-proof} \\
+\icmd{redo-proof} & \icmd{prr} \key{C-c C-p r} & Redo the proof of formula at cursor \\
  & & \emph{Arg:} don't display the proof \\
 \multicolumn{2}{|l}{
 \icmd{prove-next-unproved-formula}} & \\
-& \icmd{prnext}, \ikey{C-c C-p n} & Start proof on next unproved formula
+& \icmd{prnext}, \key{C-c C-p n} & Start proof on next unproved formula
 \\
 \end{pvscmds}
 
@@ -451,7 +452,7 @@ at any time you want to exit the prover, go to the bottom of the
 around in the \ibuf{*pvs*} buffer or move to any other buffer to examine
 specifications or perform ordinary editing functions.} and type
 \texttt{(quit)} to the \texttt{Rule?}\ prompt.  If there is no such
-prompt, type \ikey{C-c C-c} and \texttt{(restore)} to get to the prompt.
+prompt, type \key{C-c C-c} and \texttt{(restore)} to get to the prompt.
 Once the prover is exited, control is returned to the buffer from which
 the prover was invoked, with the cursor positioned at the beginning of the
 formula being proved.  Do not kill the \ibuf{*pvs*} buffer, as
@@ -460,7 +461,7 @@ this will also kill the associated PVS process.
 \subsection[Proving Sets of Formulas]{Proving Sets of Formulas}
 \begin{pvscmds}
 \icmd{prove-theory}
-  & \icmd{prt}, \ikey{C-c C-p t}
+  & \icmd{prt}, \key{C-c C-p t}
   & Rerun unproved proofs in theory \\
  & & \emph{Arg:} include those already proved \\
 \icmd{prove-theories}
@@ -470,12 +471,12 @@ this will also kill the associated PVS process.
 \multicolumn{2}{|l}{
 \icmd{prove-pvs-file}}
   & Rerun unproved proofs in current file \\
- & \icmd{prf}, \ikey{C-c C-p f}
+ & \icmd{prf}, \key{C-c C-p f}
  & \emph{Arg:} include those already proved \\
 \multicolumn{2}{|l}{
 \icmd{prove-importchain}}
   & Rerun prove-theory on \texttt{IMPORT} chain \\
- & \icmd{pri}, \ikey{C-c C-p i}
+ & \icmd{pri}, \key{C-c C-p i}
  & \emph{Arg:} include those already proved \\
 \multicolumn{2}{|l}{
 \icmd{prove-importchain-subtree}}
@@ -485,7 +486,7 @@ this will also kill the associated PVS process.
 \multicolumn{2}{|l}{
 \icmd{prove-proofchain}}
   & Rerun proofs on formulas in proofchain \\
- & \icmd{prp}, \ikey{C-c C-p p}
+ & \icmd{prp}, \key{C-c C-p p}
  & \emph{Arg:} include those already proved \\
 \multicolumn{2}{|l}{
 \icmd{prove-formulas-theory}}
@@ -495,14 +496,13 @@ this will also kill the associated PVS process.
 \multicolumn{2}{|l}{
 \icmd{prove-formulas-pvs-file}}
  & Try unproved formulas with specified strategy \\
- & \icmd{prff}, \ikey{C-c C-p U}
+ & \icmd{prff}, \key{C-c C-p U}
  & \emph{Arg:} attempt proved formulas as well \\
 \multicolumn{2}{|l}{
 \icmd{prove-formulas-importchain}}
  & Try unproved formulas with specified strategy \\
  & \icmd{prfi} & \emph{Arg:} attempt proved formulas as well \\
-\multicolumn{2}{|l}{
-\icmd{prove-formulas-importchain-subtree}}
+\multicolumn{2}{|l}{\cmd{prove-formulas-importchain-subtree}\cmdindex{prove-formulas-importchain- \newline subtree}} \\
  & Try unproved formulas with specified strategy \\
  & \icmd{prfs} & \emph{Arg:} attempt proved formulas as well \\
 \multicolumn{2}{|l}{
@@ -513,7 +513,7 @@ this will also kill the associated PVS process.
 \multicolumn{2}{|l}{
 \icmd{prove-tccs-pvs-file}}
   & Try unproved TCCs with specified strategy \\
- & \icmd{prff}, \ikey{C-c C-p U}
+ & \icmd{prff}, \key{C-c C-p U}
  & \emph{Arg:} attempt proved TCCs as well \\
 \multicolumn{2}{|l}{
 \icmd{prove-tccs-importchain}}
@@ -526,12 +526,12 @@ this will also kill the associated PVS process.
 \multicolumn{2}{|l}{
 \icmd{prove-untried-theory}}
   & Try untried proofs with specified strategy \\
- & \icmd{prut}, \ikey{C-c C-p u}
+ & \icmd{prut}, \key{C-c C-p u}
  & \emph{Arg:} attempt TCCs as well \\
 \multicolumn{2}{|l}{
 \icmd{prove-untried-pvs-file}}
   & Try untried proofs with specified strategy \\
- & \icmd{pruf}, \ikey{C-c C-p U}
+ & \icmd{pruf}, \key{C-c C-p U}
  & \emph{Arg:} attempt TCCs as well \\
 \multicolumn{2}{|l}{
 \icmd{prove-untried-importchain}}
@@ -566,13 +566,23 @@ completion) one at a time, until an empty theory name is provided, and
 then runs \cmd{prove-theory} on each of these.
 
 
-The commands \cmd{prove-formulas-theory}, \cmd{prove-formulas-pvs-file},
-\cmd{prove-formulas-importchain}, \cmd{prove-formulas-importchain-subtree}
-\cmd{prove-tccs-theory}, \cmd{prove-tccs-pvs-file},
-\cmd{prove-tccs-importchain}, and \cmd{prove-tccs-importchain-subtree}
-\cmd{prove-untried-theory}, \cmd{prove-untried-pvs-file},
-\cmd{prove-untried-importchain}, and
-\cmd{prove-untried-importchain-subtree} are all similar, but allow a
+The commands
+\begin{itemize}\setlength{\topsep}{0pt}\setlength{\parskip}{0pt}%
+  \setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}\renewcommand{\labelitemi}{}
+\item \cmd{prove-formulas-theory},
+\item \cmd{prove-formulas-pvs-file},
+\item \cmd{prove-form\-ulas-importchain},
+\item \cmd{prove-formulas-importchain-subtree},
+\item \cmd{prove-tccs-theory},
+\item \cmd{prove-tccs-pvs-file},
+\item \cmd{prove-tccs-importchain},
+\item \cmd{prove-tccs-importchain-subtree},
+\item \cmd{prove-untried-theory},
+\item \cmd{prove-untried-pvs-file},
+\item \cmd{prove-untried-importchain}, and
+\item \cmd{prove-untried-importchain-subtree}
+\end{itemize}
+are all similar, but allow a
 given strategy to be applied to all applicable formulas.
 
 For the \cmd{prove-formulas} commands, all unproved formulas that are not
@@ -624,7 +634,7 @@ used in the specified proof}
   & Rerun prove-theory on \texttt{IMPORT} chain using
     default decision procedures \\
  & \emph{Arg:} include those already proved \\
-\multicolumn{2}{|l|}{\icmd{prove-importchain-subtree-using-default-dp}} \\
+\multicolumn{2}{|l|}{\cmd{prove-importchain-subtree-using-default-dp}\cmdindex{prove-importchain-subtree-using- \newline default-dp}} \\
   & Rerun prove-theory on subtree of \texttt{IMPORT}
   chain using default dec. procedures \\
  & \emph{Arg:} include those already proved \\
@@ -677,9 +687,9 @@ subprocesses and use the result of the first one to finish.
 \begin{pvscmds}
 \icmd{edit-proof} & \icmd{show-proof} & Edit the proof of the indicated
 formula \\
-\icmd{install-proof} & \ikey{C-c C-i} & Install proof on the indicated formula \\
-\icmd{install-and-step-proof} & \ikey{C-c s} & Install proof on a formula and step \\
-\icmd{install-and-x-step-proof} & \ikey{C-c x} & Install proof on formula, display, and step \\
+\icmd{install-proof} & \key{C-c C-i} & Install proof on the indicated formula \\
+\icmd{install-and-step-proof} & \key{C-c s} & Install proof on a formula and step \\
+\icmd{install-and-x-step-proof} & \key{C-c x} & Install proof on formula, display, and step \\
 \icmd{remove-proof} & & Remove proof associated with a formula \\
 \icmd{show-proof-file} & & Edit the proofs of the indicated PVS file \\
 \icmd{show-orphaned-proofs} & & Edit the orphaned proofs \\
@@ -825,14 +835,14 @@ formula name, theory name, and file name associated with each orphaned
 proof.  A given proof may be selected by moving the cursor to the line and
 typing ``\texttt{s},'' which pops up the \ibuf{Proof} buffer.  This buffer
 is the same as the one generated by the \cmd{edit-proof} command, except
-that there is no default formula, so that \cmd{install-proof} (\ikey{C-c
+that there is no default formula, so that \cmd{install-proof} (\key{C-c
 C-i}) will not work from the \ibuf{Proof} buffer.  Typing a ``\texttt{d}''
 on a proof line deletes the corresponding entry from the orphaned proof
 file, typing a ``\texttt{v}'' pops up a \ibuf{View Proof} buffer, and
 typing a ``\texttt{q}'' exits the orphaned proof buffer.
 
 The commands \cmd{show-proofs-theory}, \cmd{show-proofs-pvs-file}, and
-\cmd{show\-proofs-importchain} display all of the proofs of the associated
+\cmd{show-proofs-importchain} display all of the proofs of the associated
 theory, PVS file, or importchain in a buffer named \ibuf{Show Proofs},
 which is in \texttt{PVS View} mode.
 
@@ -894,11 +904,12 @@ prettyprint the proof file (with extension .prf) associated with a PVS
 file.  Prettyprinted files are easier to read, edit, and email, but they
 take a lot longer to generate.  By default, proof files are prettyprinted.
 
-The commands for exhibiting proofs can get confusing.  To summarize,
+The commands for exhibiting proofs can get confusing.  In short,
 only the \cmd{display-proofs-} commands support multiple proofs, while the
 others just show the default proofs.  The \cmd{show-proof-file} 
 and \cmd{show-orphaned-proofs} commands provide listings that are similar
-to those produced by the \cmd{display-proofs-} commands, but 
+to those produced by the \cmd{display-proofs-} commands, but without the
+ability to set the default proof.
 
 \subsection{Displaying Proof Information}
 
@@ -926,7 +937,8 @@ types \\
  & declaration at the cursor \\
 \icmd{pvs-set-proof-parens} & Control parentheses display in proofs \\
 \icmd{pvs-set-proof-prompt-behavior} & Indicates the kind of prompting at
-the end of a proof; one of \texttt{:ask}, \texttt{:overwrite}, or
+the end of a proof;\\
+ & one of \texttt{:ask}, \texttt{:overwrite}, or
 \texttt{:new} \\
 \icmd{pvs-set-proof-default-description} & Sets a default description
 string for saved proofs \\
@@ -1040,14 +1052,16 @@ questions may be asked:
 \end{itemize}}
 The \cmd{pvs-set-proof-prompt-behavior} command allows you to control this
 behavior.  The possible values for the prompt behavior are:
-\begin{tabular}{ll}
-\texttt{:ask} & the default; all four questions are asked \\
-\texttt{:overwrite} & similar to earlier PVS versions; asks if the proof
-                      should be saved and then simply overwrites the
-                      earlier one \\ 
-\texttt{:add} & asks if the proof should be saved, then creates a new
-                proof with a generated id and empty description.
+
+\begin{tabular}{rp{11cm}}
+  \texttt{:ask} & the default; all four questions are asked \\
+  \texttt{:overwrite} & similar to earlier PVS versions; asks if the proof
+                        should be saved and then simply overwrites the
+                        earlier one \\ 
+  \texttt{:add} & asks if the proof should be saved, then creates a new
+                  proof with a generated id and empty description.
 \end{tabular}
+
 The \cmd{pvs-set-proof-default-description} command allows you to set a
 default description string.  It is used if the prompt is anything but
 \texttt{:ask}, or if the empty string (i.e., just hitting Return) is
@@ -1076,7 +1090,7 @@ The \cmd{add-declaration} command inserts new declarations before the
 declaration at the cursor.  When invoked, it pops up an empty buffer named
 \ibuf{Add Declaration}.  Declarations may be typed in and edited just as
 in a specification buffer.  When editing is completed, the new
-declarations may be installed by typing \ikey{C-c C-c}.  The new
+declarations may be installed by typing \key{C-c C-c}.  The new
 declarations are parsed, typechecked, and checked for uniqueness; if an
 error is discovered it is reported in the usual way.  If there is no
 error, the declarations are inserted above the declaration located at the
@@ -1095,7 +1109,7 @@ any other kind of declaration is not permitted because these modifications
 have potentially non-local ramifications.  This command is similar to the
 \cmd{add-declaration} command: the \ibuf{Modify Declaration} buffer pops
 up containing the declaration at the cursor, and the modified declaration
-is installed by typing \ikey{C-c C-c}.  If the modified declaration
+is installed by typing \key{C-c C-c}.  If the modified declaration
 typechecks and maintains the same id and signature, it is installed in the
 theory and is immediately available for use in a proof.  Otherwise the
 cursor is placed in the vicinity of the error and a message is displayed
@@ -1128,9 +1142,9 @@ and Proof Stepper Commands.
 
 \subsection{General Commands}
 \begin{pvscmds}
-\icmd{pvs-prover-any-command} & \ikey{TAB TAB} & Insert (prompted for) command \\
-\icmd{pvs-prover-quotes} & \ikey{TAB '} & \\
-\icmd{pvs-prover-wrap-with-parens} & \ikey{TAB C-j} & \\
+\icmd{pvs-prover-any-command} & \key{TAB TAB} & Insert (prompted for) command \\
+\icmd{pvs-prover-quotes} & \key{TAB '} & \\
+\icmd{pvs-prover-wrap-with-parens} & \key{TAB C-j} & \\
 \end{pvscmds}
 
 The \cmd{pvs-prover-any-command} prompts for a command (with completion),
@@ -1152,58 +1166,58 @@ any, have been given the command is immediately executed by the prover.
 Not all prover commands are represented below, and even for those that are
 given below not all arguments are prompted for.  Commands with complex
 arguments are generally easier to type in directly, using the
-\ecmd{pvs-prover-any-command} command if desired.  The \ikey{M-p},
-\ikey{M-n}, and \ikey{M-s} keys are particularly useful in this case, as a
+\ecmd{pvs-prover-any-command} command if desired.  The \key{M-p},
+\key{M-n}, and \key{M-s} keys are particularly useful in this case, as a
 mistyped prover command can easily be brought back and corrected, or a
 complex command that is used frequently may be easily brought back.
 
 The prover command associated with the following Emacs commands should be
-obvious.  Details for any given command may be found by typing \ikey{C-h d}
+obvious.  Details for any given command may be found by typing \key{C-h d}
 followed by the command name, e.g., \texttt{pvs-prover-auto-rewrite}.
 
 \begin{pvscmds}
-\icmd{pvs-prover-apply-extensionality} & \ikey{TAB E} & \\
-\icmd{pvs-prover-assert} & \ikey{TAB a} &  \\
-\icmd{pvs-prover-auto-rewrite} & \ikey{TAB A} &  \\
-\icmd{pvs-prover-auto-rewrite-theory} & \ikey{TAB C-a} & \\
-\icmd{pvs-prover-bddsimp} & \ikey{TAB B} & \\
-\icmd{pvs-prover-beta} & \ikey{TAB b} & \\
-\icmd{pvs-prover-case} & \ikey{TAB c} & \\
-\icmd{pvs-prover-case-replace} & \ikey{TAB C} & \\
-\icmd{pvs-prover-decompose-equality} & \ikey{TAB =} & \\
-\icmd{pvs-prover-delete} & \ikey{TAB d} & \\
-\icmd{pvs-prover-do-rewrite} & \ikey{TAB D} & \\
-\icmd{pvs-prover-expand} & \ikey{TAB e} & \\
-\icmd{pvs-prover-extensionality} & \ikey{TAB x} & \\
-\icmd{pvs-prover-flatten} & \ikey{TAB f} & \\
-\icmd{pvs-prover-grind} & \ikey{TAB G} & \\
-\icmd{pvs-prover-ground} & \ikey{TAB g} & \\
-\icmd{help-pvs-prover-command} & \ikey{TAB H} & \\
-\icmd{pvs-prover-hide} & \ikey{TAB C-h} & \\
-\icmd{pvs-prover-iff} & \ikey{TAB F} & \\
-\icmd{pvs-prover-induct} & \ikey{TAB I} & \\
-\icmd{pvs-prover-induct-and-simplify} & \ikey{TAB C-s} & \\
-\icmd{pvs-prover-inst} & \ikey{TAB i} & \\
-\icmd{pvs-prover-inst-question} & \ikey{TAB ?} & \\
-\icmd{pvs-prover-lemma} & \ikey{TAB L} & \\
-\icmd{pvs-prover-lift-if} & \ikey{TAB l} & \\
-\icmd{pvs-prover-model-check} & \ikey{TAB M} & \\
-\icmd{pvs-prover-musimp} & \ikey{TAB m} & \\
-\icmd{pvs-prover-name} & \ikey{TAB n} & \\
-\icmd{pvs-prover-postpone} & \ikey{TAB P} & \\
-\icmd{pvs-prover-prop} & \ikey{TAB p} & \\
-\icmd{pvs-prover-quit} & \ikey{TAB C-q} & \\
-\icmd{pvs-prover-replace} & \ikey{TAB r} & \\
-\icmd{pvs-prover-replace-eta} & \ikey{TAB 8} & \\
-\icmd{pvs-prover-rewrite} & \ikey{TAB R} & \\
-\icmd{pvs-prover-skolem-bang} & \ikey{TAB \char033} & \\
-\icmd{pvs-prover-skosimp} & \ikey{TAB S} & \\
-\icmd{pvs-prover-skosimp-star} & \ikey{TAB *} & \\
-\icmd{pvs-prover-split} & \ikey{TAB s} & \\
-\icmd{pvs-prover-tcc} & \ikey{TAB T} & \\
-\icmd{pvs-prover-then} & \ikey{TAB C-t} & \\
-\icmd{pvs-prover-typepred} & \ikey{TAB t} & \\
-\icmd{pvs-prover-undo} & \ikey{TAB u} & \\
+\icmd{pvs-prover-apply-extensionality} & \key{TAB E} & \\
+\icmd{pvs-prover-assert} & \key{TAB a} &  \\
+\icmd{pvs-prover-auto-rewrite} & \key{TAB A} &  \\
+\icmd{pvs-prover-auto-rewrite-theory} & \key{TAB C-a} & \\
+\icmd{pvs-prover-bddsimp} & \key{TAB B} & \\
+\icmd{pvs-prover-beta} & \key{TAB b} & \\
+\icmd{pvs-prover-case} & \key{TAB c} & \\
+\icmd{pvs-prover-case-replace} & \key{TAB C} & \\
+\icmd{pvs-prover-decompose-equality} & \key{TAB =} & \\
+\icmd{pvs-prover-delete} & \key{TAB d} & \\
+\icmd{pvs-prover-do-rewrite} & \key{TAB D} & \\
+\icmd{pvs-prover-expand} & \key{TAB e} & \\
+\icmd{pvs-prover-extensionality} & \key{TAB x} & \\
+\icmd{pvs-prover-flatten} & \key{TAB f} & \\
+\icmd{pvs-prover-grind} & \key{TAB G} & \\
+\icmd{pvs-prover-ground} & \key{TAB g} & \\
+\icmd{help-pvs-prover-command} & \key{TAB H} & \\
+\icmd{pvs-prover-hide} & \key{TAB C-h} & \\
+\icmd{pvs-prover-iff} & \key{TAB F} & \\
+\icmd{pvs-prover-induct} & \key{TAB I} & \\
+\icmd{pvs-prover-induct-and-simplify} & \key{TAB C-s} & \\
+\icmd{pvs-prover-inst} & \key{TAB i} & \\
+\icmd{pvs-prover-inst-question} & \key{TAB ?} & \\
+\icmd{pvs-prover-lemma} & \key{TAB L} & \\
+\icmd{pvs-prover-lift-if} & \key{TAB l} & \\
+\icmd{pvs-prover-model-check} & \key{TAB M} & \\
+\icmd{pvs-prover-musimp} & \key{TAB m} & \\
+\icmd{pvs-prover-name} & \key{TAB n} & \\
+\icmd{pvs-prover-postpone} & \key{TAB P} & \\
+\icmd{pvs-prover-prop} & \key{TAB p} & \\
+\icmd{pvs-prover-quit} & \key{TAB C-q} & \\
+\icmd{pvs-prover-replace} & \key{TAB r} & \\
+\icmd{pvs-prover-replace-eta} & \key{TAB 8} & \\
+\icmd{pvs-prover-rewrite} & \key{TAB R} & \\
+\icmd{pvs-prover-skolem-bang} & \key{TAB \char033} & \\
+\icmd{pvs-prover-skosimp} & \key{TAB S} & \\
+\icmd{pvs-prover-skosimp-star} & \key{TAB *} & \\
+\icmd{pvs-prover-split} & \key{TAB s} & \\
+\icmd{pvs-prover-tcc} & \key{TAB T} & \\
+\icmd{pvs-prover-then} & \key{TAB C-t} & \\
+\icmd{pvs-prover-typepred} & \key{TAB t} & \\
+\icmd{pvs-prover-undo} & \key{TAB u} & \\
 \end{pvscmds}
 
 \subsection{Proof Stepper Commands}
@@ -1211,11 +1225,11 @@ followed by the command name, e.g., \texttt{pvs-prover-auto-rewrite}.
 \label{proof-stepper}
 
 \begin{pvscmds}
-\icmd{pvs-prover-one-proof-step} & \ikey{TAB 1} & \\
-\icmd{pvs-prover-many-proof-steps} & \ikey{TAB \char064} & \\
-\icmd{pvs-prover-undo-one-proof-step} & \ikey{TAB U} & \\
-\icmd{pvs-prover-undo-many-proof-steps} & \ikey{TAB C-u} & \\
-\icmd{pvs-prover-skip-one-proof-step} & \ikey{TAB \#} & \\
+\icmd{pvs-prover-one-proof-step} & \key{TAB 1} & \\
+\icmd{pvs-prover-many-proof-steps} & \key{TAB \char064} & \\
+\icmd{pvs-prover-undo-one-proof-step} & \key{TAB U} & \\
+\icmd{pvs-prover-undo-many-proof-steps} & \key{TAB C-u} & \\
+\icmd{pvs-prover-skip-one-proof-step} & \key{TAB \#} & \\
 \end{pvscmds}
 
 The proof stepper is invoked with the \cmd{step-proof} or
@@ -1267,15 +1281,15 @@ The highlight is only accurate right after one of these commands.
 \section{Prettyprinting}
 
 \begin{pvscmds}
-\icmd{prettyprint-theory} & \icmd{ppt}, \ikey{C-c C-q t} & Prettyprint
+\icmd{prettyprint-theory} & \icmd{ppt}, \key{C-c C-q t} & Prettyprint
   theory \\
-\icmd{prettyprint-pvs-file} & \icmd{ppf}, \ikey{C-c C-q f} & Prettyprint
+\icmd{prettyprint-pvs-file} & \icmd{ppf}, \key{C-c C-q f} & Prettyprint
   PVS file \\
-\icmd{prettyprint-declaration} & \icmd{ppd}, \ikey{C-c C-q d},
-  \ikey{C-M-q} & Prettyprint declaration \\
-\icmd{prettyprint-region} & \icmd{ppr}, \ikey{C-c C-q r},
-  \ikey{C-M-\char'134} & Prettyprint region \\
-\icmd{prettyprint-theory-instance} & \icmd{ppti}, \ikey{C-c C-q i} &
+\icmd{prettyprint-declaration} & \icmd{ppd}, \key{C-c C-q d},
+  \key{C-M-q} & Prettyprint declaration \\
+\icmd{prettyprint-region} & \icmd{ppr}, \key{C-c C-q r},
+  \key{C-M-\char'134} & Prettyprint region \\
+\icmd{prettyprint-theory-instance} & \icmd{ppti}, \key{C-c C-q i} &
   Prettyprint theory instance \\
 \icmd{pvs-set-linelength} & & Set prettyprinting line length \\
 \end{pvscmds}
@@ -1290,7 +1304,7 @@ to the earlier state.  Prettyprint commands are used primarily to
 change to an existing declaration.
 
 The \cmd{prettyprint-theory} command prettyprints the specified theory,
-and the \cmd{prettyprint-pvs-file} prettyprints all the theories of the
+and the \cmd{pretty\-print-pvs-file} prettyprints all the theories of the
 specified file; if the file has only one theory, then these are
 equivalent.  The \cmd{prettyprint-declaration} command prettyprints the
 declaration at the cursor and the \cmd{prettyprint-region} command
@@ -1321,9 +1335,9 @@ window.
 \label{viewing-tccs}
 
 \begin{pvscmds}
-\icmd{prettyprint-expanded} & \icmd{ppe}, \ikey{C-c C-q e}& Prettyprint
+\icmd{prettyprint-expanded} & \icmd{ppe}, \key{C-c C-q e}& Prettyprint
   expanded theory in new buffer \\
-\icmd{show-tccs} & \icmd{tccs}, \ikey{C-c C-q s} & Show the \tccs\ of the
+\icmd{show-tccs} & \icmd{tccs}, \key{C-c C-q s} & Show the \tccs\ of the
   specified theory \\
  & & \emph{Arg:} Show only unproved \tccs \\
 \icmd{show-declaration-tccs} & & Show the \tccs\ of the specified
@@ -1361,7 +1375,7 @@ extension \texttt{.tccs}; the buffer is read-only.  Proofs of \tccs\ are
 initiated exactly as described above.
 
 The \cmd{show-declaration-tccs} command pops up a buffer with the name
-\texttt{\emph{theory.declid}.tccs}, displaying just the \tccs\ of the
+\texttt{\emph{theory.decl\-id}.tccs}, displaying just the \tccs\ of the
 specified declaration.  Proofs of any displayed \tccs\ may be initiated in
 the usual way, simply by moving the cursor to the formula to be proved and
 invoking the \cmd{prove} command.
@@ -1381,7 +1395,7 @@ information is current.
 \subsection{Finding Files and Theories}
 
 \begin{pvscmds}
-\icmd{find-pvs-file} & \icmd{ff}, \ikey{C-c C-f} & Find buffer containing named PVS file\\
+\icmd{find-pvs-file} & \icmd{ff}, \key{C-c C-f} & Find buffer containing named PVS file\\
 \icmd{find-theory} & \icmd{ft} & Find buffer containing named theory \\
 \icmd{view-prelude-file} & \icmd{vpf} & List prelude file \\
 \icmd{view-prelude-theory} & \icmd{vpt} & List prelude theory \\
@@ -1505,7 +1519,7 @@ the same effect.
 \subsection{Saving Files}
 
 \begin{pvscmds}
-\icmd{save-pvs-file} & \ikey{C-x C-s} & Save PVS file in current buffer \\
+\icmd{save-pvs-file} & \key{C-x C-s} & Save PVS file in current buffer \\
 \icmd{save-some-pvs-files} & \icmd{ssf} & Save modified PVS files \\
 \icmd{save-pvs-buffer} & & Saves the current buffer to file \\
 \end{pvscmds}
@@ -1542,7 +1556,7 @@ The \cmd{smail-pvs-files} command prompts for a root file, an e-mail
 address (defaults to \texttt{pvs-bugs@csl.sri.com}, or the last address
 used in this session), a \texttt{CC:} list, and a subject line.  A mail
 buffer is then popped up so that you can compose your message.  When you
-have completed your message, type \ikey{C-c C-c} to send it.\footnote{If
+have completed your message, type \key{C-c C-c} to send it.\footnote{If
 you change your mind about sending a message, simply kill (\texttt{C-x
 k}) the \ibuf{*mail*} buffer.}  At that point the patch revision number
 is added to the end of your message, the PVS files in the import chain of
@@ -1611,7 +1625,7 @@ just a subset of the theories in the import chain.  Note that the system
 uses \texttt{\$\$\$} followed by the file name as a separator; if these
 are modified files may be merged randomly when they are undumped.  The
 dump file buffer is put in outline mode, with these separators treated as
-headings.  The \icmd{hide-body} (\ikey{C-c C-t}) command will show just
+headings.  The \icmd{hide-body} (\key{C-c C-t}) command will show just
 these separators, making it easy to remove entire files.  See the Emacs
 manual for more details on outline mode.
 
@@ -1666,10 +1680,10 @@ with each print job.
 \subsection{Generating \texttt{alltt} Output}
 
 \begin{pvscmds}
-\icmd{alltt-theory} & \icmd{alt}, \ikey{C-c C-a t} & Format theory for \LaTeX\ alltt environment \\
-\icmd{alltt-pvs-file} & \icmd{alf}, \ikey{C-c C-a f} & Format theories of file for \LaTeX\ alltt \\
-\icmd{alltt-importchain} & \icmd{ali}, \ikey{C-c C-a i} & Format theories in import chain for \LaTeX\ alltt \\
-\icmd{alltt-proof} & \icmd{alp}, \ikey{C-c C-a p} & Format last proof for
+\icmd{alltt-theory} & \icmd{alt}, \key{C-c C-a t} & Format theory for \LaTeX\ alltt environment \\
+\icmd{alltt-pvs-file} & \icmd{alf}, \key{C-c C-a f} & Format theories of file for \LaTeX\ alltt \\
+\icmd{alltt-importchain} & \icmd{ali}, \key{C-c C-a i} & Format theories in import chain for \LaTeX\ alltt \\
+\icmd{alltt-proof} & \icmd{alp}, \key{C-c C-a p} & Format last proof for
 \LaTeX alltt \\
  & & \emph{Arg:} make it brief\\
 \end{pvscmds}
@@ -1697,20 +1711,20 @@ which case it provides a verbose printout of the proof.
 \label{latex-output}
 
 \begin{pvscmds}
-\icmd{latex-theory} & \icmd{ltt}, \ikey{C-c C-l t} & Create \LaTeX\ for
+\icmd{latex-theory} & \icmd{ltt}, \key{C-c C-l t} & Create \LaTeX\ for
   theory \\
-\icmd{latex-pvs-file} & \icmd{ltf}, \ikey{C-c C-l f} & Create \LaTeX\ for
+\icmd{latex-pvs-file} & \icmd{ltf}, \key{C-c C-l f} & Create \LaTeX\ for
   theories of PVS file \\
-\icmd{latex-importchain} & \icmd{lti}, \ikey{C-c C-l i} & Create \LaTeX\
+\icmd{latex-importchain} & \icmd{lti}, \key{C-c C-l i} & Create \LaTeX\
   for theories in importchain \\
-\icmd{latex-proof} & \icmd{ltp}, \ikey{C-c C-l p} & Create \LaTeX\ for
+\icmd{latex-proof} & \icmd{ltp}, \key{C-c C-l p} & Create \LaTeX\ for
   last proof \\
  & & \emph{Arg:} make it brief\\
-\icmd{latex-theory-view} & \icmd{ltv}, \ikey{C-c C-l v} & Create \LaTeX\
+\icmd{latex-theory-view} & \icmd{ltv}, \key{C-c C-l v} & Create \LaTeX\
   for theory, \LaTeX\ and view \\
-\icmd{latex-proof-view} & \icmd{lpv}, \ikey{C-c C-l P} & Create \LaTeX\
+\icmd{latex-proof-view} & \icmd{lpv}, \key{C-c C-l P} & Create \LaTeX\
   for last proof, \LaTeX, view \\
-\icmd{latex-set-linelength} & \icmd{lts}, \ikey{C-c C-l s} & Set the
+\icmd{latex-set-linelength} & \icmd{lts}, \key{C-c C-l s} & Set the
   linelength for \LaTeX\ text \\
 \end{pvscmds}
 
@@ -2000,8 +2014,7 @@ your display will probably be different, depending on the window manager
 you use and the defaults you set up for it.
 
 \begin{figure}
-\vspace{8in}
-\special{psfile=proofwindows.ps hscale=80 vscale=80 hoffset=-20 voffset=-10}
+\includegraphics[width=\textwidth]{proofwindows.png}  
 \caption{A Proof Display Example}\label{proofwindow}
 \end{figure}
 
@@ -2051,7 +2064,7 @@ specified below.  The \texttt{currentColor} is used for the current
 sequent in the proof tree.  The \texttt{ancestorColor} is used for all
 the ancestors of the current sequent, up to the root.  The
 \texttt{doneColor} is used for sequents which have been proved.  The
-\texttt{tccColor} is used for TCC's.  When \texttt{pvs.circleCurrent}
+\texttt{tccColor} is used for TCC's.  When \texttt{pvs.circle\-Current}
 is set, the current sequent in the proof tree is circled.
 
 Proof commands which are longer than \texttt{abbrevLen} characters are
@@ -2064,7 +2077,7 @@ is not \texttt{NIL}, then \cmd{prove} automatically calls
 \texttt{.pvsemacs}\index{.pvsemacs@\texttt{.pvsemacs}} file.
 
 The \cmd{x-theory-hierarchy} command prompts for a theory name and
-displays the \texttt{IMPORTING} hierarchy rooted at that theory.  In a
+displays the \texttt{IM\-PORTING} hierarchy rooted at that theory.  In a
 complex hierarchy, it can be difficult to follow the lines; to make
 this easier, when you move the mouse onto a theory identifier, all the
 lines connecting that theory to other theories turn the
@@ -2074,8 +2087,7 @@ theory hierarchy for the \texttt{finite\_sets} library, as produced from
 clicking on the \texttt{Gen PS} button and selecting \texttt{portrait}.
 
 \begin{figure}
-\vspace{8in}
-\special{psfile=finite_sets_top_hier.ps hscale=45 vscale=90 hoffset=80 voffset=-60}
+\includegraphics[width=\textwidth]{finite_sets_top_hier.png}
 \caption{The Theory Hierarchy for the \texttt{finite\_sets} Library}\label{x-hierarchy}
 \end{figure}
 
@@ -2210,14 +2222,14 @@ Note that the built-in prelude may not be removed this way.
 \section{Browsing}
 
 \begin{pvscmds}
-\icmd{show-declaration} & \ikey{M-.} & Show declaration of symbol at cursor
+\icmd{show-declaration} & \key{M-.} & Show declaration of symbol at cursor
 \\
-\icmd{goto-declaration} & \ikey{M-'} & Go to declaration of symbol at cursor \\
-\icmd{find-declaration} & \ikey{M-,} & Search for declarations of given symbol \\
-\icmd{whereis-declaration-used} & \ikey{M-;} & Search for declarations which reference identifier \\
-\icmd{whereis-identifier-used} & \ikey{C-M-;} & Search for declarations which reference identifier \\
-\icmd{list-declarations} & \ikey{M-:} & Produce list of declarations in import chain \\
-\icmd{show-expanded-form} & \ikey{C-.} & Show expanded form of term
+\icmd{goto-declaration} & \key{M-'} & Go to declaration of symbol at cursor \\
+\icmd{find-declaration} & \key{M-,} & Search for declarations of given symbol \\
+\icmd{whereis-declaration-used} & \key{M-;} & Search for declarations which reference identifier \\
+\icmd{whereis-identifier-used} & \key{C-M-;} & Search for declarations which reference identifier \\
+\icmd{list-declarations} & \key{M-:} & Produce list of declarations in import chain \\
+\icmd{show-expanded-form} & \key{C-.} & Show expanded form of term
 containing region\\
 & & \emph{Arg:} also expand names from the prelude \\
 \end{pvscmds}
@@ -2229,7 +2241,7 @@ files.
 
 The \cmd{show-declaration} command is used to determine the declaration
 associated with the symbol or name at the cursor.  Positioning the cursor
-on a name in the specification and typing \ikey{M-.} yields a pop-up
+on a name in the specification and typing \key{M-.} yields a pop-up
 buffer displaying the declaration.  This command is useful to determine
 the type of a name, or the resolution determined by the typechecker for an
 overloaded name.  Note that when used on a record accessor it will
@@ -2271,10 +2283,10 @@ region is not defined, the current cursor location is used instead.
 \section{Theory Status}
 
 \begin{pvscmds}
-\icmd{status-theory} & \icmd{stt}, \ikey{C-c C-s t} & Status of specified theory (parsed, etc.) \\
-\icmd{status-pvs-file} & \icmd{stf}, \ikey{C-c C-s f} & Status of theories of current file \\
-\icmd{status-importchain} & \icmd{sti}, \ikey{C-c C-s i}  & Status of theories in import chain of theory \\
-\icmd{status-importbychain} & \icmd{stb}, \ikey{C-c C-s b} & Status of
+\icmd{status-theory} & \icmd{stt}, \key{C-c C-s t} & Status of specified theory (parsed, etc.) \\
+\icmd{status-pvs-file} & \icmd{stf}, \key{C-c C-s f} & Status of theories of current file \\
+\icmd{status-importchain} & \icmd{sti}, \key{C-c C-s i}  & Status of theories in import chain of theory \\
+\icmd{status-importbychain} & \icmd{stb}, \key{C-c C-s b} & Status of
 theories in import by chain \\
 \end{pvscmds}
 
@@ -2289,7 +2301,7 @@ The number of theory warnings and messages is also displayed.  See the
 page~\pageref{tc-info} for more information on these commands.
 
 The \cmd{status-theory} command provides the status of the specified
-theory in the minibuffer.  The \cmd{status-pvs-file},
+theory in the mini\-buffer.  The \cmd{status-pvs-file},
 \cmd{status-importchain}, and \cmd{status\-importbychain} commands display
 the information in the \ibuf{PVS Status} buffer with a line for each
 theory.  Using any of these commands on the \texttt{sum} theory yields
@@ -2301,7 +2313,7 @@ The \cmd{show-theory-warnings} and \cmd{show-theory-messages}
 (page~\pageref{tc-info}) may be used to see any warnings or messages.
 
 The \cmd{status-importchain} and \cmd{status-importbychain} commands
-display the \texttt{IMPORTING} chains of the specified theory, indented to
+display the \texttt{IM\-PORT\-ING} chains of the specified theory, indented to
 indicate the tree structure.  The \cmd{status-importchain} command works
 recursively down the \texttt{IMPORTING}s, displaying the status of each
 theory unless it has been displayed earlier in the buffer.  The
@@ -2312,7 +2324,7 @@ theory unless it has been displayed earlier in the buffer.  The
 \label{proof-status}
 
 \begin{pvscmds}
-\icmd{status-proof} & \icmd{sp}, \ikey{C-c C-s p} & Status of formula at cursor \\
+\icmd{status-proof} & \icmd{sp}, \key{C-c C-s p} & Status of formula at cursor \\
 \icmd{status-proof-theory} & \icmd{spt} & Status of formulas in theory \\
  & & \emph{Arg:} provide timing information \\
 \icmd{status-proof-pvs-file} & \icmd{spf} & Status of formulas in PVS file \\
@@ -2351,7 +2363,7 @@ $\mathcal{B}$ and vice-versa).  Because judgements are used implicitly,
 they may be included in the analysis even if they are not actually used.
 
 The commands \cmd{status-proofchain-theory},
-\icmd{status-proofchain-pvs-file}, and
+\icmd{status-proofchain-pvs-file}, and \newline
 \icmd{status-proofchain-importchain} provide the proof chain analysis for
 each formula of the theory, PVS file, and import chain of the specified
 theory, respectively, in the \ibuf{PVS Status} buffer.
@@ -2401,9 +2413,9 @@ exiting the system and starting up again.
 
 \begin{pvscmds}
 \icmd{pvs-status} & & Find out if Lisp is busy \\
-\icmd{pvs-interrupt-subjob} & \ikey{C-c C-c} & Interrupt PVS (lisp)
+\icmd{pvs-interrupt-subjob} & \key{C-c C-c} & Interrupt PVS (lisp)
   process \\
-\icmd{reset-pvs} & \ikey{C-z C-g} & Abort PVS and resynchronize \\
+\icmd{reset-pvs} & \key{C-z C-g} & Abort PVS and resynchronize \\
 \end{pvscmds}
 
 Many PVS commands run in the background, allowing other editing
@@ -2418,11 +2430,11 @@ about both the currently running command and the command queue.
 
 To interrupt PVS for any reason, the following procedure is recommended.
 First, if the keyboard is not responding, type the built-in Emacs
-command \cmd{keyboard-quit} (\ikey{C-g}); it may need to be struck a few
+command \cmd{keyboard-quit} (\key{C-g}); it may need to be struck a few
 times before there is any response---usually a beep and \texttt{Quit}
 appears in the minibuffer.  This command interrupts Emacs, but has no
 effect on any PVS commands that are still running.  After Emacs responds
-go to the end of the \texttt{*pvs*} buffer, and type \ikey{C-c C-c}.  If
+go to the end of the \texttt{*pvs*} buffer, and type \key{C-c C-c}.  If
 Lisp is able to respond, you should see the message
 {\small\small
 \begin{alltt}
@@ -2442,7 +2454,7 @@ prover command (see the prover guide~\cite{PVS:prover}), or
 
 The Lisp process may not be able to respond to the interrupt right away,
 especially if it has started garbage collection.  If you really want to
-interrupt it, type more \ikey{C-c C-c} interrupts; after about six of them
+interrupt it, type more \key{C-c C-c} interrupts; after about six of them
 it is supposed to respond regardless.  This is not recommended in general
 as it can leave the Lisp process in an unstable state.  Unfortunately, we
 have seen Allegro Common Lisp get into a state where it is completely
@@ -2454,7 +2466,7 @@ while allowing Emacs to continue.
 The \cmd{reset-pvs} command aborts any ongoing activity in PVS; its
 effects depend on whether it is issued from the \ibuf{*pvs*} buffer or
 from some other buffer.  In the former case, \cmd{reset-pvs} simply
-interrupts PVS as if you typed \icmd{C-c C-c}, as described above.  If
+interrupts PVS as if you typed \key{C-c C-c}, as described above.  If
 \cmd{reset-pvs} is issued somewhere other than the \ibuf{*pvs*} buffer,
 you are asked whether to reset PVS in case the command was typed
 accidentally; if not, the current command is aborted and the command queue
@@ -2462,6 +2474,6 @@ is emptied.
 
 If you wish to kill the PVS Lisp process, while keeping your current Emacs
 session, simply go to the \texttt{*pvs*} buffer and kill it
-\icmd{kill-buffer} \ikey{C-x k}, then run \icmd{pvs} and the PVS Lisp
+\icmd{kill-buffer} \key{C-x k}, then run \icmd{pvs} and the PVS Lisp
 process will restart.  All your other Emacs buffers are unaffected by
 this.
