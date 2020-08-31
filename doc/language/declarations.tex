@@ -55,6 +55,8 @@ instantiated with types or expressions.}
 
 \pvsbnf{bnf-decls}{Declarations Syntax}
 \index{syntax!declarations}
+\pvsbnf{bnf-decls-aux}{Declarations Syntax (cont.)}
+\index{syntax!declarations}
 
 Declarations generally consist of an
 \emph{identifier}\index{declaration!identifier}, an optional list of
@@ -329,9 +331,10 @@ a minimum, while guaranteeing soundness.  The details are provided below.
 First note that having variables range over an empty type causes no
 difficulties,\footnote{If the type \texttt{T} is empty, then the following
 two equivalences hold:
-\begin{pvsex}
+\begin{alltt}
   (FORALL (x: T): p(x)) IFF TRUE \quad \mbox{\textrm{and}} \quad (EXISTS (x: T): p(x)) IFF FALSE
-\end{pvsex}}
+\end{alltt}
+}
 so variable declarations and variable bindings never trigger the
 nonemptiness check.
 
@@ -845,7 +848,7 @@ Section~\ref{auto-rewrite-decls} and in proofs (see the \texttt{lemma} command
 in the PVS Prover Guide~\cite{PVS:prover}).  The expression that makes up
 the body of the formula is a boolean expression.  Axioms, assumptions, and
 obligations are introduced with the keywords \texttt{AXIOM},
-\texttt{ASSUMPTION}, and \texttt{OBLIGATION}, respectively.  Axioms may
+\texttt{ASSUMPTION}, and \texttt{OBLIGA\-TION}, respectively.  Axioms may
 also be introduced using the keyword \texttt{POSTULATE}\index{postulate}.
 In the prelude postulates are used to indicate axioms that are provable by
 the decision procedures, but not from other axioms.  Theorems may be

@@ -15,7 +15,9 @@
 {\hlink{IdOps}\opt{\hlink{DeclFormals}}\ \lit{:} \lit{VAR} \hlink{TypeExpr}}
 
 \production{ConstDecl}
-{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \hlink{TypeExpr} \opt{\lit{=} \hlink{Expr}}}
+{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \}
+    \choice \ite{\hlink{Bindings}}} \\[-0.1in]
+  & & \lit{:} \hlink{TypeExpr} \opt{\lit{=} \hlink{Expr}}}
 
 \production{RecursiveDecl}
 {\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{RECURSIVE} \\[-0.1in]
@@ -41,12 +43,13 @@
 {\hlink{SubtypeJudgement} \choice \hlink{ConstantJudgement}}
 
 \production{SubtypeJudgement}
-{\opt{\hlink{IdOp}\opt{\hlink{DeclFormals}} \lit{:}} \lit{JUDGEMENT} \ites{\hlink{TypeExpr}}{,} \lit{SUBTYPE\_OF} \hlink{TypeExpr}}
+{\opt{\hlink{IdOp}\opt{\hlink{DeclFormals}} \lit{:}} \lit{JUDGEMENT} \\[-0.1in]
+  & & \quad \ites{\hlink{TypeExpr}}{,} \lit{SUBTYPE\_OF} \hlink{TypeExpr}}
 
 \production{ConstantJudgement}
 {\opt{\hlink{IdOp}\opt{\hlink{DeclFormals}} \lit{:}} \opt{\lit{RECURSIVE}}
-\lit{JUDGEMENT} \ites{\hlink{ConstantReference}}{,}  \\[-0.1in]
-& & \quad \lit{HAS\_TYPE} \hlink{TypeExpr}}
+  \lit{JUDGEMENT} \\[-0.1in]
+  && \quad \ites{\hlink{ConstantReference}}{,} \lit{HAS\_TYPE} \hlink{TypeExpr}}
 
 \production{ConstantReference}
 {\hlink{Name} \rep{\hlink{Bindings}}\\[-0.1in]
@@ -61,28 +64,5 @@
 {\brc{\lit{AUTO\_REWRITE} \choice \lit{AUTO\_REWRITE+} \choice
 \lit{AUTO\_REWRITE-}} \\[-0.1in]
 & & \quad \ites{\hlink{RewriteName}}{,}}
-
-\production{RewriteName}
-{\hlink{Name} \opt{\lit{!} \opt{\lit{!}}} \opt{\lit{:}
-\brc{\hlink{TypeExpr} \choice \hlink{FormulaName}}}}
-
-\production{DeclFormals}
-{\lit{[}\ \ites{\hlink{DeclFormal}}{,} \lit{]}}
-
-\production{DeclFormal}
-{TheoryFormalType}
-%{\opt{\hlink{TheoryFormalDecl}}
-
-\production{Bindings}
-{\lit{(} \ites{\hlink{Binding}}{,} \lit{)}}
-
-\production{Binding}
-{\hlink{TypedId} \choice \{ \lit{(} \hlink{TypedIds} \lit{)} \} }
-
-\production{TypedIds}
-{\hlink{IdOps} \opt{\lit{:} \hlink{TypeExpr}} \opt{\lit{|} \hlink{Expr}}}
-
-\production{TypedId}
-{\hlink{IdOp} \opt{\lit{:} \hlink{TypeExpr}} \opt{\lit{|} \hlink{Expr}}}
 
 \end{bnf}

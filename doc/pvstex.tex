@@ -20,33 +20,29 @@
                            \figurelabel{#3}\figurecap{#2}%
                            \begin{longfigure}\input{#1}\end{longfigure}}
 
-\newcommand{\pvstheory}[3]
-  {\begin{figure}[htb]\begin{boxedminipage}{\textwidth}%
-   {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}%
-   \caption{#2}\label{#3}\end{figure}}
-
 \newcommand{\bpvstheory}[3]
-  {\begin{figure}[b]\begin{boxedminipage}{\textwidth}%
-   {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}%
-   \caption{#2}\label{#3}\end{figure}}
+{\begin{figure}[b]\begin{boxedminipage}{\textwidth}%
+      {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}%
+    \caption{#2}\label{#3}\end{figure}}
 
 \newcommand{\spvstheory}[1]
-  {\vspace{0.1in}\par\noindent\begin{boxedminipage}{\textwidth}%
-   {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}\vspace{0.1in}%
-   }
-%\newenvironment{spvstext}%
-%  {\vspace{0.1in}\par\noindent\begin{boxedminipage}{\textwidth}%
-%   \smaller\smaller\begin{alltt}}%
-%  {\end{alltt}\end{boxedminipage}\vspace{0.1in}%
-%   }
+{\vspace{0.1in}\par\noindent\begin{boxedminipage}{\textwidth}%
+    {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}\vspace{0.1in}%
+}
 
+\CustomVerbatimEnvironment{pvsex}{Verbatim}{commandchars=\\\{\},frame=single,fontsize=\relsize{-1}}
 
-%  {\begin{boxedminipage}{\textwidth}{\smaller\smaller\begin{alltt}#1\end{alltt}}\end{boxedminipage}}
-%\newenvironment{spvstheory}{\par\noindent\begin{boxedminipage}{\textwidth}\smaller\smaller\begin{alltt}}{\end{alltt}\end{boxedminipage}}
+\CustomVerbatimCommand{\pvsinput}{VerbatimInput}{commandchars=\\\{\},frame=single,fontsize=\relsize{-1}}
 
-\newenvironment{pvsex}%
-  {\setlength{\topsep}{0in}\smaller\begin{alltt}}%
-  {\end{alltt}}
+\newcommand{\pvstheory}[3]
+  {\begin{figure}[htb]%
+      \pvsinput{#1}%
+      \caption{#2}\label{#3}%
+    \end{figure}}
+
+% \newenvironment{pvsex}%
+%   {\setlength{\topsep}{0in}\smaller\begin{alltt}}%
+%   {\end{alltt}}
 
 \newcommand{\pvsbnf}[2]
   {\begin{figure}[htb]\begin{boxedminipage}{\textwidth}%
@@ -75,7 +71,7 @@
      {\it Command} & {\it \,\,Function}\\ \hline}%
   {\hline\end{tabular*}\vspace{0.1in}}
 
-\newcommand{\cmd}[1]{{\tt #1}}
+\newcommand{\cmd}[1]{\texttt{#1}}
 \newcommand{\ecmd}[1]{{\tt M-x #1}}
 
 \newcommand{\latex}{\LaTeX}                  %  LaTeX
