@@ -665,7 +665,9 @@ is replaced with replacement."
 	      (when cth
 		(if (eq (id cth) id)
 		    cth
-		    (let ((imps (get-current-imported-theories id)))
+		    (let ((imps (remove-if-not #'(lambda (imp)
+						   (eq (id imp) id))
+				  (get-current-imported-theories id))))
 		      (unless (cdr imps)
 			(car imps))))))
 	    ;; (car (assoc id (prelude-libraries-uselist)
