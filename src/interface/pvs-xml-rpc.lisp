@@ -99,9 +99,13 @@
 	     (*print-pretty* nil))
 	;; (setq *last-request* (list method params id client-url))
 	;; (apply #'pvs-json:process-json-request pvs-xml-rpc::*last-request*)
-	(xmlrpc-result (pvs-json:process-json-request
-			method params id client-url)
-		       id))
+	;; (format t "~%xmlrpc-pvs-request: current-process = ~a~%   request = ~a~%"
+	;;   mp:*current-process* request)
+	(let* ((result (pvs-json:process-json-request method params id client-url))
+	       (jresult (xmlrpc-result result id)))
+	  ;; (format t "~%xmlrpc-pvs-request end: current-process = ~a~%   result = ~s~%"
+	  ;;   mp:*current-process* jresult)
+	  jresult))
     ;; Note: id will not be available if this error is hit
     (error (c) (xmlrpc-error (format nil "~a" c)))))
 

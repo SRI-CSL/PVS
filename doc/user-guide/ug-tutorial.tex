@@ -28,7 +28,7 @@ asked whether you want to create a new context in the directory; answer
 \texttt{yes} unless it is the wrong directory or you don't have write
 permission there, in which case you should answer \texttt{no} and provide
 an alternative directory when prompted.  When you are ready to exit PVS,
-type the key sequence \ikey{C-x C-c}.
+type the key sequence \key{C-x C-c}.
 
 In the following, PVS Emacs commands are given first in their long form,
 followed by an alternative abbreviation and/or key binding in parentheses.
@@ -78,7 +78,7 @@ and a proof is in progress in the bottom.  The mode line indicates that
 PVS is ready for a command.
 
 \begin{figure}
-\includegraphics[scale=.5]{pvs-screen1}
+\includegraphics[width=\textwidth]{pvs-screen1.png}
 \caption{The \texttt{sum} Specification in Emacs}\label{sum-screen}
 \end{figure}
 
@@ -97,8 +97,8 @@ extension.\footnote{The file does not have to be named \texttt{sum.pvs}, it
 simply needs the \texttt{.pvs} extension.}  The most common ways are:
 \begin{enumerate}
 
-\item Simply use \texttt{M-x find-file} (\ikey{C-x C-f}), or \texttt{M-x
-find-pvs-file} (\ecmd{ff}, \ikey{C-c C-f}), provide \texttt{sum.pvs} for
+\item Simply use \texttt{M-x find-file} (\key{C-x C-f}), or \texttt{M-x
+find-pvs-file} (\ecmd{ff}, \key{C-c C-f}), provide \texttt{sum.pvs} for
 the file name and type in the specification.\footnote{If there is already
 a file called \texttt{sum.pvs} in the current context, this will load that
 file.}
@@ -137,7 +137,7 @@ the system automatically parses the specification when it needs to.
 \index{typecheck|(}
 
 The next step is to typecheck the file by typing \iecmd{typecheck}
-(\iecmd{tc}, \ikey{C-c C-t}), which checks for semantic errors, such as
+(\iecmd{tc}, \key{C-c C-t}), which checks for semantic errors, such as
 undeclared names and ambiguous types.  After \texttt{sum} has been
 typechecked, a message is displayed in the minibuffer indicating that two
 \tccs\index{TCCs@\tccs|(} were generated.  These \tccs\ represent
@@ -146,7 +146,7 @@ before the \texttt{sum} theory can be considered typechecked.  The proofs
 of the \tccs\ may be postponed indefinitely, though in general it is a
 good idea to view \tccs\ to convince yourself that they are provable
 before moving on to other proofs in your specification.  \tccs\ can be
-viewed using the \iecmd{show-tccs} (\iecmd{tccs}, \ikey{C-c C-q s})
+viewed using the \iecmd{show-tccs} (\iecmd{tccs}, \key{C-c C-q s})
 command, the results of which are shown in Figure~\ref{sum-tccs} below.
 
 \pvstheory{sum-tccs}{\tccs\ for Theory \texttt{sum}}{sum-tccs}
@@ -174,7 +174,7 @@ prove all \tccs\ that have been generated.  (Try it.)
 
 We are now ready to try to prove the main theorem.  Place the cursor on
 the line containing the \texttt{closed\_form} theorem, and type
-\iecmd{prove} (\iecmd{pr} or \ikey{C-c p}).  A new buffer will pop up, the
+\iecmd{prove} (\iecmd{pr} or \key{C-c p}).  A new buffer will pop up, the
 formula will be displayed, and the cursor will appear at the
 \texttt{Rule?}  prompt, indicating that the prover is ready to accept
 input.  The commands needed to prove this theorem constitute only a very
@@ -220,8 +220,8 @@ which postpones the current subgoal and moves on to the next unproved one.
 Type \texttt{(postpone)} a second time to cycle back to the original
 subgoal (labeled \texttt{closed\_form.1}).
 
-Three extremely useful Emacs key bindings to know here are \ikey{M-p},
-\ikey{M-n}, and \ikey{M-s}.  \key{M-p} gets the last input typed to the
+Three extremely useful Emacs key bindings to know here are \key{M-p},
+\key{M-n}, and \key{M-s}.  \key{M-p} gets the last input typed to the
 prover; further uses of \key{M-p} cycle back in the input history.
 \key{M-n} works in the opposite direction.  To use \key{M-s}, type the
 beginning of a command that was previously input, and type \key{M-s}.

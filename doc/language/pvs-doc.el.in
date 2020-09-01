@@ -43,15 +43,37 @@
   "Return a list of which elements are characters in the STRING."
   (mapcar #'identity string))
 
+(defvar operator-char-mapping
+  '(
+    (8904 . "$\\bowtie$")
+    (8724 . "$\\dotplus$")
+    (8741 . "$\\parallel$")
+    (9001 . "$\\langle$")
+    (9002 . "$\\rangle$")
+    (8872 . "$\\vDash$")
+    (8810 . "$\\ll$")
+    (8873 . "$\\Vdash$")
+    (8811 . "$\\gg$")
+    (8896 . "$\\bigwedge$")
+    (8897 . "$\\bigvee$")
+    (9671 . "$\\Diamond$")
+    (9733 . "$\\star$")
+    (10752 . "$\\bigodot$")
+    (10753 . "$\\bigoplus$")
+    (10754 . "$\\bigotimes$")
+    ))
+
 (defun escape-tex-operator-chars (string)
   (let ((pos (- (length string) 1))
 	(chars nil))
     (while (>= pos 0)
       (setq chars
-	    (nconc
-	     (string-to-char-list (concat "\\char"
-	                                  (format "%d" (aref string pos))))
-	     chars))
+	    (let ((mapped (cdr (assoc (aref string pos) operator-char-mapping))))
+	      (nconc
+	       (string-to-char-list (or mapped
+					(concat "\\char"
+						(format "%d" (aref string pos)))))
+	       chars)))
       (decf pos))
     (concat chars)))
 
@@ -65,11 +87,12 @@
 	  (let ((key (buffer-substring-no-properties
 		      (match-beginning 1) (match-end 1))))
 	    (pushnew key keys :test 'string=)))))
-    (if notex
-	(mapcar 'escape-format-chars (sort* keys 'string<))
-	(mapcar 'escape-tex-chars (sort* keys 'string<)))))
+    (let ((skeys (sort* keys 'string<)))
+      (if notex
+	  (mapcar 'escape-format-chars skeys)
+	  (mapcar 'escape-tex-chars skeys)))))
 
-(defun get-pvs-opsyms ()
+(defun get-pvs-opsyms (&optional notex)
   (let ((keys nil))
     (let ((buf (find-file-noselect pvs-grammar-file)))
       (save-excursion
@@ -84,7 +107,10 @@
 	    (let ((key (buffer-substring-no-properties
 			(match-beginning 1) (match-end 1))))
 	      (pushnew key keys :test 'string=))))))
-    (mapcar 'escape-tex-chars (sort* keys 'string<))))
+    (let ((skeys (sort* keys 'string<)))
+      (if notex
+	  skeys
+	  (mapcar 'escape-tex-chars skeys)))))
 
 (defun pvs-keyword-table-5 ()
   (pvs-keyword-table 5))
@@ -96,11 +122,11 @@
 (defun pvs-opsym-table-6 ()
   (pvs-opsym-table 6))
 
-(defun pvs-opsym-table (ncols)
+(defun pvs-opsym-table (ncols &optional notex)
   (interactive "nNumber of columns")
-  (pvs-generate-table (get-pvs-opsyms) ncols))
+  (pvs-generate-table (get-pvs-opsyms notex) ncols notex))
 
-(defun pvs-generate-table (keywords ncold &optional notex)
+(defun pvs-generate-table (keywords ncols &optional notex)
   (let* ((colsize (+ (max-string-length keywords) 2))
 	 (div (/ (length keywords) ncols))
 	 (mod (% (length keywords) ncols))

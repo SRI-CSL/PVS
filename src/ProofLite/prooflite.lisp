@@ -465,4 +465,4 @@ is replaced with replacement."
 (defun get-default-proof-script (theory-name formula)
   (let ((formula-declaration (find-formula theory-name formula)))
     (when formula-declaration
-      (script (default-proof formula-declaration)))))
+      (get-proof-script-output-string formula-declaration nil))))
