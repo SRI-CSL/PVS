@@ -21,6 +21,6 @@ $(pvs-tex-files) : sum.el sum.pvs unicode-ex.pvs
 
 .PHONY: clean
 clean :
-	rm -f Makefile sum-nosub.tex sum-sub.tex sum-tccs.tex \
+	rm -f sum-nosub.tex sum-sub.tex sum-tccs.tex \
               user-guide.dvi user-guide.ps.gz user-guide.ps user-guide.pdf \
               *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux *.toc *.idx *.brf
