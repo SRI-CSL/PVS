@@ -1,0 +1,27 @@
+
+\begin{bnf}
+
+\production{RewriteName}
+{\hlink{Name} \opt{\lit{!} \opt{\lit{!}}} \opt{\lit{:}
+\brc{\hlink{TypeExpr} \choice \hlink{FormulaName}}}}
+
+\production{DeclFormals}
+{\lit{[}\ \ites{\hlink{DeclFormal}}{,} \lit{]}}
+
+\production{DeclFormal}
+{TheoryFormalType}
+%{\opt{\hlink{TheoryFormalDecl}}
+
+\production{Bindings}
+{\lit{(} \ites{\hlink{Binding}}{,} \lit{)}}
+
+\production{Binding}
+{\hlink{TypedId} \choice \{ \lit{(} \hlink{TypedIds} \lit{)} \} }
+
+\production{TypedIds}
+{\hlink{IdOps} \opt{\lit{:} \hlink{TypeExpr}} \opt{\lit{|} \hlink{Expr}}}
+
+\production{TypedId}
+{\hlink{IdOp} \opt{\lit{:} \hlink{TypeExpr}} \opt{\lit{|} \hlink{Expr}}}
+
+\end{bnf}
