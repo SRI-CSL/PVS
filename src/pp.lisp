@@ -3058,31 +3058,33 @@ then uses unpindent* to add the indent to each line"
 (defun ppcase-id (name)
   ;; Note that this cannot perform substitutions, e.g. ⋀ for AND, unless
   ;; name has a resolution that can determine these are the same.
-  (if (eq (id name) 'O)
-      '|o|
-      (if (member (id name) *pvs-keywords* :test #'string=)
-	  (if (resolution name)
-	      (cond ((eq (declaration name) (declaration (and-operator)))
-		     (pp-and-operator (id name)))
-		    ((eq (declaration name) (declaration (or-operator)))
-		     (pp-or-operator (id name)))
-		    ((eq (declaration name) (declaration (implies-operator)))
-		     (pp-implies-operator (id name)))
-		    ((eq (declaration name) (declaration (iff-operator)))
-		     (pp-iff-operator (id name)))
-		    ((eq (declaration name) (declaration (not-operator)))
-		     (pp-not-operator (id name)))
-		    ((and (memq (id name) '(/= ≠))
-			  (eq (id (module (declaration name))) '|notequal|))
-		     (pp-disequation-operator (id name)))
-		    (t 
-		     (case *ppcase*
-		       ((:lower lower) (intern (string-downcase (id name)) :pvs))
-		       (t (intern (string-upcase (id name)) :pvs)))))
-	      (case *ppcase*
-		((:lower lower) (intern (string-downcase (id name)) :pvs))
-		(t (intern (string-upcase (id name)) :pvs))))
-	  (id name))))
+  (cond ((eq (id name) 'O) '|o|)
+	((integerp (id name)) (id name))
+	((member (id name) *pvs-keywords* :test #'string=)
+	 (if (resolution name)
+	     (cond ((eq (declaration name) (declaration (and-operator)))
+		    (pp-and-operator (id name)))
+		   ((eq (declaration name) (declaration (or-operator)))
+		    (pp-or-operator (id name)))
+		   ((eq (declaration name) (declaration (implies-operator)))
+		    (pp-implies-operator (id name)))
+		   ((eq (declaration name) (declaration (iff-operator)))
+		    (pp-iff-operator (id name)))
+		   ((eq (declaration name) (declaration (not-operator)))
+		    (pp-not-operator (id name)))
+		   ((and (memq (id name) '(/= ≠))
+			 (eq (id (module (declaration name))) '|notequal|))
+		    (pp-disequation-operator (id name)))
+		   ((integerp (id name))
+		    (id name))
+		   (t 
+		    (case *ppcase*
+		      ((:lower lower) (intern (string-downcase (id name)) :pvs))
+		      (t (intern (string-upcase (id name)) :pvs)))))
+	     (case *ppcase*
+	       ((:lower lower) (intern (string-downcase (id name)) :pvs))
+	       (t (intern (string-upcase (id name)) :pvs)))))
+	(t (id name))))
 
 (defun pp-mappings (mappings)
   (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
