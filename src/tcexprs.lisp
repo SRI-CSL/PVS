@@ -1111,7 +1111,7 @@
 	       casesex)))))
 
 (defun make-cond-table-expr (table-expr expr headings table-entries)
-  (assert (place expr))
+  (assert (or (null expr) (place expr)))
   (let* ((condition (if (and expr
 			     (not (typep (car headings) 'else-condition)))
 			(let ((appl (mk-application '= expr (car headings))))
