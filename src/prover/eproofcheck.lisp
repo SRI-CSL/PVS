@@ -30,7 +30,8 @@
 (in-package :pvs)
 
 (export '(pc-parse pc-typecheck check-arguments
-	  *multiple-proof-default-behavior*))
+	  *multiple-proof-default-behavior*
+	  *last-attempted-proof*))
 
 (defvar *subgoals* nil)
 
@@ -43,6 +44,9 @@
 (defvar *default-proof-description* nil)
 
 (defvar *record-undone-proofstate* nil)
+
+(defvar *last-attempted-proof* nil
+  "When in server mode, it stores a list (DECL SCRIPT) where DECL is the formula declaration whose proof was last attempted and SCRIPT is the proof script of such attempt.")
 
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula (current-theory)
@@ -505,7 +509,13 @@
 		    (equal (script prinfo) (tcc-strategy decl)))
 	       (and (eq (status prinfo) 'proved)
 		    (eq (status-flag *top-proofstate*) '!)
-		    (script-structure-changed? prinfo script)))
+		    (or
+		     ;; next check is added to avoid crashing on malformed prf files.
+		     ;; should be handled somehow else (TODO)
+		     (not (or (equalp (car (script prinfo)) "")  
+			      (and (stringp (car (script prinfo)))
+				   (char= (char (car (script prinfo)) 0) #\;))))
+		     (script-structure-changed? prinfo script))))
 	   (setf (script prinfo) script))
 	  ((and (or (not *proving-tcc*) auto-fixed-prf)
 		(or (not *noninteractive*)
@@ -534,7 +544,11 @@
 				 (id prinfo)))))
 		  (when (eq *multiple-proof-default-behavior* :overwrite)
 		    (format t "Overwriting proof named ~a" (id prinfo)))
-		  (setf (script prinfo) script))
+		  (when *ps-control-info*
+		    (setf *last-attempted-proof* (list decl script)))
+		  ;;[M3] Do not save by default while in server mode.
+		  (unless *ps-control-info*
+		    (setf (script prinfo) script)))
 		 (t (let ((id (read-proof-id (next-proof-id decl)))
 			  (description (read-proof-description)))
 		      (setq prinfo
@@ -642,7 +656,7 @@
     (unless *suppress-printing*
       (catch-restore
        (output-proofstate proofstate))
-      (setq *prover-commentary* nil)
+;;      (setq *prover-commentary* nil) ;; M3: moved to qread [Sept 2020]
       (clear-strategy-errors)))
   (let ((nextstate (proofstepper proofstate)))
     (cond ((null (parent-proofstate proofstate))
@@ -741,6 +755,7 @@
     input))
 
 (defun qread (prompt)
+  (setq *prover-commentary* nil) ;; M3: Brought from prove*-int [Sept 2020]
   (format t "~%~a"  prompt)
   (force-output)
   (let ((input (prover-read)))
@@ -798,7 +813,12 @@
     ((fresh? proofstate)   ;;new state
      (let ((post-proofstate ;;check if current goal is prop-axiom.
 	    (cond ((eq (check-prop-axiom (s-forms (current-goal proofstate)))
-		       '!) ;;set flag to proved! and update fields. 
+		       '!) ;;set flag to proved! and update fields.
+		   (update-ps-control-info-result proofstate) ; M3 so the sequent
+					; it's accumulated for the rpc response.
+					; It could be a call to output-proofstate
+					; but currently that would disturb the
+					; behavior of the wish viewer.
 		   (setf (status-flag proofstate) '!      
 			 (current-rule proofstate) '(propax)
 			 (printout proofstate)
@@ -858,15 +878,16 @@
 		       (setq *rerunning-proof-message-time*
 			     (get-internal-real-time))
 		       (pvs-message *rerunning-proof*))
-		     (unless *suppress-printing*
-		       (format t "~%this yields  ~a subgoals: "
-			 (length (remaining-subgoals post-proofstate)))))
+		     (format-nif "~%this yields  ~a subgoals: "
+				 (length (remaining-subgoals post-proofstate))))
 		    ((not (typep (car (remaining-subgoals post-proofstate))
 				 'strat-proofstate))
-		     (unless *suppress-printing*
-		       (format t "~%this simplifies to: "))))
+		     (format-nif "~%this simplifies to: ")))
 	      post-proofstate)
 	     ((eq (status-flag post-proofstate) '!) ;;rule-apply proved
+	      ;; M3: call hooks for success [Sept 2020]
+	      (dolist (hook *success-proofstate-hooks*)
+		(funcall hook proofstate)) 
 	      (format-printout post-proofstate)
 	      (wish-done-proof post-proofstate)
 	      (dpi-end post-proofstate)
@@ -920,7 +941,7 @@
    ((eq (status-flag proofstate) '!)  ;;success
     ;;(format t "~%~%Proved ~a." (label proofstate))
     (next-proofstate proofstate))
-   (t (next-proofstate proofstate))))  ;;just in case
+   (t (next-proofstate proofstate)))) ;;just in case
 
 ;; Allows external functions to be called, as for the wish display
 ;; Used for JSON output - *proofstate-hooks* are not used; see output-proofstate

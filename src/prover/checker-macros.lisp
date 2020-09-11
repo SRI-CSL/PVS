@@ -67,6 +67,8 @@
 (defvar *bind-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *voss-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *proofstate-hooks* nil)
+(defvar *finish-proofstate-hooks* nil "Hooks invoked at finished proofstates.") ;; M3 [Sept 2020]
+(defvar *success-proofstate-hooks* nil "Hooks for succesly finished branches") ;; M3 [Sept 2020]
 (defvar *printproofstate* nil)
 (defvar *in-checker* nil)
 (defvar *in-apply* nil)

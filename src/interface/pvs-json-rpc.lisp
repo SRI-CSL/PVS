@@ -99,6 +99,8 @@
 (defvar *last-response* nil)
 (defvar *json-rpc-id-ctr* 0)
 
+(defvar *interrupted-rpc* nil "Indicates if the last request was interrupted by the user of the system (signals).") ;; M3 [Sept 2020]
+
 (eval-when (:compile-toplevel :load-toplevel)
   (defvar *pvs-request-methods* nil
     "An assoc-list with entries (method fun sig ret descr)"))
@@ -317,3 +319,40 @@
 ;; (defmethod json:encode-json ((th pvs:datatype-or-module) &optional
 ;; 			     (stream json:*json-output*))
 ;;   (json:encode-json (pvs:id th) stream))
+
+
+;; M3: this function adds the information about the current proofstate to the
+;;     rpc result. [Sept 2020]
+(defun update-ps-control-info-result (ps)
+  (when (and pvs:*ps-control-info* (not *in-apply*))
+    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	   (ps-json (pvs:pvs2json ps)))
+      (pvs:xmlrpc-output-proofstate (list ps-json)))
+    (when *interrupted-rpc*
+	    (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	    (mp:process-wait "Waiting for next Proofstate"
+			     #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))))
+
+;; M3: hook for finishing proofstates [Sept 2020].
+(defun finish-proofstate-rpc-hook (ps)
+  "Prepares the result of the rpc request and closes it."
+  (when pvs:*ps-control-info*
+    (let ((ps-json
+	   `((("label" . ,(label ps))
+	      ("commentary" . ,(format nil "~:[Proof attempt aborted~;Q.E.D.~]" (and (typep ps 'top-proofstate)
+										     (eq (status-flag ps) '!))))))))
+      (pvs:add-psinfo pvs:*ps-control-info* ps-json))
+    (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
+
+;; M3: hook for successfully closed branches.
+(defun rpc-output-notify-proof-success (proofstate)
+  (when (and pvs:*ps-control-info* (not *in-apply*))
+    (if (eq 'propax (car(pvs::current-rule proofstate)))
+	(let ((ps-json (pvs:pvs2json proofstate)))
+	  (pvs:add-psinfo pvs:*ps-control-info* (list ps-json)))
+      (let*((prev-cmd (pvs::wish-current-rule proofstate))
+	    (ps-json
+	     `(("label" . ,(label proofstate))
+	       ("commentary" . ,(format nil "This completes the proof of ~a." (label proofstate)))
+	       ("prev-cmd" . ,(format nil "~s" prev-cmd)))))
+	(pvs:add-psinfo pvs:*ps-control-info* (list ps-json))))))
