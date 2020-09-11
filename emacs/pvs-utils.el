@@ -989,7 +989,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 			   (when with-prelude-p
 			     (list (format "%s/prelude" pvs-path))))))
     (if (member file-list '(nil NIL))
-	(error "No files in context")
+	(error "No PVS files in current workspace %s" pvs-current-directory)
 	(let* ((default (unless no-default-p (current-pvs-file t)))
 	       (dprompt (if default
 			    (format "%s(default %s) " prompt default)
