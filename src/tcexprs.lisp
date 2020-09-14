@@ -1540,7 +1540,8 @@ field-decls, etc."
 
 (defmethod find-supertype-without-freevars* ((fld field-decl) boundvars)
   (if (unbound-freevars? (type fld) boundvars)
-      (mk-field-decl (id fld) (find-supertype-without-freevars* (type fld) boundvars))
+      (let ((ftype (find-supertype-without-freevars* (type fld) boundvars)))
+	(mk-field-decl (id fld) ftype ftype))
       fld))
 
 
