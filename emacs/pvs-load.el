@@ -123,7 +123,7 @@
 	   (>= emacs-major-version 20)
 	   (boundp 'image-types)
 	   (memq 'xpm image-types))
-  (setq pvs-logo (create-image (concat pvs-path "/emacs/pvs.xpm"))))
+  (setq pvs-logo (create-image (concat pvs-path "/emacs/pvslogo.gif") nil nil :scale 0.5)))
 
 (when (and (featurep 'xemacs)
 	   (boundp 'emacs-major-version)
@@ -146,16 +146,15 @@
     (erase-buffer)
     (if (boundp 'pvs-logo)
 	(progn
-	  (insert "\n\n")
+	  (insert "\n")
 	  (cond ((featurep 'xemacs)
 		 (indent-to (startup-center-spaces pvs-logo))
 		 (set-extent-begin-glyph (make-extent (point) (point)) pvs-logo))
-		(t (insert "           ")
+		(t (insert "  ")
 		   (insert-image pvs-logo)
 		   (setq cpoint (1+ (point)))))
 	  (insert "\n"))
         (progn
-	  (insert "\n\nSRI International\nComputer Science Laboratory")
           (insert "\n\n
             +----------------------------------------+
             |                                        |
@@ -176,20 +175,21 @@
             |                                        |
             +----------------------------------------+")
           (insert "\n\nWelcome to the PVS\nSpecification and Verification System")))
+    (insert "  Version 7.1\n")
+    (insert "\nSRI International -- Computer Science Laboratory\n")
     (setq pvs-welcome-point (point))
-    (insert "\n\nType C-c h for a summary of the commands.")
+    (insert "\nType C-c h for a summary of the commands.")
     (put-text-property pvs-welcome-point (point) 'face 'blue)
     (setq pvs-welcome-point (point))
-    (insert "\n\nYour current working context is\n" cdir)
+    (insert "\n\nYour current working context (workspace) is\n  " cdir)
     (put-text-property pvs-welcome-point (point) 'face 'red)
     (setq pvs-welcome-point (point))
     (insert "\n\nUse M-x change-context to move to a different context.")
     (insert "\n\n-----------------------------------------------------------------")
-    (insert "\n\n" (pvs-version-string))
+    (insert "\n\n" (cadr (cdddr vers)) "\n" (cadr (cddddr vers)))
     (put-text-property pvs-welcome-point (point) 'face 'blue)
     (insert "\n\nPlease check our website periodically for news of later versions")
     (insert "\nat http://pvs.csl.sri.com/")
-    (insert "\n\n" (cadr (cdddr vers)) "\n" (cadr (cddddr vers)))
     (insert "
    ----------
    Bug reports and suggestions for improvement should be sent to
@@ -211,9 +211,9 @@
    MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.")
     (put-text-property pvs-welcome-point (point) 'face 'blue)
     (setq pvs-welcome-point (point))
-    (condition-case ()
-	(center-region cpoint (point))
-      (error nil))
+    ;; (condition-case ()
+    ;; 	(center-region cpoint (point))
+    ;;   (error nil))
     (set-buffer-modified-p nil)
     (text-mode)
     (cd cdir)
