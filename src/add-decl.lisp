@@ -34,22 +34,23 @@
 
 (defvar *add-declaration-info* nil)
 
-(defun add-declaration-at (filename line)
-  (typecheck-file filename nil)
-  (let ((theory (find-theory-at filename line)))
-    (if theory
-	(let* ((decl (get-decl-at line t (list theory)))
-	       (pdecl (previous-decl decl theory))
-	       (date (file-write-time (make-specpath filename))))
-	  (cond ((or decl pdecl)
-		 (when *add-declaration-info*
-		   (pvs-message "Discarding previous add-declaration"))
-		 (setq *add-declaration-info*
-		       (list pdecl decl theory filename date line))
-		 t)
-		(t (pvs-message
-		       "Theory must have at least one declaration"))))
-	(pvs-message "Cursor must be within a theory"))))
+(defun add-declaration-at (fileref line)
+  (with-pvs-file (filename) fileref
+    (typecheck-file filename nil)
+    (let ((theory (find-theory-at filename line)))
+      (if theory
+	  (let* ((decl (get-decl-at line t (list theory)))
+		 (pdecl (previous-decl decl theory))
+		 (date (file-write-time (make-specpath filename))))
+	    (cond ((or decl pdecl)
+		   (when *add-declaration-info*
+		     (pvs-message "Discarding previous add-declaration"))
+		   (setq *add-declaration-info*
+			 (list pdecl decl theory fileref date line))
+		   t)
+		  (t (pvs-message
+			 "Theory must have at least one declaration"))))
+	  (pvs-message "Cursor must be within a theory")))))
 
 (defun previous-decl (decl theory)
   (if decl
@@ -67,42 +68,42 @@
 (defun typecheck-add-declaration (declfile &optional update-theory?)
   (if *add-declaration-info*
       (if (add-declaration-info-current?)
-	  (let* ((*from-buffer* "Add Declaration")
-		 (*tc-add-decl* t)
-		 (pdecl (first *add-declaration-info*))
-		 (odecl (second *add-declaration-info*))
-		 (theory (third *add-declaration-info*))
-		 (filename (fourth *add-declaration-info*))
-		 (oplace (if odecl
-			     (place-list (place odecl))
-			     (list (sixth *add-declaration-info*)
-				   (starting-col (place pdecl)))))
-		 (assuming? (member odecl (assuming theory)))
-		 (new-decls (parse :file declfile
-				   :nt (if assuming?
-					   'assumings
-					   'theory-part)))
-		 (typechecked? (typechecked-file? filename)))
-	    (when (or typechecked? update-theory?)
-	      (typecheck-new-decls new-decls pdecl))
-	    (when update-theory?
-	      (when *in-checker*
-		(setq *context-modified* t))
-	      (let ((*current-context* (when typechecked? (context pdecl))))
-		(add-declarations-to-theory new-decls typechecked? assuming?))
-	      (add-new-decls-to-contexts pdecl new-decls theory)
-	      (reset-add-decl-places odecl new-decls theory filename)
-	      (pushnew 'modified (status theory))
-	      (let ((fe (get-context-file-entry filename)))
-		(when fe
-		  (setf (ce-object-date fe) nil)
-		  (setf (current-pvs-context-changed) t))))
-	    (when *to-emacs*
-	      (let* ((*print-pretty* nil)
-		     (*output-to-emacs*
-		      (format nil ":pvs-addecl ~a&~a :end-pvs-addecl"
-			filename oplace)))
-		(to-emacs))))
+	  (with-pvs-file (filename) (fourth *add-declaration-info*)
+	    (let* ((*from-buffer* "Add Declaration")
+		   (*tc-add-decl* t)
+		   (pdecl (first *add-declaration-info*))
+		   (odecl (second *add-declaration-info*))
+		   (theory (third *add-declaration-info*))
+		   (oplace (if odecl
+			       (place-list (place odecl))
+			       (list (sixth *add-declaration-info*)
+				     (starting-col (place pdecl)))))
+		   (assuming? (member odecl (assuming theory)))
+		   (new-decls (parse :file declfile
+				     :nt (if assuming?
+					     'assumings
+					     'theory-part)))
+		   (typechecked? (typechecked-file? filename)))
+	      (when (or typechecked? update-theory?)
+		(typecheck-new-decls new-decls pdecl))
+	      (when update-theory?
+		(when *in-checker*
+		  (setq *context-modified* t))
+		(let ((*current-context* (when typechecked? (context pdecl))))
+		  (add-declarations-to-theory new-decls typechecked? assuming?))
+		(add-new-decls-to-contexts pdecl new-decls theory)
+		(reset-add-decl-places odecl new-decls theory filename)
+		(pushnew 'modified (status theory))
+		(let ((fe (get-context-file-entry filename)))
+		  (when fe
+		    (setf (ce-object-date fe) nil)
+		    (setf (current-pvs-context-changed) t))))
+	      (when *to-emacs*
+		(let* ((*print-pretty* nil)
+		       (*output-to-emacs*
+			(format nil ":pvs-addecl ~a&~a :end-pvs-addecl"
+			  filename oplace)))
+		  (to-emacs)))))
 	    (pvs-message "File has been modified"))
       (pvs-message "Not adding declaration")))
 
@@ -211,11 +212,12 @@
     (reset-places* remtheories line-diff)))
 
 (defun add-declaration-info-current? ()
-  (let ((filename (cadddr *add-declaration-info*)))
-    (and *add-declaration-info*
-	 (parsed-file? filename)
-	 (eql (fifth *add-declaration-info*)
-	      (parsed-date (make-specpath filename))))))
+  (and *add-declaration-info*
+       (let ((fileref (fourth *add-declaration-info*)))
+	 (with-pvs-file (filename) fileref
+	   (parsed-file? filename)
+	   (eql (fifth *add-declaration-info*)
+		(parsed-date (make-specpath filename)))))))
 
 (defun add-declarations-to-theory (decls typechecked? assuming?)
   (reset-places decls)
@@ -390,95 +392,93 @@
 
 (defvar *mod-declaration-info* nil)
 
-(defun modify-declaration-at (filename line)
-  (if (parsed-file? filename)
-      (multiple-value-bind (decl theory)
-	  (get-decl-at line t (get-theories filename))
-	(cond ((null decl)
-	       (pvs-message "Could not find associated declaration"))
-	      ((not (typep decl '(or const-decl formula-decl)))
-	       (pvs-message "May only modify formulas and constants"))
-	      ((chain? decl)
-	       (pvs-message "May not modify multiple declaration"))
-	      (t (let ((date (file-write-date (make-specpath filename))))
-;		   (when *mod-declaration-info*
-;		     (pvs-message "Discarding previous modify-declaration"))
-		   (setq *mod-declaration-info*
-			 (list decl theory filename date))
-		   (pvs-buffer "Modify Declaration"
-		     (unparse-decl decl))
-		   t))))
-      (pvs-message "~a has not been parsed" filename)))
+(defun modify-declaration-at (fileref line)
+  (with-pvs-file (filename) fileref
+    (if (parsed-file? filename)
+	(let ((decl (get-decl-at line t (get-theories filename))))
+	  (cond ((null decl)
+		 (pvs-message "Could not find associated declaration"))
+		((not (typep decl '(or const-decl formula-decl)))
+		 (pvs-message "May only modify formulas and constants"))
+		((chain? decl)
+		 (pvs-message "May not modify multiple declaration"))
+		(t (let ((date (file-write-date (make-specpath filename))))
+		     ;; (when *mod-declaration-info*
+		     ;;   (pvs-message "Discarding previous modify-declaration"))
+		     (setq *mod-declaration-info* (list decl fileref line date))
+		     (pvs-buffer "Modify Declaration"
+		       (unparse-decl decl))
+		     t))))
+	(pvs-message "~a has not been parsed" filename))))
 
 (defun typecheck-mod-declaration (declfile &optional update-theory?)
   (if *mod-declaration-info*
       (if (mod-declaration-info-current?)
-	  (let* ((*from-buffer* "Modify Declaration")
-		 (*tc-add-decl* t)
-		 (decl (first *mod-declaration-info*))
-		 (theory (second *mod-declaration-info*))
-		 (filename (third *mod-declaration-info*))
-		 ;;(pdecl (previous-decl decl theory))
-		 (oplace (place-list (place decl)))
-		 (decls (parse :file declfile
-			       :nt (if (member decl (assuming theory))
-				       'assumings 'theory-part)))
-		 (typechecked? (typechecked-file? filename)))
-	    (verify-mod-decl decl decls)
-	    (when (or typechecked? update-theory?)
-	      (typecheck-mod-decls decls decl)
-	      (when (and (typed-declaration? decl)
-			 (not (tc-eq (type decl) (type (car decls)))))
-		(type-error (car decls)
-		  "Modified declaration must have the same type - ~a"
-		  (type decl))))
-	    (when update-theory?
-	      (when *in-checker*
-		(setq *context-modified* t)
-		(when (memq decl (collect-dependent-decls *top-proofstate*))
-		  (pvs-message
-		      "Declaration ~a was used earlier in the current proof"
-		    (id decl))))
-	      (when *create-formulas-cache*
-		(maphash #'(lambda (res body)
-			     (declare (ignore body))
-			     (when (eq (declaration res) decl)
-			       (remhash res *create-formulas-cache*)))
-			 *create-formulas-cache*))
-	      (reset-places* decls (1- (car oplace)) (cadr oplace))
-	      (change-old-decl-to-new decl (car decls))
-	      (unless (= (ending-row (place decl)) (caddr oplace))
-		(reset-mod-decl-places decl theory filename
-				       (- (ending-row (place decl))
-					  (caddr oplace))))
-	      (setf (generated decl) (generated (car decls)))
-	      (dolist (d (generated decl))
-; 		(setf (gethash (id d) (declarations theory))
-; 		      (remove d (gethash (id d)
-; 					 (declarations theory))))
-		(when (and *in-checker*
-			   *current-context*)
-		  (setf (get-lhash (id d) (current-declarations-hash))
-			(remove d (get-lhash (id d)
-					     (current-declarations-hash))))))
-	      (dolist (d (generated decl))
-;		(put-decl d (declarations theory))
-		(when (and *in-checker*
-			   *current-context*
-			   (eq theory (current-theory))
-			   (memq (current-declaration)
-				 (memq decl (append (assuming theory)
-						    (theory theory)))))
-		  (put-decl d (current-declarations-hash))))
-	      (when (and (typep decl 'formula-decl)
-			 (eq (proof-status decl) 'proved))
-		(setf (proof-status decl) 'unchecked))
-	      (let ((fe (get-context-file-entry filename)))
-		(ignore-errors (delete-file (make-binpath filename)))
-		(when fe
-		  (setf (ce-object-date fe) nil)
-		  (setf (current-pvs-context-changed) t)))
-	      (list filename oplace)))
+	  (with-pvs-file (filename) (second *mod-declaration-info*)
+	    (let* ((*from-buffer* "Modify Declaration")
+		   (*tc-add-decl* t)
+		   (decl (first *mod-declaration-info*))
+		   (theory (module decl))
+		   (oplace (place-list (place decl)))
+		   (decls (parse :file declfile
+				 :nt (if (member decl (assuming theory))
+					 'assumings 'theory-part)))
+		   (typechecked? (typechecked-file? filename)))
+	      (verify-mod-decl decl decls)
+	      (when (or typechecked? update-theory?)
+		(typecheck-mod-decls decls decl)
+		(when (and (typed-declaration? decl)
+			   (not (tc-eq (type decl) (type (car decls)))))
+		  (type-error (car decls)
+		    "Modified declaration must have the same type - ~a"
+		    (type decl))))
+	      (when update-theory?
+		(when *in-checker*
+		  (setq *context-modified* t)
+		  (when (memq decl (collect-dependent-decls *top-proofstate*))
+		    (pvs-message
+			"Declaration ~a was used earlier in the current proof"
+		      (id decl))))
+		(when *create-formulas-cache*
+		  (maphash #'(lambda (res body)
+			       (declare (ignore body))
+			       (when (eq (declaration res) decl)
+				 (remhash res *create-formulas-cache*)))
+			   *create-formulas-cache*))
+		(reset-places* decls (1- (car oplace)) (cadr oplace))
+		(change-old-decl-to-new decl (car decls))
+		(unless (= (ending-row (place decl)) (caddr oplace))
+		  (reset-mod-decl-places decl theory filename
+					 (- (ending-row (place decl))
+					    (caddr oplace))))
+		(setf (generated decl) (generated (car decls)))
+		(dolist (d (generated decl))
+		  ;; 		(setf (gethash (id d) (declarations theory))
+		  ;; 		      (remove d (gethash (id d)
+		  ;; 					 (declarations theory))))
+		  (when (and *in-checker*
+			     *current-context*)
+		    (setf (get-lhash (id d) (current-declarations-hash))
+			  (remove d (get-lhash (id d)
+					       (current-declarations-hash))))))
+		(dolist (d (generated decl))
+		  ;;		(put-decl d (declarations theory))
+		  (when (and *in-checker*
+			     *current-context*
+			     (eq theory (current-theory))
+			     (memq (current-declaration)
+				   (memq decl (append (assuming theory)
+						      (theory theory)))))
+		    (put-decl d (current-declarations-hash))))
+		(when (and (typep decl 'formula-decl)
+			   (eq (proof-status decl) 'proved))
+		  (setf (proof-status decl) 'unchecked))
+		(let ((fe (get-context-file-entry filename)))
+		  (ignore-errors (delete-file (make-binpath filename)))
+		  (when fe
+		    (setf (ce-object-date fe) nil)
+		    (setf (current-pvs-context-changed) t)))
+		(list filename oplace))))
 	  (pvs-message "File has been modified"))
       (pvs-message "Not adding declaration")))
 
@@ -551,9 +551,11 @@
   (declare (ignore d1 d2))
   nil)
 
+;;; *mod-declaration-info* == (decl fileref line date)
 (defun mod-declaration-info-current? ()
-  (let ((filename (third *mod-declaration-info*)))
-    (and *mod-declaration-info*
-	 (parsed-file? filename)
-	 (eql (fourth *mod-declaration-info*)
-	      (parsed-date (make-specpath filename))))))
+  (and *mod-declaration-info*
+       (let ((fileref (second *mod-declaration-info*)))
+	 (with-pvs-file (filename) fileref
+	   (and (parsed-file? filename)
+		(eql (fourth *mod-declaration-info*)
+		     (parsed-date (make-specpath filename))))))))
