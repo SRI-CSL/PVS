@@ -393,6 +393,15 @@
 			     (cons (position cur (x-subgoals pp cur))
 				       path))))))
 
+;; M3: simplified version of path-to-subgoal [Sept 2020]
+(defun path-from-top (cur &optional path)
+  (let ((pp (wish-parent-proofstate cur)))
+    (if (null pp)
+	path
+      (path-from-top pp
+		     (cons (position cur (x-subgoals pp cur))
+			   path)))))
+
 
 ;;; A path is of the form, e.g., (0 1 0 2)
 ;;; This generates the string "top.0.1.0.2"

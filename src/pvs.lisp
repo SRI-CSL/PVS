@@ -63,6 +63,16 @@
   lisp-files
   libfiles)
 
+;; M3: This debugger is used when running the rpc server to automatically abort
+;; to top-level on any signal, so they don't affect the server responsiveness [Sept 2020].
+(defun rpc-mode-debugger (condition me-or-my-encapsulation)
+  (format t "~&Error: ~A" condition)
+  (let ((*debugger-hook* me-or-my-encapsulation))
+    (if *in-checker*
+    	(progn
+	  (setf pvs-json::*interrupted-rpc* (format nil "Error: ~a" condition))
+    	  (restore))
+      (abort))))
 
 ;;; A robodoc header
 ;****f* interface/pvs-init
@@ -213,7 +223,14 @@
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
-      (pvs-xml-rpc:pvs-server :port (parse-integer port))))
+      (pvs-xml-rpc:pvs-server :port (parse-integer port))
+      ;; M3: When running the server, signals automatically abort to top-level so they
+      ;; don't affect the server responsiveness [Sept 2020].
+      (setf *debugger-hook* #'rpc-mode-debugger)
+      ;; M3: Install hook for sequent collection [Sept 2020].
+      (pushnew 'update-ps-control-info-result *proofstate-hooks*)
+      (pushnew 'finish-proofstate-rpc-hook *finish-proofstate-hooks*)
+      (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)))
   #+allegro
   ;; Add a newline to the beginning of *prompt*.  The prompt actually has
   ;; ~&, which is supposed to add a newline unless it "knows" it's already
