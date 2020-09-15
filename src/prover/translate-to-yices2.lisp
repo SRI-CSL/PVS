@@ -581,20 +581,44 @@
 
 
 ;;yices2 does not have binding expressions so these will be treated as
-;;uninterpreted constants. 
+;;uninterpreted constants.
+(defun translate-yices2-bindings (bind-decls bindings prefix-string)
+      (cond ((consp bind-decls)
+	     (let ((yname (yices-name (car bind-decls)))
+		   (ytype (translate-to-yices2* (type (car bind-decls)) bindings)))
+	       (translate-yices2-bindings (cdr bind-decls)
+					 (cons (cons (car bind-decls)
+						     yname)
+					       bindings)
+					 (format nil "~a ~a::~a"
+					   prefix-string yname ytype))))
+	    (t (values bindings prefix-string))))
+
 (defmethod translate-to-yices2* ((expr binding-expr) bindings)
-  (let ((entry (gethash expr *y2name-hash*)))
-    (or entry 
-	(let* ((yname (yices2-id-name "y2id"))
-	       (ytype (translate-to-yices2* (type expr) bindings))
-	       (defn (format nil "(define ~a::~a)" yname ytype)))
-	  (push defn
-		*y2defns*)
-	  (format-if "~%Adding definition: ~a" defn)
-	  yname))))
+  (with-slots ((expr-bindings bindings) expression) expr
+    (let ((stype (find-supertype (type (car expr-bindings)))))
+      (multiple-value-bind (newbindings bindstring)
+	  (translate-yices2-bindings  expr-bindings bindings "")
+	(let ((yexpression (translate-to-yices2* expression newbindings)))
+	  (cond ((lambda-expr? expr)
+		 (format nil "(lambda (~a) ~a)" bindstring yexpression))
+		((forall-expr? expr)
+		 (format nil "(forall (~a) ~a)"
+			 bindstring yexpression))
+		((exists-expr? expr)
+		 (format nil "(exists (~a) ~a)"
+			 bindstring yexpression))))))))
+
+  ;; (let ((entry (gethash expr *y2name-hash*)))
+  ;;   (or entry 
+  ;; 	(let* ((yname (yices2-id-name "y2id"))
+  ;; 	       (ytype (translate-to-yices2* (type expr) bindings))
+  ;; 	       (defn (format nil "(define ~a::~a)" yname ytype)))
+  ;; 	  (push defn
+  ;; 		*y2defns*)
+  ;; 	  (format-if "~%Adding definition: ~a" defn)
+  ;; 	  yname))))
   
-;; (defmethod translate-to-yices2* ((expr forall-expr) bindings)
-;;   (call-next-method))
 
 ;; (if *yqexpand*
 ;;       (with-slots ((expr-bindings bindings) expression) expr
