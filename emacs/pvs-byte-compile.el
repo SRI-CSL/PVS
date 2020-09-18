@@ -21,7 +21,9 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(require 'cl)
+(or (require 'cl-lib nil :noerr)
+    (require 'cl nil :noerr)
+    (error "This Emacs does not have cl-lib or cl package installed."))
 
 (message "PVS: byte compilation starting")
 
