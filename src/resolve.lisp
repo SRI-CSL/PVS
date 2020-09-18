@@ -2034,7 +2034,8 @@ decl, args, and mappings."
 
 (defun disallowed-free-variable? (decl)
   (and (typep decl 'var-decl)
-       (or *in-checker*
+       (or (and (not *tc-add-decl*)
+		*in-checker*)
 	   (not (typep (current-declaration)
 		       '(or formula-decl subtype-judgement expr-judgement))))))
 

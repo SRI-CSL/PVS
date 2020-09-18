@@ -1112,6 +1112,9 @@ declaration at the cursor.  The body of the declaration may be edited, and
 will replace the original when C-c C-c is typed."
   (interactive)
   (pvs-bury-output)
+  (unless (or pvs-in-checker
+	      pvs-in-evaluator)
+    (error "No point in running modify-declaration if not in the prover or evaluator"))
   (let ((file (current-pvs-file)))
     (when (buffer-modified-p (get-file-buffer file))
       (error "%s is not parsed" file))
@@ -1123,6 +1126,7 @@ will replace the original when C-c C-c is typed."
 	(with-current-buffer buf
 	  (set-buffer-modified-p nil)
 	  (modify-declaration-mode))
+	;;(display-buffer-pop-up-frame "Modify Declaration" nil)
 	(pop-to-buffer buf)
 	(message "Modify declaration - type C-c C-c when finished.")))))
 

@@ -402,9 +402,9 @@ beginning of the previous one."
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
-      (let ((found (search-forward comment-start limit t)))
+      (let ((found (search-forward "%" limit t)))
 	(while (and found (in-pvs-string))
-	  (setq found (search-forward comment-start limit t)))
+	  (setq found (search-forward "%" limit t)))
 	found))))
 
 (defun in-pvs-string ()
@@ -463,7 +463,9 @@ delimiter."
       (let ((string-end (re-search-forward "\"" nil t)))
 	(while (and string-end
 		    (save-excursion (forward-char -2)
-				    (looking-at "\\\\")))
+				    (and (looking-at "\\\\")
+					 (forward-char -1)
+					 (not (looking-at "\\\\")))))
 	  (setq string-end (re-search-forward "\"" nil t)))
 	(unless string-end
 	  (goto-char string-start)
@@ -474,7 +476,7 @@ delimiter."
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
-      (search-forward comment-start limit t))))
+      (search-forward "%" limit t))))
 
 (defun pvs-count-char-pairs (start end sdel edel)
   (let ((mismatch (pvs-count-char-pairs* start end sdel edel)))
@@ -989,7 +991,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 			   (when with-prelude-p
 			     (list (format "%s/prelude" pvs-path))))))
     (if (member file-list '(nil NIL))
-	(error "No files in context")
+	(error "No PVS files in current workspace %s" pvs-current-directory)
 	(let* ((default (unless no-default-p (current-pvs-file t)))
 	       (dprompt (if default
 			    (format "%s(default %s) " prompt default)

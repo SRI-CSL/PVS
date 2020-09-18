@@ -1266,10 +1266,10 @@ resolution with a macro matching the signature of the arguments."
         (type-ambiguity lhs)))))
 
 (defun determine-best-mapping-lhs-resolutions (lhs-reses rhs type thinst)
-  (filter-local-resolutions
-   (remove-if-not #'(lambda (r)
-                      (determine-best-mapping-lhs-resolutions* r rhs type thinst))
-     lhs-reses)))
+  (let ((best (remove-if-not #'(lambda (r)
+				 (determine-best-mapping-lhs-resolutions* r rhs type thinst))
+		lhs-reses)))
+    (filter-local-resolutions best)))
 
 (defun determine-best-mapping-lhs-resolutions* (lhs-res rhs type thinst)
   (case (kind-of (declaration lhs-res))
