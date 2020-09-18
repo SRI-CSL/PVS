@@ -775,9 +775,9 @@ list of interface names that are currently open."
 			    (t nil))))
 	  (commentary (cond ((eq (status-flag ps) '!)
 			     (format nil "This completes the proof of ~a." (label ps)))
-			    (pvs-json::*interrupted-rpc*
-			     (if (stringp pvs-json::*interrupted-rpc*)
-				 pvs-json::*interrupted-rpc*
+			    (pvs-json:*interrupted-rpc*
+			     (if (stringp pvs-json:*interrupted-rpc*)
+				 pvs-json:*interrupted-rpc*
 			       "Proof command application interrupted by client."))
 			    (t *prover-commentary*))))
       `(,@(when commentary
