@@ -463,7 +463,9 @@ delimiter."
       (let ((string-end (re-search-forward "\"" nil t)))
 	(while (and string-end
 		    (save-excursion (forward-char -2)
-				    (looking-at "\\\\")))
+				    (and (looking-at "\\\\")
+					 (forward-char -1)
+					 (not (looking-at "\\\\")))))
 	  (setq string-end (re-search-forward "\"" nil t)))
 	(unless string-end
 	  (goto-char string-start)
