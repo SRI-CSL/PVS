@@ -72,9 +72,7 @@
     	(progn
 	  (setf pvs-json::*interrupted-rpc* (format nil "Error: ~a" condition))
     	  (restore))
-      (progn
-	(mp:process-interrupt (mp:process-name-to-process "Initial Lisp Listener") #'abort )
-	(abort)))))
+      (abort))))
 
 ;;; A robodoc header
 ;****f* interface/pvs-init

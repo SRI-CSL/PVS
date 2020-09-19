@@ -335,7 +335,7 @@
 
 ;; M3: hook for finishing proofstates [Sept 2020].
 (defun finish-proofstate-rpc-hook (ps)
-  #+pvsdebug (format t "~%[finish-proofstate-rpc-hook] ps ~a *prover-commentary* ~a ~%" ps *prover-commentary*)
+  "Prepares the result of the rpc request and closes it."
   (when pvs:*ps-control-info*
     (let*((commentary (cons (format nil "~:[Proof attempt aborted~;Q.E.D.~]" (and (typep ps 'top-proofstate)
 										     (eq (status-flag ps) '!))) *prover-commentary*))

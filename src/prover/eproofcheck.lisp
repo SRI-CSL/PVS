@@ -516,7 +516,6 @@
 			      (and (stringp (car (script prinfo)))
 				   (char= (char (car (script prinfo)) 0) #\;))))
 		     (script-structure-changed? prinfo script))))
-	   (setf (script prinfo) script)
 	   ;;[M3] Do not save by default while in server mode.
 	   (unless pvs:*ps-control-info*
 	     (setf (script prinfo) script)))

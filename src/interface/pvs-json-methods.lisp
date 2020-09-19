@@ -433,8 +433,7 @@ to the associated declaration."
   (let ((theory (pvs::get-typechecked-theory theoryref)))
     (unless theory
       (pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
-    (pvs::save-all-proofs theory)
-    t))
+    (pvs::save-all-proofs theory)))
 
 ;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
 (defrequest store-last-attempted-proof (formula theory &optional overwrite? new-script-id new-script-desc)
@@ -445,7 +444,7 @@ to the associated declaration."
     (if (equal dst-decl (car pvs::*last-attempted-proof*))
 	(let ((script (cdr pvs::*last-attempted-proof*)))
 	  (if overwrite?
-	      (setf (script (pvs::default-proof dst-decl)) script)
+	      (setf (script (pvs::default-proof dst-decl)) (car script))
 	    (let ((id (or new-script-id (pvs::next-proof-id dst-decl)))
 		  (description (or new-script-desc "")))
 	      (setf (pvs::default-proof dst-decl)
