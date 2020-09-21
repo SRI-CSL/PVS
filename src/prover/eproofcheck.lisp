@@ -68,9 +68,10 @@
 
 (defun explain-errors ()
   (when *first-strategy-error*
+    ;; M3 Add 'Error' prefix to commentary [Sept 2020]
     (when *last-strategy-error*
-      (commentary "~%The following errors occurred within the strategy:~%"))
-    (commentary "~a~%" *first-strategy-error*)
+      (commentary "~%Error: The following issues occurred within the strategy:~%"))
+    (commentary "~:[~;Error:~] ~a~%" (not *last-strategy-error*) *first-strategy-error*)
     (when *last-strategy-error*
       (commentary "~a~%" *last-strategy-error*))
     (clear-strategy-errors)))

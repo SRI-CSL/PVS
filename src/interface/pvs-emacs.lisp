@@ -779,7 +779,7 @@ list of interface names that are currently open."
 			     (if (stringp pvs-json::*interrupted-rpc*)
 				 pvs-json::*interrupted-rpc*
 			       "Proof command application interrupted by client."))
-			    (t *prover-commentary*))))
+			    (t (if (listp *prover-commentary*) (format nil "~{~a~^~%~}" (reverse *prover-commentary*)) *prover-commentary*)))))
       `(,@(when commentary
 	    `(("commentary" . ,commentary)))
 	,@(when action `(("action" . ,action)))

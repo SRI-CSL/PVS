@@ -310,7 +310,9 @@
 (defmacro error-format-if (string &rest args)
   `(if *suppress-printing*
        (set-strategy-errors (format nil ,string ,@args))
-       (commentary ,string ,@args)))
+     (let ((com  ;; M3 Add 'Error' prefix to commentary [Sept 2020]
+	    (format nil "Error: ~a" (string-trim '(#\Space #\Tab #\Newline) (format nil ,string ,@args)))))
+       (commentary com))))
 
 (defmacro format-nif (string &rest args)
   ;; Like format-if, but not in commentary

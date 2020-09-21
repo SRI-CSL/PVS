@@ -183,7 +183,7 @@
     (cond (*in-checker*
 	   ;; Add the error to the commentary string, as calling error does
 	   ;; not work correctly while in the prover.
-	   (pvs:commentary errstring)
+	   (pvs:commentary (format nil "Error: ~a" errstring)) ; M3 Add 'Error' prefix to commentary [Sept 2020]
 	   (pvs:restore))
 	  (t (error 'pvs-error
 		    :code code
