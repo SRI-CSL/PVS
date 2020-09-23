@@ -232,9 +232,9 @@ expression judgements to use most any expression, though it must be kept
 in mind that the judgement mechanism uses a very simple match, in order to
 keep the typechecker relatively quick.
 @item
-IF can be given as an application, e.g., IF(b,a,c).
+@code{IF} can be given as an application, e.g., @code{IF(b,a,c)}.
 @item
-LAMBDA expressions may be given a result type, e.g., @code{LAMBDA (x: int)
+@code{LAMBDA} expressions may be given a result type, e.g., @code{LAMBDA (x: int)
 -> int: f(x)}.  This will assign the type @code{[int -> int]} to the
 LAMBDA expression, and generate a TCC on @code{f(x)} if necessary.
 @item
@@ -243,8 +243,9 @@ this becomes @code{a < b & b /= c & c > 4}.  Works for any binary relation
 between the same or different types.  Note that this will not go inside
 parentheses, so @code{(a < b) /= c > 4} will be interpreted as @code{(a <
 b) /= c & c > 4}, which probably doesn't typecheck.  (Overloading of
-relations or enabling some conversions may allow this to still be typechecked).
-
+relations or enabling some conversions may allow this to still be
+typechecked).  Note also that in this case, parentheses are necessary if
+what is intended is @code{(a < b) /= (c > 4)}.
 @end itemize
 
 @node TCC Formulas and Associated Proofs
@@ -281,6 +282,36 @@ match exactly are directly used, any remaining proofs are installed (in
 order) in the remaining TCCs.  This is obviously not perfect, as the
 corresponding @code{expr}s may not match, depending on the changes made to
 a declaration.
+
+In addition to the above, TCC generation has been cleaned up, making the
+TCCs more readable.
+@itemize @bullet
+@item
+The order of conditions now reflects the order of the specification.
+For example, in earlier versions of PVS, @code{IF A AND B THEN ...} could
+generate a TCC of the form @code{B AND A IMPLIES ...}.
+
+@item
+TCC generation occasionally needs to name variables apart; however, due to
+a bug in TCC generation, it would often create new variable names
+unnecessarily.  This has been fixed.
+
+@item
+@code{LET} expressions are now treated differently; for example,
+@code{LET x = e1, y = e2 IN e} would generate TCCs of the form
+@code{FORALL x: x = e1 IMPLIES FORALL y: y = e2 IMPLIES ...}.  Now the
+form is @code{FORALL x, y: x = e1 AND y = e2 IMPLIES ...}.  For large
+@code{LET} expressions, this results in much more readable TCCs.
+@end itemize
+
+As a result of these changes, many proofs involving TCCs need to be
+repaired.  For shorter proofs, it's often enough to step through the proof
+and make the corresponding changes.  Sometimes, especially for more
+complex proofs, it's not at all obvious how to repair the proof.  In this
+case, the easiest thing is to run the version of PVS where the proof works
+in parallel with the newer version.  In this way it becomes easy to find
+those steps that diverge, and to fix those.
+
 
 @node PVS XML-RPC server
 @subsection PVS XML-RPC server
@@ -753,10 +784,10 @@ included in the mapping, e.g.,
 @verbatim
 eq [A:TYPE+]: [A -> [A -> bool]]
 
-logic_sttfa_pvs : THEORY = logic_sttfa {{
+logic_sttfa_pvs : THEORY = logic_sttfa @{@{
     connectives_sttfa_th := connectives_sttfa_pvs,
     eq[T:TYPE+](x:T)(y:T) := x=y
-  }}
+  @}@}
 @end verbatim
 
 Second, the context is updated with the theory without mappings when

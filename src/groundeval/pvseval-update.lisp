@@ -894,12 +894,19 @@ if called."
              :test #'(lambda (x y) (eq x (id y)))))
 
 (defmethod pvs2cl_up*  ((expr field-application) bindings livevars)
-  (let* ((clarg (pvs2cl_up* (argument expr) bindings livevars))
-	 (argtype (find-supertype (type (argument expr))))
-	 (fieldnum (get-field-num (id expr) argtype)))
-    (if (tc-eq argtype *string-type*)
-	(if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
-      `(project ,(1+ fieldnum) ,clarg))))
+  (with-slots (argument) expr
+    (let* ((clarg (pvs2cl_up* argument bindings livevars))
+	   (argtype (find-supertype (type argument)))
+	   (fieldnum (get-field-num (id expr) argtype)))
+      (if (tc-eq argtype *string-type*)  ;;NSH(9-9-20): trapping strings
+	  (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
+	(if (finseq-type? argtype)
+	    (let ((fldapp (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))))
+	    `(let ((argval ,clarg))
+	       (if (stringp argval)
+		   ,fldapp
+		 (project ,(1+ fieldnum) ,clarg))))
+	  `(project ,(1+ fieldnum) ,clarg))))))
 
 
 

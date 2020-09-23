@@ -243,10 +243,10 @@ is replaced with replacement."
 	  (lto        (aref loc 2)))
      (loop repeat (- lfrom 1) do (read-line file nil nil))
      (if (= line 0)
-	 (pvs-message "Installing proof scripts [Theory: ~a]" 
+	 (pvs-message "Installing inlined proof scripts into theory ~a." 
 		      theory)
-       (pvs-message "Installing proof script at line ~a [Theory: ~a]" 
-		    line theory))
+       (pvs-message "Installing proof script at line ~a of file ~a." 
+		    line filename))
      (do ((str (read-one-line file))
 	  (n   lfrom)
 	  (formulas)
@@ -306,71 +306,65 @@ is replaced with replacement."
 			 (setq str nil))
 			(t (setq str nil))))))))))
 
-(defun install-prooflite-scripts-from-prl-file (theory-name force &optional (plain-script? t))
-  "Installs all the prooflite scripts from a file called \"<filename>__<theory-name>.prl\", where <filename> is the name of the file where the theory is defined."
-  (let ((theory (get-typechecked-theory theory-name)))
-    (if theory
-	(let((filename (get-prooflite-file-name theory))
-	     (at-least-one-script-saved? nil))
-	  (let ((prlfile (probe-file (make-pathname :defaults *default-pathname-defaults* :name filename))))
-	    (if prlfile
-		(with-open-file 
-		 (file prlfile :direction :input)
-		 (pvs-message "Installing proof scripts from file \"~a\" into theory \"~a\"." filename (id theory))
-		 (do ((str (read-line file nil))
-		      (formulas)
-		      (script))
-		     ((null str))
-		   (let ((proofcomment (if plain-script?
-					   (pregexp-replace "\%.*" (trim-left str) "")
-					 (is-proof-comment str))))
-		     (cond (proofcomment
-			    (let* ((proof     (match-proof proofcomment))
-				   (formula   (car proof))
-				   (qed       (match-qed proofcomment)))
-			      (cond 
-			       (formula
-				(when script
-				  (pvs-message 
-				   "QED is missing in proof script(s) ~a [Theory: ~a]"
-				   formulas theory))
-				(setq str (format nil "~a" (cdr proof)))
-				(setq formulas (cons formula 
-						     (when (not script) formulas)))
-				(setq script nil))
-			       (qed
-				(let ((newscript (new-script script qed))) 
-				  (when (and newscript formulas)
-				    (install-script theory newscript 
-						    (reverse formulas) 
-						    force
-						    t
-						    nil)
-				    (setq at-least-one-script-saved? t))
-				  (cond ((not formulas) 
-					 (pvs-message 
-					  "No script was installed [Theory: ~a]" 
-					  theory)
-					 (setq str nil))
-					(t
-					 (setq str (read-line file nil))
-					 (setq formulas nil)
-					 (setq script nil)))))
-			       (t (setq str (read-line file nil))
-				  (setq script (new-script script proofcomment))))))
-			   ((is-comment str)
-			    (setq str (read-line file nil)))
-			   (t 
-			    (when formulas
-			      (pvs-message 
-			       "QED is missing in proof script(s) ~a [Theory: ~a]"
-			       formulas theory))
-			    (setq str (read-line file nil))
-			    (setq formulas nil)
-			    (setq script nil)))))
-		 (when at-least-one-script-saved? (save-all-proofs)))
-	      (pvs-message "Error: prl file ~a not found in current context.~%" filename))))
-      (pvs-message "Error: Theory ~a not found in current context.~%" theory-name))))
+(defun install-prooflite-scripts-from-prl-file (theory prl-filename force &optional (plain-script? t))
+  "Installs all the prooflite scripts from a file called PRL-FILENAME into the theory THEORY.
+  It assumes that the prl file exists and that theory is not nil."
+  (let((at-least-one-script-saved? nil))
+    (with-open-file 
+     (file prl-filename :direction :input)
+     (do ((str (read-line file nil))
+	  (formulas)
+	  (script))
+	 ((null str))
+       (let ((proofcomment (if plain-script?
+			       (pregexp-replace "\%.*" (trim-left str) "")
+			     (is-proof-comment str))))
+	 (cond (proofcomment
+		(let* ((proof     (match-proof proofcomment))
+		       (formula   (car proof))
+		       (qed       (match-qed proofcomment)))
+		  (cond 
+		   (formula
+		    (when script
+		      (pvs-message 
+		       "QED is missing in proof script(s) ~a [Theory: ~a]"
+		       formulas theory))
+		    (setq str (format nil "~a" (cdr proof)))
+		    (setq formulas (cons formula 
+					 (when (not script) formulas)))
+		    (setq script nil))
+		   (qed
+		    (let ((newscript (new-script script qed))) 
+		      (when (and newscript formulas)
+			(install-script theory newscript 
+					(reverse formulas) 
+					force
+					t
+					nil)
+			(setq at-least-one-script-saved? t))
+		      (cond ((not formulas) 
+			     (pvs-message 
+			      "No script was installed [Theory: ~a]" 
+			      theory)
+			     (setq str nil))
+			    (t
+			     (setq str (read-line file nil))
+			     (setq formulas nil)
+			     (setq script nil)))))
+		   (t (setq str (read-line file nil))
+		      (setq script (new-script script proofcomment))))))
+	       ((is-comment str)
+		(setq str (read-line file nil)))
+	       (t 
+		(when formulas
+		  (pvs-message 
+		   "QED is missing in proof script(s) ~a [Theory: ~a]"
+		   formulas theory))
+		(setq str (read-line file nil))
+		(setq formulas nil)
+		(setq script nil)))))
+     (when at-least-one-script-saved? (save-all-proofs)))))
+      
 
 (defun then-prooflite (script)
   (cond ((and
@@ -470,5 +464,6 @@ is replaced with replacement."
 
 (defun get-default-proof-script (theory-name formula)
   (let ((formula-declaration (find-formula theory-name formula)))
-    (when formula-declaration
-      (script (default-proof formula-declaration)))))
+    (when (and formula-declaration (justification formula-declaration))
+      (format t "~a" (get-proof-script-output-string formula-declaration nil))))
+  (values))

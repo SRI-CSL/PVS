@@ -21,6 +21,12 @@ $sedprog -e "s,^\$PVSPATH=.*$,\$PVSPATH=\"$PWD\";," < provethem > tmp.$$
 $mvprog tmp.$$ provethem
 $chmodprog a+x pvs pvsio proveit provethem
 
+# Take care of Catalina quarantine issues
+if [ `uname -s` = "Darwin" ]; then
+  echo "\nCalling xattr to remove MacOSX quarantine attributes on files"
+  xattr -r -d com.apple.quarantine . 2> /dev/null
+fi
+
 # Byte compile emacs
 
 emacsinfo="`which $emacsprog`: `$emacsprog --version | head -n 1`"

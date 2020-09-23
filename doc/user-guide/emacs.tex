@@ -152,14 +152,14 @@ modified file.
 
 \section{Getting Help}
 \begin{pvscmds}
-\icmd{info} & \ikey{C-h i} & Read Emacs documentation\\
-\icmd{help-with-tutorial} & \ikey{C-h t} & Display the Emacs tutorial \\
-\icmd{command-apropos} & \ikey{C-h a} & Show commands matching a string \\
-\icmd{describe-key} & \ikey{C-h k} & Display name and documentation a key
+\icmd{info} & \key{C-h i} & Read Emacs documentation\\
+\icmd{help-with-tutorial} & \key{C-h t} & Display the Emacs tutorial \\
+\icmd{command-apropos} & \key{C-h a} & Show commands matching a string \\
+\icmd{describe-key} & \key{C-h k} & Display name and documentation a key
 runs \\
-\icmd{describe-function} & \ikey{C-h f} & Display documentation for
+\icmd{describe-function} & \key{C-h f} & Display documentation for
 function \\
-\icmd{describe-bindings} & \ikey{C-h b} & Display a table of key bindings
+\icmd{describe-bindings} & \key{C-h b} & Display a table of key bindings
 \\
 \end{pvscmds}
 
@@ -265,7 +265,7 @@ these are bound to by typing \key{C-h k} followed by the key.}
 
 \section{Error Recovery}
 \begin{pvscmds}
-\icmd{keyboard-quit} & \ikey{C-g} & Abort partially typed or executing
+\icmd{keyboard-quit} & \key{C-g} & Abort partially typed or executing
 command \\
 \icmd{undo} & \key{C-x u}, \key{C-\_} & Undo one batch of changes \\
 \icmd{revert-buffer} & & Revert the buffer to the file contents \\
@@ -315,7 +315,7 @@ options available for search.
 \icmd{backward-kill-word} & \key{M-DEL} & Kill word backwards \\
 \icmd{kill-line} & \key{C-k} & Kill rest of line \\
 \icmd{kill-region} & \key{C-w} & Kill region \\
-\icmd{copy-region-as-kill} & \ikey{M-w} & Save region a killed text
+\icmd{copy-region-as-kill} & \key{M-w} & Save region a killed text
 without killing \\
 \end{pvscmds}
 
@@ -328,7 +328,7 @@ specific buffer, and in this respect acts much like a \emph{clipboard}
 found in most window systems.
 
 The \cmd{delete-backward-char} command is frequently mapped onto the
-\ikey{Backspace} key instead; you may need to experiment with this. If
+\key{Backspace} key instead; you may need to experiment with this. If
 you want it mapped to the \key{Backspace} key, it is usually easier to map
 it outside of Emacs, for example using the \texttt{xmodmap} command.  This
 is because by default the \key{Backspace} key and the \key{C-h} key are
@@ -348,8 +348,8 @@ read-only status.
 
 \section{Yanking}
 \begin{pvscmds}
-\icmd{yank} & \ikey{C-y} & Yank last killed test \\
-\icmd{yank-pop} & \ikey{M-y} & Replace last yank with previous kill \\
+\icmd{yank} & \key{C-y} & Yank last killed test \\
+\icmd{yank-pop} & \key{M-y} & Replace last yank with previous kill \\
 \end{pvscmds}
 
 The \cmd{yank} command puts the text of the most recent kill command into
@@ -364,8 +364,8 @@ from the kill ring.
 
 \section{Marking}
 \begin{pvscmds}
-\icmd{set-mark-command} & \ikey{C-\char064}, \ikey{C-SPC} & Set mark here \\
-\icmd{exchange-point-and-mark} & \ikey{C-x C-x} & Exchange point and mark
+\icmd{set-mark-command} & \key{C-\char064}, \key{C-SPC} & Set mark here \\
+\icmd{exchange-point-and-mark} & \key{C-x C-x} & Exchange point and mark
 \\
 \end{pvscmds}
 

@@ -2,7 +2,8 @@
 \begin{bnf}
 \production{RecursiveType}
 {\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \brc{\lit{DATATYPE}
-\choice \lit{CODATATYPE}} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
+    \choice \lit{CODATATYPE}}\\[-0.1in]
+  && \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
 && \lit{BEGIN}\\[-0.1in]
 && \opt{\hlink{Importing} \opt{\lit{;}}} \\[-0.1in]
 && \opt{\hlink{AssumingPart}} \\[-0.1in]
@@ -10,7 +11,9 @@
 && \lit{END} \hlink{Id}}
 
 \production{InlineRecursiveType}
-{\hlink{Id} \opt{\hlink{DeclFormals}} \lit{:} \brc{\lit{DATATYPE} \choice \lit{CODATATYPE}} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
+{\hlink{Id} \opt{\hlink{DeclFormals}} \lit{:} \brc{\lit{DATATYPE} \choice
+    \lit{CODATATYPE}}\\[-0.1in]
+  && \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
 && \lit{BEGIN}\\[-0.1in]
 && \opt{\hlink{Importing} \opt{\lit{;}}} \\[-0.1in]
 && \opt{\hlink{AssumingPart}} \\[-0.1in]

@@ -40,11 +40,6 @@ Date: 05/09/98
 
 #include <signal.h>
 
-#ifdef __linux__
-// GLIBC 2.11 includes __longjmp_chk, not defined in earlier versions
-__asm__(".symver __longjmp_chk,siglongjmp@GLIBC_2.2.5");
-#endif
-
 int __attribute__ ((aligned (16))) bdd_interrupted = 0;
 sigjmp_buf bddcatch;
 struct sigaction lisp_handler;
@@ -87,8 +82,8 @@ restore_sigint(void)
 }
 
 
-int debug;
-int warnings;
+extern int debug;
+extern int warnings;
 int negate = 0;
 /*
 #define ODD(n)			((n)  & 1)
@@ -110,8 +105,6 @@ int negate = 0;
 /* dummy definitions */
 void yyerror (const char *format, ...) { fputs ("", stderr); } 
 void yywarning (const char *format, ...) { fputs ("", stderr); } 
-HASHTAB *var_table;              /* primary variable names */
-FILE *bdd_output_stream;
 //static const char *bdd_output_strings ;
 
 /* setting flags */

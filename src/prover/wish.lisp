@@ -268,18 +268,19 @@
      (with-output-to-temp-file
       (format t "show-proof-commands {~{~a ~}}" commands)))))
 
-(defun x-module-hierarchy (theoryname &optional include-libraries?)
-  (let* ((ctheory (get-typechecked-theory theoryname))
-	 (*current-context* (context ctheory))
-	 (*modules-visited* nil))
-    (pvs-wish-source
-     (with-output-to-temp-file
-      (format t "module-hierarchy ~a ~a ~a {~%"
-	(id (current-theory))
-	(filename (current-theory))
-	(protect-spaces (shortname (working-directory))))
-      (module-hierarchy* (current-theory) include-libraries?)
-      (format t "}")))))
+(defun x-module-hierarchy (theoryref &optional include-libraries?)
+  (with-pvs-file (fname theoryname) theoryref
+    (let* ((ctheory (get-typechecked-theory (or theoryname fname)))
+	   (*current-context* (context ctheory))
+	   (*modules-visited* nil))
+      (pvs-wish-source
+       (with-output-to-temp-file
+	   (format t "module-hierarchy ~a ~a ~a {~%"
+	     (id (current-theory))
+	     (filename (current-theory))
+	     (protect-spaces (shortname (working-directory))))
+	 (module-hierarchy* (current-theory) include-libraries?)
+      (format t "}"))))))
 
 (defun module-hierarchy* (theory include-libraries?)
   (unless (member theory *modules-visited*)
@@ -391,6 +392,15 @@
 	    (path-to-subgoal top pp
 			     (cons (position cur (x-subgoals pp cur))
 				       path))))))
+
+;; M3: simplified version of path-to-subgoal [Sept 2020]
+(defun path-from-top (cur &optional path)
+  (let ((pp (wish-parent-proofstate cur)))
+    (if (null pp)
+	path
+      (path-from-top pp
+		     (cons (position cur (x-subgoals pp cur))
+			   path)))))
 
 
 ;;; A path is of the form, e.g., (0 1 0 2)

@@ -67,6 +67,8 @@
 (defvar *bind-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *voss-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *proofstate-hooks* nil)
+(defvar *finish-proofstate-hooks* nil "Hooks invoked at finished proofstates.") ;; M3 [Sept 2020]
+(defvar *success-proofstate-hooks* nil "Hooks for succesly finished branches") ;; M3 [Sept 2020]
 (defvar *printproofstate* nil)
 (defvar *in-checker* nil)
 (defvar *in-apply* nil)
@@ -308,7 +310,9 @@
 (defmacro error-format-if (string &rest args)
   `(if *suppress-printing*
        (set-strategy-errors (format nil ,string ,@args))
-       (commentary ,string ,@args)))
+     (let ((com  ;; M3 Add 'Error' prefix to commentary [Sept 2020]
+	    (format nil "Error: ~a" (string-trim '(#\Space #\Tab #\Newline) (format nil ,string ,@args)))))
+       (commentary com))))
 
 (defmacro format-nif (string &rest args)
   ;; Like format-if, but not in commentary

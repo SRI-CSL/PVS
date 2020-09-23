@@ -689,7 +689,7 @@ documentation for edit-proof-mode for more information."
 	  (delete-char -2))))))
 	
 
-(defvar *pvs-tmp-file* (concat "/tmp/" (make-temp-name "PVS")))
+(defvar pvs-tmp-file (concat "/tmp/" (make-temp-name "PVS")))
 
 (defpvs install-proof edit-proof (&optional step)
   "Installs the edited proof
@@ -1043,9 +1043,9 @@ declarations will not be installed."
 	   (goto-char (point-min))
 	   (delete-initial-blank-lines)
 	   (add-final-newline)
-	   (write-region (point-min) (point-max) *pvs-tmp-file* nil 'notnil))
+	   (write-region (point-min) (point-max) pvs-tmp-file nil))
 	 (pvs-send
-	  (format "(typecheck-add-declaration \"%s\" t)" *pvs-tmp-file*)))
+	  (format "(typecheck-add-declaration \"%s\" t)" pvs-tmp-file)))
 	(t (error "No declaration is currently being edited"))))
 
 (defun add-declaration-to-file (file placestr)
@@ -1112,6 +1112,9 @@ declaration at the cursor.  The body of the declaration may be edited, and
 will replace the original when C-c C-c is typed."
   (interactive)
   (pvs-bury-output)
+  (unless (or pvs-in-checker
+	      pvs-in-evaluator)
+    (error "No point in running modify-declaration if not in the prover or evaluator"))
   (let ((file (current-pvs-file)))
     (when (buffer-modified-p (get-file-buffer file))
       (error "%s is not parsed" file))
@@ -1123,6 +1126,7 @@ will replace the original when C-c C-c is typed."
 	(with-current-buffer buf
 	  (set-buffer-modified-p nil)
 	  (modify-declaration-mode))
+	;;(display-buffer-pop-up-frame "Modify Declaration" nil)
 	(pop-to-buffer buf)
 	(message "Modify declaration - type C-c C-c when finished.")))))
 
@@ -1134,10 +1138,10 @@ will replace the original when C-c C-c is typed."
 	   (add-final-newline)
 	   (delete-initial-blank-lines)
 	   (write-region (point-min) (point-max)
-			 *pvs-tmp-file* nil 'notnil))
+			 pvs-tmp-file nil 'notnil))
 	 (let ((ret (pvs-send-and-wait
 		     (format "(typecheck-mod-declaration \"%s\" t)"
-			 *pvs-tmp-file*)
+			 pvs-tmp-file)
 		     nil nil 'list)))
 	   (when (and ret (consp ret))
 	     (let* ((file (car ret))
@@ -2196,7 +2200,7 @@ Letters do not insert themselves; instead, they are commands:
       (goto-char (point-min))
       (when (re-search-forward "^(" nil t)
 	(forward-char -1))
-      (write-region (point) (point-max) *pvs-tmp-file* nil 'notnil))
+      (write-region (point) (point-max) pvs-tmp-file nil 'notnil))
     (goto-char (point-min))
     (while (search-forward "(checkpoint)" nil t)
       (replace-match "!!!" nil t)))
@@ -2205,7 +2209,7 @@ Letters do not insert themselves; instead, they are commands:
 	 (line (+ (current-line-number) prelude-offset))
 	 (installed (pvs-send-and-wait
 		     (format "(install-proof \"%s\" %s %s %d %s \"%s\" %d)"
-			 *pvs-tmp-file* (when name (format "\"%s\"" name))
+			 pvs-tmp-file (when name (format "\"%s\"" name))
 			 (when declname (format "\"%s\"" declname))
 			 line (when origin (format "\"%s\"" origin))
 			 (buffer-name) prelude-offset)

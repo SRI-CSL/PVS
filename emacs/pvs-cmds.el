@@ -1242,6 +1242,21 @@ for any reason, then the current PVS workspace is not changed."
       (find-pvs-file file)))
   (run-hooks 'change-workspace-hook))
 
+(defpvs clear-workspace context (&optional workspace)
+  "Clears the specified workspace, defaults to the current workspace.
+Basically clears the internal tables, as if restarting PVS in the
+workspace."
+  (interactive (list (pvs-complete-library-path
+		      (format "Clear workspace (default %s): " pvs-current-directory))))
+  (pvs-send-and-wait (format "(clear-workspace %s)"
+			 (unless (equal workspace "") workspace))))
+
+(defpvs clear-all-workspaces context ()
+  "Clears all workspaces. Basically clears the internal tables, as if restarting PVS."
+  (interactive)
+  (pvs-send-and-wait (format "(clear-workspaces t)")))
+  
+
 (defun get-dir-and-file (file-ref)
   (let ((default-directory (pvs-current-directory t))
 	(dir nil)

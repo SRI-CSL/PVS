@@ -20,91 +20,96 @@ script, and requires {\tt /bin/sh} to execute correctly.\footnote{On some
 systems, \texttt{/bin/sh} is linked to the \texttt{bash} shell; this works
 as well.}
 
-PVS accepts a number of command-line arguments\index{PVS!command-line
-arguments}\index{command-line arguments}, as well as using environment
-variables.  The command-line arguments specific to PVS are
+PVS accepts a number of command-line arguments, as well as using
+environment variables.  The command-line arguments specific to PVS are
 \begin{description}
 
-\item[\texttt{-h | -help | --help}]\index{-help@\texttt{-help} command
-line argument} - Print a brief description of the command line options and
-exit.
+\item[\texttt{-h | -help | --help}]
+  \index{-help@\texttt{-help}}\index{command-line arguments!\texttt{-help}}
+  - Print a brief description of the command
+  line options and exit.
 
-\item[\texttt{-lisp} \emph{lispname}]\index{-lisp@\texttt{-lisp} command
-line argument} - Specifies which lisp to use. The lisp image used for PVS
-is then \texttt{pvs-\emph{lispname}}, which should be located in a
-directory determined by the machine architecture.  See
-Section~\ref{pvsimage}, page~\pageref{pvsimage} for details.
+\item[\texttt{-lisp} \emph{lispname}]
+  \index{-lisp@\texttt{-lisp}}\index{command-line arguments!\texttt{-lisp}} -
+  Specifies which lisp to use. The lisp image used for PVS is then
+  \texttt{pvs-\emph{lispname}}, which should be located in a directory
+  determined by the machine architecture.  See Section~\ref{pvsimage},
+  page~\pageref{pvsimage} for details.
 
-\label{dash-redhat}
-\item[\texttt{-redhat}
-\emph{redhat-release}]\index{-redhat@\texttt{-redhat} command line
-argument} - Specifies the release of the Redhat Linux operating system you
-are using (different PVS binaries are required for libc5 and glibc C
-libraries).  PVS attempts to discover this for itself, but if the wrong
-binary is chosen you can specify \texttt{4} or \texttt{5} using this
-argument.  Note that Redhat 6 uses the glibc libraries, which corresponds
-to the value \texttt{5}.
+\item[\texttt{-runtime}]
+  \index{-runtime@\texttt{-runtime}}\index{command-line arguments!\texttt{-runtime}}
+  - This is only
+  needed for those who have access to the development version of Allegro
+  Common Lisp, where both the runtime and development versions of PVS are
+  available, defaulting to the development version.  With this option the
+  runtime image is used instead.
 
-\item[\texttt{-runtime}]\index{-runtime@\texttt{-runtime} command line
-argument} - This is only needed at SRI, where the development version of
-the system is used by default.  With this option the runtime image is used
-instead.
+\item[\texttt{-emacs} \emph{emacsname}]
+  \index{-emacs@\texttt{-emacs}}\index{command-line arguments!\texttt{-emacs}}-
+  Specifies the Emacs to use; see below for details.
 
-\item[\texttt{-emacs} \emph{emacsname}]\index{-emacs@\texttt{-emacs}
-command line argument} - Specifies the Emacs to use; see below for
-details.
+\item[\texttt{-decision-procedures} \emph{new}\texttt{|}\emph{old}]
+  \index{-decision-procedures@\texttt{-decision-procedures}}
+  \index{command-line arguments!\texttt{-decision-procedures}}
+  - Sets the default decision procedures to be used in proofs.  See
+  Section~\ref{decision-procedure-commands},
+  page~\pageref{decision-procedure-commands} for details.
 
-\item[\texttt{-decision-procedures}
-\emph{new}\texttt{|}\emph{old}]\index{-decision-procedures@\texttt{-decision-procedures}
-command line argument} - Sets the default decision procedures to be used
-in proofs.  See Section~\ref{decision-procedure-commands},
-page~\pageref{decision-procedure-commands} for details.
+\item[\texttt{-force-decision-procedures} \emph{new}\texttt{|}\emph{old}]
+  \index{-force-decision-procedures@\texttt{-force-decision-procedures}}
+  \index{command-line arguments!\texttt{-force-decision-procedures}}
+  - Forces the chosen decision procedure to be used regardless of the
+  default decision procedure setting or which decision procedures were
+  used in developing a proof.  Note that with this option there is no way
+  to switch between the new and old decision procedures.
 
-\item[\texttt{-force-decision-procedures}
-\emph{new}\texttt{|}\emph{old}]\index{-force-decision-procedures@\texttt{-force-decision-procedures}
-command line argument} - Forces the chosen decision procedure to be used
-regardless of the default decision procedure setting or which decision
-procedures were used in developing a proof.  Note that with this option
-there is no way to switch between the new and old decision procedures.
+\item[\texttt{-nw}]\index{-nw@\texttt{-nw}}\index{command-line arguments!\texttt{-nw}}
+  - Tells Emacs not to use its special interface to X.
 
-\item[\texttt{-nw}]\index{-nw@\texttt{-nw} command line argument} - Tells
-Emacs not to use its special interface to X.
+\item[\texttt{-batch}]\index{-batch@\texttt{-batch}}\index{command-line arguments!\texttt{-batch}}
+  - Run PVS in batch mode. See chapter~\ref{batchmode},
+  page~\pageref{batchmode} for details.
 
-\item[\texttt{-batch}]\index{-batch@\texttt{-batch} command line argument}
-- Run PVS in batch mode. See chapter~\ref{batchmode},
-page~\pageref{batchmode} for details.
+\item[\texttt{-timeout}:]\index{-timeout@\texttt{-timeout}}
+  \index{command-line arguments!\texttt{-timeout}}
+  - In batch mode, this causes typechecking
+  and individual proof attempts to be interrupted after the given number
+  of seconds.
 
-\item[\texttt{-timeout}:]\index{-timeout@\texttt{-timeout} command line
-argument} In batch mode, this causes typechecking and individual proof
-attempts to be interrupted after the given number of seconds.
+\item[\texttt{-nobg}:]\index{-nobg@\texttt{-nobg}}
+  \index{command-line arguments!\texttt{-nobg}}
+  - Normally PVS starts in
+  the background (with the \& control operator).  This starts it in the
+  foreground.
 
-\item[\texttt{-nobg}:]\index{-nobg@\texttt{-nobg} command line argument}
-Normally PVS starts in the background (with the \& control operator).
-This starts it in the foreground.
+\item[\texttt{-raw}:]\index{-raw@\texttt{-raw}}
+  \index{command-line arguments!\texttt{-raw}}
+  - This runs PVS without
+  Emacs.  This is only useful for front ends, which must do the same
+  initialization as done by the Emacs interface.
 
-\item[\texttt{-raw}:]\index{-raw@\texttt{-raw} command line argument} This
-runs PVS without Emacs.  This is only useful for front ends, which must do
-the same initialization as done by the Emacs interface.
-
-\item[\texttt{-v} \emph{number}]\index{-v@\texttt{-v} command line
-argument} - Specifies verbosity level for PVS batch mode. See
-Chapter~\ref{batchmode}, page~\pageref{batchmode} for details.
+\item[\texttt{-v} \emph{number}]\index{-v@\texttt{-v}}
+  \index{command-line arguments!\texttt{-v}}
+  - Specifies verbosity level for PVS batch mode. See Chapter~\ref{batchmode},
+  page~\pageref{batchmode} for details.
 
 \label{dash-q-option}
-\item[\texttt{-q}]\index{-q@\texttt{-q} command line argument} - A
-standard emacs option to inhibit loading of the users {\tt .emacs} file,
-but extended in PVS to inhibit loading of the users {\tt .pvsemacs}, {\tt
-.pvsxemacs-options} and \texttt{.pvs.lisp} files on startup.
+\item[\texttt{-q}]\index{-q@\texttt{-q}}\index{command-line arguments!\texttt{-q}}
+  - A standard emacs option to
+  inhibit loading of the users {\tt .emacs} file, but extended in PVS to
+  inhibit loading of the users {\tt .pvsemacs}, {\tt .pvsxemacs-options}
+  and \texttt{.pvs.lisp} files on startup.
 
-\item[\texttt{-patchlevel}
-\emph{level}]\index{-patchlevel@\texttt{-patchlevel} command line
-argument} - Specifies which patch files to load. Level \texttt{none} loads
-no patch files. Level \texttt{rel} loads the file \texttt{patch2} from
-your PVS directory, which usually contains the release versions of PVS
-patches. Other valid levels are \texttt{test} (loads the files
-\texttt{patch2} and \texttt{patch2-test}) and \texttt{exp} (loads the
-files \texttt{patch2}, \texttt{patch2-test} and \texttt{patch2-exp}).
-This option is mainly used for PVS development.
+\item[\texttt{-patchlevel} \emph{level}]
+  \index{-patchlevel@\texttt{-patchlevel}}\index{command-line arguments!\texttt{-patchlevel}}
+  - Specifies which
+  patch files to load. Level \texttt{none} loads no patch files. Level
+  \texttt{rel} loads the file \texttt{patch2} from your PVS directory,
+  which usually contains the release versions of PVS patches. Other valid
+  levels are \texttt{test} (loads the files \texttt{patch2} and
+  \texttt{patch2-test}) and \texttt{exp} (loads the files \texttt{patch2},
+  \texttt{patch2-test} and \texttt{patch2-exp}).  This option is mainly
+  used for PVS development.
 
 
 \end{description}

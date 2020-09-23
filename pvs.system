@@ -138,6 +138,11 @@
 (defpackage :pvs-xml-rpc
   (:use :cl-user :lisp :clos :make)
   (:export "pvs-server"))
+#-(or gcl cmu sbcl)
+(defpackage :pvs-json
+  (:use :json :cl-user :lisp :clos :make)
+  (:export :process-json-request :json-message :*interrupted-rpc*
+	   :update-ps-control-info-result))
 
 #+(or gcl cmu)
 (defpackage :pvs
@@ -151,6 +156,11 @@
 (defpackage :pvs-xml-rpc
   (:use :cl-user :common-lisp :sb-pcl :make)
   (:export "PVS-SERVER"))
+#+sbcl
+(defpackage :pvs-json
+  (:use :json :cl-user :common-lisp :sb-pcl :make)
+  (:export :process-json-request :json-message :*interrupted-rpc*
+	   :update-ps-control-info-result))
 
 #-(or gcl cmu sbcl)
 (defpackage :rahd (:use :common-lisp #+allegro :excl))

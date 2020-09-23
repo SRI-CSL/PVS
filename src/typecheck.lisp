@@ -1217,12 +1217,11 @@ TCCs are generated, and finally exportings are updated."
       (unless lhs-context
 	(type-error thinst "Theory reference ~a not found" thinst))
       (let* ((lhs-theory (theory lhs-context))
-	     ;;(lhs-theory-decls (interpretable-declarations lhs-theory))
-	     )
+	     (lhs-theory-decls (interpretable-declarations lhs-theory)))
 	(dolist (mapping mappings)
 	  (unless (already-typed? mapping)
 	    (typecheck-decl-formals (decl-formals mapping) (lhs mapping))
-	    (typecheck-mapping-lhs mapping lhs-context lhs-theory thinst)
+	    (typecheck-mapping-lhs mapping lhs-context lhs-theory lhs-theory-decls thinst)
 	    ;; (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
 	    ;; 	    (member mapping prev-mappings :test #'same-mapping-lhs?))
 	    ;;   (type-error mapping
@@ -1253,7 +1252,7 @@ TCCs are generated, and finally exportings are updated."
 	(lhs2 (lhs map2)))
     (same-declaration lhs1 lhs2)))
 
-(defun typecheck-mapping-lhs (mapping lhs-context lhs-theory thinst)
+(defun typecheck-mapping-lhs (mapping lhs-context lhs-theory lhs-theory-decls thinst)
   "The lhs is basically a name, we get its possible resolutions as a type,
 expr, number, or theory reference.  They are appended together, set-type
 sorts it all out.  Note that the mapping may have a declared-type; this will
@@ -1273,6 +1272,10 @@ be typechecked when set-type selects a resolution."
 				 (resolve* (lhs mapping) 'type nil)))))
 		   (if (cdr tr)
 		       (or (remove-if-not
+			       #'(lambda (res)
+				   (memq (declaration res) lhs-theory-decls))
+			     tr)
+			   (remove-if-not
 			       #'(lambda (r)
 				   (id-prefix (id thinst) (id (declaration r))))
 			     tr)
@@ -1328,7 +1331,12 @@ be typechecked when set-type selects a resolution."
 	       (setf (resolutions (lhs mapping)) (nconc eres nres)))
 	      (t (setf (resolutions (lhs mapping)) tres)
 		 (type-ambiguity (lhs mapping))))
-	(setf (resolutions (lhs mapping)) (nconc tres eres nres thres)))
+	(let* ((reses (nconc tres eres nres thres))
+	       (mreses (remove-if-not #'(lambda (res)
+					  (memq (declaration res) lhs-theory-decls))
+			 reses)))
+	  (unless mreses (break "typecheck-mapping-lhs: why no mreses?"))
+	  (setf (resolutions (lhs mapping)) (or mreses reses))))
     (assert (resolutions (lhs mapping)))
     (when (mapping-rename? mapping)
       (if (cdr (resolutions (lhs mapping)))
@@ -1416,12 +1424,16 @@ declarations"
 (defmethod already-typed? ((list list))
   (every #'already-typed? list))
 
+(defmethod already-typed? ((name name))
+  (resolution name))
+
+(defmethod already-typed? ((act actual))
+  (or (type-value act)
+      (already-typed? (expr act))))
+
 (defmethod already-typed? ((map mapping))
   (and (already-typed? (lhs map))
        (already-typed? (rhs map))))
-
-(defmethod already-typed? ((name name))
-  (resolution name))
 
 (defmethod already-typed? ((rhs mapping-rhs))
   (or (type-value rhs)

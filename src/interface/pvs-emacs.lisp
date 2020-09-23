@@ -38,7 +38,7 @@
 	  type-incompatible pvs-locate write-to-temp-file
 	  *ps-control-info* make-ps-control-info psinfo-json-result
 	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock
-	  pvs-abort lisp))
+	  pvs-abort lisp xmlrpc-output-proofstate add-psinfo))
 
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)
@@ -651,17 +651,24 @@
 
 (defun add-psinfo (psi ps-json)
   #+allegro
-  (mp:with-process-lock ((psinfo-lock psi))
-    ;;(format t "~%add-psinfo: Setting result to ~a~%" ps-json)
-    (setf (psinfo-json-result psi) ps-json)
-    ;;(format t "~%add-psinfo: opening res-gate~%")
-    (mp:open-gate (psinfo-res-gate psi))))
+  (mp:with-process-lock
+   ((psinfo-lock psi))
+   ;; M3 if there's something in (psinfo-json-result psi), append the new information.
+   (setf (psinfo-json-result psi)
+	 (if (psinfo-json-result psi)
+	     (append (psinfo-json-result psi) ps-json)
+	   ps-json))))
 
 ;;; Support for displaying proofs
 (defmethod prover-read :around ()
   "Called from prover qread function, which is how the "
   (cond (*ps-control-info*
 	 ;; bad idea: (format t "~%prover-read: about to wait")
+	 #+allegro
+	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
+	   (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	   (mp:process-wait "Waiting for next Proofstate"
+			    #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))
 	 #+allegro
 	 (mp:process-wait
 	  "Prover Waiting"
@@ -695,6 +702,9 @@
 (defvar *pvs-emacs-output-proofstate-p* nil
   "Set to t to try the Emacs frame interface - stiil in progress.")
 
+;; M3: I transfered the responsibility of constructing the rpc response to
+;;     update-ps-control-info-result (a proofstate hook, registered in
+;;     *proofstate-hooks*) [2020/09]
 (defmethod output-proofstate :around ((ps proofstate))
   "output-proofstate is invoked by the prover to print the next subgoal.
 This method provides hooks to create new GUIs.  The call-next-method prints
@@ -703,25 +713,14 @@ list of interface names that are currently open."
   (with-slots (label comment current-goal) ps
     ;; For now, always output to *pvs*
     (call-next-method)
-    (when (or (and *pvs-emacs-interface*
-		   *pvs-emacs-output-proofstate-p*)
-	      *ps-control-info*)
+    (when (and *pvs-emacs-interface*
+	       *pvs-emacs-output-proofstate-p*)
       (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	     (ps-json (pvs2json ps)))
 	(when (and *pvs-emacs-interface*
 		   *pvs-emacs-output-proofstate-p*)
 	  (let ((ps-string (json:encode-json-alist-to-string ps-json)))
-	    (emacs-output-proofstate ps-string)))
-	(when *ps-control-info*
-	  ;;(format t "~%output-proofstate: calling xmlrpc-output-proofstate")
-	  (xmlrpc-output-proofstate ps-json)
-	  ;; (let ((siblings (when (parent-proofstate ps)
-	  ;; 		    (mapcan #'(lambda (sps)
-	  ;; 				(unless (eq sps ps)
-	  ;; 				  (list (pvs2json sps))))
-	  ;; 		      (all-subgoals-sorted (parent-proofstate ps))))))
-	  ;;   (xmlrpc-output-proofstate (cons ps-json siblings)))
-	  )))))
+	    (emacs-output-proofstate ps-string)))))))
 
 (defun emacs-output-proofstate (ps-string)
   (let* ((*output-to-emacs*
@@ -744,10 +743,11 @@ list of interface names that are currently open."
 	       *pvs-emacs-output-proofstate-p*)
       (format nil ":pvs-prfst ~a :end-pvs-prfst"
 	(write-to-temp-file (if proved? "true" "false"))))
-    (when *ps-control-info*
-      (let ((ps-json `(("result" . ,done-str))))
-	(add-psinfo *ps-control-info* ps-json)))
-    ps))
+    ;; M3 moved *ps-control-info* related to specific hooked function (finish-proofstate-rpc-hook) [Sept 2020]
+    ps)
+  ;; notify susbcribers
+  (dolist (hook *finish-proofstate-hooks*)
+    (funcall hook ps)))
 
 ;;; Creates a json form:
 ;;;   {"commentary" : [ strings ],
@@ -768,18 +768,33 @@ list of interface names that are currently open."
 				 (format-printout pps t))))
 	  (num-subgoals (proofstate-num-subgoals ps))
 	  (sequent (pvs2json-seq current-goal pps))
-	  (prev-cmd (when (parent-proofstate ps)
-		      (current-rule (parent-proofstate ps))))
-	  ;;(prooftree-info (proofstate-tree-info ps))
-	  )
-      `(,@(when *prover-commentary*
-		`(("commentary" . ,(reverse *prover-commentary*))))
-	  ,@(when action `(("action" . ,action)))
-	  ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
-	  ("label" . ,label)
-	  ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
-	  ,@(when comment `(("comment" . ,comment)))
-	  ("sequent" . ,sequent)))))
+	  (prev-cmd (let ((wish-rule (wish-current-rule ps))
+			  (parent-ps (parent-proofstate ps)))
+		      (cond (wish-rule (format nil "~s" wish-rule))
+			    (parent-ps (format nil "~s" (current-rule parent-ps)))
+			    (t nil))))
+	  (commentary (cond ((eq (status-flag ps) '!)
+			     (format nil "This completes the proof of ~a." (label ps)))
+			    (pvs-json:*interrupted-rpc*
+			     (if (stringp pvs-json:*interrupted-rpc*)
+				 pvs-json:*interrupted-rpc*
+			       "Proof command application interrupted by client."))
+			    (t ;; (if (listp *prover-commentary*) (format nil "~{~a~^~%~}" (reverse *prover-commentary*)) *prover-commentary*)
+			     *prover-commentary* ;;; M3 trying to print *prover-commentary*
+			                         ;;; after several rewritings (caused by grind, 
+					         ;;; for example) provokes the "Cannot adjust soft
+			                         ;;; stack limit by 81920" error in the rpc server.
+			       ))))
+      `(,@(when commentary
+	    `(("commentary" . ,commentary)))
+	,@(when action `(("action" . ,action)))
+	,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
+	("label" . ,label)
+	,@(when prev-cmd `( ;;("last-cmd" . ,prev-cmd)
+			   ("prev-cmd" . ,prev-cmd)))
+	,@(when comment `(("comment" . ,comment)))
+	("path" . ,(format nil "~{~a~^.~}" (path-from-top ps)))
+	("sequent" . ,sequent)))))
 
 (defstruct seqstruct
   antecedents
@@ -1072,7 +1087,8 @@ list of interface names that are currently open."
 (defvar *skip-all-conversion-checks* nil)
 
 (define-condition tcerror (simple-error)
-  (term))
+  ((term :accessor term :initarg :term)
+   (msg :accessor msg :initarg :msg)))
 
 (#+cmu ext:without-package-locks
  #+sbcl sb-ext:without-package-locks
@@ -1113,7 +1129,7 @@ list of interface names that are currently open."
 	   (format t "~%Restoring the state.")
 	   (restore))
 	  ((and *in-evaluator* (not *evaluator-debug*))
-	   (error 'tcerror :format-control errmsg))
+	   (error 'tcerror :term obj :msg errmsg))
 	  ((null *pvs-emacs-interface*)
 	   (format t "~%<pvserror msg=\"type error\">~%\"~a~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
 	     (protect-emacs-output errmsg)

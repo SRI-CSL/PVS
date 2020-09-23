@@ -188,10 +188,17 @@
   (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
     (mp:process-interrupt proc #'pvs:pvs-abort)))
 
+;; Modified by M3 to allow restore to Rule? prompt when in-checker [Sept 2020]
 (defrequest interrupt ()
   "Interrupts PVS."
   (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
-    (mp:process-interrupt proc #'(lambda () (break "Interrupt:")))))
+    (mp:process-interrupt
+     proc
+     #'(lambda () (if *in-checker*
+		      (progn 
+			(setf *interrupted-rpc* t)
+			(pvs:restore))
+		    (break "Interrupt:"))))))
 
 ;;; Prover interface
 
@@ -279,21 +286,25 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 ;;     (setq pvs:*prover-commentary* nil)
 ;;     (pvs:prove-formula theory formula rerun?)))
 
+;; Modified by M3 to enrich server response on glassbox strategy applications [Sept 2020]
 (defrequest proof-command (form)
   "Sends a command to the prover"
+  #+pvsdebug (format t "~%[proof-command] form ~a~%" form) ;;debug
   (unless (and *pvs-lisp-process*
 	       (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
     (pvs-error "Proof-command error" "Prover is not running: start it with prove-formula"))
-  (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
+  (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))) () "one")
   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
   (assert (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))
-  (assert (null (pvs:psinfo-json-result pvs:*ps-control-info*)))
+  (assert (null (pvs:psinfo-json-result pvs:*ps-control-info*))
+  	  (form) "[proof-command, form: ~a] result is not null ~a" form (pvs:psinfo-json-result pvs:*ps-control-info*))
   (multiple-value-bind (input err)
       (ignore-errors (read-from-string form))
     ;; note that read-from-string returns multiple vales;
     ;; err will be the number of chars read in this case.
+    #+pvsdebug (format t "~%[proof-command] input ~a err ~a.~%" input (typep err 'error))
     (cond ((typep err 'error)
-	   (let ((com (format nil "bad proof command: ~a"
+	   (let ((com (format nil "Error: Bad proof command~@[ (~a)~]."
 			(if (typep err 'end-of-file)
 			    "eof encountered, probably mismatched parens, quotes, etc."
 			    err)))
@@ -301,7 +312,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 		 (json:*lisp-identifier-name-to-json* #'identity))
 	     (setq pvs:*prover-commentary* (list com))
 	     (unwind-protect
-		  (pvs:pvs2json ps)
+		 (pvs:pvs2json ps)
 	       (setq pvs:*prover-commentary* nil))))
 	  ((and (consp input)
 		;; check-arguments sets *prover-commentary*
@@ -316,11 +327,12 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	   (mp:open-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
 	   (mp:process-wait "Waiting for next Proofstate"
 			    #'mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
+	   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))) (form) "Closed cmd gate for form ~a." form)
 	   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
 	   (mp:with-process-lock ((pvs:psinfo-lock pvs:*ps-control-info*))
 	     (let ((psjson (pvs:psinfo-json-result pvs:*ps-control-info*)))
 	       (setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
+	       (setf *interrupted-rpc* nil)
 	       (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	       psjson))))))
 
@@ -414,6 +426,32 @@ to the associated declaration."
 	(pvs:get-term-at file loc1 loc2 typecheck?)
       (declare (ignore containing-terms)) ; might be useful later
       (json-term term))))
+
+;; M3: Request to save proofs to prf file [Sept 2020]
+(defrequest save-all-proofs (theoryref)
+  "Stores the declaration proofs into the corresponding PRF file"
+  (let ((theory (pvs::get-typechecked-theory theoryref)))
+    (unless theory
+      (pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
+    (pvs::save-all-proofs theory)))
+
+;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
+(defrequest store-last-attempted-proof (formula theory &optional overwrite? new-script-id new-script-desc)
+  "Store the last attempted proof script in the provided formula, only if the script was produced for it."
+  (unless pvs::*last-attempted-proof*
+    (pvs-error "store-last-attempted-proof error" "There is no attempted proof script to be saved."))
+  (let ((dst-decl (pvs:get-formula-decl theory formula)))
+    (if (equal dst-decl (car pvs::*last-attempted-proof*))
+	(let ((script (cdr pvs::*last-attempted-proof*)))
+	  (if overwrite?
+	      (setf (script (pvs::default-proof dst-decl)) (car script))
+	    (let ((id (or new-script-id (pvs::next-proof-id dst-decl)))
+		  (description (or new-script-desc "")))
+	      (setf (pvs::default-proof dst-decl)
+		    (pvs::make-default-proof dst-decl (car script) id description)))))
+      (pvs-error "store-last-attempted-proof error"
+		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
+			 (car pvs::*last-attempted-proof*) dst-decl)))))
 
 (defun json-term (term)
   (json-term* term))
