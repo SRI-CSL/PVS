@@ -1187,7 +1187,9 @@ its dependencies."
   *workspace-session*)
 
 (defun current-context-path ()
-  (shortname (path *workspace-session*)))
+  (if *workspace-session*
+      (shortname (path *workspace-session*))
+      (shortname *default-pathname-defaults*)))
 
 
 ;;; For a given filename, valid-context-entry returns two values: the
