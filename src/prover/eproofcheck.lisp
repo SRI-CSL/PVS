@@ -815,7 +815,7 @@
      (let ((post-proofstate ;;check if current goal is prop-axiom.
 	    (cond ((eq (check-prop-axiom (s-forms (current-goal proofstate)))
 		       '!) ;;set flag to proved! and update fields.
-		   (update-ps-control-info-result proofstate) ; M3 so the sequent
+		   (pvs-json:update-ps-control-info-result proofstate) ; M3 so the sequent
 					; it's accumulated for the rpc response.
 					; It could be a call to output-proofstate
 					; but currently that would disturb the
