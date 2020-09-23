@@ -18,6 +18,13 @@
 (defconstant pat-match-symb      '?  )
 (defconstant syntax-match-symb   '~  )
 
+(defconstant all-but-symb        '^  )   ;; '*- ?
+(defconstant all-but-symb-all    '0^ )
+(defconstant all-but-ante        '-^ )   ;; '-- ?
+(defconstant all-but-cons        '+^ )   ;; '+- ?
+(defconstant rich-pat-char       #\@ )
+(defconstant subst-symb-char     #\$ )
+(defconstant-if-unbound all-but-symbols (list all-but-symb all-but-ante all-but-cons))
 (defconstant-if-unbound loc-ref-flat-symb   '!  )
 (defconstant-if-unbound loc-ref-full-symb   '!! )
 (defconstant-if-unbound loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb))
