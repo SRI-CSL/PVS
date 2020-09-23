@@ -230,7 +230,9 @@
       ;; M3: Install hook for sequent collection [Sept 2020].
       (pushnew 'update-ps-control-info-result *proofstate-hooks*)
       (pushnew 'finish-proofstate-rpc-hook *finish-proofstate-hooks*)
-      (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)))
+      (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)
+      ;; M3: Rewriting messages are disable by default when in server mode [Sept 2020].
+      (setq *rewrite-msg-off* t)))
   #+allegro
   ;; Add a newline to the beginning of *prompt*.  The prompt actually has
   ;; ~&, which is supposed to add a newline unless it "knows" it's already

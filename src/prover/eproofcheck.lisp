@@ -68,9 +68,10 @@
 
 (defun explain-errors ()
   (when *first-strategy-error*
+    ;; M3 Add 'Error' prefix to commentary [Sept 2020]
     (when *last-strategy-error*
-      (commentary "~%The following errors occurred within the strategy:~%"))
-    (commentary "~a~%" *first-strategy-error*)
+      (commentary "~%Error: The following issues occurred within the strategy:~%"))
+    (commentary "~:[~;Error:~] ~a~%" (not *last-strategy-error*) *first-strategy-error*)
     (when *last-strategy-error*
       (commentary "~a~%" *last-strategy-error*))
     (clear-strategy-errors)))
@@ -516,7 +517,9 @@
 			      (and (stringp (car (script prinfo)))
 				   (char= (char (car (script prinfo)) 0) #\;))))
 		     (script-structure-changed? prinfo script))))
-	   (setf (script prinfo) script))
+	   ;;[M3] Do not save by default while in server mode.
+	   (unless pvs:*ps-control-info*
+	     (setf (script prinfo) script)))
 	  ((and (or (not *proving-tcc*) auto-fixed-prf)
 		(or (not *noninteractive*)
 		    auto-fixed-prf)
@@ -544,8 +547,6 @@
 				 (id prinfo)))))
 		  (when (eq *multiple-proof-default-behavior* :overwrite)
 		    (format t "Overwriting proof named ~a" (id prinfo)))
-		  (when *ps-control-info*
-		    (setf *last-attempted-proof* (list decl script)))
 		  ;;[M3] Do not save by default while in server mode.
 		  (unless *ps-control-info*
 		    (setf (script prinfo) script)))

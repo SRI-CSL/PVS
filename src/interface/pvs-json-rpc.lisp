@@ -183,7 +183,7 @@
     (cond (*in-checker*
 	   ;; Add the error to the commentary string, as calling error does
 	   ;; not work correctly while in the prover.
-	   (pvs:commentary errstring)
+	   (pvs:commentary (format nil "Error: ~a" errstring)) ; M3 Add 'Error' prefix to commentary [Sept 2020]
 	   (pvs:restore))
 	  (t (error 'pvs-error
 		    :code code
@@ -337,11 +337,17 @@
 (defun finish-proofstate-rpc-hook (ps)
   "Prepares the result of the rpc request and closes it."
   (when pvs:*ps-control-info*
-    (let ((ps-json
+    (let*((commentary (cons (format nil "~:[Proof attempt aborted~;Q.E.D.~]" (and (typep ps 'top-proofstate)
+										     (eq (status-flag ps) '!))) *prover-commentary*))
+	  (ps-json
 	   `((("label" . ,(label ps))
-	      ("commentary" . ,(format nil "~:[Proof attempt aborted~;Q.E.D.~]" (and (typep ps 'top-proofstate)
-										     (eq (status-flag ps) '!))))))))
-      (pvs:add-psinfo pvs:*ps-control-info* ps-json))
+	      ("commentary" . ,(format nil "~{~a~^~%~}" commentary))))))
+      (add-psinfo pvs:*ps-control-info* ps-json))
+    ;; M3 save script as last attempted [Sept 2020]
+    (let ((script (extract-justification-sexp
+		   (collect-justification *top-proofstate*)))
+	  (decl (declaration ps)))
+      (setf *last-attempted-proof* (list decl script)))
     (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
 
 ;; M3: hook for successfully closed branches.

@@ -1159,8 +1159,11 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 			   instantiator)
 		      (cdr instantiator)))
 	 (okkeys (or (assq instcmd *prover-keywords*)
-		     (format t "~a is not a valid prover command" instcmd)
-		     (restore)))
+		     (progn
+		       (error-format-if "~a is not a valid prover command" instcmd)
+		       (let ((*suppress-printing* nil)) ;; M3 Added because (restore) doesn't explain errors [Sept 2020]
+			 (explain-errors))
+		       (restore))))
 	 (okargs (cddr okkeys))
 	 (instargs (append (when (and (memq :if-match okargs)
 				      (not (memq :if-match givenargs)))

@@ -779,7 +779,12 @@ list of interface names that are currently open."
 			     (if (stringp pvs-json:*interrupted-rpc*)
 				 pvs-json:*interrupted-rpc*
 			       "Proof command application interrupted by client."))
-			    (t *prover-commentary*))))
+			    (t ;; (if (listp *prover-commentary*) (format nil "~{~a~^~%~}" (reverse *prover-commentary*)) *prover-commentary*)
+			     *prover-commentary* ;;; M3 trying to print *prover-commentary*
+			                         ;;; after several rewritings (caused by grind, 
+					         ;;; for example) provokes the "Cannot adjust soft
+			                         ;;; stack limit by 81920" error in the rpc server.
+			       ))))
       `(,@(when commentary
 	    `(("commentary" . ,commentary)))
 	,@(when action `(("action" . ,action)))
