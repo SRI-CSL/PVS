@@ -569,7 +569,8 @@
 	      'unfinished))
     (format-nif "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
     (format-nif "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
-    (when *context-modified*
+    (when (and *context-modified*
+	       (eq (proof-status decl) 'proved))
       (setf (proof-status decl) 'unfinished)
       (when (and (not *proving-tcc*)
 		 (pvs-yes-or-no-p
