@@ -3391,7 +3391,7 @@
 			  ;; Note that periods are allowed in identifiers
 			  ;; in general, but not in declarations - see
 			  ;; xt-check-periods
-			  (member ch '(#\_ #\? #\') :test #'char=)))
+			  (member ch '(#\_ #\?) :test #'char=)))
 		  (subseq idstr (1+ start) end)))
       (and (null end)
 	   (or (assq (intern (subseq idstr start) :pvs) *pvs-operators*)
