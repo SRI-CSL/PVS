@@ -290,8 +290,15 @@
   (setq *subtype-names* nil)
   (setq *named-exprs* nil)
   (setq *edit-proof-info* nil)
-  (setq *add-declaration-info* nil)
-  (setq *mod-declaration-info* nil))
+  (unless (and *add-declaration-info*
+	       (let ((th (third *add-declaration-info*)))
+		 (eq th (get-theory (id th)))))
+    (setq *add-declaration-info* nil))
+  (unless (and *mod-declaration-info*
+	       (let ((th (module (car *mod-declaration-info*))))
+		 (eq th (get-theory (id th)))))
+    (setq *mod-declaration-info* nil))
+  )
 
 (defun remove-typecheck-caches ()
   ;;(remove-subst-mod-params-cache)
