@@ -191,14 +191,17 @@
 ;; Modified by M3 to allow restore to Rule? prompt when in-checker [Sept 2020]
 (defrequest interrupt ()
   "Interrupts PVS."
-  (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
-    (mp:process-interrupt
-     proc
-     #'(lambda () (if *in-checker*
-		      (progn 
-			(setf *interrupted-rpc* t)
-			(pvs:restore))
-		    (break "Interrupt:"))))))
+  (when *pvs-lisp-process*
+    (cond ((mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+	   (when ;; only allows to interrupt if a command is being processed.
+	       (or (mp:gate-open-p (psinfo-res-gate *ps-control-info*))
+		   (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	     (mp:process-interrupt
+	      *pvs-lisp-process*
+	      #'(lambda () (progn 
+			     (setf *interrupted-rpc* t)
+			     (restore))))))
+	  (t (break "Interruptep by client")))))
 
 ;;; Prover interface
 
