@@ -1335,7 +1335,8 @@ be typechecked when set-type selects a resolution."
 	       (mreses (remove-if-not #'(lambda (res)
 					  (memq (declaration res) lhs-theory-decls))
 			 reses)))
-	  (unless mreses (break "typecheck-mapping-lhs: why no mreses?"))
+	  ;; (unless mreses (break "typecheck-mapping-lhs: why no mreses?"))
+	  ;; have theory-abbreviation-decl in nasalib float
 	  (setf (resolutions (lhs mapping)) (or mreses reses))))
     (assert (resolutions (lhs mapping)))
     (when (mapping-rename? mapping)
