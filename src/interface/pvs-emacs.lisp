@@ -774,16 +774,17 @@ list of interface names that are currently open."
 			    (parent-ps (format nil "~s" (current-rule parent-ps)))
 			    (t nil))))
 	  (commentary (cond ((eq (status-flag ps) '!)
-			     (format nil "This completes the proof of ~a." (label ps)))
-			    (pvs-json:*interrupted-rpc*
-			     (if (stringp pvs-json:*interrupted-rpc*)
-				 pvs-json:*interrupted-rpc*
-			       "Proof command application interrupted by client."))
+			     (list (format nil "This completes the proof of ~a." (label ps))))
+			    (pvs-json::*interrupted-rpc*
+			     (list (if (stringp pvs-json::*interrupted-rpc*)
+				 pvs-json::*interrupted-rpc*
+			       "Proof command application interrupted by client.")))
 			    (t ;; (if (listp *prover-commentary*) (format nil "~{~a~^~%~}" (reverse *prover-commentary*)) *prover-commentary*)
-			     *prover-commentary* ;;; M3 trying to print *prover-commentary*
-			                         ;;; after several rewritings (caused by grind, 
-					         ;;; for example) provokes the "Cannot adjust soft
-			                         ;;; stack limit by 81920" error in the rpc server.
+			       ;;; M3 trying to print *prover-commentary*
+			       ;;; after several rewritings (caused by grind, 
+			       ;;; for example) provokes the "Cannot adjust soft
+			       ;;; stack limit by 81920" error in the rpc server.
+			     (if (listp *prover-commentary*) (reverse *prover-commentary*) (list *prover-commentary*))
 			       ))))
       `(,@(when commentary
 	    `(("commentary" . ,commentary)))
