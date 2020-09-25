@@ -341,7 +341,7 @@
 										     (eq (status-flag ps) '!))) *prover-commentary*))
 	  (ps-json
 	   `((("label" . ,(label ps))
-	      ("commentary" . ,(format nil "~{~a~^~%~}" commentary))))))
+	      ("commentary" . ,commentary)))))
       (add-psinfo pvs:*ps-control-info* ps-json))
     ;; M3 save script as last attempted [Sept 2020]
     (let ((script (extract-justification-sexp
@@ -359,6 +359,6 @@
       (let*((prev-cmd (pvs::wish-current-rule proofstate))
 	    (ps-json
 	     `(("label" . ,(label proofstate))
-	       ("commentary" . ,(format nil "This completes the proof of ~a." (label proofstate)))
+	       ("commentary" . ,(list (format nil "This completes the proof of ~a." (label proofstate))))
 	       ("prev-cmd" . ,(format nil "~s" prev-cmd)))))
 	(pvs:add-psinfo pvs:*ps-control-info* (list ps-json))))))
