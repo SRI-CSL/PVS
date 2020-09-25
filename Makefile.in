@@ -80,7 +80,7 @@ ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_DEVEL_FILES)
 SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(SBCLISP_FILES)
 
 SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
-	pvs pvsio pvs-gui proveit provethem emacs/pvs.xpm \
+	pvs pvsio proveit provethem emacs/pvs.xpm \
 	pvs-tex.sub pvs.sty bin/pvs-platform \
 	$(bindir)/b64 bin/tar-b64-mail Examples \
 	$(wildcard lib/*.pvs lib/*.prf lib/*.help) \
