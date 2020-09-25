@@ -1181,8 +1181,15 @@ its dependencies."
 (defun show-context-path ()
   (pvs-message (current-context-path)))
 
+;;; workspace access functions
+
+(defun current-workspace ()
+  *workspace-session*)
+
 (defun current-context-path ()
-  (shortname *default-pathname-defaults*))
+  (if *workspace-session*
+      (shortname (path *workspace-session*))
+      (shortname *default-pathname-defaults*)))
 
 
 ;;; For a given filename, valid-context-entry returns two values: the

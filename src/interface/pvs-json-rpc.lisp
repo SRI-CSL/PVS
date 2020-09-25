@@ -21,7 +21,7 @@
 
 (in-package :pvs-json)
 
-(export '(process-json-request json-message))
+(export '(process-json-request json-message *interrupted-rpc* update-ps-control-info-result))
 
 (define-condition pvs-error (simple-error)
   ((code :accessor code :initarg :code)

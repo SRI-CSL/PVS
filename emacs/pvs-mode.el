@@ -31,11 +31,15 @@
 
 ;;; pvs-mode.el
 
-(pushnew '("\\.pvs\\'" . pvs-mode) auto-mode-alist)
-(pushnew '("\\.ppe\\'" . pvs-mode) auto-mode-alist)
-(pushnew '("\\.tccs\\'" . pvs-mode) auto-mode-alist)
-(pushnew '("pvs-strategies\\'" . lisp-mode) auto-mode-alist)
-(pushnew ".prf" completion-ignored-extensions)
+(unless (fboundp 'cl-pushnew)
+  ;; using an early version of cl
+  (fset 'cl-pushnew 'pushnew))
+
+(cl-pushnew '("\\.pvs\\'" . pvs-mode) auto-mode-alist)
+(cl-pushnew '("\\.ppe\\'" . pvs-mode) auto-mode-alist)
+(cl-pushnew '("\\.tccs\\'" . pvs-mode) auto-mode-alist)
+(cl-pushnew '("pvs-strategies\\'" . lisp-mode) auto-mode-alist)
+(cl-pushnew ".prf" completion-ignored-extensions)
 
 (defgroup pvs nil
   "PVS Interaction"

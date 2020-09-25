@@ -1088,7 +1088,8 @@ list of interface names that are currently open."
 (defvar *skip-all-conversion-checks* nil)
 
 (define-condition tcerror (simple-error)
-  (term))
+  ((term :accessor term :initarg :term)
+   (msg :accessor msg :initarg :msg)))
 
 (#+cmu ext:without-package-locks
  #+sbcl sb-ext:without-package-locks
@@ -1129,7 +1130,7 @@ list of interface names that are currently open."
 	   (format t "~%Restoring the state.")
 	   (restore))
 	  ((and *in-evaluator* (not *evaluator-debug*))
-	   (error 'tcerror :format-control errmsg))
+	   (error 'tcerror :term obj :msg errmsg))
 	  ((null *pvs-emacs-interface*)
 	   (format t "~%<pvserror msg=\"type error\">~%\"~a~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
 	     (protect-emacs-output errmsg)

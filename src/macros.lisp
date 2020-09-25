@@ -215,6 +215,13 @@
     (catch 'type-error
       ,@forms)))
 
+;; (defmacro with-no-type-errors (&rest forms)
+;;   `(handler-case 
+;;        (progn ,@forms)
+;;      (tcerror (err)
+;;        ;;(format t "~%~a" (msg err))
+;;        nil)))
+
 (defmacro with-no-parse-errors (&rest forms)
   `(let ((*parse-error-catch* 'parse-error))
      (catch 'parse-error
@@ -224,6 +231,15 @@
 ;;; restoring everything to the previous state on exiting.
 
 (defmacro with-workspace (lib-ref &rest forms)
+  "Given a library reference, i.e., a library id or pathname, temporarily
+makes lib-ref the current workspace (*workspace-session*).  Does nothing if
+lib-ref is the current-workspace.  If *workspace-session* is not what
+lib-ref refers to, then while executing forms:
+ *workspace-session* will be found or created for lib-ref
+ *current-context* will be nil
+ *default-pathname-defaults* will be the path associated with lib-ref
+ calls set-working-directory (like cd in shell, no global variable).
+After exiting, all of these are reverted to their previous values."
   (let ((lref (gentemp))
 	(lib-path (gentemp))
 	(ws (gentemp))
@@ -234,27 +250,30 @@
 			   (path ,lref)
 			   (get-library-path ,lref))))
        (if (directory-p ,lib-path)
-	   (let* ((,orig-dir (working-directory))
-		  (,truedir (truename ,lib-path))
-		  (*default-pathname-defaults* ,truedir)
-		  (*current-context* nil)
-		  (*workspace-session*
-		   (or (when (workspace-session? ,lref)
-			 ,lref)
-		       (get-workspace-session ,lib-path)
-		       (let ((,ws (make-instance 'workspace-session
-				    :path ,lib-path)))
-			 (push ,ws *all-workspace-sessions*)
-			 ,ws))))
-	     (unwind-protect 
-		  (prog1 (progn (set-working-directory ,truedir)
-				(unless (pvs-context *workspace-session*)
-				  (restore-context))
-				(assert (pvs-context *workspace-session*))
-				,@forms)
-		    (when (pvs-context-changed *workspace-session*)
-		      (save-context)))
-	       (set-working-directory ,orig-dir)))
+	   (if (uiop:pathname-equal ,lib-path (current-context-path))
+	       ;; Already in workspace, just process forms
+	       (progn ,@forms)
+	       (let* ((,orig-dir (working-directory))
+		      (,truedir (truename ,lib-path))
+		      (*default-pathname-defaults* ,truedir)
+		      (*current-context* nil)
+		      (*workspace-session*
+		       (or (when (workspace-session? ,lref)
+			     ,lref)
+			   (get-workspace-session ,lib-path)
+			   (let ((,ws (make-instance 'workspace-session
+					:path ,lib-path)))
+			     (push ,ws *all-workspace-sessions*)
+			     ,ws))))
+		 (unwind-protect 
+		      (prog1 (progn (set-working-directory ,truedir)
+				    (unless (pvs-context *workspace-session*)
+				      (restore-context))
+				    (assert (pvs-context *workspace-session*))
+				    ,@forms)
+			(when (pvs-context-changed *workspace-session*)
+			  (save-context)))
+		   (set-working-directory ,orig-dir))))
 	   (error "Library ~a does not exist" ,lib-path)))))
 
 ;; (defmacro with-directory (dirstr &rest forms)
@@ -275,24 +294,25 @@
 ;; 	       (set-working-directory ,orig-dir)))
 ;; 	   (error "Directory ~a does not exist" ,dirstr)))))
 
-(defmacro with-pvs-file (vars pvsfileref &rest body)
-  "Given a pvsfile string or pathname, gets the directory and file parts,
-invokes with-workspace on the directory, and applies pvs-fn to the basename,
-which is the pvsfile without directory.
-Example:
-  (with-pvs-file (fname thname) (show-tccs fname thname))
-expands to:
-  (let ((t2440 (split pvsfileref #\#))
-        (fname (nth 0 t2440))
-        (thname (nth 1 t2440)))
-    (show-tccs fname thname))"
+(defmacro with-pvs-file (vars context-ref &rest body)
+  "context-ref is generally a string with a filename reference followed by
+any number of args separated by #.  The idea is that the contex-ref is at
+least a pathname, but could include, e.g. a theoryname, or a place.  The
+vars are associated to the parts of this string.  Hence
+
+  (with-pvs-file (fname thname) \"~/pvs/Examples/sum.pvs#sum\"
+    (show-tccs fname thname))
+
+will pull out the directory, file, and theory, use with-workspace to
+temporarily change to that directory, and then execute body with fname bound
+to sum.pvs and thname bound to sum."
   (let ((args (gentemp))
 	(path (gentemp))
 	(dir (gentemp))
 	(name (gentemp))
 	(ext (gentemp))
 	(msg (gentemp)))
-    `(let* ((,args (split ,pvsfileref #\#))
+    `(let* ((,args (split ,context-ref #\#))
 	    (,path (car ,args))
 	    (,dir (uiop:pathname-directory-pathname ,path))
 	    (,name (pathname-name ,path))
@@ -316,10 +336,7 @@ expands to:
        ;; 	   (let ((err (format nil "~a not found" fpath)))
        ;; 	     (pvs-error "Typecheck error" err))))
        (cond ((or (uiop:pathname-equal ,dir #p"")
-		  (uiop:pathname-equal ,dir *default-pathname-defaults*))
-	      (unless (pvs-context *workspace-session*)
-		(restore-context))
-	      (assert (pvs-context *workspace-session*))
+		  (uiop:pathname-equal ,dir (current-context-path)))
 	      ,@body)
 	     (t (with-workspace ,dir
 		  ,@body))))))

@@ -215,9 +215,9 @@ why the @code{theory} is derived from @code{(or thname fname)}.
 @node PVS Language Changes
 @subsection PVS Language Changes
 @itemize
-@item
-Prime is allowed in names, e.g., @code{x'}.  Allowed anywhere except the
-first character, which must be alphabetic.
+@c @item
+@c Prime is allowed in names, e.g., @code{x'}.  Allowed anywhere except the
+@c first character, which must be alphabetic.
 @item
 (Co)Datatypes may now have ASSUMING parts and theory declarations in
 addition to IMPORTINGs, which may appear interleaved in the constructor

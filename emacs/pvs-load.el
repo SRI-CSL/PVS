@@ -144,7 +144,8 @@
     (setq fill-column (window-width))
     (if buffer-read-only (read-only-mode 0))
     (erase-buffer)
-    (if (boundp 'pvs-logo)
+    (if (and (boundp 'pvs-logo)
+	     (window-system))
 	(progn
 	  (insert "\n")
 	  (cond ((featurep 'xemacs)
@@ -174,22 +175,22 @@
 	    |  PPP             VVV        SSSSSSSS   |
             |                                        |
             +----------------------------------------+")
-          (insert "\n\nWelcome to the PVS\nSpecification and Verification System")))
-    (insert "  Version 7.1\n")
-    (insert "\nSRI International -- Computer Science Laboratory\n")
-    (setq pvs-welcome-point (point))
-    (insert "\nType C-c h for a summary of the commands.")
-    (put-text-property pvs-welcome-point (point) 'face 'blue)
-    (setq pvs-welcome-point (point))
-    (insert "\n\nYour current working context (workspace) is\n  " cdir)
-    (put-text-property pvs-welcome-point (point) 'face 'red)
-    (setq pvs-welcome-point (point))
-    (insert "\n\nUse M-x change-context to move to a different context.")
-    (insert "\n\n-----------------------------------------------------------------")
-    (insert "\n\n" (cadr (cdddr vers)) "\n" (cadr (cddddr vers)))
-    (put-text-property pvs-welcome-point (point) 'face 'blue)
-    (insert "\n\nPlease check our website periodically for news of later versions")
-    (insert "\nat http://pvs.csl.sri.com/")
+          (insert "\n\n   Welcome to the PVS\n   Specification and Verification System")))
+    (insert "                            Version 7.1\n")
+    (insert "\n   SRI International -- Computer Science Laboratory\n")
+    (setq cpoint (point))
+    (insert "\n   Type C-c h for a summary of the commands.")
+    (put-text-property cpoint (point) 'face 'blue)
+    (setq cpoint (point))
+    (insert "\n\n   Your current workspace is\n     " cdir)
+    (put-text-property cpoint (point) 'face 'red)
+    (setq cpoint (point))
+    (insert "\n\n   Use M-x change-workspace to move to a different workspace.")
+    (insert "\n\n   -----------------------------------------------------------------")
+    (insert "\n\n   " (cadr (cdddr vers)) "\n   " (cadr (cddddr vers)))
+    (put-text-property cpoint (point) 'face 'blue)
+    (insert "\n\n   Please check our website periodically for news of later versions:")
+    (insert "\n   http://pvs.csl.sri.com/")
     (insert "
    ----------
    Bug reports and suggestions for improvement should be sent to
@@ -200,17 +201,17 @@
    ----------
    If you wish to get on the PVS mailing list, send a request to
    pvs-request@csl.sri.com")
-    (insert "\n\n-----------------------------------------------------------------")
+    (insert "\n\n   -----------------------------------------------------------------")
     (insert "\n
-    Use of PVS(TM)  (Prototype Verification System) is subject to the
+   Use of PVS(TM)  (Prototype Verification System) is subject to the
    terms and conditions of the Software License Agreement between SRI
    and the user of the Software.  Note in particular that PVS IS
    PROVIDED ``AS IS'', AND SRI EXPRESSLY DISCLAIMS ALL REPRESENTATIONS
    AND WARRANTIES REGARDING THE SOFTWARE AND DOCUMENTATION, EXPRESS OR
    IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY OF NONINFRINGEMENT,
    MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.")
-    (put-text-property pvs-welcome-point (point) 'face 'blue)
-    (setq pvs-welcome-point (point))
+    (put-text-property cpoint (point) 'face 'blue)
+    (setq cpoint (point))
     ;; (condition-case ()
     ;; 	(center-region cpoint (point))
     ;;   (error nil))

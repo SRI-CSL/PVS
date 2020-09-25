@@ -25,12 +25,12 @@
 (defconstant deep-wild-nonterm   '*- )   ;; '*< ?
 (defconstant goto-index-symb     '-> )
 (defconstant goto-all-symb       '->* )
-(defconstant all-but-symb        '^  )   ;; '*- ?
-(defconstant all-but-symb-all    '0^ )
-(defconstant all-but-ante        '-^ )   ;; '-- ?
-(defconstant all-but-cons        '+^ )   ;; '+- ?
-(defconstant rich-pat-char       #\@ )
-(defconstant subst-symb-char     #\$ )
+;; (defconstant all-but-symb        '^  )   ;; '*- ?
+;; (defconstant all-but-symb-all    '0^ )
+;; (defconstant all-but-ante        '-^ )   ;; '-- ?
+;; (defconstant all-but-cons        '+^ )   ;; '+- ?
+;; (defconstant rich-pat-char       #\@ )
+;; (defconstant subst-symb-char     #\$ )
 
 (defconstant-if-unbound deep-wild-symbols
   (list deep-wild-all deep-wild-term deep-wild-nonterm))
