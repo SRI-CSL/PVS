@@ -97,7 +97,7 @@ SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
 	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2 \
-	emacs/configured-for-x src/asdf-patch.lisp Vagrantfile \
+	emacs/configured-for-x src/asdf-patch.lisp Vagrantfile vagrant.README \
 	pvs-version.lisp
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
