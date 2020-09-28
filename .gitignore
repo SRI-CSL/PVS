@@ -58,6 +58,13 @@ pvsbin
 *.nav
 *.toc
 *.pyc
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ind
+*.synctex.gz
 doc/release-notes/*.html
 doc/release-notes/*.ps
 doc/release-notes/*.pdf
