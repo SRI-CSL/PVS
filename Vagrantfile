@@ -13,9 +13,17 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  # config.vm.box = "ubuntu/bionic64"
-  config.vm.box = "myaylaci/xubuntu2004-desktop"
 
+  # Owre - tried all the following, didn't care for them.
+  # config.vm.box = "myaylaci/xubuntu2004-desktop" # Comes up with error, flakey
+  # config.vm.boot_timeout = 600
+  # config.vm.box = "ubuntu/bionic64"
+  # config.vm.box = "hashicorp/bionic64"
+  # config.vm.box = "bento/ubuntu-20.04" # No X11
+  # config.vm.box = "box-cutter/ubuntu1604-desktop" # could not resolve host
+  
+  config.vm.box = "bstoots/xubuntu-16.04-desktop-amd64"
+  
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
   # `vagrant box outdated`. This is not recommended.
@@ -39,7 +47,8 @@ Vagrant.configure("2") do |config|
   # the path on the host to the actual folder. The second argument is
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
-  config.vm.synced_folder ".", "/usr/local/share/pvs"
+  # Making the current directory (e.g., pvs-7.1) synced with .pvs_shared for copying
+  config.vm.synced_folder ".", "/home/vagrant/.pvs_shared"
 
   # Provider-specific configuration so you can fine-tune various
   # backing providers for Vagrant. These expose provider-specific options.
@@ -47,11 +56,13 @@ Vagrant.configure("2") do |config|
   #
   config.vm.provider :virtualbox do |vb|
     # Display the VirtualBox GUI when booting the machine
+    vb.name = "pvs-vm"
     vb.gui = true
   
     # Customize the amount of memory on the VM:
     vb.memory = "4096"
-    vb.customize [ "modifyvm", :id, "--uartmode1", "disconnected" ]
+    vb.customize [ "modifyvm", :id, "--uartmode1", "disconnected", "--vram", "128",
+                 "--graphicscontroller", "vmsvga" ]
   end
   #
   # View the documentation for the provider you are using for more
@@ -70,18 +81,16 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<-SHELL
     echo "Before update"
     sudo apt-get update
-    sudo apt-get install -y virtualbox-guest-utils
-    #sudo apt-get install -y ubuntu-desktop
     sudo apt-get install -y unzip
     sudo apt-get install -y git
-    VBoxClient --display
+    VBoxClient --vmsvga
     VBoxClient --draganddrop
     VBoxClient --seamless
     VBoxClient --clipboard
     sudo apt-get install -y emacs
     sudo apt-get install -y tk
     # Install PVS
-    cp -r /usr/local/share/pvs /home/vagrant/
+    cp -r /home/vagrant/.pvs_shared /home/vagrant/pvs
     (cd /home/vagrant/pvs; ./install-sh)
     export PATH=/home/vagrant/pvs:/home/vagrant/pvs/bin/ix86_64-Linux:$PATH
     echo "export PATH=/home/vagrant/pvs:/home/vagrant/pvs/bin/ix86_64-Linux:$PATH" >> /home/vagrant/.bashrc
@@ -90,6 +99,14 @@ Vagrant.configure("2") do |config|
     (cd /home/vagrant/pvs; git clone https://github.com/nasa/pvslib.git nasalib)
     export PVS_LIBRARY_PATH=/home/vagrant/pvs/nasalib
     echo "export PVS_LIBRARY_PATH=/home/vagrant/pvs/nasalib" >> /home/vagrant/.bashrc
+    # Install NASA's vscode-pvs
+    sudo apt-get install -y software-properties-common apt-transport-https wget
+    wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | sudo apt-key add -
+    sudo add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
+    sudo apt-get install -y code
+
+    (cd /home/vagrant; git clone https://github.com/nasa/vscode-pvs.git)
+
     chown -R vagrant:vagrant pvs
   SHELL
 end

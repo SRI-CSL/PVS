@@ -1,0 +1,21 @@
+PVS makes it easy to create a virtualbox based on Linux, with PVS installed.
+
+This is primarily for Windows users, as PVS runs natively on Linux and
+MacOSX.  But it should work on any platform that supports Vagrant.  If you
+already have virtualbox and Vagrant installed, you should be able to untar
+the Linux version of PVS 7.1, cd to it, and run "vagrant up".  This will
+take a few minutes the first time, as it downloads a vagrant "box",
+essentially an Ubunto 16.04 iso image.  If it presents you with a black
+screen, choose File -> Close and Send the shutdown signal.  Then do vagrant
+up again, and it should be fine.
+
+If you don't have virtualbox or vagrant installed, you can either install
+them from your package manager, or from
+  https://www.virtualbox.org - virtualbox 
+  https://www.vagrantup.com/ - Vagrant
+Note that vagrant and virtualbox should have compatible versions, so it's
+best not to install one from a package manager and the other from the web
+site.
+
+Have a look at the Vagrantfile, it is a simple shell script, so you can
+easily modify it to use a different box, or to change the configuration.
