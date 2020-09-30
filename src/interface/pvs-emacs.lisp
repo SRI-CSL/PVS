@@ -667,28 +667,28 @@
 	 #+allegro
 	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
 	   (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	   (mp:process-wait "Waiting for next Proofstate"
+	   (mp:process-wait "Waiting for next Proofstate[prover-read]"
 			    #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))
 	 #+allegro
 	 (mp:process-wait
 	  "Prover Waiting"
 	  #'(lambda ()
-	      (or (and *ps-control-info*
-		       (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
-		       (psinfo-command *ps-control-info*))
+	      (or (and pvs:*ps-control-info*
+		       (mp:gate-open-p (psinfo-cmd-gate pvs:*ps-control-info*))
+		       (psinfo-command pvs:*ps-control-info*))
 		  (excl:read-no-hang-p *terminal-io*))))
-	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
+	 ;;(format t "~%prover-read: done waiting, pvs:*ps-control-info* = ~a" pvs:*ps-control-info*)
 	 #+allegro
-	 (if (and *ps-control-info*
-		  (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	 (if (and pvs:*ps-control-info*
+		  (mp:gate-open-p (psinfo-cmd-gate pvs:*ps-control-info*)))
 	     (unwind-protect
 		  (multiple-value-bind (input err)
-		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
+		      (ignore-errors (read-from-string (psinfo-command pvs:*ps-control-info*)))
 		    (when err
 		      (format t "~%~a" err))
 		    input)
-	       (mp:close-gate (psinfo-cmd-gate *ps-control-info*))
-	       (setf (psinfo-command *ps-control-info*) nil))
+	       (mp:close-gate (psinfo-cmd-gate pvs:*ps-control-info*))
+	       (setf (psinfo-command pvs:*ps-control-info*) nil))
 	     (call-next-method)))
 	(t (call-next-method))))
 
