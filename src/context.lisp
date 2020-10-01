@@ -3049,8 +3049,16 @@ each context, the theories are in alphabetic order."
 
 (defun check-binfiles* (libref theory-ids)
   (if libref
-      (with-workspace libref
-	(check-binfiles* nil theory-ids))
+      (let ((libstr (if (pathnamep libref) (namestring libref) libref)))
+	(when (and (char= (char libstr 0) #\/) (not (file-exists-p libref)))
+	  (let* ((lstr (if (char= (char libstr (1- (length libstr))) #\/)
+			   (subseq libstr 0 (1- (length libstr)))
+			   libstr))
+		 (lpos (position #\/ lstr :from-end t)))
+	    (when lpos
+	      (setq libstr (subseq lstr (1+ lpos))))))
+	(with-workspace libstr
+	  (check-binfiles* nil theory-ids)))
       (every #'(lambda (thid)
 		 (let ((ce (context-entry-of thid)))
 		   (when ce

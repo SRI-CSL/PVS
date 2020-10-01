@@ -907,13 +907,17 @@ not a dir: if a valid id
     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
     ;; same name.
     (or lib-path
-	(let ((nstr (when (stringp pstr)
-		      (if (char= (char pstr (1- (length pstr))) #\/)
-			  (subseq pstr 0 (1- (length pstr)))
-			  pstr))))
-	  (when (and (stringp nstr)
-		     (valid-pvs-id* nstr))
-	    (let ((lib-id (intern nstr :pvs)))
+	(let* ((nstr (when (stringp pstr)
+		       (if (char= (char pstr (1- (length pstr))) #\/)
+			   (subseq pstr 0 (1- (length pstr)))
+			   pstr)))
+	       (lpos (when nstr (position #\/ nstr :from-end t)))
+	       (lstr (if lpos
+			 (subseq nstr (1+ lpos))
+			 nstr)))
+	  (when (and (stringp lstr)
+		     (valid-pvs-id* lstr))
+	    (let ((lib-id (intern lstr :pvs)))
 	      (or (visible-lib-decl-pathname lib-id)
 		  (cdr (assq lib-id (pvs-library-alist))))))))))
 
