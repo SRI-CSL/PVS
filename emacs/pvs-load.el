@@ -123,7 +123,7 @@
 	   (>= emacs-major-version 20)
 	   (boundp 'image-types)
 	   (memq 'xpm image-types))
-  (setq pvs-logo (create-image (concat pvs-path "/emacs/pvslogo.gif") nil nil :scale 0.5)))
+  (setq pvs-logo (create-image (concat pvs-path "/emacs/pvslogo.gif") nil nil)))
 
 (when (and (featurep 'xemacs)
 	   (boundp 'emacs-major-version)
