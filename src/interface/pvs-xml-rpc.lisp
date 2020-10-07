@@ -78,6 +78,15 @@
       :string :string :string)
     (setq *pvs-xmlrpc-server* cmdsrv)
     (setq pvs:*pvs-lisp-process* mp:*current-process*)
+    ;; M3: When running the server, signals automatically abort to top-level so they
+    ;; don't affect the server responsiveness [Sept 2020].
+    (setf *debugger-hook* #'pvs:rpc-mode-debugger)
+    ;; M3: Install hook for sequent collection [Sept 2020].
+    (pushnew 'pvs-json:update-ps-control-info-result pvs:*proofstate-hooks*)
+    (pushnew 'pvs-json:finish-proofstate-rpc-hook pvs:*finish-proofstate-hooks*)
+    (pushnew 'pvs-json:rpc-output-notify-proof-success pvs:*success-proofstate-hooks*)
+    ;; M3: Rewriting messages are disable by default when in server mode [Sept 2020].
+    (setq pvs:*rewrite-msg-off* t)
     t))
 
 (defvar *client-url* nil)

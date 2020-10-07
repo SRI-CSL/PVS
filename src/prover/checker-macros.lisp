@@ -29,7 +29,9 @@
 
 (in-package :pvs)
 
-(export '(*in-checker* *in-evaluator* *ps* *top-proofstate* *prover-commentary* restore commentary))
+(export '(*in-checker* *in-evaluator* *ps* *top-proofstate* *prover-commentary* restore commentary
+	  *proofstate-hooks* *finish-proofstate-hooks* *success-proofstate-hooks* *rewrite-msg-off*
+	  *in-apply*))
 
 ;
 ; *prover-keywords* is an alist of the form
