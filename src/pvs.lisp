@@ -35,7 +35,8 @@
 (export '(exit-pvs parse-file typecheck-file show-tccs clear-theories
 	  formula-decl-to-prove prove-formula proved? get-proof-script
 	  get-formula-decl get-proof-status get-tccs prove-tccs
-	  write-pvs-version-file get-pvs-version-information))
+	  write-pvs-version-file get-pvs-version-information
+	  get-typechecked-theory rpc-mode-debugger))
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -224,15 +225,17 @@
   (let ((port (environment-variable "PVSPORT")))
     (when port
       (pvs-xml-rpc:pvs-server :port (parse-integer port))
+      ;; SO - Moved the following to pvs-server
       ;; M3: When running the server, signals automatically abort to top-level so they
       ;; don't affect the server responsiveness [Sept 2020].
-      (setf *debugger-hook* #'rpc-mode-debugger)
+      ;; (setf *debugger-hook* #'rpc-mode-debugger)
       ;; M3: Install hook for sequent collection [Sept 2020].
-      (pushnew 'update-ps-control-info-result *proofstate-hooks*)
-      (pushnew 'finish-proofstate-rpc-hook *finish-proofstate-hooks*)
-      (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)
+      ;; (pushnew 'update-ps-control-info-result *proofstate-hooks*)
+      ;; (pushnew 'finish-proofstate-rpc-hook *finish-proofstate-hooks*)
+      ;; (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)
       ;; M3: Rewriting messages are disable by default when in server mode [Sept 2020].
-      (setq *rewrite-msg-off* t)))
+      ;;(setq *rewrite-msg-off* t)
+      ))
   #+allegro
   ;; Add a newline to the beginning of *prompt*.  The prompt actually has
   ;; ~&, which is supposed to add a newline unless it "knows" it's already
@@ -2373,56 +2376,57 @@ Note that even proved ones get overwritten"
   (let ((*to-emacs* background?))
     (if (or *in-checker* *in-evaluator*)
 	(pvs-message "Must exit the prover/evaluator first")
-	(multiple-value-bind (fdecl place)
-	    (formula-decl-to-prove name declname line origin unproved?)
-	  (if (and rerun?
-		   fdecl
-		   (null (justification fdecl)))
-	      (pvs-message "Formula ~a has no proof to rerun." (id fdecl))
-	      (if fdecl
-		  (let ((*current-context* (context fdecl))
-			(*current-system* (if (member origin '("tccs" "ppe"))
-					      'pvs
-					      (intern origin :pvs)))
-			(*start-proof-display* display?)
-			(ojust (extract-justification-sexp
-				(justification fdecl)))
-			(decision-procedure (decision-procedure-used fdecl))
-			(*justifications-changed?* nil))
-		    (read-strategies-files)
-		    (let ((proof (cond (background?
-					(pvs-prove-decl fdecl t))
-				       (t (auto-save-proof-setup fdecl)
-					  (prove fdecl
-						 :strategy
-						 (when rerun? '(rerun)))))))
-		      (when (typep proof 'proofstate)
-			(setq *last-proof* proof)))
-		    (unless (or background?
-				(null (default-proof fdecl)))
-		      (setf (interactive? (default-proof fdecl)) t))
-		    ;; Save the proof if it is different.
-		    (unless (or (equal origin "prelude")
-				(from-prelude? fdecl))
-		      (when (or *justifications-changed?*
-				(not (equal ojust
-					    (extract-justification-sexp
-					     (justification fdecl))))
-				(not (eq (decision-procedure-used fdecl)
-					 decision-procedure)))
-			(save-all-proofs (current-theory)))
-		      ;; If the proof status has changed, update the context.
-		      (update-context-proof-status fdecl))
-		    (remove-auto-save-proof-file)
-		    (let ((*to-emacs* t))
-		      (pvs-locate buffer fdecl
-				  (if (and prelude-offset
-					   (not (zerop prelude-offset)))
-				      (vector (- (line-begin place) prelude-offset)
-					      (col-begin place)
-					      (- (line-end place) prelude-offset)
-					      (col-end place))
-				      place)))))))))
+	(with-pvs-file (fname) name
+	  (multiple-value-bind (fdecl place)
+	      (formula-decl-to-prove fname declname line origin unproved?)
+	    (if (and rerun?
+		     fdecl
+		     (null (justification fdecl)))
+		(pvs-message "Formula ~a has no proof to rerun." (id fdecl))
+		(if fdecl
+		    (let ((*current-context* (context fdecl))
+			  (*current-system* (if (member origin '("tccs" "ppe"))
+						'pvs
+						(intern origin :pvs)))
+			  (*start-proof-display* display?)
+			  (ojust (extract-justification-sexp
+				  (justification fdecl)))
+			  (decision-procedure (decision-procedure-used fdecl))
+			  (*justifications-changed?* nil))
+		      (read-strategies-files)
+		      (let ((proof (cond (background?
+					  (pvs-prove-decl fdecl t))
+					 (t (auto-save-proof-setup fdecl)
+					    (prove fdecl
+						   :strategy
+						   (when rerun? '(rerun)))))))
+			(when (typep proof 'proofstate)
+			  (setq *last-proof* proof)))
+		      (unless (or background?
+				  (null (default-proof fdecl)))
+			(setf (interactive? (default-proof fdecl)) t))
+		      ;; Save the proof if it is different.
+		      (unless (or (equal origin "prelude")
+				  (from-prelude? fdecl))
+			(when (or *justifications-changed?*
+				  (not (equal ojust
+					      (extract-justification-sexp
+					       (justification fdecl))))
+				  (not (eq (decision-procedure-used fdecl)
+					   decision-procedure)))
+			  (save-all-proofs (current-theory)))
+			;; If the proof status has changed, update the context.
+			(update-context-proof-status fdecl))
+		      (remove-auto-save-proof-file)
+		      (let ((*to-emacs* t))
+			(pvs-locate buffer fdecl
+				    (if (and prelude-offset
+					     (not (zerop prelude-offset)))
+					(vector (- (line-begin place) prelude-offset)
+						(col-begin place)
+						(- (line-end place) prelude-offset)
+						(col-end place))
+					place))))))))))
   ;; This prints nothing - better than "nil"
   ;; Actually causes problems - will look into other solutions
   ;; (unless *noninteractive*
@@ -4181,3 +4185,103 @@ types."
 		(type-decl "TYPE")
 		(typed-declaration (type d))
 		(t (break "more needed")))))))
+
+
+(defun rename-in-pvs-file (old new file-ref)
+  "Very crude way of renaming, basically does replaces old for new in the
+specified pvs-file, and its associated .prf file.  "
+  (let ((pvsfile (make-specpath file-ref))
+	(proofs (read-pvs-file-proofs file-ref))
+	(prffile (make-prf-pathname file-ref)))
+    (uiop:run-program (list "sed" (format nil "'s/\\<~a\\>/~a/g'" old new) 
+			    ))))
+
+(defun rename-in-prf-file (old new file-ref)
+  (let ((prf-file (make-prf-pathname file-ref)))
+    (when (file-exists-p prf-file)
+      (with-open-file (input prf-file :direction :input)
+	(let ((proofs (rename-in-proof-file-stream old new input)))
+	  (break "rename-in-prf-file")
+	  (make-current-proofs-sexps proofs))))))
+
+(defun rename-in-proof-file-stream (old new input &optional proofs)
+  (let ((nproof (read-proof input 'eof)))
+    (if (eq nproof 'eof)
+	(nreverse proofs)
+	(let ((rproof (rename-in-proof-entry old new nproof)))
+	  (rename-in-proof-file-stream
+	   old new input
+	   (if (member rproof proofs :test #'equal)
+	       proofs
+	       (cons rproof proofs)))))))
+
+(defun rename-in-proof-entry (old new proof)
+  "Each proof is of the form (thid fmla-proof fmla-proof ...)"
+  (let ((nthid (if (string= (car proof) old) (intern new :pvs) (car proof)))
+	(nforms (rename-in-formula-entries old new (cdr proof))))
+    (break "rename-in-proof-entry")
+    (cons nthid nforms)))
+
+(defun rename-in-formula-entries (old new entries &optional nforms)
+  "Each entry is of the form (fid index prfinfo prfinfo ...)"
+  (if (null entries)
+      (nreverse nforms)
+      (let ((nform (rename-in-formula-entry old new (car entries))))
+	(rename-in-formula-entries old new (cdr entries) (cons nform nforms)))))
+
+(defun rename-in-formula-entry (old new entry)
+  (let ((fid (if (string= (car entry) old) (intern new :pvs) (car entry)))
+	(index (cadr entry))
+	(prfinfos (rename-in-prfinfos old new (cddr entry))))
+    `(,fid ,index ,@prfinfos)))
+
+(defun rename-in-prfinfos (old new prfinfos &optional rprfinfos)
+  (if (null prfinfos)
+      (nreverse rprfinfos)
+      (let ((rprfinfo (rename-in-prfinfo old new (car prfinfos))))
+	(rename-in-prfinfos old new (cdr prfinfos) (cons rprfinfo rprfinfos)))))
+
+(defun rename-in-prfinfo (old new prfinfo)
+  (multiple-value-bind (prfid description create-date script refers-to decision-procedure-used tcc-origin)
+      (values-list prfinfo)
+    `(,prfid ,description ,create-date
+	     ,(rename-in-proof-script old new script)
+	     ,(rename-in-proof-refers-to old new refers-to)
+	     ,decision-procedure-used
+	     ,@(when tcc-origin (list (rename-in-tcc-origin old new tcc-origin))))))
+
+(defun rename-in-proof-refers-to (old new refers-to)
+  refers-to)
+
+(defun rename-in-proof-script (old new script)
+  "script is of the form (label rule subgoals comment)"
+  (when script
+    (multiple-value-bind (label rule subgoals comment)
+	(values-list script)
+      (list label
+	    (rename-in-proof-rule old new rule)
+	    (rename-in-proof-script-subgoals old new subgoals)
+	    comment))))
+
+(defun rename-in-proof-script-subgoals (old new subgoals)
+  (mapcar #'(lambda (sg) (rename-in-proof-script old new sg)) subgoals))
+
+(defun rename-in-proof-rule (old new form)
+  (cond ((consp form)
+	 (cons (rename-in-proof-rule old new (car form))
+	       (rename-in-proof-rule old new (cdr form))))
+	((numberp form)
+	 form)
+	((or (symbolp form) (stringp form))
+	 (if (string= form old)
+	     (if (stringp form) new (intern new :pvs))
+	     form))
+	(t (break "what else is there?"))))
+
+(defun rename-in-tcc-origin (old new tcc-origin)
+  "(root kind expr type)"
+  (when tcc-origin
+    (multiple-value-bind (root kind expr type)
+	(values-list tcc-origin)
+      (list (if (string= root old) (intern new :pvs) root)
+	    kind expr type))))
