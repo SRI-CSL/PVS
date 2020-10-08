@@ -881,16 +881,13 @@ sbclisp-distdir: $(SBCLISP_DISTFILES)
 
 dist-gzip: ${dist-allegro-gzip} ${dist-sbclisp-gzip}
 
-${dist-allegro-gzip}: ${SYSTEM_FILES}
-	$(create-distdir)
+${dist-allegro-gzip}: ${SYSTEM_FILES} allegro-distdir
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro.tgz
 	$(am__post_remove_distdir)
 dist-allegro-devel-gzip: $(GIT_DESC)-$(PLATFORM)-allegro-devel.tgz
-	$(create-distdir)
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro-devel.tgz
 	$(am__post_remove_distdir)
-${dist-sbclisp-gzip}: ${SYSTEM_FILES}
-	$(create-distdir)
+${dist-sbclisp-gzip}: ${SYSTEM_FILES} sbclisp-distdir
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 	$(am__post_remove_distdir)
 
