@@ -4230,10 +4230,22 @@ specified pvs-file, and its associated .prf file.  "
 	(rename-in-formula-entries old new (cdr entries) (cons nform nforms)))))
 
 (defun rename-in-formula-entry (old new entry)
-  (let ((fid (if (string= (car entry) old) (intern new :pvs) (car entry)))
+  (let ((fid (rename-formula-id (car entry)))
 	(index (cadr entry))
 	(prfinfos (rename-in-prfinfos old new (cddr entry))))
     `(,fid ,index ,@prfinfos)))
+
+(defun rename-formula-id (old new fid)
+  "Handles fids also of the form 'old_TCC#', converting to 'new_TCC#'"
+  (assert (and (stringp old) (stringp new)) (symbolp fid))
+  (let ((fstr (string fid)))
+    (cond ((string= fstr old)
+	   (intern new :pvs))
+	  ((and (> (length fstr) (+ (length old) 4))
+		(string= fstr old :end1 (length old))
+		(string= fstr "_TCC" :start1 (length old) :end1 (+ (length old) 4)))
+	   (intern (format nil "~a~a" new (subseq fstr (length old))) :pvs))
+	  (t fid))))
 
 (defun rename-in-prfinfos (old new prfinfos &optional rprfinfos)
   (if (null prfinfos)
