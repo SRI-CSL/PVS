@@ -79,34 +79,38 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
-    echo "Before update"
+    echo "apt update"
     sudo apt-get update
+    echo "Installing unzip, git, emacs, and tk"
     sudo apt-get install -y unzip
     sudo apt-get install -y git
+    sudo apt-get install -y emacs
+    sudo apt-get install -y tk
     VBoxClient --vmsvga
     VBoxClient --draganddrop
     VBoxClient --seamless
     VBoxClient --clipboard
-    sudo apt-get install -y emacs
-    sudo apt-get install -y tk
     # Install PVS
+    echo "Installing PVS"
     cp -r /home/vagrant/.pvs_shared /home/vagrant/pvs
-    (cd /home/vagrant/pvs; ./install-sh)
+    chown -R vagrant:vagrant /home/vagrant/pvs
+    (cd /home/vagrant/pvs; sh install-sh)
     export PATH=/home/vagrant/pvs:/home/vagrant/pvs/bin/ix86_64-Linux:$PATH
     echo "export PATH=/home/vagrant/pvs:/home/vagrant/pvs/bin/ix86_64-Linux:$PATH" >> /home/vagrant/.bashrc
     # Install NASA's pvslib
-    echo "installing NASA pvslib"
-    (cd /home/vagrant/pvs; git clone https://github.com/nasa/pvslib.git nasalib)
-    export PVS_LIBRARY_PATH=/home/vagrant/pvs/nasalib
-    echo "export PVS_LIBRARY_PATH=/home/vagrant/pvs/nasalib" >> /home/vagrant/.bashrc
+    echo "Installing NASA pvslib"
+    [ -d /home/vagrant/pvs/pvslib ] || (cd /home/vagrant/pvs; git clone https://github.com/nasa/pvslib.git)
+    export PVS_LIBRARY_PATH=/home/vagrant/pvs/pvslib
+    echo "export PVS_LIBRARY_PATH=/home/vagrant/pvs/pvslib" >> /home/vagrant/.bashrc
+    # Install vscode-pvs
+    echo "Installing vscode-pvs"
+    [ -d /home/vagrant/pvs/vscode-pvs ] || (cd /home/vagrant; git clone https://github.com/nasa/vscode-pvs.git)
     # Install NASA's vscode-pvs
+    echo "installing vscode"
     sudo apt-get install -y software-properties-common apt-transport-https wget
     wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
     sudo apt-get install -y code
-
-    (cd /home/vagrant; git clone https://github.com/nasa/vscode-pvs.git)
-
-    chown -R vagrant:vagrant pvs
+    # shutdown -r now #restart
   SHELL
 end
