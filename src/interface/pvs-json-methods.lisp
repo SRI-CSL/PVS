@@ -192,16 +192,18 @@
 (defrequest interrupt ()
   "Interrupts PVS."
   (when *pvs-lisp-process*
-    (cond ((mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
-	   (when ;; only allows to interrupt if a command is being processed.
-	       (or (mp:gate-open-p (psinfo-res-gate *ps-control-info*))
-		   (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
-	     (mp:process-interrupt
-	      *pvs-lisp-process*
-	      #'(lambda () (progn 
-			     (setf *interrupted-rpc* t)
-			     (restore))))))
-	  (t (break "Interruptep by client")))))
+    (mp:process-interrupt
+     *pvs-lisp-process*
+     #'(lambda ()
+	 (cond (pvs:*in-checker*
+		(if (or pvs::*in-apply*
+			(mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	      		(mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*)))
+		    (progn
+		      (setf *interrupted-rpc* t)
+		      (restore))
+		  (continue))) 
+	       (t (break "Interrupted by client")))))))
 
 ;;; Prover interface
 
@@ -342,11 +344,11 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 
 (defrequest prover-status ()
   "Checks the status of the prover: active or inactive."
-  (if *pvs-lisp-process*
+  (format nil "~a" (if *pvs-lisp-process*
       (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
 	    (ps (mp:symeval-in-process '*ps* *pvs-lisp-process*)))
 	(pvs:prover-status ps top-ps))
-      :inactive))
+      :inactive)))
 
 (defrequest proof-status (formref &optional formname)
   "Checks the status of the given formula, proved, unchecked, unfininshed,
@@ -456,6 +458,11 @@ to the associated declaration."
       (pvs-error "store-last-attempted-proof error"
 		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
 			 (car pvs:*last-attempted-proof*) dst-decl)))))
+
+(defrequest add-pvs-library (string)
+  "Just evaluate the string in lisp"
+  (let ((*package* (find-package :pvs)))
+    (push string pvs::*pvs-library-path*)))
 
 (defun json-term (term)
   (json-term* term))

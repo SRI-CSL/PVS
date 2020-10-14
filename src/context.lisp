@@ -2645,7 +2645,10 @@ Note that the lists might not be the same length."
 (defun make-prf-pathname (fname &optional (dir *default-pathname-defaults*))
   (assert (or (stringp fname) (pathnamep fname)))
   (let* ((pname (pathname fname))
-	 (name (pathname-name pname))
+	 (name (if (let ((type (pathname-type pname)))
+		     (and type (not (string= type "pvs")) (not (string= type "prf"))))
+		   (format nil "~s" pname)
+		 (pathname-name pname)))
 	 (fdir (pathname-directory pname)))
     (make-pathname :directory (or fdir (pathname-directory dir))
 		   :name name
