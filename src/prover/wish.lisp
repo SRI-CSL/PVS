@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(wish-current-rule))
+
 ;;; The functions of pvs-support.tcl that are called from here:
 ;;;  setup-proof
 ;;;  display-proof-from

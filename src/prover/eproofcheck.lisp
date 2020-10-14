@@ -30,8 +30,8 @@
 (in-package :pvs)
 
 (export '(pc-parse pc-typecheck check-arguments
-	  *multiple-proof-default-behavior*
-	  *last-attempted-proof*))
+	  *multiple-proof-default-behavior* *last-attempted-proof*
+	  extract-justification-sexp collect-justification))
 
 (defvar *subgoals* nil)
 
@@ -427,6 +427,7 @@
     (setq *subgoals*
 	  (mapcar #'current-goal
 	    (collect-all-remaining-subgoals *top-proofstate*))))
+  
   (unless *recursive-prove-decl-call*
     (clear-proof-hashes)))
 

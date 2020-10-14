@@ -65,6 +65,7 @@ pvsbin
 *.idx
 *.ind
 *.synctex.gz
+*.ilg
 doc/release-notes/*.html
 doc/release-notes/*.ps
 doc/release-notes/*.pdf
@@ -80,3 +81,4 @@ python/src/.DS_Store
 python/.settings/org.eclipse.core.resources.prefs
 
 .project
+.vagrant

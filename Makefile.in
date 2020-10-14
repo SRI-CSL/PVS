@@ -528,6 +528,10 @@ bitvectorslib = $(PVSPATH)lib/bitvectors/pvsbin/top.bin
 
 finitesetslib = $(PVSPATH)lib/finite_sets/pvsbin/top.bin
 
+dist-allegro-gzip = $(GIT_DESC)-$(PLATFORM)-allegro.tgz
+dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
+
+
 .PHONY : all devel runtime parser yices emacs prelude-files-and-regions etags
 
 ifneq ($(buildcmds),)
@@ -875,15 +879,15 @@ allegro-devel-distdir: $(ALLEGRO_DEVEL_DISTFILES)
 sbclisp-distdir: $(SBCLISP_DISTFILES)
 	$(create-distdir)
 
-dist-gzip: dist-allegro-gzip dist-allegro-devel-gzip dist-sbcl-gzip
+dist-gzip: ${dist-allegro-gzip} ${dist-sbclisp-gzip}
 
-dist-allegro-gzip: allegro-distdir
+${dist-allegro-gzip}: ${SYSTEM_FILES} allegro-distdir
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro.tgz
 	$(am__post_remove_distdir)
-dist-allegro-devel-gzip: allegro-devel-distdir
+dist-allegro-devel-gzip: $(GIT_DESC)-$(PLATFORM)-allegro-devel.tgz
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro-devel.tgz
 	$(am__post_remove_distdir)
-dist-sbclisp-gzip: sbclisp-distdir
+${dist-sbclisp-gzip}: ${SYSTEM_FILES} sbclisp-distdir
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 	$(am__post_remove_distdir)
 
@@ -905,21 +909,12 @@ dist-tarZ: distdir
 	tardir=$(DISTDIR) && $(am__tar) | compress -c >$(DISTDIR).tar.Z
 	$(am__post_remove_distdir)
 
-dist-shar: distdir
-	@echo WARNING: "Support for distribution archives compressed with" \
-		       "legacy program 'compress' is deprecated." >&2
-	@echo WARNING: "It will be removed altogether in Automake 2.0" >&2
-	shar $(DISTDIR) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR).shar.gz
-	$(am__post_remove_distdir)
-
 dist-zip: distdir
 	-rm -f $(DISTDIR).zip
 	zip -rq $(DISTDIR).zip $(DISTDIR)
 	$(am__post_remove_distdir)
 
-dist dist-all:
-	$(MAKE) $(AM_MAKEFLAGS) $(DIST_TARGETS) am__post_remove_distdir='@:'
-	$(am__post_remove_distdir)
+dist dist-all: dist-gzip
 
 # Cute hack for printing variables, e.g.,
 #  make print-emacs-elc

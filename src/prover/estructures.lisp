@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(top-proofstate proofstate status-flag label current-rule))
+
 (defcl s-formula ()
   formula
   (label :initform nil)

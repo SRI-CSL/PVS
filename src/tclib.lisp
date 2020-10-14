@@ -439,9 +439,10 @@ lib-path, along with modification dates."
 
 (defun list-pvs-libraries ()
   (dolist (path *pvs-library-path*)
-    (dolist (lib (directory path))
-      (when (directory-p lib)
-	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
+    (when (directory-p path)
+      (dolist (lib (directory path))
+	(when (directory-p lib)
+	  (format t "~%~a/ - ~a" (file-namestring lib) lib))))))
 
 ;;; id to abspath
 (defvar *pvs-library-alist*)
@@ -454,13 +455,14 @@ lib-path, along with modification dates."
 (defun get-pvs-library-alist ()
   (let ((alist nil))
     (dolist (path *pvs-library-path*)
-      (assert (directory-p path))
-      (dolist (sdir (uiop:subdirectories path))
-	(let* ((subdir (truename sdir))
-	       (dname (or (pathname-name sdir)
-			  (car (last (pathname-directory sdir))))))
-	  (when (valid-pvs-id* dname)
-	    (push (cons (intern dname :pvs) subdir) alist)))))
+      (if (directory-p path)
+	  (dolist (sdir (uiop:subdirectories path))
+	    (let* ((subdir (truename sdir))
+		   (dname (or (pathname-name sdir)
+			      (car (last (pathname-directory sdir))))))
+	      (when (valid-pvs-id* dname)
+		(push (cons (intern dname :pvs) subdir) alist))))
+	  (pvs-warning "~a is in the library path, but is not a directory" path)))
     ;; earlier paths in *pvs-library-path* shadow later ones.
     (nreverse alist)))
 
@@ -907,13 +909,17 @@ not a dir: if a valid id
     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
     ;; same name.
     (or lib-path
-	(let ((nstr (when (stringp pstr)
-		      (if (char= (char pstr (1- (length pstr))) #\/)
-			  (subseq pstr 0 (1- (length pstr)))
-			  pstr))))
-	  (when (and (stringp nstr)
-		     (valid-pvs-id* nstr))
-	    (let ((lib-id (intern nstr :pvs)))
+	(let* ((nstr (when (stringp pstr)
+		       (if (char= (char pstr (1- (length pstr))) #\/)
+			   (subseq pstr 0 (1- (length pstr)))
+			   pstr)))
+	       (lpos (when nstr (position #\/ nstr :from-end t)))
+	       (lstr (if lpos
+			 (subseq nstr (1+ lpos))
+			 nstr)))
+	  (when (and (stringp lstr)
+		     (valid-pvs-id* lstr))
+	    (let ((lib-id (intern lstr :pvs)))
 	      (or (visible-lib-decl-pathname lib-id)
 		  (cdr (assq lib-id (pvs-library-alist))))))))))
 

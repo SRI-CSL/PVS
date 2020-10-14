@@ -21,7 +21,8 @@
 
 (in-package :pvs-json)
 
-(export '(process-json-request json-message *interrupted-rpc* update-ps-control-info-result))
+(export '(process-json-request json-message *interrupted-rpc* update-ps-control-info-result
+	  rpc-output-notify-proof-success finish-proofstate-rpc-hook update-ps-control-info-result))
 
 (define-condition pvs-error (simple-error)
   ((code :accessor code :initarg :code)
@@ -324,7 +325,7 @@
 ;; M3: this function adds the information about the current proofstate to the
 ;;     rpc result. [Sept 2020]
 (defun update-ps-control-info-result (ps)
-  (when (and pvs:*ps-control-info* (not *in-apply*))
+  (when (and pvs:*ps-control-info* (not pvs:*in-apply*))
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	   (ps-json (pvs:pvs2json ps)))
       (pvs:xmlrpc-output-proofstate (list ps-json)))
@@ -337,28 +338,29 @@
 (defun finish-proofstate-rpc-hook (ps)
   "Prepares the result of the rpc request and closes it."
   (when pvs:*ps-control-info*
-    (let*((commentary (cons (format nil "~:[Proof attempt aborted~;Q.E.D.~]" (and (typep ps 'top-proofstate)
-										     (eq (status-flag ps) '!))) *prover-commentary*))
-	  (ps-json
-	   `((("label" . ,(label ps))
-	      ("commentary" . ,commentary)))))
+    (let* ((commentary (cons (format nil "~:[Proof attempt aborted~;Q.E.D.~]"
+			       (and (typep ps 'pvs:top-proofstate)
+				    (eq (pvs:status-flag ps) '!))) *prover-commentary*))
+	   (ps-json
+	    `((("label" . ,(pvs:label ps))
+	       ("commentary" . ,pvs:commentary)))))
       (add-psinfo pvs:*ps-control-info* ps-json))
     ;; M3 save script as last attempted [Sept 2020]
-    (let ((script (extract-justification-sexp
-		   (collect-justification *top-proofstate*)))
-	  (decl (declaration ps)))
-      (setf *last-attempted-proof* (list decl script)))
+    (let ((script (pvs:extract-justification-sexp
+		   (pvs:collect-justification pvs:*top-proofstate*)))
+	  (decl (pvs:declaration ps)))
+      (setf pvs:*last-attempted-proof* (list decl script)))
     (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
 
 ;; M3: hook for successfully closed branches.
 (defun rpc-output-notify-proof-success (proofstate)
-  (when (and pvs:*ps-control-info* (not *in-apply*))
-    (if (eq 'propax (car(pvs::current-rule proofstate)))
+  (when (and pvs:*ps-control-info* (not pvs:*in-apply*))
+    (if (eq 'pvs:propax (car (pvs:current-rule proofstate)))
 	(let ((ps-json (pvs:pvs2json proofstate)))
 	  (pvs:add-psinfo pvs:*ps-control-info* (list ps-json)))
-      (let*((prev-cmd (pvs::wish-current-rule proofstate))
-	    (ps-json
-	     `(("label" . ,(label proofstate))
-	       ("commentary" . ,(list (format nil "This completes the proof of ~a." (label proofstate))))
-	       ("prev-cmd" . ,(format nil "~s" prev-cmd)))))
-	(pvs:add-psinfo pvs:*ps-control-info* (list ps-json))))))
+	(let* ((prev-cmd (pvs:wish-current-rule proofstate))
+	       (ps-json
+		`(("label" . ,(pvs:label proofstate))
+		  ("commentary" . ,(list (format nil "This completes the proof of ~a." (pvs:label proofstate))))
+		  ("prev-cmd" . ,(format nil "~s" prev-cmd)))))
+	  (pvs:add-psinfo pvs:*ps-control-info* (list ps-json))))))

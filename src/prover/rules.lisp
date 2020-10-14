@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(propax))
+
 (defmacro addrule (name required-args optional-args body docstring
 		   &optional format-string)
   `(let* ((entry (gethash ,name *rulebase*))

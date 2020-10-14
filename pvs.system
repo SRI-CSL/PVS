@@ -283,6 +283,7 @@
 			(setq *pvs-has-libyices* t))))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
+		(pvs::clear-pvs-hooks)
 		#+allegro
 		(defpackage :pvs
 		  (:import-from :pvs-xml-rpc "pvs-server"))

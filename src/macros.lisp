@@ -274,7 +274,7 @@ After exiting, all of these are reverted to their previous values."
 			(when (pvs-context-changed *workspace-session*)
 			  (save-context)))
 		   (set-working-directory ,orig-dir))))
-	   (error "Library ~a does not exist" ,lib-path)))))
+	   (error "Library ~a does not exist" (or ,lib-path ,lref))))))
 
 ;; (defmacro with-directory (dirstr &rest forms)
 ;;   "This has the effect of cd, by creating a context in which

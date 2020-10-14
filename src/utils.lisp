@@ -35,7 +35,7 @@
 	  current-theory current-theory-name current-using-hash file-older
 	  find-supertype get-theory lf make-new-context mapappend operator*
 	  prover-status put-decl pvs-current-directory resolution show assq tc-term
-	  formals pvs-git-description ref-to-id))
+	  formals pvs-git-description ref-to-id next-proof-id make-default-proof))
 
 (declaim (notinline current-theory))
 
@@ -871,6 +871,7 @@ is replaced with replacement."
 ;  (make-specpath (id mod)))
 
 (defmethod make-specpath ((th datatype-or-module) &optional (ext "pvs"))
+  (declare (ignore ext))
   (let ((*default-pathname-defaults* (context-path th)))
     (make-specpath (id th))))
 
@@ -4559,6 +4560,7 @@ space")
   "Checks the status of the prover: active or inactive."
   ;; (format t "~%pvs:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
   ;;   (and top-ps t) (and last-proof t) (and ps t))
+  (declare (ignore ps))
   (if top-ps
       :active
       :inactive))

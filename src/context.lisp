@@ -41,7 +41,7 @@
 	  te-formula-info te-id fe-status fe-id get-theory-dependencies
 	  restore-context valid-proofs-file get-context-theory-names
 	  get-context-theory-entry context-file-of pvs-file-of
-	  context-entry-of save-proofs copy-theory-proofs-to-orphan-file
+	  context-entry-of save-proofs save-all-proofs copy-theory-proofs-to-orphan-file
 	  read-strategies-files))
 
 (proclaim '(inline pvs-context-version pvs-context-libraries
@@ -3049,8 +3049,16 @@ each context, the theories are in alphabetic order."
 
 (defun check-binfiles* (libref theory-ids)
   (if libref
-      (with-workspace libref
-	(check-binfiles* nil theory-ids))
+      (let ((libstr (if (pathnamep libref) (namestring libref) libref)))
+	(when (and (char= (char libstr 0) #\/) (not (file-exists-p libref)))
+	  (let* ((lstr (if (char= (char libstr (1- (length libstr))) #\/)
+			   (subseq libstr 0 (1- (length libstr)))
+			   libstr))
+		 (lpos (position #\/ lstr :from-end t)))
+	    (when lpos
+	      (setq libstr (subseq lstr (1+ lpos))))))
+	(with-workspace libstr
+	  (check-binfiles* nil theory-ids)))
       (every #'(lambda (thid)
 		 (let ((ce (context-entry-of thid)))
 		   (when ce
@@ -3149,7 +3157,7 @@ binfile, not the filename."
 (defmethod unproved? ((fdecl formula-entry))
   (not (proved? fdecl)))
 
-(defun collect-default-proofs ()
+(defun collect-current-default-proofs ()
   (maphash #'collect-default-proofs-theories (current-pvs-files)))
 
 (defun collect-default-proofs-theories (fname theories)

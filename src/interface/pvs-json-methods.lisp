@@ -236,11 +236,12 @@
   "Starts interactive proof of a formula from a given theory
 
 Creates a ps-control-info struct to control the interaction.  It has slots
-  command
-  json-result
-  lock
-  cmd-gate
-  res-gate"
+  command - initially nil, proof-command sets this to the input form.
+  json-result - the sequent that results
+  lock - a process-lock
+  cmd-gate - a gate indicating that a command is available
+  res-gate - a gate indicating the result (sequent) is available
+"
   ;; We do this in this thread, as error messages are easier to deal with.
   ;; Thus we make sure we're not in the checker, that the theory typechecks,
   ;; and that the formula exists in that theory.
@@ -271,13 +272,13 @@ Creates a ps-control-info struct to control the interaction.  It has slots
     (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
     ;;(format t "~%prove-formula: after process-interrupt, about to wait")
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
-    ;; (format t "~%prove-formula: Done waiting... , lock-locker = ~a~%"
-    ;;   (mp:process-lock-locker lock))
     (mp:with-process-lock (lock)
       (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))
 	;;(format t "~%prove-formula: returning json-result ~a~%" json-result)
 	(setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
 	(mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	(format t "~%prove-formula: Done waiting... , lock-locker = ~a~%"
+	  (mp:process-lock-locker lock))
 	json-result))))
   
 
@@ -433,28 +434,28 @@ to the associated declaration."
 ;; M3: Request to save proofs to prf file [Sept 2020]
 (defrequest save-all-proofs (theoryref)
   "Stores the declaration proofs into the corresponding PRF file"
-  (let ((theory (pvs::get-typechecked-theory theoryref)))
+  (let ((theory (pvs:get-typechecked-theory theoryref)))
     (unless theory
       (pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
-    (pvs::save-all-proofs theory)))
+    (pvs:save-all-proofs theory)))
 
 ;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
 (defrequest store-last-attempted-proof (formula theory &optional overwrite? new-script-id new-script-desc)
   "Store the last attempted proof script in the provided formula, only if the script was produced for it."
-  (unless pvs::*last-attempted-proof*
+  (unless pvs:*last-attempted-proof*
     (pvs-error "store-last-attempted-proof error" "There is no attempted proof script to be saved."))
   (let ((dst-decl (pvs:get-formula-decl theory formula)))
-    (if (equal dst-decl (car pvs::*last-attempted-proof*))
-	(let ((script (cdr pvs::*last-attempted-proof*)))
+    (if (equal dst-decl (car pvs:*last-attempted-proof*))
+	(let ((script (cdr pvs:*last-attempted-proof*)))
 	  (if overwrite?
-	      (setf (script (pvs::default-proof dst-decl)) (car script))
-	    (let ((id (or new-script-id (pvs::next-proof-id dst-decl)))
+	      (setf (pvs:script (pvs:default-proof dst-decl)) (car script))
+	    (let ((id (or new-script-id (pvs:next-proof-id dst-decl)))
 		  (description (or new-script-desc "")))
-	      (setf (pvs::default-proof dst-decl)
-		    (pvs::make-default-proof dst-decl (car script) id description)))))
+	      (setf (pvs:default-proof dst-decl)
+		    (pvs:make-default-proof dst-decl (car script) id description)))))
       (pvs-error "store-last-attempted-proof error"
 		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
-			 (car pvs::*last-attempted-proof*) dst-decl)))))
+			 (car pvs:*last-attempted-proof*) dst-decl)))))
 
 (defun json-term (term)
   (json-term* term))
