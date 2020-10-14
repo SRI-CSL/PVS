@@ -228,9 +228,9 @@
       ;; don't affect the server responsiveness [Sept 2020].
       (setf *debugger-hook* #'rpc-mode-debugger)
       ;; M3: Install hook for sequent collection [Sept 2020].
-      (pushnew 'pvs-json:update-ps-control-info-result *proofstate-hooks*)
-      (pushnew 'pvs-json::finish-proofstate-rpc-hook *finish-proofstate-hooks*)
-      (pushnew 'pvs-json::rpc-output-notify-proof-success *success-proofstate-hooks*)
+      (pushnew 'update-ps-control-info-result *proofstate-hooks*)
+      (pushnew 'finish-proofstate-rpc-hook *finish-proofstate-hooks*)
+      (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)
       ;; M3: Rewriting messages are disable by default when in server mode [Sept 2020].
       (setq *rewrite-msg-off* t)))
   #+allegro

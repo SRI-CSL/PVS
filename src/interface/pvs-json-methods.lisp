@@ -192,19 +192,16 @@
 (defrequest interrupt ()
   "Interrupts PVS."
   (when *pvs-lisp-process*
-    (mp:process-interrupt
-     *pvs-lisp-process*
-     #'(lambda ()
-	 (cond (pvs:*in-checker*
-		(if ;; only allows to interrupt if a command is being processed.
-	      	    (or pvs::*in-apply*
-			(mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	      		(mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*)))
-		    (progn
-		      (setf *interrupted-rpc* t)
-		      (restore))
-		  (continue))) 
-	       (t (break "Interrupted by client")))))))
+    (cond ((mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+	   (when ;; only allows to interrupt if a command is being processed.
+	       (or (mp:gate-open-p (psinfo-res-gate *ps-control-info*))
+		   (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	     (mp:process-interrupt
+	      *pvs-lisp-process*
+	      #'(lambda () (progn 
+			     (setf *interrupted-rpc* t)
+			     (restore))))))
+	  (t (break "Interruptep by client")))))
 
 ;;; Prover interface
 
@@ -344,11 +341,11 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 
 (defrequest prover-status ()
   "Checks the status of the prover: active or inactive."
-  (format nil "~a" (if *pvs-lisp-process*
+  (if *pvs-lisp-process*
       (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
 	    (ps (mp:symeval-in-process '*ps* *pvs-lisp-process*)))
 	(pvs:prover-status ps top-ps))
-      :inactive)))
+      :inactive))
 
 (defrequest proof-status (formref &optional formname)
   "Checks the status of the given formula, proved, unchecked, unfininshed,
@@ -444,21 +441,20 @@ to the associated declaration."
 ;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
 (defrequest store-last-attempted-proof (formula theory &optional overwrite? new-script-id new-script-desc)
   "Store the last attempted proof script in the provided formula, only if the script was produced for it."
-  #+pvsdebug (format t "~%[store-last-attempted-proof] last-attempted-proof ~a ~%" pvs::*last-attempted-proof*)
-  #+pvsdebug (format t "~%[store-last-attempted-proof] formula ~a theory ~a overwrite? ~a ~%" formula theory overwrite?)
   (unless pvs::*last-attempted-proof*
     (pvs-error "store-last-attempted-proof error" "There is no attempted proof script to be saved."))
   (let ((dst-decl (pvs:get-formula-decl theory formula)))
     (if (equal dst-decl (car pvs::*last-attempted-proof*))
 	(let ((script (cdr pvs::*last-attempted-proof*)))
 	  (if overwrite?
-	      (let ((prinfo (pvs::default-proof dst-decl)))
-		(setf (pvs::script prinfo) (car script)))
+	      (setf (script (pvs::default-proof dst-decl)) (car script))
 	    (let ((id (or new-script-id (pvs::next-proof-id dst-decl)))
 		  (description (or new-script-desc "")))
 	      (setf (pvs::default-proof dst-decl)
 		    (pvs::make-default-proof dst-decl (car script) id description)))))
-      (pvs-error "store-last-attempted-proof error" (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)." (car pvs::*last-attempted-proof*) dst-decl)))))
+      (pvs-error "store-last-attempted-proof error"
+		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
+			 (car pvs::*last-attempted-proof*) dst-decl)))))
 
 (defun json-term (term)
   (json-term* term))
