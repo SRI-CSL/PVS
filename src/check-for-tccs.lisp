@@ -396,8 +396,8 @@
 	    ;; Was changed by the recursion conversion
 	    (check-for-tccs* expr (type expr))
 	    (if (typep expr '(or let-expr where-expr))
-		(let ((*tcc-conditions* (append (let-tcc-conditions* expr)
-						*tcc-conditions*)))
+		(let ((*bound-variables* (append (let-bindings* expr) *bound-variables*))
+		      (*tcc-conditions* (append (let-tcc-conditions* expr) *tcc-conditions*)))
 		  (check-for-tccs* (let-expression* expr) expected))
 		(check-for-tccs* (operator expr) optype))))))
   (check-for-recursive-tcc expr))
