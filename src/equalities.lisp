@@ -512,6 +512,8 @@
 	  (and (eq id1 id2)
 	       (tc-eq* arg1 arg2 bindings)
 	       ;; tc-eq* doesn't work - should chase down why
+	       ;; see examples/dpll/dpll3_4.pvs for why next line is needed
+	       (eq (fully-instantiated? ty1) (fully-instantiated? ty2))
 	       (compatible? ty1 ty2))))))
 
 
