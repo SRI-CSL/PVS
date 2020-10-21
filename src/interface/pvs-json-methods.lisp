@@ -196,9 +196,7 @@
      *pvs-lisp-process*
      #'(lambda ()
 	 (cond (pvs:*in-checker*
-		(if (or pvs::*in-apply*
-			(mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	      		(mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*)))
+		(if pvs::*in-apply*
 		    (progn
 		      (setf *interrupted-rpc* t)
 		      (restore))
