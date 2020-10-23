@@ -174,8 +174,10 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
       (handler-bind ;; catches errors
 	  ((error #'(lambda (c)
 		      (unless *evaluator-debug*
-			(format t "Hit an error (use \"debug\" to debug):")
-			(format t "~%~a" c)
+			(typecase c
+			  (tcerror (format t "~a~%" (msg c)))
+			  (t (format t "Hit an error (use \"debug\" to debug):")
+			     (format t "~%~a" c)))
 			(invoke-restart 'return-to-pvsio)))))
 	(evaluate-pvsio* input-stream))
     (return-to-pvsio () nil))
