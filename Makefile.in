@@ -59,7 +59,6 @@ GREP = @GREP@
 ETAGS = @ETAGS@
 GIT = @GIT@
 GIT_FILES := $(shell $(GIT) ls-files)
-GIT_DESC := $(shell $(GIT) describe)
 TAR = @TAR@
 TARFLAGS = co --group=0 --owner=0 --exclude='\._*' "$$tardir"
 MKDIR = @MKDIR@
@@ -75,9 +74,9 @@ SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
 endif
 DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)
 DIST_ARCHIVES = $(DISTDIR).tar.gz
-ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_FILES)
-ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_DEVEL_FILES) 
-SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(SBCLISP_FILES)
+ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_FILES) # $(SOURCE_FILES)
+ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_DEVEL_FILES) # $(SOURCE_FILES) 
+SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SBCLISP_FILES) # $(SOURCE_FILES)
 
 SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	pvs pvsio proveit provethem emacs/pvs.xpm emacs/pvslogo.gif \
@@ -98,7 +97,7 @@ SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
 	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2 \
 	emacs/configured-for-x src/asdf-patch.lisp Vagrantfile vagrant.README \
-	pvs-version.lisp
+	pvs-version.lisp git-commit
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
 	$(wildcard $(bindir)/runtime/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
@@ -122,7 +121,7 @@ SBCLISP_FILES = $(bindir)/runtime/*.lisp \
 	$(bindir)/runtime/ws1s.$(LOAD-FOREIGN-EXTENSION) \
 	$(bindir)/runtime/pvs-sbclisp $(bindir)/runtime/run-sbcl.sh
 
-SOURCE_FILES = $(ess) $(lisp-files) $(emacs-src) $(pvs-make-files) $(allegro-make-files)
+# SOURCE_FILES = $(ess) $(lisp-files) $(emacs-src) $(pvs-make-files) $(allegro-make-files)
 
 remove_distdir = \
   if test -d "$(DISTDIR)"; then \
@@ -541,6 +540,7 @@ endif
 endif
 
 all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags yices
+	@echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
 devel : $(allegro-devel) # $(sbcl-devel) $(cmulisp-devel)
 
