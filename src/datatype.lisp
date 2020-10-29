@@ -1682,20 +1682,31 @@ generated")
 			     (mk-bind-decl (id var2)
 			       (mk-recognizer-type (recognizer c) dacts)))
 	 (if (arguments c)
-	     (mk-application 'IMPLIES
-	       (mk-conjunction
-		(mapcar #'(lambda (a)
-			    (mk-application '=
-			      (if (some #'(lambda (cc)
-					    (eq (recognizer cc) (id a)))
-					(constructors adt))
-				  (mk-coercion (mk-application (id a) (copy var))
-					       (copy-untyped (type a)))
-				  (mk-application (id a) (copy var)))
-			      (mk-application (id a) (copy var2))))
-		  (arguments c)))
-	       (mk-application '= var var2))
-	     (mk-application '= var var2)))
+	     (mk-application
+	      'IMPLIES
+	      (mk-conjunction
+	       (mapcar #'(lambda (a)
+			   (mk-application
+			    (let*((type (type a))
+				  (res (mk-resolution (equality-decl)
+						      (make-instance 'modname
+								     :id '|equalities|
+								     :actuals (list (mk-actual type)))
+						      (mk-funtype (list type type) *boolean*))))
+			      (make-instance 'name-expr
+					     :id '=
+					     :type (type res)
+					     :resolutions (list res)))
+			    (if (some #'(lambda (cc)
+					  (eq (recognizer cc) (id a)))
+				      (constructors adt))
+				(mk-coercion (mk-application (id a) (copy var))
+					     (copy-untyped (type a)))
+			      (mk-application (id a) (copy var)))
+			    (mk-application (id a) (copy var2))))
+		       (arguments c)))
+	      (mk-application '= var var2))
+	   (mk-application '= var var2)))
        'AXIOM nil dfmls))))
 
 (defun generate-adt-eta (c adt)
