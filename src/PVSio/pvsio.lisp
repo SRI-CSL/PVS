@@ -78,7 +78,7 @@ To change output prompt '~a':
       (when theory
 	(with-open-file 
 	    (*error-output*
-	     (merge-pathnames (format nil "~a.log" thname))
+	     (merge-pathnames (format nil "~a.log" (or thname fname)))
 	     :direction :output 
 	     :if-does-not-exist :create
 	     :if-exists (if *pvs-emacs-interface* :supersede :append))
@@ -571,4 +571,3 @@ strings. "
 		  err file (directory-namestring file) theory)))
     (fresh-line)
     (bye 0)))
-
