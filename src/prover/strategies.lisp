@@ -3018,8 +3018,8 @@ DONT-DELETE? prevents antecedent/succedent formulas from being rewritten to
 
 (defstrat skip-msg (msg &optional force-printing?)
   (let ((dummy (if force-printing?
-		   (format t "~%~a" msg)
-		   (error-format-if "~%~a" msg))))
+		   (format-nif "~%~a" msg)
+		   (format-if "~%~a" msg))))
     (skip))
   "Prints the given string but behaves like a skip.
 Useful for generating error messages in strategies."
