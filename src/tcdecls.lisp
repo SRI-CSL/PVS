@@ -72,11 +72,11 @@
       ;;(sort-and-rename-tccs decl)
       (typecheck-decls (cdr decls)))))
 
-(defun sort-and-rename-tccs (decl)
-  ;; (let ((dtccs (reverse (remove-if (complement #'tcc?) (generated decl)))))
-  ;;   (when (cdr dtccs)
-  ;;     (break)))
-  )
+;; (defun sort-and-rename-tccs (decl)
+;;   (let ((dtccs (reverse (remove-if (complement #'tcc?) (generated decl)))))
+;;     (when (cdr dtccs)
+;;       (break)))
+;;   )
 
 
 (defun typecheck-decl (decl)
@@ -654,11 +654,11 @@
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
       (type-error (theory-name thdecl)
 	"Formal theory declarations may not refer to the containing theory"))
-    (let* ((thname (expanded-theory-name theory-name))
+    (let* ((thname (expanded-theory-name theory-name)) ; walks down theory references
 	   (theory (declaration thname))
 	   (tgt-name (target thname))
 	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
-      (inlined-theory-info thdecl theory thname)
+      (inlined-theory-info thdecl theory thname) ; info messages, e.g., no mappings given
       (let* ((mappings (determine-implicit-mappings
 			theory thname tgt-name tgt-theory))
 	     (full-thname (lcopy thname :mappings mappings :target nil)))
@@ -759,6 +759,7 @@
 ;; 	    theory-name)))))
 
 (defmethod typecheck-inlined-theory* ((theory module) theory-name decl)
+  ;; (assert (typep thdecl '(or mod-decl formal-theory-decl)))
   (let ((*typecheck-using* theory-name)) ;; Provide information to tcc-gen
     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
 		(mappings theory-name))
@@ -771,7 +772,8 @@
     (make-inlined-theory theory theory-name decl)))
 
 (defun make-inlined-theory (theory theory-name decl)
-  (let ((stheory (subst-mod-params-inlined-theory theory theory-name)))
+  ;; (assert (typep decl '(or mod-decl formal-theory-decl)))
+  (let ((stheory (subst-mod-params-inlined-theory theory theory-name decl)))
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
     ;; Might be better to subst-mod-params declarations separately, but then
     ;; the substitution alist must be remade for each one.
@@ -782,6 +784,7 @@
     ;; Make sure substituted decls are all new.
     (multiple-value-bind (theory-part dalist owlist)
 	;; Continues the substitutions done by subst-mod-params
+	;; Note that this modifies the theory part
 	(subst-new-map-inline-theory-decls (theory stheory) decl)
       (setf (theory stheory)
 	    (remove-if #'var-decl? theory-part))
@@ -792,20 +795,22 @@
       ;; This splices the new decls into the current theory
       (make-inlined-theory-decls stheory decl))))
 
-(defun subst-mod-params-inlined-theory (theory theory-name)
+(defun subst-mod-params-inlined-theory (theory theory-name thdecl)
   "Does subst-mod-params for the whole theory, but with a fresh
 all-subst-mod-params-caches.  It does this by resetting this in
 *workspace-session*, then restoring it after the subst-mod-params call."
+  ;; (assert (typep thdecl '(or mod-decl formal-theory-decl)))
   (let ((cur-all-subst-mod-params-caches
   	 (all-subst-mod-params-caches *workspace-session*)))
     ;; Need to ignore earlier substitutions, but restore after
     (setf (all-subst-mod-params-caches *workspace-session*)
   	  (make-pvs-hash-table :strong-eq? t))
-    (unwind-protect (subst-mod-params theory theory-name theory)
+    (unwind-protect (subst-mod-params theory theory-name theory thdecl)
       (setf (all-subst-mod-params-caches *workspace-session*)
   	    cur-all-subst-mod-params-caches))))
 
 (defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
+  ;;(break "subst-new-map-inline-theory-decls")
   (if (null sdecls)
       (values (nreverse ndecls) dalist owlist)
       (multiple-value-bind (ndecl ndalist nowlist)
@@ -818,6 +823,8 @@ all-subst-mod-params-caches.  It does this by resetting this in
 ;; are kept in dalist and owlist.
 
 (defun subst-new-map-inline-theory-decl (sd decl dalist owlist)
+  "Called on each decl, mostly builds up dalist and owlist for use in subst-new-map-decls.
+In addition, it resets the id, and calls subst-new-map-decl-type to reset the type for some decls."
   (if (importing? sd)
       (values (copy sd) dalist owlist)
       (let* ((nid (makesym "~a.~a" (id decl) (id sd)))
@@ -828,8 +835,7 @@ all-subst-mod-params-caches.  It does this by resetting this in
 	(typecase sd
 	  ((or type-def-decl const-decl theory-reference)
 	   (subst-new-map-decl-type sd dalist owlist)
-	   (let* ((res (make-resolution sd
-			 (current-theory-name)))
+	   (let* ((res (make-resolution sd (current-theory-name)))
 		  (nm (mk-name-expr nid nil nil res))
 		  (act (make-instance 'actual :expr nm)))
 	     (typecase sd
@@ -875,6 +881,14 @@ all-subst-mod-params-caches.  It does this by resetting this in
 (defvar *subst-new-map-decls*)
 (defvar *subst-new-other-decls*)
 
+(defgeneric subst-new-map-decl-type (sd dalist owlist)
+  (:documentation
+   "Resets the types of sd, depending on the class:
+    type-decl: type-value
+    type-def-decl: type-value, type-expr, contains
+    const-decl: type
+    inline-recursive-type: adt-type-name, constructors, adt-theory"))
+
 (defmethod subst-new-map-decl-type ((sd theory-reference) dalist owlist)
   (declare (ignore dalist owlist))
   nil)
@@ -893,9 +907,14 @@ all-subst-mod-params-caches.  It does this by resetting this in
     (setf (contains sd) (subst-new-map-decls* (contains sd)))))
 
 (defmethod subst-new-map-decl-type ((sd const-decl) dalist owlist)
+  ;;(assert (or (null (definition sd)) (compatible? (type (definition sd)) (type sd))))
   (let ((*subst-new-map-decls* dalist)
 	(*subst-new-other-decls* owlist))
-    (setf (type sd) (subst-new-map-decls* (type sd)))))
+    (let ((ntype (subst-new-map-decls* (type sd)))
+	  (ndef (subst-new-map-decls* (definition sd))))
+      ;;(assert (or (null ndef) (compatible? ntype (type ndef))))
+      (setf (type sd) ntype)
+      (setf (definition sd) ndef))))
 
 (defmethod subst-new-map-decl-type ((adt inline-recursive-type) dalist owlist)
   (let ((*subst-new-map-decls* dalist)
@@ -1079,17 +1098,21 @@ all-subst-mod-params-caches.  It does this by resetting this in
 	(*gensubst-subst-types* t))
     (gensubst obj #'subst-new-map-decl* #'subst-new-map-decl-test)))
 
-(defmethod subst-new-map-decl-test ((obj declaration))
-  (assq obj *subst-new-map-decls*))
+;; (defmethod subst-new-map-decl-test ((obj declaration))
+;;   (when (assq obj *subst-new-map-decls*)
+;;     (break "decl?")))
 
 (defmethod subst-new-map-decl-test ((obj name))
-  (when (resolution obj)
-    (subst-new-map-decl-test (resolution obj))))
+  (let ((decl (declaration obj)))
+    (and decl
+	 (or (assq decl *subst-new-map-decls*)
+	     (let ((refs (collect-references obj)))
+	       (memq decl refs))))))
 
 (defmethod subst-new-map-decl-test ((obj resolution))
   (or (assq (declaration obj) *subst-new-map-decls*)
-      ;;(typed-declaration? (declaration obj))
-      ))
+      (let ((refs (collect-references (type obj))))
+	(some #'(lambda (r) (assq r *subst-new-map-decls*)) refs))))
 
 (defmethod subst-new-map-decl-test ((obj simple-constructor))
   (assq (con-decl obj) *subst-new-map-decls*))
@@ -1098,8 +1121,9 @@ all-subst-mod-params-caches.  It does this by resetting this in
   (declare (ignore obj))
   nil)
 
-(defmethod subst-new-map-decl* ((obj declaration))
-  (cdr (assq obj *subst-new-map-decls*)))
+;; (defmethod subst-new-map-decl* ((obj declaration))
+;;   (break "Why decl?")
+;;   (cdr (assq obj *subst-new-map-decls*)))
 
 (defmethod subst-new-map-decl* ((obj list))
   (mapcar #'subst-new-map-decl obj))
@@ -1113,19 +1137,19 @@ all-subst-mod-params-caches.  It does this by resetting this in
       :resolutions nres)))
 
 (defmethod subst-new-map-decl* ((obj name-expr))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolution obj))))
+  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
     (assert (or (null act) (actual? act)))
     (if act
 	(copy obj
 	  :id (id (expr act))
 	  :resolutions (resolutions (expr act))
 	  :type (type (expr act)))
-	(if (eq nres (resolution obj))
-	    obj
-	    (lcopy obj
-	      :resolutions (list nres)
-	      :type (type nres))))))
+	(let ((nres (subst-new-map-decl* (resolution obj))))
+	  (if (eq nres (resolution obj))
+	      obj
+	      (lcopy obj
+		:resolutions (list nres)
+		:type (type nres)))))))
 
 (defmethod subst-new-map-decl* ((obj adt-name-expr))
   (let ((nobj (call-next-method)))
@@ -1149,15 +1173,14 @@ all-subst-mod-params-caches.  It does this by resetting this in
 				(cdr (assq (adt obj) *subst-new-other-decls*))
 				(adt (type (car res)))
 				(break "What now?")))))
-	  (setf (type-value (declaration nobj)) nobj)
+	  ;; This is not right
+	  ;;(setf (type-value (declaration nobj)) nobj)
 	  (setf (type (resolution nobj)) nobj)
-	  ;;(break "Make sure this is right")
 	  nobj))))
 
 (defmethod subst-new-map-decl* ((obj constructor-name-expr))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
 	(nres (subst-new-map-decls* (resolutions obj))))
-    ;;(break "subst-new-map-decl* (constructor-name-expr)")
     (assert (or (null act) (actual? act)))
     (copy obj
       :id (if act (id (expr act)) (id obj))
@@ -1172,7 +1195,9 @@ all-subst-mod-params-caches.  It does this by resetting this in
     (if (actual? act)
 	(make-resolution (declaration (expr act)) modinst)
 	(let ((nmi (subst-new-map-decls* (module-instance obj)))
-	      (ntype (subst-new-map-decls* (type obj))))
+	      (ntype (if (const-decl? (declaration obj))
+			 (subst-new-map-decls* (type obj))
+			 (type obj))))
 	  (lcopy obj :module-instance nmi :type ntype)))))
 
 (defmethod subst-new-map-decl* ((obj simple-constructor))
@@ -1364,6 +1389,7 @@ all-subst-mod-params-caches.  It does this by resetting this in
 				      (car (formals decl))))
 		      tn))
 	   (tval (type-def-decl-value decl ptype)))
+      ;;(assert (fully-instantiated? tval))
       (setf (type-value decl) tval)
       (setf (resolutions tn) (list (mk-resolution decl (current-theory-name) tval)))
       (typecase (type-expr decl)
@@ -3426,7 +3452,7 @@ The dependent types are created only when needed."
 		   (vid (make-new-variable '|t| dtype))
 		   (bd (typecheck* (mk-bind-decl vid dtype) nil nil nil))
 		   (var (make-variable-expr bd))
-		   (prex (make!-projections var))n
+		   (prex (make!-projections var))
 		   (nex (make!-lambda-expr (list bd)
 			  (substit (expression ex) (mapcar #'cons (bindings ex) prex)))))
 	      (if (conjunction? (expression nex))
@@ -4785,3 +4811,182 @@ The dependent types are created only when needed."
     (|ordinal| (setq *ordinal* type))
     (|string| (setq *string-type* type))
     (|character| (setq *character* type))))
+
+;; (defun subst-new-map-decls* (obj)
+;;   (subst-new-map-decl* obj))
+
+;; (defmethod subst-new-map-decl* (obj)
+;;   (break "need more subst-new-map-decl* methods - ~a : ~a" obj (type-of obj)))
+
+;; (defmethod subst-new-map-decl* ((ex name-expr))
+;;   (let ((nres (subst-new-map-decl* (resolution ex))))
+;;     (if (eq nres (resolution ex))
+;; 	ex
+;; 	(copy ex
+;; 	  :type (type res)
+;; 	  :actuals (subst-new-map-decl* (actuals ex))
+;; 	  :dactuals (subst-new-map-decl* (dactuals ex))
+;; 	  :resolutions (list nres)))))
+
+;; (defmethod subst-new-map-decl* ((ex adt-name-expr))
+;;   (let ((nex (call-next-method)))
+;;     (if (eq ex nex)
+;; 	nex
+;; 	(copy nex :adt-type (subst-new-map-decl* (adt-type ex))))))
+
+;; (defmethod subst-new-map-decl* ((ex projection-expr))
+;;   (with-slots (actuals dactuals type) ex
+;;     (lcopy ex
+;;       :actuals (subst-new-map-decl* actuals)
+;;       :dactuals (subst-new-map-decl* dactuals)
+;;       :type (subst-new-map-decl* type))))
+
+;; (defmethod subst-new-map-decl* ((ex injection-expr))
+;;   (with-slots (actuals dactuals type) ex
+;;     (lcopy ex
+;;       :actuals (subst-new-map-decl* actuals)
+;;       :dactuals (subst-new-map-decl* dactuals)
+;;       :type (subst-new-map-decl* type))))
+
+;; (defmethod subst-new-map-decl* ((ex injection?-expr))
+;;   (with-slots (actuals dactuals type) ex
+;;     (lcopy ex
+;;       :actuals (subst-new-map-decl* actuals)
+;;       :dactuals (subst-new-map-decl* dactuals)
+;;       :type (subst-new-map-decl* type))))
+
+;; (defmethod subst-new-map-decl* ((ex extraction-expr))
+;;   (with-slots (actuals dactuals type) ex
+;;     (lcopy ex
+;;       :actuals (subst-new-map-decl* actuals)
+;;       :dactuals (subst-new-map-decl* dactuals)
+;;       :type (subst-new-map-decl* type))))
+
+;; (defmethod subst-new-map-decl* ((ex projection-application))
+;;   (with-slots (argument actuals dactuals type index) ex
+;;     (let ((narg (subst-new-map-decl* argument)))
+;;       (if (eq argument narg)
+;; 	  ex
+;; 	  (let ((ntype (subst-new-map-decl* (type ex))))
+;; 	    (lcopy ex
+;; 	      :argument narg
+;; 	      :actuals (subst-new-map-decl* actuals)
+;; 	      :dactuals (subst-new-map-decl* dactuals)
+;; 	      :type ntype))))))
+
+;; (defmethod subst-new-map-decl* ((ex injection-application))
+;;   (with-slots (argument actuals dactuals type index) ex
+;;     (let ((narg (subst-new-map-decl* argument))
+;; 	  (ntype (subst-new-map-decl* type)))
+;;       (lcopy ex
+;; 	:argument narg
+;; 	:actuals (subst-new-map-decl* actuals)
+;; 	:dactuals (subst-new-map-decl* dactuals)
+;; 	:type ntype))))
+
+;; (defmethod subst-new-map-decl* ((ex injection?-application))
+;;   (with-slots (argument actuals dactuals type index) ex
+;;     (let ((narg (subst-new-map-decl* argument))
+;; 	  (ntype (subst-new-map-decl* type)))
+;;       (lcopy ex
+;; 	:argument narg
+;; 	:actuals (subst-new-map-decl* actuals)
+;; 	:dactuals (subst-new-map-decl* dactuals)
+;; 	:type ntype))))
+
+;; (defmethod subst-new-map-decl* ((ex extraction-application))
+;;   (with-slots (argument actuals dactuals type index) ex
+;;     (let ((narg (subst-new-map-decl* argument))
+;; 	  (ntype (subst-new-map-decl* type)))
+;;       (lcopy ex
+;; 	:argument narg
+;; 	:actuals (subst-new-map-decl* actuals)
+;; 	:dactuals (subst-new-map-decl* dactuals)
+;; 	:type ntype))))
+
+;; (defmethod subst-new-map-decl* ((ex field-application))
+;;   (with-slots (id argument type) ex
+;;     (let ((narg (subst-new-map-decl* argument))
+;; 	  (ntype (subst-new-map-decl* type)))
+;;       (lcopy ex :argument narg :type ntype))))
+
+;; (defmethod subst-new-map-decl* ((res resolution))
+;;   (with-slots (module-instance declaration type) res
+;;     (let* ((smodinst (subst-new-map-decl* module-instance))
+;; 	   (stype (subst-new-map-decl* type))
+;; 	   (nres (if (and (eq smodinst module-instance)
+;; 			  (eq stype type))
+;; 		     res
+;; 		     (mk-resolution declaration smodinst stype))))
+;;       nres)))
+
+;; (defmethod subst-new-map-decl* ((ex modname))
+;;   (lcopy ex
+;;     :actuals (subst-new-map-decl* (actuals expr))
+;;     :dactuals (subst-new-map-decl* (dactuals expr))))
+
+;; (defmethod subst-new-map-decl* ((act actual))
+;;   (with-slots (expr type-value) act
+;;     (let ((ntype (when type-value (subst-new-map-decl* type-value))))
+;;       (lcopy act
+;; 	:expr (cond ((and ntype (eq ntype type-value))
+;; 		     expr)
+;; 		    (type-value ntype)
+;; 		    (t (let ((nexpr (subst-new-map-decl* expr)))
+;; 			 (pseudo-normalize nexpr))))
+;; 	:type-value ntype))))
+
+;; (defmethod subst-new-map-decl* ((ex application))
+;;   (with-slots (operator argument) ex
+;;     (let ((op (subst-new-map-decl* operator))
+;; 	  (arg (subst-new-map-decl* argument)))
+;;       (if (and (eq op operator)
+;; 	       (eq arg argument))
+;; 	  ex
+;; 	  (copy ex
+;; 	    :operator op
+;; 	    :argument arg
+;; 	    :type (subst-new-map-decl* (type ex)))))))
+
+;; (defmethod subst-new-map-decl* ((ex record-expr))
+;;   (let ((ntype (subst-new-map-decl* (type ex))))
+;;     (lcopy ex
+;;       :assignments (subst-new-map-decl* (assignments expr))
+;;       :type ntype)))
+
+;; (defmethod subst-new-map-decl* ((ex tuple-expr))
+;;   (let ((nexprs (subst-new-map-decl* (exprs expr))))
+;;     (if (eq nexprs (exprs ex))
+;; 	ex
+;; 	(let ((ntype (if (every #'(lambda (nex oex) (eq (type nex) (type oex)))
+;; 				nexprs (exprs ex))
+;; 			 (type ex)
+;; 			 (mk-tupletype (mapcar #'type nexprs)))))
+;; 	  (copy ex
+;; 	    :exprs nexprs
+;; 	    :type ntype)))))
+
+;; (defmethod subst-new-map-decl* ((list list))
+;;   (let ((slist (subst-new-map-decl-list list nil)))
+;;     (if (equal list slist) list slist)))
+
+;; (defun subst-new-map-decl-list (list result)
+;;   (if (null list)
+;;       (nreverse result)
+;;       (subst-new-map-decl-list
+;;        (cdr list) (cons (subst-new-map-decl* (car list)) result))))
+
+;; (defmethod subst-new-map-decl* ((ex update-expr))
+;;   (let ((ntype (subst-new-map-decl* (type expr))))
+;;     (lcopy ex
+;;       :expression (subst-new-map-decl* (expression ex))
+;;       :assignments (subst-new-map-decl* (assignments ex))
+;;       :type ntype)))
+
+;; (defmethod subst-new-map-decl* ((ex assignment))
+;;   (lcopy ex
+;;     :arguments (subst-new-map-decl* (arguments ex))
+;;     :expression (subst-new-map-decl* (expression ex))))
+
+;; (defmethod subst-new-map-decl* ((ex binding-expr))
+;;   (break "Need subst-new-map-decl* binding-expr"))

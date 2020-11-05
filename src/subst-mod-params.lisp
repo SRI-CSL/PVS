@@ -1196,7 +1196,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				       (type (resolution (lhs mapping)))))
 			    (ntype (subst-mod-params* ltype nmodinst mbindings))
 			    (rexpr (expr (rhs mapping)))
-			    (ndef (subst-mod-params* rexpr nmodinst mbindings)))
+			    (ndef (if (fully-instantiated? rexpr)
+				      rexpr
+				      (subst-mod-params* rexpr nmodinst mbindings))))
+		       (assert (compatible? (type ndef) ntype))
 		       (assert (fully-instantiated? ntype))
 		       (assert (fully-instantiated? ndef))
 		       #+pvsdebug

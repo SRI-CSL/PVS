@@ -616,8 +616,10 @@ obj may be of type:
   :prelude uses the prelude context."
   (let ((eobj (gentemp)))
     `(let* ((,eobj ,obj)
-	    (*current-context* (if (eq ,eobj :prelude)
-				  *prelude-context* (context ,eobj)))
+	    (*current-context* (cond ((eq ,eobj :prelude)
+				      *prelude-context*)
+				     ((context? ,eobj) ,eobj)
+				     (t (context ,eobj))))
 	    (*generate-tccs* 'all))
        ,@body)))
 

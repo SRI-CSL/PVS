@@ -1312,11 +1312,10 @@ be typechecked when set-type selects a resolution."
 			     (not (eq (kind mapping) 'theory)))
 		  (delete-if-not
 		      #'(lambda (r)
-			  (or (module? (declaration r))
-			      (length= (decl-formals (declaration r)) dfmls)
-			      (interpretable? (declaration r))
-			      ;;(memq (declaration r) lhs-theory-decls)
-			      ))
+			  (and ;;(memq (declaration r) lhs-theory-decls)
+			       (or (module? (declaration r))
+				   (length= (decl-formals (declaration r)) dfmls)
+				   (interpretable? (declaration r)))))
 		    (with-no-type-errors
 			(resolve* (lhs mapping) 'module nil))))))
     (unless (or eres nres tres thres)
@@ -1517,7 +1516,7 @@ declarations"
 			  vreses))))))
 ;;       (when type
 ;; 	(setf eres (delete-if-not #'(lambda (r) (compatible? (type r) type))
-;; 		     eres)))
+      ;; 		     eres)))
       (if (cdr tres)
 	  (cond (eres
 		 (setf (resolutions ex) eres))
