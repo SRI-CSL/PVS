@@ -797,6 +797,8 @@ place set."
 				     "prelude")))
 			((filename theory)
 			 (format nil "~a.pvs" (pvs-filename theory)))
+			((rectype-theory? theory)
+			 (format nil "~a.pvs" (id theory)))
 			(t (break "Couldn't find filename in json-decl-list ~
                                    - tell pvs-bugs@csl.sri.com")))))
     `(("declname" . ,declname)
