@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #
 # provethem.in
-# Release: ProofLite-7.0.0 (07/14/20)
+# Release: ProofLite-7.1.0 (11/05/20)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -27,15 +27,22 @@ $PVSPATH="@PVSPATH@";
 @prelude = ("bitvector", "finite_sets");
 
 $OUTPUT_AUTOFLUSH=1;
-$VERSION="ProofLite-7.0.0 (07/14/20)";
+$VERSION="";
 $PROVEIT="$PVSPATH/proveit";
-$PROVETHEMVERSION="provethem - $VERSION";
 
 $usageln = "Usage: provethem [--help | <option> ...] <file>";
 
+sub readVersion() {
+  die "PVS could not be located. Please double check PVS installation.\n" if (system("type $PROVEIT > /dev/null 2>&1"));
+  $VERSION = `$PVSPATH/pvs -raw -E '(format t "~&~%PROOFLITEVERSION ~a~%~%" *prooflite-version*)(bye)' | grep PROOFLITEVERSION`;
+  $VERSION =~ s/^.*PROOFLITEVERSION (.*)[\r\n]*$/\1/;
+}
+
+
 sub usage() {
+  readVersion;
   print <<EOF;
-$PROVETHEMVERSION -- runs proveit on several libraries
+provethem $VERSION -- runs proveit on several libraries
 
 $usageln
 <option> is
@@ -131,7 +138,8 @@ sub trim($)
 }
 
 if ($version) {
-  print "$PROVETHEMVERSION\n";
+  readVersion;
+  print "$VERSION\n";
   exit;
 }
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # pvsio.in
-# Release: PVSio-7.0.0 (11/15/19)
+# Release: PVSio-7.1.0 (11/05/20)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -23,15 +23,22 @@ PVSPATH=@PVSPATH@
 export PVSIOTCCS=nil
 export PVSIOVERB=nil
 export PVSIOTIME=nil
-export PVSIOVERSION="PVSio-7.0.0 (11/15/19)"
 export PVSIOPROMPTIN="<PVSio> "
 export PVSIOPROMPTOUT="==>~%"
 
 PACK=
 DEBUG=
 
+readVersion() {
+    if ! type "$PVSPATH/pvs" > /dev/null 2>&1  || ! VERSION=$($PVSPATH/pvs -raw -E '(format t "~&~%PVSIOVERSION ~a~%~%" *pvsio-version*)(bye)' | grep PVSIOVERSION | sed 's/^.*PVSIOVERSION \(.*\)$/\1/g') ; then
+	printf "PVS could not be located. Please double check PVS installation.\n"
+	exit 1;
+    fi
+}
+
 usage() {
-  echo "$PVSIOVERSION -- pvsio is a command-line utility to run the PVSio ground evaluator.
+    readVersion
+    echo "PVSio $VERSION -- pvsio is a command-line utility to run the PVSio ground evaluator.
 
 Usage: pvsio <option>* [<pvsfile>][@<theory>[:[<main>]]]
 where <option> can be
@@ -112,7 +119,8 @@ do
       -verbose|--verbose)
 	  PVSIOVERB=t;;
       -v|-version|--version)  
-	  echo $PVSIOVERSION
+	  readVersion
+	  printf "$VERSION\n"
 	  exit 0;;
       -*)           
 	  OPTS=`echo "$1" | sed -e s/-//g -e "s/\(.\)/\1 /g"`

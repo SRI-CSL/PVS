@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-7.0.0 (12/12/19)
+;; Release: Extrategies-7.1.0 (11/05/20)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -35,7 +35,7 @@
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
 %  Strategy debugging (experts only): skip-steps, show-debug-mode, toggle-debug-mode")
 
-(defparameter *extrategies-version* "Extrategies-7.0.0 (12/12/19)")
+(defparameter *extrategies-version* "Extrategies-7.1.0 (11/05/20)")
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -2191,7 +2191,7 @@ the command (reveal \"<name>:\"), where <name> is one of the names introduced by
 strategy. TCCs generated during the execution of the command are discharged with the
 proof command TCC-STEP.
 
-CAVEAT: The order in which formulas are introduced by skoletin in version 6.0 is different
+CAVEAT: The order in which formulas are introduced by skoletin in versions >= 6.0 is different
 from previous versions. The option OLD? reproduces the old order. 
 
 NOTE: This command works better when all let-in variables are explicitly typed as in
@@ -2204,7 +2204,7 @@ LET x:posreal = 2 IN 1/x."
    (for@ n (skoletin !sks :postfix postfix :hide? hide? :tcc-step tcc-step :old? old?)))
   "[Extrategies] Iterates N times skoletin (or until it does nothing if N is nil) in FNUM.
 
-CAVEAT: The order in which formulas are introduced by skoletin in version 6.0 is different
+CAVEAT: The order in which formulas are introduced by skoletin in versions >= 6.0 is different
 from previous versions. The option OLD? reproduces the old order."
   "Naming let-in bindings in ~a")
 

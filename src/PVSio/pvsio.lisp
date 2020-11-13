@@ -1,6 +1,6 @@
 ;;
 ;; pvsio.lisp
-;; Release: PVSio-7.0.0 (11/15/19)
+;; Release: PVSio-7.1.0 (11/05/20)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -100,7 +100,7 @@ To change output prompt '~a':
 		   (if banner?
 		       (format t "
 +---- 
-| ~a
+| PVSio ~a
 |
 | Enter a PVS ground expression followed by ';' at the prompt '~a'.
 | Enter a Lisp expression followed by '!' at the prompt '~a'.
@@ -545,7 +545,7 @@ strings. "
 	 (main (unless (string= pvsio-main "") (format nil "~a;" pvsio-main)))
 	 (*pvsio-promptin* (environment-variable "PVSIOPROMPTIN"))
 	 (*pvsio-promptout* (environment-variable "PVSIOPROMPTOUT"))
-	 (*pvsio-version* (environment-variable "PVSIOVERSION")))
+	 (*pvsio-version* (or (environment-variable "PVSIOVERSION") *pvsio-version*)))
     (when time (setq *pvs-eval-do-timing* t))
     (multiple-value-bind (val err)
 	(ignore-errors

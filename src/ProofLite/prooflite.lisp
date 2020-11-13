@@ -1,6 +1,6 @@
 ;;
 ;; prooflite.lisp
-;; Release: ProofLite-7.0.0 (07/27/20)
+;; Release: ProofLite-7.1.0 (11/05/20)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -11,6 +11,8 @@
 ;; is claimed in the United States under Title 17, U.S.Code. All Other
 ;; Rights Reserved.
 ;;
+
+(defparameter *prooflite-version* "7.1.0 (Nov 05, 2020)")
 
 (defun associate-proof-with-formulas (theory-name formula-name strategy force
 						  &optional

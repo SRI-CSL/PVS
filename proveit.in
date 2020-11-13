@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # proveit.in
-# Release: ProofLite-7.0.0 (04/24/20)
+# Release: ProofLite-7.1.0 (11/06/20)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -16,13 +16,17 @@
 #  
 
 PVSPATH=@PVSPATH@
-VERSION="ProofLite-7.0.1 (07/21/20)"
-
-export PROVEITVERSION="proveit - $VERSION"
 
 #-------------------------------------------------
 # Nothing below this line should need modification
 #
+
+readVersion() {
+    if ! type "$PVSPATH/pvs" > /dev/null 2>&1  || ! VERSION=$($PVSPATH/pvs -raw -E '(format t "~&~%PVSIOVERSION ~a~%~%" *prooflite-version*)(bye)' | grep PVSIOVERSION | sed 's/^.*PVSIOVERSION \(.*\)$/\1/g') ; then
+	printf "PVS could not be located. Please double check PVS installation.\n"
+	exit 1;
+    fi
+}
 
 # Extension for proof status summary file
 EXT=.summary
@@ -226,8 +230,10 @@ cleanup() {
 # Help print command
 #
 usage() {
+    readVersion
+    
     echo "NAME
-  $PROVEITVERSION -- runs PVS in batch mode
+  proveit $VERSION -- runs PVS in batch mode
 
 SYNOPSIS
 
@@ -618,7 +624,8 @@ proveit() {
       export PROVEITLISPDEFAULTPROOFSCRIPT="$LISPDEFAULTPROOFSCRIPT"
       
       if [ "$DEBUG" ]; then
-	  echo "PROVEITVERSION: $PROVEITVERSION"
+	  readVersion
+	  echo "PROVEITVERSION: $VERSION"
 	  echo "OUTFILE: $OUTFILE"
 	  echo "LOGFILE: $LOGFILE"
 	  echo "PROVEITARG: $PROVEITARG"
@@ -670,8 +677,9 @@ do
     -h|-help|--help)    
 	  usage
 	  exit 0;;
-    -version|--version)     
-	  echo $PROVEITVERSION
+    -version|--version)
+	  readVersion
+	  echo $VERSION
 	  exit 0;;
     .*) 
       EXT=$1;;
