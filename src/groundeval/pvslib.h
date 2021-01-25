@@ -242,10 +242,12 @@ typedef void * any_t;
 
 struct string_s {
   uint32_t count;
-  uint16_t size;
+  uint32_t size;
   char strval[];
 } string_s;
 typedef struct string_s * string_t;
+
+extern string_t mk_string(char * instring);
 
 enum mode_t {r, w, a};
 
@@ -253,6 +255,29 @@ struct stream_s {
   uint32_t count;
   FILE * strm;
 };
+
+struct pointer_s {uint32_t count;};
+typedef struct pointer_s * pointer_t;
+typedef struct type_actual_s * type_actual_t;
+typedef bool_t (*equal_ptr_t)(pointer_t x, pointer_t y, type_actual_t T);
+typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
+
+
+/* extern bool_t equal_uint64(pointer_t x, pointer_t y, ...); */
+
+/* extern void release_uint64(pointer_t x, ...); */
+
+ struct type_actual_s { 
+   equal_ptr_t equal_ptr; 
+   release_ptr_t release_ptr; 
+ };
+
+ /* actual_uint64 = {(*equal_uint64), (*release_uint64)}; */
+
+
+/* equal_ptr_t equal_uint64_ptr = (*equal_uint64); */
+/* release_ptr_t release_uint64_ptr = (*release_uint64); */
+/* struct type_actual_s actual_uint64 = (struct type_actual_s) */
 
 
 

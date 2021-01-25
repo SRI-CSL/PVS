@@ -612,7 +612,7 @@
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)
 	(newrec  (copy-seq ,rec)))
-    (setf (svref newrec ,fieldnum) val);;no need to gentemp val and rec
+    (setf (svref newrec (1- ,fieldnum)) val);;no need to gentemp val and rec
     newrec))                           ;;since fieldnum is a fixed number
 
 (defmacro rec-tup-update (expr field-num newval)

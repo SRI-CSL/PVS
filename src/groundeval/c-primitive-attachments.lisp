@@ -223,7 +223,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Experimental native treatment of strings using a cstring.pvs theory
-(def-c-attach-primitive-type "cstring" "cchar" "char")
+(def-c-attach-primitive-type "string" "cchar" "char")
 
 (def-c-attach-primitive-type "cstring" "cstring" "string_t")
 
@@ -292,6 +292,7 @@
 ~%~8Tif (s->count > 1){s->count--;} else {safe_free(s);}~
 ~%~8T return result; }"))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;C attachments for pvsio_prelude theories stdstr and stdio
 
@@ -358,8 +359,8 @@
 (def-c-attach-primitive "stdstr" "downcase" "string" '(s) '(string)
    "{~%~8Tstring_t result = s; //init to s
      if (s->count > 1){~
- ~%~16T uint16_t length = strlen(s->strval);
- ~%16T uint16_t size = length * sizeof(char) + sizeof(char);~
+ ~%~16T uint32_t length = strlen(s->strval);
+ ~%16T uint32_t size = length * sizeof(char) + sizeof(char);~
  ~%~16T result = (string_t)safe_malloc(sizeof(string_s) + size);~
 ~%~16T result->size = size;~
 ~%~16T result->count = 1;~
@@ -369,9 +370,9 @@
 ~%~24T if (c > 64 && c < 91){s->strval[i] = c + 32;}~
   ~%~8T return result;}")
 
-(def-c-attach-primitive "stdstr" "strfind" "uint16_t" '(s1 s2) '(string string)
+(def-c-attach-primitive "stdstr" "strfind" "uint32_t" '(s1 s2) '(string string)
    "{~%~8Tchar* result = strstr(s2->strval, s1->strval);~
-~%~8Tuint16_t ret;
+~%~8Tuint32_t ret;
 ~%~8Tif result = NULL {ret = -1;}~
 ~%~8Telse {ret = (result - s2->strval);}
 ~%~8Tif (s1->count == 1){safe_free(s1);}
@@ -379,10 +380,10 @@
 ~%~8Treturn ret;~%}")
 
 (def-c-attach-primitive "stdstr" "concat" "string" '(s1 s2) '(string string)
-   "{~%~8T uint16_t l1 = strlen(s1->strval);~
-~%~8T uint16_t l2 = strlen(s1->strval);~
-~%~8T uint16_t length = l1 + l2;~
-~%~8T uint16_t size = length + 1;~
+   "{~%~8T uint32_t l1 = strlen(s1->strval);~
+~%~8T uint32_t l2 = strlen(s1->strval);~
+~%~8T uint32_t length = l1 + l2;~
+~%~8T uint32_t size = length + 1;~
 ~%~8T result = (string_t)safe_malloc(sizeof(string_s) + size);~
 ~%~8T result->count = 1;~
 ~%~8T result->size = size;~
@@ -393,7 +394,7 @@
 ~%~8Treturn result;~%}")
 
 (def-c-attach-primitive "stdstr" "strcmp" "uint8" '(s1 s2) '(string string)
-  "{~%~8T uint8 result = strcmp(s1->strval, s2->strval);~
+  "{~%~8T uint8_t result = strcmp(s1->strval, s2->strval);~
 ~%~8Tif (s1->count == 1){safe_free(s1)};~
 ~%~8Tif (s2->count == 1){safe_free(s2)};~
 ~%~8Treturn result;~%}")
@@ -402,7 +403,7 @@
 ;;stdio primitives
 
 (def-c-attach-primitive "stdstr" "strcmp" "uint8" '(s1 s2) '(string string)
-  "{~%~8T uint8 result = strcmp(s1->strval, s2->strval);~
+  "{~%~8T uint8_t result = strcmp(s1->strval, s2->strval);~
 ~%~8Tif (s1->count == 1){safe_free(s1)};~
 ~%~8Tif (s2->count == 1){safe_free(s2)};~
 ~%~8Treturn result;~%}")

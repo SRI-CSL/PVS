@@ -432,25 +432,25 @@ mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y){
 
 
 
-struct type_actuals;
-typedef struct type_actual_s * type_actual_t;
+/* struct type_actuals; */
+/* typedef struct type_actual_s * type_actual_t; */
 
-struct type_actual_s {
-  char tag;  //type tag: either `z' (mpz), `q' (mpq), `i' (uint_64 or int64_t),
-            //`p' (pointer, the only one for which the release pointer isn't NULL)
-  void (* release_ptr)(void *, type_actual_t[]);
-  bool_t (* eq_ptr)(void *, void *, type_actual_t[]);
-  uint32_t numparams; //This could fail if the number of parameters exceeds 2^32-1!
-  type_actual_t params[];//These are the further free parameters in the type of the actual.  
-};
+/* struct type_actual_s { */
+/*   char tag;  //type tag: either `z' (mpz), `q' (mpq), `i' (uint_64 or int64_t), */
+/*             //`p' (pointer, the only one for which the release pointer isn't NULL) */
+/*   void (* release_ptr)(void *, type_actual_t[]); */
+/*   bool_t (* eq_ptr)(void *, void *, type_actual_t[]); */
+/*   uint32_t numparams; //This could fail if the number of parameters exceeds 2^32-1! */
+/*   type_actual_t params[];//These are the further free parameters in the type of the actual.   */
+/* }; */
 
-void do_release(type_actual_t t, void * arg, type_actual_t * params){
-  t->release_ptr(arg, params);
-};
+/* void do_release(type_actual_t t, void * arg, type_actual_t * params){ */
+/*   t->release_ptr(arg, params); */
+/* }; */
 
-bool_t do_equal(type_actual_t t, void * arg1, void * arg2, type_actual_t * params){
-  return t->eq_ptr(arg1, arg2, params);
-};
+/* bool_t do_equal(type_actual_t t, void * arg1, void * arg2, type_actual_t * params){ */
+/*   return t->eq_ptr(arg1, arg2, params); */
+/* }; */
 
 //------------------------------------------------------------------
 
@@ -459,3 +459,20 @@ bool_t do_equal(type_actual_t t, void * arg1, void * arg2, type_actual_t * param
 
 
 
+string_t mk_string(char * instring){
+  uint32_t length = strlen(instring);
+  string_t result = (string_t) safe_malloc((length + 1) * sizeof(char));
+  result->count = 1;
+  result->size = length + 1;
+  memcpy(result->strval, (char *) instring, length);
+  return result;
+};
+
+bool_t equal_uint64(pointer_t x, pointer_t y, ...){
+  uint64_t ux = (uint64_t)x;
+  uint64_t uy = (uint64_t)y;
+  return (ux == uy);
+};
+
+void release_uint64(pointer_t x, ...){
+};
