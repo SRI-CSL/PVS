@@ -655,8 +655,11 @@ proveit() {
       else
 	  $PVSPATH/pvs -raw $PVSLISP -E "(proveit)" > $OUTFILE
       fi
-      
-      if [ $? -ne 0 ]; then
+
+      PVSRESULT=$?
+      grep pvserror $OUTFILE > /dev/null
+      ERRORRESULT=$?
+      if [ $ERRORRESULT -eq 0 -o $PVSRESULT -ne 0 ]; then
 	  error_output
 	  exit 1
       fi

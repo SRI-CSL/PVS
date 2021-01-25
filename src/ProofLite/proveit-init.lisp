@@ -208,7 +208,8 @@
 		       (format nil "~a:~a:~a ~a/~a/~a" h mi s mo d y)))
 
 (defun proveit ()
-  (let* ((proveitversion (environment-variable "PROVEITVERSION"))
+  (let* ((proveitversion 
+		    (or (environment-variable "PROVEITVERSION") (format nil "proveit ~a" *prooflite-version*)))
 	 (context (environment-variable "PROVEITPVSCONTEXT"))
 	 (proveitarg (environment-variable "PROVEITARG"))
 	 (pvsfile (let ((name (environment-variable "PROVEITPVSFILE")))
@@ -258,7 +259,7 @@
 	 (*pvs-verbose* (if traces 3 2)))
     (handler-bind
 	((error #'(lambda (cnd)
-		    (format t "~%~a (~a)~%" condition proveitarg)
+		    (format t "~%~a (~a)~%" cnd proveitarg)
 		    #+allegro
 		    (tpl::zoom-command :from-read-eval-print-loop nil :count t :top t)
 		    (bye 1))))
