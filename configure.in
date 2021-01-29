@@ -44,12 +44,12 @@ AC_MSG_CHECKING(pvspath)
 AC_ARG_WITH(pvspath, AS_HELP_STRING([--with-pvspath=path],
 				    [path=current directory if automounted]))
 if test "x$with_pvspath" = "x"; then
-  PVSPATH=`pwd`
+  PVSPATH="$(pwd)"
 else
-  PVSPATH=$with_pvspath
+  PVSPATH="$with_pvspath"
 fi
-if test -f $PVSPATH/pvs.in; then
-  AC_MSG_RESULT(found $PVSPATH)
+if test -f "$PVSPATH/pvs.in"; then
+  AC_MSG_RESULT(found "$PVSPATH")
 else
   AC_MSG_ERROR(Invalid pvspath)
 fi
@@ -122,7 +122,7 @@ fi
 
 dnl Get the platform to determine relevant Makefiles to update
 
-PLATFORM=`./bin/pvs-platform`
+PLATFORM=$(./bin/pvs-platform)
 export PLATFORM
 
 # Finally create all the generated files
