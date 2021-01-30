@@ -48,10 +48,14 @@ if test "x$with_pvspath" = "x"; then
 else
   PVSPATH="$with_pvspath"
 fi
-if test -f "$PVSPATH/pvs.in"; then
-  AC_MSG_RESULT(found "$PVSPATH")
+if test -d "$PVSPATH"; then
+   if test -f "$PVSPATH/pvs.in"; then
+     AC_MSG_RESULT(found "$PVSPATH/pvs.in")
+   else
+     AC_MSG_ERROR(Invalid pvspath: couldn't find "$PVSPATH/pvs.in")
+   fi
 else
-  AC_MSG_ERROR(Invalid pvspath)
+  AC_MSG_ERROR(Invalid pvspath directory: "$PVSPATH")
 fi
 AC_SUBST(PVSPATH)
 
