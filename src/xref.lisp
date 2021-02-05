@@ -92,7 +92,7 @@
   (generate-xref (theory-name use)))
 
 (defmethod generate-xref ((d formal-type-decl))
-  (call-next-method))
+  (generate-xref (type-value d)))
 
 (defmethod generate-xref ((d formal-const-decl))
   (generate-xref (declared-type d)))
