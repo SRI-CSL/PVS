@@ -316,28 +316,30 @@ retypechecked."
   (save-context))
 
 
-(defun write-context ()
-  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-  (when (or (current-pvs-context-changed)
-	    (and (pvs-context-entries)
-		 (not (file-exists-p (context-pathname)))))
-    (if (write-permission?)
-	(let ((context (make-pvs-context)))
-	  (assert (every #'(lambda (ce)
-			     (file-exists-p (make-specpath (ce-file ce))))
-			 (cdddr context)))
-	  (multiple-value-bind (value condition)
-	      (progn ;ignore-file-errors
-	       (store-object-to-file context (context-pathname)))
-	    (declare (ignore value))
-	    (cond (condition
-		   (pvs-message "~a" condition))
-		  (t (setf (pvs-context *workspace-session*) context)
-		     (setf (pvs-context-changed *workspace-session*) nil)
-		     (pvs-log "Context file ~a written"
-			      (namestring (context-pathname)))))))
-	(pvs-log "Context file ~a not written, do not have write permission"
-		 (namestring (context-pathname))))))
+(defun write-context (&optional (ws *workspace-session*))
+  (assert (pvs-context ws))
+  (with-workspace ws
+    (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+    (when (or (pvs-context-changed ws)
+	      (and (pvs-context-entries)
+		   (not (file-exists-p (path ws)))))
+      (if (write-permission? (path ws))
+	  (let ((context (make-pvs-context)))
+	    (assert (every #'(lambda (ce)
+			       (file-exists-p (make-specpath (ce-file ce))))
+			   (cdddr context)))
+	    (multiple-value-bind (value condition)
+		(progn			;ignore-file-errors
+		  (store-object-to-file context (path ws)))
+	      (declare (ignore value))
+	      (cond (condition
+		     (pvs-message "~a" condition))
+		    (t (setf (pvs-context *workspace-session*) context)
+		       (setf (pvs-context-changed *workspace-session*) nil)
+		       (pvs-log "Context file ~a written"
+				(namestring (context-pathname)))))))
+	  (pvs-log "Context file ~a not written, do not have write permission"
+		   (namestring (context-pathname)))))))
 
 (defvar *testing-restore* nil)
 
@@ -457,7 +459,7 @@ retypechecked."
   (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   t)
 
-(defun make-pvs-context ()
+(defun make-pvs-context (&optional (ws *workspace-session*))
   "Returns a list representing the .pvscontext file.
 Has form (version (prelude-libnames) ce1 ce2 ...)
 context-entry ce is a struct with slots:
@@ -475,30 +477,31 @@ formula-entry is a struct with slots:
   proof-refers-to: list of declaration-entry structs
 declaration-entry has slots
   id, class, type, theory-id"
-  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-  (let ((*valid-entries* (make-hash-table :test #'eq))
-	(context nil))
-    ;; Collect from (current-pvs-files
-    (maphash #'(lambda (name info)
-		 (declare (ignore info))
-		 (let ((ce (create-context-entry name)))
-		   (when ce
-		     (push ce context))))
-	     (current-pvs-files))
-    (assert (not (duplicates? context :key #'ce-file)) () "after pvs-files")
-    ;; Collect from current pvs-context remaining ce's that still have an
-    ;; associated existing file.
-    (mapc #'(lambda (entry)
-	      (when (and (not (member (ce-file entry) context
-				      :key #'ce-file
-				      :test #'string=))
-			 (file-exists-p (make-specpath (ce-file entry))))
-		(push entry context)))
-	  (pvs-context-entries))
-    (assert (not (duplicates? context :key #'ce-file)))
-    (cons *pvs-version*
-	  (cons (pvs-context-libraries)
-		(cons (context-parameters) context)))))
+  (with-workspace ws
+    (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+    (let ((*valid-entries* (make-hash-table :test #'eq))
+	  (context nil))
+      ;; Collect from (current-pvs-files
+      (maphash #'(lambda (name info)
+		   (declare (ignore info))
+		   (let ((ce (create-context-entry name)))
+		     (when ce
+		       (push ce context))))
+	       (pvs-files ws))
+      (assert (not (duplicates? context :key #'ce-file)) () "after pvs-files")
+      ;; Collect from current pvs-context remaining ce's that still have an
+      ;; associated existing file.
+      (mapc #'(lambda (entry)
+		(when (and (not (member (ce-file entry) context
+					:key #'ce-file
+					:test #'string=))
+			   (file-exists-p (make-specpath (ce-file entry))))
+		  (push entry context)))
+	    (pvs-context-entries))
+      (assert (not (duplicates? context :key #'ce-file)))
+      (cons *pvs-version*
+	    (cons (pvs-context-libraries)
+		  (cons (context-parameters) context))))))
 
 (defun context-parameters ()
   (nconc (when *default-decision-procedure*
@@ -953,93 +956,97 @@ its dependencies."
     (when te
       (te-dependencies te))))
 
+(defun consistent-workspace-paths ()
+  "Checks whether *default-pathname-defaults*, (working-directory), and (current-context-path)
+are all the same."
+  (and (file-equal *default-pathname-defaults* (working-directory))
+       (file-equal *default-pathname-defaults* (current-context-path))))
+
 ;;; Restore context
 ;;; Reads in the .pvscontext file to the (current-pvs-context) variable.  Most of
 ;;; the rest of this function provides for reading previous versions of the
 ;;; .pvscontext
 
-(defun restore-context ()
-  (assert *workspace-session*)
-  #+pvsdebug
-  (assert (and (file-equal *default-pathname-defaults*
-			   (working-directory))
-	       (file-equal *default-pathname-defaults*
-			   (current-context-path))))
-  (unless (current-pvs-context)
-    (let ((ctx-file (merge-pathnames *context-name*)))
-      (if (file-exists-p ctx-file)
-	  (handler-case
-	      (let ((context
-		     (if (with-open-file (in ctx-file)
-			   (and (char= (read-char in) #\()
-				(char= (read-char in) #\")))
-			 (with-open-file (in ctx-file) (read in))
-			 (fetch-object-from-file ctx-file))))
-		(setf (cdddr context)
-		      (remove-duplicates (cdddr context) :key #'ce-file :test #'equal
-					 :from-end t))
-		(setf (cdddr context)
-		      (delete-if-not #'(lambda (ce)
-					 (file-exists-p (make-specpath (ce-file ce))))
-			(cdddr context)))
-		(dolist (ce (cdddr context))
-		  (let ((ndeps (remove-if-not #'(lambda (dep)
-						  (file-exists-p (make-specpath dep)))
-				 (ce-dependencies ce))))
-		    (unless (equal ndeps (ce-dependencies ce))
-		      (pvs-message "PVS context has bad deps: ~a"
-			(remove-if #'file-exists-p (ce-dependencies ce)))
-		      (setf (ce-dependencies ce) nil)
-		      (setf (ce-object-date ce) nil)
-		      (setf (ce-theories ce) nil))))
-		(cond ((duplicate-theory-entries?)
-		       (pvs-message "PVS context has duplicate entries - resetting")
-		       (setf (pvs-context *workspace-session*) (list *pvs-version*))
-		       (write-context))
-		      (t ;;(same-major-version-number (car context) *pvs-version*)
-		       ;; Hopefully we are backward compatible between versions
-		       ;; 3 and 4.
-		       (assert (every #'(lambda (ce)
-					  (file-exists-p (make-specpath (ce-file ce))))
-				      (pvs-context-entries context)))
-		       (setf (pvs-context *workspace-session*) context)
-		       (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-		       (setf (cadr (current-pvs-context))
-			     (delete "PVSio/"
-				     (delete "Manip/"
-					     (delete "Field/" (cadr (current-pvs-context))
-						     :test #'string=)
-					     :test #'string=)
-				     :test #'string=))
-		       (cond ((and (listp (cadr context))
-				   (listp (caddr context))
-				   (every #'context-entry-p (cdddr context)))
-			      (load-prelude-libraries (cadr context))
-			      (setq *default-decision-procedure*
-				    (or (when (listp (caddr context))
-					  (getf (caddr context)
-						:default-decision-procedure))
-					'shostak))
-			      (dolist (ce (cdddr context))
-				(unless (listp (ce-object-date ce))
-				  (setf (ce-object-date ce) nil))))
-			     ((every #'context-entry-p (cdr context))
-			      (setf (pvs-context *workspace-session*)
-				    (cons (car (current-pvs-context))
-					  (cons nil
-						(cons nil (cdr (current-pvs-context)))))))
-			     (t (pvs-message "PVS context is not quite right ~
+(defun restore-context (&optional (ws *workspace-session*))
+  #+pvsdebug (consistent-workspace-paths)
+  (assert ws)
+  (let ((ctx-file (merge-pathnames *context-name*)))
+    (if (file-exists-p ctx-file)
+	(handler-case
+	    (unless (pvs-context ws)
+	      (let ((context (read-context-file ctx-file)))
+		(setf (pvs-context ws) context)))
+	  (file-error (err)
+	    (pvs-message "PVS context problem - resetting")
+	    (pvs-log "  ~a" err)
+	    (setf (pvs-context ws) (list *pvs-version*))
+	    (write-context)))
+	(setf (pvs-context ws) (list *pvs-version*))))
+  nil)
+
+(defun read-context-file (ctx-file)
+  (let ((*default-pathname-defaults* ;; for calls to make-specpath
+	 (asdf/pathname:pathname-directory-pathname ctx-file))
+	(context (if (with-open-file (in ctx-file)
+		       (and (char= (read-char in) #\()
+			    (char= (read-char in) #\")))
+		     (with-open-file (in ctx-file) (read in))
+		     (fetch-object-from-file ctx-file))))
+    (assert (uiop:directory-exists-p *default-pathname-defaults*))
+    (setf (cdddr context)
+	  (remove-duplicates (cdddr context) :key #'ce-file :test #'equal :from-end t))
+    (setf (cdddr context)
+	  (delete-if-not #'(lambda (ce)
+			     (file-exists-p (make-specpath (ce-file ce))))
+	    (cdddr context)))
+    (dolist (ce (cdddr context))
+      (let ((ndeps (remove-if-not #'(lambda (dep)
+				      (file-exists-p (make-specpath dep)))
+		     (ce-dependencies ce))))
+	(unless (equal ndeps (ce-dependencies ce))
+	  (pvs-message "PVS context has bad deps: ~a"
+	    (remove-if #'(lambda (dep) (file-exists-p (make-specpath dep)))
+	      (ce-dependencies ce)))
+	  (setf (ce-dependencies ce) nil)
+	  (setf (ce-object-date ce) nil)
+	  (setf (ce-theories ce) nil))))
+    (cond ((duplicate-theory-entries?)
+	   (pvs-message "PVS context has duplicate entries - resetting")
+	   (list *pvs-version*))
+	  (t ;;(same-major-version-number (car context) *pvs-version*)
+	   ;; Hopefully we are backward compatible between versions
+	   ;; 3 and 4.
+	   (assert (every #'(lambda (ce)
+			      (file-exists-p (make-specpath (ce-file ce))))
+			  (pvs-context-entries context)))
+	   (assert (not (duplicates? (pvs-context-entries context) :key #'ce-file)))
+	   (setf (cadr context)
+		 (delete "PVSio/"
+			 (delete "Manip/"
+				 (delete "Field/" (cadr context) :test #'string=)
+				 :test #'string=)
+			 :test #'string=))
+	   (cond ((and (listp (cadr context))
+		       (listp (caddr context))
+		       (every #'context-entry-p (cdddr context)))
+		  (load-prelude-libraries (cadr context))
+		  (setq *default-decision-procedure*
+			(or (when (listp (caddr context))
+			      (getf (caddr context) :default-decision-procedure))
+			    'shostak))
+		  (dolist (ce (cdddr context))
+		    (unless (listp (ce-object-date ce))
+		      (setf (ce-object-date ce) nil)))
+		  (assert (not (duplicates? (pvs-context-entries context) :key #'ce-file)))
+		  context)
+		 ((every #'context-entry-p (cdr context))
+		  (cons (car context)
+			(cons nil (cons nil (cdr context))))
+		  (assert (not (duplicates? (pvs-context-entries context) :key #'ce-file)))
+		  context)
+		 (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
-				(setf (pvs-context *workspace-session*)
-				      (list *pvs-version*))))))
-		(assert (not (duplicates? (pvs-context-entries) :key #'ce-file))))
-	    (file-error (err)
-	      (pvs-message "PVS context problem - resetting")
-	      (pvs-log "  ~a" err)
-	      (setf (pvs-context *workspace-session*) (list *pvs-version*))
-	      (write-context)))
-	  (setf (pvs-context *workspace-session*) (list *pvs-version*))))
-    nil))
+		    (list *pvs-version*)))))))
 
 (defun duplicate-theory-entries? ()
   (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=))
