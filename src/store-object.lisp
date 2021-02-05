@@ -299,12 +299,19 @@
 			(object-store 1))
 		       (reverse-endian
 			(reverse-endian (object-store 1)))
-		       (t (object-store 0)))))
+		       (t (object-store 0))))
+	   (fsize #+allegro (let ((stat (excl.osi:stat file)))
+			      (excl.osi:stat-size stat))
+		  #+sbcl (let ((stat sb-posix:stat file))
+			   (sb-posix:stat-size stat))))
+      (unless (= size (/ fsize 4))
+	(error 'file-error
+	       :pathname file
+	       :format-control "File ~a corrupted"
+	       :format-arguments (list file)))
       (ensure-vector-size *store-object-store* *store-object-store-size* size)
-      (with-open-file (f file :direction :input
-			 :element-type '(unsigned-byte 32))
-	(cl:read-sequence *store-object-store* f
-			  :start 0 :end size))
+      (with-open-file (f file :direction :input :element-type '(unsigned-byte 32))
+	(cl:read-sequence *store-object-store* f :start 0 :end size))
       (when reverse-endian
 	(dotimes (i size)
 	  (setf (object-store i)
