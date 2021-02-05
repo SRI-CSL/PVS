@@ -239,26 +239,28 @@
 ;;; ~/widget/foo.prf that have now have a corresponding theory in the
 ;;; prelude.  This is really only for the PVS maintainers.
 
-(defun merge-proofs-into-updated-prelude (file)
+(defun merge-proofs-into-updated-prelude (file thid &optional (newthid thid))
+  (assert (gethash newthid *prelude*))
   (let ((prfpath (make-prf-pathname file)))
     (if (file-exists-p prfpath)
 	(with-open-file (input prfpath :direction :input)
-	  (restore-prelude-proofs-from-file input prfpath))
+	  (restore-prelude-proofs-from-file input prfpath thid newthid))
 	(format t "~%Proof file ~a does not exist" prfpath))))
 
-(defun restore-prelude-proofs-from-file (input prfpath)
+(defun restore-prelude-proofs-from-file (input prfpath thid newthid)
   (let ((theory-proofs (read input nil nil)))
-    (when theory-proofs
-      (let* ((theoryid (car theory-proofs))
-	     (proofs (cdr theory-proofs))
-	     (theory (gethash theoryid *prelude*)))
-	(unless (every #'consp proofs)
-	  (error "Proofs file ~a is corrupted" prfpath))
-	(cond (theory
-	       (restore-theory-proofs theory proofs)
-	       (format t "~%Theory ~a proofs restored" theoryid))
-	      (t (format t "~%Theory ~a not in prelude, ignoring" theoryid)))
-	(restore-prelude-proofs-from-file input prfpath)))))
+    (loop while (and theory-proofs (not (eq (car theory-proofs) thid)))
+	  do (setq theory-proofs (read input nil nil)))
+    (unless theory-proofs
+      (error "theory ~a not found in ~a" thid prfpath))
+    (let* ((proofs (cdr theory-proofs))
+	   (theory (gethash newthid *prelude*)))
+      (unless (every #'consp proofs)
+	(error "Proofs file ~a is corrupted" prfpath))
+      (cond (theory
+	     (restore-theory-proofs theory proofs)
+	     (format t "~%Theory ~a proofs restored" newthid))
+	    (t (format t "~%Theory ~a not in prelude, ignoring" theoryid))))))
 
 (defun save-prelude-core-proofs ()
   (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
