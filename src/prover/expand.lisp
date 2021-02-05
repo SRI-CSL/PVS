@@ -348,12 +348,13 @@ list of positive numbers" occurrence)
 			     :test #'eql))
 		 (cond ((def-axiom (declaration expr))
 			(let ((rhs (args2
-				    (subst-mod-params
-				     (car (last (def-axiom
-						  (declaration expr))))
-				     (module-instance (resolution expr))
-				     (module (declaration expr))
-				     (declaration expr)))))
+				    (let ((*smp-include-actuals* t))
+				      (subst-mod-params
+					  (car (last (def-axiom
+							 (declaration expr))))
+					  (module-instance (resolution expr))
+					(module (declaration expr))
+					(declaration expr))))))
 			  (cond ((not *if-simplifies*)
 				 (pushnew (declaration expr)
 					  *dependent-decls*)
