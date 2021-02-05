@@ -2086,12 +2086,13 @@ Note that even proved ones get overwritten"
 		     '(#\Space #\Tab #\Newline)
 		     (with-output-to-string (out)
 		       (dolist (decl (all-decls theory))
-			 (dolist (cmt (cdr (assq decl (tcc-comments theory))))
-			   (when (or include-trivial?
-				     (not (memq (fourth cmt) '(trivial in-context))))
-			     (write (apply #'print-tcc-comment decl cmt)
-				    :stream out :escape nil)
-			     (terpri out) (terpri out)))
+			 (unless unproved-only?
+			   (dolist (cmt (cdr (assq decl (tcc-comments theory))))
+			     (when (or include-trivial?
+				       (not (memq (fourth cmt) '(trivial in-context))))
+			       (write (apply #'print-tcc-comment decl cmt)
+				      :stream out :escape nil)
+			       (terpri out) (terpri out))))
 			 (when (and (tcc? decl)
 				    (or (not unproved-only?)
 					(unproved? decl)))
