@@ -870,6 +870,7 @@ that elt."
     (unless (or (not (typep nexpr 'setsubtype))
 		(eq (predicate texpr) (predicate nexpr)))
       ;;(assert (lambda-expr? (predicate nexpr)))
+      (setf (formals nexpr) (bindings (predicate nexpr)))
       (setf (formula nexpr) (expression (predicate nexpr))))
     nexpr))
 
