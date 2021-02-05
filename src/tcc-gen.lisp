@@ -1351,9 +1351,10 @@ which is the transitive closure of the immediate assuming instances."
 		      (if (and ndecl
 			       (or (null netype)
 				   (possibly-empty-type? netype)))
-			  (let ((needs-interp (find-needs-interpretation
-					       (definition ndecl)
-					       modinst mod mappings-alist)))
+			  (let ((needs-interp (mapcar #'id
+						(find-needs-interpretation
+						 (definition ndecl)
+						 modinst mod mappings-alist))))
 			    (if needs-interp
 				(unless *collecting-tccs*
 				  (pvs-warning
@@ -1658,6 +1659,13 @@ which is the transitive closure of the immediate assuming instances."
 	   (generated-by decl)
 	   decl))))
 
+(defmethod tcc-root-name* ((decl formal-decl) expr)
+  (declare (ignore expr))
+  (op-to-id
+   (or (if (declaration? (generated-by decl))
+	   (generated-by decl)
+	   decl))))
+
 (defmethod tcc-root-name* ((decl mapping-lhs) expr)
   (declare (ignore expr))
   (op-to-id decl))
@@ -1681,6 +1689,18 @@ which is the transitive closure of the immediate assuming instances."
       (make-tcc-name* (current-declaration) expr extra-id)))
 
 (defmethod make-tcc-name* ((decl declaration) expr extra-id)
+  (declare (ignore expr))
+  (let ((decl-id (op-to-id
+		  (or (if (declaration? (generated-by (current-declaration)))
+			  (generated-by (current-declaration))
+			  (current-declaration))))))
+    (make-tcc-name** decl-id
+		     (remove-if-not #'declaration?
+		       (all-decls (current-theory)))
+		     extra-id
+		     1)))
+
+(defmethod make-tcc-name* ((decl formal-decl) expr extra-id)
   (declare (ignore expr))
   (let ((decl-id (op-to-id
 		  (or (if (declaration? (generated-by (current-declaration)))
