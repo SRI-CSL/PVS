@@ -252,6 +252,8 @@ instances, e.g., other declarations within the theory, or self-references."
 		     (restore-object* (args1 list-ex)))
 		   (setf (type list-ex) (range (type cons-ex)))
 		   (let ((op (operator list-ex)))
+		     (unless (constructor-name-expr? op)
+		       (change-class op 'constructor-name-expr))
 		     (unless (type op)
 		       (setf (type op) (type cons-ex))
 		       (setf (resolutions op) (resolutions cons-ex))))
