@@ -618,7 +618,8 @@ the possible types of name."
 
 ;;; set-type
 (defun look-for-conversion (expr expected)
-  (let ((ctypes (argument-conversions** (types expr) expected)))
+  (let ((ctypes (argument-conversions** (types expr) expected))
+	(*checking-conversions* t))
     (when ctypes
       (change-to-conversion expr expected
 			    (get-conversion-range-type (car ctypes) expr)))))
