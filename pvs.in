@@ -264,6 +264,7 @@ case $opsys in
 	    *) PVSARCH=`uname -p`;;
 	  esac
           opsys=MacOSX
+	  export LC_ALL="en_US.UTF-8"
 	  # Hack for emacs on Mac - /usr/bin/emacs doesn't support X
 	  # but if X is enabled, then DISPLAY env var is set
 	  if [ ! `(export EMACS=$PVSEMACS; $PVSPATH/emacs/configured-for-x)` ]
