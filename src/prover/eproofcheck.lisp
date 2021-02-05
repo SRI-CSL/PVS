@@ -698,33 +698,39 @@
   (or (null arguments)
       (if (or expect-key?
 	      (keywordp (car arguments)))
-	  (cond ((not (keywordp (car arguments)))
-		 (error-format-if "~%Found ~a when expecting a keyword in argument to ~a"
-				  (car arguments) cmd)
-		 nil)
-		((not (memq (car arguments) keywords))
-		 (error-format-if "~%~a is not a valid keyword for ~a"
-			       (car arguments) cmd)
-		 nil)
-		((not (cdr arguments))
-		 (error-format-if "~%Keyword ~a (of ~a) requires an argument"
-				  (car arguments) cmd)
-		 nil)
-		((keywordp (cadr arguments))
-		 (error-format-if "~%Argument to ~a (of ~a) may not be a keyword (given as ~a)"
-				  (car arguments) cmd (cadr arguments))
-		 nil)
-		((and has-rest?
-		      (not (cdr (memq (car arguments) keywords)))
-		      (some #'keywordp (cdr arguments)))
-		 (error-format-if "~%Keywords are not allowed after the start of an &rest argument")
-		 nil)
-		((memq (car arguments) (cdr arguments))
-		 (error-format-if "~%Keyword ~a was specified more than once to ~a" (car arguments) cmd)
-		 nil)
-		(t
-		 (check-command-arguments cmd keywords (cddr arguments) has-rest? t)))
+	  (let ((sig (formals (prover-command-entry cmd))))
+	    (cond ((not (keywordp (car arguments)))
+		   (error-format-if "~%Found ~a when expecting a keyword in argument to ~a~%  signature: ~a"
+				    (car arguments) cmd sig)
+		   nil)
+		   ((not (memq (car arguments) keywords))
+		    (error-format-if "~%~a is not a valid keyword for ~a~%  signature: ~a"
+				     (car arguments) cmd sig)
+		    nil)
+		   ((not (cdr arguments))
+		    (error-format-if "~%Keyword ~a (of ~a) requires an argument"
+				     (car arguments) cmd)
+		    nil)
+		   ((keywordp (cadr arguments))
+		    (error-format-if "~%Argument to ~a (of ~a) may not be a keyword (given as ~a)"
+				     (car arguments) cmd (cadr arguments))
+		    nil)
+		   ((and has-rest?
+			 (not (cdr (memq (car arguments) keywords)))
+			 (some #'keywordp (cdr arguments)))
+		    (error-format-if "~%Keywords are not allowed after the start of an &rest argument")
+		    nil)
+		   ((memq (car arguments) (cdr arguments))
+		    (error-format-if "~%Keyword ~a was specified more than once to ~a" (car arguments) cmd)
+		    nil)
+		   (t
+		    (check-command-arguments cmd keywords (cddr arguments) has-rest? t))))
 	  (check-command-arguments cmd keywords (cdr arguments) has-rest?))))
+
+(defun prover-command-entry (cmd)
+  (or (gethash cmd *rulebase*)
+      (gethash cmd *rules*)
+      (gethash cmd *steps*)))
 
 (defun check-arguments (pcmd)
   (let* ((keylist (assq (car pcmd) *prover-keywords*))
