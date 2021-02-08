@@ -771,30 +771,36 @@
     ;; Inline the generated decls, but with nested identifiers
     (make-inlined-theory theory theory-name decl)))
 
-(defun make-inlined-theory (theory theory-name decl)
-  ;; (assert (typep decl '(or mod-decl formal-theory-decl)))
-  (let ((stheory (subst-mod-params-inlined-theory theory theory-name decl)))
+(defun make-inlined-theory (theory theory-name thdecl)
+  (assert (typep thdecl '(or mod-decl formal-theory-decl)))
+  (multiple-value-bind (stheory bindings)
+      (subst-mod-params-inlined-theory theory theory-name thdecl)
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
-    ;; Might be better to subst-mod-params declarations separately, but then
-    ;; the substitution alist must be remade for each one.
-    ;; So we do the whole theory first, then just grab the decls from
-    ;; the theory part - the theory-name is fully-instantiated,
-    ;; so formals can be ignored.  Make sure assumings are handled somehow.
+    (setf (theory-mappings thdecl) bindings)
+    (let ((fml-part (memq thdecl (formals (current-theory))))
+	  (ass-part (memq thdecl (assuming (current-theory))))
+	  (th-part (memq thdecl (theory (current-theory)))))
+      (assert (or fml-part ass-part th-part))
+      (cond (fml-part
+	     ;; Goes to the front of assuming or theory part
+	     (if (assuming (current-theory))
+		 (setf (assuming (current-theory))
+		       (append (all-decls stheory) (assuming (current-theory))))
+		 (setf (theory (current-theory))
+		       (append (all-decls stheory) (theory (current-theory))))))
+	    (ass-part
+	     (let* ((rest (cdr ass-part))
+		    (prev (ldiff (assuming (current-theory)) rest)))
+	       (setf (assuming (current-theory))
+		     (append prev (all-decls stheory) rest))))
+	    (th-part
+	     (let* ((rest (cdr th-part))
+		    (prev (ldiff (theory (current-theory)) rest)))
+	       (setf (theory (current-theory))
+		     (append prev (all-decls stheory) rest))))))
+    (dolist (decl (all-decls stheory))
+      (when (declaration? decl) (put-decl decl)))))
     
-    ;; Make sure substituted decls are all new.
-    (multiple-value-bind (theory-part dalist owlist)
-	;; Continues the substitutions done by subst-mod-params
-	;; Note that this modifies the theory part
-	(subst-new-map-inline-theory-decls (theory stheory) decl)
-      (setf (theory stheory)
-	    (remove-if #'var-decl? theory-part))
-      (setf (theory-mappings decl) dalist)
-      (setf (other-mappings decl) owlist)
-      ;; Finishes the substitutions
-      (subst-new-map-decls (theory stheory) dalist owlist)
-      ;; This splices the new decls into the current theory
-      (make-inlined-theory-decls stheory decl))))
-
 (defun subst-mod-params-inlined-theory (theory theory-name thdecl)
   "Does subst-mod-params for the whole theory, but with a fresh
 all-subst-mod-params-caches.  It does this by resetting this in
@@ -809,190 +815,44 @@ all-subst-mod-params-caches.  It does this by resetting this in
       (setf (all-subst-mod-params-caches *workspace-session*)
   	    cur-all-subst-mod-params-caches))))
 
-(defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
-  ;;(break "subst-new-map-inline-theory-decls")
-  (if (null sdecls)
-      (values (nreverse ndecls) dalist owlist)
-      (multiple-value-bind (ndecl ndalist nowlist)
-	  (subst-new-map-inline-theory-decl (car sdecls) decl dalist owlist)
-	(subst-new-map-inline-theory-decls (cdr sdecls) decl
-					   (cons ndecl ndecls) ndalist nowlist))))
 
-;; sd is the decl after subst-mod-params, which cannot complete the
-;; substitution itself, as dependencies need to be resolved.  These
-;; are kept in dalist and owlist.
+(defun apply-to-bindings (fn bindings-form)
+  "Applies function fn to the elements of bindings that maintains the
+dependencies.  Returns the new bindings plus an alist that can
+be used for substit.  Every element of bindings is either a binding, or a
+list of bindings; this is to allow the general form of definition and lamda
+bindings."
+  (typecase bindings-form
+    (list (apply-to-bindings* fn bindings-form nil nil))
+    (binding
+     (let ((nb (funcall fn bindings-form)))
+       (values nb (unless (eq nb bindings-form) (acons bindings-form nb nil)))))
+    (t (funcall fn bindings-form))))
 
-(defun subst-new-map-inline-theory-decl (sd decl dalist owlist)
-  "Called on each decl, mostly builds up dalist and owlist for use in subst-new-map-decls.
-In addition, it resets the id, and calls subst-new-map-decl-type to reset the type for some decls."
-  (if (importing? sd)
-      (values (copy sd) dalist owlist)
-      (let* ((nid (makesym "~a.~a" (id decl) (id sd)))
-	     (d (or (generated-by sd)
-		    (break "No generated-by?"))))
-	(setf (id sd) nid)
-	(setf (module sd) (current-theory))
-	(typecase sd
-	  ((or type-def-decl const-decl theory-reference)
-	   (subst-new-map-decl-type sd dalist owlist)
-	   (let* ((res (make-resolution sd (current-theory-name)))
-		  (nm (mk-name-expr nid nil nil res))
-		  (act (make-instance 'actual :expr nm)))
-	     (typecase sd
-	       (type-decl
-		(setf (type-value act) (type-value sd)))
-	       (theory-abbreviation-decl
-		(let ((tadecl (declaration (theory-name sd))))
-		  (when (typep tadecl '(or mod-decl formal-theory-decl))
-		    (setq dalist (append (theory-mappings tadecl) dalist))))))
-	     (assert (with-current-decl sd (fully-instantiated? act)))
-	     (push (cons d act) dalist)))
-	  (type-decl
-	   ;; This one is tricky, because often
-	   ;; (eq d (declaration (type-value d)))
-	   ;; and we need to ensure this is true of sd
-	   ;;(subst-new-map-decl-type sd dalist owlist)
-	   (setf (type-value sd)
-		 (let ((tn (if (adt-type-name? (type-value d))
-			       (let ((sadt (cdr (assq (adt (type-value d))
-						      owlist))))
-				 (assert sadt)
-				 (mk-adt-type-name (id sd) nil nil nil sadt))
-			       (mk-type-name (id sd)))))
-		   (setf (resolutions tn)
-			 (list (mk-resolution sd
-				 (current-theory-name) tn)))
-		   tn))
-	   (let* ((type (type-value sd))
-		  (res (make-resolution sd
-			 (current-theory-name) type))
-		  (nm (mk-name-expr nid nil nil res))
-		  (act (make-instance 'actual :expr nm
-				      :type-value (type-value sd))))
-	     (push (cons d act) dalist)))
-	  (inline-recursive-type
-	   ;;(break "inline-recursive-type")
-	   (subst-new-map-decl-type sd dalist owlist)
-	   (push (cons d sd) owlist))
-	  (var-decl nil)
-	  (t (push (cons d sd) owlist)))
-	(values sd dalist owlist))))
-
-(defvar *subst-new-map-decls*)
-(defvar *subst-new-other-decls*)
-
-(defgeneric subst-new-map-decl-type (sd dalist owlist)
-  (:documentation
-   "Resets the types of sd, depending on the class:
-    type-decl: type-value
-    type-def-decl: type-value, type-expr, contains
-    const-decl: type
-    inline-recursive-type: adt-type-name, constructors, adt-theory"))
-
-(defmethod subst-new-map-decl-type ((sd theory-reference) dalist owlist)
-  (declare (ignore dalist owlist))
-  nil)
-
-(defmethod subst-new-map-decl-type ((sd type-decl) dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (setf (type-value sd)
-	  (subst-new-map-decls* (type-value sd)))))
-
-(defmethod subst-new-map-decl-type ((sd type-def-decl) dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (setf (type-value sd) (subst-new-map-decls* (type-value sd)))
-    (setf (type-expr sd) (subst-new-map-decls* (type-expr sd)))
-    (setf (contains sd) (subst-new-map-decls* (contains sd)))))
-
-(defmethod subst-new-map-decl-type ((sd const-decl) dalist owlist)
-  ;;(assert (or (null (definition sd)) (compatible? (type (definition sd)) (type sd))))
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (let ((ntype (subst-new-map-decls* (type sd)))
-	  (ndef (subst-new-map-decls* (definition sd))))
-      ;;(assert (or (null ndef) (compatible? ntype (type ndef))))
-      (setf (type sd) ntype)
-      (setf (definition sd) ndef))))
-
-(defmethod subst-new-map-decl-type ((adt inline-recursive-type) dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist)
-	(tdecl (find-if #'type-decl? (generated adt) :from-end t)))
-    (assert tdecl)
-    (setf (adt-type-name adt)
-	  (mk-adt-type-name (id adt) nil nil nil adt))
-    (setf (resolutions (adt-type-name adt))
-	  (list (mk-resolution tdecl (current-theory-name)
-			       (adt-type-name adt))))
-    (setf (constructors adt)
-	  (mapcar #'subst-new-map-decls* (constructors adt)))
-    (setf (adt-theory adt) (module adt))))
-
-(defun subst-new-map-decls (decls dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (mapc #'subst-new-map-decl decls)))
-
-(defmethod subst-new-map-decl ((decl type-decl))
-  (setf (formals decl) (subst-new-map-decls* (formals decl)))
-  ;;(setf (generated-by decl) nil)
-  (setf (type-value decl) (subst-new-map-decls* (type-value decl))))
-
-(defmethod subst-new-map-decl ((decl const-decl))
-  (let* ((nfmls (subst-new-map-decls* (formals decl)))
-	 (odecl (car (rassoc decl *subst-new-map-decls*
-			     :test #'eq :key #'declaration)))
-	 (bindings (when nfmls
-		     (mapcar #'cons
-		       (apply #'append (formals odecl))
-		       (apply #'append nfmls))))
-	 (ntype (subst-new-map-decls* (substit (type decl) bindings)))
-	 (ndef (subst-new-map-decls* (substit (definition decl) bindings))))
-    #+pvsdebug
-    (assert (or (null ndef)
-		(compatible? ntype
-			     (make-formals-funtype nfmls (type ndef))))
-	    () "subst-new-map-decl: incompatible types")
-    (setf (formals decl) nfmls)
-    (setf (definition decl) ndef)
-    (setf (type decl) ntype)
-    (setf (declared-type decl)
-	  (subst-new-map-decls* (substit (declared-type decl) bindings)))
-    (when (definition decl)
-      (if (def-axiom decl)
-	  (setf (def-axiom decl)
-		(subst-new-map-decls* (substit (def-axiom decl) bindings)))
-	  (make-def-axiom decl)))
-    (setf (generated-by decl) nil)
-    (setf (eval-info decl) nil)
-    (when (def-decl? decl)
-      (setf (declared-measure decl)
-	    (subst-new-map-decls* (substit (declared-measure decl) bindings)))
-      (setf (measure decl) (subst-new-map-decls* (substit (measure decl) bindings)))
-      (setf (ordering decl) (subst-new-map-decls* (substit (ordering decl) bindings)))
-      (setf (recursive-signature decl)
-	    (subst-new-map-decls* (substit (recursive-signature decl) bindings))))))
-
-(defmethod subst-new-map-decl ((decl var-decl))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
-
-(defmethod subst-new-map-decl ((decl formula-decl))
-  (change-to-mapped-formula-decl decl)
-  (setf (place decl) nil)
-  (setf (kind decl) nil)
-  (assert (typep (from-formula decl) '(or null formula-decl)))
-  (unless (from-formula decl)
-    (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
-      (assert (formula-decl? fdecl))
-      (setf (from-formula decl) fdecl)))
-  (setf (definition decl) (subst-new-map-decls* (closed-definition decl)))
-  (setf (closed-definition decl) (definition decl))
-  (setf (default-proof decl) nil)
-  (setf (proofs decl) nil)
-  (setf (generated-by decl) nil))
+(defun apply-to-bindings* (fn bindings-form nbindings-form alist)
+  (if (null bindings-form)
+      (values nbindings-form alist)
+      (typecase (car bindings-form)
+	(binding
+	 ;; Better to use fn, then substit, or the other way around?
+	 (let* ((fbinding (funcall fn (car bindings-form)))
+		(nbinding (substit fbinding alist)))
+	   (apply-to-bindings*
+	    fn (cdr bindings-form)
+	    (nconc nbindings-form (list nbinding))
+	    (if (eq nbinding (car bindings-form))
+		alist
+		(acons (car bindings-form) nbinding alist)))))
+	(list
+	 (multiple-value-bind (nnbindings-form nalist)
+	     (apply-to-bindings* fn (car bindings-form) nil alist)
+	   (apply-to-bindings*
+	    fn (cdr bindings-form)
+	    (nconc nbindings-form (list nnbindings-form))
+	    nalist)))
+	(t (let ((nex (substit (funcall fn (car bindings-form)) alist)))
+	     (apply-to-bindings*
+	      fn (cdr bindings-form) (nconc nbindings-form (list nex)) alist))))))
 
 (defmethod change-to-mapped-formula-decl ((decl formula-decl))
   (change-class decl 'mapped-formula-decl :spelling 'AXIOM))
@@ -1002,286 +862,6 @@ In addition, it resets the id, and calls subst-new-map-decl-type to reset the ty
 
 (defmethod change-to-mapped-tcc-decl ((decl formula-decl))
   (change-class decl 'mapped-tcc-decl :spelling 'AXIOM))
-
-(defmethod subst-new-map-decl ((decl mod-decl))
-  (setf (modname decl) (subst-new-map-decls* (modname decl))))
-
-(defmethod subst-new-map-decl ((imp importing))
-  (let ((tn (subst-new-map-decls* (theory-name imp))))
-    (assert (modname? tn))
-    (setf (theory-name imp) tn)))
-
-(defmethod subst-new-map-decl ((constr simple-constructor))
-  ;;(break "subst-new-map-decl (simple-constructor)")
-  (copy constr
-    :arguments (mapcar #'subst-new-map-decls* (copy-all (arguments constr)))
-    :con-decl (subst-new-map-decls* (copy-all (con-decl constr)))
-    :rec-decl (subst-new-map-decls* (copy-all (con-decl constr)))
-    :acc-decls (mapcar #'subst-new-map-decls* (copy-all (acc-decls constr))))
-  )
-
-(defmethod subst-new-map-decl ((c adt-constructor-decl))
-  ;;(break "subst-new-map-decl (adt-constructor-decl)")
-  (copy c
-    :declared-type (subst-new-map-decls* (copy-all (declared-type c)))
-    :type (subst-new-map-decls* (copy-all (type c)))))
-
-(defmethod subst-new-map-decl ((a adt-accessor-decl))
-  ;;(break "subst-new-map-decl (adt-accessor-decl)")
-  (copy a
-    :refers-to nil
-    :module nil
-    :declared-type (subst-new-map-decls* (copy-all (declared-type a)))
-    :type (subst-new-map-decls* (copy-all (type a)))))
-    
-
-(defmethod subst-new-map-decl ((decl adtdecl))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
-  (setf (bind-decl decl) (subst-new-map-decls* (bind-decl decl))))
-
-(defmethod subst-new-map-decl ((decl subtype-judgement))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (declared-subtype decl) (subst-new-map-decls* (declared-subtype decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
-  (setf (subtype decl) (subst-new-map-decls* (subtype decl))))
-
-(defmethod subst-new-map-decl ((decl number-judgement))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
-
-(defmethod subst-new-map-decl ((decl name-judgement))
-  (setf (name decl) (subst-new-map-decls* (name decl)))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
-
-(defmethod subst-new-map-decl ((decl application-judgement))
-  (setf (name decl) (subst-new-map-decls* (name decl)))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
-  (setf (judgement-type decl) (subst-new-map-decls* (judgement-type decl)))
-  (setf (formals decl) (subst-new-map-decls* (formals decl))))
-
-(defmethod subst-new-map-decl ((decl auto-rewrite-decl))
-  (setf (formals decl) (subst-new-map-decls* (formals decl)))
-  (setf (rewrite-names decl) (subst-new-map-decls* (rewrite-names decl))))
-
-(defmethod subst-new-map-decl ((decl conversion-decl))
-  (setf (expr decl) (subst-new-map-decls* (expr decl))))
-
-(defmethod subst-new-map-decl ((adt inline-recursive-type))
-  ;;(break "subst-new-map-decl (inline-recursive-type)")
-  (setf (constructors adt) (subst-new-map-decls* (constructors adt)))
-  (setf (adt-type-name adt) (subst-new-map-decls* (adt-type-name adt)))
-  (setf (adt-theory adt) (module adt))
-  ;; (setf (generated adt)
-  ;; 	(mapcar #'(lambda (d)
-  ;; 		    (let ((nd (cdr (assq d *subst-new-map-decls*))))
-  ;; 		      (if nd
-  ;; 			  (declaration (expr nd))
-  ;; 			  (let ((od (assq d *subst-new-other-decls*)))
-  ;; 			    (assert od)
-  ;; 			    od))))
-  ;; 	  (generated adt)))
-  )
-
-(defmethod subst-new-map-decl ((decl theory-abbreviation-decl))
-  (let ((tn (subst-new-map-decls* (theory-name decl))))
-    (assert (modname? tn))
-    (setf (theory-name decl) tn)))
-
-(defmethod subst-new-map-decl ((decl declaration))
-  (break "Need more methods"))
-
-(defun subst-new-map-decls* (obj)
-  (let ((*pseudo-normalizing* t)
-	(*gensubst-subst-types* t))
-    (gensubst obj #'subst-new-map-decl* #'subst-new-map-decl-test)))
-
-;; (defmethod subst-new-map-decl-test ((obj declaration))
-;;   (when (assq obj *subst-new-map-decls*)
-;;     (break "decl?")))
-
-(defmethod subst-new-map-decl-test ((obj name))
-  (let ((decl (declaration obj)))
-    (and decl
-	 (or (assq decl *subst-new-map-decls*)
-	     (let ((refs (collect-references obj)))
-	       (memq decl refs))))))
-
-(defmethod subst-new-map-decl-test ((obj resolution))
-  (or (assq (declaration obj) *subst-new-map-decls*)
-      (let ((refs (collect-references (type obj))))
-	(some #'(lambda (r) (assq r *subst-new-map-decls*)) refs))))
-
-(defmethod subst-new-map-decl-test ((obj simple-constructor))
-  (assq (con-decl obj) *subst-new-map-decls*))
-
-(defmethod subst-new-map-decl-test (obj)
-  (declare (ignore obj))
-  nil)
-
-;; (defmethod subst-new-map-decl* ((obj declaration))
-;;   (break "Why decl?")
-;;   (cdr (assq obj *subst-new-map-decls*)))
-
-(defmethod subst-new-map-decl* ((obj list))
-  (mapcar #'subst-new-map-decl obj))
-
-(defmethod subst-new-map-decl* ((obj name))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolutions obj))))
-    (assert (or (null act) (actual? act)))
-    (copy obj
-      :id (if act (id (expr act)) (id obj))
-      :resolutions nres)))
-
-(defmethod subst-new-map-decl* ((obj name-expr))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
-    (assert (or (null act) (actual? act)))
-    (if act
-	(copy obj
-	  :id (id (expr act))
-	  :resolutions (resolutions (expr act))
-	  :type (type (expr act)))
-	(let ((nres (subst-new-map-decl* (resolution obj))))
-	  (if (eq nres (resolution obj))
-	      obj
-	      (lcopy obj
-		:resolutions (list nres)
-		:type (type nres)))))))
-
-(defmethod subst-new-map-decl* ((obj adt-name-expr))
-  (let ((nobj (call-next-method)))
-    (if (eq nobj obj)
-	obj
-	(let ((nadt (subst-new-map-decl* (adt obj))))
-	  (unless (eq (adt nadt) (adt (adt obj)))
-	    (setf (adt-type nobj) nadt))
-	  nobj))))
-
-(defmethod subst-new-map-decl* ((obj adt-type-name))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
-    (assert (or (null act) (actual? act)))
-    (if act
-	(type-value act)
-	(let* ((res (subst-new-map-decls* (resolutions obj)))
-	       (nobj (lcopy obj
-		       :id (if act (id (expr act)) (id obj))
-		       :resolutions res
-		       :adt (or (cdr (assq (adt obj) *subst-new-map-decls*))
-				(cdr (assq (adt obj) *subst-new-other-decls*))
-				(adt (type (car res)))
-				(break "What now?")))))
-	  ;; This is not right
-	  ;;(setf (type-value (declaration nobj)) nobj)
-	  (setf (type (resolution nobj)) nobj)
-	  nobj))))
-
-(defmethod subst-new-map-decl* ((obj constructor-name-expr))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolutions obj))))
-    (assert (or (null act) (actual? act)))
-    (copy obj
-      :id (if act (id (expr act)) (id obj))
-      :type (type (car nres))
-      :resolutions nres
-      :adt-type (subst-new-map-decls* (adt-type obj)))))
-
-(defmethod subst-new-map-decl* ((obj resolution))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(modinst (current-theory-name)))
-    (assert (or (null act) (actual? act)))
-    (if (actual? act)
-	(make-resolution (declaration (expr act)) modinst)
-	(let ((nmi (subst-new-map-decls* (module-instance obj)))
-	      (ntype (if (const-decl? (declaration obj))
-			 (subst-new-map-decls* (type obj))
-			 (type obj))))
-	  (lcopy obj :module-instance nmi :type ntype)))))
-
-(defmethod subst-new-map-decl* ((obj simple-constructor))
-  (let* ((cd (cdr (assq (con-decl obj) *subst-new-map-decls*)))
-	 (rd (cdr (assq (rec-decl obj) *subst-new-map-decls*)))
-	 (acc-decls (mapcar #'(lambda (ad)
-				(let ((nad (cdr (assq ad *subst-new-map-decls*))))
-				  (assert (actual? nad))
-				  (declaration (expr nad))))
-		      (acc-decls obj)))
-	 (nargs (subst-new-map-decls* (arguments obj))))
-    (mapc #'(lambda (arg accdecl) (setf (id arg) (id accdecl)))
-	  nargs acc-decls)
-    (copy obj
-      :id (id (expr cd))
-      :recognizer (id (expr rd))
-      :arguments nargs
-      :con-decl (declaration (expr cd))
-      :rec-decl (declaration (expr rd))
-      :acc-decls acc-decls)))
-
-(defun make-inlined-theory-decls (stheory thdecl)
-  (make-inlined-theory-decls*
-   (theory stheory) thdecl thdecl
-   (cond ((memq thdecl (formals (current-theory)))
-	  'formals)
-	 ((memq thdecl (assuming (current-theory)))
-	  'assuming)
-	 (t (assert (memq thdecl (theory (current-theory))))
-	    'theory))))
-
-(defun make-inlined-theory-decls* (decls thdecl lastdecl part)
-  (when decls
-    (let ((decl (car decls)))
-      ;; (when (declaration? decl)
-      ;; 	(format t "~%Adding decl ~a" (id decl)))
-      (setf (generated-by decl) thdecl)
-      (push decl (generated thdecl))
-      (add-new-inlined-decl decl lastdecl part)
-      (make-inlined-theory-decl decl)
-      (assert (or (importing? decl) (memq decl (get-declarations (id decl)))))
-      (make-inlined-theory-decls* (cdr decls) thdecl decl part))))
-
-(defun add-new-inlined-decl (decl lastdecl part)
-  (case part
-    (formals (when (declaration? decl)
-	       (setf (visible? decl) nil))
-	     (setf (theory-formal-decls (current-theory))
-		   (let* ((fml-part (theory-formal-decls (current-theory)))
-			  (rest (cdr (memq lastdecl fml-part))))
-		     (nconc (ldiff fml-part rest) (cons decl rest)))))
-    (assuming (setf (assuming (current-theory))
-		    (let* ((ass-part (assuming (current-theory)))
-			   (rest (cdr (memq lastdecl ass-part))))
-		      (nconc (ldiff ass-part rest) (cons decl rest)))))
-    (theory (setf (theory (current-theory))
-		  (let* ((theory-part (theory (current-theory)))
-			 (rest (cdr (memq lastdecl theory-part))))
-		    (nconc (ldiff theory-part rest) (cons decl rest)))))))
-
-(defmethod make-inlined-theory-decl ((imp importing))
-  (let* ((thname (theory-name imp))
-	 (th (if (resolution thname)
-		 (declaration thname)
-		 (get-theory thname))))
-    (typecheck-using* th thname)))
-
-(defmethod make-inlined-theory-decl ((decl declaration))
-  (setf (current-declaration) decl)
-  (regenerate-xref decl)
-  (setf (generated decl) nil)
-  (let ((dhash (current-declarations-hash)))
-    (dolist (id (id-suffixes (id decl)))
-      (pushnew decl (get-lhash id dhash) :test #'eq))))
-
-(defmethod make-inlined-theory-decl ((decl inline-recursive-type))
-  (declare (ignore lastdecl))
-  (setf (current-declaration) decl)
-  ;;(setf (generated decl) nil)
-  (let ((dhash (current-declarations-hash)))
-    (dolist (id (id-suffixes (id decl)))
-      (pushnew decl (get-lhash id dhash) :test #'eq))))
-  
-  
 
 (defmethod typecheck-inlined-theory* ((theory datatype) theory-name decl)
   ;; Need to inline the datatype as well
@@ -4810,7 +4390,8 @@ The dependent types are created only when needed."
     (|odd_negint| (setq *odd_negint* type))
     (|ordinal| (setq *ordinal* type))
     (|string| (setq *string-type* type))
-    (|character| (setq *character* type))))
+    (|character| (setq *character* type)
+		 (setq *char* (tc-type "below[0x110000]")))))
 
 ;; (defun subst-new-map-decls* (obj)
 ;;   (subst-new-map-decl* obj))

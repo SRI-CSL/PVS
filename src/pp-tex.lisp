@@ -1356,6 +1356,9 @@
     (setf (string-value ex) (pp-string-expr (argument ex))))
   (write (string-value ex) :escape t))
 
+(defmethod pp-tex* ((ex char-expr))
+  (format t "'~c'" (code-char (code ex))))
+
 (defmethod pp-tex* ((ex list-expr))
   (if (valid-list-expr? ex)
       (pprint-logical-block

@@ -751,39 +751,32 @@ resolution with a macro matching the signature of the arguments."
       (or (bound-variable-resolution resolutions)
           (let* ((mreses (when expected
                            (find-tc-matching-resolutions resolutions expected)))
-                 (lreses (filter-local-resolutions (or mreses resolutions))))
-            (if (cdr lreses)
-                (let ((dreses (or (remove-if-not #'fully-instantiated? lreses)
-                                  lreses)))
-                  (if (cdr dreses)
-                      (let ((mreses (or (remove-if #'from-datatype-modname? dreses)
-                                        dreses)))
-                        (if (cdr mreses)
-                            (let ((freses (or (remove-if-not
-                                                  #'instantiated-importing?
-                                                mreses)
-                                              mreses)))
-                              (if (cdr freses)
-                                  (let ((maxreses (if expected
-                                                      (or (find-maximal-res-subtypes
-                                                           freses expected)
-                                                          freses)
-                                                      freses)))
-                                    (if (cdr maxreses)
-                                        (let ((ureses
-                                               (or (remove-if
-                                                       #'instantiated-importing?
-                                                     mreses)
-                                                   mreses)))
-                                          (cond ((cdr ureses)
-                                                 (setf (resolutions ex) maxreses)
-                                                 (type-ambiguity ex))
-                                                (t (car ureses))))
-                                        (car maxreses)))
-                                  (car freses)))
-                            (car mreses)))
-                      (car dreses)))
-                (car lreses))))
+                 (lreses (filter-local-resolutions (or mreses resolutions)))
+		 (dreses (or (and (cdr lreses)
+				  (remove-if-not #'fully-instantiated? lreses))
+			     lreses))
+                 (mreses (or (and (cdr dreses)
+				  (remove-if #'from-datatype-modname? dreses))
+			     dreses))
+		 (freses (or (and (cdr mreses)
+				  (remove-if-not #'instantiated-importing? mreses))
+			     mreses))
+		 (maxreses (or (and (cdr freses)
+				    expected
+				    (find-maximal-res-subtypes freses expected))
+			       freses))
+                 (ureses (or (and (cdr maxreses)
+				  (remove-if #'instantiated-importing? maxreses))
+			     maxreses))
+		 (unpreses (or (and (cdr ureses)
+				    (remove-if #'(lambda (res)
+						   (formals (module (declaration res))))
+				      ureses))
+			       ureses)))
+            (cond ((cdr unpreses)
+                   (setf (resolutions ex) unpreses)
+                   (type-ambiguity ex))
+                  (t (car unpreses)))))
       (car resolutions)))
 
 ;;; Find the resolutions that are maximals subtypes of the expected type
@@ -1049,7 +1042,7 @@ resolution with a macro matching the signature of the arguments."
 	     ;;(actuals (expr act))
 	     )
     (let ((reses (remove-if-not #'(lambda (res)
-				    (type-decl? (declaration res)))
+				    (typep (declaration res) '(or type-decl formal-type-decl)))
 		   (resolutions (expr act)))))
       (assert (null (cdr reses)))
       (setf (resolutions (expr act)) reses)
@@ -1387,7 +1380,7 @@ resolution with a macro matching the signature of the arguments."
     (let ((ldecl (declaration lhs))
           (rdecl (declaration (or (type-value rhs) (expr rhs)))))
       (assert rdecl)
-      (assert (eq (id rdecl) (id (expr rhs))))
+      (assert (name-eq (id rdecl) (id (expr rhs))))
       ;; For renames, the new declarations have already been set in the rhs,
       ;; but they are place holders - we still need to do the substitutions
       (typecase ldecl

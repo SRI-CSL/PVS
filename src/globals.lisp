@@ -297,6 +297,7 @@ order is important")
 (defvar *ordinal* nil)
 (defvar *string-type* nil)
 (defvar *character* nil)
+(defvar *char* nil)
 
 (defvar *tcdebug* nil)
 (defvar *evaluator-debug* nil)

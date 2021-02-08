@@ -1731,6 +1731,9 @@ then uses unpindent* to add the indent to each line"
     (setf (string-value ex) (pp-string-expr (argument ex))))
   (write (string-value ex) :escape t))
 
+(defmethod pp* ((ex char-expr))
+  (format t "'~a'" (code-char (code ex))))
+
 (defun pp-string-expr (charlist &optional list)
   (if (typep charlist 'name-expr)
       (coerce (nreverse list) 'string)

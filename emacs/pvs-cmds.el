@@ -156,6 +156,14 @@ reparsing and retypechecking of the entire importchain."
 	 )
 	(t (message "PVS file %s does not exist" filename))))
 
+;; (defpvs set-typecheck-mark typecheck (filename)
+;;   "Sets a mark in the PVS file.  When next typechecked, The file is parsed,
+;; then typechecked only upto the current mark.  There can be multiple marks,
+;; but only one per theory.  The mark should be between two declarations"
+;;   (interactive (list (current-pvs-file)))
+;;   )
+
+
 ;;; Prettyprinting
 
 (defpvs prettyprint-declaration prettyprint ()

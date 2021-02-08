@@ -65,6 +65,7 @@ behavior:
 	    nobj))))
 
 (defmethod gensubst* ((obj string) substfn testfn)
+  (declare (ignore substfn testfn))
   obj)
 
 (defmethod gensubst* ((obj module) substfn testfn)
@@ -185,6 +186,11 @@ behavior:
     'type-value (gensubst* (type-value decl) substfn testfn)
     'type-expr  (gensubst* (type-expr decl) substfn testfn)))
 
+(defmethod gensubst* ((decl formal-const-decl) substfn testfn)
+  (lcopy decl
+    'declared-type (gensubst* (declared-type decl) substfn testfn)
+    'type (gensubst* (type decl) substfn testfn)))
+
 (defmethod gensubst* ((decl mod-decl) substfn testfn)
   (lcopy decl 'modname (gensubst* (modname decl) substfn testfn)))
 
@@ -261,36 +267,42 @@ behavior:
 		     (pseudo-normalize pred)))))
 
 (defmethod gensubst* ((te setsubtype) substfn testfn)
+  ;; setsubtype adds formula and formals slots, from which the predicate is created
   (if (predicate te)
       (let ((nte (call-next-method)))
-	(unless (or (eq nte te)
-		    (null (predicate nte)))
-	  (setf (formula nte) (expression (predicate nte))))
-	(if (eq nte te)
-	    (lcopy nte 'formals (gensubst* (formals te) substfn testfn))
-	    (setf (formals nte) (gensubst* (formals te) substfn testfn)))
-	nte)
+	(multiple-value-bind (formals alist)
+	    (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
+			       (formals te))
+	  (let ((formula (substit (gensubst* (formula te) substfn testfn) alist)))
+	    (lcopy nte :formals formals :formula formula))))
       (let ((nform (gensubst* (formula te) substfn testfn)))
 	(lcopy te 'formula nform))))
 
 (defmethod gensubst* ((te funtype) substfn testfn)
-  (let* ((types (list (domain te) (range te)))
-	 (ntypes (gensubst* types substfn testfn)))
-    (if (eq types ntypes)
-	te
-	(copy te 'domain (car ntypes) 'range (cadr ntypes)))))
+  (let* ((dom (gensubst* (domain te) substfn testfn))
+	 (ran (gensubst* (range te) substfn testfn)))
+    (assert (eq (dep-binding? (domain te)) (dep-binding? dom)))
+    (lcopy te
+      :domain dom
+      :range (if (dep-binding? dom)
+		 (substit ran (acons (domain te) dom nil))
+		 ran))))
 
 (defmethod gensubst* ((te tupletype) substfn testfn)
-  (let ((types (gensubst* (types te) substfn testfn)))
-    (lcopy te 'types types)))
+  (let ((types (apply-to-bindings #'(lambda (ty) (gensubst* ty substfn testfn))
+				  (types te))))
+    (if (equal types (types te))
+	te
+	(lcopy te 'types types))))
 
 (defmethod gensubst* ((te cotupletype) substfn testfn)
   (let ((types (gensubst* (types te) substfn testfn)))
     (lcopy te 'types types)))
 
 (defmethod gensubst* ((te recordtype) substfn testfn)
-  (let ((fields (gensubst* (fields te) substfn testfn)))
-    (if (eq fields (fields te))
+  (let ((fields (apply-to-bindings #'(lambda (fld) (gensubst* fld substfn testfn))
+				   (fields te))))
+    (if (equal fields (fields te))
 	te
 	(copy te
 	  'fields (if *parsing-or-unparsing*
@@ -392,7 +404,9 @@ behavior:
 		       *visible-only*)
 		   (type ex)
 		   (gensubst* (type ex) substfn testfn))))
-    (lcopy ex 'exprs exprs 'type ntype)))
+    (lcopy ex
+      :exprs (if (equal exprs (exprs ex)) (exprs ex) exprs)
+      :type ntype)))
 
 ;(defmethod gensubst* ((ex coercion) substfn testfn)
 ;  (let ((nexpr (gensubst* (expression ex) substfn testfn))
@@ -530,23 +544,26 @@ behavior:
 	  'table-entries (gensubst* (table-entries nex) substfn testfn)))))
 
 (defmethod gensubst* ((ex binding-expr) substfn testfn)
-  (let* ((nexpr (gensubst* (expression ex) substfn testfn))
-	 (nbindings (gensubst* (bindings ex) substfn testfn))
-	 (ntype (if (or *visible-only*
-			*parsing-or-unparsing*)
-		    (type ex)
-		    (gensubst* (type ex) substfn testfn))))
-    (if (and (eq (expression ex) nexpr)
-	     (eq (bindings ex) nbindings))
-	(lcopy ex 'type ntype)
-	(lcopy ex
-	  'bindings nbindings
-	  'expression (if (or *parsing-or-unparsing*
-			      (eq (bindings ex) nbindings)
-			      (not (declaration (car (bindings ex)))))
-			  nexpr
-			  (substit nexpr (pairlis (bindings ex) nbindings)))
-	  'type ntype))))
+  (multiple-value-bind (nbindings alist)
+      (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
+			 (bindings ex))
+    (let* ((gexpr (gensubst* (expression ex) substfn testfn))
+	   (nexpr (if (or *parsing-or-unparsing*
+			  (null alist) ; no changes to bindings
+			  (not (declaration (car (bindings ex)))))
+		      gexpr
+		      (substit gexpr alist)))
+	   (ntype (if (or *visible-only*
+			  *parsing-or-unparsing*)
+		      (type ex)
+		      (substit (gensubst* (type ex) substfn testfn) alist))))
+      (if (and (eq (expression ex) nexpr) (null alist))
+	  (lcopy ex 'type ntype)
+	  (let ((nex (copy ex :bindings nbindings :expression nexpr :type ntype)))
+	    ;; (assert (or *visible-only*
+	    ;; 		*parsing-or-unparsing*
+	    ;; 		(set-equal (freevars nex) (freevars ex) :test #'same-declaration)))
+	    nex)))))
 
 (defmethod gensubst* ((ex bind-decl) substfn testfn)
   (let ((ntype (if *visible-only*
@@ -631,7 +648,8 @@ behavior:
     'type (gensubst* (type map) substfn testfn)
     'lhs (gensubst* (lhs map) substfn testfn)
     'rhs (gensubst* (rhs map) substfn testfn)
-    'formals (gensubst* (formals map) substfn testfn)))
+    'formals (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
+				(formals map))))
 
 (defmethod gensubst* ((res resolution) substfn testfn)
   (with-slots (declaration module-instance) res
@@ -670,10 +688,13 @@ behavior:
 			gexpr
 			(pseudo-normalize gexpr))))
 	;; type-value shouldn't matter - but setting it to nil causes
-	;; problems for bugs/1999-01-29_EllenMunthe-Kass
-	(lcopy act 'expr nexpr
-	       ;; 'type-value nil
-	       ))))
+	;; problems for bugs/1999-01-29_EllenMunthe-Kass,
+	;; and leaving it alone means full-name doesn't work correctly
+	(if (eq nexpr (expr act))
+	    act
+	    (lcopy act
+	      'expr nexpr
+	      'type-value (gensubst* (type-value act) substfn testfn))))))
 
 (defmethod gensubst* ((name modname) substfn testfn)
   (let* ((gacts (gensubst* (actuals name) substfn testfn))
@@ -795,6 +816,7 @@ behavior:
   (call-next-method))
 
 (defmethod mapobject* :around (fn (obj tcc-decl))
+  (declare (ignore fn))
   (unless *parsing-or-unparsing*
     (call-next-method)))
 

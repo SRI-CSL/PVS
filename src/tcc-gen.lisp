@@ -2304,7 +2304,7 @@ list of kind, etc."
 	 (kind (tccinfo-kind tccinfo))
 	 (expr (tccinfo-expr tccinfo))
 	 (type (tccinfo-type tccinfo))
-	 (reason (tccinfo-reason tccinfo))
+	 ;;(reason (tccinfo-reason tccinfo))
 	 (submsg (case kind
 		   (actuals nil)
 		   (assuming (format nil "generated from assumption ~a.~a"

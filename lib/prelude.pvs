@@ -5062,8 +5062,8 @@ disjointness: THEORY
  END disjointness
 
 
-% characters - this follows the ASCII control codes, of which only the
-% first 128 are defined:
+% characters - this follows Unicode UTF8 standard,
+% where the first 128 are the ASCII chars:
 %
 %     |  0 NUL|  1 SOH|  2 STX|  3 ETX|  4 EOT|  5 ENQ|  6 ACK|  7 BEL|
 %     |  8 BS |  9 HT | 10 NL | 11 VT | 12 NP | 13 CR | 14 SO | 15 SI |
@@ -5082,9 +5082,12 @@ disjointness: THEORY
 %     |112  p |113  q |114  r |115  s |116  t |117  u |118  v |119  w |
 %     |120  x |121  y |122  z |123  { |124  | |125  } |126  ~ |127 DEL|
 
+% Characters may be given in PVS between single quotes, e.g.,
+%  'a' 'α' '̆\\n' 
+
 character: DATATYPE
  BEGIN
-  char(code:below[256]):char?
+  char(code:below[0x110000]):char?
  END character
 
 
@@ -5133,6 +5136,340 @@ strings: THEORY
 
   char_lem: LEMMA (c1 = c2) = (code(c1) = code(c2))
  END strings
+ 
+gen_strings[char: TYPE+, <: (strict_order?[char])] : THEORY
+ BEGIN
+    gen_string: TYPE+
+    s, s1, s2: VAR gen_string
+
+    c, c1, c2: VAR char
+
+    length(s): nat
+
+    get(s)(i: below(length(s))): char
+
+    empty: gen_string
+
+    length_empty: AXIOM length(empty) = 0
+
+    unit(c): gen_string
+
+    length_unit: AXIOM length(unit(c)) = 1
+
+    unit_ax: AXIOM get(unit(c))(0) = c
+
+    extensionality: AXIOM
+       s1 = s2 IFF (length(s1) = length(s2) AND ∀ (i:below(length(s1))): get(s1)(i) = get(s2)(i));
+
+    +(s1, s2): gen_string
+
+    length_concat: AXIOM length(s1 + s2) = length(s1) + length(s2)
+
+    char_concat: AXIOM
+    (FORALL (i: below(length(s1) + length(s2))):
+     get(s1 + s2)(i)  =
+      IF i < length(s1)
+       THEN get(s1)(i)
+       ELSE get(s2)(i - length(s1))
+      ENDIF)
+
+    strdiff(s1, s2): upto(min(length(s1), length(s2)))
+
+    strdiff_eq: AXIOM
+      FORALL (j: below(strdiff(s1, s2))): get(s1)(j) = get(s2)(j)
+
+    strdiff_neq: AXIOM
+     (LET i = strdiff(s1, s2) IN 
+       i < min(length(s1), length(s2)) => get(s1)(i) /= get(s2)(i))
+
+    strcmp(s1, s2): subrange(-1, 1)
+
+    strcmp_eq: AXIOM
+      strcmp(s1, s2) = 0 => s1 = s2
+
+    strcmp_lt: AXIOM
+      strcmp(s1, s2) = -1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s2) AND (i < length(s1) => get(s1)(i) < get(s2)(i)))
+
+    strcmp_gt: AXIOM
+      strcmp(s1, s2) = 1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s1) AND (i < length(s2) => get(s2)(i) < get(s1)(i)))
+
+    prefix(s, (i: upto(length(s)))): gen_string
+
+    length_prefix: AXIOM
+     (FORALL (i: upto(length(s))): 
+      length(prefix(s, i)) = i)
+
+    prefix_ax: AXIOM
+     FORALL (i: upto(length(s))), (j : below(i)): 
+      get(prefix(s, i))(j) = get(s)(j)
+
+    suffix(s, (i: upto(length(s)))): gen_string
+
+    length_suffix: AXIOM
+     (FORALL (i: upto(length(s))): 
+      length(suffix(s, i)) = length(s) - i)
+
+    suffix_ax: AXIOM
+     FORALL (i: upto(length(s))), (j : below(length(s) - i)): 
+      get(suffix(s, i))(j) = get(s)(i + j)
+
+    substr(s)(i: upto(length(s)), j: subrange(i, length(s))): {s1 | length(s1) = j - i}
+     = prefix(suffix(s, i), j - i)
+ END gen_strings
+
+bytestrings: THEORY
+ BEGIN
+
+    byte : TYPE+ = below(256) CONTAINING 0
+
+    bytestring_bound: MACRO nat = 0x100000000 % exp2(32)
+
+    bytestring: THEORY = gen_strings[byte, <]{{gen_string ::= Bytestring}}
+
+    bytestring: TYPE+ = {s: Bytestring | length(s) < bytestring_bound} % exp2(32)
+                        CONTAINING empty
+
+    ascii_bytestring?(s: bytestring): bool = FORALL (i : below(length(s))): get(s)(i) < 128
+
+    ascii_bytestring: TYPE = (ascii_bytestring?)
+    
+ END bytestrings
+
+utf8: THEORY
+ BEGIN
+
+   utf8_char : TYPE+ = below(0x110000) CONTAINING 0
+
+   % Bounded by bytestring_bound/4, since up to 4 bytes needed for each utf8_char
+   utf8_string_bound: MACRO nat = bytestring_bound / 4
+
+   utf8_string: THEORY = gen_strings[utf8_char, <]{{gen_string ::= UTF8_string}}
+
+   utf8_string: TYPE+ = {s: UTF8_string | length(s) < utf8_string_bound}
+                        CONTAINING utf8_string.empty
+
+   ascii_utf8_string?(s: utf8_string): bool = FORALL (i : below(length(s))): get(s)(i) < 128
+
+   ascii_utf8_string: TYPE+ = (ascii_utf8_string?) CONTAINING utf8_string.empty
+
+   s, s1, s2: VAR bytestring
+   b, b1, b2: VAR byte
+
+   u, u1, u2: VAR utf8_string
+   c, c1, c2: VAR utf8_char  % below(0x110000)
+
+% Layout of UTF-8 byte sequences - "cp" = "code point"
+% | # bytes | First cp | Last cp  |   Byte 1 |   Byte 2 |   Byte 3 |   Byte 4 |
+% |       1 | U+0000   | U+007F   | 0xxxxxxx |          |          |          |
+% |       2 | U+0080   | U+07FF   | 110xxxxx | 10xxxxxx |          |          |
+% |       3 | U+0800   | U+FFFF   | 1110xxxx | 10xxxxxx | 10xxxxxx |          |
+% |       4 | U+10000  | U+10FFFF | 11110xxx | 10xxxxxx | 10xxxxxx | 10xxxxxx |
+
+   utf8_ascii_byte?(b): bool = b <= 0x7F
+   utf8_two_first_byte?(b): bool = 0xC0 <= b <= 0xDF
+   utf8_three_first_byte?(b): bool = 0xE0 <= b <= 0xEF
+   utf8_four_first_byte?(b): bool = 0xF0 <= b <= 0xF7
+   utf8_trailer_byte?(b): bool = 0x80 <= b <= 0xBF
+
+   at_utf8_ascii_char?(s: bytestring, idx: below(length(s))): bool =
+     length(s) > idx and utf8_ascii_byte?(get(s)(idx))
+     
+   at_utf8_two_byte_char?(s: bytestring, idx: below(length(s))): bool = length(s) > idx+1 and
+     utf8_two_first_byte?(get(s)(idx)) and utf8_trailer_byte?(get(s)(idx+1))
+     
+   at_utf8_three_byte_char?(s: bytestring, idx: below(length(s))): bool = length(s) > idx+2 and
+     utf8_three_first_byte?(get(s)(idx)) and
+     utf8_trailer_byte?(get(s)(idx+1)) and utf8_trailer_byte?(get(s)(idx+2))
+     
+   at_utf8_four_byte_char?(s: bytestring, idx: below(length(s))): bool = length(s) > idx+3 and
+     utf8_four_first_byte?(get(s)(idx)) and utf8_trailer_byte?(get(s)(idx+1)) and
+     utf8_trailer_byte?(get(s)(idx+2)) and utf8_trailer_byte?(get(s)(idx+3))
+
+   next_code_point(bs: bytestring, idx: below(length(bs))):
+       [utf8_char, {x: upto(4) | idx + x < length(bs)}] =
+     if at_utf8_ascii_char?(bs, idx) then (get(bs)(idx), 1)
+     elsif at_utf8_two_byte_char?(bs, idx)
+       then ((get(bs)(idx) - 0xc0) * 0x40 + (get(bs)(idx+1) - 0x80), 2)
+     elsif at_utf8_three_byte_char?(bs, idx)
+       then ((get(bs)(idx) - 0xe0) * 0x1000 + (get(bs)(idx+1) - 0x80) * 0x40  + (get(bs)(idx+2) - 0x80), 3)
+     elsif at_utf8_four_byte_char?(bs, idx)
+       then let cp = (get(bs)(idx) - 0xf0) * 0x40000 + (get(bs)(idx+1) - 0x80) * 0x1000
+                       + (get(bs)(idx+2) - 0x80) * 0x40  + (get(bs)(idx+3) - 0x80)
+             % could be larger, but by RCF 3629 it matches limits of utf-16
+             in if cp < 0x110000
+	        then (cp, 4)
+		else (0, 0)
+		endif
+     else (0, 0)
+     endif
+
+   bytestring_to_utf8_string_rec(s: bytestring | length(s) < utf8_string_bound - 1,
+                                 idx: upto(length(s)),
+                                 u: utf8_string | length(u) <= idx):
+       recursive utf8_string =
+     if idx = length(s)
+       then u
+     else let (ch, len) = next_code_point(s, idx)
+           in if len = 0 % not a valid UTF-8 bytestring at this point
+	      then utf8_string.empty
+	      else bytestring_to_utf8_string_rec(s, idx + len, u + utf8_string.unit(ch))
+	      endif
+     endif
+     measure length(s) - idx
+
+   % Takes a random bytestring, returns a utf8_string if it's a valid utf8 bytestring
+   % returns empty otherwise.
+   bytestring_to_utf8_string(s: bytestring | length(s) < utf8_string_bound - 1): utf8_string =
+      bytestring_to_utf8_string_rec(s, 0, utf8_string.empty)
+
+   %%
+
+ codepoint_to_bytestring(cp: below(0x110000)): {s: bytestring | 1 <= length(s) <= 4} =
+       if cp < 0x80 then unit(cp)
+       elsif cp < 0x800
+         then let % 11 bits, 5 in first byte, 6 in second
+	          b1 = 0xC0 + ndiv(cp, 64),
+		  b2 = 0x80 + nrem(cp, 64)
+	       in unit(b1) + unit(b2)
+       elsif cp < 0x10000
+         then let % 16 bits, 4 in first byte, 6 in each of rest
+	          b1 = 0xE0 + ndiv(cp, 0x1000), %exp2(12)
+		  b12 = nrem(cp, 0x1000),
+		  b2 = 0x80 + ndiv(b12, 64),
+		  b3 = 0x80 + nrem(b12, 64)
+	       in unit(b1) + unit(b2) + unit(b3)
+       else
+              let % 21 bits, 3 in first byte, 6 in each of rest
+	          b1 = 0xF0 + ndiv(cp, 0x40000), % exp2(18)
+		  b18 = nrem(cp, 0x40000),
+		  b2 = 0x80 + ndiv(b18, 0x1000), % exp2(12)
+		  b12 = nrem(b18, 0x1000),
+		  b3 = 0x80 + ndiv(b12, 64),
+		  b4 = 0x80 + nrem(b12, 64)
+	       in unit(b1) + unit(b2) + unit(b3) + unit(b4)
+       endif
+   
+   utf8_string_to_bytestring_rec(u: utf8_string | 4*length(u) < 0x100000000 - 4,
+                                 idx: upto(length(u)),
+				 s: bytestring | length(s) <= 4*idx):
+       recursive bytestring =
+     if idx = length(u)
+     then s
+     else utf8_string_to_bytestring_rec(u, idx + 1, s + codepoint_to_bytestring(get(u)(idx)))
+     endif
+    measure length(u) - idx    
+
+   utf8_string_to_bytestring(u: utf8_string | 4*length(u) < 0x100000000 - 4): bytestring =
+      utf8_string_to_bytestring_rec(u, 0, empty)
+    
+ END utf8
+
+string_map: THEORY
+ BEGIN
+   s, s1, s2: VAR string
+   c, c1, c2: VAR char
+
+
+   string_to_utf8_string_rec(s: string | s`length < utf8_string_bound,
+                             idx: upto(s`length),
+			     u: utf8_string | length(u) = idx)
+                  : RECURSIVE {u1: utf8_string | length(u1) = s`length}
+       = if idx = s`length
+         then u
+	 else string_to_utf8_string_rec(s, idx + 1, u + unit(code(s`seq(idx))))
+	 endif
+     measure s`length - idx	 
+
+   string_to_utf8_string(s: string | s`length < utf8_string_bound)
+                  : {u: utf8_string | length(u) = s`length}
+       = string_to_utf8_string_rec(s, 0, empty)
+
+
+   utf8_string_to_string_rec(u: utf8_string,
+                             idx: upto(length(u)),
+			     s: string | s`length = idx)
+                  : RECURSIVE {s1: string | s1`length = length(u)}
+       = if idx = length(u)
+         then s
+	 else utf8_string_to_string_rec(u, idx + 1, add(char(get(u)(idx)), s))
+	 endif
+     measure length(u) - idx	 
+
+   utf8_string_to_string(u: utf8_string) : {s: string | length(u) = s`length}
+       = utf8_string_to_string_rec(u, 0, empty_seq)
+
+   get(s)(i: below(length(s))): char = s`seq(i);
+
+   <(c1, c2): bool = code(c1) < code(c2);
+   <=(c1, c2): bool = code(c1) <= code(c2);
+   >(c1, c2): bool = code(c1) > code(c2);
+   >=(c1, c2): bool = code(c1) >= code(c2);
+
+   strdiff_rec(s1, s2, (idx: upto(min(length(s1), length(s2))))):
+      recursive subrange(idx, min(length(s1), length(s2))) =
+     if idx < min(length(s1), length(s2))
+     then if s1`seq(idx) = s2`seq(idx)
+          then strdiff_rec(s1, s2, idx+1)
+	  else idx
+	  endif
+     else idx
+     endif
+    measure min(length(s1), length(s2)) - idx
+
+   strdiff_eq_rec: LEMMA
+     FORALL (i: upto(min(length(s1), length(s2)))):
+       i < strdiff_rec(s1, s2, i) => s1`seq(i) = s2`seq(i)
+
+   strdiff_eq_rec2: LEMMA
+     LET i = strdiff_rec(s1, s2, 0)
+      IN FORALL (k: below(i)): strdiff_rec(s1, s2, k) = i
+
+   strdiff_eq_rec2a: LEMMA
+     FORALL (i: upto(min(length(s1), length(s2)))):
+       i <= strdiff_rec(s1, s2, i)
+
+   strdiff_eq_rec2b: LEMMA
+     FORALL (i: upto(min(length(s1), length(s2)))):
+       i = strdiff_rec(s1, s2, 0) =>
+         i = strdiff_rec(s1, s2, i)     
+
+   strdiff_eq_rec3: LEMMA
+     LET i = strdiff_rec(s1, s2, 0)
+      IN i < min(length(s1), length(s2)) => s1`seq(i) /= s2`seq(i)
+
+   strdiff(s1, s2): upto(min(length(s1), length(s2))) =
+     strdiff_rec(s1, s2, 0)
+
+   strcmp(s1, s2): subrange(-1, 1) =
+     IF s1 = s2 THEN 0
+     ELSE LET i = strdiff(s1, s2),
+              minl = min(length(s1), length(s2))
+           IN IF i < minl
+              THEN IF get(s1)(i) < get(s2)(i) THEN -1 ELSE 1 ENDIF
+              ELSIF length(s1) < length(s2) THEN -1 ELSE 1 ENDIF
+	      ENDIF
+
+   prefix(s, (i: upto(length(s)))): string = s^^(0, i)
+
+   suffix(s, (i: upto(length(s)))): string = s^^(i, length(s))
+
+   importing gen_strings[char, <]
+     {{gen_string := string,
+       length(s) := s`length,
+       get := get,
+       empty := "",
+       unit(c) := add(c, ""),
+       + := o,
+       strdiff := strdiff,
+       strcmp := strcmp,
+       prefix := prefix,
+       suffix := suffix}}
+   
+ END string_map
 
 
 lift[T: TYPE]: DATATYPE

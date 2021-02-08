@@ -790,7 +790,7 @@
   (tc-eq* op1 op2 bindings))
 
 (defun tc-eq-adt-ops (op1 op2 bindings)
-  (and (eq (id op1) (id op2))
+  (and (name-eq (id op1) (id op2))
        (let ((adt1 (adt op1))
 	     (adt2 (adt op2)))
 	 (and (eq (adt adt1) (adt adt2))
@@ -817,7 +817,7 @@
 (defun tc-eq-adt-actuals (acts1 acts2 bindings formals postypes)
   (or (null acts1)
       (flet ((lkey (x) (or (print-type x) x)))
-	(and (if (member (car formals) postypes :test #'same-id :key #'lkey)
+	(and (if (member (car formals) postypes :test #'name-eq :key #'lkey)
 		 (compatible? (type-value (car acts1)) (type-value (car acts2)))
 		 (tc-eq* (car acts1) (car acts2) bindings))
 	     (tc-eq-adt-actuals (cdr acts1) (cdr acts2) bindings

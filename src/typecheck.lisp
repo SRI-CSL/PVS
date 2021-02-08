@@ -1476,10 +1476,13 @@ declarations"
 	  (type-decl
 	   (let ((tn (make-self-resolved-type-name rdecl)))
 	     ;;(when (adt-type-name? (type-value ldecl))
-	       ;;(change-class tn 'adt-type-name :adt (adt (type-value ldecl))))
+	     ;;(change-class tn 'adt-type-name :adt (adt (type-value ldecl))))
 	     (setf (type-value rdecl) tn)
 	     (setf (type-value rhs) tn)
-	     (setf (resolutions (expr rhs)) (resolutions tn))))
+	     (setf (resolutions (expr rhs)) (resolutions tn))
+	     (setf (generated rdecl)
+		   (remove-if #'(lambda (gd) (or (tcc? gd) (nonempty-formula-type gd)))
+		     (generated ldecl)))))
 	  (const-decl
 	   (let ((res (make-resolution rdecl (current-theory-name) type)))
 	     (setf (resolutions (expr rhs)) (list res))
@@ -1498,8 +1501,8 @@ declarations"
 	   (eres (unless (and kind
 			      (not (eq kind 'expr)))
 		   (if (or tres (null (mod-id ex)))
-		       (with-no-type-errors (resolve* ex 'expr nil))
-		       (resolve* ex 'expr nil))))
+		       (with-no-type-errors (get-resolutions ex 'expr nil))
+		       (get-resolutions ex 'expr nil))))
 	   (thres (unless (or (mod-id ex)
 			      (and kind
 				   (not (eq kind 'theory))))
@@ -1881,8 +1884,8 @@ declarations"
 		      #'(lambda (d)
 			  (or (not (eq (module d) (current-theory)))
 			      (memq d (theory-formal-decls (current-theory)))
-			      (typep d '(or formal-decl importing
-					    var-decl field-decl
+			      (typep d '(or formal-decl importing type-decl
+					    var-decl field-decl const-decl
 					    recursive-type module
 					    mapping-subst))
 			      (and (const-decl? d)

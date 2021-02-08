@@ -202,7 +202,10 @@
 ;;(type-error name "May not provide actuals for entities defined locally")
 ;;(type-error name "Free variables not allowed here")
 
-(defun get-resolutions (name kind args)
+(defun get-resolutions (name &optional kind args)
+  (when (symbolp name)
+    ;; Create a "name" instance; empty except for id
+    (setq name (mk-name name)))
   (let* ((adecls (get-declarations (id name)))
 	 (ldecls (if (library name)
 		     (let ((libpath (get-library-reference (library name))))
@@ -483,6 +486,7 @@
 
 (defun get-decl-resolutions (decl acts dacts mappings thid kind args)
   (let ((dth (module decl)))
+    (when (null kind) (setf kind (kind-of decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))
 		   (eq kind 'module)
@@ -916,11 +920,36 @@ decl, args, and mappings."
 	     (mthinsts (if mappings
 			   (create-theorynames-with-name-mappings
 			    (module decl) thinsts mappings)
-			   thinsts)))
-	(mapcan #'(lambda (thinst)
-		    (compatible-arguments?
-		     decl thinst args (current-theory)))
-	  mthinsts))))
+			   thinsts))
+	     ;; (old-result (mapcan #'(lambda (thinst)
+	     ;; 			     (compatible-arguments?
+	     ;; 			      decl thinst args (current-theory)))
+	     ;; 		   mthinsts))
+	     (new-result (decl-args-compatible* decl mthinsts args)))
+	;; (assert (every #'(lambda (thi) (member thi old-result :test #'tc-eq)) new-result))
+	;; (unless (every #'(lambda (thi) (member thi new-result :test #'tc-eq)) old-result)
+	;; (when new-result (break "decl-args-compatible?"))
+	new-result)))
+
+(defun decl-args-compatible* (decl mthinsts args &optional fixed-thinsts comp-thinsts)
+  "mthinsts is a list of theory instances; not all are fully-instantiated."
+  (if (null mthinsts)
+      (or (nreverse fixed-thinsts) (nreverse comp-thinsts))
+      (let ((cathinsts (compatible-arguments? decl (car mthinsts) args (current-theory))))
+	(assert (or (null cathinsts)
+		    (not (fully-instantiated? (car mthinsts)))
+		    (and (singleton? cathinsts) (tc-eq (car cathinsts) (car mthinsts)))))
+	(if (fully-instantiated? (car mthinsts))
+	    (when cathinsts
+	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
+	    (dolist (thinst cathinsts)
+	      (if (and (fully-instantiated? thinst)
+		       (or (member thinst (cdr mthinsts) :test #'tc-eq)
+			   (member thinst comp-thinsts :test #'tc-eq)))
+		  (pushnew thinst fixed-thinsts :test #'tc-eq)
+		  (pushnew thinst comp-thinsts :test #'tc-eq))))
+	(decl-args-compatible* decl (cdr mthinsts) args fixed-thinsts comp-thinsts))))
+
 
 (defun create-theorynames-with-name-mappings (th thinsts mappings
 						 &optional mthinsts)
@@ -2050,26 +2079,53 @@ decl, args, and mappings."
   (declare (ignore name))
   (if (cdr reses)
       (let* ((dreses (remove-duplicates reses :test #'tc-eq))
-	     (mreses (filter-mapped-resolutions dreses))
+	     (greses (remove-if #'(lambda (r)
+				    (some #'(lambda (r2)
+					      (and (declaration? (declaration r2))
+						   (eq (declaration r)
+						       (generated-by (declaration r2)))))
+					  dreses))
+		       dreses))
+	     (mreses (filter-mapped-resolutions greses))
 	     (res (or (remove-if
 			  #'(lambda (r)
 			      (typep (module-instance r) 'datatype-modname))
 			mreses)
 		      mreses)))
-	(most-refined-mapping-resolutions
-	 (if (eq kind 'expr)
-	     (if (cdr res)
-		 (filter-constructor-subtypes
-		  (filter-equality-resolutions
-		   (filter-nonlocal-module-instances
-		    (filter-local-expr-resolutions
-		     (filter-bindings res args))))
-		  args nil)
-		 res)
-	     (remove-outsiders
-	      (if *get-all-resolutions*
-		  (move-generics-to-end res)
-		  (remove-generics res))))))
+	(prefer-theory-decl-resolutions
+	 (most-refined-mapping-resolutions
+	  (if (eq kind 'expr)
+	      (if (cdr res)
+		  (filter-constructor-subtypes
+		   (filter-equality-resolutions
+		    (filter-nonlocal-module-instances
+		     (filter-local-expr-resolutions
+		      (filter-bindings res args))))
+		   args nil)
+		  res)
+	      (remove-outsiders
+	       (if *get-all-resolutions*
+		   (move-generics-to-end res)
+		   (remove-generics res)))))))
+      reses))
+
+(defun prefer-theory-decl-resolutions (reses)
+  (if (cdr reses)
+      (if (cdr reses)
+	  (multiple-value-bind (gen-reses other-reses)
+	      (split-on #'(lambda (r)
+			    (let ((decl (declaration r)))
+			      (and (declaration? decl)
+				   (mod-decl? (generated-by decl)))))
+			reses)
+	    (append gen-reses
+		    (remove-if #'(lambda (ores)
+				   (some #'(lambda (gres)
+					     (tc-eq (module-instance ores)
+						    (modname (generated-by (declaration gres)))))
+					 gen-reses))
+		      other-reses)))
+	  reses)
       reses))
 
 (defun filter-constructor-subtypes (reses args result)
@@ -2165,9 +2221,12 @@ This forms a lattice, and we return the top ones."
 	 (if finst? gen-reses (cons (car reses) gen-reses))))))
 
 (defun more-refined-mapping? (res1 res2)
-  (let ((maps1 (mappings (module-instance res1)))
+  (let ((th1 (module (declaration res1)))
+	(th2 (module (declaration res2)))
+	(maps1 (mappings (module-instance res1)))
 	(maps2 (mappings (module-instance res2))))
-    (and (> (length maps1) (length maps2))
+    (and (eq th1 th2)
+	 (> (length maps1) (length maps2))
 	 (every #'(lambda (map)
 		    (member map maps1
 			    :test #'(lambda (m1 m2)

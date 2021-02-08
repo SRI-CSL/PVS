@@ -256,6 +256,9 @@
 (defcl string-expr (application)
   (string-value :restore-as nil))
 
+(defcl char-expr (application)
+  code)
+
 (defcl bracket-expr (application)
   ;;"Used for bracketing (outfix) expressions - the operator tells which one"
   )
@@ -473,7 +476,7 @@
 ;;; Misc
 
 ;(defcl bindings ()
-;  declarations)
+					;  declarations)
 
 (defcl simple-decl (syntax)
   (id :parse t :restore-as nil)

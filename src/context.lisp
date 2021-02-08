@@ -330,7 +330,7 @@ retypechecked."
 			   (cdddr context)))
 	    (multiple-value-bind (value condition)
 		(progn			;ignore-file-errors
-		  (store-object-to-file context (path ws)))
+		  (store-object-to-file context (context-pathname)))
 	      (declare (ignore value))
 	      (cond (condition
 		     (pvs-message "~a" condition))
