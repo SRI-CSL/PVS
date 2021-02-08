@@ -1049,7 +1049,8 @@ are all the same."
 		    (list *pvs-version*)))))))
 
 (defun duplicate-theory-entries? ()
-  (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=))
+  (and *workspace-session*
+       (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=)))
 
 (defvar *theories-restored* nil)
 (defvar *files-seen* nil)
