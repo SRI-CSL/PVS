@@ -265,8 +265,8 @@
     *pvs-env-variables*))
 
 (defun pvs-init-globals ()
-  (initialize-workspaces)
   (reset-typecheck-caches)
+  (initialize-workspaces)
   (clrnumhash)
   ;; Prover hash tables
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
