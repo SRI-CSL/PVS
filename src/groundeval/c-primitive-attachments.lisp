@@ -223,80 +223,89 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Experimental native treatment of strings using a cstring.pvs theory
-(def-c-attach-primitive-type "string" "cchar" "char")
+;; (def-c-attach-primitive-type "bytestrings" "byte" "uint8")
 
-(def-c-attach-primitive-type "cstring" "cstring" "string_t")
+;; (def-c-attach-primitive-type "bytestrings" "Bytestring" "bytestring_t")
 
-(def-c-attach-primitive "cstring" "mk_cstring" "cstring" '(s) '(strings_string)
- (format nil "{~%~8Tuint16_t length = (uint16_t)mpz_get_ui(s->length);~
-~%~8T cstring_cstring_t result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + sizeof(length) + 1);~
-~%~8T result->count = 1; result->size = length + 1;~
-~%~8T uint16_t i;~
-~%~8T for (i = 0; i < length; i++){result->strval[i] = s->seq[i];};~
-~%~8T result->strval[i] = '\\0'; return result;}"))
+;; (def-c-attach-primitive "bytestrings" "bytestring_bound" "uint64_t" '() '() (expt 2 32))
 
-(def-c-attach-primitive "cstring" "code" "uint8" '(x) '(cstring_cchar)
-  "{return (uint8_t)x;}")
+;; (def-c-attach-primitive "bytestrings" "mk_bytestring" "string" '(s) '(bytestring_t)
+;;  (format nil "{~%~8Tuint16_t length = (uint16_t)mpz_get_ui(s->length);~
+;; ~%~8T bytestrings_bytestring_t result = (bytestrings_bytestring_t)safe_malloc(sizeof(string_s) + sizeof(length) + 1);~
+;; ~%~8T result->count = 1; result->size = length + 1;~
+;; ~%~8T uint32_t i;~
+;; ~%~8T for (i = 0; i < length; i++){result->strval[i] = s->seq[i];};~
+;; ~%~8T result->strval[i] = '\\0'; return result;}"))
 
-(def-c-attach-primitive "cstring" "empty" "cstring_cstring" '() '()
-  (format nil "{~%~8Tcstring_cstring_t result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + sizeof(char));~
- ~%~8T result->count = 1; result->size = 1; result->strval[0] = '\\0';~
-  ~%~8T return result;}"))
+;; (def-c-attach-primitive "bytestring" "empty" "bytestring_t" '() '()
+;;   (format nil "{~%~8Tbytestring_t result = (bytestring_t)safe_malloc(sizeof(string_s));~
+;;  ~%~8T result->count = 1; result->length = 0;~
+;;   ~%~8T return result;}"))
 
-(def-c-attach-primitive "cstring" "char" "cstring_cchar" '(s i) '(cstring_cstring uint16)
-  (format nil "{if (i < strlen(s)){char c = s->strval[i];~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
-~%~8T return c;}~
-~%~4T else return '\0';}"))
+;; (def-c-attach-primitive "bytestring" "unit" "bytestring_t" '(c) '(uint8_t)
+;;   (format nil "{~%~8Tbytestring_t result = (bytestring_t)safe_malloc(sizeof(string_s) + sizeof(char));~
+;;  ~%~8T result->count = 1; result->length = 1; result->strval[0] = c;~
+;;   ~%~8T return result;}"))
 
-(def-c-attach-primitive "cstring" "length" "uint16" '(s) '(cstring_cstring)
-  (format nil "{uint16_t length = (uint16_t)strlen(s->strval);~
-~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
-~%~8T return length;}"))
+;; (def-c-attach-primitive "bytestrings" "byte" "bytestrings_byte_t" '(s i) '(bytestring_byte_t)
+;;   (format nil "{bytestring_byte_t entry =  s->strval[i];~
+;; ~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
+;; ~%~8T return entry;}"))
 
-(def-c-attach-primitive "cstring" "+" "cstring_cstring" '(s1 s2) '(cstring_cstring cstring_cstring)
-  (format nil "{~%~8T uint16_t l1 = strlen(s1->strval);~
-~%~8T uint16_t l2 = strlen(s1->strval);~
-~%~8T if (l1  == 0){return s2;} else {if (l2 == 0) return s2;}
-~%~8T uint16_t length = l1 + l2;~
-~%~8T uint16_t size = length + 1;~
-~%~8T result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + size);~
-~%~8T result->count = 1;~
-~%~8T result->size = size;~
-~%~8T strcpy(result->strval, s1->strval);~
-~%~8T strcat(result->strval, s2->strval);~
-~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1)};~
-~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2)};~
-~%~8Treturn result;~%}"))
+;; (def-c-attach-primitive "bytestring" "length" "uint32_t" '(s) '(bytestrings_bytestring)
+;;   (format nil "{uint32_t length = (uint32_t)s->length;~
+;; ~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
+;; ~%~8T return length;}"))
 
-(def-c-attach-primitive "cstring" "charcmp" "bool" '(c1 c2) '(cstring_cchar cstring_cchar)
-  "{return c1 < c2;}")
+;; (def-c-attach-primitive "bytestrings" "+" "bytestrings_bytestring" '(s1 s2) '(bytestrings_bytestring bytestrings_bytestring)
+;;   (format nil "{~%~8T uint16_t l1 = s1->length);~
+;; ~%~8T uint16_t l2 = s2->length;~
+;; ~%~8T if (l1  == 0){return s2;} else {if (l2 == 0) return s2;}
+;; ~%~8T uint32_t length = l1 + l2;~
+;; ~%~8T result = (bytestrings_bytestring_t)safe_malloc(sizeof(string_s) + length);~
+;; ~%~8T result->count = 1;~
+;; ~%~8T result->length = length;~
+;; ~%~8T memcpy(result->strval, s1->strval, l1);~
+;; ~%~8T memcpy(result->strval + l1, s2->strval, l2);~
+;; ~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1)};~
+;; ~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2)};~
+;; ~%~8Treturn result;~%}"))
 
-(def-c-attach-primitive "cstring" "strdiff" "uint16" '(s1 s2) '(cstring_cstring cstring_cstring)
-  (format nil "{uint16_t i = 0;~%~8Twhile ((i < strlen(s1->strval)) && (i < strlen(s2->strval)) && (s1->strval[i] == s2->strval[i])){i++;};~
-~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
-~%~8Tif (s2->count > 1){s1->count--;} else {safe_free(s2);}~
-~%~8T return i;}"))
+;; ;; (def-c-attach-primitive "cstring" "charcmp" "bool" '(c1 c2) '(cstring_cchar cstring_cchar)
+;; ;;   "{return c1 < c2;}")
+
+;; (def-c-attach-primitive "bytestrings" "strdiff" "uint32" '(s1 s2) '(bytestrings_bytestring bytestrings_bytestring)
+;;   (format nil "{uint32_t i = 0;~%~8Twhile ((i < s1->length) && (i < s2->length) && (s1->strval[i] == s2->strval[i])){i++;};~
+;; ~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
+;; ~%~8Tif (s2->count > 1){s1->count--;} else {safe_free(s2);}~
+;; ~%~8T return i;}"))
   
-(def-c-attach-primitive "cstring" "strcmp" "int8" '(s1 s2) '(cstring_cstring cstring_cstring)
-  (format nil "{~%~8T int8 cmp = strcmp(s1->strval, s2->strval);~
-~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
-~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2);}~
-~%~8Treturn (cmp < 0)? -1 : (cmp > 0) ?  1 : 0;~%}"))
+;; (def-c-attach-primitive "bytestrings" "strcmp" "int8" '(s1 s2) '(bytestrings_bytestring bytestrings_bytestring)
+;;   (format nil "{~%~8T int8 cmp = strcmp(s1->strval, s2->strval);~
+;; ~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
+;; ~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2);}~
+;; ~%~8Treturn (cmp < 0)? -1 : (cmp > 0) ?  1 : 0;~%}"))
 
-(def-c-attach-primitive "cstring" "substr" "cstring_cstring" '(s i j) '(cstring_cstring uint16 uint16)
-  (format nil "{uint16_t length = (i > j) ? i - j : j - i;~
-~%~8T uint16_t start = (i > j) ?  j :  i;~
-~%~8T cstring_cstring_t result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + length);~
-~%~8T result->count = 1; result->size = length;~
-~%~8T memcpy(result->strval, (char *)(s + start), length);
-~%~8Tif (s->count > 1){s->count--;} else {safe_free(s);}~
-~%~8T return result; }"))
+;; (def-c-attach-primitive "bytestrings" "substr" "bytestrings_bytestring" '(s i j) '(bytestrings_bytestring uint32 uint32)
+;;   (format nil "{uint32_t length = (i > j) ? i - j : j - i;~
+;; ~%~8T uint32_t start = (i > j) ?  j :  i;~
+;; ~%~8T bytestrings_bytestring_t result = (bytestrings_bytestring_t)safe_malloc(sizeof(string_s) + length);~
+;; ~%~8T result->count = 1; result->size = length;~
+;; ~%~8T memcpy(result->strval, (char *)(s + start), length);
+;; ~%~8Tif (s->count > 1){s->count--;} else {safe_free(s);}~
+;; ~%~8T return result; }"))
+
+;; (def-c-attach-primitive "bytestrings" "prefix" "bytestrings_bytestring" '(s i) '(bytestrings_bytestring uint32)
+;;   (format nil "{return bytestrings_substr(s, 0, i);}"))
+
+;; (def-c-attach-primitive "bytestrings" "suffix" "bytestrings_bytestring" '(s i) '(bytestrings_bytestring uint32)
+;;   (format nil "{return bytestrings_substr(s, i, s->length);}"))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;C attachments for pvsio_prelude theories stdstr and stdio
 
-(def-c-attach-primitive "stdstr" "charcode" "string" '(x) '(uint8)
+(def-c-attach-primitive "stdstr" "charcode" "string" '(x) '(uint32)
   "{char c = (char) x;~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + 2 * sizeof(char));~
  ~%~8T result->count = 1; result->size = 2; result->strval[0] = c; ~%~8T result->strval[1] = '\0';~
   ~%~8T return result;}")

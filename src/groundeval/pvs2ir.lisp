@@ -11,7 +11,7 @@
 (defvar *pvs2c-defn-actuals* nil)
 (defvar *var-counter* nil)
 (defvar *ir-type-def-hash* (make-hash-table :test #'eq))
-(defvar *max-PVS-array-size* (expt 2 28)) ;;32768;;Chosen arbitrarily to be 2^15, but tunable by the user
+(defvar *max-PVS-array-size* (expt 2 32)) 
 (defvar *mpvar-parameters* nil)
 (defvar *c-type-info-table* nil) ;;a list of c-type-info
 (defvar *ir-type-info-table* nil) ;;a list of ir-typenames/doesn't seem to be used
@@ -928,7 +928,7 @@
 					     (cons (cons (car formals)
 							 (if (ir-const-formal? (car ir-actuals))
 							     (car ir-actuals)
-							   (ir-actual-type (car ir-actuals))))
+							   *type-actual-ir-name*))
 						   bindings))))))
 	(t nil)))
 
@@ -1757,7 +1757,7 @@
 			(loop for fml in ir-formals
 			   as formal in formals
 			   collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal)))
-			(loop for fml in ir-formals collect (get-assoc fml bindings))))
+			(loop for fml in formals collect (get-assoc fml bindings))))
 		   (actual-types
 		    (loop for actual in actuals
 		       as formal in formals
@@ -3205,6 +3205,9 @@
 			  (if (ir-reference-type? ir2c-rhs-type)
 			      (append c-assignments (list (release-last-var ir-var)))
 			    c-assignments)))))))))
+
+(defmethod ir2c* ((ir-expr ir-formal-typename) return-var return-type)
+  (list (mk-c-assignment return-var return-type (ir-type-id ir-expr) return-type)))
 
 (defmethod ir2c* ((ir-expr ir-variable) return-var return-type)
   (with-slots (ir-name ir-vtype) ir-expr
@@ -5722,7 +5725,13 @@
 
 (defmethod add-c-type-definition ((ir2c-type ir-type-actual) &optional tname) 
   (with-slots (ir-actual-type) ir2c-type
-	      (add-c-type-definition ir-actual-type tname)))
+    (add-c-type-definition ir-actual-type tname)))
+
+(defmethod add-c-type-definition ((ir2c-type ir-typename) &optional tname) ;;tname is ignored
+  (with-slots (ir-type-id ir-type-defn) ir2c-type
+    (let* ((c-type-info (get-c-type-info ir2c-type))
+	   (c-type-name (when c-type-info (tname c-type-info))))
+      (or c-type-name ir-type-id))))
 
 (defmethod add-c-type-definition ((ir2c-type ir-formal-typename) &optional tname) ;;tname is ignored
   (declare (ignore tname))
@@ -6977,6 +6986,7 @@
 		    (loop for thy in preceding-theories
 			  do (format output " ~a_c.c" (id thy)))
 		    (format output " -lgmp ")
+		    (when (formals theory) (format t "~%typedef pointer_t"))
 		    (loop for formal in (formals theory)
 		      	  when (formal-type-decl? formal)
 		      	  do (format output "~%~%typedef pointer_t ~a_t;" (ir-type-id (ir-type-name (ir-type-value formal)))))
@@ -7023,12 +7033,12 @@
 	  (tdefn type-info)
 	  (op-header (new-info type-info))
 	  (op-header (release-info type-info))
-	  (op-header (release-ptr-info type-info))
+	  (if (release-ptr-info type-info)(op-header (release-ptr-info type-info)) (format nil " "))
 	  (op-header (copy-info type-info))
 	  (op-header (equal-info type-info))
-	  (op-header (equal-ptr-info type-info))
-	  (ir-actual-type-defn (act-defn type-info))
-	  (ir-actual-fun-header (act-defn type-info)))
+	  (if (equal-ptr-info type-info)(op-header (equal-ptr-info type-info)) (format nil " "))
+	  (if (act-defn type-info)(ir-actual-type-defn (act-defn type-info))(format nil " ")) 
+	  (if (act-defn type-info)(ir-actual-fun-header (act-defn type-info)))(format nil " ")) 
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-header t-info))))
 
@@ -7067,11 +7077,11 @@
   (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
 	  (op-defn (new-info type-info))
 	  (op-defn (release-info type-info))
-	  (op-defn (release-ptr-info type-info))
+	  (if (release-ptr-info type-info)(op-defn (release-ptr-info type-info))(format nil " "))
 	  (op-defn (copy-info type-info))
 	  (op-defn (equal-info type-info))
-	  (op-defn (equal-ptr-info type-info))
-	  (ir-actual-fun-defn (act-defn type-info)))
+	  (if (equal-ptr-info type-info)(op-defn (equal-ptr-info type-info))(format nil " "))
+	  (if (equal-ptr-info type-info)(ir-actual-fun-defn (act-defn type-info))(format nil " ")))
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-defn t-info))))
 
@@ -7125,7 +7135,7 @@ successful."
 
 (defparameter *primitive-prelude-theories*
   '(defined_types relations orders if_def naturalnumbers reals
- rationals integers equalities floor_ceil strings character character_adt
+ rationals integers equalities floor_ceil strings character character_adt list list_adt list_props
  notequal numbers booleans number_fields ieee754_defs ieee754_double))
 
 

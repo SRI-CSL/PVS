@@ -231,23 +231,23 @@ extern mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y);
 #define HTBL_DEFAULT_SIZE 32
 #define HTBL_MAX_SIZE (UINT32_MAX/8)
 
-struct funtable_s {
-  void * (* copyptr)(void *);
-  void (* relptr)(void *);
-  bool_t (* eqptr)(void *, void *);
-};
-typedef struct funtable_s * funtable_t;
+/* struct funtable_s { */
+/*   void * (* copyptr)(void *); */
+/*   void (* relptr)(void *); */
+/*   bool_t (* eqptr)(void *, void *); */
+/* }; */
+/* typedef struct funtable_s * funtable_t; */
 
 typedef void * any_t;
 
-struct string_s {
+struct bytestring_s {
   uint32_t count;
-  uint32_t size;
-  char strval[];
-} string_s;
-typedef struct string_s * string_t;
+  uint32_t length;
+  uint8_t strval[];
+} bytestring_s;
+typedef struct bytestring_s * bytestring_t;
 
-extern string_t mk_string(char * instring);
+extern bytestring_t mk_bytestring(char * instring);
 
 enum mode_t {r, w, a};
 

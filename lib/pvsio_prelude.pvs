@@ -656,7 +656,7 @@ BEGIN
 
   %% Formatting functions
 
-  center(col:nat,s:string):string = format("~"+col+":@<~a~>",s)
+  center(col:nat,s:string):string = format("~" + col+":@<~a~>",s)
 
   flushleft(col:nat,s:string) :string = format("~"+col+"a",s)
 
@@ -1041,8 +1041,8 @@ BEGIN
     endif
 
   tostr(t:Time): string =
-    days_of_week(dow(t))+" "+months(month(t))+
-    format(" ~2,'0d ",day(t))+year(t)+
+    days_of_week(dow(t))+" "+months(month(t)) +
+    format(" ~2,'0d ",day(t))+year(t) +
     format(", ~2,'0d:~2,'0d:~2,'0d ",{|(hour(t),minute(t),second(t))|})+
     format("(GMT~@d)",-tz(t))
 
