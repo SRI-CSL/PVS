@@ -482,7 +482,7 @@
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain *the-pvs-type*))))))
+   (let ((the-type (pc-typecheck (cadr (types (domain (pc-parse *the-pvs-type* 'type)))))))
      (apply #'format (cons nil (cons s (formatargs e the-type))))))
 )))
 

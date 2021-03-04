@@ -875,7 +875,11 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	(multiple-value-bind (rtheory tbindings)
 	    (subst-mod-params-decls theory modinst abindings)
 	  (let ((nth (copy th
-		       :id (makesym "~a.~a" (id (current-theory)) (id *subst-mod-params-declaration*))
+		       :id (if *subst-mod-params-declaration*
+			       (makesym "~a.~a"
+					(id (current-theory))
+					(id *subst-mod-params-declaration*))
+			       (id th))
 		       :formals nil ;; modinst should be fully-instantiated
 		       :formals-sans-usings nil
 		       :assuming nass
