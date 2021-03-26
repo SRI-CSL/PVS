@@ -2280,9 +2280,12 @@ if called."
   (when (and (subtype? type)
 	     (tc-eq (type (predicate type))
 		    (type (predicate (below-subtype)))))
-    (let* ((bindings (make-empty-bindings (free-params (below-subtype))))
-	   (subst (tc-match type (below-subtype) bindings)))
-      (cdr (assoc '|m| subst :test #'same-id)))))
+    (let ((pred (predicate type)))      
+      (if (and (lambda-expr? pred)(tc-eq (expression pred) *false*))
+	  (make-number-expr 0)
+	(let* ((bindings (make-empty-bindings (free-params (below-subtype))))
+	       (subst (tc-match type (below-subtype) bindings)))
+	  (cdr (assoc '|m| subst :test #'same-id)))))))
 
 ;;; Here we want to treat below and upto as special cases of subranges
 ;;; Note that from and to are not necessarily number-exprs.

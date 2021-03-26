@@ -459,14 +459,13 @@ mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y){
 
 
 
-string_t mk_string(char * instring){
-  uint32_t length = strlen(instring);
-  string_t result = (string_t) safe_malloc((length + 1) * sizeof(char));
-  result->count = 1;
-  result->size = length + 1;
-  memcpy(result->strval, (char *) instring, length);
-  return result;
-};
+ stringliteral_t mk_string(char * instring){ 
+   uint32_t length = strlen(instring); 
+   stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length + 1) * sizeof(char)); 
+   result->count = 1; 
+   memcpy(result->strval, (char *) instring, length); 
+   return result; 
+ };
 
 bool_t equal_uint64(pointer_t x, pointer_t y, ...){
   uint64_t ux = (uint64_t)x;

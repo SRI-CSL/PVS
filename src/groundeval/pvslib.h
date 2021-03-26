@@ -26,6 +26,7 @@
 
 
 typedef bool bool_t;
+typedef char char_t;
 typedef __int128_t int128_t;
 typedef  __uint128_t uint128_t;
 typedef mpz_ptr mpz_ptr_t;
@@ -240,14 +241,22 @@ extern mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y);
 
 typedef void * any_t;
 
-struct bytestring_s {
+struct stringliteral_s {
   uint32_t count;
-  uint32_t length;
-  uint8_t strval[];
-} bytestring_s;
-typedef struct bytestring_s * bytestring_t;
+  char strval[];
+} stringliteral_s;
+typedef struct stringliteral_s * stringliteral_t;
 
-extern bytestring_t mk_bytestring(char * instring);
+extern stringliteral_t mk_string(char * instring);
+
+/* struct bytestring_s { */
+/*   uint32_t count; */
+/*   uint32_t length; */
+/*   uint8_t strval[]; */
+/* } bytestring_s; */
+/* typedef struct bytestring_s * bytestring_t; */
+
+/* extern bytestring_t mk_bytestring(char * instring); */
 
 enum mode_t {r, w, a};
 
