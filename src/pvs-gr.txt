@@ -445,7 +445,7 @@ dep-type-expr ::= type-expr
 expr ::= string <string-expr(string)>
        | name-expr
        | bracket-expr
-       | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
+       | {'(#' {assignment ** ','} '#)'} <rec-expr(assignments(assignment*))>
        | {'`' {id | number} [actuals]} <{fieldex(id,[noactuals()|actuals])
                                         |projex(number,[noactuals()|actuals])}>
        | {expr '`' {id | number}} <{fieldappl(expr,id)|projappl(expr,number)}>

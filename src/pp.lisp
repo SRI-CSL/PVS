@@ -1815,11 +1815,12 @@ then uses unpindent* to add the indent to each line"
   (with-slots (assignments) ex
     (pprint-logical-block (nil assignments :prefix "(# " :suffix " #)")
       (pprint-indent :current 0)
-      (loop (pp* (pprint-pop))
-	    (pprint-exit-if-list-exhausted)
-	    (write-char #\,)
-	    (write-char #\space)
-	    (pprint-newline :linear)))))
+      (when assignments
+	(loop (pp* (pprint-pop))
+	 (pprint-exit-if-list-exhausted)
+	 (write-char #\,)
+	 (write-char #\space)
+	 (pprint-newline :linear))))))
 
 (defmethod pp* ((ex tuple-expr))
   (with-slots (exprs) ex
