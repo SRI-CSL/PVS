@@ -2734,12 +2734,23 @@ type of the lhs."
 	   (if (typep ex 'implicit-conversion)
 	       (change-class ex 'bitvector-conversion)
 	       (change-class ex 'bitvector)))
-          ((ground-arith-simplifiable? operator argument)
+          ((and *use-rationals*
+		(ground-arith-simplifiable? operator argument))
            (let ((num (apply (id operator)
                         (if (tuple-expr? argument)
                             (mapcar #'number (exprs argument))
                             (list (number argument))))))
              (change-expr-number-class ex num)))
+	  ((and (name-expr? operator)
+		(eq (id (module-instance operator)) '|number_fields|)
+		(memq (id operator) '(+ -))
+		(number-expr? argument))
+	   (let ((num (if (eq (id operator) '-)
+			  (- (number argument))
+			  (number argument))))
+	     (change-class ex 'int-expr
+	       :number num
+	       :type (get-expr-number-type num))))
           ((typep operator 'injection-expr)
            (change-class ex 'injection-application
                          :index (index operator)
@@ -2754,14 +2765,31 @@ type of the lhs."
     (assert class)
     (change-class ex class)
     (setf (number ex) num
-          (type ex) (or *real* *number_field*))))
+          (type ex) (get-expr-number-type num))))
+
+(defun get-expr-number-type (num)
+  (if (integerp num)
+      (if (null *int64*) ;; Must be loading the prelude
+	  (or *integer* *rational* *real* *number_field*)
+	  (if (minusp num)
+	      (cond ((>= num -128) *int8*)
+		    ((>= num -32768) *int16*)
+		    ((>= num -2147483648) *int32*)
+		    ((>= num -9223372036854775808) *int64*)
+		    (t *integer*))
+	      (cond ((< num 128) *uint8*)
+		    ((< num 32768) *uint16*)
+		    ((< num 2147483648) *uint32*)
+		    ((< num 9223372036854775808) *uint64*)
+		    (t *integer*))))
+      (or *rational* *real* *number_field*)))
 
 (defun get-expr-number-class (ex num)
   (if (integerp num)
       (if (decimal-integer? ex)
           'floatp
           (if (minusp num)
-              'rational-expr
+              'int-expr
               'number-expr))
       (if (decimal? ex)
           'floatp-expr
@@ -4073,7 +4101,7 @@ type of the lhs."
                                 (nconc (mapcar #'type (bindings ex))
                                        (if (lambda-expr-with-type? ex)
                                            (list (return-type ex) erange)
-                                           (list erange))))
+					   (list erange))))
         (let* ((*bound-variables* (append (bindings ex) *bound-variables*))
 	       (atype (make-formals-funtype (list (bindings ex))
                                            (if (lambda-expr-with-type? ex)

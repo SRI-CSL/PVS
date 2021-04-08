@@ -191,7 +191,11 @@
 ;; Read in and prints as a float
 (defcl floatp-expr (rational-expr)
   )
-  
+
+(defcl int-expr (rational-expr)
+  )
+
+;; This would be better called nat-expr
 (defcl number-expr (rational-expr)
   (number :type integer :parse t :restore-as nil))
 
