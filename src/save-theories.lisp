@@ -63,7 +63,8 @@ in the remaining slots, in particular, those that may reference other
 instances, e.g., other declarations within the theory, or self-references."
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
-	(*bin-theories-set* nil))
+	(*bin-theories-set* nil)
+	)
     (multiple-value-bind (vtheory fetch-error)
 	(if *ignore-binfile-errors*
 	    (ignore-lisp-errors (fetch-object-from-file file))

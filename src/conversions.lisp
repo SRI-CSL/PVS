@@ -1221,6 +1221,7 @@ that are not the K_covnersion."
 		   (*checking-conversions* t)
 		   (*generate-tccs* 'none)
 		   (*smp-include-actuals* t))
+	      (setf (resolutions nmi) (list (mk-resolution theory nmi nil)))
 	      (and (with-no-type-errors
 		    (let ((*current-context*
 			   (if (free-params type)

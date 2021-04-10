@@ -1239,6 +1239,7 @@
 			  bindings)
 			lib-id)))
 	;;(assert (fully-instantiated? jthinst))
+	(setf (resolutions jthinst) (list (mk-resolution th jthinst nil)))
 	(subst-mod-params (judgement-type judgement) jthinst th)))))
 
 (defmethod no-dep-bindings ((te funtype))
@@ -1352,8 +1353,10 @@
 	     rdecls))))))
 
 (defun compute-appl-judgement-types* (arguments argtypes rdomains thinst theory jdecl)
-  (let* ((jtype (subst-mod-params (judgement-type jdecl)
-		    thinst theory jdecl))
+  (let* ((jtype (if (and (fully-instantiated? (judgement-type jdecl))
+			 (null (mappings thinst)))
+		    (judgement-type jdecl)
+		    (subst-mod-params (judgement-type jdecl) thinst theory jdecl)))
 	 (domains (operator-domain* jtype arguments nil))
 	 (range (operator-range* jtype arguments)))
     (when (length= argtypes (formals jdecl))
@@ -2019,8 +2022,9 @@
       j))
 
 (defmethod subst-params-decl ((j name-judgement) thname theory)
-  (if (or (mappings thname)
-	  (memq theory (free-params-theories j)))
+  (if (or (memq theory (free-params-theories j))
+	  (and (mappings thname)
+	       (memq (declaration (name j)) (all-decls theory))))
       (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
 	     (hj (gethash j smphash)))
 	(if (and hj
@@ -3337,7 +3341,13 @@
 	(let ((th-subtype-elt
 	       (if (or (and (memq elt (dependent-known-subtypes theory))
 			    (actuals theoryname))
-		       (mappings theoryname))
+		       (and (mappings theoryname)
+			    (every #'(lambda (fp)
+				       (or (memq (declaration fp)
+						 (formals-sans-usings theory))
+					   (memq (declaration fp)
+						 (formals-sans-usings (current-theory)))))
+				   (free-params elt))))
 		   (subst-mod-params elt theoryname theory)
 		   elt)))
 	  (unless (member th-subtype-elt (current-known-subtypes)
@@ -3432,6 +3442,8 @@
 	   (thinst (subst-theory-inst-from-free-params theory bindings))
 	   (kt (if frees
 		   (when thinst
+		     (setf (resolutions thinst)
+			   (list (mk-resolution theory thinst nil)))
 		     (subst-mod-params (car ksubtypes) thinst theory))
 		   (car ksubtypes))))
       (when kt

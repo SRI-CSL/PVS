@@ -2691,21 +2691,7 @@ prove itself from the mapped axioms."
   nil)
 
 (defmethod full-name? ((x name))
-  (and (resolution x)
-       (not (variable? x))
-       (not (skolem-constant? x))
-       (module-instance (resolution x))
-       (or (not (current-theory))
-	   (not (eq (module (declaration (resolution x)))
-		    (current-theory)))
-	   (not (eq (id x) (id (resolution x))))
-	   (actuals (module-instance (resolution x)))
-	   (integerp (id x))
-	   (mappings (module-instance (resolution x))))
-       (or (not *exclude-prelude-names*)
-	   (not (from-prelude? (declaration x)))
-	   (integerp (id x))
-	   (mappings (module-instance (resolution x))))))
+  t)
 
 (defmethod full-name? ((x adt-name-expr))
   (and (adt x)
@@ -2739,27 +2725,43 @@ prove itself from the mapped axioms."
 	     (actuals (module-instance (resolution x)))))))
 
 (defmethod full-name! ((x name))
-  (let* ((mi (module-instance (resolution x)))
-	 (modid (id mi)))
-    (copy x
-      'id (id (resolution x))
-      'mod-id (when (or (not (current-theory))
-			(integerp (id x))
-			(not (eq (id mi) (id (current-theory)))))
-		modid)
-      'library (or (library x)
-		   (library mi)
-		   (when (and (declaration x)
-			      (lib-datatype-or-theory?
-			       (module (declaration x))))
-		     (get-library-id (context-path (module (declaration x))))))
-      'actuals (full-name (actuals mi)
-			  (when *full-name-depth*
-			    (1- *full-name-depth*)))
-      'dactuals (full-name (dactuals mi)
-			   (when *full-name-depth*
-			     (1- *full-name-depth*)))
-      'mappings (mappings mi))))
+  (if (and (resolution x)
+	   (not (variable? x))
+	   (not (skolem-constant? x))
+	   (module-instance (resolution x))
+	   (or (not (current-theory))
+	       (not (eq (module (declaration (resolution x)))
+			(current-theory)))
+	       (not (eq (id x) (id (resolution x))))
+	       (actuals (module-instance (resolution x)))
+	       (integerp (id x))
+	       (mappings (module-instance (resolution x))))
+	   (or (not *exclude-prelude-names*)
+	       (not (from-prelude? (declaration x)))
+	       (integerp (id x))
+	       (mappings (module-instance (resolution x)))))
+      (let* ((mi (module-instance (resolution x)))
+	     (modid (id mi)))
+	(copy x
+	  'id (id (resolution x))
+	  'mod-id (when (or (not (current-theory))
+			    (integerp (id x))
+			    (not (eq (id mi) (id (current-theory)))))
+		    modid)
+	  'library (or (library x)
+		       (library mi)
+		       (when (and (declaration x)
+				  (lib-datatype-or-theory?
+				   (module (declaration x))))
+			 (get-library-id (context-path (module (declaration x))))))
+	  'actuals (full-name (actuals mi)
+			      (when *full-name-depth*
+				(1- *full-name-depth*)))
+	  'dactuals (full-name (dactuals mi)
+			       (when *full-name-depth*
+				 (1- *full-name-depth*)))
+	  'mappings (mappings mi)))
+      x))
 
 (defmethod full-name! ((x adt-name-expr))
   (let* ((mi (module-instance (resolution (adt x))))
@@ -2811,6 +2813,13 @@ prove itself from the mapped axioms."
 			   (when *full-name-depth*
 			     (1- *full-name-depth*)))
       'mappings (mappings mi))))
+
+(defmethod full-name! ((te print-type-name))
+  (assert (resolution te))
+  (let ((mi (module-instance te)))
+    (lcopy te
+      :actuals (actuals mi)
+      :dactuals (dactuals mi))))
 
 (defmethod module ((map mapping))
   (module (declaration (lhs map))))
@@ -2904,10 +2913,8 @@ prove itself from the mapped axioms."
 
 (defmethod raise-actuals! ((x type-expr))
   (let* ((pt (raise-actuals (print-type x)))
-	 (ppt (if (typep pt '(or null type-name
-			      expr-as-type type-application))
-		  pt (print-type pt))))
-    (lcopy (call-next-method) 'print-type ppt)))
+	 (te (call-next-method)))
+    (lcopy te :print-type pt)))
 
 (defmethod raise-actuals! (x) x)
 
@@ -2926,6 +2933,16 @@ prove itself from the mapped axioms."
     'mod-id (or (mod-id x)
 		(and *raise-actuals-theory-ids*
 		     (id (module-instance (resolution x)))))))
+
+(defmethod raise-actuals! ((x print-type-name))
+  (let ((mi (raise-actuals (module-instance x))))
+    (if (and (eq (actuals mi) (actuals x))
+	     (eq (dactuals mi) (dactuals x)))
+	x
+	(copy x
+	  :actuals (actuals mi)
+	  :dactuals (dactuals mi)
+	  :resolutions (list (mk-resolution (declaration x) mi nil))))))
 
 #+(or lucid allegro)
 (defmethod ppr (obj)
@@ -3471,9 +3488,18 @@ prove itself from the mapped axioms."
   nil)
 
 (defmethod copy-all! ((ex name))
-  (copy ex 'actuals
-	(mapcar #'(lambda (act) (copy-all act *parsing-or-unparsing*))
-	  (actuals ex))))
+  (copy ex
+    :actuals (mapcar #'(lambda (act) (copy-all act *parsing-or-unparsing*))
+	       (actuals ex))
+    :dactuals (mapcar #'(lambda (dact) (copy-all dact *parsing-or-unparsing*))
+		(dactuals ex))))
+
+(defmethod copy-all! ((te print-type-name))
+  (let ((mi (copy-all (module-instance te))))
+    (copy te
+      :actuals (when (actuals te) (actuals mi))
+      :dactuals (when (dactuals te) (dactuals mi))
+      :resolutions (list (mk-resolution (declaration te) mi nil)))))
 
 (defmethod copy-all! ((ex bind-decl))
   (let ((nex (copy ex)))

@@ -745,6 +745,35 @@ restored, the TCCs are checked")
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
   (nonempty? :restore-as nil))
 
+(defcl print-type-expr (type-expr))
+
+(defcl print-type-name (print-type-expr type-name))
+
+(defcl print-type-application (print-type-expr type-application))
+
+(defcl print-expr-as-type (print-type-expr expr-as-type))
+
+#+pvsdebug
+(defmethod initialize-instance :around ((te type-expr) &rest ia)
+  (call-next-method)
+  (unless (or (null (print-type te))
+	      (print-type-expr? (print-type te)))
+    (break "init print-type to non-print-type")))
+
+#+pvsdebug
+(defmethod initialize-instance :around ((te print-type-name) &rest ia)
+  (call-next-method)
+  (unless (and (resolution te)
+	       (or (null (actuals te))
+		   (eq (actuals te) (actuals (module-instance te)))))
+    (break "Bad print-type-name")))
+
+#+pvsdebug
+(defmethod initialize-instance :around ((te print-expr-as-type) &rest ia)
+  (call-next-method) (when (and (name-expr? (expr te))
+				(null (resolutions (expr te))))
+		       (break "Bad print-expr-as-type instance?")))
+
 ;;(defcl type-variable (type-expr))
 
 (defcl enumtype (inline-datatype))

@@ -2695,10 +2695,11 @@ with dependencies lifted up to the update expr depth."
       (let* ((*generate-tccs* 'none)
 	     (type (typecheck* (declared-type decl) nil nil nil)))
 	#+pvsdebug (assert (fully-instantiated? type))
+	;;(assert (print-type-expr? (declared-type decl)))
 	(unless (fully-instantiated? type)
 	  (type-error (declared-type decl)
 	    "Could not determine the full theory instance"))
-	(set-type (declared-type decl) nil)
+	(set-type type nil)
 	#+pvsdebug (assert (fully-instantiated? (declared-type decl)))
 	(setf (type decl) type))
       (let ((vdecls (remove-if-not #'(lambda (d)
@@ -2711,6 +2712,10 @@ with dependencies lifted up to the update expr depth."
 	      ((singleton? vdecls)
 	       (let ((te (copy (type (car vdecls)))))
 		 (assert (place decl))
+		 #+pvsdebug
+		 (assert (fully-instantiated? te))
+		 #+pvsdebug
+		 (assert (fully-typed? te))
 		 (set-extended-place te decl
 				     "making type from var-decl ~a" (id (car vdecls)))
 		 ;; don't set declared-type

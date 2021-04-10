@@ -433,6 +433,11 @@
 	     :adt adt
 	     :single-constructor? (singleton? (constructors adt))))))
 
+(defun mk-print-type-name (id)
+  (make-instance 'print-type-name
+    :id id
+    :resolutions (list (mk-resolution (current-declaration) (current-theory-name) nil))))
+
 (defun mk-dep-binding (id &optional type dtype)
   (assert (or dtype type))
   (make-instance 'dep-binding

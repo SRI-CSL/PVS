@@ -93,6 +93,8 @@
 
 (defvar *subst-mod-params-map-bindings*)
 
+;;(defvar *smp-needs-pseudonormalizing*)
+
 ;;; This resets the (all-subst-mod-params-caches *workspace-session*) hash
 ;;; table.  It is called from the parser whenever a newly parsed theory
 ;;; replaces the old theory, to ensure that the garbage collector can remove
@@ -175,6 +177,9 @@
 							 nil lib-id))
 					       (tres (mk-resolution th thname nil))
 					       (res (make-resolution fp thname)))
+					  #+pvsdebug
+					  (assert (or (not (fully-instantiated? thname))
+						      (fully-instantiated? tres)))
 					  (setf (resolutions thname) (list tres))
 					  (mk-res-actual
 					   (if (type-decl? fp)
@@ -190,8 +195,12 @@
 	     (thname
 	      (mk-modname (id th) actuals lib-id nil dactuals fdecl))
 	     (tres (mk-resolution th thname nil)))
+	#+pvsdebug
+	(assert (or (not (fully-instantiated? thname))
+		    (fully-instantiated? tres)))
 	(setf (resolutions thname) (list tres))
-	(setf sterm (subst-mod-params sterm thname th fdecl))))
+	(unless (fully-instantiated? sterm)
+	  (setf sterm (subst-mod-params sterm thname th fdecl)))))
     sterm))
 
 (defmethod subst-theory-params (term (modinst modname))
@@ -226,7 +235,9 @@
 			      (eq (current-theory) *subst-mod-params-theory*))
 		    (formals-sans-usings *subst-mod-params-theory*)))
 	 (dformals (when decl (all-decl-formals decl)))
-	 (*subst-mod-free-params* nil))
+	 (*subst-mod-free-params* nil)
+	 ;;(*smp-needs-pseudonormalizing* nil)
+	 )
     (unless (resolution modinst)
       (setf (resolutions modinst)
 	    (list (mk-resolution *subst-mod-params-theory* modinst nil))))
@@ -253,6 +264,12 @@
 				  ;; if decl is a mapping-lhs, include its dactuals
 				  (all-dactuals decl modinst))
 			  (mappings modinst) nil)))
+	  #+pvsdebug
+	  (assert (every #'(lambda (fp)
+			     (or (memq fp (formals-sans-usings *subst-mod-params-theory*))
+				 (memq fp (formals-sans-usings (current-theory)))
+				 (assq fp bindings)))
+			 (free-params obj)))
 	  (unless (subsetp *subst-mod-params-map-bindings* bindings :test #'equal)
 	    (break "subst-mod-params: check bindings"))
 	  (multiple-value-bind (nobj nbindings)
@@ -265,6 +282,14 @@
 	    ;; True even for strong-tc-eq.
 	    ;; (assert (or (mappings modinst)
 	    ;; 	       (subsetp (free-params nobj) (free-params modinst))))
+	    #+pvsdebug
+	    (assert (or (not (fully-typed? obj))
+			(fully-typed? nobj)))
+	    ;; (dolist (term *smp-needs-pseudonormalizing*)
+	    ;;   (typecase term
+	    ;; 	(actual (setf (expr term) (pseudo-normalize (expr term))))
+	    ;; 	(subtype (setf (predicate term) (pseudo-normalize (predicate term))))
+	    ;; 	(t (error "Strange object in *smp-needs-pseudonormalizing*"))))
 	    (values nobj nbindings)))
 	obj)))
 
@@ -335,6 +360,8 @@
 				modinst (car formals) (car actuals) bindings))
 		 (nbindings (make-subst-mod-params-binding
 			     (car formals) (car actuals) bindings)))
+	     #+pvsdebug
+	     (assert (assq (car formals) nbindings))
 	     #+pvsdebug
 	     (assert (check-smp-bindings nbindings))
 	     (push (caar nbindings) *subst-mod-free-params*)
@@ -745,97 +772,165 @@
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
   (declare (type hash-table *subst-mod-params-cache* *subst-mod-params-eq-cache*))
+  #+pvsdebug
+  (assert (every #'(lambda (fp) (or (memq fp (formals-sans-usings (current-theory)))
+				    (assq fp bindings)))
+		 (free-params obj)))
   (let ((fixed-type (car (member obj (list *boolean* *number* *number_field*
 					   *real* *rational* *integer* *naturalnumber*)
 				 :test #'tc-eq))))
-    (cond (fixed-type
-	   (if (or (null (print-type obj))
-		   (null (free-params (print-type obj))))
-	       obj
-	       (let ((pt (subst-mod-params* (print-type obj) modinst bindings)))
-		 (lcopy obj :print-type pt))))
-	  (t
-	   (or (gethash obj *subst-mod-params-eq-cache*)
-	       (gethash obj *subst-mod-params-cache*)
-	       (let ((nobj
-		      (if (and (null (mappings modinst))
-			       (not (typep obj '(or module declaration
-						 inline-recursive-type list)))
-			       (not (some #'(lambda (b)
-					      (typep (car b)
-						     '(or formal-theory-decl
-						       decl-formal)))
-					  bindings))
-			       (no-matching-free-params
-				obj *subst-mod-free-params*))
-			  obj
-			  (call-next-method))))
-		 (when (and (typep obj 'type-expr)
-			    (typep nobj 'type-expr))
-		   (setq nobj (subst-mod-params-print-type obj nobj modinst bindings))
-		   (when (from-conversion obj)
-		     (let ((fconv (subst-mod-params* (from-conversion obj)
-						     modinst bindings)))
-		       (setq nobj (lcopy nobj :from-conversion fconv)))))
-		 (unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
-						      :test #'same-declaration))
-			       (freevars nobj))
-		   (if (and (not (some #'decl-formal? (free-params nobj)))
-			    (relatively-fully-instantiated? nobj))
-		       (setf (gethash obj *subst-mod-params-cache*) nobj)
-		       (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
-		 #+pvsdebug
-		 (assert (every #'(lambda (fv)
-				    (or (binding? fv)
-					(member fv (freevars obj)
-						:test #'same-declaration)
-					(member fv (freevars modinst)
-						:test #'same-declaration)))
-				(freevars nobj)))
-		 #+pvsdebug
-		 (when (actual? obj)
-		   (assert (actual? nobj)))
-		 nobj))))))
+    (if fixed-type
+	(if (or (null (print-type obj))
+		(null (free-params (print-type obj))))
+	    obj
+	    (let ((pt (subst-mod-params-print-type (print-type obj) obj modinst bindings)))
+	      (lcopy obj :print-type pt)))
+	(let ((hobj (or (gethash obj *subst-mod-params-eq-cache*)
+			(gethash obj *subst-mod-params-cache*))))
+	  #+pvsdebug
+	  (assert (or (null hobj) (fully-typed? hobj)))
+	  #+pvsdebug
+	  (assert (or (null hobj) (fully-instantiated? hobj)))
+	  (or hobj
+	      (let ((nobj
+		     (if (and (null (mappings modinst))
+			      (fully-instantiated? obj)
+			      (not (typep obj '(or module declaration
+						inline-recursive-type list)))
+			      (not (some #'(lambda (b)
+					     (typep (car b)
+						    '(or formal-theory-decl
+						      decl-formal)))
+					 bindings))
+			      (no-matching-free-params
+			       obj *subst-mod-free-params*))
+			 obj
+			 (call-next-method))))
+		#+pvsdebug
+		(assert (or (not (fully-typed? obj))
+			    (fully-typed? nobj))
+			() "around 1")
+		(when (and (typep obj 'type-expr)
+			   (print-type obj)
+			   (typep nobj 'type-expr))
+		  (let ((pt (subst-mod-params-print-type (or (print-type nobj) (print-type obj))
+							 nobj modinst bindings)))
+		    (if (eq nobj obj)
+			(setq nobj (copy obj :print-type pt))
+			(setf (free-parameters nobj) 'unbound
+			      (print-type nobj) pt)))
+		  #+pvsdebug
+		  (assert (or (not (fully-instantiated? modinst)) (fully-instantiated? nobj)) ()
+			  "bad nobj 1")
+		  (when (from-conversion obj)
+		    (let ((fconv (subst-mod-params* (from-conversion obj)
+						    modinst bindings)))
+		      (setq nobj (lcopy nobj :from-conversion fconv)))))
+		#+pvsdebug
+		(assert (or (theory-element? nobj)
+			    (not (fully-instantiated? modinst)) (fully-instantiated? nobj))
+			() "bad nobj 1.5")
+		(unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
+						     :test #'same-declaration))
+			      (freevars nobj))
+		  #+pvsdebug
+		  (assert (fully-typed? nobj))
+		  #+pvsdebug
+		  (assert (or (theory-element? nobj)
+			      (not (fully-instantiated? modinst)) (fully-instantiated? nobj))
+			  () "bad nobj 2")
+		  (if (and (not (some #'decl-formal? (free-params nobj)))
+			   (relatively-fully-instantiated? nobj))
+		      (setf (gethash obj *subst-mod-params-cache*) nobj)
+		      (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
+		#+pvsdebug
+		(assert (every #'(lambda (fv)
+				   (or (binding? fv)
+				       (member fv (freevars obj)
+					       :test #'same-declaration)
+				       (member fv (freevars modinst)
+					       :test #'same-declaration)))
+			       (freevars nobj)))
+		#+pvsdebug
+		(when (actual? obj)
+		  (assert (actual? nobj)))
+		#+pvsdebug
+		(assert (or (not (fully-typed? obj))
+			    (fully-typed? nobj))
+			() "around 2")
+		#+pvsdebug
+		(assert (or (theory-element? nobj)
+			    (not (fully-instantiated? modinst))
+			    (fully-instantiated? nobj)))
+		nobj))))))
 
-(defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
-  "subst-mod-params-print-type is called with the original obj, and nobj:
-the result of subst-mod-params* on obj.  It basically decides what to set
-the print-type of nobj to.
-type-name, datatype-subtype, type-application, expr-as-type"
-  (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
-  (cond ((and (print-type nobj)
-	      ;; May be here by lcopy, in which case we still need to process it.
-	      (not (eq (print-type obj) (print-type nobj))))
-	 nobj)
-	((and (print-type obj)
-	      (or (null (print-type nobj))
-		  (mappings modinst)
-		  (free-params (print-type nobj))))
-	 (if (or (mappings modinst)
-		 (free-params (print-type obj)))
-      	     (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
-      		    (pte (or (print-type stype) stype)))
-      	       (if (or (occurs-in nobj pte)
-		       (and (mappings modinst)
-			    (not (compatible? obj nobj))))
-      		   (lcopy nobj :print-type nil)
-      		   (if (eq obj nobj)
-      		       (lcopy nobj :print-type pte)
-      		       (progn (setf (print-type nobj) pte)
-			      (setf (free-parameters nobj) 'unbound)
-      			      nobj))))
-      	     (if (eq obj nobj)
-      		 nobj
-      		 (lcopy nobj :print-type nil))))
-	(t nobj)))
+(defmethod subst-mod-params-print-type ((ptype print-type-name) (nobj type-expr) modinst bindings)
+  "subst-mod-params-print-type is called with the print-type, and nobj is
+the new object whose print-type needs updating."
+  (assert (resolution ptype))
+  (assert (null (type (resolution ptype))))
+  (let* ((decl (declaration ptype))
+	 (atype (cdr (assq decl bindings))))
+    (unless (or atype
+		(and (eq ptype (print-type nobj))
+		     (fully-instantiated? ptype)
+		     (or (not *smp-include-actuals*)
+			 (and (tc-eq (actuals ptype) (actuals modinst))
+			      (tc-eq (dactuals ptype) (dactuals modinst))))))
+      (if (eq (id modinst) (id (module-instance ptype)))
+	  (let ((nptype (lcopy ptype
+			  :actuals (when (or (actuals ptype)
+					     *smp-include-actuals*)
+				     (actuals modinst))
+			  :dactuals (when (or (dactuals ptype)
+					      *smp-include-actuals*)
+				     (dactuals modinst))
+			  :resolutions (list (copy (resolution ptype)
+					       :module-instance modinst)))))
+	    #+pvsdebug
+	    (assert (fully-instantiated? nptype))
+	    nptype)
+	  (let ((nmodinst (subst-mod-params* (module-instance ptype) modinst bindings)))
+	    #+pvsdebug
+	    (assert (fully-instantiated? nmodinst))
+	    (unless (eq nmodinst (module-instance ptype))
+	      (let ((nptype (lcopy ptype
+			      :actuals (when (or (actuals ptype)
+						 *smp-include-actuals*)
+					 (actuals nmodinst))
+			      :dactuals (when (or (dactuals ptype)
+						  *smp-include-actuals*)
+					  (dactuals nmodinst))
+			      :resolutions (list (copy (resolution ptype)
+						   :module-instance nmodinst)))))
+		#+pvsdebug
+		(assert (fully-instantiated? nptype))
+		nptype)))))))
 
-(defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-name) modinst bindings)
-  (declare (ignore bindings modinst))
-  nobj)
-  
-(defmethod subst-mod-params-print-type (obj nobj modinst bindings)
-  (declare (ignore obj modinst bindings))
-  nobj)
+(defmethod subst-mod-params-print-type ((pt print-type-application) (nobj type-expr) modinst bindings)
+  (assert (null (print-type pt)))
+  #+pvsdebug
+  (assert (every #'(lambda (p) (fully-typed? p)) (parameters pt)))
+  (let ((ptype (subst-mod-params* (type pt) modinst bindings))
+	(parms (subst-mod-params* (parameters pt) modinst bindings)))
+    (lcopy pt :type ptype :parameters parms)))
+
+(defmethod subst-mod-params-print-type ((pt print-expr-as-type) (nobj type-expr) modinst bindings)
+  (assert (null (supertype pt)))
+  (assert (null (predicate pt)))
+  (assert (null (print-type pt)))
+  (let* ((nex (subst-mod-params* (expr pt) modinst bindings))
+	 (npt (lcopy pt :expr nex)))
+    #+pvsdebug
+    (assert (fully-typed? nex))
+    #+pvsdebug
+    (assert (fully-instantiated? nex))
+    #+pvsdebug
+    (assert (fully-instantiated? npt))
+    npt))
+
+(defmethod subst-mod-params-print-type ((pt type-expr) (nobj type-expr) modinst bindings)
+  (break "print-type is a type-expr"))
 
 (defun no-matching-free-params (obj frees)
   (not (some #'(lambda (b) (memq b frees))
@@ -1096,8 +1191,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
       (unless (fully-instantiated? (print-type tv))
 	(if (eq tv type-value)
 	    (setq tv (copy tv :print-type nil :free-parameters 'unbound))
-	    (setf (print-type tv) nil
-		  (free-parameters tv) 'unbound)))
+	    (progn (break "setting print-type for type-def-decl")
+		   (setf (free-parameters tv) 'unbound
+			 (print-type tv) nil))))
       (assert (fully-instantiated? tv))
       (lcopy decl :type-value tv :type-expr te :contains co :generated-by decl))))
 
@@ -1154,12 +1250,15 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	      (ndef (substit (subst-mod-params* (definition decl) modinst dbindings) alist))
 	      ;; No need to substit here, as this is closed
 	      (ndefax (subst-mod-params* (def-axiom decl) modinst dbindings)))
+	  #+pvsdebug
 	  (assert (every #'(lambda (fv) (memq (declaration fv) (flatten-list dfmls)))
 			 (freevars ntype)))
+	  #+pvsdebug
 	  (assert (every #'(lambda (fv)
 			     (or (memq (declaration fv) (flatten-list dfmls))
 				 (rassoc (declaration fv) alist)))
 			 (freevars ndtype)))
+	  #+pvsdebug
 	  (assert (every #'(lambda (fv)
 			     (or (memq (declaration fv) (flatten-list dfmls))
 				 (rassoc (declaration fv) alist)))
@@ -1168,8 +1267,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	    (if (eq type ntype)
 		(setq ntype (copy type :print-type nil
 				  :free-parameters 'unbound))
-		(setf (print-type ntype) nil
-		      (free-parameters ntype) 'unbound)))
+		(progn (break "setting print-type const-decl")
+		       (setf (free-parameters ntype) 'unbound
+			     (print-type ntype) nil))))
 	  ;;(assert (fully-instantiated? ntype))
 	  ;; (assert (fully-instantiated? nfmls))
 	  ;; (assert (fully-instantiated? ndtype))
@@ -1249,8 +1349,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	  (unless (fully-instantiated? (print-type rtype))
 	    (if (eq type rtype)
 		(setq rtype (copy type :print-type nil :free-parameters 'unbound))
-		(setf (print-type rtype) nil
-		      (free-parameters rtype) 'unbound)))
+		(progn (break "setting print-type subst-mod-params-mapping-rename")
+		       (setf (free-parameters rtype) 'unbound
+			     (print-type rtype) nil))))
 	  (setf (type rdecl) rtype))
 	(setf (declared-type rdecl)
 	      (substit (subst-mod-params* declared-type modinst bindings) alist)))
@@ -1398,6 +1499,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		   (subst-mod-params-bindings list modinst bindings)
 		   (subst-mod-params-list list modinst bindings))))
     (if (equal list nlist)
+	;; Make sure result is eq in this case
 	list
 	nlist)))
 
@@ -1500,34 +1602,33 @@ type-name, datatype-subtype, type-application, expr-as-type"
 ;;; instance in the newly created resolution
 ;;; Note that the modinst here is not the same as the one provided to
 ;;; subst-mod-params
+
 (defun subst-mod-params-type-name (type tn-thinst bindings modinst)
+  "type is a type name, tn-thinst is its associated theory instance, often eq to modinst"
   (declare (ignore bindings modinst))
+  (assert (modname? tn-thinst))
   (assert (eq (id tn-thinst) (id (module-instance (resolution type)))))
   (let* ((res (car (resolutions type)))
+	 (nmi (subst-mod-params* (module-instance res) modinst bindings))
 	 (decl (declaration res))
 	 (thinst (if (or (decl-formals decl) (null (dactuals tn-thinst)))
 		     tn-thinst
-		     (copy tn-thinst :dactuals nil)))
-	 (nres (mk-resolution decl thinst nil))
-	 (ntype (copy type
-		  :resolutions (list nres)
-		  :actuals (actuals thinst)
-		  :dactuals (dactuals thinst)
-		  :print-type nil))
-	 (rtype (typecase decl
-		  (type-def-decl
-		   (subst-mod-params (copy (type-value decl) :print-type nil)
-		       thinst (module decl) decl))
-		  (type-decl ntype)
-		  (mapping
-		   (assert (type-value (rhs decl)))
-		   (type-value (rhs decl)))
-		  (t (error "bad type-decl")))))
-    (setf (type nres) rtype)
-    #+pvsdebug
-    (assert (subsetp (free-params ntype) (cons decl (free-params thinst))))
-    ;;(assert (or (not (fully-instantiated? thinst)) (fully-instantiated? ntype)))
-    (adt-expand-positive-subtypes ntype)))
+		     (copy tn-thinst :dactuals nil))))
+    (if (eq (type res) type)
+	(let* ((nres (mk-resolution (declaration res) nmi nil))
+	       (ntype (copy type
+			:resolutions (list nres)
+			:actuals (actuals nmi)
+			:dactuals (dactuals nmi)
+			:print-type nil)))
+	  (setf (type nres) ntype)
+	  ntype)
+	(let* ((ntype (subst-mod-params* (type res) modinst bindings))
+	       (nres (mk-resolution (declaration res) nmi ntype)))
+	  (lcopy type
+	    :actuals (when (or (actuals type) *smp-include-actuals*) (actuals nmi))
+	    :dactuals (when (or (dactuals type) *smp-include-actuals*) (dactuals nmi))
+	    :resolutions (list nres))))))
 
 ;;; Given a type such as list[int], this creates the datatype-subtype
 ;;;  {x: list[number] | every(...)(x)}
@@ -1570,31 +1671,44 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defmethod subst-mod-params* ((type type-application) modinst bindings)
   (let ((ntype (subst-mod-params* (type type) modinst bindings))
 	(nparms (subst-mod-params* (parameters type) modinst bindings)))
-      (assert (null (print-type type)))
-      (copy type :type ntype :parameters nparms)))
+    (assert (null (print-type type)))
+    (lcopy type :type ntype :parameters nparms)))
+
+(defmethod subst-mod-params* ((ptype print-type-name) modinst bindings)
+  (let* ((nmi (subst-mod-params* (module-instance ptype) modinst bindings))
+	 (nres (lcopy (resolution ptype) :module-instance nmi)))
+    (if (eq nres (resolution ptype))
+	ptype
+	(copy ptype
+	  :actuals (when (or (actuals ptype) *smp-include-actuals*) (actuals nmi))
+	  :dactuals (when (or (dactuals ptype) *smp-include-actuals*) (dactuals nmi))
+	  :resolutions (list nres)))))
 
 (defmethod subst-mod-params* ((dtype dep-binding) modinst bindings)
   (with-slots (type declared-type) dtype
-    (let* ((ntype (subst-mod-params* type modinst bindings))
-	   (ndeclared-type (if (eq declared-type type)
-			       ntype
-			       (subst-mod-params* declared-type modinst bindings))))
-    (if (and (eq type ntype)
-	     (eq declared-type ndeclared-type))
-	dtype
-	(let ((ndep (copy dtype
-		       :type ntype
-		       :declared-type ndeclared-type)))
- 	  (setf (resolutions ndep)
- 		(list (mk-resolution ndep (current-theory-name) ntype)))
-	  ndep)))))
+    (assert (or (null (print-type type))
+		(eq (print-type type) declared-type)))
+    (let ((ntype (subst-mod-params* type modinst bindings)))
+      (if (eq type ntype)
+	  dtype
+	  (let* ((ndeclared-type
+		  (cond ((eq declared-type type) ntype)
+			((eq (print-type type) declared-type)
+			 (assert (not (eq (print-type ntype) (print-type type))))
+			 (print-type ntype))
+			(t (subst-mod-params* declared-type modinst bindings))))
+		 (ndep (copy dtype
+			 :type ntype
+			 :declared-type ndeclared-type)))
+	    ndep)))))
 
 (defmethod subst-mod-params* ((type expr-as-type) modinst bindings)
-  (let* ((ntype (call-next-method)) ;; subtype will be next
-	 (nexpr (subst-mod-params* (expr ntype) modinst bindings)))
+  ;; Should only be called within print-type
+  (assert (and (null (supertype type)) (null (predicate type))))
+  (let* ((nexpr (subst-mod-params* (expr type) modinst bindings)))
     (if (everywhere-true? nexpr)
 	(domain (type nexpr))
-	(lcopy ntype :expr nexpr))))
+	(lcopy type :expr nexpr))))
 
 (defmethod subst-mod-params* ((type datatype-subtype) modinst bindings)
   (lcopy (call-next-method)
@@ -1622,12 +1736,15 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	      (spred (beta-reduce (subst-mod-params* (predicate type) modinst bindings))))
 	  (if (everywhere-true? spred)
 	      stype
-	      (let ((pred (if (eq spred (predicate type))
-			      spred
-			      (pseudo-normalize spred))))
-		(lcopy type
-		  :supertype stype
-		  :predicate pred)))))))
+	      (let* ((pred (if (eq spred (predicate type))
+			       spred
+			       (pseudo-normalize spred)))
+		     (ntype (lcopy type
+			      :supertype stype
+			      :predicate spred)))
+		;; (unless (eq spred (predicate type))
+		;;   (push ntype *smp-needs-pseudonormalizing*))
+		ntype))))))
 
 (defmethod formal-subtype-binding-match (subtype (formal formal-subtype-decl))
   (tc-eq subtype (type-value formal)))
@@ -1660,6 +1777,12 @@ type-name, datatype-subtype, type-application, expr-as-type"
     (let* ((ftypes (list dom ran))
 	   (ntypes (subst-mod-params-type-list ftypes modinst bindings)))
       (assert (cadr ntypes))
+      #+pvsdebug
+      (assert (or (not (fully-typed? type))
+		  (fully-typed? ntypes)))
+      #+pvsdebug
+      (assert (or (not (fully-instantiated? modinst))
+		  (fully-instantiated? ntypes)))
       (if (equal ftypes ntypes)
 	  type
 	  (copy type
@@ -1689,16 +1812,23 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	type
 	(copy type :types ntypes))))
 
-(defun subst-mod-params-type-list (types modinst bindings &optional ntypes)
-  (if types
-      (let ((ntype (subst-mod-params* (car types) modinst bindings)))
+(defun subst-mod-params-type-list (types modinst bindings &optional ntypes alist)
+  (if (null types)
+      (nreverse ntypes)
+      (let ((ntype (substit (subst-mod-params* (car types) modinst bindings) alist)))
+	#+pvsdebug
+	(assert (or (not (fully-typed? (car types)))
+		    (fully-typed? ntype)))
+	#+pvsdebug
+	(assert (or (not (fully-instantiated? modinst))
+		    (fully-instantiated? ntype)))
 	(subst-mod-params-type-list
+	 (cdr types) modinst bindings
+	 (cons ntype ntypes)
 	 (if (and (not (eq ntype (car types)))
 		  (typep ntype 'dep-binding))
-	     (substit (cdr types) (acons (car types) ntype nil))
-	     (cdr types))
-	 modinst bindings (cons ntype ntypes)))
-      (nreverse ntypes)))
+	     (acons (car types) ntype alist)
+	     alist)))))
 
 (defmethod subst-mod-params* ((type recordtype) modinst bindings)
   (with-slots (fields) type
@@ -1710,25 +1840,37 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					      (dependent-fields? nfields)))))
 	    ntype)))))
 
-(defun subst-mod-params-fields (fields modinst bindings &optional nfields)
-  (if fields
-      (let ((nfield (subst-mod-params* (car fields) modinst bindings)))
+(defun subst-mod-params-fields (fields modinst bindings &optional nfields alist)
+  (if (null fields)
+      (nreverse nfields)
+      (let ((nfield (substit (subst-mod-params* (car fields) modinst bindings) alist)))
 	#+pvsdebug
 	(assert (every #'(lambda (fp) (not (assq fp bindings)))
 		       (free-params nfield)))
+	#+pvsdebug
+	(assert (or (not (fully-typed? modinst))
+		    (fully-typed? nfield)))
 	(subst-mod-params-fields
-	 (if (eq (car fields) nfield)
-	     (cdr fields)
-	     (substit (cdr fields) (acons (car fields) nfield nil)))
-	 modinst bindings (cons nfield nfields)))
-      (nreverse nfields)))
+	 (cdr fields) modinst bindings (cons nfield nfields)
+	 (if (eq nfield (car fields))
+	     alist
+	     (acons (car fields) nfield alist))))))
 
 (defmethod subst-mod-params* ((field field-decl) modinst bindings)
   (with-slots (type declared-type) field
+    (assert (or (null (print-type (type field)))
+		(tc-eq (print-type (type field)) (declared-type field))))
     (let ((ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug
+      (assert (or (not (fully-typed? modinst))
+		  (fully-typed? ntype)))
       (if (eq ntype type)
 	  field
-	  (let ((ndt (subst-mod-params* declared-type modinst bindings)))
+	  (let ((ndt (or (print-type ntype)
+			 (subst-mod-params* declared-type modinst bindings))))
+	    #+pvsdebug
+	    (assert (or (not (fully-typed? modinst))
+			(fully-typed? ndt)))
 	    (lcopy field :type ntype :declared-type ndt))))))
 
 (defmethod subst-mod-params* ((conv conversion-result) modinst bindings)
@@ -1811,6 +1953,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				      (subtype? (car (types (domain ntype))))
 				      (tc-eq (find-supertype (car (types (domain ntype))))
 					     (car (types (domain (type nres))))))))
+		     #+pvsdebug
+		     (assert (fully-instantiated? nres))
 		     (copy expr
 		       :actuals nacts
 		       :dactuals ndacts
@@ -1874,8 +2018,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					(print-type ntype)
 					ntype))))
 	  (when (resolutions bd)
-	    (setf (resolutions nbd)
-		  (list (mk-resolution nbd (current-theory-name) ntype))))
+	    (let ((bres (mk-resolution nbd (current-theory-name) ntype)))
+	      #+pvsdebug
+	      (assert (fully-instantiated? bres))
+	      (setf (resolutions nbd) (list bres))))
 	  nbd))))
 
 (defmethod subst-mod-params* ((expr projection-expr) modinst bindings)
@@ -1940,6 +2086,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 
 (defmethod subst-mod-params* ((expr field-name-expr) modinst bindings)
   (let ((nres (subst-mod-params* (resolution expr) modinst bindings)))
+    #+pvsdebug
+    (assert (fully-instantiated? nres))
     (if (eq nres (resolution expr))
 	expr
 	(lcopy expr :resolutions (list nres) :type (type nres)))))
@@ -2173,6 +2321,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defmethod subst-mod-params* ((name name) modinst bindings)
   (let* ((res (car (resolutions name)))
 	 (nres (subst-mod-params* res modinst bindings)))
+    #+pvsdebug
+    (assert (fully-instantiated? nres))    
     (if (eq nres res)
 	name
 	(copy name
@@ -2240,48 +2390,65 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				 (or (get-theory thinst)
 				     (break "subst-mod-params* modname problem"))))
 		     (tres (mk-resolution theory thinst nil)))
+		#+pvsdebug
+		(assert (fully-instantiated? tres))
 		(setf (resolutions thinst) (list tres))
 		thinst))))))
 
 (defmethod subst-mod-params* ((act actual) modinst bindings)
   (with-slots (expr type-value) act
-    (if (and (typep expr 'name)
-	     (assq (declaration expr) bindings))
-	(let ((nact (cdr (assq (declaration expr) bindings))))
-	  (typecase nact
-	    (actual (if (or (and type-value (type-value nact))
-			    (and (null type-value) (null (type-value nact))))
-			nact
-			(lcopy nact
-			  :expr (lcopy (expr nact) :parens (parens expr))
-			  :type-value (subst-mod-params*
-				       type-value modinst bindings))))
-	    (type-decl (let ((nres (make-resolution nact
-				     (make-theoryname (module nact)))))
-			 (mk-res-actual (mk-type-name (id nact) nil nil nres)
-					(module nact))))
-	    (t (break "More needed"))))
-	(let ((ntype (when type-value
-		       (subst-mod-params* type-value modinst bindings))))
-	  (lcopy act
-	    :expr (if ntype
-		      (if (eq ntype type-value)
-			  expr
-			  (or (print-type ntype)
-			      (subst-mod-params* expr modinst bindings)
-			      ntype))
-		      (let ((nexpr (subst-mod-params* expr modinst bindings)))
-			(if (eq nexpr expr)
-			    expr
-			    (pseudo-normalize nexpr))))
-	    :type-value ntype)))))
+    (cond ((and (name? expr)
+		(assq (declaration expr) bindings))
+	   (let ((nact (cdr (assq (declaration expr) bindings))))
+	     (typecase nact
+	       (actual (if (or (and type-value (type-value nact))
+			       (and (null type-value) (null (type-value nact))))
+			   nact
+			   (lcopy nact
+			     :expr (lcopy (expr nact) :parens (parens expr))
+			     :type-value (subst-mod-params*
+					  type-value modinst bindings))))
+	       (type-decl (let ((nres (make-resolution nact
+					(make-theoryname (module nact)))))
+			    (mk-res-actual (mk-type-name (id nact) nil nil nres)
+					   (module nact))))
+	       (t (break "More needed")))))
+	  (type-value
+	   (let ((ntype (subst-mod-params* type-value modinst bindings)))
+	     (lcopy act
+	       :expr (if (eq ntype type-value)
+			 expr
+			 (or (print-type ntype)
+			     (subst-mod-params* expr modinst bindings)
+			     ntype))
+	       :type-value ntype)))
+	  (t
+	   (let* ((ntype (when type-value
+			   (subst-mod-params* type-value modinst bindings)))
+		  (nexpr (if ntype
+			     (if (eq ntype type-value)
+				 expr
+				 (or (print-type ntype)
+				     (subst-mod-params* expr modinst bindings)
+				     ntype))
+			     (let ((nexpr (subst-mod-params* expr modinst bindings)))
+			       (if (eq nexpr expr)
+				   expr
+				   (pseudo-normalize nexpr)))))
+		  (nact (lcopy act :expr nexpr :type-value ntype)))
+	     ;; (unless (eq (expr nact) expr)
+	     ;;   (push nact *smp-needs-pseudonormalizing*))
+	     nact)))))
 
 (defmethod subst-mod-params* ((map mapping) modinst bindings)
   (with-slots (lhs rhs declared-type type) map
     ;; Does it make sense to substitute the lhs?
-    (let ((ntype (subst-mod-params* type modinst bindings)))
+    (let ((ntype (subst-mod-params* type modinst bindings))
+	  (nres (subst-mod-params* (resolutions lhs) modinst bindings)))
+      #+pvsdebug
+      (assert (fully-instantiated? nres))
       (lcopy map
-	:lhs (lcopy lhs :resolutions (subst-mod-params* (resolutions lhs) modinst bindings))
+	:lhs (lcopy lhs :resolutions nres)
 	:rhs (subst-mod-params* rhs modinst bindings)
 	:declared-type (if (eq declared-type type)
 			   ntype
@@ -2420,6 +2587,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))
 				  (nres (mk-resolution decl nmi nrtype)))
+			     #+pvsdebug
+			     (assert (fully-instantiated? tres))
 			     (setf (resolutions nmi) (list tres))
 			     ;; (assert (subsetp (free-params nres) (free-params modinst))
 			     ;; 	     () "res6")
@@ -2440,8 +2609,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	    (best-module-instance (cdr imps) imp)
 	    (best-module-instance (cdr imps) thinst)))))
 
-(defmethod make-resolution (decl modinst &optional type
-				 (sdecl (current-declaration)))
+(defmethod make-resolution (decl modinst
+			    &optional type (sdecl (current-declaration))
+			    &key print-thinst)
   (declare (ignore sdecl))
   (assert (modname? modinst))
   #+pvsdebug
@@ -2461,16 +2631,15 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		   (theory (lcopy modinst :library nil))
 		   (t modinst)))
 	 (rtype (if type
-		    (subst-mod-params type mi theory decl)
-		    (typecase decl
-		      ((or type-decl formal-type-decl)
-		       (let ((*free-bindings*
-			      (append (apply #'append (formals decl))
-				      *free-bindings*)))
-			 (subst-mod-params (type-value decl) mi theory decl)))
-		      ((or expname typed-declaration simple-decl)
-		       (subst-mod-params (type decl) mi theory decl))))))
-    ;;(assert (or (not (fully-instantiated? mi)) (fully-instantiated? rtype)))
+		    (if (fully-instantiated? mi)
+			(subst-mod-params type mi theory decl)
+			type)
+		    (resolution-type* decl mi))))
+    (assert (or rtype (datatype-or-module? decl)))
+    #+pvsdebug
+    (assert (fully-typed? rtype))
+    #+pvsdebug
+    (assert (or (not (fully-instantiated? mi)) (fully-instantiated? rtype)))
     (assert (current-declaration))
     (assert theory)
     ;;(assert (get-theory mi))
@@ -2478,26 +2647,52 @@ type-name, datatype-subtype, type-application, expr-as-type"
     ;; 		  (dfmls (decl-formals (current-declaration))))
     ;; 	      (every #'(lambda (fp) (or (memq fp tifps) (memq fp dfmls)))
     ;; 		     (free-params rtype))))
-    (mk-resolution decl (lcopy mi :resolutions nil) rtype)))
+    ;; Note that mi nor rtype are necessarily fully-instantiated
+    ;;(mk-resolution decl (lcopy mi :resolutions nil) rtype)
+    (mk-resolution decl mi rtype)))
 
-(defmethod make-resolution ((decl binding) modinst &optional type
-			    (sdecl (current-declaration)))
+
+(defun resolution-type (res)
+  (or (type res)
+      (resolution-type* (declaration res) (module-instance res))))
+
+(defun resolution-type* (decl mi)
+  (let ((theory (module decl)))
+    (typecase decl
+      ((or type-decl formal-type-decl)
+       (let ((*free-bindings* (append (apply #'append (formals decl)) *free-bindings*)))
+	 (if (fully-instantiated? mi)
+	     (subst-mod-params (type-value decl) mi theory decl)
+	     (type-value decl))))
+      ((or expname typed-declaration simple-decl)
+       (if (fully-instantiated? mi)
+	   (subst-mod-params (type decl) mi theory decl)
+	   (type decl))))))
+
+(defmethod make-resolution ((decl binding) modinst
+			    &optional type (sdecl (current-declaration))
+			    &key print-thinst)
   (assert (or modinst type))
   #+pvsdebug (assert (or (null type)
 			 (eq modinst (current-theory-name))
 			 (not (fully-instantiated? modinst))
 			 (fully-instantiated? type)))
-  (let* ((dtype (or type (type decl)))
-	 (mi (or modinst (current-theory-name)))
-	 (stype (subst-mod-params dtype mi nil sdecl)))
-    ;; Not true when conversions are being applied
-    ;;(assert (or (typep (current-declaration) '(or conversion-decl importing))
-    ;;   (fully-instantiated? stype)))
-    (mk-resolution decl
-      mi
-      (if (and modinst (not (eq modinst (current-theory-name))))
-	  stype
-	  dtype))))
+  (let ((mi (if (and modinst (fully-instantiated? modinst))
+		modinst
+		(current-theory-name))))
+    ;;(assert (fully-instantiated? mi))
+    (cond (type
+	   #+pvsdebug
+	   (assert (fully-instantiated? type))
+	   (mk-resolution decl mi type))
+	  ((eq modinst (current-theory-name))
+	   (mk-resolution decl mi (type decl)))
+	  (t
+	   (let ((stype (subst-mod-params (type decl) mi nil sdecl)))
+	     ;; Not true when conversions are being applied
+	     ;;(assert (or (typep (current-declaration) '(or conversion-decl importing))
+	     ;;   (fully-instantiated? stype)))
+	     (mk-resolution decl mi stype))))))
 
 (defun theories-of-param-alist (alist)
   (let ((theories nil))
@@ -2522,6 +2717,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 						     th))))
 				    (formals-sans-usings th))))
 			       (res (mk-resolution th thinst nil)))
+			  #+pvsdebug
+			  (assert (fully-instantiated? res))
 			  (setf (resolutions thinst) (list res))
 			  thinst))
 	      theories)

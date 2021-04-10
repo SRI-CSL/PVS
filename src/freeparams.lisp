@@ -169,8 +169,17 @@
     (union nfrees frees :test #'eq)))
 
 (defmethod free-params* ((texpr type-name) frees)
+  (assert (resolution texpr))
   (let ((nfrees (call-next-method texpr nil)))
     #+pvs-debug (assert (subsetp (free-params (resolution texpr)) nfrees :test #'eq))
+    (setf (free-parameters texpr) nfrees)
+    (union nfrees frees :test #'eq)))
+
+(defmethod free-params* ((texpr print-type-name) frees)
+  (assert (resolution texpr))
+  (assert (or (null (actuals texpr))
+	      (eq (actuals texpr) (actuals (module-instance texpr)))))
+  (let ((nfrees (free-params* (module-instance texpr) nil)))
     (setf (free-parameters texpr) nfrees)
     (union nfrees frees :test #'eq)))
 

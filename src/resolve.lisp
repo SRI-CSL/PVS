@@ -669,7 +669,12 @@ dacts."
 		  (and (null tdacts) nacts))
 	  (let* ((thinsts (resolve-theory-actuals decl nacts ndacts dth args mappings))
 		 (dreses (mapcar #'(lambda (thinst)
-				     (make-resolution decl thinst))
+				     (let ((pthinst
+					    (lcopy thinst
+					      :actuals (when nacts (actuals thinst))
+					      :dactuals (when ndacts (dactuals thinst))
+					      :mappings (when mappings (mappings thinst)))))
+				       (make-resolution decl thinst)))
 			   thinsts)))
 	    dreses))))))
 
@@ -938,7 +943,11 @@ decl, args, and mappings."
       (let ((cathinsts (compatible-arguments? decl (car mthinsts) args (current-theory))))
 	(assert (or (null cathinsts)
 		    (not (fully-instantiated? (car mthinsts)))
-		    (and (singleton? cathinsts) (tc-eq (car cathinsts) (car mthinsts)))))
+		    (every #'(lambda (thinst)
+			       (or (tc-eq thinst (car mthinsts))
+				   (null (decl-formals decl))
+				   (dactuals thinst)))
+			   cathinsts)))
 	(if (fully-instantiated? (car mthinsts))
 	    (when cathinsts
 	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
@@ -1055,7 +1064,7 @@ decl, args, and mappings."
 	      (let ((reses (append tres eres thres)))
 		(setf (resolutions name) reses)
 		;;(when (singleton? reses)
-		  ;;(setf (type name) (type (car reses))))
+		;;(setf (type name) (type (car reses))))
 		))
 	  (when eres
 	    (setf (types (expr act)) (mapcar #'type eres))
@@ -1159,7 +1168,8 @@ decl, args, and mappings."
   ;; Must be a type-expr
   (declare (ignore expected kind arguments))
   (unless (type-value act)
-    (setf (type-value act) (typecheck* ex nil nil nil))))
+    (let ((te (typecheck* ex nil nil nil)))
+      (setf (type-value act) te))))
 
 (defun setsubtype-from-set-expr (expr)
   (let ((suptype (declared-type (car (bindings expr)))))
@@ -1794,7 +1804,7 @@ decl, args, and mappings."
   (if (null args)
       (list modinst)
       (let* ((stype (subst-mod-params (find-supertype (type decl))
-				      modinst (module decl) decl))
+			modinst (module decl) decl))
 	     (dtypes (when (typep stype 'funtype)
 		       (if (singleton? args)
 			   (list (domain stype))
@@ -1824,8 +1834,9 @@ decl, args, and mappings."
 		 (let* ((*generate-tccs* 'none)
 			(*smp-include-actuals* t)
 			(*smp-dont-cache* t)
-			(domtypes (subst-mod-params
-				   dtypes modinst (module decl) decl)))
+			(domtypes (if (fully-instantiated? dtypes)
+				      dtypes
+				      (subst-mod-params dtypes modinst (module decl) decl))))
 		   (assert (fully-instantiated? domtypes))
 		   ;;(set-type-actuals-and-maps modinst)
 		   (when (compatible-args? decl args domtypes)

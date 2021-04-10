@@ -1048,13 +1048,9 @@ resolution with a macro matching the signature of the arguments."
       (setf (resolutions (expr act)) reses)
       (when (name-expr? (expr act))
 	(setf (type (expr act)) (type (car reses))))
-      (let ((*generate-tccs*
-	     (if (actuals (expr act))
-		 *generate-tccs*
-		 'none)))
-	(setf (module-instance (resolution (expr act)))
-	      (set-type-actuals-and-maps (expr act)
-					 (module (declaration (car reses)))))
+      (let* ((*generate-tccs* (if (actuals (expr act)) *generate-tccs* 'none))
+	     (thinst (set-type-actuals-and-maps (expr act) (module (declaration (car reses))))))
+	(setf (module-instance (resolution (expr act))) thinst)
 	(set-type* (type-value act) nil))
       #+pvsdebug (assert (fully-typed? (actuals (expr act))))))
   ;; Note that (expr act) now has its actuals and maps set,
@@ -1067,10 +1063,12 @@ resolution with a macro matching the signature of the arguments."
 
 (defmethod set-type-actual (act (formal formal-subtype-decl))
   (call-next-method)
+  ;;(assert (fully-typed? (type-value act)))
+  ;;(assert (fully-instantiated? (type-value act)))
   (let* ((tact (type-value act))
          (texp (type-value formal))
          (vid (make-new-variable '|x| act))
-         (vb (typecheck* (mk-bind-decl vid tact) nil nil nil))
+         (vb (mk-bind-decl vid tact tact))
          (*bound-variables* (cons vb *bound-variables*))
          (*tcc-conditions* (cons vb *tcc-conditions*))
          (svar (mk-name-expr vid nil nil
@@ -1915,11 +1913,11 @@ type of the lhs."
             (type-ambiguity (constructor sel))))
       (unless (injection-expr? (constructor sel))
         (change-class (constructor sel) 'constructor-name-expr)
-        (setf (constructor sel)
-              (subst-mod-params (constructor sel)
-                                (module-instance atype)
-                                (module (declaration atype))
-                                (declaration (constructor sel)))))
+	(unless (fully-instantiated? (constructor sel))
+	  (setf (constructor sel)
+		(subst-mod-params (constructor sel) (module-instance atype)
+		  (module (declaration atype))
+		  (declaration (constructor sel))))))
       (assert (fully-instantiated? (constructor sel)))
       (let* ((equality (make-selection-equality sel expr))
              (*bound-variables* (append (args sel) *bound-variables*))
@@ -3646,8 +3644,7 @@ type of the lhs."
   (if (null modinsts)
       optype
       (instantiate-operator-from-bindings*
-       (subst-mod-params
-        optype (car modinsts) (caar theory-decls) (cdar theory-decls))
+       (subst-mod-params optype (car modinsts) (caar theory-decls) (cdar theory-decls))
        (cdr modinsts)
        (cdr theory-decls))))
 
@@ -5323,12 +5320,12 @@ type of the lhs."
 
 (defmethod set-type* :around ((te type-expr) expected)
   (declare (ignore expected))
+  (call-next-method)
   (when (print-type te)
     (unless (place (print-type te))
       (setf (place (print-type te)) (place te)))
-    (let ((*generate-tccs* 'none))
-      (set-type* (print-type te) nil)))
-  (call-next-method))
+    (assert (fully-typed? (print-type te)))
+    (assert (fully-instantiated? (print-type te)))))
 
 (defmethod set-type* ((te type-name) expected)
   (declare (ignore expected))

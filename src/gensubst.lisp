@@ -41,7 +41,7 @@
 
 (defun gensubst (obj substfn testfn)
   "gensubst takes a pvs abstract term obj, and a subst and test fn.  It
-basically walks down the obj, and replacing those subterms that satisfy
+basically walks down the obj ast, replacing those subterms that satisfy
 testfn by invoking substfn.  Various global variables control the detailed
 behavior:
    *dont-expand-adt-subtypes*
@@ -50,7 +50,10 @@ behavior:
    *parsing-or-unparsing*
    *visible-only*
    "
-  (unwind-protect (gensubst* obj substfn testfn)
+  (unwind-protect
+       (let ((gobj (gensubst* obj substfn testfn)))
+	 ;;(assert (or (eq gobj obj) (not (tc-eq gobj obj))))
+	 gobj)
     (clrhash *gensubst-cache*)))
 
 (defmethod gensubst* :around (obj substfn testfn)
@@ -59,6 +62,9 @@ behavior:
       (let ((nobj (if (funcall testfn obj)
 		      (funcall substfn obj)
 		      (call-next-method))))
+	#+badassert
+	(assert (or (memq substfn (list #'raise-actuals! #'copy-all! #'full-name!))
+		    (eq nobj obj) (not (tc-eq nobj obj))))
 	(if (and *gensubst-cache*
 		 (not *dont-expand-adt-subtypes*))
 	    (setf (gethash obj *gensubst-cache*) nobj)
@@ -137,6 +143,23 @@ behavior:
 			   expr-as-type type-application))
 	      (copy nte :print-type npt)
 	      (copy nte :print-type (print-type npt)))))))
+
+(defmethod gensubst* ((te print-type-name) substfn testfn)
+  (let ((mi (gensubst* (module-instance te) substfn testfn)))
+    (if (eq mi (module-instance te))
+	te
+	(copy te
+	  :actuals (when (actuals te) (actuals mi))
+	  :dactuals (when (dactuals te) (dactuals mi))
+	  :resolutions (list (mk-resolution (declaration te) mi nil))))))
+
+(defmethod gensubst* ((te print-type-application) substfn testfn)
+  (lcopy te
+    :type (gensubst* (type te) substfn testfn)
+    :parameters (gensubst* (parameters te) substfn testfn)))
+
+(defmethod gensubst* ((te print-expr-as-type) substfn testfn)
+  (lcopy te :expr (gensubst* (expr te) substfn testfn)))
 
 (defmethod gensubst* ((list list) substfn testfn)
   (let ((nlist (gensubst-list list substfn testfn nil)))
@@ -1013,10 +1036,10 @@ behavior:
     (when mappings (mapobject* fn mappings))))
 
 (defmethod mapobject* (fn (act actual))
-  (if (and (not *parsing-or-unparsing*)
-	   (type-value act))
-      (mapobject* fn (type-value act))
-      (mapobject* fn (expr act))))
+  (when (and (not *parsing-or-unparsing*)
+	     (type-value act))
+    (mapobject* fn (type-value act)))
+  (mapobject* fn (expr act)))
 
 (defmethod mapobject* (fn (map mapping))
   (mapobject* fn (lhs map))
@@ -1218,11 +1241,17 @@ behavior:
       'arguments (copy-untyped* arguments)
       'expression (copy-untyped* expression))))
 
-(defmethod copy-untyped* ((ex actual))
-  (with-slots (expr type-value) ex
-    (copy ex
-      'expr (copy-untyped* expr)
-      'type-value (unless expr (copy-untyped* type-value)))))
+(defmethod copy-untyped* ((act actual))
+  (with-slots (expr type-value) act
+    (let* ((nex (copy-untyped* expr))
+	   (cex (typecase expr
+		  (print-type-name (change-class nex 'type-name))
+		  (print-type-application (change-class nex 'type-application))
+		  (print-expr-as-type (change-class nex 'expr-as-type))
+		  (t nex))))
+      (copy act
+	'expr cex
+	'type-value (unless expr (copy-untyped* type-value))))))
 
 (defmethod copy-untyped* ((ex table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
@@ -1258,6 +1287,22 @@ behavior:
   (if (print-type ex)
       (copy-untyped* (print-type ex))
       (call-next-method)))
+
+(defmethod copy-untyped* ((te print-type-name))
+  (change-class (copy te) 'type-name
+    :actuals (copy-untyped* (actuals te))
+    :dactuals (copy-untyped* (dactuals te))
+    :resolutions nil))
+
+(defmethod copy-untyped* ((te print-type-application))
+  (change-class (copy te
+		  :type (copy-untyped* (type te))
+		  :parameters (copy-untyped* (parameters te)))
+      'type-application))
+
+(defmethod copy-untyped* ((te print-expr-as-type))
+  (change-class (copy te :expr (copy-untyped* (expr te)))
+      'expr-as-type))
 
 (defmethod copy-untyped* ((ex type-application))
   (with-slots (type parameters) ex
@@ -1297,6 +1342,9 @@ behavior:
       'print-type nil
       'from-conversion nil
       'nonempty? nil)))
+
+(defmethod copy-untyped* ((ex print-expr-as-type))
+  (copy-untyped* (change-class ex 'expr-as-type)))
 
 (defmethod copy-untyped* ((ex funtype))
   (with-slots (domain range) ex

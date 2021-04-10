@@ -1460,7 +1460,7 @@ then uses unpindent* to add the indent to each line"
 
 (defmethod pp* ((te expr-as-type))
   (with-slots (expr) te
-    (let ((have-parens? (and (parens expr) (plusp (parens expr)))))
+    (let ((have-parens? (and expr (parens expr) (plusp (parens expr)))))
       (unless have-parens?
 	(write-char #\())
       (pp* expr)

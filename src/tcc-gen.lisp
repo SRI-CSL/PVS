@@ -347,10 +347,8 @@ looking in bindings and substs."
 		       bd))
 	 (dtype (raise-actuals (declared-type typed-bd)))
 	 (prtype (when (print-type (type typed-bd))
-		   (if (tc-eq (print-type (type typed-bd))
-			      (declared-type typed-bd))
-		       dtype
-		       (raise-actuals (print-type (type typed-bd))))))
+		   (assert (print-type-expr? (print-type (type typed-bd))))
+		   (raise-actuals (print-type (type typed-bd)))))
 	 (ptype (when prtype (or (print-type prtype) prtype)))
 	 (ptyped-bd (cond ((and (eq dtype (declared-type typed-bd))
 				(or (null ptype)
