@@ -895,9 +895,12 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		       :ppe-form nil
 		       :tcc-form nil
 		       :typecheck-time nil)))
-	    (when (or (all-usings th) (immediate-usings th) (instances-used th)
-		      (assuming-instances th) (dependent-known-subtypes th)
-		      (macro-expressions th) (macro-subtype-tcc-args-alist th))
+	    (when (or (all-usings th)
+		      (get-immediate-usings th)
+		      (instances-used th)
+		      (dependent-known-subtypes th)
+		      (macro-expressions th)
+		      (macro-subtype-tcc-args-alist th))
 	      (break "subst-mod-params* module"))
 	    (values nth tbindings)))))))
 
@@ -1165,8 +1168,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				 (rassoc (declaration fv) alist)))
 			 (freevars ndtype)))
 	  (assert (every #'(lambda (fv)
-			     (or (memq (declaration fv) (flatten-list dfmls))
-				 (rassoc (declaration fv) alist)))
+			     (memq (declaration fv) (flatten-list afmls)))
 			 (freevars ndef)))
 	  (unless (fully-instantiated? (print-type ntype))
 	    (if (eq type ntype)
