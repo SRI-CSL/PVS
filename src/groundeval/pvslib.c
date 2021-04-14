@@ -459,11 +459,10 @@ mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y){
 
 
 
- stringliteral_t mk_string(char * instring){ 
-   uint32_t length = strlen(instring); 
-   stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length + 1) * sizeof(char)); 
+stringliteral_t mk_string(uint32_t length, uint32_t * instring){ 
+  stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(char))); 
    result->count = 1; 
-   memcpy(result->strval, (char *) instring, length); 
+   memcpy(result->strval, (uint32_t *) instring, length); 
    return result; 
  };
 

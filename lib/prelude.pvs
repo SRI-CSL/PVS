@@ -5149,6 +5149,8 @@ list2finseq[T: TYPE]: THEORY
   fs: VAR finseq[T]
   n, i: VAR nat
 
+  a, b, c, c1, c2: VAR T
+
   list2finseq(l): finseq[T] =
     (# length := length(l),
        seq := (LAMBDA (x: below[length(l)]): nth(l, x)) #)
@@ -5187,6 +5189,11 @@ list2finseq[T: TYPE]: THEORY
 
   finseq2list_list2finseq: LEMMA
     finseq2list(list2finseq(l)) = l
+
+  fseq_lem: LEMMA
+    (list2finseq(l1) = list2finseq(l2)) = (l1 = l2)
+
+  cons_lem: LEMMA (cons(c1,l1) = cons(c2,l2)) = (c1 = c2 & l1 = l2)
 
  END list2finseq
 
@@ -5292,18 +5299,11 @@ strings: THEORY
   char: TYPE = (char?)
   string: TYPE = finite_sequence[char]
 
-  l1, l2: VAR list[char]
-
   c1, c2: VAR char
-
-  fseq_lem: LEMMA
-    (list2finseq(l1) = list2finseq(l2)) = (l1 = l2)
-
-  cons_lem: LEMMA (cons(c1,l1) = cons(c2,l2)) = (c1 = c2 & l1 = l2)
 
   char_lem: LEMMA (c1 = c2) = (code(c1) = code(c2))
 
-  make_string(i:index, s : [below(i)->char]): string
+  make_string(i:index, s : ARRAY[below(i)->char]): string
   = (# length := i, seq := (LAMBDA (j:below(i)): s(i)) #)
  END strings
 

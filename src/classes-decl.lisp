@@ -282,6 +282,7 @@
   all-usings ; The transitive closure of the usings of the theory
   (immediate-usings :initform 'unbound) ; immediate usings of the theory
   instances-used
+  ht-instance-clone
   (assuming-instances :restore-as nil)
   used-by
   saved-context
@@ -963,6 +964,7 @@ restored, the TCCs are checked")
   c-type-info-table
   internal  ;both are eval-defn-info 
   external)
+
 
 (defcl eval-type-info ()
   ir-type-name
