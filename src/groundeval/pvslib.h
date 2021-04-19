@@ -26,16 +26,16 @@
 
 
 typedef bool bool_t;
-typedef char char_t;
+typedef uint32_t char_t; //was char now uint32_t for expanded character code set
 typedef __int128_t int128_t;
 typedef  __uint128_t uint128_t;
 typedef mpz_ptr mpz_ptr_t;
 typedef mpq_ptr mpq_ptr_t;
 
-
+#define pvs2cerror(msg, code) printf("\n%s", msg); exit(code)
 
 /*
- * Print an error message then call exit(MCSAT_EXIT_OUT_OF_MEMORY)
+ * Print an error message then call exit(PVS2C_EXIT_OUT_OF_MEMORY)
  */
 extern void out_of_memory(void) __attribute__ ((noreturn));
 
@@ -243,11 +243,11 @@ typedef void * any_t;
 
 struct stringliteral_s {
   uint32_t count;
-  char strval[];
+  uint32_t strval[];
 } stringliteral_s;
 typedef struct stringliteral_s * stringliteral_t;
 
-extern stringliteral_t mk_string(char * instring);
+extern stringliteral_t mk_string(uint32_t length, uint32_t * instring);
 
 /* struct bytestring_s { */
 /*   uint32_t count; */
