@@ -546,8 +546,9 @@ looking in bindings and substs."
 	     (plstr (when place
 		      (format nil "(at line ~d, column ~d) "
 			(starting-row place) (starting-col place))))
-	     (termstr (unpindent (or *set-type-actuals-name* expr type)
-				 4 :string t :comment? t))
+	     (termstr (protect-format-string
+		       (unpindent (or *set-type-actuals-name* expr type)
+				  4 :string t :comment? t)))
 	     (gen-by (when (> (length place) 4)
 		       (remove #\Newline (elt place 4))))
 	     (too-long (or (> (length place) 4)
