@@ -39,9 +39,10 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((mod module) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (if (lib-datatype-or-theory? mod)
-	  (format stream "#<Theory ~a/~a>" (context-path mod) (id mod))
-	  (format stream "#<Theory ~a>" (id mod)))))
+      (let ((det (if (filename mod) "" ":detached ")))
+	(if (lib-datatype-or-theory? mod)
+	    (format stream "#<Theory ~a~a/~a>" det (context-path mod) (id mod))
+	    (format stream "#<Theory ~a~a>" det (id mod))))))
 
 (defmethod print-object ((dt datatype) stream)
   (if *debugging-print-object*
@@ -56,8 +57,11 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((decl declaration) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<~a ~a.~a>"
-	(type-of decl) (when (module decl) (id (module decl))) (id decl))))
+      (format stream "#<~a ~a~a.~a>"
+	(type-of decl)
+	(if (module decl) (if (filename (module decl)) "" ":detached ") ":nopath ")
+	(when (module decl) (id (module decl)))
+	(id decl))))
 
 (defmethod print-object ((decl decl-formal) stream)
   (if *debugging-print-object*

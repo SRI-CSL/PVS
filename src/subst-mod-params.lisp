@@ -764,7 +764,7 @@
 			       (not (some #'(lambda (b)
 					      (typep (car b)
 						     '(or formal-theory-decl
-						       decl-formal)))
+						       decl-formal declaration)))
 					  bindings))
 			       (no-matching-free-params
 				obj *subst-mod-free-params*))
@@ -803,31 +803,53 @@ the result of subst-mod-params* on obj.  It basically decides what to set
 the print-type of nobj to.
 type-name, datatype-subtype, type-application, expr-as-type"
   (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
-  (cond ((and (print-type nobj)
-	      ;; May be here by lcopy, in which case we still need to process it.
-	      (not (eq (print-type obj) (print-type nobj))))
-	 nobj)
-	((and (print-type obj)
-	      (or (null (print-type nobj))
-		  (mappings modinst)
-		  (free-params (print-type nobj))))
-	 (if (or (mappings modinst)
-		 (free-params (print-type obj)))
-      	     (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
-      		    (pte (or (print-type stype) stype)))
-      	       (if (or (occurs-in nobj pte)
-		       (and (mappings modinst)
-			    (not (compatible? obj nobj))))
-      		   (lcopy nobj :print-type nil)
-      		   (if (eq obj nobj)
-      		       (lcopy nobj :print-type pte)
-      		       (progn (setf (print-type nobj) pte)
-			      (setf (free-parameters nobj) 'unbound)
-      			      nobj))))
-      	     (if (eq obj nobj)
-      		 nobj
-      		 (lcopy nobj :print-type nil))))
-	(t nobj)))
+  (let* ((opt (print-type obj))
+	 (npt (print-type nobj)))
+    (cond ((and npt
+		;; May be here by lcopy, in which case we still need to process it.
+		(not (eq opt npt)))
+	   (assert (or (not (fully-instantiated? modinst))
+		       (fully-instantiated? nobj)))
+	   nobj)
+	  ((and opt
+		(or (null npt)
+		    (mappings modinst)
+		    (free-params npt)))
+	   (if (or (mappings modinst)
+		   (free-params opt))
+	       (if (and (type-name? opt) (eq obj (type (resolution opt))))
+		   (let* ((nmi (subst-mod-params* (module-instance opt) modinst bindings))
+			  (npty (copy opt :actuals (actuals nmi) :dactuals (dactuals nmi)))
+			  (odecl (declaration opt))
+			  (ndecl (if (declaration? (cdr (assq odecl bindings)))
+				     (cdr (assq odecl bindings))
+				     odecl))
+			  (nres (mk-resolution ndecl nmi nobj)))
+		     (setf (resolutions npty) (list nres))
+		     (setf (print-type nobj) npty)
+		     (assert (eq nobj (type (resolution (print-type nobj)))))
+		     #+badassert ;; update-known-subtypes violates this
+		     (assert (or (not (fully-instantiated? modinst))
+				 (fully-instantiated? nobj)))
+		     nobj)
+      		   (let* ((stype (subst-mod-params* opt modinst bindings))
+      			  (pte (or (print-type stype) stype)))
+		     #+badassert ;; update-known-subtypes violates this
+		     (assert (or (not (fully-instantiated? modinst))
+				 (fully-instantiated? pte)))
+      		     (if (or (occurs-in nobj pte)
+			     (and (mappings modinst)
+				  (not (compatible? obj nobj))))
+      			 (lcopy nobj :print-type nil)
+      			 (if (eq obj nobj)
+      			     (lcopy nobj :print-type pte)
+      			     (progn (setf (print-type nobj) pte)
+				    (setf (free-parameters nobj) 'unbound)
+      				    nobj)))))
+      	       (if (eq obj nobj)
+      		   nobj
+      		   (lcopy nobj :print-type nil))))
+	  (t nobj))))
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-name) modinst bindings)
   (declare (ignore bindings modinst))
@@ -864,62 +886,72 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defmethod subst-mod-params* ((th module) modinst bindings)
   (with-slots (formals assuming theory exporting) th
     ;; modinst should be fully-instantiated, so formals should be in bindings
+    ;; (when (mappings modinst)
+    ;;   (type-error th "Mappings for new theories only available with theory-declarations"))
     (assert (every #'(lambda (d) (assq d bindings)) (formals-sans-usings th)))
     (when (some #'theory-reference? (formals th))
       (break "subst-mod-params* (module) with theory-references in formals"))
     (let* ((*subst-mod-params-module?* th)
 	   ;;(fthrefs (remove-if-not #'theory-reference? (formals th)))
-	   )
+	   (nth (copy th
+		  :id (if *subst-mod-params-declaration*
+			  (makesym "~a.~a"
+				   (id (current-theory))
+				   (id *subst-mod-params-declaration*))
+			  (id th))
+		  :formals nil ;; modinst should be fully-instantiated
+		  :formals-sans-usings nil
+		  :place nil
+		  :filename nil
+		  :info nil
+		  :warnings nil
+		  :conversion-messages nil
+		  :all-declarations nil
+		  :nonempty-types nil
+		  :saved-context nil
+		  :ppe-form nil
+		  :tcc-form nil
+		  :typecheck-time nil)))
       (multiple-value-bind (nass abindings)
-	  (subst-mod-params-decls assuming modinst bindings)
+	  (subst-mod-params-decls assuming modinst bindings nth)
 	(multiple-value-bind (rtheory tbindings)
-	    (subst-mod-params-decls theory modinst abindings)
-	  (let ((nth (copy th
-		       :id (if *subst-mod-params-declaration*
-			       (makesym "~a.~a"
-					(id (current-theory))
-					(id *subst-mod-params-declaration*))
-			       (id th))
-		       :formals nil ;; modinst should be fully-instantiated
-		       :formals-sans-usings nil
-		       :assuming nass
-		       :theory (append (create-importings-for-bindings bindings)
-				       (remove-if #'null rtheory))
-		       :exporting (subst-mod-params* exporting modinst bindings)
-		       :info nil
-		       :warnings nil
-		       :conversion-messages nil
-		       :all-declarations nil
-		       :nonempty-types nil
-		       :saved-context nil
-		       :ppe-form nil
-		       :tcc-form nil
-		       :typecheck-time nil)))
-	    (when (or (all-usings th)
-		      (get-immediate-usings th)
-		      (instances-used th)
-		      (dependent-known-subtypes th)
-		      (macro-expressions th)
-		      (macro-subtype-tcc-args-alist th))
-	      (break "subst-mod-params* module"))
-	    (values nth tbindings)))))))
+	    (subst-mod-params-decls theory modinst abindings nth)
+	  (setf (assuming nth) nass
+		(theory nth) (append (create-importings-for-bindings bindings)
+				     (remove-if #'null rtheory))
+		(exporting nth) (subst-mod-params* exporting modinst bindings))
+	  (dolist (decl (all-decls nth))
+	    (when (declaration? decl)
+	      (setf (module decl) nth)
+	      (setf (refers-to decl) (regenerate-xref decl))))
+	  (when (or (all-usings th)
+		    (get-immediate-usings th)
+		    (instances-used th)
+		    (dependent-known-subtypes th)
+		    (macro-expressions th)
+		    (macro-subtype-tcc-args-alist th))
+	    (break "subst-mod-params* module"))
+	  (values nth tbindings))))))
 
-(defun subst-mod-params-decls (decls modinst bindings &optional ndecls)
-  (if (null decls)
-      (values (nreverse ndecls) bindings)
-      (if (typep (car decls) '(or tcc-decl))
-	  ;; Skip TCCs; they can be assumed
-	  (subst-mod-params-decls (cdr decls) modinst bindings ndecls)
-	  (let ((ndecl (subst-mod-params* (car decls) modinst bindings)))
-	    (assert (and ndecl (not (eq ndecl (car decls)))))
-	    (setf (generated ndecl) (remove-if #'tcc? (generated ndecl)))
-	    (when (generated ndecl) (break "subst-mod-params-decls"))
-	    (subst-mod-params-decls
-	     (cdr decls) modinst
-	     (if (declaration? (car decls))
-		 (acons (car decls) ndecl bindings)
-		 bindings)
-	     (cons ndecl ndecls))))))
+(defun subst-mod-params-decls (decls modinst bindings nth &optional ndecls)
+  (cond ((null decls)
+	 (values (nreverse ndecls) bindings))
+	((typep (car decls) '(or tcc-decl))
+	 ;; Skip TCCs; they can be assumed
+	 (subst-mod-params-decls (cdr decls) modinst bindings nth ndecls))
+	((assq (car decls) bindings)
+	 (break "must be mappings here"))
+	(t (let* ((ndecl (copy (car decls)
+			   :generated-by (car decls) :module nth :place nil
+			   :pvs-sxhash-value nil :ir-type-value nil))
+		  (nbindings (if (declaration? (car decls))
+				 (acons (car decls) ndecl bindings)
+				 bindings)))
+	     (setf (generated ndecl) (remove-if #'tcc? (generated ndecl)))
+	     (when (generated ndecl) (break "subst-mod-params-decls with generated"))
+	     (subst-mod-params* ndecl modinst nbindings)
+	     (regenerate-xref ndecl)
+	     (subst-mod-params-decls (cdr decls) modinst nbindings nth (cons ndecl ndecls))))))
 
 ;;; Create the importings needed to reference the bindings
 (defun create-importings-for-bindings (bindings &optional importings)
@@ -1003,23 +1035,27 @@ type-name, datatype-subtype, type-application, expr-as-type"
 
 (defmethod subst-mod-params* ((decl theory-abbreviation-decl) modinst bindings)
   (with-slots (theory-name) decl
-    (let* ((th-rhs (cdr (assq decl bindings)))
-	   (thname (if th-rhs
-		       (expr th-rhs)
-		       (subst-mod-params* theory-name modinst bindings))))
-      (copy decl :theory-name thname))))
+    (if (rassoc decl bindings)
+	(break "subst-mod-params* theory-abbreviation-decl")
+	(let* ((th-rhs (cdr (assq decl bindings)))
+	       (thname (if th-rhs
+			   (expr th-rhs)
+			   (subst-mod-params* theory-name modinst bindings))))
+	  (copy decl :theory-name thname)))))
 
 
 (defmethod subst-mod-params* ((adt inline-recursive-type) modinst bindings)
-  (multiple-value-bind (dfmls alist)
-      (apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
-			 (decl-formals adt))
-    (copy adt
-      :decl-formals dfmls
-      :constructors (substit (subst-mod-params* (constructors adt) modinst bindings) alist)
-      :adt-type-name (substit (subst-mod-params* (adt-type-name adt) modinst bindings) alist)
-      :generated (subst-mod-params* (generated adt) modinst bindings)
-      :generated-by adt)))
+  (if (rassoc adt bindings)
+      (break "subst-mod-params* inline-recursive-type")
+      (multiple-value-bind (dfmls alist)
+	  (apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
+			     (decl-formals adt))
+	(copy adt
+	  :decl-formals dfmls
+	  :constructors (substit (subst-mod-params* (constructors adt) modinst bindings) alist)
+	  :adt-type-name (substit (subst-mod-params* (adt-type-name adt) modinst bindings) alist)
+	  :generated (subst-mod-params* (generated adt) modinst bindings)
+	  :generated-by adt))))
 
 (defmethod subst-mod-params* ((adt recursive-type) modinst bindings)
   (let ((cadt
@@ -1044,21 +1080,25 @@ type-name, datatype-subtype, type-application, expr-as-type"
     :acc-decls (subst-mod-params* (acc-decls c) modinst bindings)))
 
 (defmethod subst-mod-params* ((decl adtdecl) modinst bindings)
-  (let* ((nbd (subst-mod-params* (bind-decl decl) modinst bindings))
-	 (alist (unless (eq nbd (bind-decl decl)) (acons (bind-decl decl) nbd nil))))
-    (copy decl
-      :module (current-theory)
-      :generated-by decl
-      :declared-type (subst-mod-params* (declared-type decl) modinst bindings)
-      :type (subst-mod-params* (type decl) modinst bindings)
-      :bind-decl nbd
-      :accessor-decl (substit (subst-mod-params* (accessor-decl decl) modinst bindings)
-		       alist))))
+  (if (rassoc decl bindings)
+      (break "subst-mod-params* adtdecl")
+      (let* ((nbd (subst-mod-params* (bind-decl decl) modinst bindings))
+	     (alist (unless (eq nbd (bind-decl decl)) (acons (bind-decl decl) nbd nil))))
+	(copy decl
+	  :module (current-theory)
+	  :generated-by decl
+	  :declared-type (subst-mod-params* (declared-type decl) modinst bindings)
+	  :type (subst-mod-params* (type decl) modinst bindings)
+	  :bind-decl nbd
+	  :accessor-decl (substit (subst-mod-params* (accessor-decl decl) modinst bindings)
+			   alist)))))
 
 
 (defmethod subst-mod-params* ((decl declaration) modinst bindings)
   (declare (ignore modinst bindings))
-  (copy decl :generated-by decl))
+  (if (rassoc decl bindings)
+      (break "shouldn't get here")
+      (copy decl :generated-by decl)))
 
 (defmethod subst-mod-params* ((decl type-decl) modinst bindings)
   (with-slots (type-value contains) decl
@@ -1090,29 +1130,40 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			     :generated-by decl)))
 	       (setf (semi ndecl) t)
 	       ndecl))
-	    (t (copy decl
-		 :type-value (subst-mod-params* type-value modinst
-						bindings)
-		 :generated-by decl))))))
+	    (t (if (rassoc decl bindings)
+		   ;; generating standalone theory
+		   (break "type-decl standalone")
+		   (copy decl
+		     :type-value (subst-mod-params* type-value modinst
+						    bindings)
+		     :generated-by decl)))))))
 
 (defmethod subst-mod-params* ((decl type-def-decl) modinst bindings)
   (with-slots (type-value type-expr contains) decl
-    (let ((tv (subst-mod-params* type-value modinst bindings))
-	  (te (subst-mod-params* type-expr modinst bindings))
-	  (co (subst-mod-params* contains modinst bindings)))
+    (let* ((tv (subst-mod-params* type-value modinst bindings))
+	   (te (subst-mod-params* type-expr modinst bindings))
+	   (co (subst-mod-params* contains modinst bindings))
+	   (ndecl (if (rassoc decl bindings)
+		      decl
+		      (copy decl :generated-by decl))))
       (unless (fully-instantiated? (print-type tv))
 	(if (eq tv type-value)
 	    (setq tv (copy tv :print-type nil :free-parameters 'unbound))
 	    (setf (print-type tv) nil
 		  (free-parameters tv) 'unbound)))
       (assert (fully-instantiated? tv))
-      (lcopy decl :type-value tv :type-expr te :contains co :generated-by decl))))
+      (setf (type-value ndecl) tv
+	    (type-expr ndecl) te
+	    (contains ndecl) co)
+      ndecl)))
 
 (defmethod subst-mod-params* ((decl formal-theory-decl) modinst bindings)
   (with-slots (theory-name) decl
-    (lcopy decl
-      :theory-name (subst-mod-params* theory-name modinst bindings)
-      :generated-by decl)))
+    (if (rassoc decl bindings)
+	(break "Shouldn't get here")
+	(lcopy decl
+	  :theory-name (subst-mod-params* theory-name modinst bindings)
+	  :generated-by decl))))
 
 (defmethod subst-mod-params* ((decl mod-decl) modinst bindings)
   (with-slots (modname) decl
@@ -1131,15 +1182,21 @@ type-name, datatype-subtype, type-application, expr-as-type"
 ;; 		:modname (module-instance (expr adecl))
 ;; 		:generated-by decl)
 	      )
-	  (lcopy decl
-	    :modname (subst-mod-params* modname modinst bindings)
-	    :generated-by decl)))))
+	  (let ((ndecl (if (rassoc decl bindings)
+			   decl
+			   (copy decl :generated-by decl))))
+	    (setf (modname ndecl)
+		  (subst-mod-params* modname modinst bindings)))))))
 
 (defmethod subst-mod-params* ((decl var-decl) modinst bindings)
   (with-slots (declared-type type) decl
-    (copy decl
-      :type (subst-mod-params* type modinst bindings)
-      :declared-type (subst-mod-params* declared-type modinst bindings))))
+    (let* ((ntype (subst-mod-params* type modinst bindings))
+	   (ndtype (subst-mod-params* declared-type modinst bindings))
+	   (ndecl (if (rassoc decl bindings)
+		      decl
+		      (copy decl :generated-by decl))))
+      (setf (type ndecl) ntype
+	    (declared-type ndecl) ndtype))))
 
 (defmethod subst-mod-params* ((decl const-decl) modinst bindings)
   (let ((mapping (find decl *smp-mappings* :key #'lhs :test #'same-declaration)))
@@ -1151,6 +1208,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 
 (defmethod subst-mod-params-const-decl ((decl const-decl) modinst bindings)
   (with-slots (decl-formals formals declared-type type definition def-axiom) decl
+    (assert (rassoc decl bindings))
     (multiple-value-bind (dfmls dbindings)
 	(subst-mod-params-formal-decls (decl-formals decl) modinst bindings)
       (multiple-value-bind (afmls alist)
@@ -1160,7 +1218,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	      (ndtype (substit (subst-mod-params* (declared-type decl) modinst dbindings) alist))
 	      (ndef (substit (subst-mod-params* (definition decl) modinst dbindings) alist))
 	      ;; No need to substit here, as this is closed
-	      (ndefax (subst-mod-params* (def-axiom decl) modinst dbindings)))
+	      (ndefax (subst-mod-params* (def-axiom decl) modinst dbindings))
+	      (ndecl (if (rassoc decl bindings)
+			 decl
+			 (copy decl :generated-by decl))))
 	  (assert (every #'(lambda (fv) (memq (declaration fv) (flatten-list dfmls)))
 			 (freevars ntype)))
 	  (assert (every #'(lambda (fv)
@@ -1176,19 +1237,18 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				  :free-parameters 'unbound))
 		(setf (print-type ntype) nil
 		      (free-parameters ntype) 'unbound)))
-	  ;;(assert (fully-instantiated? ntype))
-	  ;; (assert (fully-instantiated? nfmls))
-	  ;; (assert (fully-instantiated? ndtype))
-	  ;; (assert (fully-instantiated? ndef))
-	  ;; (assert (fully-instantiated? ndefax))
+	  (assert (fully-instantiated? ntype))
+	  (assert (fully-instantiated? ndtype))
+	  (assert (fully-instantiated? ndef))
+	  (assert (fully-instantiated? ndefax))
 	  (assert (null (freevars ndefax)))
-	  (copy decl
-	    :formal-decls dfmls
-	    :formals afmls
-	    :declared-type ndtype
-	    :type ntype
-	    :definition ndef
-	    :def-axiom ndefax))))))
+	  (setf (decl-formals ndecl) dfmls
+		(formals ndecl) afmls
+		(declared-type ndecl) ndtype
+		(type ndecl) ntype
+		(definition ndecl) ndef
+		(def-axiom ndecl) ndefax)
+	  ndecl)))))
 
 (defmethod subst-mod-params-mapping ((decl const-decl) mapping modinst bindings)
   (with-slots (decl-formals formals declared-type type definition def-axiom) decl
@@ -1290,14 +1350,21 @@ type-name, datatype-subtype, type-application, expr-as-type"
     (multiple-value-bind (nfmls alist)
 	(apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
 			   formals)
-      (lcopy decl
-	:formals nfmls
-	:declared-type (substit (subst-mod-params* declared-type modinst bindings) alist)
-	:type (substit (subst-mod-params* type modinst bindings) alist)
-	:definition (substit (subst-mod-params* definition modinst bindings) alist)
-	:declared-measure (substit (subst-mod-params* declared-measure modinst bindings) alist)
-	:ordering (substit (subst-mod-params* ordering modinst bindings) alist)
-	:generated-by decl))))
+      (let ((ndtype (substit (subst-mod-params* declared-type modinst bindings) alist))
+	    (ntype (substit (subst-mod-params* type modinst bindings) alist))
+	    (ndef (substit (subst-mod-params* definition modinst bindings) alist))
+	    (ndmeas (substit (subst-mod-params* declared-measure modinst bindings) alist))
+	    (nord (substit (subst-mod-params* ordering modinst bindings) alist))
+	    (ndecl (if (rassoc decl bindings)
+		       decl
+		       (copy decl :generated-by decl))))
+	(setf (formals ndecl) nfmls
+	      (declared-type ndecl) ndtype
+	      (type ndecl) ntype
+	      (definition ndecl) ndef
+	      (declared-measure ndecl) ndmeas
+	      (ordering ndecl) nord)
+	ndecl))))
 
 (defmethod subst-mod-params* ((decl tcc-decl) modinst bindings)
   (declare (ignore modinst bindings))
@@ -1322,25 +1389,30 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			(subst-mod-params* closed-definition modinst bindings)
 			ndef))
 	     (ety (nonempty-formula-type ndef))
-	     (ndecl (copy decl
-		      :decl-formals nfmls
-		      :definition ndef
-		      :closed-definition ncdef)))
+	     (ndecl (if (rassoc decl bindings)
+			decl
+			(copy decl :generated-by decl))))
+	(setf (decl-formals ndecl) nfmls
+	      (definition ndecl) ndef
+	      (closed-definition ndecl) ncdef)
 	(when (and ety (not (possibly-empty-type? ety)))
 	  (set-nonempty-type ety ndecl))
 	ndecl))))
 
 (defmethod subst-mod-params* ((decl subtype-judgement) modinst bindings)
   (with-slots (declared-subtype) decl
+    (break "Fill this in")
     (copy decl
       :declared-subtype (subst-mod-params* declared-subtype modinst bindings))))
 
 (defmethod subst-mod-params* ((decl name-judgement) modinst bindings)
   (with-slots (name) decl
+    (break "Fill this in")
     (lcopy decl :name (subst-mod-params* name modinst bindings))))
 
 (defmethod subst-mod-params* ((decl application-judgement) modinst bindings)
   (with-slots (name declared-type type judgement-type formals) decl
+    (break "Check this")
     (if *subst-params-decl*
 	(let ((nname (subst-mod-params* name modinst bindings)))
 	  (when (name? nname)
@@ -1355,22 +1427,25 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			     (substit (subst-mod-params* (print-type type) modinst bindings) alist))
 			    (t (substit (subst-mod-params* declared-type modinst bindings) alist))))
 		     (jtype (substit (subst-mod-params* judgement-type modinst bindings) alist))
-		     (napplj (copy decl
-			       'declared-type ndecl-type
-			       'type ntype
-			       'judgement-type jtype
-			       'name nname
-			       'formals nformals)))
+		     (ndecl (if (rassoc decl bindings) ;; already new
+				 decl
+				 (copy decl))))
+		(setf (declared-type ndecl) ndecl-type
+		      (type ndecl) ntype
+		      (judgement-type ndecl) jtype
+		      (name ndecl) nname
+		      (formals ndecl) nformals)
 		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 					  (freevars (substit ndecl-type alist))))
 		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 					  (freevars (substit ntype alist))))
 		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 					  (freevars (subst-mod-params* judgement-type modinst bindings))))
-		(values napplj alist)))))
+		(values ndecl alist)))))
 	(copy decl :name (subst-mod-params* name modinst bindings)))))
 
 (defmethod subst-mod-params* ((decl rec-application-judgement) modinst bindings)
+  (break "rec-application-judgement")
   (multiple-value-bind (ndecl alist)
       (call-next-method)
     (setf (rewrite-formula ndecl)
@@ -1378,6 +1453,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
     ndecl))
 
 (defmethod subst-mod-params* ((decl expr-judgement) modinst bindings)
+  (break "expr-judgement")
   (multiple-value-bind (nfmls alist)
       (apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
 			 (formals decl))
@@ -1394,7 +1470,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
   (with-slots (expr) decl
     (let ((nexpr (subst-mod-params* expr modinst bindings)))
       (assert (null (freevars nexpr)))
-      (copy decl :expr nexpr))))
+      (setf (expr decl) nexpr))))
 
 
 ;;; Type Expressions
@@ -1417,17 +1493,20 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defmethod subst-mod-params* ((type type-name) modinst bindings)
   (let* ((res (car (resolutions type)))
 	 (decl (declaration res))
-	 (act (cdr (assq decl bindings)))
-	 (lhsmatch (unless act
+	 (bdg (cdr (assq decl bindings)))
+	 (lhsmatch (unless bdg
 		     (assoc decl bindings
 			    :test #'(lambda (d bd)
 				      (and (mapping-lhs? bd) (eq d (declaration bd))))))))
-    #+pvsdebug (assert (or (null act) (fully-instantiated? (type-value act))))
-    (cond (act
-	   (type-value act) ;; sufficient since we know
+    #+pvsdebug (assert (or (null bdg) (fully-instantiated? (type-value bdg))))
+    (cond ((actual? bdg)
+	   (type-value bdg) ;; sufficient since we know
 	   ;; type name was found on the bindings, and the corresponding
 	   ;; actual is there.  Here we actally do the substitution.
 	   )
+	  ((declaration? bdg)
+	   (let ((nm (call-next-method)))
+	     nm))
 	  (lhsmatch
 	   (let ((stype
 		  (subst-for-formals
@@ -1437,9 +1516,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		     (decl-formals (car lhsmatch))
 		     (dactuals type)))))
 	     (subst-mod-params* stype modinst bindings)))
-	  ((and *subst-mod-params-module?*
-	  	(eq (module decl) *subst-mod-params-module?*))
-	   type)
+	  ;; ((and *subst-mod-params-module?*
+	  ;; 	(eq (module decl) *subst-mod-params-module?*))
+	  ;;  type)
 	  (t (let* ((mi (module-instance res))
 		    (nacts (cond ((actuals mi)
 				  (subst-mod-params*
@@ -1711,9 +1790,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
     (let ((nfields (subst-mod-params-fields fields modinst bindings)))
       (if (equal nfields fields)
 	  type
-	  (let ((ntype (copy type
-			 :fields (sort-fields nfields
-					      (dependent-fields? nfields)))))
+	  (let* ((dfields (dependent-fields? nfields))
+		 (ntype (copy type
+			  :fields (sort-fields nfields dfields)
+			  :dependent? dfields)))
 	    ntype)))))
 
 (defun subst-mod-params-fields (fields modinst bindings &optional nfields)
@@ -1749,37 +1829,40 @@ type-name, datatype-subtype, type-application, expr-as-type"
   (assert (tc-eq (type expr) (type (resolution expr))))
   (let* ((decl (declaration expr))
 	 (dacts (dactuals (module-instance expr)))
-	 (act (cdr (assq decl bindings)))
-	 (lhsmatch (unless act
+	 (bdg (cdr (assq decl bindings)))
+	 (lhsmatch (unless bdg
 		     (assoc decl bindings
 			    :test #'(lambda (d bd)
 				      (and (mapping-lhs? bd)
 					   (eq d (declaration bd))))))))
-    (cond (act
-	   (if (declaration? act)
-	       (mk-name-expr (id act) nil nil
-			     (mk-resolution act
-			       (make-theoryname (module act))
-			       (type act)))
-	       (let* ((ex (expr act))
-		      (adecl (when dacts
-			       (if (name-expr? ex)
-				   (declaration ex)
-				   (break "dacts1a"))))
-		      (dfmls (when dacts (decl-formals adecl)))
-		      (sdacts (when dacts (subst-mod-params* dacts modinst bindings)))
-		      (nex (if dacts
-			       (subst-for-formals
-				ex
-				(mapcar #'(lambda (x y) (cons x (type-value y)))
-				  dfmls sdacts))
-			       ex)))
-		 #+badassert
-		 (assert (every #'(lambda (fp)
-				    (or (memq fp (decl-formals (current-declaration)))
-					(memq fp (decl-formals *subst-mod-params-declaration*))))
-				(free-params nex)))
-		 nex)))
+    (cond ((declaration? bdg)
+	   (let* ((mi (if (eq (id (module bdg)) (id modinst))
+			  modinst
+			  (progn (break "name-expr check")
+				 (make-theoryname (module bdg)))))
+		  (ntype (subst-mod-params* (type bdg) modinst bindings))
+		  (res (mk-resolution bdg mi ntype)))
+	     (mk-name-expr (id bdg) (actuals mi) nil res :dactuals (dactuals mi))))
+	  ((actual? bdg)
+	   (let* ((ex (expr bdg))
+		  (adecl (when dacts
+			   (if (name-expr? ex)
+			       (declaration ex)
+			       (break "dacts1a"))))
+		  (dfmls (when dacts (decl-formals adecl)))
+		  (sdacts (when dacts (subst-mod-params* dacts modinst bindings)))
+		  (nex (if dacts
+			   (subst-for-formals
+			    ex
+			    (mapcar #'(lambda (x y) (cons x (type-value y)))
+			      dfmls sdacts))
+			   ex)))
+	     #+badassert
+	     (assert (every #'(lambda (fp)
+				(or (memq fp (decl-formals (current-declaration)))
+				    (memq fp (decl-formals *subst-mod-params-declaration*))))
+			    (free-params nex)))
+	     nex))
 	  (lhsmatch
 	   #+pvsdebug
 	   (assert (or (null (decl-formals (car lhsmatch)))
@@ -2262,10 +2345,16 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			  :expr (lcopy (expr nact) :parens (parens expr))
 			  :type-value (subst-mod-params*
 				       type-value modinst bindings))))
-	    (type-decl (let ((nres (make-resolution nact
-				     (make-theoryname (module nact)))))
-			 (mk-res-actual (mk-type-name (id nact) nil nil nres)
-					(module nact))))
+	    (type-decl (let* ((nthname (if (eq (declaration modinst) (module nact))
+					   modinst
+					   (make-theoryname (module nact))))
+			      (nres (make-resolution nact nthname))
+			      ;; (tname (mk-type-name (id nact) (actuals nthname) nil nres
+			      ;; 			   :dactuals (dactuals nthname)))
+			      )
+			 (assert (eq (type-of (type-value act))
+				     (type-of (type nres))))
+			 (mk-res-actual (type nres) (module nact))))
 	    (t (break "More needed"))))
 	(let ((ntype (when type-value
 		       (subst-mod-params* type-value modinst bindings))))
@@ -2320,10 +2409,15 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defmethod subst-mod-params* ((res resolution) modinst bindings)
   (with-slots ((decl declaration) (mi module-instance) type) res
     (let ((acts (actuals mi))
-	  (dacts (dactuals mi)))
+	  (dacts (dactuals mi))
+	  (bdg (cdr (assq decl bindings))))
       #+pvsdebug (assert (not (assq decl bindings)))
       #+pvsdebug (assert mi)
-      (cond ((tc-eq mi modinst)
+      (cond ((declaration? bdg)
+	     (let ((nmi (subst-mod-params* mi modinst bindings))
+		   (ntype (subst-mod-params* type modinst bindings)))
+	       (mk-resolution bdg nmi ntype)))
+	    ((tc-eq mi modinst)
 	     #+pvsdebug
 	     (assert (subsetp (free-params res) (free-params modinst)) () "res1")
 	     res)
