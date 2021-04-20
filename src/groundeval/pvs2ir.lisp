@@ -391,10 +391,10 @@
 					       (and (const-decl? d)
 						    (eq (simple-id (id d)) decl-id))))
 			     (all-decls (module decl)))))
-	(assert (memq decl same-id-decls))
+	;(assert (memq decl same-id-decls))
 	(if (cdr same-id-decls)
 	    (let ((idx (1+ (position decl same-id-decls))))
-	      (make-c-name module-id (format nil "~a_~d"  decl-id idx)));;two underscores to avoid name confusion
+	      (make-c-name module-id (format nil "~a__~d"  decl-id idx)));;two underscores to avoid name confusion
 	  (make-c-name module-id decl-id)))
     (make-c-name  module-id decl-id))))
 

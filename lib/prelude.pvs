@@ -6377,7 +6377,50 @@ BEGIN
   bv_caret_elim : LEMMA (FORALL (i: below(N), j: upto(i), k: below(i-j+1)): 
                                bv ^ (i, j) ^ k = bv^(j+k))
 
-END bv_caret 
+END bv_caret
+
+integer_bv_ops: THEORY
+BEGIN
+
+      x8, y8, z8: VAR uint8
+      x16, y16, z16: VAR uint16
+      x32, y32, z32: VAR uint32
+      x64, y64, z64: VAR uint64  
+
+      u8xor(x8, y8): uint8 = bv2nat[8](XOR(nat2bv(x8), nat2bv(y8)))
+
+      u16xor(x16, y16): uint16 = bv2nat[16](XOR(nat2bv(x16), nat2bv(y16)))
+
+      u32xor(x32, y32): uint32 = bv2nat[32](XOR(nat2bv(x32), nat2bv(y32)))
+
+      u64xor(x64, y64): uint64 = bv2nat[64](XOR(nat2bv(x64), nat2bv(y64)))
+
+      u8and(x8, y8): uint8 = bv2nat[8](AND(nat2bv(x8), nat2bv(y8)))
+
+      u16and(x16, y16): uint16 = bv2nat[16](AND(nat2bv(x16), nat2bv(y16)))
+
+      u32and(x32, y32): uint32 = bv2nat[32](AND(nat2bv(x32), nat2bv(y32)))
+
+      u64and(x64, y64): uint64 = bv2nat[64](AND(nat2bv(x64), nat2bv(y64)))
+
+      u8or(x8, y8): uint8 = bv2nat[8](OR(nat2bv(x8), nat2bv(y8)))
+
+      u16or(x16, y16): uint16 = bv2nat[16](OR(nat2bv(x16), nat2bv(y16)))
+
+      u32or(x32, y32): uint32 = bv2nat[32](OR(nat2bv(x32), nat2bv(y32)))
+
+      u64or(x64, y64): uint64 = bv2nat[64](OR(nat2bv(x64), nat2bv(y64)))
+
+      u8not(x8): uint8 =  bv2nat(NOT(nat2bv(x8)));
+
+      u16not(x16): uint16 = bv2nat(NOT nat2bv[16](x16));
+
+      u32not(x32): uint32 = bv2nat(NOT(nat2bv[32](x32)));
+
+      u64not(x64): uint64 = bv2nat(NOT(nat2bv[64](x64)));
+
+
+END integer_bv_ops
 
 
 mod: THEORY

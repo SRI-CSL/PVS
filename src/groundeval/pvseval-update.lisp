@@ -970,7 +970,9 @@ if called."
 	    (rhs (pvs2cl_up* rhs-expr bindings
 			     livevars))
 	    (cl-expr (if (funtype? type)
-			 (let* ((bound (array-bound type)));;NSH(9-19-12)
+			 (let* ((bound (array-bound type))
+				;; (elemtype (pvs2cl-lisp-type (range type)))
+				);;NSH(9-19-12)
 			   (if bound ;;then cl-expr is an array
 			       (let ((cl-bound (pvs2cl_up* bound
 							   bindings livevars)))
@@ -1014,12 +1016,13 @@ if called."
 					   livevars))
 	     (lhsvar (gentemp "LHS"))
 	     (bound (array-bound type))
+	     ;(elemtype (pvs2cl-lisp-type type))
 	     (cl-bound (when bound (pvs2cl_up* bound
 					       bindings livevars)))
 	     (cl-expr (if (symbolp cl-expr)
 			  cl-expr
 			(if bound
-			    `(mk-fun-array ,cl-expr ,cl-bound ,lhsvar)
+			    `(mk-fun-array ,cl-expr ,cl-bound ,lhsvar); ,elemtype
 			  `(make-closure-hash ,cl-expr))))
 	     (cl-expr-var (gentemp "E"))
 	     (newexpr (if bound `(aref ,cl-expr-var ,lhsvar)
@@ -1150,9 +1153,10 @@ if called."
 	   (setf (fill-pointer expr) size)
 	   expr))
 	((pvs-outer-array-p expr)
-	 (let* ((arr (make-array size :initial-element 0
-				      :fill-pointer size
-				      :adjustable t))
+	 (let* ((arr (make-array size
+				 :initial-element 0
+				 :fill-pointer size
+				 :adjustable t))
 		(inner-array (pvs-outer-array-inner-array expr))
 		(contents (pvs-array-contents inner-array))
 		(inner-size (pvs-array-size inner-array))
@@ -1166,9 +1170,10 @@ if called."
 		 as i from (1+ offset) to inner-size
 		 do (setf (aref arr x) y))
 	   (insert-array-diffs outer-diffs arr)))
-	(t (let ((arr (make-array size :initial-element 0
-				       :fill-pointer size
-				       :adjustable t)))
+	(t (let ((arr (make-array size
+				  :initial-element 0
+				  :fill-pointer size
+				  :adjustable t)))
 	     (loop for i from 0 to (1- size);;unless avoids evaluating expr on 
 		   unless (eql i update-index) do ;;newly expanded index
 		   (setf (aref arr i)(funcall expr i)))
@@ -2066,6 +2071,7 @@ if called."
 	(mk-name '¬ nil '|booleans|)
 	(mk-name 'WHEN nil '|booleans|)
 	(mk-name 'IFF nil '|booleans|)
+	(mk-name 'XOR nil '|xor_def|)	
 	(mk-name '+ nil '|number_fields|)
 	(mk-name '- nil '|number_fields|)
 	(mk-name '* nil '|number_fields|)
@@ -2101,6 +2107,22 @@ if called."
 	(mk-name '|char| nil '|character_adt|)
 	(mk-name '|code| nil '|character_adt|)
 	(mk-name '|char?| nil '|character_adt|)
+	(mk-name '|u8xor| nil '|integer_bv_ops|)
+	(mk-name '|u16xor| nil '|integer_bv_ops|)
+	(mk-name '|u32xor| nil '|integer_bv_ops|)
+	(mk-name '|u64xor| nil '|integer_bv_ops|)
+	(mk-name '|u8and| nil '|integer_bv_ops|)
+	(mk-name '|u16and| nil '|integer_bv_ops|)
+	(mk-name '|u32and| nil '|integer_bv_ops|)
+	(mk-name '|u64and| nil '|integer_bv_ops|)
+	(mk-name '|u8or| nil '|integer_bv_ops|)
+	(mk-name '|u16or| nil '|integer_bv_ops|)
+	(mk-name '|u32or| nil '|integer_bv_ops|)
+	(mk-name '|u64or| nil '|integer_bv_ops|)
+	(mk-name '|u8not| nil '|integer_bv_ops|)
+	(mk-name '|u16not| nil '|integer_bv_ops|)
+	(mk-name '|u32not| nil '|integer_bv_ops|)
+	(mk-name '|u64not| nil '|integer_bv_ops|)
 	))
 
 (defun same-primitive?  (n i)

@@ -98,6 +98,7 @@
 (defun |pvs_∧| (x)(and (svref x 0)(svref x 1)))
 (defun |pvs_OR| (x) (or (svref x 0)(svref x 1)))
 (defun |pvs_∨| (x) (or (svref x 0)(svref x 1)))
+(defun |pvs_XOR| (x) (not (eql (svref x 0)(svref x 1))))
 (defun |pvs_NOT| (x) (not x))
 (defun |pvs_¬| (x) (not x))
 (defun |pvs_+| (x) (+ (svref x 0)(svref x 1)))
@@ -150,6 +151,27 @@
 (defun |pvs_char?| (x) (characterp x))
 (defun |pvs_code| (x) (char-code x))
 
+(defun |pvs_u8xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
+(defun |pvs_u16xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
+(defun |pvs_u32xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
+(defun |pvs_u64xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 64)(un2bv (svref x 1) 64)) 64))
+
+(defun |pvs_u8and| (x) (bv2un (bit-and (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
+(defun |pvs_u16and| (x) (bv2un (bit-and (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
+(defun |pvs_u32and| (x) (bv2un (bit-and (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
+(defun |pvs_u64and| (x) (bv2un (bit-and (un2bv (svref x 0) 64)(un2bv (svref x 1) 64)) 64))
+
+(defun |pvs_u8or| (x) (bv2un (bit-or (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
+(defun |pvs_u16or| (x) (bv2un (bit-or (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
+(defun |pvs_u32or| (x) (bv2un (bit-or (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
+(defun |pvs_u64or| (x) (bv2un (bit-or (un2bv (svref x 0) 64)(un2bv (svref x 1) 64)) 64))
+
+(defun |pvs_u8not| (x) (bv2un (bit-not (un2bv x 8)) 8))
+(defun |pvs_u16not| (x) (bv2un (bit-not (un2bv x 16)) 16))
+(defun |pvs_u32not| (x) (bv2un (bit-not (un2bv x 32)) 32))
+(defun |pvs_u64not| (x) (bv2un (bit-not (un2bv x 64)) 64))
+
+
 ;;multiary macro versions of primitives
 (defmacro |pvs__=| (x y)
   `(pvs_equalp ,x ,y))
@@ -169,6 +191,7 @@
 (defmacro |pvs__∧| (x y) `(and ,x ,y))
 (defmacro |pvs__OR| (x y)  `(or ,x ,y))
 (defmacro |pvs__∨| (x y)  `(or ,x ,y))
+(defmacro |pvs_XOR| (x y) `(not (eql ,x ,y)))
 (defmacro |pvs__+| (x y) `(+ ,x ,y))
 (defmacro |pvs__-| (x y) `(- ,x ,y))
 (defmacro |pvs__*| (x y) `(* ,x ,y))
@@ -203,6 +226,39 @@
 (defmacro |pvs__rational_pred| (x) `(rationalp ,x))
 (defmacro |pvs__integer_pred| (x) `(integerp ,x))
 
+(defun un2bv-rec (x n bv i);assuming i at most length of bv
+  (if (eql i n) bv
+    (multiple-value-bind (q r) (floor x 2)
+      (setf (bit bv i) r)
+      (un2bv-rec q n bv (1+ i)))))
+
+(defun un2bv (x n)
+  (let ((bv (make-array n :element-type 'bit)))
+    (un2bv-rec x n bv 0)))
+
+(defun bv2un (bv n); bv has length at least n
+  (do ((i  n (1- i))(x 0 (+ (bit bv (1- i)) (* x 2))))((= i 0) x)))
+  
+
+(defmacro |pvs__u8xor| (x y) `(bv2un (bit-xor (un2bv ,x 8)(un2bv ,y 8)) 8))
+(defmacro |pvs__u16xor| (x y) `(bv2un (bit-xor (un2bv ,x 16)(un2bv ,y 16)) 16))
+(defmacro |pvs__u32xor| (x y) `(bv2un (bit-xor (un2bv ,x 32)(un2bv ,y 32)) 32))
+(defmacro |pvs__u64xor| (x y) `(bv2un (bit-xor (un2bv ,x 64)(un2bv ,y 64)) 64))
+
+(defmacro |pvs__u8and| (x y) `(bv2un (bit-and (un2bv ,x 8)(un2bv ,y 8)) 8))
+(defmacro |pvs__u16and| (x y) `(bv2un (bit-and (un2bv ,x 16)(un2bv ,y 16)) 16))
+(defmacro |pvs__u32and| (x y) `(bv2un (bit-and (un2bv ,x 32)(un2bv ,y 32)) 32))
+(defmacro |pvs__u64and| (x y) `(bv2un (bit-and (un2bv ,x 64)(un2bv ,y 64)) 64))
+
+(defmacro |pvs__u8or| (x y) `(bv2un (bit-or (un2bv ,x 8)(un2bv ,y 8)) 8))
+(defmacro |pvs__u16or| (x y) `(bv2un (bit-or (un2bv ,x 16)(un2bv ,y 16)) 16))
+(defmacro |pvs__u32or| (x y) `(bv2un (bit-or (un2bv ,x 32)(un2bv ,y 32)) 32))
+(defmacro |pvs__u64or| (x y) `(bv2un (bit-or (un2bv ,x 64)(un2bv ,y 64)) 64))
+
+(defmacro |pvs__u8not| (x) `(bv2un (bit-not (un2bv ,x 8)) 8))
+(defmacro |pvs__u16not| (x) `(bv2un (bit-not (un2bv ,x 16)) 16))
+(defmacro |pvs__u32not| (x) `(bv2un (bit-not (un2bv ,x 32)) 32))
+(defmacro |pvs__u64not| (x) `(bv2un (bit-not (un2bv ,x 64)) 64))
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))
