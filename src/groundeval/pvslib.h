@@ -243,9 +243,13 @@ typedef void * any_t;
 
 struct stringliteral_s {
   uint32_t count;
-  uint32_t strval[];
+  uint32_t size;
+  uint32_t max;
+  uint32_t elems[];
 } stringliteral_s;
 typedef struct stringliteral_s * stringliteral_t;
+
+uint32_t code(uint32_t x);
 
 extern stringliteral_t mk_string(uint32_t length, uint32_t * instring);
 
