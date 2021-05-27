@@ -339,7 +339,7 @@ required a context.")
       (if (and (null creses)
                (name-expr-from-number? ex)
                (compatible? expected *number_field*))
-          (change-class ex 'number-expr :type (or *real* *number_field*))
+          (change-class ex 'number-expr :type (get-expr-number-type (number ex)))
           (set-type-name-expr ex expected
                               (or sreses creses (resolutions ex)))))))
 
@@ -1751,7 +1751,7 @@ type of the lhs."
 (defmethod set-type* ((ex rational-expr) expected)
   (unless (compatible? expected *number*)
     (type-incompatible ex (ptypes ex) expected))
-  (setf (type ex) (or *real* *number_field*)))
+  (setf (type ex) (get-expr-number-type (number ex))))
 
 (defun check-for-subtype-tcc (ex expected)
   #+pvsdebug (assert (fully-instantiated? expected))
