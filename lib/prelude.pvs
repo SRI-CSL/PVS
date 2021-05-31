@@ -4152,15 +4152,15 @@ integertypes: THEORY
        exp2(n)
 
       u8lshift(ux8, (n: upto(8))): uint8 =
-       LET x: below(exp2(8-n)) = nrem(ux8, exp2(8-n))
+       LET x: below(exp2(8 - n)) = nrem(ux8, exp2(8 - n))
            IN x * exp2(n)
 
       u16lshift(ux16, (n: upto(16))): uint16 =
-       LET x: below(exp2(16-n)) = nrem(ux16, exp2(16-n))
+       LET x: below(exp2(16 - n)) = nrem(ux16, exp2(16 - n))
            IN x * exp2(n)
 
       u32lshift(ux32, (n: upto(32))): uint32 =
-       LET x: below(exp2(32-n)) = nrem(ux32, exp2(32-n))
+       LET x: below(exp2(32 - n)) = nrem(ux32, exp2(32 - n))
            IN x * exp2(n)
 
       u64lshift(ux64, (n: upto(64))): uint64 =
@@ -5318,11 +5318,11 @@ gen_strings : THEORY
 
     get(s, (i: below(length(s)))): char = s`seq(i)
 
-    empty: string = empty_seq[char]
+    empty: string = (# length := 0, seq := (LAMBDA (i: below(0)): char(0)) #)
 
     length_empty: lemma length(empty) = 0
 
-    unit(c): string = add(c, empty)
+    unit(c): string = (# length := 1, seq := (LAMBDA (i: below(1)): c) #)
 
     length_unit: LEMMA length(unit(c)) = 1
 
@@ -5422,17 +5422,17 @@ charstrings: THEORY
 
     length_null: LEMMA length(null) = 0
 
-    add(c, (s | length(s) + 1 < charstring_bound)): charstring =
+    addchar(c, (s | length(s) + 1 < charstring_bound)): charstring =
       (# length := s`length + 1,
          seq := (LAMBDA (i:below(s`length + 1)): IF i = s`length THEN c ELSE get(s, i) ENDIF)
 	 #)
 
-    singleton(c): charstring = add(c, null)
-    CONVERSION+ charstrings.singleton
+    unit(c): charstring = (# length := 1, seq := (LAMBDA (i:below(1)): c) #)
+    CONVERSION+ charstrings.unit
 
-    length_unit: LEMMA length(singleton(c)) = 1
+    length_unit: LEMMA length(unit(c)) = 1
 
-    unit_ax: LEMMA cget(singleton(c), 0) = c
+    unit_ax: LEMMA cget(unit(c), 0) = c
 
     extensionality: LEMMA
        s1 = s2 IFF (length(s1) = length(s2) AND ∀ (i:below(length(s1))): cget(s1, i) = cget(s2, i));
@@ -5548,21 +5548,16 @@ bytestrings: THEORY
 
     get(s, (i: below(length(s)))): byte = s`seq(i)
 
-    null: bytestring = (# length := 0, seq := (LAMBDA (i: below(0)): 0) #)
+    null: bytestring = (# length := 0, seq := (LAMBDA (i: below(0))->byte: 0) #)
 
     length_null: LEMMA length(null) = 0
 
-    add(b, s): bytestring =
-      (# length := s`length + 1,
-         seq := (LAMBDA (i:below(s`length + 1)): IF i = s`length THEN b ELSE get(s, i) ENDIF)
-	 #)
+    unit(b): bytestring = (# length := 1, seq := (LAMBDA (i : below(1))->byte: b) #)
+    CONVERSION+ bytestrings.unit
 
-    singleton(b): bytestring = add(b, null)
-    CONVERSION+ bytestrings.singleton
+    length_unit: LEMMA length(unit(b)) = 1
 
-    length_unit: LEMMA length(singleton(b)) = 1
-
-    unit_ax: LEMMA get(singleton(b), 0) = b
+    unit_ax: LEMMA get(unit(b), 0) = b
 
     extensionality: LEMMA
        s1 = s2 IFF (length(s1) = length(s2) AND ∀ (i:below(length(s1))): get(s1, i) = get(s2, i));
@@ -5571,7 +5566,7 @@ bytestrings: THEORY
 
     mk_bytestring(cs: bstring): bytestring =
       (# length := cs`length,
-         seq := (LAMBDA (i: below(cs`length::below(bytestring_bound))): code(get(cs, i))) #)
+         seq := (LAMBDA (i: below(cs`length::below(bytestring_bound)))-> byte: code(get(cs, i))) #)
 
     CONVERSION+ mk_bytestring;
 
@@ -5580,7 +5575,7 @@ bytestrings: THEORY
        ELSIF s2`length = 0 THEN s1
        ELSE (LET n : below(bytestring_bound) = s1`length + s2`length
              IN (# length := n, 
-                   seq := (LAMBDA (i:below(n)): IF i < s1`length THEN get(s1, i) ELSE get(s2, i - s1`length) ENDIF)
+                   seq := (LAMBDA (i:below(n))->byte: IF i < s1`length THEN get(s1, i) ELSE get(s2, i - s1`length) ENDIF)
 		   #))
 		   ENDIF
 
@@ -5594,15 +5589,15 @@ bytestrings: THEORY
        ELSE get(s2, i - length(s1))
       ENDIF)
 
-    strdiff_rec(s1, s2, (i : upto(min(length(s1), length(s2))))): RECURSIVE
-       upto(min(length(s1), length(s2)))
+    strdiff_rec(s1, s2, (i : upto(length(s1)) | i <= length(s2))): RECURSIVE
+       {i : upto(length(s1)) | i <= length(s2)}
        = (IF i = length(s1) OR i = length(s2) OR get(s1, i) /= get(s2, i)
            THEN i
            ELSE strdiff_rec(s1, s2, i + 1)
 	   ENDIF)
     MEASURE min(length(s1), length(s2)) - i
 
-    strdiff(s1, s2): upto(min(length(s1), length(s2)))  = strdiff_rec(s1, s2, 0)
+    strdiff(s1, s2): {i : upto(length(s1)) | i <= length(s2)}  = strdiff_rec(s1, s2, 0)
 
     strdiff_eq: LEMMA
       FORALL (j: below(strdiff(s1, s2))): get(s1, j) = get(s2, j)
@@ -5613,11 +5608,10 @@ bytestrings: THEORY
 
     strcmp(s1, s2): subrange(-1, 1) =
       (LET i = strdiff(s1, s2)
-       IN IF i = min(length(s1), length(s2))
+       IN IF (i = length(s1) OR i = length(s2))
            THEN IF length(s1) < length(s2) THEN -1 ELSIF length(s1) > length(s2) THEN 1 ELSE 0 ENDIF
 	   ELSIF get(s1, i) < get(s2, i) THEN -1 ELSE 1 ENDIF)
 	   
-
     strcmp_eq: LEMMA
       strcmp(s1, s2) = 0 => s1 = s2
 
@@ -5632,7 +5626,7 @@ bytestrings: THEORY
         i < length(s1) AND (i < length(s2) => get(s2, i) < get(s1, i)))
 
     prefix(s, (i: upto(length(s)))): bytestring =
-    (IF i = length(s) THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(i)): get(s, j)) #) ENDIF)
+    (IF i = length(s) THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(i))->byte: get(s, j)) #) ENDIF)
 
     length_prefix: LEMMA
      (FORALL (i: upto(length(s))): 
@@ -5643,7 +5637,7 @@ bytestrings: THEORY
       get(prefix(s, i), j) = get(s, j)
 
     suffix(s, (i: upto(length(s)))): bytestring =
-    (IF i = 0 THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(length(s) - i)): get(s, i + j)) #) ENDIF)
+    (IF i = 0 THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(length(s) - i))->byte: get(s, i + j)) #) ENDIF)
      
     length_suffix: LEMMA
      (FORALL (i: upto(length(s))): 
@@ -6377,7 +6371,50 @@ BEGIN
   bv_caret_elim : LEMMA (FORALL (i: below(N), j: upto(i), k: below(i-j+1)): 
                                bv ^ (i, j) ^ k = bv^(j+k))
 
-END bv_caret 
+END bv_caret
+
+integer_bv_ops: THEORY
+BEGIN
+
+      x8, y8, z8: VAR uint8
+      x16, y16, z16: VAR uint16
+      x32, y32, z32: VAR uint32
+      x64, y64, z64: VAR uint64  
+
+      u8xor(x8, y8): uint8 = bv2nat[8](XOR(nat2bv(x8), nat2bv(y8)))
+
+      u16xor(x16, y16): uint16 = bv2nat[16](XOR(nat2bv(x16), nat2bv(y16)))
+
+      u32xor(x32, y32): uint32 = bv2nat[32](XOR(nat2bv(x32), nat2bv(y32)))
+
+      u64xor(x64, y64): uint64 = bv2nat[64](XOR(nat2bv(x64), nat2bv(y64)))
+
+      u8and(x8, y8): uint8 = bv2nat[8](AND(nat2bv(x8), nat2bv(y8)))
+
+      u16and(x16, y16): uint16 = bv2nat[16](AND(nat2bv(x16), nat2bv(y16)))
+
+      u32and(x32, y32): uint32 = bv2nat[32](AND(nat2bv(x32), nat2bv(y32)))
+
+      u64and(x64, y64): uint64 = bv2nat[64](AND(nat2bv(x64), nat2bv(y64)))
+
+      u8or(x8, y8): uint8 = bv2nat[8](OR(nat2bv(x8), nat2bv(y8)))
+
+      u16or(x16, y16): uint16 = bv2nat[16](OR(nat2bv(x16), nat2bv(y16)))
+
+      u32or(x32, y32): uint32 = bv2nat[32](OR(nat2bv(x32), nat2bv(y32)))
+
+      u64or(x64, y64): uint64 = bv2nat[64](OR(nat2bv(x64), nat2bv(y64)))
+
+      u8not(x8): uint8 =  bv2nat(NOT(nat2bv(x8)));
+
+      u16not(x16): uint16 = bv2nat(NOT nat2bv[16](x16));
+
+      u32not(x32): uint32 = bv2nat(NOT(nat2bv[32](x32)));
+
+      u64not(x64): uint64 = bv2nat(NOT(nat2bv[64](x64)));
+
+
+END integer_bv_ops
 
 
 mod: THEORY

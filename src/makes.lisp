@@ -1816,21 +1816,18 @@
 	  (make-instance 'rational-expr
 	    :number number
 	    :type *real*))
-      (let* ((num (if (minusp number) (- number) number))
-	     (nexpr (if (integerp num)
-			(make-instance 'number-expr
-			  :number num
-			  :type *real*)
-			(make!-application (divides-operator)
-			  (make-instance 'number-expr
-			    :number (numerator num)
-			    :type *real*)
-			  (make-instance 'number-expr
-			    :number (denominator num)
-			    :type *real*)))))
-	(if (minusp number)
-	    (make!-minus nexpr)
-	    nexpr))))
+      (let ((nexpr (if (integerp number)
+		       (make-instance 'int-expr
+			 :number number
+			 :type (get-expr-number-type number))
+		       (make!-application (divides-operator)
+			 (make-instance 'int-expr
+			   :number (numerator number)
+			   :type (get-expr-number-type (numerator number)))
+			 (make-instance 'int-expr
+			   :number (denominator number)
+			   :type (get-expr-number-type (denominator number)))))))
+	nexpr)))
 
 (defun make!-name-expr (id actuals mod-id res
 			   &optional mappings library target dactuals)
