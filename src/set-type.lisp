@@ -339,7 +339,7 @@ required a context.")
       (if (and (null creses)
                (name-expr-from-number? ex)
                (compatible? expected *number_field*))
-          (change-class ex 'number-expr :type (or *real* *number_field*))
+          (change-class ex 'number-expr :type (get-expr-number-type (number ex)))
           (set-type-name-expr ex expected
                               (or sreses creses (resolutions ex)))))))
 
@@ -1236,6 +1236,7 @@ resolution with a macro matching the signature of the arguments."
         (rhs (rhs map))
         (type (type map)))
     (assert (resolutions lhs))
+    ;; Note that (formals (declaration lhs)) /= (formals lhs)
     ;;(assert (ptypes (expr rhs)))
     ;; :Picks the best resolution
     (determine-best-mapping-lhs lhs rhs type thinst)
@@ -1244,10 +1245,11 @@ resolution with a macro matching the signature of the arguments."
       (type-error lhs "May not map ~a" lhs))
     (when (mapping-lhs? lhs)
       (setf (dactuals lhs) (mk-dactuals (decl-formals lhs)))
-      (let ((stype (subst-mod-params (type (resolution lhs))
-		       (copy thinst :dactuals (dactuals lhs))
-		     (module (declaration lhs)) lhs)))
-	(setf (type lhs) stype)))))
+      (with-current-decl lhs
+	(let ((stype (subst-mod-params (type (resolution lhs))
+			 (copy thinst :dactuals (dactuals lhs))
+		       (module (declaration lhs)) (declaration lhs))))
+	  (setf (type lhs) stype))))))
 
 (defun determine-best-mapping-lhs (lhs rhs type thinst)
   (unless (singleton? (resolutions lhs))
@@ -1448,7 +1450,7 @@ The first arguement is just a method discriminator."
     (setf (resolutions thinst)
 	  (list (mk-resolution (module ldecl) thinst nil))))
   (let ((stype (subst-mod-params (type (resolution lhs)) thinst (module ldecl) ldecl)))
-    ;;(assert (compatible? (type (expr rhs)) stype))
+    (assert (compatible? (car (ptypes (expr rhs))) stype))
     (set-type* (expr rhs) stype)))
 
 (defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs mapping-lhs) rhs thinst)
@@ -1462,6 +1464,8 @@ type of the lhs."
 		     (or (not (decl-formal? fp))
 			 (memq fp (decl-formals lhs))))
 		 (free-params (type lhs))))
+  (unless (equal (free-params (type lhs)) (free-params thinst))
+    (break "check set-type-mapping-rhs* free-params"))
   (let ((stype (subst-mod-params (type lhs) thinst (module ldecl) lhs)))
     (set-type* (expr rhs) stype))
   (assert (every #'(lambda (fp)
@@ -1751,7 +1755,7 @@ type of the lhs."
 (defmethod set-type* ((ex rational-expr) expected)
   (unless (compatible? expected *number*)
     (type-incompatible ex (ptypes ex) expected))
-  (setf (type ex) (or *real* *number_field*)))
+  (setf (type ex) (get-expr-number-type (number ex))))
 
 (defun check-for-subtype-tcc (ex expected)
   #+pvsdebug (assert (fully-instantiated? expected))
