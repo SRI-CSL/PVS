@@ -218,22 +218,36 @@ The prettyprint-theory command prettyprints the specified theory and
 replaces the old theory in the current buffer.  Can use undo (C-x u or
 C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
-  (pvs-bury-output)
-  (save-some-pvs-buffers t)
   (let* ((parts (split-string theoryref "#"))
-	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cdr (assoc theoryname (pvs-collect-theories)))))
-    (unless file
-      (error "File for theoryname %s not found" theoryname))
-    (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
-			   theoryname (format "\"%s\"" file))
-		       "Prettyprinting"
-		       (pvs-get-abbreviation 'prettyprint-theory)
-		       'dont-care))
-  (if (buffer-modified-p)
-      (message
-       "prettyprinted theory - use C-x u to undo changes.")
-      (message "No changes were made")))
+	 (filename (when (cadr parts) (car parts)))
+	 (dir (file-name-directory filename))
+	 (theoryname (or (cadr parts) (car parts))))
+    (cond ((file-equal dir (concat pvs-path "/lib/"))
+	   (if (yes-or-no-p
+		(concat "Cannot change prelude theories\n"
+			"Did you mean to use prettyprint-expanded (ppe) instead?"))
+	       (prettyprint-expanded theoryref)
+	       (error "No change.")))
+	  ((yes-or-no-p
+	    (concat "This will reindent and replace the current theory, losing comments\n"
+		    "Did you mean to use prettyprint-expanded (ppe) instead?"))
+	   (prettyprint-expanded theoryref))
+	  (t (pvs-bury-output)
+	     (save-some-pvs-buffers t)
+	     (let ((file (if filename
+			     (file-name-nondirectory filename)
+			     (cadr (assoc theoryname (pvs-collect-theories))))))
+	       (unless file
+		 (error "File for theoryname %s not found" theoryname))
+	       (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
+				      theoryname (format "\"%s\"" file))
+				  "Prettyprinting"
+				  (pvs-get-abbreviation 'prettyprint-theory)
+				  'dont-care))
+	     (if (buffer-modified-p)
+		 (message
+		  "prettyprinted theory - use C-x u to undo changes.")
+		 (message "No changes were made"))))))
 
 
 (defpvs prettyprint-pvs-file prettyprint (filename)

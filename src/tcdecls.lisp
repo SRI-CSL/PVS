@@ -769,7 +769,8 @@
     (when (mappings theory-name)
       (generate-mapped-axiom-tccs theory-name))
     ;; Inline the generated decls, but with nested identifiers
-    (make-inlined-theory theory theory-name decl)))
+    (make-inlined-theory theory theory-name decl)
+    ))
 
 (defun make-inlined-theory (theory theory-name thdecl)
   (assert (typep thdecl '(or mod-decl formal-theory-decl)))
@@ -781,6 +782,7 @@
 	  (ass-part (memq thdecl (assuming (current-theory))))
 	  (th-part (memq thdecl (theory (current-theory)))))
       (assert (or fml-part ass-part th-part))
+      ;; Splice in the declarations in the right place
       (cond (fml-part
 	     ;; Goes to the front of assuming or theory part
 	     (if (assuming (current-theory))
@@ -797,9 +799,20 @@
 	     (let* ((rest (cdr th-part))
 		    (prev (ldiff (theory (current-theory)) rest)))
 	       (setf (theory (current-theory))
-		     (append prev (all-decls stheory) rest))))))
-    (dolist (decl (all-decls stheory))
-      (when (declaration? decl) (put-decl decl)))))
+		     (append prev (all-decls stheory) rest)))))
+      (dolist (decl (all-decls stheory))
+	;; overwrite stheory
+	(setf (module decl) (current-theory))
+	(when (and fml-part (declaration? decl))
+	  (setf (visible? decl) nil))
+	(setf (generated-by decl) thdecl)
+	(push decl (generated thdecl))
+	;;(add-new-inlined-decl decl lastdecl part)
+	;;(make-inlined-theory-decl decl)
+	(when (declaration? decl)
+	  (put-decl decl)
+	  (assert (or (importing? decl)
+		      (memq decl (get-declarations (id decl))))))))))
     
 (defun subst-mod-params-inlined-theory (theory theory-name thdecl)
   "Does subst-mod-params for the whole theory, but with a fresh

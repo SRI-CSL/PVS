@@ -187,6 +187,27 @@
 		`(method ,funsym ,@q ,a)))
     (generic-function-methods (symbol-function funsym))))
 
+(let ((methods nil))
+  (dolist (m (generic-function-methods #'subst-mod-params*))
+    (when (subclass-of (car (method-specializers m)) (find-class 'declaration))
+      (push m methods)))
+  methods)
+
+(defun all-superclasses (cl)
+  (let ((cls (if (typep cl 'class) cl (find-class cl))))
+    (remove-duplicates (all-superclasses* cls nil))))
+
+(defun all-superclasses* (cl classes)
+  (cond ((or (null cl) (memq cl classes))
+	 classes)
+	(t (push cl classes)
+	   (dolist (dcl (class-direct-superclasses cl))
+	     (let ((nclasses (all-superclasses* dcl classes)))
+	       (setq classes (append nclasses classes))))
+	   classes)))
+
+(defun subclass-p (cl1 cl2)
+  (memq cl2 (all-superclasses cl1)))
 
 ;; (in-package :monitor)
 ;; ;;; change to metering.lisp to monitor methods

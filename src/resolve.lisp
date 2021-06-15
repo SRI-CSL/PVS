@@ -70,6 +70,8 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
+    (when (type-name? name)
+      (assert (every #'(lambda (r) (fully-typed? (type r))) res)))
     (set-actuals-places name res)
     (when (and (cdr res)
 	       (resolution name)
@@ -229,9 +231,18 @@
 		      ldecls)
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
-	 (dreses (get-decls-resolutions decls (actuals name) (dactuals name)
+	 (dacts (or (dactuals name)
+		    (and (mapping-lhs? name)
+			 (mk-dactuals (decl-formals name)))))
+	 (dreses (if (and (mapping-lhs? name)
+			  (decl-formals name))
+		     (with-current-decl name
+		       (get-decls-resolutions decls (actuals name) dacts
 					(mod-id name) (mappings name)
-					kind args)))
+					kind args))
+		     (get-decls-resolutions decls (actuals name) dacts
+					    (mod-id name) (mappings name)
+					    kind args))))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
@@ -938,7 +949,10 @@ decl, args, and mappings."
       (let ((cathinsts (compatible-arguments? decl (car mthinsts) args (current-theory))))
 	(assert (or (null cathinsts)
 		    (not (fully-instantiated? (car mthinsts)))
-		    (and (singleton? cathinsts) (tc-eq (car cathinsts) (car mthinsts)))))
+		    (every #'(lambda (cath)
+			       (or (tc-eq cath (car mthinsts))
+				   (fully-instantiated? cath)))
+			   cathinsts)))
 	(if (fully-instantiated? (car mthinsts))
 	    (when cathinsts
 	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
@@ -1087,14 +1101,17 @@ decl, args, and mappings."
 			       (same-id (expr act) (type (car tres))))
 		      (setf (mod-id (type (car tres)))
 			    (mod-id (expr act)))
-		      (setf (actuals (type (car tres)))
-			    (actuals (expr act)))
-		      (setf (dactuals (type (car tres)))
-			    (dactuals (expr act))))
+		      (unless (actuals (type (car tres)))
+			(setf (actuals (type (car tres)))
+			      (actuals (expr act))))
+		      (unless (dactuals (type (car tres)))
+			(setf (dactuals (type (car tres)))
+			      (dactuals (expr act)))))
 		    (when (and (place (expr act))
 			       (null (place (type (car tres)))))
 		      (setf (place (type (car tres))) (place (expr act))))
-		    (setf (type-value act) (type (car tres)))
+		    (unless (type-value act)
+		      (setf (type-value act) (type (car tres))))
 		    (push 'type (types (expr act))))))))))))
 
 (defmethod typecheck-actual ((ex set-expr) act expected kind arguments)
@@ -2287,9 +2304,35 @@ This forms a lattice, and we return the top ones."
 				   ;;(free-params (type r))
 				   ))
 	     reses))
-      (and args
-	   (filter-res-exact-matches reses args))
+      (let ((ereses (or (and args
+			     (filter-res-exact-matches reses args))
+			reses)))
+	(filter-res-field-apps ereses args))
       reses))
+
+(defun filter-res-field-apps (reses args)
+  (when (and (singleton? args)
+	     (singleton? (ptypes (car args))))
+    (let ((atype (find-supertype (car (ptypes (car args))))))
+      (when (recordtype? atype)
+	(filter-res-field-apps* reses atype)))))
+
+(defun filter-res-field-apps* (reses atype &optional freses nreses)
+  (if (null reses)
+      (append freses
+	      (remove-if #'(lambda (nr)
+			     (some #'(lambda (fr)
+				       (compatible? (range (find-supertype (type fr)))
+						    (range (find-supertype (type nr)))))
+				   freses))
+		nreses))
+      (let* ((rdecl (declaration (car reses)))
+	     (field-res? (and (field-decl? rdecl)
+			      (memq rdecl (fields atype)))))
+	(filter-res-field-apps*
+	 (cdr reses) atype
+	 (if field-res? (cons (car reses) freses) freses)
+	 (if field-res? nreses (cons (car reses) nreses))))))
 
 ;; This tries to keep things besides bindings and var-decls, but breaks
 ;; nasalib/analysis/continuous_functions_props

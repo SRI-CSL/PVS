@@ -66,6 +66,10 @@
 	     (modify-syntax-entry ?\r ">"))
 	(set-syntax-table st))))
 
+(defun pvs-prelude-file-p (file)
+  (or (file-equal (format "%s/lib/prelude.pvs" pvs-path) file)
+      (file-equal (format "%s/lib/pvsio_prelude.pvs" pvs-path) file)))
+  
 (defun pvs-kind-of-buffer (&optional buffer)
   (let* ((buf (or buffer (current-buffer)))
 	 (bname (buffer-name buf))

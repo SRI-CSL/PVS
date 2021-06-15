@@ -1437,8 +1437,10 @@ which is the transitive closure of the immediate assuming instances."
 						     (eq ax (generating-axiom gtcc))))
 					    (generated rdecl))
 				(ensure-closed-definition ax)
-				(list (cons ax (subst-mod-params
-						   (closed-definition ax) thinst theory)))))
+				(list (cons ax
+					    (with-current-decl ax
+					      (subst-mod-params
+						  (closed-definition ax) thinst theory))))))
 		    lhs-axioms)
 		  axpairs))
 	  (module
@@ -1448,8 +1450,10 @@ which is the transitive closure of the immediate assuming instances."
 						     (eq ax (generating-axiom gtcc))))
 					    (all-decls rdecl))
 				(ensure-closed-definition ax)
-				(list (cons ax (subst-mod-params
-						   (closed-definition ax) thinst theory)))))
+				(list (cons ax
+					    (with-current-decl ax
+					      (subst-mod-params
+						  (closed-definition ax) thinst theory))))))
 		    lhs-axioms)
 		  axpairs)))))))
 
@@ -1570,9 +1574,7 @@ which is the transitive closure of the immediate assuming instances."
 	   (id (make-tcc-name nil (id axiom)))
 	   (tccdecl (mk-mapped-axiom-tcc id nil modinst axiom dfmls)))
       (multiple-value-bind (expr mappings-alist)
-	  (subst-mod-params defn
-	      (lcopy modinst :dactuals dacts)
-	    mod axiom)
+	  (subst-mod-params defn (lcopy modinst :dactuals dacts) mod axiom)
 	(if (every #'(lambda (fp)
 		       (or (memq fp dfmls)
 			   (memq fp (formals-sans-usings cth))))
@@ -1584,7 +1586,7 @@ which is the transitive closure of the immediate assuming instances."
 		   (sform (raise-actuals (expose-binding-types
 					  (universal-closure xform))
 					 t))
-		   (uform (if thinst
+		   (uform (if nil ;thinst
 			      (subst-mod-params sform thinst cth axiom) ;cdecl
 			      sform)))
 	      (setf (definition tccdecl) uform)

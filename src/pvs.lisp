@@ -1992,25 +1992,26 @@ Note that even proved ones get overwritten"
                        (filename theory)
                        place dfinal)))
 
-(defun prettyprint-theory (theoryname filename)
-  (let ((file (or filename
-		  (pvs-file-of theoryname))))
-    (when file
-      (parse-file file nil t)))
-  (let* ((theory (get-parsed?-theory theoryname))
-	 (*current-context* (when theory (saved-context theory)))
-	 (*no-comments* nil)
-	 (*show-conversions* nil)
-	 (*ppmacros* t))
-    (when theory
-      (let ((string (unparse theory
-		      :string t
-		      :char-width *default-char-width*)))
-	(pvs-modify-buffer (uiop:pathname-directory-pathname filename)
-			   (filename theory)
-			   (place theory)
-			   (string-right-trim '(#\space #\tab #\newline)
-					      string))))))
+(defun prettyprint-theory (theoryname fileref)
+  (with-pvs-file (filename) fileref
+    (let* ((theory (or (get-theory theoryname)
+		       (progn (parse-file filename nil t)
+			      (get-parsed?-theory theoryname))))
+	   (*current-context* (when theory (saved-context theory)))
+	   (*no-comments* nil)
+	   (*show-conversions* nil)
+	   (*ppmacros* t))
+      (if theory
+	  (let ((string (unparse theory
+			  :string t
+			  :char-width *default-char-width*)))
+	    (pvs-modify-buffer (uiop:pathname-directory-pathname filename)
+			       (filename theory)
+			       (place theory)
+			       (string-right-trim '(#\space #\tab #\newline)
+						  string)))
+	  (pvs-error "Prettyprint error" "Theory ~a not found in ~a"
+		     theoryname fileref)))))
 
 (defun prettyprint-pvs-file (fileref)
   (with-pvs-file (filename) fileref
@@ -4298,3 +4299,51 @@ specified pvs-file, and its associated .prf file.  "
 	(values-list tcc-origin)
       (list (if (string= root old) (intern new :pvs) root)
 	    kind expr type))))
+
+(defun add-semicolons-to-pvs-file (fileref)
+  "Adds semicolons to the ends of declarations if any are missing them.
+First parses the file, then looks for declarations without semicolons (null
+semi slot) that should have them set.
+Returns
+ - :unchanged if fileref has all expected semicolons, fileref is unchanged.
+ - :modified - old foo.pvs moved to foo.pvs-nosemi
+ - :parse-problem - foo.pvs-semi was created, but didn't parse
+"
+  (let* ((*no-obligations-allowed* t)
+	 (full-pvs-file-path (car theories))
+	 (theories (parse :file file))
+	(needs-semi nil))
+    (dolist (theory theories)
+      (dolist (decl (all-decls theory))
+	(unless (or (semi decl)
+		    (chain? decl)
+		    (formal-decl? decl))
+	  (push decl needs-semi))))
+    ;; needs-semi is backwards
+    (if (null needs-semi)
+	(format t "File ~a already has necessary semicolons")
+	(let* ((file (full-pvs-file-path (car theories)))
+	       (lines (file-get-lines file)))
+	  (dolist (decl needs-semi)
+	    (assert (place decl))
+	    (let ((erow (ending-row (place decl)))
+		  (ecol (ending-col (place decl))))
+	      (assert (< erow (length lines)))
+	      (let ((line (nth (1- erow) lines)))
+		(setf (nth (1- erow) lines)
+		      (if (= (length line) ecol)
+			  (uiop:strcat line ";")
+			  (uiop:strcat (subseq line 0 ecol) ";" (subseq line ecol)))))))
+	  (file-put-lines lines (uiop:strcat file "-semis"))
+	  (break "needs-semi")))))
+
+(defun file-get-lines (filename)
+  (with-open-file (stream filename)
+    (loop for line = (read-line stream nil)
+          while line
+          collect line)))
+
+(defun file-put-lines (lines filename)
+  (with-open-file (stream filename :direction :output)
+    (loop for line in lines
+	  do (write-line line stream))))

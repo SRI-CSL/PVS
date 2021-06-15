@@ -235,9 +235,11 @@
       (if (everywhere-true? p1)
 	  (if (everywhere-true? p2)
 	      (tc-eq* st1 st2 bindings)
-	      (tc-eq* st1 t2 bindings))
+	      (unless *strong-tc-eq-flag*
+		(tc-eq* st1 t2 bindings)))
 	  (if (everywhere-true? p2)
-	      (tc-eq* t1 st2 bindings)
+	      (unless *strong-tc-eq-flag*
+		(tc-eq* t1 st2 bindings))
 	      (and (tc-eq* st1 st2 bindings)
 		   (tc-eq-ops p1 p2 bindings)))))))
 
@@ -322,13 +324,17 @@
 						      bindings))))))
 
 (defmethod tc-eq-bindings ((b1 dep-binding) (b2 dep-binding) bindings)
-  (tc-eq* (type b1) (type b2) bindings))
+  (and (or (not *strong-tc-eq-flag*)
+	   (tc-eq* (declared-type b1) (declared-type b2) bindings))
+       (tc-eq* (type b1) (type b2) bindings)))
 
 (defmethod tc-eq-bindings ((b1 dep-binding) b2 bindings)
-  (tc-eq* (type b1) b2 bindings))
+  (unless *strong-tc-eq-flag*
+    (tc-eq* (type b1) b2 bindings)))
 
 (defmethod tc-eq-bindings (b1 (b2 dep-binding) bindings)
-  (tc-eq* b1 (type b2) bindings))
+  (unless *strong-tc-eq-flag*
+    (tc-eq* b1 (type b2) bindings)))
 
 (defmethod tc-eq-bindings ((b1 field-decl) (b2 field-decl) bindings)
   (and (eq (id b1) (id b2))
@@ -665,10 +671,12 @@
   nil)
 
 (defmethod tc-eq* ((e1 equation) (e2 equation) bindings)
-  (or (eq e1 e2)
-      (with-slots ((arg1 argument)) e1
-	(with-slots ((arg2 argument)) e2
-	  (tc-eq* arg1 arg2 bindings)))))
+  (with-slots ((arg1 argument)) e1
+    (with-slots ((arg2 argument)) e2
+      (or (eq e1 e2)
+	  (and (or (not *strong-tc-eq-flag*)
+		   (tc-eq* (operator e1) (operator e2) bindings))
+	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 equation) (e2 expr) bindings)
   (declare (ignore bindings))
@@ -1064,15 +1072,18 @@
 			 (or (null (library mi1))
 			     (null (library mi2))
 			     (eq (library mi1) (library mi2)))
-			 (let ((act1 (unless (eq (module decl1) (current-theory)) (actuals mi1)))
-			       (act2 (unless (eq (module decl2) (current-theory)) (actuals mi2))))
+			 (let ((act1 ;(unless (eq (module decl1) (current-theory)) (actuals mi1))
+				(actuals mi1))
+			       (act2 ;(unless (eq (module decl2) (current-theory)) (actuals mi2)))
+				(actuals mi2)))
 			   (tc-eq* act1 act2 bindings))
 			 (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
 			 (tc-eq* (mappings mi1) (mappings mi2) bindings))
 		    (null mi2))
 		(or *in-tc-eq-resolution*
 		    (null *strong-tc-eq-flag*)
-		    (let ((*in-tc-eq-resolution* t))
+		    (let ((*in-tc-eq-resolution* t)
+			  (*strong-tc-eq-flag* nil))
 		      (tc-eq* (type res1) (type res2) bindings)))
 		;; (progn (let ((*strong-tc-eq-flag* nil))
 		;; 	 (assert (tc-eq* (type res1) (type res2) bindings)))

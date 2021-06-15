@@ -220,12 +220,31 @@ behavior:
 
 (defmethod gensubst* ((te type-name) substfn testfn)
   (declare (ignore substfn testfn))
-  (let ((nte (call-next-method)))
-    (if (and (not *dont-expand-adt-subtypes*)
-	     (resolution te)
-	     (adt-expand-positive-subtypes? nte))
-	(adt-expand-positive-subtypes! nte)
-	nte)))
+  (cond ((and (resolution te)
+	      (type (resolution te))
+	      (tc-eq (type (resolution te)) te))
+	 (let ((nmi (gensubst* (module-instance te) substfn testfn)))
+	   (if (eq nmi (module-instance te))
+	       te
+	       (let* ((nres (mk-resolution (declaration te) nmi nil))
+		      (nte (copy te
+			     :actuals (actuals nmi)
+			     :dactuals (dactuals nmi)
+			     :mappings (mappings nmi)
+			     :resolutions (list nres)))
+		      (ente (if (and (not *dont-expand-adt-subtypes*)
+				     (resolution te)
+				     (adt-expand-positive-subtypes? nte))
+				(adt-expand-positive-subtypes! nte)
+				nte)))
+		 (setf (type nres) ente)
+		 ente))))
+	(t (let ((nte (call-next-method)))
+	     (if (and (not *dont-expand-adt-subtypes*)
+		      (resolution te)
+		      (adt-expand-positive-subtypes? nte))
+		 (adt-expand-positive-subtypes! nte)
+		 nte)))))
 
 (defmethod gensubst* ((te type-application) substfn testfn)
   (let ((ntype (gensubst* (type te) substfn testfn))
@@ -279,21 +298,30 @@ behavior:
 	(lcopy te 'formula nform))))
 
 (defmethod gensubst* ((te funtype) substfn testfn)
-  (let* ((dom (gensubst* (domain te) substfn testfn))
-	 (ran (gensubst* (range te) substfn testfn)))
-    (assert (eq (dep-binding? (domain te)) (dep-binding? dom)))
-    (lcopy te
-      :domain dom
-      :range (if (dep-binding? dom)
-		 (substit ran (acons (domain te) dom nil))
-		 ran))))
+  (if *parsing-or-unparsing*
+      (let* ((types (list (domain te) (range te)))
+	     (ntypes (gensubst* types substfn testfn)))
+	(if (eq types ntypes)
+	    te
+	    (copy te 'domain (car ntypes) 'range (cadr ntypes))))
+      (let* ((dom (gensubst* (domain te) substfn testfn))
+	     (ran (gensubst* (range te) substfn testfn)))
+	(assert (eq (dep-binding? (domain te)) (dep-binding? dom)))
+	(lcopy te
+	  :domain dom
+	  :range (if (dep-binding? dom)
+		     (substit ran (acons (domain te) dom nil))
+		     ran)))))
 
 (defmethod gensubst* ((te tupletype) substfn testfn)
-  (let ((types (apply-to-bindings #'(lambda (ty) (gensubst* ty substfn testfn))
-				  (types te))))
-    (if (equal types (types te))
-	te
-	(lcopy te 'types types))))
+  (if *parsing-or-unparsing*
+      (let ((types (gensubst* (types te) substfn testfn)))
+	(lcopy te 'types types))
+      (let ((types (apply-to-bindings #'(lambda (ty) (gensubst* ty substfn testfn))
+				      (types te))))
+	(if (equal types (types te))
+	    te
+	    (lcopy te 'types types)))))
 
 (defmethod gensubst* ((te cotupletype) substfn testfn)
   (let ((types (gensubst* (types te) substfn testfn)))
@@ -652,18 +680,32 @@ behavior:
 				(formals map))))
 
 (defmethod gensubst* ((res resolution) substfn testfn)
-  (with-slots (declaration module-instance) res
+  (with-slots (declaration module-instance type) res
     (let* ((mi (theory-instance-with-lib res))
 	   (nmi (gensubst* mi substfn testfn)))
-      (if (eq nmi mi)
-	  (if (and *gensubst-subst-types*
-		   (funcall testfn declaration))
-	      (let ((ndecl (gensubst* declaration substfn testfn)))
-		(if (eq ndecl declaration)
-		    res
-		    (make-resolution ndecl nmi)))
-	      res)
-	(make-resolution declaration nmi)))))
+      (cond ((eq nmi mi)
+	     (if (and *gensubst-subst-types*
+		      (funcall testfn declaration))
+		 (let ((ndecl (gensubst* declaration substfn testfn)))
+		   (if (eq ndecl declaration)
+		       res
+		       (make-resolution ndecl nmi)))
+		 res))
+	    ((and (type-expr? type)
+		  (type-name? (print-type type))
+		  (eq (declaration (resolution (print-type type))) declaration))
+	     (let* ((ntype (gensubst* (copy type :print-type nil) substfn testfn))
+		    (nres (mk-resolution declaration nmi ntype)))
+	       (unless (print-type ntype)
+		 (let ((nprint-type (lcopy (print-type type)
+				      :actuals (actuals nmi)
+				      :dactuals (dactuals nmi)
+				      :mappings (mappings nmi)
+				      :resolutions (list nres))))
+		   (setf (print-type ntype) nprint-type)))
+	       nres))
+	    (t (let ((ntype (gensubst* type substfn testfn)))
+		 (mk-resolution declaration nmi ntype)))))))
 	       
 
 (defmethod gensubst* ((act actual) substfn testfn)
