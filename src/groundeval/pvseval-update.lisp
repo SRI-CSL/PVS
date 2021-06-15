@@ -2316,7 +2316,7 @@ if called."
 	 (subst (tc-match type (subrange-subtype) bindings))
 	 (from (cdr (assoc '|m| subst :test #'same-id)))
 	 (to (cdr (assoc '|n| subst :test #'same-id))))
-    (if from
+    (if (and from to)
 	(cons from to)
 	(let ((upto (simple-upto? type)))
 	  (if upto
