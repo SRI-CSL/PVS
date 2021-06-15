@@ -172,6 +172,10 @@ extern mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y);
 
 #define mpz_mk_fdiv_r(ret, x, y) z_init(ret, mpz_fdiv_r(ret, x, y));
 
+#define mpz_mk_fdiv_q_ui(ret, x, y) z_init(ret, mpz_fdiv_q_ui(ret, x, y));
+
+#define mpz_mk_fdiv_r_ui(ret, x, y) z_init(ret, mpz_fdiv_r_ui(ret, x, y));
+
 
 
 //--------------------------------------------------------------

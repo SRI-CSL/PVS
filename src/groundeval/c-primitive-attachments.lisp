@@ -85,6 +85,30 @@
 (def-c-attach-primitive "integertypes" "u64rem"
   "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x%y);}")
 
+(def-c-attach-primitive "integertypes" "u8max"
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u16max"
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u32max"
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u64max"
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i8max"
+  "int8" '(x y) '(int8 int8) "{return (int8_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "16max"
+  "int16" '(x y) '(int16 int16) "{return (int16_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i32max"
+  "int32" '(x y) '(int32 int32) "{return (int32_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i64max"
+  "int64" '(x y) '(int64 int64) "{return (int64_t)(x< y ? y : x);}")
+
 (def-c-attach-primitive "integertypes" "u8pow2"
   "uint8"  '(x) '(uint8) "{return (uint8_t)1<<x;}")
 
@@ -120,6 +144,54 @@
 
 (def-c-attach-primitive "integertypes" "u64rshift"
   "uint64" '(x n) '(uint64 uint64) "{return (uint64_t)x>>n;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8xor" "uint8"
+  '(x8 y8) '(uint8 uint8) "{return x8^y8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16xor" "uint16"
+  '(x16 y16) '(uint16 uint16) "{return x16^y16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32xor" "uint32"
+  '(x32 y32) '(uint32 uint32) "{return x32^y32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64xor" "uint64"
+  '(x64 y64) '(uint64 uint64) "{return x64 & y64;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8and" "uint8"
+  '(x8 y8) '(uint8 uint8) "{return x8 & y8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16and" "uint16"
+  '(x16 y16) '(uint16 uint16) "{return x16 & y16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32and" "uint32"
+  '(x32 y32) '(uint32 uint32) "{return x32 & y32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64and" "uint64"
+  '(x64 y64) '(uint64 uint64) "{return x64 & y64;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8or" "uint8"
+  '(x8 y8) '(uint8 uint8) "{return x8 | y8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16or" "uint16"
+  '(x16 y16) '(uint16 uint16) "{return x16 | y16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32or" "uint32"
+  '(x32 y32) '(uint32 uint32) "{return x32 | y32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64or" "uint64"
+  '(x64 y64) '(uint64 uint64) "{return x64 | y64;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8not" "uint8"
+  '(x8) '(uint8 uint8) "{return ~x8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16not" "uint16"
+  '(x16) '(uint16 uint16) "{return ~x16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32not" "uint32"
+  '(x32) '(uint32 uint32) "{return ~x32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64not" "uint64"
+  '(x64) '(uint64 uint64) "{return ~x64;}")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Floating point attachments using NASA's ieee754_double.pvs

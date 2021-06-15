@@ -464,11 +464,11 @@ uint32_t code(uint32_t x){
 
 
 stringliteral_t mk_string(uint32_t length, uint32_t * instring){ 
-  stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(char))); 
+  stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(uint32_t))); 
    result->count = 1;
    result->size = length;
    result->max = length;
-   memcpy(result->elems, (uint32_t *) instring, length); 
+   memcpy(result->elems, (uint32_t *) instring, 4 * length); 
    return result; 
  };
 
