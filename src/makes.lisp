@@ -1025,6 +1025,9 @@
 (defmethod mk-actual ((arg expr))
   (make-instance 'actual :expr arg))
 
+(defmethod mk-actual ((fml formal-type-decl))
+  (mk-actual (type-value fml)))
+
 (defun mk-mapping (lhs rhs)
   (make-instance 'mapping-subst
     :lhs lhs

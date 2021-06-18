@@ -2307,7 +2307,8 @@ This forms a lattice, and we return the top ones."
       (let ((ereses (or (and args
 			     (filter-res-exact-matches reses args))
 			reses)))
-	(filter-res-field-apps ereses args))
+	(or (filter-res-field-apps ereses args)
+	    ereses))
       reses))
 
 (defun filter-res-field-apps (reses args)

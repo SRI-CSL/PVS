@@ -149,6 +149,77 @@
 	  (setf (gethash modinst (all-subst-mod-params-caches *workspace-session*)) ncaches)
 	  ncaches))))
 
+(defmethod subst-theory-params ((theory module) (alist cons))
+  ;;(assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
+  (assert (every #'(lambda (elt) (memq (car elt) (formals theory))) alist))
+  (multiple-value-bind (nformals nacts new-alist)
+      (make-new-theory-inst-params (formals theory) theory alist)
+    (let* ((thinst (mk-modname (id theory) nacts))
+	   (nth (subst-mod-params theory thinst)))
+      (dolist (fml nformals)
+	(setf (module fml) nth))
+      (setf (formals nth) nformals)
+      nth)))
+
+(defun make-new-theory-inst-params (formals theory alist &optional nformals nacts nalist)
+  (if (null formals)
+      (values (nreverse nformals) (nreverse nacts) nalist)
+      (let* ((fml (car formals))
+	     (elt (assq fml alist))
+	     (term (cdr elt)))
+	(cond (elt
+	       (typecase fml
+		 (formal-type-decl
+		  (unless (or (type-expr? term)
+			      (and (actual? term)
+				   (type-value term)))
+		    (error "Bad alist, ~a should map to type-expr" fml)))
+		 (formal-const-decl
+		  (unless (or (expr? term)
+			      (and (actual? term)
+				   (not (type-value term))))
+		    (error "Bad alist, ~a should map to expr" fml)))
+		 (formal-theory-decl
+		  (break "need to finish this")))
+	       (make-new-theory-inst-params
+		(cdr formals) theory alist nformals
+		(cons (mk-actual term) nacts) (cons elt nalist)))
+	      ((importing? fml)
+	       (let* ((nthname (subst-for-formals (theory-name fml) nalist))
+		      (nimp (copy fml :theory-name nthname)))
+		 (make-new-theory-inst-params
+		  (cdr formals) theory alist (cons nimp nformals) nacts nalist)))
+	      (t
+	       ;; Need to make a new formal for the partial theory
+	       (multiple-value-bind (nfml nact)
+		   (make-new-theory-inst-param fml theory nalist)
+		 (make-new-theory-inst-params
+		  (cdr formals) theory alist
+		  (cons nfml nformals) (cons nact nacts)
+		  (acons fml nact nalist))))))))
+
+(defmethod make-new-theory-inst-param ((fml formal-type-decl) theory nalist)
+  (let* ((ntypeval (subst-for-formals (type-value fml) nalist))
+	 (ntype (subst-for-formals (type fml) nalist))
+	 (nfml (copy fml
+		 :type-value ntypeval
+		 :type ntype
+		 :generated-by fml)))
+    ;;(break "make-new-theory-inst-param formal-type-decl")
+    (values nfml (mk-actual ntype))))
+
+(defmethod make-new-theory-inst-param ((fml formal-const-decl) theory nalist)
+  (let* ((ndtype (subst-for-formals (declared-type fml) nalist))
+	 (ntype (subst-for-formals (type fml) nalist))
+	 (nfml (copy fml
+		 :declared-type ndtype
+		 :type ntype
+		 :generated-by fml))
+	 (res (mk-resolution nfml (mk-modname (id theory)) ntype))
+	 (nname (mk-name-expr (id nfml) nil nil res)))
+    ;;(break "make-new-theory-inst-param formal-const-decl")
+    (values nfml (mk-actual nname))))
+
 (defmethod subst-theory-params (term (alist cons))
   ;;(assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
   (let ((new-alist (mapcan #'(lambda (elt)
@@ -1277,13 +1348,10 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	    (setf (modname ndecl)
 		  (subst-mod-params* modname modinst bindings)))))))
 
-(defmethod subst-mod-params* ((decl var-decl) modinst bindings)
-  (with-slots (declared-type type) decl
+(defmethod subst-mod-params* ((ndecl var-decl) modinst bindings)
+  (with-slots (declared-type type) ndecl
     (let* ((ntype (subst-mod-params* type modinst bindings))
-	   (ndtype (subst-mod-params* declared-type modinst bindings))
-	   (ndecl (if (rassoc decl bindings)
-		      decl
-		      (copy decl :generated-by decl))))
+	   (ndtype (subst-mod-params* declared-type modinst bindings)))
       (setf (type ndecl) ntype
 	    (declared-type ndecl) ndtype))))
 
@@ -1306,10 +1374,13 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				:free-parameters 'unbound))
 	      (setf (print-type ntype) nil
 		    (free-parameters ntype) 'unbound)))
+	#+toostrong
 	(assert (or (tc-eq type ntype)
 		    (with-current-decl ndecl (fully-instantiated? ntype))))
+	#+toostrong
 	(assert (or (tc-eq (declared-type ndecl) ndtype)
 		    (with-current-decl ndecl (fully-instantiated? ndtype))))
+	#+toostrong
 	(assert (or (tc-eq (definition ndecl) ndef)
 		    (with-current-decl ndecl (fully-instantiated? ndef))))
 	;; (assert (or (tc-eq (def-axiom ndecl) ndefax)
@@ -1848,7 +1919,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		     (ntype (lcopy type
 			      :supertype stype
 			      :predicate pred)))
-		(assert (or (not (strong-tc-eq type ntype)) (eq type ntype)))
+		;;(assert (or (not (strong-tc-eq type ntype)) (eq type ntype)))
 		ntype))))))
 
 (defmethod formal-subtype-binding-match (subtype (formal formal-subtype-decl))
