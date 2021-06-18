@@ -1050,13 +1050,24 @@
 (defmethod get-range ((ir-type ir-typename))
   (with-slots (ir-type-defn) ir-type (get-range ir-type-defn)))
 
+(defun dependent-function-range (funtype argvars)
+  (with-slots (domain range) funtype
+    (if (typep domain 'dep-binding)
+	(if (> (length argvars) 1)
+	    (substit range (acons domain
+				  (make-tuple-expr (loop for bd in argvars collect (make-variable-expr bd)))
+				  nil))
+	  (substit range (acons domain (make-variable-expr (car argvars)) nil)))
+      range)))
+
 (defmethod pvs2ir* ((expr lambda-expr) bindings expected)
   (with-slots ((expr-bindings bindings) expression) expr 
 	      (let* ((ir-binds (pvs2ir-lambda-bindings expr-bindings bindings))
 		     (ir-var-bindings (pairlis expr-bindings ir-binds))
 		     (in-bindings (append ir-var-bindings bindings))
 		     (expected-supertype (and expected (find-supertype expected)))
-		     (ir-rangetype (or (and expected (get-range (pvs2ir-type expected-supertype bindings)))
+		     (expected-range (and expected (dependent-function-range expected-supertype expr-bindings)))
+		     (ir-rangetype (or (and expected (pvs2ir-type expected-range in-bindings))
 				       (pvs2ir-expr-type  expression in-bindings)))
 		     (eta-form? (and (application? expression)
 				     (not (name-expr? (operator expression)))
@@ -1069,7 +1080,7 @@
 						       (not (member arg (freevars (operator expression)) :test #'same-declaration)))))) 
 		     (ir-expr (if eta-form?
 				  (pvs2ir* (operator expression) bindings expected)
-				(pvs2ir* expression in-bindings (and expected (range expected-supertype))))));(break "lambda")
+				(pvs2ir* expression in-bindings  expected-range))));(break "lambda")
 		(let ((lambda-ir (if eta-form? ir-expr 
 				   (mk-ir-lambda ir-binds ir-rangetype ir-expr))));(break "pvs2ir*(lambda)")
 		  ;(format t "~%PVS: ~s becomes ~s" expr (print-ir lambda-ir))
@@ -1079,9 +1090,12 @@
   (with-slots ((expr-bindings bindings) expression) expr 
 	      (let* ((ir-binds (pvs2ir-lambda-bindings expr-bindings bindings))
 		     (ir-var-bindings (pairlis expr-bindings ir-binds))
-		     (ir-rangetype (pvs2ir-type (return-type expr) ir-var-bindings))
-		     (ir-expr (pvs2ir* expression (append ir-var-bindings bindings)
-				       (and expected (range (find-supertype expected))))));(break "lambda-with")
+		     (new-bindings (append ir-var-bindings bindings))
+		     (ir-rangetype (pvs2ir-type (return-type expr) new-bindings))
+		     (ir-expr (pvs2ir* expression new-bindings
+				       (and expected (dependent-function-range
+						      (find-supertype expected)
+						      expr-bindings)))));(break "lambda-with")
 		(let ((lambda-ir (mk-ir-lambda ir-binds ir-rangetype ir-expr)))
 		  ;(format t "~%PVS: ~s becomes ~s" expr (print-ir lambda-ir))
 		  lambda-ir))))
@@ -1840,62 +1854,65 @@
 			  args-ir
 			  (mk-ir-apply (pvs2ir-constant op bindings) arg-vartypes nil ir-expr-type)))
 	  (let* ((opdecl (declaration op))
-		 (formals (formals-sans-usings (module opdecl)))
-		   (actuals (actuals (module-instance op))) ;;handling theory actuals
-		   (ir-formals (pvs2ir* formals bindings nil))
-		   (ir-actuals (pvs2ir* actuals bindings nil))
-		   (actvars
-		    (if actuals 
-			(loop for fml in ir-formals
-			   as formal in formals
-			   collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal)))
-			(loop for fml in formals collect (get-assoc fml bindings))))
-		   (actual-types
-		    (loop for actual in actuals
-		       as formal in formals
-		       collect (if (formal-const-decl? formal)
-				   (pvs2ir-type (type (expr actual)) bindings)
-				   *type-actual-ir-name*)))
-		   (op-domain (types (domain (find-supertype (type op)))))
-		   (op-domain-vars (mk-variables-from-types op-domain bindings))
-		   (op-ir (pvs2ir-constant-ir op bindings opdecl))
-		   (op-ir-function (ir-function-name op-ir))
-		   (op-ir-defn (ir-defn op-ir))
-		   (op-ir-args (ir-args op-ir))
-		   (op-arg-application-ir
-		    (make-ir-lett* op-domain-vars ; was arg-vartypes
-				   arg-types
-				   args-ir
-				   (mk-ir-let apply-return-var ;op-range-type
-					      (mk-ir-apply
-					       op-ir-function op-domain-vars
-					       actvars)
-					;op-range-type
-					      apply-return-var)))
-		   )		;(when formals (break "pvs2ir-application"))
-	      (if formals
-		  (if actuals 
-		      (make-ir-lett* actvars actual-types ir-actuals
-				     op-arg-application-ir)
-		      op-arg-application-ir)
-		  
-		  (if (and op-ir-defn  args-ir (null op-ir-args))
-		      (let ((op-var (mk-ir-variable (new-irvar)(pvs2ir-type (type op) bindings))))
-					;(break "pvs2ir-application")
-			(make-ir-lett* op-domain-vars ;was arg-vartypes
+		 (theory (module opdecl)))
+	    (if (memq (id theory) *primitive-prelude-theories*);;NSH(6-16-21)
+		(mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR")
+		(let* ((formals (formals-sans-usings (module opdecl)))
+		       (actuals (actuals (module-instance op))) ;;handling theory actuals
+		       (ir-formals (pvs2ir* formals bindings nil))
+		       (ir-actuals (pvs2ir* actuals bindings nil))
+		       (actvars
+			(if actuals 
+			    (loop for fml in ir-formals
+				  as formal in formals
+				  collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal)))
+			  (loop for fml in formals collect (get-assoc fml bindings))))
+		       (actual-types
+			(loop for actual in actuals
+			      as formal in formals
+			      collect (if (formal-const-decl? formal)
+					  (pvs2ir-type (type (expr actual)) bindings)
+					*type-actual-ir-name*)))
+		       (op-domain (types (domain (find-supertype (type op)))))
+		       (op-domain-vars (mk-variables-from-types op-domain bindings))
+		       (op-ir (pvs2ir-constant-ir op bindings opdecl))
+		       (op-ir-function (ir-function-name op-ir))
+		       (op-ir-defn (ir-defn op-ir))
+		       (op-ir-args (ir-args op-ir))
+		       (op-arg-application-ir
+			(make-ir-lett* op-domain-vars ; was arg-vartypes
 				       arg-types
 				       args-ir
-				       (make-ir-let op-var
-						    op-ir-function
-						    (mk-ir-let apply-return-var ;op-range-type
-							       (mk-ir-apply op-var op-domain-vars nil) ;op-range-type
-							       apply-return-var))))
+				       (mk-ir-let apply-return-var ;op-range-type
+						  (mk-ir-apply
+						   op-ir-function op-domain-vars
+						   actvars)
+					;op-range-type
+						  apply-return-var)))
+		       )  ;(when formals (break "pvs2ir-application"))
+		  (if formals
+		      (if actuals 
+			  (make-ir-lett* actvars actual-types ir-actuals
+					 op-arg-application-ir)
+			op-arg-application-ir)
+		  
+		    (if (and op-ir-defn  args-ir (null op-ir-args))
+			(let ((op-var (mk-ir-variable (new-irvar)(pvs2ir-type (type op) bindings))))
+					;(break "pvs2ir-application")
+			  (make-ir-lett* op-domain-vars ;was arg-vartypes
+					 arg-types
+					 args-ir
+					 (make-ir-let op-var
+						      op-ir-function
+						      (mk-ir-let apply-return-var ;op-range-type
+								 (mk-ir-apply op-var op-domain-vars nil) ;op-range-type
+								 apply-return-var))))
 		      (make-ir-lett* op-domain-vars ;was arg-vartypes
 				     arg-types
 				     args-ir
 				     (mk-ir-let apply-return-var ;op-range-type
 						(mk-ir-apply op-ir-function op-domain-vars nil) ;op-range-type
-						apply-return-var))))))
+						apply-return-var))))))))
 	(let* ((op-ir-type (pvs2ir-type (type op) bindings))
 	       (op-var (new-irvartype op-ir-type))
 	       (op-ir (pvs2ir* op bindings nil)); expected is nil 
