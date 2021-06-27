@@ -908,7 +908,11 @@ not a dir: if a valid id
     ;; dirp works for both absolute and relative pathnames Note that a
     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
     ;; same name.
-    (or lib-path
+    (if lib-path
+	(let* ((lstr (car (last (pathname-directory lib-path))))
+	       (lib-id (intern lstr :pvs)))
+	  (or (cdr (assq lib-id (pvs-library-alist)))
+	      lib-path))
 	(let* ((nstr (when (stringp pstr)
 		       (if (char= (char pstr (1- (length pstr))) #\/)
 			   (subseq pstr 0 (1- (length pstr)))
