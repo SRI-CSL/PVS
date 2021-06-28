@@ -641,7 +641,7 @@
 	  (typecheck-coselections expr stype arguments expected))))
   (setf (types expr)
 	(compatible-types
-	 (nconc (mapcar #'(lambda (s) (ptypes (expression s)))
+	 (nconc (mapcar #'(lambda (s) (reverse (ptypes (expression s))))
 		  (selections expr))
 		(when (else-part expr) (list (ptypes (else-part expr)))))))
   (unless (types expr)

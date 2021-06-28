@@ -1563,8 +1563,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
       (setf (kind ndecl) nil
 	    (default-proof ndecl) nil
 	    (proofs ndecl) nil)
-      (assert (fully-instantiated? ndef))
-      (assert (fully-instantiated? ncdef))
+      ;;(assert (fully-instantiated? ndef))
+      ;;(assert (fully-instantiated? ncdef))
       (setf (definition ndecl) ndef
 	    (closed-definition ndecl) ncdef)
       (when (and ety (not (possibly-empty-type? ety)))
@@ -1683,7 +1683,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			    :test #'(lambda (d bd)
 				      (and (mapping-lhs? bd) (eq d (declaration bd))))))))
     (assert (or (null bdg) (not (fully-instantiated? modinst)) (fully-instantiated? bdg)))
-    (assert (subsetp (free-params bdg) (free-params modinst)))
+    (assert (or (fully-instantiated? bdg)
+		(subsetp (free-params bdg) (free-params modinst))))
     ;; (when (and (decl-formal? decl)
     ;; 	       (not (memq decl (decl-formals *subst-mod-params-declaration*)))
     ;; 	       (not (memq decl (decl-formals (current-declaration)))))

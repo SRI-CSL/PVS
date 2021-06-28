@@ -1450,7 +1450,7 @@ The first arguement is just a method discriminator."
     (setf (resolutions thinst)
 	  (list (mk-resolution (module ldecl) thinst nil))))
   (let ((stype (subst-mod-params (type (resolution lhs)) thinst (module ldecl) ldecl)))
-    (assert (compatible? (car (ptypes (expr rhs))) stype))
+    (assert (some #'(lambda (pty) (compatible? pty stype)) (ptypes (expr rhs))))
     (set-type* (expr rhs) stype)))
 
 (defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs mapping-lhs) rhs thinst)
