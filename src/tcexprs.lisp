@@ -1303,8 +1303,8 @@
     (when (and expected
 	       (lambda-expr? (operator expr))
 	       (list-expr? (expression (operator expr))))
-      ;;(break "let-expr with list-exprs and expected")
-      (typecheck* (expression (operator expr)) expected nil nil))
+      (let ((*bound-variables* (append (bindings (operator expr)) *bound-variables*)))
+	(typecheck* (expression (operator expr)) expected nil nil)))
     (typecheck* (operator expr) nil nil (argument-list (argument expr))))
   (set-possible-argument-types (operator expr) (argument expr))
   (unless (or (type (operator expr))
