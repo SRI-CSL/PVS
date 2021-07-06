@@ -648,7 +648,8 @@ use binfiles."
 	    ((and typecheck?
 		  (null theories)
 		  (not forced?)
-		  (check-binfiles filename)
+		  (or *debugging-binfiles*
+		      (check-binfiles filename))
 		  ;;(valid-binfile? filename)
 		  (restore-theories filename))
 	     (let ((theories (get-theories filename)))

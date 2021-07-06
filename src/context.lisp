@@ -342,7 +342,8 @@ retypechecked."
 (defvar *testing-restore* nil)
 
 (defun write-object-files (&optional force?)
-  (when (and (> (hash-table-count (current-pvs-theories)) 0)
+  (when (and (not *debugging-binfiles*)
+	     (> (hash-table-count (current-pvs-theories)) 0)
 	     (ensure-bin-subdirectory))
     (if t ; *testing-restore*
 	(maphash #'(lambda (file theories)
@@ -388,8 +389,9 @@ retypechecked."
 		       (null (cdr te-date))
 		       (>= specdate bindate)
 		       (not (eql bindate (cdr te-date)))))
-	  (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
-	  (save-theory theory)
+	  (unless *debugging-binfiles*
+	    (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
+	    (save-theory theory))
 	  (setf (ce-object-date ce)
 		(acons (te-id te) (file-write-time binpath)
 		       (delete te-date (ce-object-date ce))))

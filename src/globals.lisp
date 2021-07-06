@@ -299,6 +299,7 @@ order is important")
 (defvar *character* nil)
 
 (defvar *tcdebug* nil)
+(defvar *debugging-binfiles* nil)
 (defvar *evaluator-debug* nil)
 (defvar *evaluator-debug-undefined* nil)
 
