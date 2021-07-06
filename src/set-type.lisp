@@ -5132,7 +5132,7 @@ type of the lhs."
           (append (ldiff types (cdr rest)) srest)))))
 
 (defmethod complete-assignments (args-list values ex expr (rtype recordtype))
-  (assert (or (null ex) (place ex)))
+  (assert (or  *in-checker* *in-evaluator* (null ex) (place ex)))
   ;; Used to check for dependent?, but we really need all assignments if
   ;; we're going to generate correct TCCs.
   ;; Since field-decls don't point to their associated recordtypes
@@ -5157,7 +5157,7 @@ type of the lhs."
     (complete-rec-assignments args-list values (fields rtype) ex expr nil nil)))
 
 (defun complete-rec-assignments (args-list values fields ex expr cargs cvalues)
-  (assert (or (null ex) (place ex)))
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (if (null fields)
       (values (append args-list (nreverse cargs))
               (append values (nreverse cvalues)))
