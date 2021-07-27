@@ -273,6 +273,7 @@
   (setq *translate-id-hash* (make-pvs-hash-table))
   (setq *create-formulas-cache* (make-pvs-hash-table))
   (setq *subst-fields-hash* (make-pvs-hash-table))
+  (setq *type-predicates-recordtype-hash* (make-pvs-hash-table))
   (setq *pvs-initialized* t)
   (when *pvs-emacs-interface*
     (pvs-emacs-eval "(setq pvs-initialized t)")))

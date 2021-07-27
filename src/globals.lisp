@@ -488,6 +488,8 @@ current proof is suspect.")
 
 (defvar *subst-fields-hash*)
 
+(defvar *type-predicates-recordtype-hash*)
+
 (defvar *named-exprs* nil
   "A list of (expr . gensym) pairs, where expr is a binding-expr in which
 a connective occurs.")
