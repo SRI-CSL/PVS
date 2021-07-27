@@ -2194,9 +2194,13 @@ Example:
   "Invoking measure induction and simplifying")
 
 (defstep replace-extensionality (f g &optional expected keep?)
-  (let ((tt (when expected (typecheck (pc-parse expected 'type-expr))))
-	(ff (pc-typecheck (pc-parse f 'expr) :expected tt))
-	(gg (pc-typecheck (pc-parse g 'expr) :expected tt))
+  (let ((tt (if expected
+		(tc-type expected)
+		(when (and (expr? f) (funtype? (type f))
+			   (expr? g) (funtype? (type g)))
+		  (compatible-type (type f) (type g)))))
+	(ff (tc-expr f :expected tt))
+	(gg (tc-expr g :expected tt))
 	(tf (type ff))
 	(tg (type gg)))
     (try (if tt
