@@ -5367,9 +5367,9 @@ gen_strings : THEORY
            THEN i
            ELSE strdiff_rec(s1, s2, i + 1)
 	   ENDIF)
-    MEASURE min(length(s1), length(s2)) - i
+      MEASURE min(length(s1), length(s2)) - i
 
-    strdiff(s1, s2): upto(min(length(s1), length(s2)))  = strdiff_rec(s1, s2, 0)
+    strdiff(s1, s2): upto(min(length(s1), length(s2))) = strdiff_rec(s1, s2, 0)
 
     strdiff_eq: LEMMA
       FORALL (j: below(strdiff(s1, s2))): get(s1, j) = get(s2, j)
@@ -5410,7 +5410,7 @@ gen_strings : THEORY
       get(prefix(s, i), j) = get(s, j)
 
     suffix(s, (i: upto(length(s)))): string =
-    (IF i = 0 THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(length(s) - i)): get(s, i + j)) #) ENDIF)
+    (IF i = 0 THEN s ELSE (# length := length(s) - i, seq := (LAMBDA (j :  below(length(s) - i)): get(s, i + j)) #) ENDIF)
      
     length_suffix: LEMMA
      (FORALL (i: upto(length(s))): 
@@ -5472,7 +5472,9 @@ charstrings: THEORY
 		   #))
 		   ENDIF
 
-    length_concat: LEMMA length(s1 ++ s2) = length(s1) + length(s2)
+    length_concat: LEMMA
+      FORALL (s1, (s2 | s2`length + s1`length < charstring_bound)):
+       length(s1 ++ s2) = length(s1) + length(s2)
 
     char_concat: LEMMA
     (FORALL s1, (s2 | s2`length + s1`length < charstring_bound), (i: below(length(s1) + length(s2))):
@@ -5531,7 +5533,11 @@ charstrings: THEORY
       cget(prefix(s, i), j) = cget(s, j)
 
     suffix(s, (i: upto(length(s)))): charstring =
-    (IF i = 0 THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(length(s) - i)): cget(s, i + j)) #) ENDIF)
+      IF i = 0
+      THEN s
+      ELSE (# length := length(s) - i,
+              seq := (LAMBDA (j :  below(length(s) - i)): cget(s, i + j)) #)
+      ENDIF
      
     length_suffix: LEMMA
      (FORALL (i: upto(length(s))): 
@@ -5599,7 +5605,9 @@ bytestrings: THEORY
 		   #))
 		   ENDIF
 
-    length_concat: LEMMA length(s1 ++ s2) = length(s1) + length(s2)
+    length_concat: LEMMA
+      FORALL (s2 | s2`length + s1`length < bytestring_bound):
+        length(s1 ++ s2) = length(s1) + length(s2)
 
     char_concat: LEMMA
     (FORALL s1, (s2 | s2`length + s1`length < bytestring_bound), (i: below(length(s1) + length(s2))):
@@ -5657,7 +5665,11 @@ bytestrings: THEORY
       get(prefix(s, i), j) = get(s, j)
 
     suffix(s, (i: upto(length(s)))): bytestring =
-    (IF i = 0 THEN s ELSE (# length := s`length - i, seq := (LAMBDA (j :  below(length(s) - i))->byte: get(s, i + j)) #) ENDIF)
+      IF i = 0
+      THEN s
+      ELSE (# length := s`length - i,
+              seq := (LAMBDA (j: below(length(s) - i))->byte: get(s, i + j)) #)
+      ENDIF
      
     length_suffix: LEMMA
      (FORALL (i: upto(length(s))): 
