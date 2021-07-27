@@ -1149,10 +1149,8 @@ decl, args, and mappings."
 				 (tc-eq (find-supertype (range sty))
 					*boolean*))))
 		      (ptypes app)))
-	   (setf (type-value act)
-		 (typecheck* (make-instance 'expr-as-type
-			       :expr app)
-			     nil nil nil))))
+	   (let* ((tval (typecheck* (make-instance 'expr-as-type :expr app) nil nil nil)))
+	     (setf (type-value act) tval))))
     (unless (or (ptypes app)
 		(type-value act))
       (type-error (or obj app) error))))
@@ -1270,7 +1268,8 @@ decl, args, and mappings."
 		 (if (typep nfml 'formal-type-decl)
 		     (compatible-parameters?*
 		      (cdr actuals) (cdr formals)
-		      (let ((nact (copy-all (car actuals))))
+		      (let ((nact ;;(copy-all (car actuals))
+			     (copy (car actuals))))
 			(setf (place nact) (place (car actuals)))
 			(setf (place (expr nact)) (place (car actuals)))
 			(cons nact nacts))
