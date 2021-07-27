@@ -2506,6 +2506,7 @@
 
 (defmethod subtype-of*? :around (t1 t2)
   (or (tc-eq t1 t2)
+      (simple-subtype-of? t1 t2)
       (if (and *subtype-of-hash*
 	       (not *checking-conversions*))
 	  (let ((pair (cons t1 t2)))
