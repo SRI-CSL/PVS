@@ -209,6 +209,17 @@
 (defun subclass-p (cl1 cl2)
   (memq cl2 (all-superclasses cl1)))
 
+(defun all-subclasses (cl)
+  (let ((pvs-package (find-package :pvs))
+	(cls (if (typep cl 'class) cl (find-class cl)))
+	(subclasses nil))
+    (do-symbols (x pvs-package)
+      (when (eq (symbol-package x) pvs-package)
+	(let ((xcls (find-class x nil)))
+	  (when (and xcls (subclass-p xcls cls))
+	    (pushnew x subclasses)))))
+    subclasses))
+
 ;; (in-package :monitor)
 ;; ;;; change to metering.lisp to monitor methods
 
