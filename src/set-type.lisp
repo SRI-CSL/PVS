@@ -1042,8 +1042,9 @@ resolution with a macro matching the signature of the arguments."
 	     ;;(actuals (expr act))
 	     )
     (let ((reses (remove-if-not #'(lambda (res)
-				    (typep (declaration res) '(or type-decl formal-type-decl)))
-		   (resolutions (expr act)))))
+				    (typep (declaration res)
+					   '(or type-decl formal-type-decl mapping-subst)))
+		   (remove-duplicates (resolutions (expr act)) :test #'tc-eq))))
       (assert (null (cdr reses)))
       (setf (resolutions (expr act)) reses)
       (when (name-expr? (expr act))
@@ -1618,7 +1619,9 @@ type of the lhs."
 (defun make-mapping-alist (act formal)
   (let* ((mdecl (declaration (resolution (expr act))))
          (fmappings (mapcar #'(lambda (m)
-                                (cons (declaration (expr (cdr m))) (car m)))
+				(if (actual? (cdr m))
+                                    (cons (declaration (expr (cdr m))) (car m))
+				    (cons (cdr m) (car m))))
                       (theory-mappings formal)))
          (tmappings (typecase mdecl
                       (theory-abbreviation-decl (mapping mdecl))
@@ -2746,8 +2749,9 @@ type of the lhs."
                             (list (number argument))))))
              (change-expr-number-class ex num)))
 	  ((and (name-expr? operator)
-		(eq (id (module-instance operator)) '|number_fields|)
 		(memq (id operator) '(+ -))
+		(resolution operator)
+		(eq (id (module-instance operator)) '|number_fields|)
 		(number-expr? argument))
 	   (let ((num (if (eq (id operator) '-)
 			  (- (number argument))
@@ -3724,10 +3728,11 @@ type of the lhs."
                                               bindings)))))
 
 (defun tc-match-domain* (arg dom-type bindings)
-  (tc-match-domain** (ptypes arg) dom-type bindings))
+  (tc-match-domain** (reverse (ptypes arg)) dom-type bindings))
 
 (defun tc-match-domain** (arg-types dom-type bindings)
-  (if (null arg-types)
+  (if (or (null arg-types)
+	  (every #'cdr bindings))
       bindings
       (tc-match-domain** (cdr arg-types) dom-type
                          (tc-match (car arg-types) dom-type bindings))))
@@ -3755,10 +3760,14 @@ type of the lhs."
       (nreverse result)
       (resolutions-of-current-theory*
        (cdr resolutions)
-       (if (same-id (module-instance (car resolutions))
-                    (current-theory-name))
+       (if (and (not (declaration? (generated-by (declaration (car resolutions)))))
+		(same-id (module-instance (car resolutions))
+			 (current-theory-name)))
            (cons (car resolutions) result)
            result))))
+
+(defmethod generated-by (obj)
+  nil)
 
 (defun resolutions-of-current-context* (resolutions result)
   (if (null resolutions)
