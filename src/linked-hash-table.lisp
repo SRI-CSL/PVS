@@ -87,13 +87,16 @@
 		  :rehash-size rehash-size
 		  :rehash-threshold rehash-threshold
 		  #-sbcl :weak-p #+sbcl :weakness weakp)
-		 (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
-				      :weak-keys? weakp
-				      :size size
-				      :rehash-size rehash-size
-				      :rehash-threshold rehash-threshold
-				      :table #-sbcl (lisp::hash-table-table ht)
-					     #+sbcl (sb-impl::hash-table-table ht)))))
+		 (make-pvs-hash-table
+		  :strong-eq? (eq test 'strong-tc-eq)
+		  :weak-keys? weakp
+		  :size size
+		  :rehash-size rehash-size
+		  :rehash-threshold rehash-threshold
+		  :table #-sbcl (lisp::hash-table-table ht)
+		  #+sbcl (if (find-symbol "HASH-TABLE-PAIRS" 'sb-impl)
+			     (funcall (find-symbol "HASH-TABLE-PAIRS" 'sb-impl) ht)
+			     (funcall (find-symbol "HASH-TABLE-TABLE" 'sb-impl) ht))))))
        (declare (inline maphash))
        (maphash #'(lambda (x y) (setf (gethash x newht) y))
 		ht)
