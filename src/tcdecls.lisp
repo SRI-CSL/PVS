@@ -777,7 +777,16 @@
   (multiple-value-bind (stheory bindings)
       (subst-mod-params-inlined-theory theory theory-name thdecl)
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
-    (setf (theory-mappings thdecl) bindings)
+    ;;(setf (theory-mappings thdecl) bindings)
+    (setf (theory-mappings thdecl)
+	  (mapcar #'(lambda (elt)
+	    (if (typep (cdr elt) '(or type-def-decl const-decl theory-reference))
+		(let* ((res (make-resolution (cdr elt) (current-theory-name)))
+		  (nm (mk-name-expr (id (cdr elt)) nil nil res))
+		  (act (make-instance 'actual :expr nm)))
+		  (cons (car elt) act))
+		elt))
+	    (theory-mappings stheory)))
     (let ((fml-part (memq thdecl (formals (current-theory))))
 	  (ass-part (memq thdecl (assuming (current-theory))))
 	  (th-part (memq thdecl (theory (current-theory)))))
@@ -802,7 +811,8 @@
 		     (append prev (all-decls stheory) rest)))))
       (dolist (decl (all-decls stheory))
 	;; overwrite stheory
-	(setf (module decl) (current-theory))
+	(when (declaration? decl)
+	  (setf (module decl) (current-theory)))
 	(when (and fml-part (declaration? decl))
 	  (setf (visible? decl) nil))
 	(setf (generated-by decl) thdecl)
@@ -866,15 +876,6 @@ bindings."
 	(t (let ((nex (substit (funcall fn (car bindings-form)) alist)))
 	     (apply-to-bindings*
 	      fn (cdr bindings-form) (nconc nbindings-form (list nex)) alist))))))
-
-(defmethod change-to-mapped-formula-decl ((decl formula-decl))
-  (change-class decl 'mapped-formula-decl :spelling 'AXIOM))
-
-(defmethod change-to-mapped-assuming-decl ((decl formula-decl))
-  (change-class decl 'mapped-assuming-decl :spelling 'AXIOM))
-
-(defmethod change-to-mapped-tcc-decl ((decl formula-decl))
-  (change-class decl 'mapped-tcc-decl :spelling 'AXIOM))
 
 (defmethod typecheck-inlined-theory* ((theory datatype) theory-name decl)
   ;; Need to inline the datatype as well
@@ -2981,8 +2982,9 @@ The dependent types are created only when needed."
 		   (tc-eq (find-supertype (range ftype)) *boolean*))
 	(type-error (expr type) "Does not resolve to a predicate"))
       (set-type (expr type) ftype)
-      (let ((tval (mk-subtype (domain ftype)
-		    (expr type))))
+      (let* ((psexpr (pseudo-normalize (expr type)))
+	     (tval (mk-subtype (domain ftype) psexpr)))
+	(assert psexpr)
 	(setf (print-type tval) type)
 	(setf (subtype-conjuncts tval) (collect-subtype-conjuncts tval))
 	tval))))
@@ -3598,10 +3600,27 @@ The dependent types are created only when needed."
   (set-type (declared-type decl) nil)
   (let ((*checking-conversions* t)) ;; Disable optimization using subtype-conjuncts
     (if (subtype-of? (subtype decl) (type decl))
-	(pvs-warning
-	    "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
-	  (id decl) (line-begin (place decl))
-	  (declared-subtype decl) (declared-type decl))
+	(if (and (id decl)
+		 ;; Could generate FORALL (x: st): EXISTS (y: t): x = y
+		 ;; even if (type decl) is not a subtype
+		 ;; Will punt for now.
+		 (subtype? (type decl)))
+	    (let* ((bd (make-new-bind-decl (subtype decl)))
+		   (bvar (make-variable-expr bd))
+		   (tcc-expr (make!-forall-expr (list bd)
+			       (make!-application (predicate (type decl)) bvar)))
+		   (tcc-decl (mk-judgement-tcc (id decl) tcc-expr nil)))
+	      (insert-tcc-decl 'subtype (declared-subtype decl) (declared-type decl) tcc-decl)
+	      (pvs-warning
+		  "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ ~
+                   is already known to be a subtype of~%  ~a,~%  ~
+                          but generated anyway since it was given a name"
+		(id decl) (line-begin (place decl))
+		(declared-subtype decl) (declared-type decl)))
+	    (pvs-warning
+		"In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
+	      (id decl) (line-begin (place decl))
+	      (declared-subtype decl) (declared-type decl)))
 	(let* ((bd (make-new-bind-decl (subtype decl)))
 	       (bvar (make-variable-expr bd)))
 	  (setf (place bvar) (place (declared-subtype decl)))
@@ -4077,6 +4096,17 @@ The dependent types are created only when needed."
 	      names (car formals))
 	(mk-application-for-formals
 	 (mk-application* expr names)
+	 (cdr formals)))))
+
+(defun make!-application-for-formals (expr formals)
+  (if (null formals)
+      expr
+      (let ((names (mapcar #'mk-name-expr (car formals))))
+	(mapc #'(lambda (nm fm)
+		  (setf (place nm) (place fm)))
+	      names (car formals))
+	(make!-application-for-formals
+	 (make!-application* expr names)
 	 (cdr formals)))))
 
 
