@@ -3694,8 +3694,9 @@ space")
 	  expr))
 
 (defmethod untyped* ((expr name-expr))
-  (values (not (and (type expr) (resolution expr)))
-	  expr))
+  (let ((res (resolution expr)))
+    (values (not (and res (or (type expr) (type-decl? (declaration res)))))
+	    expr)))
 
 (defmethod untyped* ((expr theory-name-expr))
   (values (not (resolution expr))
