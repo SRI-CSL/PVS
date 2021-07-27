@@ -347,6 +347,10 @@
 (defmethod freevars* ((texpr struct-sub-tupletype))
   (freevars* (types texpr)))
 
+(defmethod freevars* ((name rewrite-name))
+  nil)
+  
+
 (defmethod freevars* ((seq sequence))
   (freevars-sequence seq (length seq) nil))
 
