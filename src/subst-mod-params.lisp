@@ -1135,7 +1135,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	       (assert (or (not (mapping-lhs? bdecl)) (mapping-rhs? bval)))
 	       (dolist (nfml nfmls)
 		 (setf (associated-decl nfml) ndecl))
-	       (when (and (id (car decls)) *subst-mod-params-declaration*)
+	       (when (and (declaration? (car decls))
+			  (id (car decls)) *subst-mod-params-declaration*)
 		 (setf (id ndecl) (makesym "~a.~a"
 					   (id *subst-mod-params-declaration*) (id (car decls)))))
 	       (setf (generated ndecl) (remove-if #'tcc? (generated ndecl)))
