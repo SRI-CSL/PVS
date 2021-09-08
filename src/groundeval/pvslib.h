@@ -286,7 +286,7 @@ typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
 
  struct type_actual_s { 
    equal_ptr_t equal_ptr; 
-   release_ptr_t release_ptr; 
+   release_ptr_t release_ptr;
  };
 
  /* actual_uint64 = {(*equal_uint64), (*release_uint64)}; */

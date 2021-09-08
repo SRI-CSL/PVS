@@ -4084,11 +4084,18 @@ BEGIN
 END exp2
 
 integertypes: THEORY
+%------------------------------------------------------------------------
+%      Author:  Natarajan Shankar 
+%
+%      Machine integer types and operations to support PVS2C code generation
+%------------------------------------------------------------------------
  BEGIN
+
+
      uint8: TYPE = below(exp2(8))
      uint16: TYPE = upto(exp2(16) - 1) 
      uint32: TYPE = upto(exp2(32) - 1) 
-     uint64: TYPE = upto(exp2(64) - 1) 
+     uint64: TYPE = upto(exp2(64) - 1)
 
      max8:  uint8 = 255
      max16: uint16 = 65535
@@ -4100,6 +4107,15 @@ integertypes: THEORY
      int16: TYPE = subrange(-exp2(15), exp2(15) - 1)
      int32: TYPE = subrange(-exp2(31), exp2(31) - 1)
      int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
+
+     mini8: int8 = -exp2(7)
+     mini16: int16 = -exp2(15)
+     mini32: int32 = -exp2(31)
+     mini64: int64 = -exp2(63)
+     maxi8: int8 = exp2(7) - 1
+     maxi16: int16 = exp2(15) - 1
+     maxi32: int32 = exp2(31) - 1
+     maxi64: int64 = exp2(63) - 1
 
      maxindex: MACRO uint32 = exp2(28) - 1 %max array index
      index: TYPE = upto(maxindex) %array index supertype
@@ -4233,6 +4249,40 @@ integertypes: THEORY
       i32max(x32, y32): int32 = max(x32, y32)
 
       i64max(x64, y64): int64 = max(x64, y64)
+
+      x : VAR real
+
+      u8ceiling(x | 0 <= x AND x <= max8): uint8 = ceiling(x)
+
+      u16ceiling(x | 0 <= x AND x <= max16): uint16 = ceiling(x)
+
+      u32ceiling(x | 0 <= x AND x <= max32): uint32 = ceiling(x)
+
+      u64ceiling(x | 0 <= x AND x <= max64): uint64 = ceiling(x)
+
+      u8floor(x | 0 <= x AND x <= max8): uint8 = floor(x)
+
+      u16floor(x | 0 <= x AND x <= max16): uint16 = floor(x)
+
+      u32floor(x | 0 <= x AND x <= max32): uint32 = floor(x)
+
+      u64floor(x | 0 <= x AND x <= max64): uint64 = floor(x)
+
+      i8ceiling(x | mini8 <= x AND x <= maxi8): int8 = ceiling(x)
+
+      i16ceiling(x | mini16 <= x AND x <= maxi16): int16 = ceiling(x)
+
+      i32ceiling(x | mini32 <= x AND x <= maxi32): int32 = ceiling(x)
+
+      i64ceiling(x | mini64 <= x AND x <= maxi64): int64 = ceiling(x)
+
+      i8floor(x | mini8 <= x AND x <= maxi8): int8 = floor(x)
+
+      i16floor(x | mini16 <= x AND x <= maxi16): int16 = floor(x)
+
+      i32floor(x | mini32 <= x AND x <= maxi32): int32 = floor(x)
+
+      i64floor(x | mini64 <= x AND x <= maxi64): int64 = floor(x)
 
 
 END integertypes

@@ -299,6 +299,7 @@ mpz_ptr_t pvsceiling_q_z(mpq_t x){
   result = safe_malloc(sizeof(mpz_t));
   mpz_init(result);
   mpz_cdiv_q(result, mpq_numref(x), mpq_denref(x));
+  //  gmp_printf("\npvsceiling_q_z(%Qd) = %Zd", x, result);
   return result;
 }
 
@@ -464,11 +465,17 @@ uint32_t code(uint32_t x){
 
 
 stringliteral_t mk_string(uint32_t length, uint32_t * instring){ 
-  stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(uint32_t))); 
+  stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(uint32_t)));
+  printf("\nmk_string input =");
+  for (uint32_t i = 0; i < length; i++) printf(" %"PRIu32",", instring[i]); 
+
    result->count = 1;
    result->size = length;
    result->max = length;
-   memcpy(result->elems, (uint32_t *) instring, 4 * length); 
+   memcpy(result->elems, (uint32_t *) instring, 4 * length);
+   printf("\nmk_string output: count = %"PRIu32", size = %"PRIu32", max = %"PRIu32"\n",
+	  result->count, result->size, result->max);
+   for (uint32_t j = 0; j < length; j++) printf(" %"PRIu32",", result->elems[j]);    
    return result; 
  };
 

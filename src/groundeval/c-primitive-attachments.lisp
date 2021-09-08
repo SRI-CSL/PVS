@@ -145,6 +145,54 @@
 (def-c-attach-primitive "integertypes" "u64rshift"
   "uint64" '(x n) '(uint64 uint64) "{return (uint64_t)x>>n;}")
 
+(def-c-attach-primitive "integertypes" "u8ceiling"
+  "uint8" '(x) '(mpq) "{return (uint8_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u16ceiling"
+  "uint16" '(x) '(mpq) "{return (uint16_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u32ceiling"
+  "uint32" '(x) '(mpq) "{return (uint32_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u64ceiling"
+  "uint64" '(x) '(mpq) "{return (uint64_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "i8ceiling"
+  "int8" '(x) '(mpq) "{return (int8_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i16ceiling"
+  "int16" '(x) '(mpq) "{return (int16_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i32ceiling"
+  "int32" '(x) '(mpq) "{return (int32_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i64ceiling"
+  "int64" '(x) '(mpq) "{return (int64_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "u8floor"
+  "uint8" '(x) '(mpq) "{return (uint8_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u16floor"
+  "uint16" '(x) '(mpq) "{return (uint16_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u32floor"
+  "uint32" '(x) '(mpq) "{return (uint32_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u64floor"
+  "uint64" '(x) '(mpq) "{return (uint64_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "i8floor"
+  "int8" '(x) '(mpq) "{return (int8_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i16floor"
+  "int16" '(x) '(mpq) "{return (int16_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i32floor"
+  "int32" '(x) '(mpq) "{return (int32_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i64floor"
+  "int64" '(x) '(mpq) "{return (int64_t)pvsfloor_q_i64(x);}")
+
 (def-c-attach-primitive "integer_bv_ops" "u8xor" "uint8"
   '(x8 y8) '(uint8 uint8) "{return x8^y8;}")
 
