@@ -1709,32 +1709,44 @@ hypotheses are labeled LABEL(s), if LABEL is not nil. They are hidden
 when HIDE? is t."
  "Adding TCCs of step ~a as hypotheses" t)
 
-(defstrat if-tcc-sequent (&optional (step '(skip)))
-  (when step
-    (if (typep *goal* 'tcc-sequent)
-	step
-      (skip)))
+;; Return t if current branch is a TCC sequent. When ancestor? is t, it checks if any of its
+;; ancestor is a TCC sequent
+(defun tcc-branch? (&optional (ps *ps*) ancestor?)
+  (and (tcc-sequent? (current-goal ps))
+      (or (not ancestor?)
+          (and (parent-proofstate ps)
+	       (tcc-branch? (parent-proofstate ps) t)))))
+
+(defstrat if-tcc-sequent (step &optional (else-step '(skip)) ancestor?)
+  (if (tcc-branch? *ps* ancestor?)
+      step
+    else-step)
   "Apply the step STEP only if the current sequent is a TCC
 sequent. Otherwise, it behaves as a (skip).")
 
 (defstep with-tccs (step &optional (fnums *)
 			 (tcc-step (extra-tcc-step))
-			 protect?)
-  (with-fresh-labels
-   ((!wtccs fnums :tccs))
-   (when protect? (hide *!wtccs-tccs*))
-   (branch
-    step
-    ((if-tcc-sequent
-      (then
-       (when protect? (reveal *!wtccs-tccs*))
-       (finalize tcc-step))))))
+			 (assert? t)
+			 old?)
+  (let ((no-tcc-step
+	 (if (and (not old?) assert?) '(then (flatten) (assert)) '(skip))))
+    (with-fresh-labels
+     ((!wtccs fnums :tccs))
+     (unless old? (hide *!wtccs-tccs*))
+     (branch
+      step
+      ((if-tcc-sequent
+	(then
+	 (unless old? (reveal *!wtccs-tccs*))
+	 (finalize tcc-step))
+	(unless old?
+	  (reveal *!wtccs-tccs*)
+	  (finalize no-tcc-step)))))))
   "[Extrategies] Applies STEP after introducing TCCs for the formulas
 in FNUMS. TCCs generated during the execution of the command are
-discharged with the proof command TCC-STEP. When PROTECT? is set to t,
-TCCs are hidden when STEP is executed and revealed afterwards to be
-proven by TCC-STEP. This way, explicit formula numbers used in STEP
-are protected."
+discharged with the proof command TCC-STEP. The strategy applies (assert)
+after step, unless ASSERT? is set to nil. The option OLD? is provided for
+backward compatibility. When OLD? is set to t, TCCs are not hidden when STEP is executed. This may cause problems if STEP explicitly refers to formula numbers in the sequent."
   "Applying ~a assumings TCCs")
 	     
 ;;; Control flow

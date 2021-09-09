@@ -205,14 +205,18 @@ is replaced with replacement."
     (multiple-value-bind (strat err)
 	(ignore-errors (values (read-from-string strategy)))
       (if err
-	  (pvs-message "Error in script for formula ~{~a~^, ~}: ~a." formulas err)
+	  (pvs-error "Prooflite script error"
+		     (format nil "Error in script for formula ~{~a~^, ~}: ~a." formulas err))
 	(multiple-value-bind (msg subjust)
 	    (check-edited-justification strat)
 	  (if msg
-	      (pvs-message "Error in script for formula ~{~a~^, ~}: ~a ~@[(Offending proof part: ~s)~]"
-			   formulas
-			   (or msg "Proof syntax error")
-			   subjust)
+	      (pvs-error
+	       "Proof syntax error"
+	       (format nil
+		       "Error in script for formula ~{~a~^, ~}: ~a ~@[(Offending proof part: ~s)~]"
+		       formulas
+		       (or msg "Proof syntax error")
+		       subjust))
 	    (when formulas 
 	      (associate-proof-with-formulas
 	       theory
@@ -294,9 +298,13 @@ is replaced with replacement."
 		  (setq n   (+ n 1)))
 		 (t 
 		  (when (and formulas (< line n))
-		    (pvs-message 
-		     "QED is missing in proof script(s) ~a [Theory: ~a]"
-		     formulas theory))
+		    (pvs-error
+		     "Prooflite script error"
+		     (format
+		      nil
+		      "QED is missing in proof script~:[~;s~] ~{~#[~;~a~;~a and ~a~:;~@{~a~#[~;, and ~:;, ~]~}~]~} [Theory: ~a]"
+		      (cadr formulas)
+		      formulas theory)))
 		  (cond ((or (= line 0) (< n line))
 			 (setq str (read-one-line file))
 			 (setq n   (+ n 1))
@@ -328,9 +336,13 @@ is replaced with replacement."
 		  (cond 
 		   (formula
 		    (when script
-		      (pvs-message 
-		       "QED is missing in proof script(s) ~a [Theory: ~a]"
-		       formulas theory))
+		      (pvs-error
+		       "Prooflite script error"
+		       (format
+			nil
+			"QED is missing in proof script~:[~;s~] ~{~#[~;~a~;~a and ~a~:;~@{~a~#[~;, and ~:;, ~]~}~]~} [Theory: ~a]"
+			(cadr formulas)
+			formulas theory)))
 		    (setq str (format nil "~a" (cdr proof)))
 		    (setq formulas (cons formula 
 					 (when (not script) formulas)))
@@ -359,14 +371,17 @@ is replaced with replacement."
 		(setq str (read-line file nil)))
 	       (t 
 		(when formulas
-		  (pvs-message 
-		   "QED is missing in proof script(s) ~a [Theory: ~a]"
-		   formulas theory))
+		  (pvs-error
+		   "Prooflite script error"
+		   (format
+		    nil
+		    "QED is missing in proof script~:[~;s~] ~{~#[~;~a~;~a and ~a~:;~@{~a~#[~;, and ~:;, ~]~}~]~} [Theory: ~a]"
+		    (cadr formulas)
+		    formulas theory)))
 		(setq str (read-line file nil))
 		(setq formulas nil)
 		(setq script nil)))))
      (when at-least-one-script-saved? (save-all-proofs)))))
-      
 
 (defun then-prooflite (script)
   (cond ((and
@@ -405,7 +420,6 @@ is replaced with replacement."
 	 (out)
 	 (write-prooflite-script fdecl out)))
       (list (aref (place fdecl) 2)))))
-
 
 (defun find-formula (theory-name formula)
   (let ((theory (get-typechecked-theory theory-name)))
@@ -460,9 +474,9 @@ is replaced with replacement."
 		  finally (return prl-filename)))
 	   (file-error
 	    (e)
-	    (pvs-message "Error: Could not write into ~a.~%" (file-error-pathname e))
+	    (pvs-error "File error" (format nil "Error: Could not write into ~a.~%" (file-error-pathname e)))
 	    nil)))
-      (pvs-message "Error: Theory ~a not found in context.~%" theoryname))))
+      (pvs-error "Theory not found" (format nil "Error: Theory ~a not found in context.~%" theoryname)))))
 
 (defun get-default-proof-script (theory-name formula)
   (let ((formula-declaration (find-formula theory-name formula)))
