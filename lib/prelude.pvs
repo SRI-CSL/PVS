@@ -775,11 +775,14 @@ sets [T: TYPE]: THEORY
 
   p: VAR PRED[T]
 
-  member(x, a): bool = a(x)
+  member(x, a): bool = a(x);
+  ∈(x, a): bool = a(x);
+  ∉(x, a): bool = ¬ a(x);
 
   empty?(a): bool = (FORALL x: NOT member(x, a))
 
-  emptyset: set = {x | false}
+  emptyset: set = {x | false};
+  ∅: set = {x | false};
 
   nonempty?(a): bool = NOT empty?(a)
 
@@ -791,13 +794,17 @@ sets [T: TYPE]: THEORY
 
   nontrivial?(a): bool = a /= emptyset & a /= fullset
 
-  subset?(a, b): bool = (FORALL x: member(x, a) => member(x, b))
+  subset?(a, b): bool = (FORALL x: member(x, a) => member(x, b));
+  ⊆(a, b): bool = ∀ x: x ∈ a => x ∈ b;
 
-  strict_subset?(a, b): bool = subset?(a, b) & a /= b
+  strict_subset?(a, b): bool = subset?(a, b) & a /= b;
+  ⊂(a, b): bool = ⊆(a, b) ∧ a /= b;
+  
+  union(a, b): set = {x | member(x, a) OR member(x, b)};
+  ∪(a, b): set = {x | x ∈ a ∨ x ∈ b};
 
-  union(a, b): set = {x | member(x, a) OR member(x, b)}
-
-  intersection(a, b): set = {x | member(x, a) AND member(x, b)}
+  intersection(a, b): set = {x | member(x, a) AND member(x, b)};
+  ∩(a, b): set = {x | x ∈ a ∧ x ∈ b};
 
   disjoint?(a, b): bool = empty?(intersection(a, b))
 
@@ -864,7 +871,8 @@ sets [T: TYPE]: THEORY
   
   A, B : Var setofsets
 
-  powerset(a): setofsets = {b | subset?(b, a)}
+  powerset(a): setofsets = {b | subset?(b, a)};
+  𝒫(a): setofsets = {b | b ⊆ a};
 
   Union(A): set = {x | EXISTS (a: (A)): a(x)}
 
@@ -1847,7 +1855,8 @@ number_fields: THEORY
 reals: THEORY
  BEGIN
 
-  real: NONEMPTY_TYPE FROM number_field
+  real: NONEMPTY_TYPE FROM number_field;
+  ℝ: TYPE = real;
 
   real?(n:number): bool = number_field_pred(n) AND real_pred(n)
 
@@ -2069,7 +2078,7 @@ rationals: THEORY
  BEGIN
 
   rational: NONEMPTY_TYPE FROM real
-  rat: NONEMPTY_TYPE = rational
+  rat, ℚ: NONEMPTY_TYPE = rational
 
   rational?(n: number): bool =
     number_field_pred(n) AND real_pred(n) AND rational_pred(n)
@@ -2153,7 +2162,7 @@ integers: THEORY
  BEGIN
 
   integer: NONEMPTY_TYPE FROM rational
-  int: NONEMPTY_TYPE = integer
+  int, ℤ: NONEMPTY_TYPE = integer
 
   integer?(n:number): bool =
     number_field_pred(n) AND real_pred(n)
@@ -2268,7 +2277,7 @@ naturalnumbers: THEORY
  BEGIN
 
   naturalnumber: TYPE = nonneg_int
-  nat: NONEMPTY_TYPE = naturalnumber
+  nat, ℕ: NONEMPTY_TYPE = naturalnumber
 
   % The following declaration, if it could be expanded, is built in to
   %  the typechecker:
@@ -5062,8 +5071,8 @@ disjointness: THEORY
  END disjointness
 
 
-% characters - this follows the ASCII control codes, of which only the
-% first 128 are defined:
+% characters - this follows Unicode UTF8 standard,
+% where the first 128 are the ASCII chars:
 %
 %     |  0 NUL|  1 SOH|  2 STX|  3 ETX|  4 EOT|  5 ENQ|  6 ACK|  7 BEL|
 %     |  8 BS |  9 HT | 10 NL | 11 VT | 12 NP | 13 CR | 14 SO | 15 SI |
@@ -5082,9 +5091,12 @@ disjointness: THEORY
 %     |112  p |113  q |114  r |115  s |116  t |117  u |118  v |119  w |
 %     |120  x |121  y |122  z |123  { |124  | |125  } |126  ~ |127 DEL|
 
+% Characters may be given in PVS between single quotes, e.g.,
+%  'a' 'α' '̆\\n' 
+
 character: DATATYPE
  BEGIN
-  char(code:below[256]):char?
+  char(code:below[0x110000]):char?
  END character
 
 
