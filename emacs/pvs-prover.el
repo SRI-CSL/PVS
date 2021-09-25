@@ -167,7 +167,7 @@ the formula.  With an argument, runs the proof in the background."
 		 (format "(rerun-proof-at? \"%s\" %s %d \"%s\" %s %s)"
 		     (or fname theory) fmlastr line kind rerun-proof unproved)
 		 nil nil "t\\|T\\|no\\|NO")))
-    (pushw)
+; evw   (pushw)
     (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
 		     (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
 		     poff background display unproved)))
