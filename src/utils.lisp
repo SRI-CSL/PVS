@@ -479,6 +479,16 @@ is replaced with replacement."
   (and (directory-p dir)
        (uiop:absolute-pathname-p dir)))
 
+#-sbcl
+(defun pathname-equal (p1 p2)
+  (uiop:pathname-equal p1 p2))
+
+#+sbcl
+(defun pathname-equal (p1 p2)
+  ;; Fails in comparing "~/foo" to "/home/user/foo" in SBCL
+  ;; We don't use truename, as that assumes the paths exist
+  (uiop:pathname-equal (uiop:native-namestring p1) (uiop:native-namestring p2)))
+
 (defun environment-variable (string)
   #+allegro
   (sys:getenv string)
@@ -784,7 +794,7 @@ is replaced with replacement."
   (typecase x
     (symbol x)
     (string (intern x :pvs))
-    (number x)
+    (cl:number x)
     (t (id x))))
 
 (defun last-id (x)
@@ -808,6 +818,21 @@ is replaced with replacement."
   (let ((idx (get-id x))
 	(idy (get-id y)))
     (eq idx idy)))
+
+(defun name-eq (x y)
+  (let ((idx (get-id x))
+	(idy (get-id y)))
+    (or (eq idx idy)
+	(let* ((strx (string idx))
+	       (stry (string idy))
+	       (lenx (length strx))
+	       (leny (length stry)))
+	  (cond ((< lenx leny)
+		 (and (string= strx (subseq stry (- leny lenx)))
+		      (char= (char stry (- leny lenx 1)) #\.)))
+		((> lenx leny)
+		 (and (string= (subseq strx (- lenx leny)) stry)
+		      (char= (char strx (- lenx leny 1)) #\.))))))))
 
 ;; True if x is a suffix of y
 (defun id-suffix (x y)
@@ -2724,46 +2749,50 @@ prove itself from the mapped axioms."
 	     (actuals (module-instance (resolution x)))))))
 
 (defmethod full-name! ((x name))
-  (copy x
-    'id (id (resolution x))
-    'mod-id (when (or (not (current-theory))
-		      (integerp (id x))
-		      (not (eq (id (module-instance (resolution x)))
-			       (id (current-theory)))))
-	      (id (module-instance (resolution x))))
-    'library (or (library x)
-		 (library (module-instance (resolution x)))
-		 (when (and (declaration x)
-			    (lib-datatype-or-theory?
-			     (module (declaration x))))
-		   (get-library-id (context-path (module (declaration x))))))
-    'actuals (mapcar #'(lambda (act)
-			 (let ((fname (full-name (lcopy act :type-value nil)
-						 (when *full-name-depth*
-						   (1- *full-name-depth*)))))
-			   (setf (type-value fname) (type-value act))
-			   fname))
-	       (actuals (module-instance (resolution x))))
-    'mappings (mappings (module-instance (resolution x)))))
+  (let* ((mi (module-instance (resolution x)))
+	 (modid (id mi)))
+    (copy x
+      'id (id (resolution x))
+      'mod-id (when (or (not (current-theory))
+			(integerp (id x))
+			(not (eq (id mi) (id (current-theory)))))
+		modid)
+      'library (or (library x)
+		   (library mi)
+		   (when (and (declaration x)
+			      (lib-datatype-or-theory?
+			       (module (declaration x))))
+		     (get-library-id (context-path (module (declaration x))))))
+      'actuals (full-name (actuals mi)
+			  (when *full-name-depth*
+			    (1- *full-name-depth*)))
+      'dactuals (full-name (dactuals mi)
+			   (when *full-name-depth*
+			     (1- *full-name-depth*)))
+      'mappings (mappings mi))))
 
 (defmethod full-name! ((x adt-name-expr))
-  (copy x
-    'id (id (resolution x))
-    'mod-id (when (or (not (current-theory))
-		      (integerp (id x))
-		      (not (eq (id (module-instance (resolution (adt x))))
-			       (id (current-theory)))))
-	      (id (module-instance (resolution (adt x)))))
-    'library (or (library x)
-		 (library (module-instance (resolution (adt x))))
-		 (when (and (declaration x)
-			    (lib-datatype-or-theory?
-			     (module (declaration (adt x)))))
-		   (get-library-id (context-path (module (declaration x))))))
-    'actuals (full-name (actuals (module-instance (resolution (adt x))))
-			(when *full-name-depth*
-			  (1- *full-name-depth*)))
-    'mappings (mappings (module-instance (resolution (adt x))))))
+  (let* ((mi (module-instance (resolution (adt x))))
+	 (modid (id mi)))
+    (copy x
+      'id (id (resolution x))
+      'mod-id (when (or (not (current-theory))
+			(integerp (id x))
+			(not (eq (id mi) (id (current-theory)))))
+		(id mi))
+      'library (or (library x)
+		   (library mi)
+		   (when (and (declaration x)
+			      (lib-datatype-or-theory?
+			       (module (declaration (adt x)))))
+		     (get-library-id (context-path (module (declaration x))))))
+      'actuals (full-name (actuals mi)
+			  (when *full-name-depth*
+			    (1- *full-name-depth*)))
+      'dactuals (full-name (dactuals mi)
+			   (when *full-name-depth*
+			    (1- *full-name-depth*)))
+      'mappings (mappings mi))))
 
 (defmethod full-name! ((te type-expr))
   (assert (print-type te))
@@ -2788,7 +2817,10 @@ prove itself from the mapped axioms."
       'actuals (full-name (actuals mi)
 			  (when *full-name-depth*
 			    (1- *full-name-depth*)))
-      'mappings (mappings (module-instance (resolution x))))))
+      'dactuals (full-name (dactuals mi)
+			   (when *full-name-depth*
+			     (1- *full-name-depth*)))
+      'mappings (mappings mi))))
 
 (defmethod module ((map mapping))
   (module (declaration (lhs map))))
@@ -3672,8 +3704,9 @@ space")
 	  expr))
 
 (defmethod untyped* ((expr name-expr))
-  (values (not (and (type expr) (resolution expr)))
-	  expr))
+  (let ((res (resolution expr)))
+    (values (not (and res (or (type expr) (type-decl? (declaration res)))))
+	    expr)))
 
 (defmethod untyped* ((expr theory-name-expr))
   (values (not (resolution expr))
@@ -4064,10 +4097,10 @@ space")
   (get-internal-run-time))
 
 (defun runtime-since (time)
-  (floor (* (- (get-run-time) time) millisecond-factor)))
+  (max (floor (* (- (get-run-time) time) millisecond-factor)) 0))
 
 (defun realtime-since (time)
-  (floor (* (- (get-internal-real-time) time) millisecond-factor)))
+  (max (floor (* (- (get-internal-real-time) time) millisecond-factor)) 0))
   
 
 (defmethod change-application-class-if-necessary (expr new-expr)
@@ -5091,3 +5124,83 @@ space")
   (top-level:alias "et" ()
 		   "my alias for :eval :context t"
 		   (apply #'top-level:do-command "evalmode" (list :context t))))
+
+
+(defun codepoint-to-bytestring (code)
+  (cond ((<= code #x7f) (vector code))
+	((<= code #x7ff)
+	 (multiple-value-bind (d r) (floor code #x40)
+	   (vector (logior #xc0 d) (logior #x80 r))))
+	((<= code #xffff)
+	 (multiple-value-bind (d1 r1) (floor code #x40)
+	   (multiple-value-bind (d2 r2) (floor d1 #x20)
+	     (vector (logior #xe0 d2) (logior #x80 r2) (logior #x80 r1)))))
+	((<= code #x10ffff)
+	 (multiple-value-bind (d1 r1) (floor code #x40)
+	   (multiple-value-bind (d2 r2) (floor d1 #x40)
+	     (multiple-value-bind (d3 r3) (floor d2 #x8)
+	       (vector (logior #xf0 d2) (logior #x80 r3) (logior #x80 r2) (logior #x80 r1))))))
+	(t (error "code is too large"))))
+
+
+
+;; Using Allegro functions with their nearest equivalents
+#+allegro ;; Allegro's make-gate doesn't support gatep or names, so we use this hash-table
+(defvar *gate-names* (make-hash-table :weak-keys t))
+
+(defun make-gate (&key name open)
+  #+allegro (let ((gate (mp:make-gate open)))
+	      (setf (gethash gate *gate-names*) name)
+	      gate)
+  #+sbcl (sb-concurrency:make-gate :name name :open open))
+
+(defun gatep (object)
+  #+allegro (nth-value 1 (gethash object *gate-names*))
+  #+sbcl (sb-concurrency:gatep object))
+
+(defun open-gate (gate)
+  #+allegro (mp:open-gate gate)
+  #+sbcl (sb-concurrency:open-gate gate))
+
+(defun gate-open-p (gate)
+  #+allegro (mp:gate-open-p gate)
+  #+sbcl (sb-concurrency:gate-open-p gate))
+
+(defun close-gate (gate)
+  #+allegro (mp:close-gate gate)
+  #+sbcl (sb-concurrency:close-gate gate))
+
+(defun gate-name (gate)
+  #+allegro (get-hash gate *gate-names*)
+  #+sbcl (sb-concurrency:gate-name gate))
+
+(defun wait-on-gate (gate)
+  #+allegro (mp:process-wait (format nil "Waiting for ~a" (gate-name gate))
+			     #'(lambda () (mp:gate-open-p gate)))
+  #+sbcl (sb-concurrency:wait-on-gate gate))
+
+;; (defun process-lock-locker (lock)
+;;   #+allegro (mp:process-lock-locker lock)
+;;   #+sbcl (sb-thread:mutex-owner lock))
+
+;; (defun process-wait (whostate function &rest arguments)
+;;   #+allegro (apply #'mp:process-wait whostate function arguments)
+;;   ;; Not quite the same
+;;   #+sbcl (sb-ext:process-wait process &optional check-for-stopped))
+
+;; (defun process-name-to-process (name) ;; &key abbrev error
+;;   #+allegro (mp:process-name-to-process name)
+;;   #+sbcl (find-if #'(lambda (th) (string= (sb-thread:thread-name th) name))
+;; 	   (sb-thread:list-all-threads)))
+
+;; (defun process-interrupt (process function) ;; &rest args
+;;   #+allegro (mp:process-interrupt process function)
+;;   #+sbcl (sb-thread:interrupt-thread thread function))
+				
+;; (defun symeval-in-process (symbol process)
+;;   #+allegro (mp:symeval-in-process symbol process)
+;;   #+sbcl (sb-thread:symbol-value-in-thread symbol process))
+
+;; (defun process-run-function (name-or-keywords function &rest args)
+;;   #+allegro (apply #'mp:process-run-function name-or-keywords function args)
+;;   #+sbcl (sb-thread:make-thread function &key name arguments))

@@ -297,9 +297,17 @@ order is important")
 (defvar *ordinal* nil)
 (defvar *string-type* nil)
 (defvar *character* nil)
+(defvar *char* nil)
+(defvar *uint8* nil)
+(defvar *uint16* nil)
+(defvar *uint32* nil)
+(defvar *uint64* nil)
+(defvar *int8* nil)
+(defvar *int16* nil)
+(defvar *int32* nil)
+(defvar *int64* nil)
 
 (defvar *tcdebug* nil)
-(defvar *debugging-binfiles* nil)
 (defvar *evaluator-debug* nil)
 (defvar *evaluator-debug-undefined* nil)
 
@@ -405,12 +413,13 @@ rather than the generated declaration.")
 	    (pprint-newline :mandatory stream)))))
 
 (defvar *proof-script-pprint-dispatch*
-  #-gcl
+  #+allegro
   (let ((table (copy-pprint-dispatch)))
     (set-pprint-dispatch '(cons string)
 			 #'(lambda (s list)
 			     (let ((*print-escape* t))
-			       (pprint-linear s list)))
+			       (pprint-linear s list)
+			       (terpri s)))
 			 1
 			 table)
     (set-pprint-dispatch 'string
@@ -418,7 +427,7 @@ rather than the generated declaration.")
 			 1
 			 table)
     table)
-  #+gcl nil)
+  #-allegro (copy-pprint-dispatch))
 
 (defvar *visible-only* nil)
 
@@ -479,6 +488,8 @@ current proof is suspect.")
 (defvar *subtypes-matched* nil)
 
 (defvar *subst-fields-hash*)
+
+(defvar *type-predicates-recordtype-hash*)
 
 (defvar *named-exprs* nil
   "A list of (expr . gensym) pairs, where expr is a binding-expr in which

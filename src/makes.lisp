@@ -533,7 +533,7 @@
 ;      (change-name-expr-class-if-needed (declaration nres) nex))
 ;    nex))
 
-(defmethod mk-name-expr ((id number) &optional actuals mod-id res
+(defmethod mk-name-expr ((id cl:number) &optional actuals mod-id res
 			 &key mappings library target dactuals)
   (if res
       (make!-name-expr id actuals mod-id res mappings library target)
@@ -547,13 +547,14 @@
 	:target target)))
 
 (defmethod mk-name-expr ((id symbol) &optional actuals mod-id res
-			 &key mappings library target)
+			 &key mappings library target dactuals)
   (if res
-      (make!-name-expr id actuals mod-id res mappings library target)
+      (make!-name-expr id actuals mod-id res mappings library target dactuals)
       (make-instance 'name-expr
 	:id id
 	:mod-id mod-id
 	:actuals actuals
+	:dactuals dactuals
 	:mappings mappings
 	:library library
 	:target target)))
@@ -1023,6 +1024,9 @@
 
 (defmethod mk-actual ((arg expr))
   (make-instance 'actual :expr arg))
+
+(defmethod mk-actual ((fml formal-type-decl))
+  (mk-actual (type-value fml)))
 
 (defun mk-mapping (lhs rhs)
   (make-instance 'mapping-subst
@@ -1832,12 +1836,13 @@
 	    nexpr))))
 
 (defun make!-name-expr (id actuals mod-id res
-			   &optional mappings library target)
+			   &optional mappings library target dactuals)
   (assert res)
   (typecase (declaration res)
     (field-decl (make-instance 'field-name-expr
 		  :id id
 		  :actuals actuals
+		  :dactuals dactuals
 		  :mod-id mod-id
 		  :type (type res)
 		  :resolutions (list res)))
@@ -1847,30 +1852,35 @@
 			      (make-instance 'null-expr
 				:id id
 				:actuals actuals
+				:dactuals dactuals
 				:mod-id mod-id
 				:type (type res)
 				:resolutions (list res))
 			      (make-instance 'constructor-name-expr
 				:id id
 				:actuals actuals
+				:dactuals dactuals
 				:mod-id mod-id
 				:type (type res)
 				:resolutions (list res))))
     (adt-recognizer-decl (make-instance 'recognizer-name-expr
 			   :id id
 			   :actuals actuals
+			   :dactuals dactuals
 			   :mod-id mod-id
 			   :type (type res)
 			   :resolutions (list res)))
     (adt-accessor-decl (make-instance 'accessor-name-expr
 			   :id id
 			   :actuals actuals
+			   :dactuals dactuals
 			   :mod-id mod-id
 			   :type (type res)
 			   :resolutions (list res)))
     (t (make-instance 'name-expr
 	 :id id
 	 :actuals actuals
+	 :dactuals dactuals
 	 :mod-id mod-id
 	 :type (type res)
 	 :resolutions (list res)

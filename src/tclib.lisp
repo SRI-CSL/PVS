@@ -41,10 +41,13 @@
   (assert *pvs-path*)
   (let* ((pvs-lib (format nil "~a/lib" *pvs-path*))
 	 (pvs-ctx (format nil "~a/.pvscontext" pvs-lib))
-	 (*loading-prelude* t))
+	 (*loading-prelude* t)
+	 (lib-ws (get-workspace-session pvs-lib)))
     (when (file-exists-p pvs-ctx)
       (delete-file pvs-ctx))
-    (with-workspace pvs-lib
+    (setf (pvs-context lib-ws)
+	  (list *pvs-version* nil '(:default-decision-procedure shostak)))
+    (with-workspace lib-ws
       (load-core-prelude)
       (load-pvsio-prelude))
     (initialize-workspaces)))
@@ -239,26 +242,28 @@
 ;;; ~/widget/foo.prf that have now have a corresponding theory in the
 ;;; prelude.  This is really only for the PVS maintainers.
 
-(defun merge-proofs-into-updated-prelude (file)
+(defun merge-proofs-into-updated-prelude (file thid &optional (newthid thid))
+  (assert (gethash newthid *prelude*))
   (let ((prfpath (make-prf-pathname file)))
     (if (file-exists-p prfpath)
 	(with-open-file (input prfpath :direction :input)
-	  (restore-prelude-proofs-from-file input prfpath))
+	  (restore-prelude-proofs-from-file input prfpath thid newthid))
 	(format t "~%Proof file ~a does not exist" prfpath))))
 
-(defun restore-prelude-proofs-from-file (input prfpath)
+(defun restore-prelude-proofs-from-file (input prfpath thid newthid)
   (let ((theory-proofs (read input nil nil)))
-    (when theory-proofs
-      (let* ((theoryid (car theory-proofs))
-	     (proofs (cdr theory-proofs))
-	     (theory (gethash theoryid *prelude*)))
-	(unless (every #'consp proofs)
-	  (error "Proofs file ~a is corrupted" prfpath))
-	(cond (theory
-	       (restore-theory-proofs theory proofs)
-	       (format t "~%Theory ~a proofs restored" theoryid))
-	      (t (format t "~%Theory ~a not in prelude, ignoring" theoryid)))
-	(restore-prelude-proofs-from-file input prfpath)))))
+    (loop while (and theory-proofs (not (eq (car theory-proofs) thid)))
+	  do (setq theory-proofs (read input nil nil)))
+    (unless theory-proofs
+      (error "theory ~a not found in ~a" thid prfpath))
+    (let* ((proofs (cdr theory-proofs))
+	   (theory (gethash newthid *prelude*)))
+      (unless (every #'consp proofs)
+	(error "Proofs file ~a is corrupted" prfpath))
+      (cond (theory
+	     (restore-theory-proofs theory proofs)
+	     (format t "~%Theory ~a proofs restored" newthid))
+	    (t (format t "~%Theory ~a not in prelude, ignoring" theoryid))))))
 
 (defun save-prelude-core-proofs ()
   (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
@@ -378,7 +383,7 @@ lib-path, along with modification dates."
 	   (emacs-files-loaded (load-pvs-lib-emacs-file lib-path force?)))
       (when pvs-files-loaded
 	(pushnew lib-path (current-prelude-libraries)
-		 :test #'uiop:pathname-equal))
+		 :test #'pathname-equal))
       (if (or pvs-files-loaded
 	      lisp-files-loaded
 	      emacs-files-loaded)
@@ -559,12 +564,12 @@ point."
 	       (if loaded-files
 		   (pvs-message
 		       "Loaded prelude library context from ~a~
-                            ~%  and reset the context"
+                            ~%  and reset the context~%"
 		     lib-path)
 		   (pvs-message "Error loading prelude library context ~a~
-                                     ~%  no pvs files loaded"
+                                     ~%  no pvs files loaded~%"
 		     lib-path)))
-	      (t (pvs-message "~a.pvscontext is empty~%  no PVS files loaded"
+	      (t (pvs-message "~a.pvscontext is empty~%  no PVS files loaded~%"
 		   lib-path))))
       ;; Back to previous *workspace-session*
       ;; loaded-files and prelude-ctx have been updated
@@ -903,16 +908,13 @@ not a dir: if a valid id
 		 (symbol (string libref))
 		 (pathname (namestring libref))
 		 (t libref)))
-	 (dirp (when (directory-p pstr) (truename pstr)))
+	 (estr (ignore-errors (uiop:native-namestring pstr)))
+	 (dirp (when (and estr (directory-p estr)) (truename estr)))
 	 (lib-path (when dirp (merge-pathnames dirp))))
     ;; dirp works for both absolute and relative pathnames Note that a
     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
     ;; same name.
-    (if lib-path
-	(let* ((lstr (car (last (pathname-directory lib-path))))
-	       (lib-id (intern lstr :pvs)))
-	  (or (cdr (assq lib-id (pvs-library-alist)))
-	      lib-path))
+    (or lib-path
 	(let* ((nstr (when (stringp pstr)
 		       (if (char= (char pstr (1- (length pstr))) #\/)
 			   (subseq pstr 0 (1- (length pstr)))

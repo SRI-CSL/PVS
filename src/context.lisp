@@ -316,34 +316,36 @@ retypechecked."
   (save-context))
 
 
-(defun write-context ()
-  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-  (when (or (current-pvs-context-changed)
-	    (and (pvs-context-entries)
-		 (not (file-exists-p (context-pathname)))))
-    (if (write-permission?)
-	(let ((context (make-pvs-context)))
-	  (assert (every #'(lambda (ce)
-			     (file-exists-p (make-specpath (ce-file ce))))
-			 (cdddr context)))
-	  (multiple-value-bind (value condition)
-	      (progn ;ignore-file-errors
-	       (store-object-to-file context (context-pathname)))
-	    (declare (ignore value))
-	    (cond (condition
-		   (pvs-message "~a" condition))
-		  (t (setf (pvs-context *workspace-session*) context)
-		     (setf (pvs-context-changed *workspace-session*) nil)
-		     (pvs-log "Context file ~a written"
-			      (namestring (context-pathname)))))))
-	(pvs-log "Context file ~a not written, do not have write permission"
-		 (namestring (context-pathname))))))
+(defun write-context (&optional (ws *workspace-session*))
+  (unless ws (setq ws (initialize-workspaces)))
+  (assert (pvs-context ws))
+  (with-workspace ws
+    (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+    (when (or (pvs-context-changed ws)
+	      (and (pvs-context-entries)
+		   (not (file-exists-p (path ws)))))
+      (if (write-permission? (path ws))
+	  (let ((context (make-pvs-context)))
+	    (assert (every #'(lambda (ce)
+			       (file-exists-p (make-specpath (ce-file ce))))
+			   (cdddr context)))
+	    (multiple-value-bind (value condition)
+		(progn			;ignore-file-errors
+		  (store-object-to-file context (context-pathname)))
+	      (declare (ignore value))
+	      (cond (condition
+		     (pvs-message "~a" condition))
+		    (t (setf (pvs-context *workspace-session*) context)
+		       (setf (pvs-context-changed *workspace-session*) nil)
+		       (pvs-log "Context file ~a written~%"
+				(namestring (context-pathname)))))))
+	  (pvs-log "Context file ~a not written, do not have write permission"
+		   (namestring (context-pathname)))))))
 
 (defvar *testing-restore* nil)
 
 (defun write-object-files (&optional force?)
-  (when (and (not *debugging-binfiles*)
-	     (> (hash-table-count (current-pvs-theories)) 0)
+  (when (and (> (hash-table-count (current-pvs-theories)) 0)
 	     (ensure-bin-subdirectory))
     (if t ; *testing-restore*
 	(maphash #'(lambda (file theories)
@@ -389,9 +391,8 @@ retypechecked."
 		       (null (cdr te-date))
 		       (>= specdate bindate)
 		       (not (eql bindate (cdr te-date)))))
-	  (unless *debugging-binfiles*
-	    (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
-	    (save-theory theory))
+	  (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
+	  (save-theory theory)
 	  (setf (ce-object-date ce)
 		(acons (te-id te) (file-write-time binpath)
 		       (delete te-date (ce-object-date ce))))
@@ -459,7 +460,7 @@ retypechecked."
   (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   t)
 
-(defun make-pvs-context ()
+(defun make-pvs-context (&optional (ws *workspace-session*))
   "Returns a list representing the .pvscontext file.
 Has form (version (prelude-libnames) ce1 ce2 ...)
 context-entry ce is a struct with slots:
@@ -477,30 +478,31 @@ formula-entry is a struct with slots:
   proof-refers-to: list of declaration-entry structs
 declaration-entry has slots
   id, class, type, theory-id"
-  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-  (let ((*valid-entries* (make-hash-table :test #'eq))
-	(context nil))
-    ;; Collect from (current-pvs-files
-    (maphash #'(lambda (name info)
-		 (declare (ignore info))
-		 (let ((ce (create-context-entry name)))
-		   (when ce
-		     (push ce context))))
-	     (current-pvs-files))
-    (assert (not (duplicates? context :key #'ce-file)) () "after pvs-files")
-    ;; Collect from current pvs-context remaining ce's that still have an
-    ;; associated existing file.
-    (mapc #'(lambda (entry)
-	      (when (and (not (member (ce-file entry) context
-				      :key #'ce-file
-				      :test #'string=))
-			 (file-exists-p (make-specpath (ce-file entry))))
-		(push entry context)))
-	  (pvs-context-entries))
-    (assert (not (duplicates? context :key #'ce-file)))
-    (cons *pvs-version*
-	  (cons (pvs-context-libraries)
-		(cons (context-parameters) context)))))
+  (with-workspace ws
+    (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+    (let ((*valid-entries* (make-hash-table :test #'eq))
+	  (context nil))
+      ;; Collect from (current-pvs-files
+      (maphash #'(lambda (name info)
+		   (declare (ignore info))
+		   (let ((ce (create-context-entry name)))
+		     (when ce
+		       (push ce context))))
+	       (pvs-files ws))
+      (assert (not (duplicates? context :key #'ce-file)) () "after pvs-files")
+      ;; Collect from current pvs-context remaining ce's that still have an
+      ;; associated existing file.
+      (mapc #'(lambda (entry)
+		(when (and (not (member (ce-file entry) context
+					:key #'ce-file
+					:test #'string=))
+			   (file-exists-p (make-specpath (ce-file entry))))
+		  (push entry context)))
+	    (pvs-context-entries))
+      (assert (not (duplicates? context :key #'ce-file)))
+      (cons *pvs-version*
+	    (cons (pvs-context-libraries)
+		  (cons (context-parameters) context))))))
 
 (defun context-parameters ()
   (nconc (when *default-decision-procedure*
@@ -955,96 +957,101 @@ its dependencies."
     (when te
       (te-dependencies te))))
 
+(defun consistent-workspace-paths ()
+  "Checks whether *default-pathname-defaults*, (working-directory), and (current-context-path)
+are all the same."
+  (and (file-equal *default-pathname-defaults* (working-directory))
+       (file-equal *default-pathname-defaults* (current-context-path))))
+
 ;;; Restore context
 ;;; Reads in the .pvscontext file to the (current-pvs-context) variable.  Most of
 ;;; the rest of this function provides for reading previous versions of the
 ;;; .pvscontext
 
-(defun restore-context ()
-  (assert *workspace-session*)
-  #+pvsdebug
-  (assert (and (file-equal *default-pathname-defaults*
-			   (working-directory))
-	       (file-equal *default-pathname-defaults*
-			   (current-context-path))))
-  (unless (current-pvs-context)
-    (let ((ctx-file (merge-pathnames *context-name*)))
-      (if (file-exists-p ctx-file)
-	  (handler-case
-	      (let ((context
-		     (if (with-open-file (in ctx-file)
-			   (and (char= (read-char in) #\()
-				(char= (read-char in) #\")))
-			 (with-open-file (in ctx-file) (read in))
-			 (fetch-object-from-file ctx-file))))
-		(setf (cdddr context)
-		      (remove-duplicates (cdddr context) :key #'ce-file :test #'equal
-					 :from-end t))
-		(setf (cdddr context)
-		      (delete-if-not #'(lambda (ce)
-					 (file-exists-p (make-specpath (ce-file ce))))
-			(cdddr context)))
-		(dolist (ce (cdddr context))
-		  (let ((ndeps (remove-if-not #'(lambda (dep)
-						  (file-exists-p (make-specpath dep)))
-				 (ce-dependencies ce))))
-		    (unless (equal ndeps (ce-dependencies ce))
-		      (pvs-message "PVS context has bad deps: ~a"
-			(remove-if #'file-exists-p (ce-dependencies ce)))
-		      (setf (ce-dependencies ce) nil)
-		      (setf (ce-object-date ce) nil)
-		      (setf (ce-theories ce) nil))))
-		(cond ((duplicate-theory-entries?)
-		       (pvs-message "PVS context has duplicate entries - resetting")
-		       (setf (pvs-context *workspace-session*) (list *pvs-version*))
-		       (write-context))
-		      (t ;;(same-major-version-number (car context) *pvs-version*)
-		       ;; Hopefully we are backward compatible between versions
-		       ;; 3 and 4.
-		       (assert (every #'(lambda (ce)
-					  (file-exists-p (make-specpath (ce-file ce))))
-				      (pvs-context-entries context)))
-		       (setf (pvs-context *workspace-session*) context)
-		       (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-		       (setf (cadr (current-pvs-context))
-			     (delete "PVSio/"
-				     (delete "Manip/"
-					     (delete "Field/" (cadr (current-pvs-context))
-						     :test #'string=)
-					     :test #'string=)
-				     :test #'string=))
-		       (cond ((and (listp (cadr context))
-				   (listp (caddr context))
-				   (every #'context-entry-p (cdddr context)))
-			      (load-prelude-libraries (cadr context))
-			      (setq *default-decision-procedure*
-				    (or (when (listp (caddr context))
-					  (getf (caddr context)
-						:default-decision-procedure))
-					'shostak))
-			      (dolist (ce (cdddr context))
-				(unless (listp (ce-object-date ce))
-				  (setf (ce-object-date ce) nil))))
-			     ((every #'context-entry-p (cdr context))
-			      (setf (pvs-context *workspace-session*)
-				    (cons (car (current-pvs-context))
-					  (cons nil
-						(cons nil (cdr (current-pvs-context)))))))
-			     (t (pvs-message "PVS context is not quite right ~
+(defun restore-context (&optional (ws *workspace-session*))
+  #+pvsdebug (consistent-workspace-paths)
+  (assert ws)
+  (let ((ctx-file (merge-pathnames *context-name*)))
+    (if (file-exists-p ctx-file)
+	(handler-case
+	    (unless (pvs-context ws)
+	      (let ((context (read-context-file ctx-file)))
+		(setf (pvs-context ws) context)))
+	  (file-error (err)
+	    (pvs-message "PVS context problem - resetting")
+	    (pvs-log "  ~a" err)
+	    (setf (pvs-context ws) (list *pvs-version*))
+	    (write-context)))
+	(setf (pvs-context ws) (list *pvs-version*))))
+  nil)
+
+(defun read-context-file (ctx-file)
+  (let ((*default-pathname-defaults* ;; for calls to make-specpath
+	 (asdf/pathname:pathname-directory-pathname ctx-file))
+	(context (if (with-open-file (in ctx-file)
+		       (and (char= (read-char in) #\()
+			    (char= (read-char in) #\")))
+		     (with-open-file (in ctx-file) (read in))
+		     (fetch-object-from-file ctx-file))))
+    (assert (uiop:directory-exists-p *default-pathname-defaults*))
+    (setf (cdddr context)
+	  (remove-duplicates (cdddr context) :key #'ce-file :test #'equal :from-end t))
+    (setf (cdddr context)
+	  (delete-if-not #'(lambda (ce)
+			     (file-exists-p (make-specpath (ce-file ce))))
+	    (cdddr context)))
+    (dolist (ce (cdddr context))
+      (let ((ndeps (remove-if-not #'(lambda (dep)
+				      (file-exists-p (make-specpath dep)))
+		     (ce-dependencies ce))))
+	(unless (equal ndeps (ce-dependencies ce))
+	  (pvs-message "PVS context has bad deps: ~a"
+	    (remove-if #'(lambda (dep) (file-exists-p (make-specpath dep)))
+	      (ce-dependencies ce)))
+	  (setf (ce-dependencies ce) nil)
+	  (setf (ce-object-date ce) nil)
+	  (setf (ce-theories ce) nil))))
+    (cond ((duplicate-theory-entries?)
+	   (pvs-message "PVS context has duplicate entries - resetting")
+	   (list *pvs-version*))
+	  (t ;;(same-major-version-number (car context) *pvs-version*)
+	   ;; Hopefully we are backward compatible between versions
+	   ;; 3 and 4.
+	   (assert (every #'(lambda (ce)
+			      (file-exists-p (make-specpath (ce-file ce))))
+			  (pvs-context-entries context)))
+	   (assert (not (duplicates? (pvs-context-entries context) :key #'ce-file)))
+	   (setf (cadr context)
+		 (delete "PVSio/"
+			 (delete "Manip/"
+				 (delete "Field/" (cadr context) :test #'string=)
+				 :test #'string=)
+			 :test #'string=))
+	   (cond ((and (listp (cadr context))
+		       (listp (caddr context))
+		       (every #'context-entry-p (cdddr context)))
+		  (load-prelude-libraries (cadr context))
+		  (setq *default-decision-procedure*
+			(or (when (listp (caddr context))
+			      (getf (caddr context) :default-decision-procedure))
+			    'shostak))
+		  (dolist (ce (cdddr context))
+		    (unless (listp (ce-object-date ce))
+		      (setf (ce-object-date ce) nil)))
+		  (assert (not (duplicates? (pvs-context-entries context) :key #'ce-file)))
+		  context)
+		 ((every #'context-entry-p (cdr context))
+		  (cons (car context)
+			(cons nil (cons nil (cdr context))))
+		  (assert (not (duplicates? (pvs-context-entries context) :key #'ce-file)))
+		  context)
+		 (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
-				(setf (pvs-context *workspace-session*)
-				      (list *pvs-version*))))))
-		(assert (not (duplicates? (pvs-context-entries) :key #'ce-file))))
-	    (file-error (err)
-	      (pvs-message "PVS context problem - resetting")
-	      (pvs-log "  ~a" err)
-	      (setf (pvs-context *workspace-session*) (list *pvs-version*))
-	      (write-context)))
-	  (setf (pvs-context *workspace-session*) (list *pvs-version*))))
-    nil))
+		    (list *pvs-version*)))))))
 
 (defun duplicate-theory-entries? ()
-  (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=))
+  (and *workspace-session*
+       (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=)))
 
 (defvar *theories-restored* nil)
 (defvar *files-seen* nil)
@@ -2068,17 +2075,23 @@ Note that the lists might not be the same length."
 	       nil)
 	      (t proofs))))))
 
+(defvar *proof-file-debug* nil)
+
 (defun read-pvs-file-proofs (filename &optional (dir *default-pathname-defaults*))
   (let ((prf-file (make-prf-pathname filename dir)))
     (when (file-exists-p prf-file)
-      (handler-case 
+      (if *proof-file-debug*
 	  (with-open-file (input prf-file :direction :input)
 	    (let ((proofs (read-proof-file-stream input)))
 	      (make-current-proofs-sexps proofs)))
-	(error (condition)
-	  (pvs-message "Error reading proof file ~a:~%  ~a"
-	    (namestring prf-file) condition)
-	  nil)))))
+	  (handler-case 
+	      (with-open-file (input prf-file :direction :input)
+		(let ((proofs (read-proof-file-stream input)))
+		  (make-current-proofs-sexps proofs)))
+	    (error (condition)
+	      (pvs-message "Error reading proof file ~a:~%  ~a"
+		(namestring prf-file) condition)
+	      nil))))))
 
 (defun read-proof-file-stream (input &optional proofs)
   (let ((nproof (read-proof input 'eof)))
@@ -2158,19 +2171,21 @@ Note that the lists might not be the same length."
 
 #+(or cmu sbcl)
 (defun read-proof (stream eof-value)
-  ;; For now, we ignore possible comments - since the proof file should be
-  ;; generated by PVS, this is reasonably safe.  So we just look for the
-  ;; first #\(, and return eof-value if we run off the end.
-  (let ((tag (gensym)))
-    (block tag
-      (handler-bind ((end-of-file #'(lambda (c)
-				      (declare (ignore c))
-				      (return-from tag eof-value))))
-	(read-to-left-paren stream)
-	(let ((theoryid (read-case-sensitive stream))
-	      (decls-proofs (read-proof-decls stream)))
-	  ;;(read-to-right-paren stream)
-	  (cons theoryid decls-proofs))))))
+  (read-case-sensitive stream eof-value))
+  
+  ;; ;; For now, we ignore possible comments - since the proof file should be
+  ;; ;; generated by PVS, this is reasonably safe.  So we just look for the
+  ;; ;; first #\(, and return eof-value if we run off the end.
+  ;; (let ((tag (gensym)))
+  ;;   (block tag
+  ;;     (handler-bind ((end-of-file #'(lambda (c)
+  ;; 				      (declare (ignore c))
+  ;; 				      (return-from tag eof-value))))
+  ;; 	(read-to-left-paren stream)
+  ;; 	(let ((theoryid (read-case-sensitive stream))
+  ;; 	      (decls-proofs (read-proof-decls stream)))
+  ;; 	  ;;(read-to-right-paren stream)
+  ;; 	  (cons theoryid decls-proofs))))))
 
 #+(or cmu sbcl)
 (defun read-proof-decls (stream &optional proofs)
@@ -2223,17 +2238,23 @@ Note that the lists might not be the same length."
 	       (interactive? nil)
 	       (dp nil)
 	       (origin nil))
-	  (cond ((integerp script)
+	  (cond ((and script (integerp script))
 		 ;; Old
 		 (setq script (read stream nil))
 		 (setq status (read stream nil))
-		 (setq refers-to (ignore-errors (read-proofs-refers-to stream)))
+		 (setq refers-to
+		       (if *proof-file-debug*
+			   (read-proofs-refers-to stream)
+			   (ignore-errors (read-proofs-refers-to stream))))
 		 (setq real-time (read stream nil))
 		 (setq run-time (read stream nil))
 		 (setq interactive? (read stream nil))
 		 (setq dp (read stream nil)))
 		(t
-		 (setq refers-to (ignore-errors (read-proofs-refers-to stream)))
+		 (setq refers-to
+		       (if *proof-file-debug*
+			   (read-proofs-refers-to stream)
+			   (ignore-errors (read-proofs-refers-to stream))))
 		 (setq dp (read stream nil))
 		 ;; Check for origin
 		 (when (let ((ch (read-char stream)))
@@ -2295,13 +2316,32 @@ Note that the lists might not be the same length."
 (defvar *case-sensitive-readtable* nil)
 
 #+(or cmu sbcl)
-(defun read-case-sensitive (stream)
+(defun read-case-sensitive (stream eof-value)
   (unless *case-sensitive-readtable*
     (setq *case-sensitive-readtable* (copy-readtable nil))
     (setf (readtable-case *case-sensitive-readtable*) :preserve))
   (let ((*readtable* *case-sensitive-readtable*))
-    (read stream)))
+    (read stream nil eof-value)))
 
+(defun upcase-symbols (val)
+  (cond ((consp val)
+	 (let ((lcar (upcase-symbols (car val)))
+	       (lcdr (upcase-symbols (cdr val))))
+	   (cons lcar lcdr)))
+	((keywordp val) val)
+	((symbolp val)
+	 (read-from-string (string val)))
+	(t val)))
+
+(defun upcase-t-and-nil (val)
+  (cond ((consp val)
+	 (let ((lcar (upcase-t-and-nil (car val)))
+	       (lcdr (upcase-t-and-nil (cdr val))))
+	   (cons lcar lcdr)))
+	((eq val '|t|) t)
+	((eq val '|nil|) nil)
+	(t val)))
+	 
 
 ;;; proofs is the proofs for a theory
 ;;; Note that only very old proofs need this
@@ -2337,51 +2377,47 @@ Note that the lists might not be the same length."
 			       interactive? decision-procedure-used)
 	  (values-list mprf)
 	(declare (ignore run-date status real-time run-time interactive?))
-	(assert (or (stringp description) (memq description '(nil NIL))))
-	(assert (listp script))
-	(assert (or (listp refers-to) (memq refers-to '(nil NIL))))
-	(assert (symbolp decision-procedure-used))
-	#+case-sensitive
-	(let ((desc (unless (eq description 'NIL) description))
-	      (scr (convert-proof-form-to-lowercase script))
-	      ;; refers-to should be fixed for Allegro/SBCL
-	      (ref (unless (eq refers-to 'NIL)
-		     (convert-refersto-to-lowercase refers-to)))
-	      (dec (unless (eq decision-procedure-used 'NIL)
-		     (if (eq decision-procedure-used 'SHOSTAK)
-			 'shostak
-			 decision-procedure-used))))
-	  (list id desc create-date scr ref dec))
-	#-case-sensitive
-	(list id description create-date script refers-to decision-procedure-used))
+	(convert-proof-form id description create-date script refers-to decision-procedure-used))
       (multiple-value-bind (id description create-date script refers-to
 			       decision-procedure-used origin)
 	  (values-list mprf)
-	(assert (or (stringp description) (memq description '(nil NIL))))
-	(assert (or (listp script) (memq description '(nil NIL))))
-	(assert (or (listp refers-to) (memq refers-to '(nil NIL))))
-	(assert (symbolp decision-procedure-used))
-	#+allegro
-	(let* ((check (check-if-case-change-needed script))
-	       (desc (unless (eq description 'NIL) description))
-	       (scr (if check
-			(convert-proof-form-to-lowercase script)
-			script))
-	       ;; refers-to should be fixed for Allegro/SBCL
-	       (ref (if check
-			(unless (eq refers-to 'NIL)
-			  (convert-refersto-to-lowercase refers-to))
-			refers-to))
-	       (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
-	  (if origin
-	      (list id desc create-date scr ref dec origin)
-	      (list id desc create-date scr ref dec)))
-	#-allegro
-	(if origin
-	    (list id description create-date script refers-to decision-procedure-used origin)
-	    (list id description create-date script refers-to decision-procedure-used)))))
+	(convert-proof-form id description create-date script refers-to decision-procedure-used origin))))
 
-#+allegro
+(defun convert-proof-form (id description create-date script refers-to decision-procedure-used
+			   &optional origin)
+  (assert (or (stringp description) (memq description '(|nil| NIL))))
+  (assert (or (listp script) (memq script '(|nil| NIL))))
+  (assert (or (listp refers-to) (memq refers-to '(|nil| NIL))))
+  (assert (symbolp decision-procedure-used))
+  #+case-sensitive
+  ;; Allegro in case-sensitive mode
+  ;; May need to convert a proof done in case-insensitive mode
+  (let* ((check (check-if-case-change-needed script))
+	 (desc (unless (eq description 'NIL) description))
+	 (scr (if check
+		  (convert-proof-form-to-lowercase script)
+		  script))
+	 ;; refers-to should be fixed for Allegro/SBCL
+	 (ref (if check
+		  (unless (eq refers-to 'NIL)
+		    (convert-refersto-to-lowercase refers-to))
+		  refers-to))
+	 (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
+    (if origin
+	(list id desc create-date scr ref dec origin)
+	(list id desc create-date scr ref dec)))
+  #-case-sensitive ;; Others
+  (let ((ncreate-date (upcase-t-and-nil create-date))
+	(nscript (upcase-symbols script))
+	(nrefers-to (upcase-t-and-nil refers-to))
+	(ndp-used (upcase-symbols decision-procedure-used))
+	(norigin (when (upcase-t-and-nil origin)
+		   (list (list (car origin) (upcase-symbols (cadr origin))
+			       (caddr origin) (cadddr origin))))))
+    `(,id ,description ,ncreate-date ,nscript ,nrefers-to ,ndp-used
+	  ,@norigin)))
+
+#+case-sensitive
 (defun check-if-case-change-needed (script)
   (let ((sym (find-first-symbol script)))
     (every #'upper-or-not-alpha-p (string sym))))
@@ -2398,7 +2434,7 @@ Note that the lists might not be the same length."
     (cons (or (find-first-symbol (car obj))
 	      (find-first-symbol (cdr obj))))))
 
-#-allegro
+#-case-sensitive
 (defun check-if-case-change-needed (script)
   nil)
        

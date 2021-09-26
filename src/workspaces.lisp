@@ -37,7 +37,9 @@
   "Creates the initial *workspace-session*, and adds it to an empty
   *all-workspace-sessions*"
   (setq *all-workspace-sessions* nil)
-  (setq *workspace-session* (get-workspace-session (working-directory))))
+  (let ((ws (get-workspace-session (working-directory))))
+    (assert (pvs-context ws))
+    (setq *workspace-session* ws)))
 
 (defmethod get-workspace-session (libref)
   "get-workspace-session gets the absolute pathname associated with libref,
@@ -46,11 +48,16 @@ creating a new one if needed.  Error if an existing directory could not be
 found for libref."
   (let ((lib-path (get-library-path libref)))
     (if lib-path
-	(or (find lib-path *all-workspace-sessions*
-		  :key #'path :test #'file-equal)
+	(or (let ((ws (find lib-path *all-workspace-sessions*
+			    :key #'path :test #'file-equal)))
+	      (when ws
+		(assert (pvs-context ws))
+		ws))
 	    (let ((ws (make-instance 'workspace-session
 			:path lib-path)))
 	      (push ws *all-workspace-sessions*)
+	      (restore-context ws)
+	      (assert (pvs-context ws))
 	      ws))
 	(pvs-error "Library reference error"
 	  (format nil "Path for ~a not found" libref)))))

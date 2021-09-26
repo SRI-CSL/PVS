@@ -636,7 +636,9 @@ endif
 $(sbcl-rt) : $(image-deps) $(sbcllisp)
 	$(MKDIR) -p $(subst $(SYSTEM)-sbclisp,,$@)
 	@echo "******* Compiling PVS files in Steel Bank Common Lisp (SBCL)"
-	$(SBCLISPEXE) --eval '(require :sb-posix)' \
+	$(SBCLISPEXE) --control-stack-size 2000 \
+		      --dynamic-space-size 2000 \
+		      --eval '(require :sb-posix)' \
 		      --eval '(require :sb-md5)' \
 		      --eval '(load "pvs.system" :verbose t)' \
 		      --eval "(let ((*load-pvs-prelude* nil)) \
@@ -644,14 +646,17 @@ $(sbcl-rt) : $(image-deps) $(sbcllisp)
 		      --eval '(quit)'
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	@echo "******* Building PVS image $@"
-	$(SBCLISPEXE) --eval '(require :sb-posix)' \
+	$(SBCLISPEXE) --control-stack-size 4000 \
+		      --dynamic-space-size 8000 \
+		      --eval '(require :sb-posix)' \
 		      --eval '(require :sb-md5)' \
 		      --eval '(load "pvs.system" :verbose t)' \
 		      --eval "(unwind-protect \
 				  (mk:operate-on-system :pvs :compile) \
 				(save-lisp-and-die \"$@\" \
 				    :toplevel (function startup-pvs) \
-				    :executable t))"
+				    :executable t \
+				    :save-runtime-options t))"
 	-rm $(PVSPATH)src/BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)

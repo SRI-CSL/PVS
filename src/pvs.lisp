@@ -265,14 +265,15 @@
     *pvs-env-variables*))
 
 (defun pvs-init-globals ()
-  (initialize-workspaces)
   (reset-typecheck-caches)
+  (initialize-workspaces)
   (clrnumhash)
   ;; Prover hash tables
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
   (setq *translate-id-hash* (make-pvs-hash-table))
   (setq *create-formulas-cache* (make-pvs-hash-table))
   (setq *subst-fields-hash* (make-pvs-hash-table))
+  (setq *type-predicates-recordtype-hash* (make-pvs-hash-table))
   (setq *pvs-initialized* t)
   (when *pvs-emacs-interface*
     (pvs-emacs-eval "(setq pvs-initialized t)")))
@@ -621,6 +622,7 @@ is in (current-pvs-files) and its write-date should match that in the
 pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
+  (unless *workspace-session* (initialize-workspaces))
   (with-pvs-file (filename) fileref
     (assert (current-pvs-context))
     (let* ((*current-file* filename)
@@ -648,8 +650,7 @@ use binfiles."
 	    ((and typecheck?
 		  (null theories)
 		  (not forced?)
-		  (or *debugging-binfiles*
-		      (check-binfiles filename))
+		  (check-binfiles filename)
 		  ;;(valid-binfile? filename)
 		  (restore-theories filename))
 	     (let ((theories (get-theories filename)))
@@ -1993,25 +1994,26 @@ Note that even proved ones get overwritten"
                        (filename theory)
                        place dfinal)))
 
-(defun prettyprint-theory (theoryname filename)
-  (let ((file (or filename
-		  (pvs-file-of theoryname))))
-    (when file
-      (parse-file file nil t)))
-  (let* ((theory (get-parsed?-theory theoryname))
-	 (*current-context* (when theory (saved-context theory)))
-	 (*no-comments* nil)
-	 (*show-conversions* nil)
-	 (*ppmacros* t))
-    (when theory
-      (let ((string (unparse theory
-		      :string t
-		      :char-width *default-char-width*)))
-	(pvs-modify-buffer (uiop:pathname-directory-pathname filename)
-			   (filename theory)
-			   (place theory)
-			   (string-right-trim '(#\space #\tab #\newline)
-					      string))))))
+(defun prettyprint-theory (theoryname fileref)
+  (with-pvs-file (filename) fileref
+    (let* ((theory (or (get-theory theoryname)
+		       (progn (parse-file filename nil t)
+			      (get-parsed?-theory theoryname))))
+	   (*current-context* (when theory (saved-context theory)))
+	   (*no-comments* nil)
+	   (*show-conversions* nil)
+	   (*ppmacros* t))
+      (if theory
+	  (let ((string (unparse theory
+			  :string t
+			  :char-width *default-char-width*)))
+	    (pvs-modify-buffer (uiop:pathname-directory-pathname filename)
+			       (filename theory)
+			       (place theory)
+			       (string-right-trim '(#\space #\tab #\newline)
+						  string)))
+	  (pvs-error "Prettyprint error" "Theory ~a not found in ~a"
+		     theoryname fileref)))))
 
 (defun prettyprint-pvs-file (fileref)
   (with-pvs-file (filename) fileref
@@ -2087,12 +2089,13 @@ Note that even proved ones get overwritten"
 		     '(#\Space #\Tab #\Newline)
 		     (with-output-to-string (out)
 		       (dolist (decl (all-decls theory))
-			 (dolist (cmt (cdr (assq decl (tcc-comments theory))))
-			   (when (or include-trivial?
-				     (not (memq (fourth cmt) '(trivial in-context))))
-			     (write (apply #'print-tcc-comment decl cmt)
-				    :stream out :escape nil)
-			     (terpri out) (terpri out)))
+			 (unless unproved-only?
+			   (dolist (cmt (cdr (assq decl (tcc-comments theory))))
+			     (when (or include-trivial?
+				       (not (memq (fourth cmt) '(trivial in-context))))
+			       (write (apply #'print-tcc-comment decl cmt)
+				      :stream out :escape nil)
+			       (terpri out) (terpri out))))
 			 (when (and (tcc? decl)
 				    (or (not unproved-only?)
 					(unproved? decl)))
@@ -2612,7 +2615,7 @@ formname is nil, then formref should resolve to a unique name."
       (cond ((cdr fdecls)
 	     (let ((locdecls (remove-if-not
 				 #'(lambda (fd)
-				     (uiop:pathname-equal
+				     (pathname-equal
 				      (context-path (module fd))
 				      *default-pathname-defaults*))
 			       fdecls)))
@@ -2715,7 +2718,7 @@ If formname is nil, then formref should resolve to a unique formula name."
       (cond ((cdr fdecls)
 	     (let ((locdecls (remove-if-not
 				 #'(lambda (fd)
-				     (uiop:pathname-equal
+				     (pathname-equal
 				      (context-path (module fd))
 				      *default-pathname-defaults*))
 			       fdecls)))
@@ -3358,7 +3361,7 @@ nil is returned in that case."
 		(parsed? mod)
 		;; (or (not (lib-datatype-or-theory? mod))
 		;;     (member (context-path mod) (current-prelude-libraries)
-		;; 	    :test #'uiop:pathname-equal)
+		;; 	    :test #'pathname-equal)
 		;;     (and (name? theoryref)
 		;; 	 (library theoryref)))
 		)
@@ -4298,3 +4301,51 @@ specified pvs-file, and its associated .prf file.  "
 	(values-list tcc-origin)
       (list (if (string= root old) (intern new :pvs) root)
 	    kind expr type))))
+
+(defun add-semicolons-to-pvs-file (fileref)
+  "Adds semicolons to the ends of declarations if any are missing them.
+First parses the file, then looks for declarations without semicolons (null
+semi slot) that should have them set.
+Returns
+ - :unchanged if fileref has all expected semicolons, fileref is unchanged.
+ - :modified - old foo.pvs moved to foo.pvs-nosemi
+ - :parse-problem - foo.pvs-semi was created, but didn't parse
+"
+  (let* ((*no-obligations-allowed* t)
+	 (full-pvs-file-path (car theories))
+	 (theories (parse :file file))
+	(needs-semi nil))
+    (dolist (theory theories)
+      (dolist (decl (all-decls theory))
+	(unless (or (semi decl)
+		    (chain? decl)
+		    (formal-decl? decl))
+	  (push decl needs-semi))))
+    ;; needs-semi is backwards
+    (if (null needs-semi)
+	(format t "File ~a already has necessary semicolons")
+	(let* ((file (full-pvs-file-path (car theories)))
+	       (lines (file-get-lines file)))
+	  (dolist (decl needs-semi)
+	    (assert (place decl))
+	    (let ((erow (ending-row (place decl)))
+		  (ecol (ending-col (place decl))))
+	      (assert (< erow (length lines)))
+	      (let ((line (nth (1- erow) lines)))
+		(setf (nth (1- erow) lines)
+		      (if (= (length line) ecol)
+			  (uiop:strcat line ";")
+			  (uiop:strcat (subseq line 0 ecol) ";" (subseq line ecol)))))))
+	  (file-put-lines lines (uiop:strcat file "-semis"))
+	  (break "needs-semi")))))
+
+(defun file-get-lines (filename)
+  (with-open-file (stream filename)
+    (loop for line = (read-line stream nil)
+          while line
+          collect line)))
+
+(defun file-put-lines (lines filename)
+  (with-open-file (stream filename :direction :output)
+    (loop for line in lines
+	  do (write-line line stream))))

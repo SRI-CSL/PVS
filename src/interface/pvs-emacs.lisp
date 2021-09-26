@@ -1022,9 +1022,6 @@ list of interface names that are currently open."
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
-(#+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #-(or cmu sbcl) progn
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch*
@@ -1081,7 +1078,6 @@ list of interface names that are currently open."
 		 (line-begin (place obj))
 		 (col-begin (place obj)))))
 	   (error "Parse error"))))
-)
 
 (defvar *type-error* nil)
 (defvar *type-error-argument* nil)
@@ -1091,9 +1087,6 @@ list of interface names that are currently open."
   ((term :accessor term :initarg :term)
    (msg :accessor msg :initarg :msg)))
 
-(#+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #-(or cmu sbcl) progn
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))
     (cond (*type-error-catch*
@@ -1142,7 +1135,6 @@ list of interface names that are currently open."
 	   (pvs-abort))
 	  (t (format t "~%~a" errmsg)
 	     (error "Typecheck error")))))
-)
 
 (defun plain-type-error (obj message &rest args)
   (let ((*skip-all-conversion-checks* t))
