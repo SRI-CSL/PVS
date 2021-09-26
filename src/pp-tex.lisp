@@ -1394,14 +1394,15 @@
   (with-slots (assignments) ex
     (pprint-logical-block
 	(nil assignments
-	   :prefix (get-pp-tex-id '\(\#)
-	   :suffix (get-pp-tex-id '\#\)))
+	     :prefix (get-pp-tex-id '\(\#)
+	     :suffix (get-pp-tex-id '\#\)))
       (pprint-indent :current 0)
-      (loop (pp-tex* (pprint-pop))
-	    (pprint-exit-if-list-exhausted)
-	    (write-char #\,)
-	    (write-char #\space)
-	    (pprint-newline :linear)))))
+      (when assignments
+	(loop (pp-tex* (pprint-pop))
+	 (pprint-exit-if-list-exhausted)
+	 (write-char #\,)
+	 (write-char #\space)
+	 (pprint-newline :linear))))))
 
 (defmethod pp-tex* ((ex tuple-expr))
   (with-slots (exprs) ex

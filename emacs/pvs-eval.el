@@ -69,7 +69,7 @@
     (pvs-message "")
     (unless pvs-error
       (dolist (c-file (reverse c-files))
-	(assert (file-exists-p c-file))
+	(cl-assert (file-exists-p c-file))
 	(let ((buf (find-file-noselect c-file t)))
 	  (with-current-buffer buf
 	    (set (make-local-variable 'pvs-context-sensitive) t)

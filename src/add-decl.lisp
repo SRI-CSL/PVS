@@ -219,9 +219,9 @@ always t from there."
 			 (starting-row (place (car decls))))
 		      2))
 	(remtheories (cdr (memq theory (gethash filename (current-pvs-files))))))
-    (reset-places* remdecls line-diff)
+    (set-add-decl-places* remdecls line-diff)
     (incf (ending-row (place theory)) line-diff)
-    (reset-places* remtheories line-diff)))
+    (set-add-decl-places* remtheories line-diff)))
 
 (defun add-declaration-info-current? ()
   (and *add-declaration-info*
@@ -470,7 +470,7 @@ always t from there."
 			       (when (eq (declaration res) decl)
 				 (remhash res *create-formulas-cache*)))
 			   *create-formulas-cache*))
-		(reset-places* decls (1- (car oplace)) (cadr oplace))
+		(set-add-decl-places* decls (1- (car oplace)) (cadr oplace))
 		(change-old-decl-to-new decl (car decls))
 		(unless (= (ending-row (place decl)) (caddr oplace))
 		  (reset-mod-decl-places decl theory filename
@@ -520,9 +520,9 @@ always t from there."
 (defun reset-mod-decl-places (decl theory filename line-diff)
   (let ((remdecls (cdr (memq decl (all-decls theory))))
 	(remtheories (cdr (memq theory (gethash filename (current-pvs-files))))))
-    (reset-places* remdecls line-diff)
+    (set-add-decl-places* remdecls line-diff)
     (incf (ending-row (place theory)) line-diff)
-    (reset-places* remtheories line-diff)))
+    (set-add-decl-places* remtheories line-diff)))
 
 (defmethod change-old-decl-to-new (old new)
   (setf (place old) (place new))

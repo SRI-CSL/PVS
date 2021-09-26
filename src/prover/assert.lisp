@@ -2797,7 +2797,7 @@ subgoal is proved)."
 			       (make!-projection-application index newarg))))
 	     (do-auto-rewrite new-expr sig)))))
 
-(defmethod dependencies ((index number) (tuptype tupletype))
+(defmethod dependencies ((index cl:number) (tuptype tupletype))
   (dependencies (nth (1- index) (types tuptype)) tuptype))
 
 (defun tuple-update-reduce (index arg)

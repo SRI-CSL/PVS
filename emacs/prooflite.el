@@ -20,14 +20,14 @@
   (save-some-pvs-buffers)
   (let* ((theory (second (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
-	 (*pvs-error* nil))
+	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			   file)
 		       nil 'tc 'dont-care)
-    (unless *pvs-error*
+    (unless pvs-error
       (pvs-send-and-wait
        (format "(write-all-prooflite-scripts-to-file \"%s\")" theory)))
-    (unless *pvs-error*
+    (unless pvs-error
       (pvs-message "Finished writing scripts to prl file."))))
 
 (defpvs install-prooflite-scripts-theory edit-proof ()
@@ -41,16 +41,19 @@ for formulas that are already proved."
   (save-some-pvs-buffers)
   (let* ((theory (second (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
-	 (*pvs-error* nil))
+	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			   file)
 		       nil 'tc 'dont-care)
-    (unless *pvs-error*
+    (unless pvs-error
+      (let((prl-filename (format "%s.prl" theory)))
+	(when (file-exists-p prl-filename)
+	  (pvs-send-and-wait
+	   (format "(install-prooflite-scripts-from-prl-file \"%s\" \"%s\" nil)" theory prl-filename)))))
+    (unless pvs-error
       (pvs-send-and-wait
-       (format "(progn
-		 (install-prooflite-scripts-from-prl-file \"%s\" nil)
-                 (install-prooflite-scripts \"%s\" \"%s\" 0 nil))" theory file theory)))
-    (unless *pvs-error*
+       (format "(install-prooflite-scripts \"%s\" \"%s\" 0 nil)" file theory)))
+    (unless pvs-error
       (pvs-message "Finished scripts installation."))))
 
 (defpvs install-prooflite-script edit-proof ()
@@ -65,11 +68,11 @@ the formula is already proved."
   (let* ((theory (current-theory))
 	 (file (current-pvs-file))
 	 (line (current-line-number))
-	 (*pvs-error* nil))
+	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			   file)
 		       nil 'tc 'dont-care)
-    (unless *pvs-error*
+    (unless pvs-error
       (pvs-send-and-wait 
        (format "(install-prooflite-scripts \"%s\" \"%s\" %s nil)"
 	   file theory line)))))
@@ -79,24 +82,26 @@ the formula is already proved."
 
 Installs ProofLite scripts of all formulas in the current theory as 
 default proofs even if formulas are already proved."
-
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (let* ((theory (when (current-theory) (second (split-string (current-theory) "#"))))
 	 (file   (current-pvs-file))
- 	 (*pvs-error* nil))
+ 	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
+			       file)
 		       nil 'tc 'dont-care)
-    (unless *pvs-error*
+    (unless pvs-error
+      (let((prl-filename (format "%s.prl" theory)))
+	(when (file-exists-p prl-filename)
+	  (pvs-send-and-wait
+	   (format "(install-prooflite-scripts-from-prl-file \"%s\" \"%s\" t)" theory prl-filename)))))
+    (unless pvs-error
       (pvs-send-and-wait
-       (format "(progn
-		 (install-prooflite-scripts-from-prl-file \"%s\" t)
-                 (install-prooflite-scripts \"%s\" \"%s\" 0 t))" theory file theory))
-      (unless *pvs-error*
-	(pvs-message "Finished scripts installation.")))))
+       (format "(install-prooflite-scripts \"%s\" \"%s\" 0 t)" file theory)))
+    (unless pvs-error
+      (pvs-message "Finished scripts installation."))))
 
 (defpvs install-prooflite-script! edit-proof ()
   "Install ProofLite script at the cursor position 
@@ -110,11 +115,11 @@ the formula is already proved."
   (let* ((theory (current-theory))
 	 (file (current-pvs-file))
 	 (line (current-line-number))
- 	 (*pvs-error* nil))
+ 	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			   file)
 		       nil 'tc 'dont-care)
-    (unless *pvs-error*
+    (unless pvs-error
       (pvs-send-and-wait 
        (format "(install-prooflite-scripts \"%s\" \"%s\" %s t)"
 	   file theory line)))))
@@ -142,13 +147,13 @@ to (moving forward) the current cursor position into the working theory."
 	 (kind (pvs-fref-kind fref))
 	 (file (pvs-fref-file fref))
 	 (line (pvs-fref-line fref))
-	 (*pvs-error* nil))
+	 (pvs-error nil))
     (when (eq kind 'pvs)
       (save-some-pvs-buffers)
       (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			     file)
 			 nil 'tc 'dont-care)
-      (unless *pvs-error*
+      (unless pvs-error
 	(when (get-buffer "ProofLite")
 	  (kill-buffer "ProofLite"))
 	(set-proof-script-font-lock-keywords)
@@ -184,11 +189,11 @@ in the \"ProofLite\" buffer."
   (save-some-pvs-buffers)
   (let* ((file (current-pvs-file))
 	 (theory (current-theory))
-	 (*pvs-error* nil))
+	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
 			       file)
 		       nil 'tc 'dont-care)
-    (unless *pvs-error*
+    (unless pvs-error
       (when (get-buffer "ProofLite")
 	(kill-buffer "ProofLite"))
       (set-proof-script-font-lock-keywords)

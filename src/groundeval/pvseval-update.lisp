@@ -1309,11 +1309,12 @@ if called."
 				   assign-expr bindings livevars)
   (let* ((num (number (if (consp arg1) (car arg1) arg1)))
 	 (new-expr `(svref ,expr ,(1- num)))
+	 (pos (1- num))
 	 (tupsel-type (nth (1- num)(types type)))
 	 (newval (pvs2cl-update-nd-type tupsel-type new-expr
 					restargs assign-expr bindings
 					livevars)))
-    `(nd-rec-tup-update ,expr ,num ,newval)))
+    `(nd-rec-tup-update ,expr ,pos ,newval)))
 
 (defmethod pvs2cl-update-nd-type* ((type subtype)  expr arg1 restargs
 				   assign-expr bindings livevars)

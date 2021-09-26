@@ -671,7 +671,9 @@ system, including many technical ones.  Examples:
  ("\\Bbb{N}" ?ℕ)			; AMS commands for blackboard bold
  ("\\Bbb{P}" ?ℙ)			; Also sometimes \mathbb.
  ("\\Bbb{R}" ?ℝ)
+ ("\\Bbb(Q)" ?ℚ)
  ("\\Bbb{Z}" ?ℤ)
+ ("\\Bbb{C}" ?ℂ)
  ("--" ?–)
  ("---" ?—)
  ;; We used to use ~ for NBSP but that's inconvenient and may even look like

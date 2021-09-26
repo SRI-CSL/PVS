@@ -1303,8 +1303,8 @@
     (when (and expected
 	       (lambda-expr? (operator expr))
 	       (list-expr? (expression (operator expr))))
-      ;;(break "let-expr with list-exprs and expected")
-      (typecheck* (expression (operator expr)) expected nil nil))
+      (let ((*bound-variables* (append (bindings (operator expr)) *bound-variables*)))
+	(typecheck* (expression (operator expr)) expected nil nil)))
     (typecheck* (operator expr) nil nil (argument-list (argument expr))))
   (set-possible-argument-types (operator expr) (argument expr))
   (unless (or (type (operator expr))
@@ -1654,22 +1654,25 @@ field-decls, etc."
   ;;(when (ptypes ex) (break "already typechecked?"))
   (let ((list-ex ex))
     (loop while (list-expr? list-ex)
-       do (progn (typecheck* (args1 list-ex) elt-type nil nil)
-		 (cond (cons-ex
-			;; We don't typecheck, simply copy from the typechecked cons
-			(setf (type list-ex) (range (type cons-ex)))
-			(let ((op (operator list-ex)))
-			  (unless (type op)
-			    (setf (type op) (type cons-ex))
-			    (setf (resolutions op) (resolutions cons-ex))
-			    (change-class op 'constructor-name-expr)))
-			(setf (type (argument list-ex))
-			      (mk-tupletype (list elt-type
-						  (if (null-expr? (args2 list-ex))
-						      (type null-ex)
-						      (range (type cons-ex)))))))
-		       (t (break "no expected")))
-		 (setq list-ex (args2 list-ex))))
+	  do (let ((elt (args1 list-ex)))
+	       (typecheck* elt elt-type nil nil)
+	       (let ((*generate-tccs* 'all))
+		 (set-type elt elt-type))
+	       (cond (cons-ex
+		      ;; We don't typecheck, simply copy from the typechecked cons
+		      (setf (type list-ex) (range (type cons-ex)))
+		      (let ((op (operator list-ex)))
+			(unless (type op)
+			  (setf (type op) (type cons-ex))
+			  (setf (resolutions op) (resolutions cons-ex))
+			  (change-class op 'constructor-name-expr)))
+		      (setf (type (argument list-ex))
+			    (mk-tupletype (list elt-type
+						(if (null-expr? (args2 list-ex))
+						    (type null-ex)
+						    (range (type cons-ex)))))))
+		     (t (break "no expected")))
+		    (setq list-ex (args2 list-ex))))
     (cond (null-ex
 	   (setf (type list-ex) (type null-ex))
 	   (setf (resolutions list-ex) (resolutions null-ex)))
@@ -1969,6 +1972,7 @@ field-decls, etc."
 (defun get-update-expr-type (te ex)
   "Given updex expression 'e WITH [x := y, ...]', te the type of 'e', returns te
 with dependencies lifted up to the update expr depth."
+  (declare (ignore ex))
   (lift-dependencies te))
 
 ;;; Classes that allow updates, so need methods defined:
@@ -2045,6 +2049,7 @@ with dependencies lifted up to the update expr depth."
 (defmethod lift-dependencies* ((te datatype-subtype) deps)
   (if (freevars-in-deps? te deps)
       (let ((dtype (lift-dependencies* (declared-type te) deps)))
+	(declare (ignore dtype))
 	(break "lift-dependencies* datatype-subtype"))
       te))
 

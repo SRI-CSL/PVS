@@ -196,6 +196,7 @@ Also, typing \\C-j (LFD) alone will invoke pvs-prover-wrap-with-parens.
 Prompts for the command to insert."
   (interactive (complete-strategy-name "Prover command to insert: "))
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(" command " )")
   (forward-char -1))
 
@@ -208,6 +209,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "Apply extensionality to formula: "))))
+    (goto-char (point-max))		;evw
     (insert "(apply-extensionality " fnum " :hide? t)")
     (return-ilisp)))
 
@@ -220,6 +222,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "Decompose equality for formula: "))))
+    (goto-char (point-max))		;evw
     (insert "(decompose-equality " fnum ")")
     (return-ilisp)))
 
@@ -227,6 +230,7 @@ formula number."
   "Insert and send the ASSERT prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(assert)")
   (return-ilisp))
 
@@ -253,8 +257,10 @@ Otherwise, prompts for a formula for which to install an auto-rewrite."
 (defun pvs-prover-auto-rewrite-theory (theory)
   "Insert and send the AUTO-REWRITE-THEORY prover command.
 Prompts for the theory name."
-  (interactive (complete-theory-name "Theory for auto-rewrite:"))
+  (interactive)
   (goto-pvs-proof-buffer)
+  (let ((theory (read-from-minibuffer "Theory for auto-rewrite: "))) ; ###evw
+    (goto-char (point-max)))
   (insert "(auto-rewrite-theory " ?\" theory ?\" ")")
   (return-ilisp))
 
@@ -262,6 +268,7 @@ Prompts for the theory name."
   "Insert and send the BDDSIMP prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(bddsimp)")
   (return-ilisp))
 
@@ -275,6 +282,7 @@ formula number."
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer
 		   "Beta reduce formulas [CR for default]: " "*" ))))
+    (goto-char (point-max))		;evw
     (insert "(beta " fnum ")")
     (return-ilisp)))
 
@@ -283,6 +291,7 @@ formula number."
 Prompts for the expression on which to split."
   (interactive "sCase expression: ")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(case \"" on-what "\")")
   (return-ilisp))
 
@@ -291,6 +300,7 @@ Prompts for the expression on which to split."
 Prompts for the expression on which to split."
   (interactive "sCase-replace expression: ")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(case-replace \"" on-what "\")")
   (return-ilisp))
 
@@ -303,6 +313,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "Copy formula: "))))
+    (goto-char (point-max))		;evw
     (insert "(copy " fnum ")")
     (return-ilisp)))
 
@@ -315,6 +326,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "Delete formulas: "))))
+    (goto-char (point-max))		;evw
     (insert "(delete " fnum ")")
     (return-ilisp)))
 
@@ -328,8 +340,15 @@ formula number."
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer
 		   "Apply do-rewrite to formula [CR for default]: "))))
+    (goto-char (point-max))		;evw
     (insert "(do-rewrite " fnum ")")
     (return-ilisp)))
+
+;; evw: C-e
+(defun pvs-prover-expand2 ()
+  "Calls pvs-prover-expand with arg = 1"
+  (interactive)
+  (pvs-prover-expand 1))
 
 (defun pvs-prover-expand (&optional hereonly)
   "Uses the EXPAND prover command to expand the formula at point.
@@ -384,6 +403,7 @@ Prompts for the type."
   (interactive)
   (goto-pvs-proof-buffer)
   (let ((type (read-from-minibuffer "Extensionality on type: ")))
+    (goto-char (point-max))		;evw
     (insert (format "(extensionality \"%s\")" type))
     (return-ilisp)))
 
@@ -391,6 +411,7 @@ Prompts for the type."
   "Insert and send the FLATTEN prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(flatten)")
   (return-ilisp))
 
@@ -398,6 +419,7 @@ Prompts for the type."
   "Insert and send the GRIND prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(grind)")
   (forward-char -1)
   (if current-prefix-arg
@@ -408,6 +430,7 @@ Prompts for the type."
   "Insert and send the GROUND prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(ground)")
   (return-ilisp))
 
@@ -420,6 +443,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "Hide formulas: "))))
+    (goto-char (point-max))		;evw
     (insert "(hide " fnum ")")
     (return-ilisp)))
   
@@ -432,6 +456,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "iff on formulas: " ""))))
+    (goto-char (point-max))		;evw
     (insert "(iff " fnum ")")
     (return-ilisp)))
 
@@ -445,6 +470,7 @@ Prompts for the variable name.  Prefix arg gives formula number."
 		  (read-from-minibuffer "Formula number: " "1")))
 	(ischeme (read-from-minibuffer "Induction scheme [CR for default]: "
 				       "")))
+    (goto-char (point-max))		;evw
     (insert "(induct " ?\" var ?\" " " fnum) 
     (if (not (string= ischeme "" )) 
 	(insert " " ?\" ischeme ?\" ")")
@@ -463,6 +489,7 @@ Prompts for the variable name.  Prefix arg gives formula number."
 				       ""))
 	(defs (read-from-minibuffer "DEFS flag: " "T"))
 	(if-match (read-from-minibuffer "IF-MATCH flag: " "best")))
+    (goto-char (point-max))		;evw
     (insert (format "(induct-and-simplify \"%s\" %d %s :defs %s :if-match %s)"
 		var (or num 1)
 		(if (not (string= ischeme "" ))
@@ -495,6 +522,7 @@ formula number.  Prompts for additional arguments as well."
 					"*")))
 	(args (read-from-minibuffer "Additional arguments [CR for none]: "
 				    "")))
+    (goto-char (point-max))		;evw
     (insert "(inst? "
 	    (if (not (or (null fnum) (string= fnum "*"))) fnum "")
 	    (if (not (or (null args) (string= args ""))) (concat " " args) "")
@@ -506,7 +534,17 @@ formula number.  Prompts for additional arguments as well."
 Prompts for the lemma name."
   (interactive "sLemma Name: ")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(lemma " ?\" name ?\" ")")
+  (return-ilisp))
+
+(defun pvs-prover-use (name)		;evw
+  "Insert and send the USE prover command.
+Prompts for the lemma name."
+  (interactive "sLemma Name for use: ")
+  (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
+  (insert "(use " ?\" name ?\" ")")
   (return-ilisp))
 
 (defun pvs-prover-lift-if (&optional num)
@@ -518,6 +556,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		  (int-to-string (prefix-numeric-value num))
 		  (read-from-minibuffer "Lift-if in formula [CR for all]: "))))
+    (goto-char (point-max))		;evw
     (insert "(lift-if " fnum ")")
     (return-ilisp)))
 
@@ -525,6 +564,7 @@ formula number."
   "Insert and send the MODEL-CHECK prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(model-check)")
   (return-ilisp))
 
@@ -545,6 +585,7 @@ formula number."
 Prompts for the name and expression."
   (interactive "sName for expression: \nsExpression to name: ")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(name " ?\" name ?\" " " ?\" expr ?\" ")")
   (return-ilisp))
 
@@ -553,6 +594,7 @@ Prompts for the name and expression."
 Prompts for the name and expression."
   (interactive "sName for expression: \nsExpression to name: ")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(name-replace " ?\" name ?\" " " ?\" expr ?\" ")")
   (return-ilisp))
 
@@ -560,6 +602,7 @@ Prompts for the name and expression."
   "Insert and send the POSTPONE prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(postpone)")
   (return-ilisp))
 
@@ -567,6 +610,7 @@ Prompts for the name and expression."
   "Insert and send the PROP prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(prop)")
   (return-ilisp))
 
@@ -575,6 +619,7 @@ Prompts for the name and expression."
 With prefix arg, forces quit with no save of the partial proof."
   (interactive "P")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(quit)")
   (return-ilisp)
   (if (not (null nosave))
@@ -595,6 +640,7 @@ formula number."
 		(read-from-minibuffer "Replace using formula: ")))
 	(nums (read-from-minibuffer "in the formulas: " "*"))
 	(dir  (read-from-minibuffer "with direction: " "LR")))
+    (goto-char (point-max))		;evw
     (insert "(replace " fnum " " nums " " dir ")")
     (return-ilisp)))
 
@@ -604,6 +650,7 @@ Prompts for the expression."
   (interactive)
   (goto-pvs-proof-buffer)
   (let ((term (read-from-minibuffer "Replace-eta on term: ")))
+    (goto-char (point-max))		;evw
     (insert (format "(replace-eta \"%s\")" term))
     (return-ilisp)))
 
@@ -618,8 +665,11 @@ used to give the formula number."
 		  (read-from-minibuffer "in formulas [CR for default]: " "*")))
 	(args (read-from-minibuffer "Additional arguments [CR for none]: "
 				    "")))
+    (goto-char (point-max))		;evw
     (insert (format "(rewrite \"%s\" %s %s)" lem
-	      (if (not (or (null fnum) (string= fnum "*"))) num "")
+;; evw	      (if (not (or (null fnum) (string= fnum "*"))) num "")
+;; must be fnum instead of num: otherwise get something like (rewrite lem none)
+	      (if (not (or (null fnum) (string= fnum "*"))) fnum "")
 	      (if (not (or (null args) (string= args ""))) args "")))
     (return-ilisp)))
 
@@ -633,6 +683,7 @@ formula number."
 		  (int-to-string (prefix-numeric-value num))
 		(read-from-minibuffer
 		 "Apply skolem! to formula [CR for default]: "))))
+    (goto-char (point-max))		;evw
     (insert "(skolem! " fnum ")")
     (return-ilisp)))
 
@@ -646,6 +697,7 @@ formula number."
 		 (int-to-string (prefix-numeric-value num))
 		(read-from-minibuffer
 		 "Apply skosimp to formula [CR for default]: "))))
+    (goto-char (point-max))		;evw
     (insert "(skosimp " fnum ")")
     (return-ilisp)))
 
@@ -653,6 +705,7 @@ formula number."
   "Insert and send the SKOSIMP* prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(skosimp*)")
   (return-ilisp))
 
@@ -665,6 +718,7 @@ formula number."
   (let ((fnum (if (not (null num))
 		 (int-to-string (prefix-numeric-value num))
 		(read-from-minibuffer "Split formula [CR for all]: "))))
+    (goto-char (point-max))		;evw
     (insert "(split " fnum ")")
     (return-ilisp)))
 
@@ -672,6 +726,7 @@ formula number."
   "Insert and send the TCC prover command."
   (interactive)
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert "(tcc)")
   (return-ilisp))
 
@@ -687,25 +742,54 @@ Prompts for the strategies comprising it."
       (setq nextarg (read-from-minibuffer "Strategy (no outer parens): " "")))
     (if (not (string= arglist ""))
 	(progn
+	  (goto-char (point-max))		;evw
 	  (insert "(then " arglist ")")
 	  (return-ilisp)))))
 
+;;; evw - replaced
+;; (defun pvs-prover-typepred (&optional prompt start end)
+;;   "Insert and send the TYPEPRED prover command
+;; Uses expression between point and mark.  With prefix arg prompts for the
+;; expression.  In Lucid Emacs, must set mark before calling this function,
+;; even if you give a prefix argument"
+;;   (interactive "P\nr")
+;;   (goto-pvs-proof-buffer)
+;;   (let ((expr ""))
+;;     (if (or prompt (eobp) (at-pvs-rule-prompt))
+;; 	(setq expr (read-from-minibuffer "Expression to typepred: "))
+;;       (setq expr (buffer-substring start end))
+;;       (if (not (y-or-n-p (concat "Typepred for " expr)))
+;; 	  (error "typepred aborted.")))
+;;     (goto-char (point-max))
+;;     (insert "(typepred " ?\" expr ?\" ")")
+;;     (return-ilisp)))
+
 (defun pvs-prover-typepred (&optional prompt start end)
-  "Insert and send the TYPEPRED prover command
-Uses expression between point and mark.  With prefix arg prompts for the
-expression.  In Lucid Emacs, must set mark before calling this function,
-even if you give a prefix argument"
-  (interactive "P\nr")
+  "Insert and send the TYPEPRED prover command.
+Move cursor to beginning of formula you want to expand, before calling
+this function.  If not looking at a formula, guesses at what to expand."
+  (interactive "P")
   (goto-pvs-proof-buffer)
-  (let ((expr ""))
-    (if (or prompt (eobp) (at-pvs-rule-prompt))
-	(setq expr (read-from-minibuffer "Expression to typepred: "))
-      (setq expr (buffer-substring start end))
-      (if (not (y-or-n-p (concat "Typepred for " expr)))
-	  (error "typepred aborted.")))
-    (goto-char (point-max))
-    (insert "(typepred " ?\" expr ?\" ")")
-    (return-ilisp)))
+  (skip-chars-backward "a-zA-Z_0-9?")
+  (let ((def2expand "")
+	(fnum "")
+	(bpt (point))
+	ept)
+    (cond
+     ((looking-at "[a-zA-Z_0-9?!]")
+      (skip-chars-forward "a-zA-Z_0-9?!")
+      (setq ept (point))
+      (setq def2expand (buffer-substring bpt ept)))
+     (t
+      (setq def2expand (read-from-minibuffer "Expression to typepred: "))))  
+    (if (not (string= def2expand ""))
+	(progn
+	  (message def2expand)
+	   ;(end-of-buffer)
+	   (goto-char (point-max))
+	   (insert "(typepred " ?\" def2expand ?\" ")")
+	   (return-ilisp)))))
+
 
 (defun at-pvs-rule-prompt ()
   (with-current-buffer "*pvs*"
@@ -717,6 +801,7 @@ even if you give a prefix argument"
 Prefix arg may be used to give number of steps to undo."
   (interactive "p")
   (goto-pvs-proof-buffer)
+  (goto-char (point-max))		;evw
   (insert (format "(undo %d)y" num))
   (return-ilisp))
 
@@ -967,6 +1052,7 @@ anything but a left paren or a \", ignoring whitespace."
 						  (number-to-string count)
 						  " [CR to quit]: ")
 					  "")))
+    (goto-char (point-max))		;evw
     (if (string= arglist "")
 	(insert (concat "(" which "! " num ")"))
 	(insert (concat "(" which " " num 
@@ -1049,7 +1135,7 @@ anything but a left paren or a \", ignoring whitespace."
 (define-key pvs-prover-helps-map "h"     'help-pvs-prover-emacs)
 (define-key pvs-prover-helps-map "H"     'pvs-help-prover-command)
 
-(define-key pvs-prover-helps-map "\C-i"  'pvs-prover-any-command)
+;;evw (define-key pvs-prover-helps-map "\C-i"  'pvs-prover-any-command)
 (define-key pvs-prover-helps-map "E"     'pvs-prover-apply-extensionality)
 (define-key pvs-prover-helps-map "a"     'pvs-prover-assert)
 (define-key pvs-prover-helps-map "A"     'pvs-prover-auto-rewrite)
@@ -1063,6 +1149,8 @@ anything but a left paren or a \", ignoring whitespace."
 (define-key pvs-prover-helps-map "d"     'pvs-prover-delete)
 (define-key pvs-prover-helps-map "D"     'pvs-prover-do-rewrite)
 (define-key pvs-prover-helps-map "e"     'pvs-prover-expand)
+;;; evw
+(define-key pvs-prover-helps-map "\C-e"  'pvs-prover-expand2)
 (define-key pvs-prover-helps-map "x"     'pvs-prover-extensionality)
 (define-key pvs-prover-helps-map "f"     'pvs-prover-flatten)
 (define-key pvs-prover-helps-map "G"     'pvs-prover-grind)
@@ -1093,10 +1181,11 @@ anything but a left paren or a \", ignoring whitespace."
 (define-key pvs-prover-helps-map "\C-t"  'pvs-prover-then)
 (define-key pvs-prover-helps-map "t"     'pvs-prover-typepred)
 (define-key pvs-prover-helps-map "u"     'pvs-prover-undo)
+(define-key pvs-prover-helps-map "U"     'pvs-prover-use) ;evw
 (define-key pvs-prover-helps-map "\C-u"  'pvs-prover-undo-branch)
 
 (define-key pvs-prover-helps-map "1"     'pvs-prover-run-proof-step)
-(define-key pvs-prover-helps-map "U"     'pvs-prover-undo-proof-step)
+; evw (define-key pvs-prover-helps-map "U"     'pvs-prover-undo-proof-step)
 (define-key pvs-prover-helps-map "#"     'pvs-prover-skip-proof-step)
 (define-key pvs-prover-helps-map "\C-y"     'pvs-prover-yank-proof-step)
 

@@ -29,14 +29,14 @@
   (setf (third (assoc '*readtable* excl:*cl-default-special-bindings*))
 	'*pvs-readtable*))
 
-(#-(or cmu sbcl excl) progn
- #+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #+excl excl:without-package-locks
- (defmacro defconstant-if-unbound (name value &optional doc)
-   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-		       ,@(when doc (list doc))))
- (export 'defconstant-if-unbound))
+;; (#-(or cmu sbcl excl) progn
+;;  #+cmu ext:without-package-locks
+;;  #+sbcl sb-ext:without-package-locks
+;;  #+excl excl:without-package-locks
+;;  (defmacro defconstant-if-unbound (name value &optional doc)
+;;    `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+;; 		       ,@(when doc (list doc))))
+;;  (export 'defconstant-if-unbound))
 
 (in-package :cl-user)
 

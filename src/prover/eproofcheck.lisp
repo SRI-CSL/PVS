@@ -559,8 +559,8 @@
     ;; For some reason, this can go negative.  One possibility is that the proof
     ;; starts on one core, and finishes on another, each with it's own counter
     ;; We make sure it is not negative
-    (setf (real-time prinfo) (max (- (get-internal-real-time) init-real-time) 0))
-    (setf (run-time prinfo) (max (- (get-run-time) init-run-time) 0))
+    (setf (real-time prinfo) (realtime-since init-real-time))
+    (setf (run-time prinfo) (runtime-since init-run-time))
     (setf (run-date prinfo) (get-universal-time))
     (when *use-default-dp?*
       (setf (decision-procedure-used prinfo) *default-decision-procedure*))
@@ -823,6 +823,7 @@
      (let ((post-proofstate ;;check if current goal is prop-axiom.
 	    (cond ((eq (check-prop-axiom (s-forms (current-goal proofstate)))
 		       '!) ;;set flag to proved! and update fields.
+		   #+allegro
 		   (pvs-json:update-ps-control-info-result proofstate) ; M3 so the sequent
 					; it's accumulated for the rpc response.
 					; It could be a call to output-proofstate
@@ -880,8 +881,7 @@
 	      (cond ((> (length (remaining-subgoals post-proofstate)) 1)
 		     (when (and *rerunning-proof*
 				(integerp *rerunning-proof-message-time*)
-				(> (- (get-internal-real-time)
-				      *rerunning-proof-message-time*)
+				(> (realtime-since *rerunning-proof-message-time*)
 				   3000)) ;;print mini-buffer msg
 		       (setq *rerunning-proof* (format nil "~a." *rerunning-proof*))
 		       (setq *rerunning-proof-message-time*
@@ -1387,11 +1387,19 @@
 ;; (defun quoted? (x) (and (consp x)(eq (car x) 'quote)))
 ;;; DELETE
 
-(defun subst-stratexpr (expr alist reverse-alist)  
+(defun subst-stratexpr (expr alist reverse-alist)
   (cond ((symbolp expr)
 	 (let ((entry (assoc expr reverse-alist)))
 	   (if (null entry) expr
 	       (cdr entry))))
+	#+sbcl ;; for e.g., ",x" allegro would have the cons "(excl::bq-comma x)"
+	;; SBCL has a comma struct
+	((sb-int:comma-p expr)
+	 (let* ((ex (sb-int:comma-expr expr))
+		(sub (subst-stratexpr ex alist reverse-alist)))
+	   (if (eq sub ex)
+	       expr
+	       (sb-int:unquote sub))))
 	((not (consp expr)) expr)
 	((if-form? expr)  ;;NSH(9.12.94)
 	 `(if ,(let ((letbind (loop for (x . y) in alist

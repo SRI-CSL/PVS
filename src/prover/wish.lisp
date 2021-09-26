@@ -285,13 +285,15 @@
       (format t "}"))))))
 
 (defun module-hierarchy* (theory include-libraries?)
-  (unless (member theory *modules-visited*)
-    (push theory *modules-visited*)
+  (unless *modules-visited*
+    (setq *modules-visited* (make-hash-table)))
+  (unless (gethash theory *modules-visited*)
     (let* ((imps (get-immediate-usings theory))
 	   (deps (delete-if #'(lambda (dep)
 				(or (null dep)
 				    (and (not include-libraries?)
-					 (lib-datatype-or-theory? dep))))
+					 (or (lib-datatype-or-theory? dep)
+					     (from-prelude? dep)))))
 		   (mapcar #'(lambda (tname)
 			       (let ((th (get-theory tname)))
 				 (when th
@@ -302,6 +304,7 @@
 			 imps
 			 (remove-if #'library imps))))))
       (format t "{~a {~{~a ~}}}~%" (id theory) (mapcar #'id deps))
+      (setf (gethash theory *modules-visited*) deps)
       (mapc #'(lambda (dep) (module-hierarchy* dep include-libraries?))
 	    deps))))
 

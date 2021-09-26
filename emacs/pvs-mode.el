@@ -392,7 +392,7 @@ INDENT is the current indentation depth."
 
 (defun pvs-library-subdir-files (dirname-path)
   (let ((dir (concat (cdr dirname-path) "/" (car dirname-path))))
-    (assert (file-directory-p dir))
+    (cl-assert (file-directory-p dir))
     (mapcar #'(lambda (file) (cons file dir))
       (directory-files dir nil ".*\.pvs$"))))
 
