@@ -302,7 +302,7 @@
 		       (t (object-store 0))))
 	   (fsize #+allegro (let ((stat (excl.osi:stat file)))
 			      (excl.osi:stat-size stat))
-		  #+sbcl (let ((stat sb-posix:stat file))
+		  #+sbcl (let ((stat (sb-posix:stat file)))
 			   (sb-posix:stat-size stat))))
       (unless (= size (/ fsize 4))
 	(error 'file-error
