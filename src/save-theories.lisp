@@ -944,6 +944,7 @@ instances, e.g., other declarations within the theory, or self-references."
       (assert (every #'conversion-decl? (conversions (saved-context obj)))))))
 
 (defun restore-saved-context (obj)
+  ;; obj is a context instance
   (when obj
     (let ((*restoring-declaration* nil)
 	  (*needs-pseudonormalizing* nil)
@@ -952,6 +953,11 @@ instances, e.g., other declarations within the theory, or self-references."
       (assert (module? (current-theory)))
       (setf (declarations-hash obj)
 	    (restore-declarations-hash (declarations-hash obj)))
+      (maphash #'(lambda (id decls)
+		   (assert (every #'(lambda (decl) (same-last-id id (id decl))) decls)
+			   () "Decl-id mismatch in restore-saved-context of file ~a~a.pvs"
+			   (current-context-path) (current-pvs-file)))
+	       (lhash-table (declarations-hash obj)))
       ;; Restoring known-subtypes requires judgements, and vice-versa
       ;; So we partially restore the judgements first
       (prerestore-context-judgements (judgements obj))
