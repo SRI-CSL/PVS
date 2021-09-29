@@ -51,16 +51,21 @@
 	mi
 	(copy mi 'actuals nacts))))
 
-(defun gen-symbol (name  char counter)    
+(defun gen-symbol (name char counter)
   (let* ((string (string  (op-to-id  name)))
-	 (pos (position-if #'(lambda (x)(member x (list char #\! #\_)))
-			   string :from-end t));;NSH(4-11-94) $ to _.
-	 ;;(1/21/91) Changed
-	 (prefix (subseq string 0 pos))
-	 (suffix (when pos (subseq string (1+ pos))))
-	 (prestring (if (and pos (every #'digit-char-p suffix))
-			prefix
-			string)))
+	 (pos (position-if #'(lambda (x) (member x (list char #\! #\_)))
+			   string :from-end t))
+	 (prefix (if pos (subseq string 0 pos) string))
+	 ;; Need to check for keywords, as, otherwise something like
+	 ;; AND_2 would be changed to AND!1, which won't parse as a name
+	 ;; Hence this case will return AND_2!1
+	 (keyword? (member prefix *pvs-keywords* :test #'string-equal))
+	 (suffix (when (and pos (not keyword?)) (subseq string (1+ pos))))
+	 (prestring (if (or keyword?
+			    (null pos)
+			    (not (every #'digit-char-p suffix)))
+			string
+			prefix)))
     (format nil "~a~a~a" prestring char (funcall counter))))
 
 (defun symbol-index (name)
