@@ -145,12 +145,12 @@
   theory-id
   (library nil))
 
-(defun context-entries-not-updated ()
-  (mapcan #'(lambda (ce)
-	      (let ((nce (create-context-entry (ce-file ce))))
-		(unless (ce-eq ce nce)
-		  (list ce))))
-    (pvs-context-entries)))
+;; (defun context-entries-not-updated ()
+;;   (mapcan #'(lambda (ce)
+;; 	      (let ((nce (create-context-entry (ce-file ce))))
+;; 		(unless (ce-eq ce nce)
+;; 		  (list ce))))
+;;     (pvs-context-entries)))
 
 (defun ce-eq (ce1 ce2)
   (and (equal (ce-file ce1) (ce-file ce2))
@@ -335,8 +335,8 @@ retypechecked."
 	      (declare (ignore value))
 	      (cond (condition
 		     (pvs-message "~a" condition))
-		    (t (setf (pvs-context *workspace-session*) context)
-		       (setf (pvs-context-changed *workspace-session*) nil)
+		    (t (setf (pvs-context ws) context)
+		       (setf (pvs-context-changed ws) nil)
 		       (pvs-log "Context file ~a written~%"
 				(namestring (context-pathname)))))))
 	  (pvs-log "Context file ~a not written, do not have write permission"
@@ -693,7 +693,7 @@ its dependencies."
 					      (list (list lib-path nm))))))
 			   (push (makesym "~a" (lcopy inm 'library nil))
 				 thlist)))
-	      (nconc libalist (list (cons nil (nreverse thlist))))))))
+	      (nconc libalist (when thlist (list (cons nil (nreverse thlist)))))))))
       (let ((te (get-context-theory-entry (id theory))))
 	(when te
 	  (te-dependencies te)))))
@@ -1011,7 +1011,7 @@ are all the same."
 	  (setf (ce-dependencies ce) nil)
 	  (setf (ce-object-date ce) nil)
 	  (setf (ce-theories ce) nil))))
-    (cond ((duplicate-theory-entries?)
+    (cond ((duplicate-theory-entries? context)
 	   (pvs-message "PVS context has duplicate entries - resetting")
 	   (list *pvs-version*))
 	  (t ;;(same-major-version-number (car context) *pvs-version*)
@@ -1049,9 +1049,16 @@ are all the same."
                                       - resetting")
 		    (list *pvs-version*)))))))
 
-(defun duplicate-theory-entries? ()
-  (and *workspace-session*
-       (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=)))
+(defun duplicate-theory-entries? (fe)
+  (let ((thids (collect-theory-entry-ids fe)))
+    (duplicates? thids)))
+
+(defun collect-theory-entry-ids (fe)
+  (let ((thids nil))
+    (dolist (ce (cdddr fe))
+      (dolist (te (ce-theories ce))
+	(push (te-id te) thids)))
+    thids))
 
 (defvar *theories-restored* nil)
 (defvar *files-seen* nil)
@@ -2989,10 +2996,9 @@ each context, the theories are in alphabetic order."
 	(restore-proofs-from-split-file* input prfpath)))))
 
 (defun cleanup-proofs-pvs-file (file)
-  (let* ((all-proofs (read-pvs-file-proofs file))
-	 (aproofs (proofs-with-associated-decls file all-proofs))
+  (let* ((aproofs (read-pvs-file-proofs file))
 	 (dproofs (collect-default-proofs aproofs)))
-    (if (equalp all-proofs dproofs)
+    (if (equalp aproofs dproofs)
 	(pvs-message "Proof file is already cleaned up")
 	(let* ((prf-file (make-prf-pathname file))
 	       (prf-fstr (namestring prf-file))
