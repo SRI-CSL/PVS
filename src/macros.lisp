@@ -305,13 +305,18 @@ vars are associated to the parts of this string.  Hence
 will pull out the directory, file, and theory, use with-workspace to
 temporarily change to that directory, and then execute body with fname bound
 to sum.pvs and thname bound to sum."
-  (let ((args (gentemp))
+  (let ((cref (gentemp))
+	(args (gentemp))
 	(path (gentemp))
 	(dir (gentemp))
 	(name (gentemp))
 	(ext (gentemp))
 	(msg (gentemp)))
-    `(let* ((,args (split ,context-ref #\#))
+    `(let* ((,cref (typecase ,context-ref
+		     (symbol (string ,context-ref))
+		     (pathname (namestring ,context-ref))
+		     (t ,context-ref)))
+	    (,args (split ,cref #\#))
 	    (,path (car ,args))
 	    (,dir (uiop:pathname-directory-pathname ,path))
 	    (,name (pathname-name ,path))
