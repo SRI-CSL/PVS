@@ -66,6 +66,8 @@
 (defvar *first-strategy-error* nil)
 (defvar *last-strategy-error* nil)
 
+(defvar *tccs-proved* nil)
+
 (defun explain-errors ()
   (when *first-strategy-error*
     ;; M3 Add 'Error' prefix to commentary [Sept 2020]
@@ -289,7 +291,8 @@
 	 (*subtype-names* nil)
 	 (*local-typealist* *local-typealist*)
 	 (*rec-type-dummies* nil)
-	 (*named-exprs* nil))
+	 (*named-exprs* nil)
+	 (*tccs-proved* nil))
     (reset-pseudo-normalize-caches)
     (reset-beta-cache)
     (newcounter *translate-id-counter*)
@@ -327,7 +330,7 @@
 	(unwind-protect
 	     (dpi-start #'prove-decl-body)
 	  (setf (all-subst-mod-params-caches *workspace-session*)
-	      cur-all-subst-mod-params-caches)
+		cur-all-subst-mod-params-caches)
 	  (after-prove*)
 	  (dpi-end *top-proofstate*)
 	  (unless *recursive-prove-decl-call*
@@ -650,17 +653,17 @@
 (defun prove*-int (proofstate)
   (setf *current-context* (context proofstate))
   (when (and (null *printproofstate*)
+	     (null *suppress-printing*)
 	     (fresh? proofstate)
 	     (not (typep (strategy proofstate) 'strategy))
 	     ;;(not (typep proofstate 'strat-proofstate))
 	     ;;(not (null (strategy proofstate)))
 	     ;;(NSH:11.17.94): commented out
 	     )
-    (unless *suppress-printing*
-      (catch-restore
-       (output-proofstate proofstate))
-;;      (setq *prover-commentary* nil) ;; M3: moved to qread [Sept 2020]
-      (clear-strategy-errors)))
+    ;; If in a proof-session, push the proofstate to the outputs list
+    (or (session-output proofstate)
+	(print-proofstate-if proofstate))
+    (clear-strategy-errors))
   (let ((nextstate (proofstepper proofstate)))
     (cond ((null (parent-proofstate proofstate))
 	   (cond ((eq (status-flag proofstate) '!)
@@ -764,33 +767,33 @@
     input))
 
 (defun qread (prompt)
-  (setq *prover-commentary* nil) ;; M3: Brought from prove*-int [Sept 2020]
-  (format t "~%~a"  prompt)
-  (force-output)
-  (let ((input (prover-read)))
-    (cond ((and (consp input)
-		(eq (car input) 'lisp))
-	   (format t "~%~s~%"  (eval (cadr input)))
-	   (qread prompt))
-	  ((member input '(quit q exit (quit) (exit) (q))
-		   :test #'equal)
-	   (if (or (eq *multiple-proof-default-behavior* :noquestions)
-		   (pvs-y-or-n-p "~%Do you really want to quit? "))
-	       (throw 'quit nil)
-	       (qread prompt)))
-	  ((eq input 'abort)
-	   (if (or (eq *multiple-proof-default-behavior* :noquestions)
-		   (pvs-y-or-n-p "~%Do you really want to abort? "))
-	       (throw 'abort nil)
-	       (qread prompt)))
-	  ((eq input :reset)         ;; from M-x reset-pvs 
-	   (throw 'quit 'pvs-reset))
-	  (t (auto-save-proof)
-	     (if (consp input)
-		 (if (check-arguments input)
-		     input
-		     (qread prompt))
-	         input)))))
+  (cond ((session-read))
+	(t (format t "~%~a" prompt)
+	   ;;(force-output)
+	   (let ((input (prover-read)))
+	     (cond ((and (consp input)
+			 (eq (car input) 'lisp))
+		    (format t "~%~s~%"  (eval (cadr input)))
+		    (qread prompt))
+		   ((member input '(quit q exit (quit) (exit) (q))
+			    :test #'equal)
+		    (if (or (eq *multiple-proof-default-behavior* :noquestions)
+			    (pvs-y-or-n-p "~%Do you really want to quit? "))
+			(throw 'quit nil)
+			(qread prompt)))
+		   ((eq input 'abort)
+		    (if (or (eq *multiple-proof-default-behavior* :noquestions)
+			    (pvs-y-or-n-p "~%Do you really want to abort? "))
+			(throw 'abort nil)
+			(qread prompt)))
+		   ((eq input :reset) ;; from M-x reset-pvs 
+		    (throw 'quit 'pvs-reset))
+		   (t (auto-save-proof)
+		      (if (consp input)
+			  (if (check-arguments input)
+			      input
+			      (qread prompt))
+			  input)))))))
 
 (defvar *proof-strategy-stack* nil)
 
@@ -823,12 +826,6 @@
      (let ((post-proofstate ;;check if current goal is prop-axiom.
 	    (cond ((eq (check-prop-axiom (s-forms (current-goal proofstate)))
 		       '!) ;;set flag to proved! and update fields.
-		   #+allegro
-		   (pvs-json:update-ps-control-info-result proofstate) ; M3 so the sequent
-					; it's accumulated for the rpc response.
-					; It could be a call to output-proofstate
-					; but currently that would disturb the
-					; behavior of the wish viewer.
 		   (setf (status-flag proofstate) '!      
 			 (current-rule proofstate) '(propax)
 			 (printout proofstate)
@@ -1893,7 +1890,9 @@
 		   ((eq  sflag '!)
 		    (if (not (equal (label par-ps) (label ps)))
 			(format-if "~%~%This completes the proof of ~a.~%"
-				(label ps)))
+				   (label ps)))
+		    (when (tcc-sequent? ps)
+		      (push ps *proved-tccs*))
 ;		    (setf (out-substitution par-ps)(out-substitution ps)
 ;			  (out-context par-ps)(out-context ps))
 		    (push ps (done-subgoals par-ps))))

@@ -4459,7 +4459,7 @@ e LHS free variables in ~a" hyp lhs)
 	       (setq *auto-rewrites!-names*
 		     (remove res *auto-rewrites!-names*))
 	       ;;:test #'tc-eq
-	       (format-if "~%Installing macro(!!) ~a~@[ ~a~]"
+	       (commentary "~%Installing macro(!!) ~a~@[ ~a~]"
 			  (if (resolution? res)
 			      (resolution-string res)
 			      name)

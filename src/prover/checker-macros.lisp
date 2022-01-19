@@ -29,7 +29,7 @@
 
 (in-package :pvs)
 
-(export '(*in-checker* *in-evaluator* *ps* *top-proofstate* *prover-commentary* restore commentary
+(export '(*in-checker* *in-evaluator* *ps* *top-proofstate* restore commentary
 	  *proofstate-hooks* *finish-proofstate-hooks* *success-proofstate-hooks* *rewrite-msg-off*
 	  *in-apply*))
 
@@ -297,37 +297,40 @@
 (defvar *auto-rewrites-off* nil)
 (defvar *new-fmla-nums* nil)
 (defvar *rewrite-msg-off* nil)
-(defvar *prover-commentary* nil)
 
 (defmacro format-list-of-items (list)
-  `(format nil "~{~#[ none~;~s~; ~s and ~s~:;~@{~#[~; and~] ~s~^,~}~].~}"
+  `(format nil "~{~#[none~;~s~;~s and ~s~:;~@{~#[~;and ~]~s~^, ~}~]~:}"
     ,list))
 
 (defmacro commentary (string &rest args)
   `(unless *suppress-printing*
-     (let ((com (format nil ,string ,@args)))
-       (push (string-trim '(#\Space #\Tab #\Newline) com) *prover-commentary*) 
-       (format t "~a" com))))
+     (let* ((com (format nil ,string ,@args))
+	    (trcom (string-trim '(#\Space #\Tab #\Newline) com)))
+       (or (session-output trcom)
+	   (format t "~a" com)))))
 
 (defmacro error-format-if (string &rest args)
-  `(if *suppress-printing*
-       (set-strategy-errors (format nil ,string ,@args))
-     (let ((com  ;; M3 Add 'Error' prefix to commentary [Sept 2020]
-	    (format nil "Error: ~a" (string-trim '(#\Space #\Tab #\Newline) (format nil ,string ,@args)))))
-       (commentary com))))
+  `(cond (*suppress-printing*
+	  (set-strategy-errors (format nil ,string ,@args)))
+	 ;; ((session-error ,string ,@args)) ; won't return if in a session, else nil
+	 (t (let ((com ;; M3 Add 'Error' prefix to commentary [Sept 2020]
+		   (format nil "Error: ~a"
+		     (string-trim '(#\Space #\Tab #\Newline) (format nil ,string ,@args)))))
+	      (commentary com)))))
 
 (defmacro format-nif (string &rest args)
   ;; Like format-if, but not in commentary
   `(unless *suppress-printing*
-    (format t ,string ,@args)))
+     (let ((fstr (format nil ,string ,@args)))
+       (or (session-output fstr)
+	   (format t fstr)))))
 
 (defmacro format-if (string &rest args)
-  `(unless *suppress-printing*
-    (commentary ,string ,@args)))
+  `(commentary ,string ,@args))
 
 (defmacro format-if-nontcc (string &rest args)
   `(unless *proving-tcc*
-    (commentary ,string ,@args)))
+     (commentary ,string ,@args)))
 
 (defmacro format-rewrite-msg (id lhs rhs)
   `(unless (or *proving-tcc* *rewrite-msg-off*)
