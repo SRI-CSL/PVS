@@ -267,6 +267,7 @@
 
 (defcl simple-constructor (adt-constructor)
   (id :type symbol :parse t :restore-as nil)
+  decl-formals
   (arguments :documentation "a list of adtdecls" :parse t)
   con-decl
   rec-decl
@@ -430,14 +431,14 @@
 (defcl formal-decl (declaration)
   (dependent? :restore-as nil))
 
-(defcl decl-formal (formal-decl))
+(defcl decl-formal (formal-decl)
+  associated-decl ; set if this is for a declaration parameter
+  )
 
 (defcl formal-type-decl (formal-decl type-decl typed-declaration)
   )
 
-(defcl decl-formal-type (formal-type-decl decl-formal)
-  associated-decl ; set if this is for a declaration parameter
-  )
+(defcl decl-formal-type (formal-type-decl decl-formal))
 
 (defcl formal-nonempty-type-decl (formal-type-decl nonempty-type-decl))
 
@@ -475,10 +476,14 @@
   (possibly-empty-type? :restore-as nil)
   (eval-info :fetch-as nil))
 
+(defcl decl-formal-const-decl (decl-formal formal-const-decl))
+
 (defcl formal-theory-decl (formal-decl theory-reference)
   (theory-name :parse t)
   theory-mappings
   other-mappings)
+
+(defcl decl-formal-theory-decl (decl-formal formal-theory-decl))
 
 (defcl adtdecl (typed-declaration)
   (bind-decl :documentation "Keeps a corresponding bind-decl")
@@ -1047,6 +1052,20 @@ restored, the TCCs are checked")
 			       :documentation "see subst-mod-params.lisp"
 			       :fetch-as nil :ignore t))
 
+;;; A structure for collecting proof scripts from .prf files.
+;;; Don't want the overhead of defcl for these.
+
+(defstruct (proof-scripts (:conc-name pscripts-))
+  pvs-file
+  theory-scripts)
+
+(defstruct (theory-scripts (:conc-name tscripts-))
+  theory-id
+  formula-scripts)
+
+(defstruct (formula-script (:conc-name fscript-))
+  formula-id
+  formula-script)
 
 ;; (defcl context-info ()
 ;;   pvs-files-list
