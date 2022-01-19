@@ -52,71 +52,71 @@
 ;; where one and only one of result or error is included, and id is required.
 ;; result and error are arbitrary json forms.
 
-(defvar *pvs-json-initialized* nil)
+;; (defvar *pvs-json-initialized* nil)
 
-(defun pvs-init-json ()
-  (unless *pvs-json-initialized*
-    (pushnew 'output-json-proofstate *proofstate-hooks*)
-    (pushnew 'json-pvs-buffer *pvs-buffer-hooks*)
-    (pushnew 'json-pvs-message *pvs-message-hooks*)
-    (pushnew 'json-pvs-error *pvs-error-hooks*)
-    (setq *pvs-json-initialized* t)))
+;; (defun pvs-init-json ()
+;;   (unless *pvs-json-initialized*
+;;     (pushnew 'output-json-proofstate *proofstate-hooks*)
+;;     (pushnew 'json-pvs-buffer *pvs-buffer-hooks*)
+;;     (pushnew 'json-pvs-message *pvs-message-hooks*)
+;;     (pushnew 'json-pvs-error *pvs-error-hooks*)
+;;     (setq *pvs-json-initialized* t)))
 
-(defun pvs-json (json-string)
-  (pvs-init-json)
-  (let* ((request (json:decode-json-from-string json-string))
-	 (*pvs-interface* 'json)
-	 (*json-id* (cdr (assq :ID request)))
-	 (cmdstr (cdr (assq :METHOD request)))
-	 (params (cdr (assq :PARAMS request)))
-	 (*print-pretty* nil))
-    (multiple-value-bind (cmd errstr)
-	(json-check-form cmdstr "request")
-      (cond (errstr
-	     (json-error errstr))
-	    ((not (symbolp cmd))
-	     (json-error "cmd ~a must be a symbol string"))
-	    ((not (listp params))
-	     (json-error (format nil "parameters ~a must be a list" params)))
-	    (t (multiple-value-bind (result errstr)
-		   (json-eval-form (cons cmd params))
-		 (if errstr
-		     (json-error errstr)
-		     (json-result result))))))))
+;; (defun pvs-json (json-string)
+;;   (pvs-init-json)
+;;   (let* ((request (json:decode-json-from-string json-string))
+;; 	 (*pvs-interface* 'json)
+;; 	 (*json-id* (cdr (assq :ID request)))
+;; 	 (cmdstr (cdr (assq :METHOD request)))
+;; 	 (params (cdr (assq :PARAMS request)))
+;; 	 (*print-pretty* nil))
+;;     (multiple-value-bind (cmd errstr)
+;; 	(json-check-form cmdstr "request")
+;;       (cond (errstr
+;; 	     (json-error errstr))
+;; 	    ((not (symbolp cmd))
+;; 	     (json-error "cmd ~a must be a symbol string"))
+;; 	    ((not (listp params))
+;; 	     (json-error (format nil "parameters ~a must be a list" params)))
+;; 	    (t (multiple-value-bind (result errstr)
+;; 		   (json-eval-form (cons cmd params))
+;; 		 (if errstr
+;; 		     (json-error errstr)
+;; 		     (json-result result))))))))
 
-(defun json-error (err &optional (id *json-id*))
-  ;; No id means this was a notification - just drop the error
-  (when id
-    (let ((jerr (json:encode-json-alist-to-string
-		 `((:error . ,(json:encode-json-to-string err))
-		   (:id . ,id)))))
-      (setq *json-id* nil)
-      ;; The beginning and end braces must stand alone, making them easy to find
-      (format t "~%{~%~a~%}~%" (subseq jerr 1 (1- (length jerr)))))))
+;; (defun json-error (err &optional (id *json-id*))
+;;   ;; No id means this was a notification - just drop the error
+;;   (when id
+;;     (let ((jerr (json:encode-json-alist-to-string
+;; 		 `((:error . ,(json:encode-json-to-string err))
+;; 		   (:id . ,id)))))
+;;       (setq *json-id* nil)
+;;       ;; The beginning and end braces must stand alone, making them easy to find
+;;       (format t "~%{~%~a~%}~%" (subseq jerr 1 (1- (length jerr)))))))
 
-(defun json-result (result &optional (id *json-id*))
-  (when id
-    (let* ((sresult (json:encode-json-to-string result))
-	   (jresult (json:with-explicit-encoder
-		     (json:encode-json-to-string
-		      (cons :object
-			    `((:result . ,sresult)
-			      (:id . ,id)))))))
-      (setq *json-id* nil)
-      ;; The beginning and end braces must stand alone, making them easy to find
-      (format t "~%{~%~a~%}~%" (subseq jresult 1 (1- (length jresult)))))))
+;; (defun json-result (result &optional (id *json-id*))
+;;   (when id
+;;     (let* ((sresult (json:encode-json-to-string result))
+;; 	   (jresult (json:with-explicit-encoder
+;; 		     (json:encode-json-to-string
+;; 		      (cons :object
+;; 			    `((:result . ,sresult)
+;; 			      (:id . ,id)))))))
+;;       (setq *json-id* nil)
+;;       ;; The beginning and end braces must stand alone, making them easy to find
+;;       (format t "~%{~%~a~%}~%" (subseq jresult 1 (1- (length jresult)))))))
 
-(defun json-check-form (str key)
-  (multiple-value-bind (form err)
-      (ignore-errors (read-from-string str))
-    (if (typep err 'error)
-	(values nil
-		(json-error 
-		 (format nil "Bad ~a \\\"~a\\\": ~a"
-		   key
-		   (protect-emacs-output str)
-		   (protect-emacs-output (format nil "~a" err)))))
-	form)))
+;; (defun json-check-form (str key)
+;;   (multiple-value-bind (form err)
+;;       (ignore-errors (read-from-string str))
+;;     (if (typep err 'error)
+;; 	(values nil
+;; 		(json-error 
+;; 		 (format nil "Bad ~a \\\"~a\\\": ~a"
+;; 		   key
+;; 		   (protect-emacs-output str)
+;; 		   (protect-emacs-output (format nil "~a" err)))))
+;; 	form)))
 
 (defun json-eval-form (form)
   (if (or *in-checker* *in-evaluator*)
@@ -202,28 +202,28 @@
 ;;; is an around method that checks if *pvs-interface* is set (e.g., to json)
 ;;; and calls output-proofstate* accordingly.
 
-(defun json-prove-formula (theory formula &optional rerun?)
-  (if (or *in-checker* *in-evaluator*)
-      (json-error (if *in-checker*
-		      (format nil "Currently proving ~a"
-			(id (declaration *top-proofstate*)))
-		      "Currently in the ground evaluator"))
-      (let ((*current-json-ps* nil))
-	(prove-formula theory formula rerun?)
-	nil)))
+;; (defun json-prove-formula (theory formula &optional rerun?)
+;;   (if (or *in-checker* *in-evaluator*)
+;;       (json-error (if *in-checker*
+;; 		      (format nil "Currently proving ~a"
+;; 			(id (declaration *top-proofstate*)))
+;; 		      "Currently in the ground evaluator"))
+;;       (let ((*current-json-ps* nil))
+;; 	(prove-formula theory formula rerun?)
+;; 	nil)))
 
-(defmethod prover-read* ((ifc (eql 'json)))
-  (let ((cmd (ignore-errors (read))))
-    (cond ((and (listp cmd) (eq (car cmd) 'pvs-json))
-	   (apply #'pvs-json (cdr cmd)))
-	  ((and (listp cmd) (eq (car cmd) 'json-prove))
-	   (let* ((request (json:decode-json-from-string (cadr cmd)))
-		  (json-id (cdr (assq :ID request)))
-		  (cmdstr (cdr (assq :METHOD request)))
-		  (params (cdr (assq :PARAMS request))))
-	     (setq *json-id* json-id)
-	     (cons (intern cmdstr :pvs) params)))
-	  (t cmd))))
+;; (defmethod prover-read* ((ifc (eql 'json)))
+;;   (let ((cmd (ignore-errors (read))))
+;;     (cond ((and (listp cmd) (eq (car cmd) 'pvs-json))
+;; 	   (apply #'pvs-json (cdr cmd)))
+;; 	  ((and (listp cmd) (eq (car cmd) 'json-prove))
+;; 	   (let* ((request (json:decode-json-from-string (cadr cmd)))
+;; 		  (json-id (cdr (assq :ID request)))
+;; 		  (cmdstr (cdr (assq :METHOD request)))
+;; 		  (params (cdr (assq :PARAMS request))))
+;; 	     (setq *json-id* json-id)
+;; 	     (cons (intern cmdstr :pvs) params)))
+;; 	  (t cmd))))
 
 (defun proofstate-yields (proofstate)
   (let* ((ps (parent-proofstate proofstate))
@@ -328,3 +328,30 @@
 	   (write-char special stream)
 	   (write-json-escaped-pieces s stream (1+ npos)))
 	  (t (format stream "~a" (subseq s (or pos 0)))))))
+
+(defmethod json:encode-json ((ps proof-scripts) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:pvs-file stream)
+      (json:encode-json (pscripts-pvs-file ps) stream))
+    (json:as-object-member (:theory-scripts stream)
+      (json:encode-json (pscripts-theory-scripts ps) stream))))
+
+(defmethod json:encode-json ((ts theory-scripts) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:theory-id stream)
+      (json:encode-json (tscripts-theory-id ts) stream))
+    (json:as-object-member (:formula-scripts stream)
+      (json:encode-json (tscripts-formula-scripts ts) stream))))
+
+(defmethod json:encode-json ((fs formula-script) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:formula-id stream)
+      (json:encode-json (fscript-formula-id fs) stream))
+    (json:as-object-member (:formula-script stream)
+      (json:encode-json (proof-script-to-string (fscript-formula-script fs)) stream))))
+
+(defun proof-script-to-string (script)
+  (with-output-to-string (out)
+    (write script
+	   :stream out :pretty t :escape t :level nil :length nil
+	   :pprint-dispatch *proof-script-pprint-dispatch*)))

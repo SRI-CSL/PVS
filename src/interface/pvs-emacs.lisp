@@ -29,17 +29,6 @@
 
 (in-package :pvs)
 
-(export '(*pvs-buffer-hook* *pvs-message-hook* *pvs-warning-hook*
-	  *pvs-error-hook* *pvs-y-or-n-hook* *pvs-query-hook* *pvs-dialog-hook*
-	  pvs-buffer pvs-error pvs-warning pvs-message
-	  pvs-display pvs-abort pvs-yn pvs-query pvs-emacs-eval
-	  output-proofstate pvs2json protect-emacs-output parse-error
-	  type-error set-pvs-tmp-file place place-list type-ambiguity
-	  type-incompatible pvs-locate write-to-temp-file
-	  *ps-control-info* make-ps-control-info psinfo-json-result
-	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock
-	  pvs-abort lisp xmlrpc-output-proofstate add-psinfo))
-
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)
 (defvar *pvs-error-hook* nil)
@@ -77,9 +66,6 @@
     prove-untried-pvs-file
     prove-untried-theory
     prove-with-checkpoint))
-
-(defvar *ps-control-info* nil
-  "Used to communicate proof results to XML-RPC clients")
 
 ;;; Called from pvs-send* in Emacs.  Name comes from ilisp's "ilisp-errors",
 ;;; which is their interface to Emacs.
@@ -193,17 +179,22 @@
   (id decl))
 
 (defun pvs-message (ctl &rest args)
-  (when *pvs-message-hook*
-    ;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
-    (funcall *pvs-message-hook* (format nil "~?" ctl args)))
-  (unless *suppress-msg*
-    (if *to-emacs*
-	(let* ((*print-pretty* nil)
-	       (*output-to-emacs*
-		(protect-emacs-output
-		 (format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
-	  (to-emacs))
-	(format t "~%~?" ctl args)))
+  (let ((str (format nil "~?" ctl args)))
+    (when *pvs-message-hook*
+      ;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
+      ;; Note that hooks are mostly for display, so we call them all.
+      (if (listp *pvs-message-hook*)
+	  (dolist (hook *pvs-message-hook*)
+	    (funcall hook str))
+	  (funcall *pvs-message-hook* str)))
+    (unless *suppress-msg*
+      (if *to-emacs*
+	  (let* ((*print-pretty* nil)
+		 (*output-to-emacs*
+		  (protect-emacs-output
+		   (format nil ":pvs-msg ~a :end-pvs-msg" str))))
+	    (to-emacs))
+	  (format t "~%~a" str))))
   nil)
 
 (defun pvs-message-with-context (obj ctl &rest args)
@@ -470,7 +461,7 @@
 	 (format t "~%~%~a~%~a" msg err)
 	 (if *in-checker*
 	     (restore)
-	     (error "PVS error")))))
+	     (error "~a: ~a" msg err)))))
 
 (defun pvs-abort ()
   #-allegro (abort)
@@ -507,9 +498,14 @@
 	       (pvs-message "Aborting")
 	       (pvs-abort))
 	     val)))
-	(full? (yes-or-no-p
-		(concatenate 'string (protect-format-string msg) "(Yes or No) ")))
-	(t (y-or-n-p (concatenate 'string (protect-format-string msg) "(Y or N) ")))))
+	(t (let* ((prompt (concatenate 'string (protect-format-string msg)
+				       (if full? "(Yes or No) " "(Y or N) ")))
+		  (answer (if full?
+			      (yes-or-no-p prompt)
+			      (y-or-n-p prompt))))
+	     (session-output (format nil "~a~:[~:[No~;Yes~]~;~:[N~;Y~]~]"
+			       prompt full? answer))
+	     answer))))
 
 (defun pvs-dialog (prompt &rest args)
   (cond (*pvs-dialog-hook*
@@ -659,42 +655,6 @@
 	     (append (psinfo-json-result psi) ps-json)
 	   ps-json))))
 
-;;; Support for displaying proofs
-(defmethod prover-read :around ()
-  "Called from prover qread function, which is how the "
-  (cond (*ps-control-info*
-	 ;; bad idea: (format t "~%prover-read: about to wait")
-	 #+allegro
-	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
-	   (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	   (mp:process-wait "Waiting for next Proofstate"
-			    #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))
-	 #+allegro
-	 (mp:process-wait
-	  "Prover Waiting"
-	  #'(lambda ()
-	      (or (and *ps-control-info*
-		       (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
-		       (psinfo-command *ps-control-info*))
-		  (excl:read-no-hang-p *terminal-io*))))
-	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
-	 #+allegro
-	 (if (and *ps-control-info*
-		  (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
-	     (unwind-protect
-		  (multiple-value-bind (input err)
-		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
-		    (when err
-		      (format t "~%~a" err))
-		    input)
-	       (mp:close-gate (psinfo-cmd-gate *ps-control-info*))
-	       (setf (psinfo-command *ps-control-info*) nil))
-	     (call-next-method)))
-	(t (call-next-method))))
-
-;;; Summary of prover (from eproofcheck.lisp)
-;;; prove-decl -> prove-decl-body -> prove* -> (prove*-int -> output-proofstate)*
-
 ;;; The primary method (i.e., call-next-method) simply prints the proofstate in the
 ;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
 ;;; XML-RPC clients
@@ -702,52 +662,12 @@
 (defvar *pvs-emacs-output-proofstate-p* nil
   "Set to t to try the Emacs frame interface - stiil in progress.")
 
-;; M3: I transfered the responsibility of constructing the rpc response to
-;;     update-ps-control-info-result (a proofstate hook, registered in
-;;     *proofstate-hooks*) [2020/09]
-(defmethod output-proofstate :around ((ps proofstate))
-  "output-proofstate is invoked by the prover to print the next subgoal.
-This method provides hooks to create new GUIs.  The call-next-method prints
-the sequent in the *pvs* buffer as usual.  *output-proofstate-interfaces* is a
-list of interface names that are currently open."
-  (with-slots (label comment current-goal) ps
-    ;; For now, always output to *pvs*
-    (call-next-method)
-    (when (and *pvs-emacs-interface*
-	       *pvs-emacs-output-proofstate-p*)
-      (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	     (ps-json (pvs2json ps)))
-	(when (and *pvs-emacs-interface*
-		   *pvs-emacs-output-proofstate-p*)
-	  (let ((ps-string (json:encode-json-alist-to-string ps-json)))
-	    (emacs-output-proofstate ps-string)))))))
-
 (defun emacs-output-proofstate (ps-string)
   (let* ((*output-to-emacs*
 	  ;; action & result & label & sequent
 	  (format nil ":pvs-prfst ~a :end-pvs-prfst"
 	    (write-to-temp-file ps-string))))
     (to-emacs)))
-
-(defun xmlrpc-output-proofstate (ps-json)
-  ;; (format t "~%xmlrpc-output-proofstate called: ~a~%" *ps-control-info*)
-  ;; *ps-control-info* is used for XML-RPC control - set when the prover
-  ;; starts or a command is given for a running proof.
-  (add-psinfo *ps-control-info* ps-json))
-
-(defun finish-proofstate (ps)
-  (let* ((proved? (and (typep ps 'top-proofstate)
-		       (eq (status-flag ps) '!)))
-	 (done-str (if proved? "Q.E.D." "Unfinished")))
-    (when (and *pvs-emacs-interface*
-	       *pvs-emacs-output-proofstate-p*)
-      (format nil ":pvs-prfst ~a :end-pvs-prfst"
-	(write-to-temp-file (if proved? "true" "false"))))
-    ;; M3 moved *ps-control-info* related to specific hooked function (finish-proofstate-rpc-hook) [Sept 2020]
-    ps)
-  ;; notify susbcribers
-  (dolist (hook *finish-proofstate-hooks*)
-    (funcall hook ps)))
 
 ;;; Creates a json form:
 ;;;   {"commentary" : [ strings ],
@@ -768,24 +688,17 @@ list of interface names that are currently open."
 				 (format-printout pps t))))
 	  (num-subgoals (proofstate-num-subgoals ps))
 	  (sequent (pvs2json-seq current-goal pps))
-	  (prev-cmd (let ((wish-rule (wish-current-rule ps))
-			  (parent-ps (parent-proofstate ps)))
+	  (prev-cmd (let ((wish-rule (wish-current-rule ps)))
 		      (cond (wish-rule (format nil "~s" wish-rule))
-			    (parent-ps (format nil "~s" (current-rule parent-ps)))
+			    (pps (format nil "~s" (current-rule pps)))
 			    (t nil))))
 	  (commentary (cond ((eq (status-flag ps) '!)
 			     (list (format nil "This completes the proof of ~a." (label ps))))
-			    (pvs-json::*interrupted-rpc*
-			     (list (if (stringp pvs-json::*interrupted-rpc*)
-				 pvs-json::*interrupted-rpc*
-			       "Proof command application interrupted by client.")))
-			    (t ;; (if (listp *prover-commentary*) (format nil "~{~a~^~%~}" (reverse *prover-commentary*)) *prover-commentary*)
-			       ;;; M3 trying to print *prover-commentary*
-			       ;;; after several rewritings (caused by grind, 
-			       ;;; for example) provokes the "Cannot adjust soft
-			       ;;; stack limit by 81920" error in the rpc server.
-			     (if (listp *prover-commentary*) (reverse *prover-commentary*) (list *prover-commentary*))
-			       ))))
+			    (t 
+			     (if (listp *prover-commentary*)
+				 (reverse *prover-commentary*)
+				 (list *prover-commentary*))
+			     ))))
       `(,@(when commentary
 	    `(("commentary" . ,commentary)))
 	,@(when action `(("action" . ,action)))
@@ -1022,9 +935,18 @@ list of interface names that are currently open."
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
+(define-condition pvs-error (simple-error)
+  ((message :accessor message :initarg :message)
+   (error-string :accessor error-string :initarg :error-string)
+   (file-name :accessor file-name :initarg :file-name)
+   (place :accessor place :initarg :place))
+  (:report (lambda (c stream)
+	     (with-slots (error-string) c
+	       (format stream "~a" error-string)))))
+
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
-  (cond (*parse-error-catch*
+  (cond (*parse-error-catch* ; From with-no-parse-errors macro
 	 (throw *parse-error-catch*
 	   (values nil
 		   (if args
@@ -1070,14 +992,19 @@ list of interface names that are currently open."
 	       (line-begin (place obj))
 	       (col-begin (place obj)))))
 	 (pvs-abort))
-	(t (format t "~%~?~@[~%In file ~a~]~@[~a~]"
-	     message args
-	     (when *current-file* (pathname-name *current-file*))
-	     (when (place obj)
-	       (format nil " (line ~a, col ~a)"
-		 (line-begin (place obj))
-		 (col-begin (place obj)))))
-	   (error "Parse error"))))
+	(t (let* ((file-name (when *current-file* (pathname-name *current-file*)))
+		  (message-str (format nil "~?" message args))
+		  (error-str (format nil "~a~@[~%In file ~a~]~@[~a~]"
+			       message-str file-name
+			       (when (place obj)
+				 (format nil " (line ~a, col ~a)"
+				   (line-begin (place obj))
+				   (col-begin (place obj)))))))
+	     (error 'pvs-error
+		    :message "Parser error"
+		    :error-string error-str
+		    :file-name file-name
+		    :place (place obj))))))
 
 (defvar *type-error* nil)
 (defvar *type-error-argument* nil)
@@ -1133,8 +1060,20 @@ list of interface names that are currently open."
 		 (line-begin (place obj))
 		 (col-begin (place obj)))))
 	   (pvs-abort))
-	  (t (format t "~%~a" errmsg)
-	     (error "Typecheck error")))))
+	  (t (let* ((file-name (when *current-file*
+				 (format nil "~a~a.pvs" (current-path) *current-file*)))
+		    (message-str (format nil "~?" message args))
+		    (error-str (format nil "~a~@[~%In file ~a~]~@[~a~]"
+				 message-str file-name
+				 (when (place obj)
+				   (format nil " (line ~a, col ~a)"
+				     (line-begin (place obj))
+				     (col-begin (place obj)))))))
+	       (error 'pvs-error
+		      :message "Typecheck error"
+		      :error-string error-str
+		      :file-name file-name
+		      :place (place obj)))))))
 
 (defun plain-type-error (obj message &rest args)
   (let ((*skip-all-conversion-checks* t))
