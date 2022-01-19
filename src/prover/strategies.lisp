@@ -273,13 +273,13 @@
     (cond (primitive
 	   (format t "~%~a exists as a primitive rule.  It cannot be redefined." name))
 	  (rule
-	   (format-if "~%~a exists as a defined rule." name))
+	   (format t "~%~a exists as a defined rule." name))
 	  (strat
-	   (format-if "~%~a exists as a strategy." name)))
+	   (format t "~%~a exists as a strategy." name)))
     (cond (primitive (format t "~%No change. "))
 	  (t (if (or rule strat)
-		 (format-if "~%Redefining ~a. " name)
-		 (format-if "~%Defining ~a. " name))
+		 (format t "~%Redefining ~a. " name)
+		 (format t "~%Defining ~a. " name))
 	     (if rule (remhash name *rules*))
 	     (if strat (remhash name *steps*))
 	     #+lucid (record-source-file name 'strategy)
@@ -3563,17 +3563,15 @@ replaces each expri in the sequent with the corresponding namei."
     
 (defstep trace (&rest names)
   (let ((dummy (loop for name in names do (pushnew name *ruletrace*)))
-	(msg (format nil "Tracing ~a" (format-list-of-items names))))
+	(msg (format nil "Tracing ~a." (format-list-of-items names))))
     (skip-msg msg))
   "Traces rules or proof steps given by NAMES."
   "")
 
-
-
 (defstep untrace (&rest names)
   (let ((msg (if names
-		 (format nil "Untracing ~a" (format-list-of-items names))
-		 (format nil "Untracing everything: ~a"
+		 (format nil "Untracing ~a." (format-list-of-items names))
+		 (format nil "Untracing everything: ~a."
 		   (format-list-of-items *ruletrace*))))
 	(dummy (if names
 		   (loop for name in names do (setq *ruletrace*
@@ -3902,30 +3900,33 @@ in the given fnums."
 
 (defun disequality? (expr)(disequation? expr))
 
-(defvar *decomposable-formulas-tried*)
-
-(defun decomposable-equality? (fmla)
-  (unless (memq fmla *decomposable-formulas-tried*)
-    (prog1 (and (or (equation? fmla)
-		    (disequality? fmla))
-		(or (typep (find-supertype (type (args1 fmla)))
-			   '(or funtype recordtype tupletype cotupletype))
-		    (adt? (find-supertype
-			   (type (args1 fmla))))))
-      (push fmla *decomposable-formulas-tried*))))
+(defun decomposable-equality? (formula)
+  (let ((fmla (if (negation? formula) (args1 formula) formula)))
+    (and (or (equation? fmla)
+	     (disequality? fmla))
+	 (or (typep (find-supertype (type (args1 fmla)))
+		    '(or funtype recordtype tupletype cotupletype))
+	     (adt? (find-supertype
+		    (type (args1 fmla))))))))
 
 (defstep decompose-equality (&optional (fnum *) (hide? t)
 				       &inherit simplify replace* grind)
-  (let ((*decomposable-formulas-tried* nil)
-	(sforms (select-seq (s-forms (current-goal *ps*))
-			    (if (memq fnum '(* + -)) fnum
-				(list fnum))))
-	(fm (find-if
-		#'(lambda (sf)
-		    (or (decomposable-equality? (formula sf))
-			(and (negation? (formula sf))
-			     (decomposable-equality? (args1 (formula sf))))))
-	      sforms))
+  (let ((sforms (find-all-sformnums (s-forms (current-goal *ps*))
+				    (if (memq fnum '(* + -)) fnum (list fnum))
+				    #'decomposable-equality?)))
+    (decompose-equality-helper sforms hide?))
+  "Decomposes an equality or disequality to the component equalities.
+This only works for equalities between functions, records, or tuples.  If
+HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
+the consequents or a disequality in the antecedents then this simply
+invokes apply-extensionality.  Otherwise it decomposes the
+ (dis)equality into its component equalities."
+  "Applying decompose-equality")
+
+(defhelper decompose-equality-helper (&optional dfnums (hide? t)
+						&inherit simplify replace* grind)
+  (let ((sforms (select-seq (s-forms (current-goal *ps*)) (car dfnums)))
+	(fm (car sforms))
 	(ffm (when fm (formula fm)))
 	(equality? (when fm
 		     (or (equation? ffm)
@@ -3967,7 +3968,7 @@ in the given fnums."
 		      (then (flatten) (replace* :hide? nil)
 			    (grind :defs nil :if-match nil :hide? nil)))))
 	 (skip)
-	 (decompose-equality))
+	 (decompose-equality-helper (cdr dfnums)))
 	(skip-msg "Couldn't find a suitable equation")))
   "Decomposes an equality or disequality to the component equalities.
 This only works for equalities between functions, records, or tuples.  If
