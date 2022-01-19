@@ -660,9 +660,11 @@ difficult."
     (do-all-theories #'(lambda (th)
 			 (let ((decls (get-find-declaration-info id th)))
 			   (setq declarations (append decls declarations)))))
-    (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (fdecl-string (json:encode-json-to-string declarations)))
-      fdecl-string)))
+    declarations
+    ;; (let* ((json:*lisp-identifier-name-to-json* #'identity)
+    ;; 	   (fdecl-string (json:encode-json-to-string declarations)))
+    ;;   fdecl-string)
+    ))
 
 ;; (defun get-declaration-at (fileref pos)
 ;;   "fileref is a reference, relative to the current-context, with extension
