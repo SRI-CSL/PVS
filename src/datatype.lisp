@@ -964,7 +964,13 @@ generated")
 	  (setf (con-decl constr) cdecl))))))
 
 (defun mk-dactuals (dfmls)
-  (mapcar #'(lambda (dp) (mk-actual (type-value dp))) dfmls))
+  (mapcar #'mk-actual dfmls))
+
+(defmethod mk-actual ((dfml formal-type-decl))
+  (mk-actual (type-value dfml)))
+
+(defmethod mk-actual ((dfml formal-const-decl))
+  (mk-actual (type dfml)))
 
 (defun generate-adt-constructor-type (constr dacts thinst)
   (if (arguments constr)
