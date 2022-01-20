@@ -205,7 +205,7 @@
 ;;------------------------------------------------------
 
 ;; run yices on file: print file name, answer from yices, and run-time
-(defun test (file)
+(defun test-nlyices (file)
   (format t "~%TEST: ~A~%" (file-namestring file))
   (let ((real-t0 (get-internal-real-time))
 	(run-t0 (get-internal-run-time))
