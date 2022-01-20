@@ -971,11 +971,12 @@ resolution with a macro matching the signature of the arguments."
 	(unless (eq *generate-tccs* 'none)
           (generate-assuming-tccs nthinst expr theory)
           ;; Compare the given actuals with those determined by the typechecker
-          (if (and (eq theory (current-theory))
-                   (actuals expr)
-                   (null (actuals nthinst)))
-              (check-local-actuals (actuals expr) (formals-sans-usings theory))
-              (generate-actuals-tccs (actuals expr) (actuals nthinst))))
+          (when (and (eq theory (current-theory))
+		     (formals-sans-usings theory))
+            (if (and (actuals expr)
+                     (null (actuals nthinst)))
+		(check-local-actuals (actuals expr) (formals-sans-usings theory))
+		(generate-actuals-tccs (actuals expr) (actuals nthinst)))))
 	nthinst))))
 
 (defmethod set-type-maps ((modinst modname) &optional theory)
