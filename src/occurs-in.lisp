@@ -67,6 +67,12 @@
       te
       (occurs-in obj (expr te))))
 
+(defmethod occurs-in (obj (te type-application))
+  (if (tc-eq obj te)
+      te
+      (or (occurs-in obj (type te))
+	  (occurs-in obj (parameters te)))))
+
 (defmethod occurs-in ((obj subtype) (te subtype))
   (or (when (tc-eq obj te)
 	te)
