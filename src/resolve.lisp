@@ -581,7 +581,16 @@
 
 (defun copy-theory-instance (thinst)
   (copy thinst
-    :actuals (mapcar #'copy (actuals thinst))
+    :actuals (mapcar #'(lambda (a)
+			 (copy a
+			   :expr (copy (expr a))
+			   :type-value (copy (type-value a))))
+	       (actuals thinst))
+    :dactuals (mapcar #'(lambda (a)
+			  (copy a
+			    :expr (copy (expr a))
+			    :type-value (copy (type-value a))))
+		(dactuals thinst))
     :mappings (mapcar #'copy (mappings thinst))))
 
 (defun resolve-with-actuals-old (decl acts dacts dth args mappings)
@@ -916,11 +925,39 @@ decl, args, and mappings."
 	     (mthinsts (if mappings
 			   (create-theorynames-with-name-mappings
 			    (module decl) thinsts mappings)
-			   thinsts)))
-	(mapcan #'(lambda (thinst)
-		    (compatible-arguments?
-		     decl thinst args (current-theory)))
-	  mthinsts))))
+			   thinsts))
+	     ;; (old-result (mapcan #'(lambda (thinst)
+	     ;; 			     (compatible-arguments?
+	     ;; 			      decl thinst args (current-theory)))
+	     ;; 		   mthinsts))
+	     (new-result (decl-args-compatible* decl mthinsts args)))
+	;; (assert (every #'(lambda (thi) (member thi old-result :test #'tc-eq)) new-result))
+	;; (unless (every #'(lambda (thi) (member thi new-result :test #'tc-eq)) old-result)
+	;; (when new-result (break "decl-args-compatible?"))
+	new-result)))
+
+(defun decl-args-compatible* (decl mthinsts args &optional fixed-thinsts comp-thinsts)
+  "mthinsts is a list of theory instances; not all are fully-instantiated."
+  (if (null mthinsts)
+      (or (nreverse fixed-thinsts) (nreverse comp-thinsts))
+      (let ((cathinsts (compatible-arguments? decl (car mthinsts) args (current-theory))))
+	(assert (or (null cathinsts)
+		    (not (fully-instantiated? (car mthinsts)))
+		    (and (decl-formals decl) (null (formals-sans-usings (module decl))))
+		    (every #'(lambda (cath)
+			       (or (tc-eq cath (car mthinsts))
+				   (fully-instantiated? cath)))
+			   cathinsts)))
+	(if (fully-instantiated? (car mthinsts))
+	    (when cathinsts
+	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
+	    (dolist (thinst cathinsts)
+	      (if (and (fully-instantiated? thinst)
+		       (or (member thinst (cdr mthinsts) :test #'tc-eq)
+			   (member thinst comp-thinsts :test #'tc-eq)))
+		  (pushnew thinst fixed-thinsts :test #'tc-eq)
+		  (pushnew thinst comp-thinsts :test #'tc-eq))))
+	(decl-args-compatible* decl (cdr mthinsts) args fixed-thinsts comp-thinsts))))
 
 (defun create-theorynames-with-name-mappings (th thinsts mappings
 						 &optional mthinsts)
@@ -1058,14 +1095,17 @@ decl, args, and mappings."
 			       (same-id (expr act) (type (car tres))))
 		      (setf (mod-id (type (car tres)))
 			    (mod-id (expr act)))
-		      (setf (actuals (type (car tres)))
-			    (actuals (expr act)))
-		      (setf (dactuals (type (car tres)))
-			    (dactuals (expr act))))
+		      (unless (actuals (type (car tres)))
+			(setf (actuals (type (car tres)))
+			      (actuals (expr act))))
+		      (unless (dactuals (type (car tres)))
+			(setf (dactuals (type (car tres)))
+			      (dactuals (expr act)))))
 		    (when (and (place (expr act))
 			       (null (place (type (car tres)))))
 		      (setf (place (type (car tres))) (place (expr act))))
-		    (setf (type-value act) (type (car tres)))
+		    (unless (type-value act)
+		      (setf (type-value act) (type (car tres))))
 		    (push 'type (types (expr act))))))))))))
 
 (defmethod typecheck-actual ((ex set-expr) act expected kind arguments)
@@ -1091,7 +1131,7 @@ decl, args, and mappings."
 		      (args (arguments app))
 		      (*typechecking-actual* t)
 		      (tval (typecheck*
-			     (make-instance 'type-application
+			     (make-instance 'type-application 
 			       :type tn
 			       :parameters (copy-untyped args))
 			     nil nil nil)))
