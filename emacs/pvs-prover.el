@@ -895,16 +895,13 @@ As of PVS 3.0, formulas may have multiple proofs attached, and one of them
 is always the default.  The show-proofs-pvs-file command displays all the
 default proof scripts of all the formulas of the specified PVS file.  See
 also display-proofs-pvs-file, which allows access to all the proofs, not
-just the defaults.  With an argument, shows proofs of all formulas and
-theories of the .prf file, even those that are (no longer) part of the
-corresponding .pvs file."
-  (interactive (complete-pvs-file-name "Show proofs of PVS file named: "))
-  (when (pvs-send-and-wait (format "(show-proofs-pvs-file \"%s\" %s)"
-			       filename (and current-prefix-arg t))
-			   nil nil 'bool))
+just the defaults."
+  (interactive "fShow proofs of PVS file named: ")
+  (when (pvs-send-and-wait (format "(show-proofs-pvs-file \"%s\")" filename)
+			   nil nil 'bool)
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
-    (use-local-map pvs-show-proofs-map))
+    (use-local-map pvs-show-proofs-map)))
 
 (defpvs show-proofs-theory edit-proof (theoryname)
   "Displays all the default proof scripts of the theory

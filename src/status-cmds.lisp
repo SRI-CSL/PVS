@@ -29,8 +29,6 @@
 
 (in-package :pvs)
 
-(export '(pc-complete))
-
 (defvar *unproved-dependings* nil)
 (defvar *proved-dependings* nil)
 (defvar *defn-dependings* nil)
@@ -593,15 +591,9 @@
 	   "complete")
 	  (t "incomplete"))))
 
-(defun show-proofs-pvs-file (fileref &optional all?)
+(defun show-proofs-pvs-file (fileref)
   (with-pvs-file (file) fileref
-    (let* ((all-proofs (read-pvs-file-proofs file))
-	   (proofs (if all-proofs
-		       (if all?
-			   all-proofs
-			   (proofs-with-associated-decls file all-proofs))
-		       (collect-theories-proofs
-			(cdr (gethash file (current-pvs-files)))))))
+    (let* ((proofs (read-pvs-file-proofs file)))
       (cond (proofs
 	     (setq *displayed-proofs* proofs)
 	     (pvs-buffer "Show Proofs"
@@ -612,23 +604,20 @@
 		   (show-all-proofs-file proofs outstr valid?)))
 	       'popto t)
 	     t)
-	    (all-proofs
-	     (pvs-message "None of the proofs in this file have a formula -~
-                         include an argument to see them anyway"))
 	    (t (pvs-message "No proofs found in this file"))))))
 
-(defun proofs-with-associated-decls (file proofs)
-  (let ((alist (theory-formula-alist file))
-	(aproofs nil))
-    (dolist (thproof proofs)
-      (let ((entry (assq (car thproof) alist)))
-	(when entry
-	  (let ((fproofs (remove-if #'(lambda (fpr)
-					(not (memq (car fpr) (cdr entry))))
-			   (cdr thproof))))
-	    (when fproofs
-	      (push (cons (car thproof) fproofs) aproofs))))))
-    (nreverse aproofs)))
+;; (defun proofs-with-associated-decls (file proofs)
+;;   (let ((alist (theory-formula-alist file))
+;; 	(aproofs nil))
+;;     (dolist (thproof proofs)
+;;       (let ((entry (assq (car thproof) alist)))
+;; 	(when entry
+;; 	  (let ((fproofs (remove-if #'(lambda (fpr)
+;; 					(not (memq (car fpr) (cdr entry))))
+;; 			   (cdr thproof))))
+;; 	    (when fproofs
+;; 	      (push (cons (car thproof) fproofs) aproofs))))))
+;;     (nreverse aproofs)))
 
 (defun theory-formula-alist (file)
   (let* ((theories (cdr (gethash file (current-pvs-files))))
@@ -647,31 +636,29 @@
 			     (mapcar #'fe-id (te-formula-info te))))
 	     (ce-theories ce))))))
 
-(defun show-proofs-theory (theoryref &optional all?)
+(defun show-proofs-theory (theoryref)
   (with-pvs-file (file theoryname) theoryref
-    (let* ((th (get-theory (or theoryname file)))
+    (let* ((thname (or theoryname file)) 
+	   (th (get-theory thname))
 	   (proofs (if th
 		       (collect-theories-proofs (list th))
-		       (let ((all-proofs (when file (read-pvs-file-proofs file))))
-			  (if all-proofs
-			      (if all?
-				  all-proofs
-				  (proofs-with-associated-decls file all-proofs)))))))
+		       (when file (read-pvs-file-proofs file)))))
       (cond (proofs
 	     (setq *displayed-proofs* proofs)
 	     (pvs-buffer "Show Proofs"
 	       (with-output-to-string (outstr)
-		 (format outstr "Proof scripts for theory ~a:" theoryname)
-		 (let ((valid? (or th (valid-proofs-file (context-entry-of theoryname))))
-		       (thproofs (assq (intern theoryname :pvs) proofs)))
-		   (show-all-proofs-theory (car thproofs) (cdr thproofs)
-					   outstr valid?)))
+		 (format outstr "Proof scripts for theory ~a:" thname)
+		 (let ((valid? (or th
+				   (let ((ce (context-entry-of thname)))
+				     (and ce (valid-proofs-file ce)))))
+		       (thproofs (assq (intern thname :pvs) proofs)))
+		   (show-all-proofs-theory thname (cdr thproofs) outstr valid?)))
 	       'popto t)
 	     t)
 	    (file (pvs-message "No proofs found in this theory"))
 	    (t (pvs-message "Theory not found in context; may need to retypecheck."))))))
 
-(defun show-proofs-importchain (theoryref &optional all?)
+(defun show-proofs-importchain (theoryref)
   (with-pvs-file (file theoryname) theoryref
     (let* ((imports (context-usingchain (or theoryname file)))
 	   (files (delete-duplicates (mapcar #'context-file-of imports)
@@ -680,7 +667,7 @@
 			      (let ((ce (context-entry-of ff)))
 				(and ce (valid-proofs-file ce))))
 			  files))
-	   (proofs (get-importchain-proofs theoryname imports files all?)))
+	   (proofs (get-importchain-proofs theoryname imports files)))
       (cond (proofs
 	     (setq *displayed-proofs* proofs)
 	     (pvs-buffer "Show Proofs"
@@ -692,15 +679,12 @@
 	     t)
 	    (t (pvs-message "No proofs found in this file"))))))
 
-(defun get-importchain-proofs (theoryname imports files &optional all?)
+(defun get-importchain-proofs (theoryname imports files)
   (declare (ignore theoryname))
   (let ((all-proofs nil))
     (dolist (file files)
       (let* ((proofs (read-pvs-file-proofs file))
-	     (vproofs (if proofs
-			  (if all?
-			      proofs
-			      (proofs-with-associated-decls file proofs))
+	     (vproofs (or proofs
 			  (collect-theories-proofs
 			   (cdr (gethash file (current-pvs-files)))))))
 	(setq all-proofs
@@ -714,20 +698,21 @@
 
 (defun show-all-proofs-file (proofs outstr valid?)
   (when proofs
-    (show-all-proofs-theory (caar proofs) (cdar proofs) outstr valid?)
+    (show-all-proofs-theory (string (caar proofs)) (cdar proofs) outstr valid?)
     (show-all-proofs-file (cdr proofs) outstr valid?)))
 
 (defun show-all-proofs-theory (theoryref proofs outstr valid?)
   (with-pvs-file (file theoryname) theoryref
-    (let* ((te (get-context-theory-entry (or theoryref file)))
+    (let* ((thname (or theoryname file))
+	   (te (get-context-theory-entry thname))
 	   (finfo (when te (te-formula-info te)))
-	   (th (get-theory theory)))
+	   (th (get-theory thname)))
       (cond (th
 	     (show-all-proofs-theory* outstr proofs (all-decls th) th))
 	    (finfo
-	     (show-all-proofs-theory-ctx outstr proofs finfo theory valid?))
+	     (show-all-proofs-theory-ctx outstr proofs finfo thname valid?))
 	    (t
-	     (show-all-proofs-nostatus outstr theory proofs))))))
+	     (show-all-proofs-nostatus outstr thname proofs))))))
 
 ;; (defun show-all-proofs-nostatus (outstr theoryid proofs)
 ;;   (dolist (prf proofs)
@@ -1387,14 +1372,15 @@
 
 (defun show-all-proofs-nostatus (outstr theoryid proofs)
   (dolist (prf proofs)
-    (format outstr "~3%~a.~a~2%"
-      theoryid (car prf))
-    (write (get-editable-justification
-	    (convert-proof-form-to-lowercase prf))
-	   :stream outstr :pretty t :escape t :level nil :length nil
-	   :pprint-dispatch *proof-script-pprint-dispatch*)))
+    (format outstr "~2%~a.~a~%" theoryid (car prf))
+    (let ((script (get-editable-justification
+		   (convert-proof-form-to-lowercase prf))))
+      (write script
+	     :stream outstr :pretty t :escape t :level nil :length nil
+	     :pprint-dispatch *proof-script-pprint-dispatch*))))
 
 (defun get-editable-justification (prf)
+  "Gets the editable justification of the default proof"
   (if (integerp (cadr prf))
       (let ((mprf (nth (cadr prf) (cddr prf))))
 	(editable-justification
@@ -1576,3 +1562,105 @@
       (collect-proof-used-declarations*
        (cdr list)
        (collect-proof-used-declarations* (car list) used))))
+
+
+;; Want to generate JSON form
+;; { "prf-file": "foo.prf",
+;;   "theory-proofs": [{ "theory-id" : "thid",
+;;                       "formula-proofs" : [{ "formula-id": "id",
+;;                                             "proof-script" : "script" },
+;;                                           ... }]
+;;                     ... }]
+;; }
+
+(defun get-proof-scripts (fileref)
+  (with-pvs-file (file) fileref
+    (let* ((proofs (read-pvs-file-proofs file)))
+      (make-proof-scripts
+       :pvs-file (format nil "~a/~a.pvs" (current-path) file)
+       :theory-scripts (get-proof-file-scripts proofs)))))
+
+(defun get-proof-file-scripts (file-proofs &optional scripts-form)
+  (if (null file-proofs)
+      (nreverse scripts-form)
+      (let ((th-scripts (get-theory-scripts (car file-proofs))))
+	(get-proof-file-scripts (cdr file-proofs) (cons th-scripts scripts-form)))))
+
+(defun get-theory-scripts (theory-scripts)
+  (make-theory-scripts
+   :theory-id (car theory-scripts)
+   :formula-scripts (get-formula-scripts (cdr theory-scripts))))
+
+(defun get-formula-scripts (formula-scripts &optional scripts-forms)
+  (if (null formula-scripts)
+      (nreverse scripts-forms)
+      (let ((fscript (get-formula-script (car formula-scripts))))
+	(get-formula-scripts (cdr formula-scripts) (cons fscript scripts-forms)))))
+
+(defun get-formula-script (formula-script)
+  (make-formula-script
+   :formula-id (car formula-script)
+   :formula-script (get-editable-justification
+		    (convert-proof-form-to-lowercase formula-script))))
+
+
+(defmethod json:encode-json ((ps proof-scripts) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:pvs-file stream)
+      (json:encode-json (pscripts-pvs-file ps) stream))
+    (json:as-object-member (:theory-scripts stream)
+      (json:encode-json (pscripts-theory-scripts ts) stream))))
+
+(defmethod json:encode-json ((ts theory-scripts) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:theory-id stream)
+      (json:encode-json (tscripts-id ps) stream))
+    (json:as-object-member (:formula-scripts stream)
+      (json:encode-json (tscripts-formula-scripts ts) stream))))
+
+(defmethod json:encode-json ((fs formula-script) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:formula-id stream)
+      (json:encode-json (fscript-formula-id fs) stream))
+    (json:as-object-member (:formula-script stream)
+      (json:encode-json (fscript-formula-script ts) stream))))
+
+(defun get-all-library-stats ()
+  (mapcar #'(lambda (ws) (cons ws (hash-table-count (pvs-theories ws))))
+    *all-workspace-sessions*))
+
+(defun get-library-stats (lib)
+  (if (string= lib :prelude)
+      (let ((libstats #(0 0 0 0 0 0)))
+	(dolist (th *prelude-theories*)
+	  (let ((thstats (get-theory-stats th)))
+	    (setq libstats (map 'vector '+ libstats thstats))))
+	libstats)
+      (with-workspace lib
+	(typecheck-file "top")
+	(let ((libstats #(0 0 0 0 0)))
+	  (maphash #'(lambda (id th)
+		       (let ((thstats (get-theory-stats th)))
+			 (setq libstats (map 'vector '+ libstats thstats))))
+		   (current-pvs-theories))
+	  libstats))))
+
+(defun get-theory-stats (theory)
+  (let ((defs 0) (thms 0) (tccs 0) (fml-steps 0) (tcc-steps 0))
+    (dolist (decl (all-decls theory))
+      (typecase decl
+	(const-decl (when (definition decl) (incf defs)))
+	(tcc-decl (incf tccs)
+		  (incf tcc-steps (formula-numberof-steps decl)))
+	(formula-decl (unless (axiom? decl)
+			(incf thms)
+			(incf fml-steps (formula-numberof-steps decl))))))
+    (list defs thms tccs fml-steps tcc-steps)))
+
+(defun formula-numberof-steps (decl)
+  (if (and (default-proof decl)
+	   (script (default-proof decl)))
+      (let* ((scr (script (default-proof decl)))
+	     (ejust (editable-justification scr)))
+	(numberof-steps ejust))
+      0))
