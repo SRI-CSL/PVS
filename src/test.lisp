@@ -120,6 +120,34 @@
 	(unless (xref:get-relation :calls :wild x)
 	  (format t "~%~a is unreferenced" x))))))
 
+(defun all-external-symbols (pkg)
+  (let ((ext-symbs nil))
+    (do-symbols (x (find-package pkg))
+      (multiple-value-bind (sym stat) 
+	  (find-symbol (string x) pkg)
+	(when (eq stat :external)
+	  (push sym ext-symbs))))
+    ext-symbs))
+
+(defun doc (symbol)
+  (dolist (doctype '(variable function structure type setf)) ; cltl2, p. 752
+    (let ((doc (documentation symbol doctype)))
+      (when doc
+	(format t "~%~a: ~a ~a~%~a~%"
+	  symbol doctype
+	  (case doctype
+	    (variable (symbol-value symbol))
+	    (function
+	     #+allegro (excl::func_formals (symbol-function symbol))
+	     #-allegro "unknown args")
+	    (structure
+	     (break "check"))
+	    (type
+	     (break "type"))
+	    (setf
+	     (break "setf")))
+	  doc)))))
+
 (defparameter *ignored-special-variables*
   '(*integer* *real* *posint* *naturalnumber* *number_field* *even_int*
     *number* *odd_int* *boolean* *false* *true* *pvs-directories*
