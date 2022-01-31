@@ -29,8 +29,6 @@
 
 (in-package :pvs)
 
-(export '(gensubst gensubst* mapobject mapobject*))
-
 (defvar *gensubst-cache* (make-hash-table :test #'eq))
 
 (defvar *dont-expand-adt-subtypes* nil)
@@ -200,17 +198,20 @@ behavior:
     'measure (gensubst* (measure decl) substfn testfn)
     'ordering (gensubst* (ordering decl) substfn testfn)))
 
-(defmethod gensubst* ((type dep-binding) substfn testfn)
-  (let ((ntype (if *visible-only*
-		   (type type)
-		   (gensubst* (type type) substfn testfn))))
-    (if (and (not (null (type type)))
-	     (eq ntype (type type))
-	     (not *visible-only*))
-	type
-	(let ((dtype (let ((*dont-expand-adt-subtypes* t))
-		       (gensubst* (declared-type type) substfn testfn))))
-	  (lcopy type 'type ntype 'declared-type dtype)))))
+(defmethod gensubst* ((te dep-binding) substfn testfn)
+  (if (and (not *parsing-or-unparsing*)
+	   (type te))
+      (let ((ntype (if *visible-only*
+		     (type te)
+		     (gensubst* (type te) substfn testfn))))
+	(if (eq ntype (type te))
+	    te
+	    (let ((dtype (let ((*dont-expand-adt-subtypes* t))
+			   (gensubst* (declared-type te) substfn testfn))))
+	      (lcopy te :type ntype :declared-type dtype))))
+      (let ((dtype (let ((*dont-expand-adt-subtypes* t))
+		     (gensubst* (declared-type te) substfn testfn))))
+	(lcopy te :declared-type dtype))))
 
 (defmethod gensubst* ((te type-name) substfn testfn)
   (declare (ignore substfn testfn))
@@ -229,7 +230,8 @@ behavior:
 (defmethod gensubst* ((te expr-as-type) substfn testfn)
   (let ((nexpr (gensubst* (expr te) substfn testfn)))
     (lcopy te
-      'expr (if (or *parsing-or-unparsing*
+      'expr (if (or (null (type (expr te))) ; not yet typechecked
+		    *parsing-or-unparsing*
 		    *visible-only*
 		    (eq nexpr (expr te)))
 		nexpr
@@ -274,11 +276,18 @@ behavior:
 	(lcopy te 'formula nform))))
 
 (defmethod gensubst* ((te funtype) substfn testfn)
-  (let* ((types (list (domain te) (range te)))
-	 (ntypes (gensubst* types substfn testfn)))
-    (if (eq types ntypes)
-	te
-	(copy te 'domain (car ntypes) 'range (cadr ntypes)))))
+  (let* ((dom (gensubst* (domain te) substfn testfn))
+	 (ran (gensubst* (range te) substfn testfn)))
+    (assert (eq (dep-binding? (domain te)) (dep-binding? dom)))
+    (lcopy te
+      :domain dom
+      :range (if (and (not *parsing-or-unparsing*)
+		      (dep-binding? dom)
+		      (type dom)
+		      ;;(fully-typed? ran)
+		      )
+		 (substit ran (acons (domain te) dom nil))
+		 ran))))
 
 (defmethod gensubst* ((te tupletype) substfn testfn)
   (let ((types (gensubst* (types te) substfn testfn)))
