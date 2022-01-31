@@ -29,14 +29,6 @@
 
 (in-package :pvs)
 
-;;(proclaim '(inline resolution))
-
-(export '(argument* copy-all copy-context current-declarations-hash
-	  current-theory current-theory-name current-using-hash file-older
-	  find-supertype get-theory lf make-new-context mapappend operator*
-	  prover-status put-decl pvs-current-directory resolution show assq tc-term
-	  formals pvs-git-description ref-to-id next-proof-id make-default-proof))
-
 (declaim (notinline current-theory))
 
 (defun flatten-list (obj)
@@ -91,6 +83,9 @@ is replaced with replacement."
   (dolist (file (directory dir))
     (when (string-equal (pathname-type file) "pvs")
       (status-proof-pvs-file (pathname-name file) t))))
+
+(defun current-path ()
+  (path *workspace-session*))
 
 (defun current-pvs-files ()
   (pvs-files *workspace-session*))
@@ -398,15 +393,13 @@ is replaced with replacement."
 
 (defun special-variable-p (obj)
   (and (symbolp obj)
+       #+allegro (eq (sys:variable-information obj) :special)
+       #+sbcl (if (fboundp 'sb-cltl2:variable-information)
+		  (eq (sb-cltl2:variable-information obj) :special)
+		  (sb-walker:var-globally-special-p obj))
        #+lucid (system:proclaimed-special-p obj)
-       #+kcl (system:specialp obj)
-       #+(and allegro (version>= 7)) (or (excl::variable-special-p obj nil)
-					 (constantp obj))
-       #+(and allegro (version>= 6) (not (version>= 7)))
-       (excl::variable-special-p obj nil)
-       #+(and allegro (not (version>= 6))) (clos::variable-special-p obj nil)
        #+cmu (eq (extensions:info variable kind obj) :special)
-       #+sbcl (sb-walker:var-globally-special-p obj)
+       #+kcl (system:specialp obj)
        #+harlequin-common-lisp (system:declared-special-p obj)
        #-(or lucid kcl allegro harlequin-common-lisp cmu sbcl)
        (error "Need to handle special variables for this version of lisp")
@@ -3895,6 +3888,11 @@ space")
   ;;(or (types expr) (and (type expr) (list (type expr))))
   )
 
+(defun bytestring-to-string (str)
+  (let ((octets (map '(vector (unsigned-byte 8)) #'char-code str)))
+    #+allegro (excl:octets-to-string octets)
+    #+sbcl (babel:octets-to-string octets)))
+
 (defun split-on (pred list)
   (split-on* pred list nil nil))
 
@@ -4071,6 +4069,13 @@ space")
   (let ((depth 0))
     (mapobject #'(lambda (ex) (declare (ignore ex)) (incf depth) nil) expr)
     depth))
+
+(defun iso8601-date (&optional (time (get-universal-time)))
+  (multiple-value-bind (sec min hour date month year day-of-week dst time-zone)
+      (decode-universal-time time)
+    (declare (ignore day-of-week dst))
+    (format nil "~4d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d~@d"
+      year month date hour min sec time-zone)))
 
 (defun date-string (time)
   (multiple-value-bind (sec min hour date month year day-of-week dst time-zone)
@@ -4570,7 +4575,7 @@ space")
 	(setf (default-proof fdecl) (car (proofs fdecl)))
 	(make-default-proof fdecl script id description))))
 
-(defun make-default-proof (fdecl script &optional id description)
+(defun make-prf-info (fdecl script &optional id description)
   (let* ((pid (or id (next-proof-id fdecl)))
 	 (prinfo (if (tcc-decl? fdecl)
 		     (make-tcc-proof-info (or script (tcc-strategy fdecl))
@@ -4579,6 +4584,10 @@ space")
 				      pid description))))
     (setf (decision-procedure-used prinfo) *default-decision-procedure*)
     (push prinfo (proofs fdecl))
+    prinfo))
+
+(defun make-default-proof (fdecl script &optional id description)
+  (let ((prinfo (make-prf-info fdecl script id description)))
     (setf (default-proof fdecl) prinfo)))
 
 (defun next-proof-id (fdecl &optional (num 1))
@@ -4957,13 +4966,19 @@ space")
 ;; }
 
 (defun pvs-meta-info ()
-  `((:pvs-version . ,*pvs-version*)
-    (:pvs-path . ,*pvs-path*)
-    (:lisp-version . ,(lisp-implementation-version))
-    (:emacs-version . :unknown)
-    (:lisp-exec ,(get-lisp-exec-info))
-    (:lisp-patches ,(get-patches-info))
-    (:strategies-files ,(cdr (assq :strategies *files-loaded*)))))
+  (lcons :pvs-version *pvs-version*
+	 :pvs-path *pvs-path*
+	 :lisp-version (lisp-implementation-version)
+	 :emacs-version (pvs-emacs-eval "(emacs-version)")
+	 :pvs-executable (get-file-ref (car (uiop:raw-command-line-arguments)))
+	 :lisp-patches (get-patches-info)
+	 :strategies-files (mapcar #'get-file-ref
+			     (cdr (assq :strategies *files-loaded*)))
+	 :pvs-environment-variables (mapcan #'(lambda (var)
+						(let ((val (environment-variable var)))
+						  (when val
+						    (list (cons var val)))))
+				      *pvs-environment-variables*)))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
@@ -4976,8 +4991,17 @@ space")
 (defun get-file-ref (file)
   (let ((path (probe-file file)))
     (if path
-	(list (namestring file) (get-file-git-sha1 path))
-	(list (namestring file) ""))))
+	(lcons :file (namestring file)
+	       :git-sha1 (get-file-git-sha1 path))
+	(lcons :file (namestring file)))))
+
+(defun lcons (&rest args)
+  (lcons* args nil))
+
+(defun lcons* (args alist)
+  (if (null args)
+      (nreverse alist)
+      (lcons* (cddr args) (acons (car args) (cadr args) alist))))
 
 (defun pvs-git-description ()
   "E.g., pvs7.0-647-g8c1572bb"
