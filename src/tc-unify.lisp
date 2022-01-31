@@ -504,7 +504,8 @@ returns the updated bindings."
 		       (tc-match-type-name-dactuals
 			d1 d2 arg farg (or abindings bindings))
 		       abindings))))
-	      ((let ((binding (call-next-method farg arg bindings)))
+	      ((not *tc-match-strictly*)
+	       (let ((binding (call-next-method farg arg bindings)))
 		 binding))))))
 
 (defun tc-match-type-name-dactuals (d1 d2 arg farg bindings)
@@ -841,8 +842,8 @@ returns the updated bindings."
 (defmethod tc-match* ((arg funtype) (farg funtype) bindings)
   (declare (type list bindings))
   (unless (null bindings)
-    (tc-match* (range arg) (range farg)
-	       (let ((*tc-match-strictly* t))
+    (let ((*tc-match-strictly* t))
+      (tc-match* (range arg) (range farg)
 		 (tc-match* (domain arg) (domain farg) bindings)))))
 
 (defmethod tc-match* ((arg tupletype) (farg tupletype) bindings)
