@@ -107,7 +107,7 @@ always t from there."
 	    (let ((fe (get-context-file-entry filename)))
 	      (when fe
 		(setf (ce-object-date fe) nil)
-		(setf (current-pvs-context-changed) t))))
+		(setf (pvs-context-changed *workspace-session*) t))))
 	  ;; We've made all the changes, clear out the info as it isn't valid anymore.
 	  (setq *add-declaration-info* nil)
 	  (when *to-emacs*
@@ -161,7 +161,7 @@ always t from there."
   (when (some #'importing? new-decls)
     ;; need to reset things up the importing chain
     (reset-importing-chains theory)
-    (setf (current-pvs-context-changed) t)))
+    (setf (pvs-context-changed *workspace-session*) t)))
 
 (defun reset-importing-chains (theory)
   (reset-importing-chains* theory)
@@ -502,7 +502,7 @@ always t from there."
 		  (ignore-errors (delete-file (make-binpath filename)))
 		  (when fe
 		    (setf (ce-object-date fe) nil)
-		    (setf (current-pvs-context-changed) t)))
+		    (setf (pvs-context-changed *workspace-session*) t)))
 		(list filename oplace))))
 	  (pvs-message "File has been modified"))
       (pvs-message "Not adding declaration")))
