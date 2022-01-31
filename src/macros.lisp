@@ -29,9 +29,6 @@
 
 (in-package :pvs)
 
-(export '(length= singleton? add-to-alist makesym get-declarations put-decl
-	  get-importings))
-
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*
      (if *to-emacs*
@@ -293,6 +290,50 @@ After exiting, all of these are reverted to their previous values."
 ;; 	       (set-working-directory ,orig-dir)))
 ;; 	   (error "Directory ~a does not exist" ,dirstr)))))
 
+(defun parse-referent (refobj)
+  "Given a ref string of the form dir/fname.ext#id1#id2, this returns the
+values fname dir ext id1 id2. Note that any of them may be missing down to a
+single name, which will be returned as the fname. Examples:
+  dir/fname.ext#id1#id2 => fname dir/ ext id1 id2
+  lib@fname.ext#id1#id2 => fname ldir/ ext id1 id2   ldir from PVS_LIBRARY_PATH
+  lib@fname.ext#id1#id2 => fname lib@ ext id1 id2    with '@' attached
+  fname#id1#id2         => fname nil nil id1 id2
+  fname#id1             => fname nil nil id1
+  fname                 => fname
+"
+  (let* ((ref (typecase refobj
+		(symbol (string refobj))
+		(pathname (namestring refobj))
+		(t refobj)))
+	 (args (split ref #\#))
+	 (path (car args))
+	 (dir (cond ((find #\/ path) ;; always a directory - note that it could contain '@'
+		     (subseq path 0 (1+ (position #\/ path :from-end t))))
+		    ((find #\@ path) ;; lib@file - try to look it up in PVS_LIBRARY_PATH
+		     (or (get-library-reference
+			  (subseq path 0 (position #\@ path)))
+			 (subseq path 0 (1+ (position #\@ path)))))))
+	 (file (cond ((find #\/ path)
+		      (subseq path (1+ (position #\/ path :from-end t))))
+		     ((find #\@ path)
+		      (subseq path (1+ (position #\@ path))))
+		     (t path)))
+	 (epos (search ".pvs" file :from-end t :test #'string-equal))
+	 (name (if (and epos
+			(= epos (- (length file) 4)))
+		   (subseq file 0 epos)
+		   file))
+	 (ext (when (and epos
+			 (= epos (- (length file) 4)))
+		"pvs")))
+    (assert name)
+    (unless (or (null ext) (string-equal ext "pvs"))
+      ;; Not a pvs extension, we push it back to the name in case
+      ;; name.ext.pvs is the actual filename, and "pvs" was omitted.
+      (setq name (format nil "~a.~a" name ext))
+      (setq ext nil))
+    (values-list (cons name (cons dir (cons ext (cdr args)))))))
+
 (defmacro with-pvs-file (vars context-ref &rest body)
   "context-ref is generally a string with a filename reference followed by
 any number of args separated by #.  The idea is that the contex-ref is at
@@ -305,45 +346,16 @@ vars are associated to the parts of this string.  Hence
 will pull out the directory, file, and theory, use with-workspace to
 temporarily change to that directory, and then execute body with fname bound
 to sum.pvs and thname bound to sum."
-  (let ((cref (gentemp))
-	(args (gentemp))
-	(path (gentemp))
-	(dir (gentemp))
-	(name (gentemp))
-	(ext (gentemp))
-	(msg (gentemp)))
-    `(let* ((,cref (typecase ,context-ref
-		     (symbol (string ,context-ref))
-		     (pathname (namestring ,context-ref))
-		     (t ,context-ref)))
-	    (,args (split ,cref #\#))
-	    (,path (car ,args))
-	    (,dir (uiop:pathname-directory-pathname ,path))
-	    (,name (pathname-name ,path))
-	    (,ext (pathname-type ,path))
-	    (,(car vars) ,name)
-	    ,@(let ((cnt 0))
-		(mapcar #'(lambda (v) (list v `(nth ,(incf cnt) ,args))) (cdr vars))))
-       (unless (or (pathname-equal ,dir #p"")
-		   (directory-p ,dir))
-	 (let ((,msg (format nil "with-pvs-file error: bad directory ~a" ,dir)))
-	   (pvs-error ,msg ,msg)))
-       (unless (or (null ,ext) (string-equal ,ext "pvs"))
-	 ;; The name could be, e.g., foo.bar, and is intended to refer to
-	 ;; foo.bar.pvs.  So rather than give an error, we just treat it as
-	 ;; the name, with nil type
-	 (setq ,name (uiop:strcat ,name "." ,ext))
-	 (setq ,ext nil)
-	 (setq ,(car vars) ,name))
-       ;; (let ((fpath (make-pathname :name ,name :type ,ext :defaults ,dir)))
-       ;; 	 (unless (file-exists-p fpath)
-       ;; 	   (let ((err (format nil "~a not found" fpath)))
-       ;; 	     (pvs-error "Typecheck error" err))))
-       (cond ((or (pathname-equal ,dir #p"")
-		  (pathname-equal ,dir (current-context-path)))
-	      ,@body)
-	     (t (with-workspace ,dir
-		  ,@body))))))
+  (let ((dir (gentemp)))
+    `(multiple-value-bind (,@vars) ;; name dir ext #1 #2 ...
+	 (parse-referent ,context-ref)
+       (let ((,dir ,(cadr vars)))
+	 (cond ((or (null ,dir)
+		    (pathname-equal ,dir #p"")
+		    (pathname-equal ,dir (current-context-path)))
+		,@body)
+	       (t (with-workspace ,dir
+		    ,@body)))))))
 	 
 
 (defmacro add-to-alist (key entry alist)
