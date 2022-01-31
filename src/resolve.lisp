@@ -1151,6 +1151,18 @@ decl, args, and mappings."
 		(type-value act))
       (type-error (or obj app) error))))
 
+(defmethod typecheck-actual ((name injection-expr) act expected kind arguments)
+  (typecheck* name expected kind arguments))
+
+(defmethod typecheck-actual ((name injection?-expr) act expected kind arguments)
+  (typecheck* name expected kind arguments)
+  (when (plusp (parens name))
+    (setf (type-value act)
+	  (typecheck* (make-instance 'expr-as-type :expr name) nil nil nil))))
+
+(defmethod typecheck-actual ((name extraction-expr) act expected kind arguments)
+  (typecheck* name expected kind arguments))
+
 (defmethod typecheck-actual ((ex expr) act expected kind arguments)
   ;; with-no-type-errors not needed here;
   ;; the expr typechecks iff the expr-as-type does.
