@@ -856,6 +856,9 @@ not a dir: if a valid id
   (let* ((libstr (typecase libref
 		   (symbol (string libref))
 		   (pathname (namestring libref))
+		   (string (if (char= (char libref (1- (length libref))) #\@)
+			       (subseq libref 0 (1- (length libref)))
+			       libref))
 		   (t libref)))
 	 (ws (find libref *all-workspace-sessions* :key #'path :test #'equal))
 	 (dirp (if ws libref (directory-p libstr)))    ; directory exists
