@@ -82,12 +82,12 @@
 ;;; ILISP dialect definition code.
 ;;;
 
-(require 'cl)
+(require 'cl-lib)
 
 ;;;%Dialects
 (defun lisp-add-dialect (dialect)
   "Add DIALECT as a supported ILISP dialect."
-  (when (not (member* dialect ilisp-dialects :key #'car :test #'equal))
+  (when (not (cl-member dialect ilisp-dialects :key #'car :test #'equal))
     (setq ilisp-dialects
 	  (cons (list dialect) ilisp-dialects))))
 
@@ -149,7 +149,7 @@ inferior LISP.  PARENT is the name of the parent dialect."
   (lisp-mode)
   (setq ilisp-buffer (format "*%s*" buffer))
   (when ilisp-*enable-ilisp-special-frame-p*
-    (push ilisp-buffer special-display-buffer-names))
+    (push ilisp-buffer display-buffer-alist))
   (set-buffer (get-buffer-create ilisp-buffer))
   (setq major-mode 'ilisp-mode
 	mode-name "ILISP")

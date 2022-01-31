@@ -11,7 +11,7 @@
 ;;;
 ;;; $Id$
 
-(require 'cl)
+(require 'cl-lib)
 
 (defun ilisp-process ()
   "Return the current ILISP process."
@@ -38,7 +38,7 @@
       (or (get-buffer ilisp-buffer)
 	  (get-buffer
 	   (setq ilisp-buffers
-		 (delete* (substring ilisp-buffer
+		 (cl-delete (substring ilisp-buffer
 				     1 
 				     (1- (length ilisp-buffer)))
 			  ilisp-buffers 

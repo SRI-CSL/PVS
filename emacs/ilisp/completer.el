@@ -79,7 +79,7 @@
 ;;;
 
 
-(require 'cl)
+(require 'cl-lib)
 
 ;;;%Globals
 ;;;%%Switches
@@ -490,12 +490,12 @@ matches will always be returned."
 		   (let* ((choices
 			   (all-completions new 'read-file-name-internal))
 			  (choicep choices))
-		     (if (member* (first choicep) completer-dot-dot-list
-				  :test #'string=)
+		     (if (cl-member (first choicep) completer-dot-dot-list
+				    :test #'string=)
 			 (cdr (cdr choicep))
 		       (while (cdr choicep)
-			 (if (member* (second choicep) completer-dot-dot-list
-				      :test #'string=)
+			 (if (cl-member (second choicep) completer-dot-dot-list
+					:test #'string=)
 			     (rplacd choicep nil))
 			 (setq choicep (cdr choicep)))
 		       choices))
@@ -668,21 +668,20 @@ and should return a string."
       (with-output-to-temp-buffer "*Completions*"
 	(if (cdr choices) 
 	    (funcall completion-display-completion-list-function
-	     (sort
-	      (if display
-		  (let ((old choices)
-			(new nil))
-		    (while old
-		      (setq new (cons (funcall display (car old)) new)
-			    old (cdr old)))
-		    new)
-		(copy-sequence choices))
-	      (function (lambda (x y)
-			  (string-lessp (or (car-safe x) x)
-					(or (car-safe y) y)))))))
+		     (sort
+		      (if display
+			  (let ((old choices)
+				(new nil))
+			    (while old
+			      (setq new (cons (funcall display (car old)) new)
+				    old (cdr old)))
+			    new)
+			  (copy-sequence choices))
+		      (function (lambda (x y)
+			(string-lessp (or (car-safe x) x)
+				      (or (car-safe y) y)))))))
 	(if match
-	    (save-excursion
-	      (set-buffer "*Completions*")
+	    (with-current-buffer "*Completions*"
 	      (goto-char (point-min))
 	      (let ((buffer-read-only nil))
 		(insert "Guess = " match (if (cdr choices) ", " "") "\n")))))

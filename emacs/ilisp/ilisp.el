@@ -91,7 +91,7 @@
 ;; Ivan Vazquez, Fred White
 
 
-(require 'cl)
+;;(require 'cl)
 
 (load "ilcompat" nil noninteractive)                       ; emacs version specific stuff
 (load "comint-ipc" nil noninteractive)                     ; comint IPC extensions

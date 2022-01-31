@@ -11,7 +11,7 @@
 ;;;
 ;;; $Id$
 
-(require 'cl)
+(require 'cl-lib)
 
 ;;; clisp-hs-check-prompt doesn't after the first break because the
 ;;; number of ">" characters doesn't increase.

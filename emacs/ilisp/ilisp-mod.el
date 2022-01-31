@@ -13,7 +13,7 @@
 
 ;;;%ilisp-mode
 
-(require 'cl)
+(require 'cl-lib)
 
 (defun ilisp-byte-code-to-list (function)
   "Returns a list suitable for passing to make-byte-code from FUNCTION."
@@ -113,9 +113,9 @@ Takes the program name from the variable ilisp-program.
 	(rplaca (car comint-send-queue) 
 		(function (lambda ()
 			    (run-hooks 'ilisp-init-hook-local))))
-	(setq ilisp-initialized (delete* ilisp-buffer ilisp-initialized
+	(setq ilisp-initialized (cl-delete ilisp-buffer ilisp-initialized
 					 :test #'equal))
-	(unless (member* names ilisp-buffers :key #'car)
+	(unless (cl-member names ilisp-buffers :key #'car)
 	  (setq ilisp-buffers (cons (list names) ilisp-buffers)))
 	;;;;;;;;;;;;(lisp-pop-to-buffer ilisp-buffer)  ;;;; evil
 	(setq start (window-start (selected-window))

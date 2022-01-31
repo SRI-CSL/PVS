@@ -11,7 +11,7 @@
 ;;;
 ;;; $Id$
 
-(require 'cl)
+(require 'cl-lib)
 
 ;;; return-ilisp --
 ;;; It's too bad that this function copies so much code from comint-send-input.

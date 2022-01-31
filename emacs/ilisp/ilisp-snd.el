@@ -19,7 +19,7 @@
 ;;;
 ;;; 19990824 Marco Antoniotti
 
-(require 'cl)
+(require 'cl-lib)
 
 (defvar *ILISP-default-package* "COMMON-LISP-USER")
 

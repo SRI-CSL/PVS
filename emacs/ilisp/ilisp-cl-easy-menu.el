@@ -71,7 +71,7 @@
 ;> 	    (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
 ;> 	   (not (featurep 'ilisp-easy-menu)))
 
-(require 'cl)
+(require 'cl-lib)
 (require 'easymenu)
 
 ;; (eval-when (load compile eval)
@@ -202,9 +202,9 @@
 
 (defun ilisp-insert-menu (menu where what)
   "Insert WHAT into MENU after WHERE"
-  (if (position what menu)
+  (if (cl-position what menu)
       menu
-    (let ((i (position (assoc where menu) menu)))
+    (let ((i (cl-position (assoc where menu) menu)))
       (setq i    (1+ i)
 	    menu (append (butlast menu (- (length menu) i))
 			 (list what)

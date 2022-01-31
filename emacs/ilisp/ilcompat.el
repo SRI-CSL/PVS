@@ -10,7 +10,7 @@
 ;;;
 ;;; $Id$
 
-(require 'cl)
+(require 'cl-lib)
 
 ;;; Global definitions/declarations
 

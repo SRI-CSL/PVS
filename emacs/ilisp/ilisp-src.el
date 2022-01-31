@@ -10,7 +10,7 @@
 ;;;
 ;;; $Id$
 
-(require 'cl)
+(require 'cl-lib)
 
 ;;; See ilisp.el for more information.
 
@@ -125,8 +125,7 @@ string put that in the buffer."
 	    (let ((buffers (buffer-list)))
 	      (while buffers
 		(let ((buffer (car buffers)))
-		  (if (save-excursion 
-			(set-buffer buffer) 
+		  (if (with-current-buffer buffer
 			(and (memq major-mode lisp-source-modes)
 			     (buffer-file-name buffer)))
 		      (progn (insert ?\") (insert (buffer-file-name buffer))

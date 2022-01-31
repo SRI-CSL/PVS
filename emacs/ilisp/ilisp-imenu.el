@@ -10,7 +10,7 @@
 ;;;
 ;;; $Id: ilisp-imenu.el,v 1.5 2002/01/31 14:56:45 mna Exp $
 
-(require 'cl)
+(require 'cl-lib)
 (require 'imenu)
 
 ;;; modified for a better display of function+arglist! 
@@ -42,8 +42,7 @@ Returns t for rescan and otherwise a position number."
 	       (function
 		(lambda ()
 		  (let ((buffer (current-buffer)))
-		    (save-excursion
-		      (set-buffer "*Completions*")
+		    (with-current-buffer "*Completions*"
 		      (setq completion-reference-buffer buffer)))))))
 	  ;; Make a completion question
 	  (setq name (completing-read prompt
@@ -105,7 +104,7 @@ ilisp-*user-function-defining-forms*")
   "Build an optimal regular expression to match tokens used to define
 things of class KEY, which can be `:types' or `:variables'."
   (regexp-opt (mapcar #'symbol-name
-		      (remove-duplicates
+		      (cl-remove-duplicates
 		       (ecase key
 			 (:types (append ilisp-*type-defining-forms*
 					 ilisp-*user-type-defining-forms*))

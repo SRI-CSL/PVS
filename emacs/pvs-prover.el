@@ -60,9 +60,7 @@
 
 (eval-when-compile (require 'pvs-macros))
 
-(or (require 'cl-lib nil :noerr)
-    (require 'cl nil :noerr)
-    (error "This Emacs does not have cl-lib or cl package installed."))
+(require 'cl-lib)
 
 (defvar pvs-in-checker nil
   "Indicates whether the proof checker is currently running.

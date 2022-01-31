@@ -11,7 +11,7 @@
 ;;; $Id$
 
 ;;;%Eval/compile
-(require 'cl)
+(require 'cl-lib)
 
 (defun lisp-send-region (start end switch message status format
 			       &optional handler)
@@ -231,8 +231,8 @@ an ILISP buffer."
 	;; assume cygwin clisp on cygwin (X)Emacs
 	((eq ilisp-dialect 'clisp-hs) file-name)
 	;; => w32 path for non-cygwin lisps only.
-	((string-equal "/cygdrive/" (subseq file-name 0 10))
-	 (concat (subseq file-name 10 11) ":" (subseq file-name 11)))
+	((string-equal "/cygdrive/" (cl-subseq file-name 0 10))
+	 (concat (cl-subseq file-name 10 11) ":" (cl-subseq file-name 11)))
 	(t file-name)))
 
 ;;;
@@ -528,8 +528,7 @@ current directory of the LISP."
 		  lisp-prev-l/c-dir/file (cons default-directory nil))
 	    (message "Default directory is %s" default-directory)))
       (let ((directory
-	     (expand-file-name (save-excursion
-				 (set-buffer (or buffer (current-buffer)))
+	     (expand-file-name (with-current-buffer (or buffer (current-buffer))
 				 default-directory))))
 	(ilisp-send 
 	 (format (ilisp-value 'ilisp-set-directory-command) directory)
@@ -554,8 +553,7 @@ current directory of the LISP."
   (ilisp-init t)
   (let* ((extension (ilisp-value 'ilisp-binary-extension t))
 	 (binary (lisp-file-extension file-name extension)))
-    (save-excursion
-      (set-buffer (ilisp-buffer))
+    (with-current-buffer (ilisp-buffer)
       (unless (eq comint-send-queue comint-end-queue)
         (if (y-or-n-p "Abort commands before loading? ")
             (abort-commands-lisp)
@@ -610,8 +608,7 @@ name of FILE and buffer match, select that buffer."
 		 (setq position (match-end 0)))
 	       (setq filename (substring file position))))
     (while buffers
-      (save-excursion 
-	(set-buffer (car buffers))
+      (with-current-buffer (car buffers)
 	(let* ((name (and (not no-name) (buffer-name)))
 	       (buffer-file (buffer-file-name))
 	       (buffer-expanded
@@ -697,7 +694,7 @@ symbol after the symbol has been typed in followed by #\\Space."
                   string))))
 	   (symbol (lisp-symbol-name ilisp-symbol-avec-package))
            (package (lisp-symbol-package ilisp-symbol-avec-package)))
-      (flet ((no-arglist-output-p ()
+      (cl-flet ((no-arglist-output-p ()
                (or (and last-char 
                         (or;; don't do silly things after comment character
                           (equal last-char " ;")
