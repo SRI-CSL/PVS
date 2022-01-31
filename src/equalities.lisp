@@ -1247,6 +1247,26 @@
 (defmethod compatible?* :around ((etype type-expr) (atype out-type-variable))
   t)
 
+;; Need to deal with subtypes
+(defmethod compatible?* ((atype tup-type-variable) (etype subtype))
+  (compatible?* atype (find-supertype etype)))
+
+(defmethod compatible?* ((atype subtype) (etype tup-type-variable))
+  (compatible?* (find-supertype atype) etype))
+
+(defmethod compatible?* ((atype proj-type-variable) (etype subtype))
+  (compatible?* atype (find-supertype etype)))
+
+(defmethod compatible?* :around ((atype subtype) (etype proj-type-variable))
+  (compatible?* (find-supertype atype) etype))
+
+(defmethod compatible?* ((atype cotup-type-variable) (etype subtype))
+  (compatible?* atype (find-supertype etype)))
+
+(defmethod compatible?* ((etype subtype) (atype cotup-type-variable))
+  (compatible?* (find-supertype atype) etype))
+
+
 (defmethod compatible?* ((l1 list) (l2 list))
   (and (length= l1 l2)
        (every #'compatible?* l1 l2)))
