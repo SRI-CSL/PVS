@@ -1609,9 +1609,10 @@ field-decls, etc."
   (if (lambda-expr? (operator expr))
       (let ((exprstr (unpindent expr 4 :string t)))
 	(type-error expr
-	  "Type mismatch in LET bindings~
-           ~%    ~a~2%  Binding types: ~{~a~%~^~12T~}  Argument types: ~a"
+	  "Type mismatch in LET expr bindings for~
+           ~%    ~a~2%  Bindings ~a, types: ~{~a~%~^~12T~}  Argument types: ~a"
 	  exprstr
+	  (bindings (operator expr))
 	  (mapcar #'type (bindings (operator expr)))
 	  (mapcar #'(lambda (arg)
 		      (car (ptypes arg)))
