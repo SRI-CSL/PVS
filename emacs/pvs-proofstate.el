@@ -209,7 +209,7 @@ windows are displayed properly."
   (setq current-proofstate-display-style style))
 
 (defun pvs-proofstate-display (&optional reset)
-  (case current-proofstate-display-style
+  (cl-case current-proofstate-display-style
     (0-frame (pvs-proofstate-0-frame reset))
     (1-frame (pvs-proofstate-1-frame reset))
     (2-frame (pvs-proofstate-2-frame reset))

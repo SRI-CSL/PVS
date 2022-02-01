@@ -177,7 +177,7 @@ expressions from current proof buffer."
   (let ((arglist (rule-formal-args strat)) (arg-val nil)
 	(markers (list (point-marker))) (index 0))
    (cl-flet ((emit-arg (incr str)
-	       (when incr (incf index))
+	       (when incr (cl-incf index))
 	       (goto-pvs-proof-buffer)
 	       (goto-char (point-max))
 	       (push (point-marker) markers)
@@ -192,16 +192,16 @@ expressions from current proof buffer."
 	           (setf mode 'collecting)))
 	      (t (setf arg-val (get-mixed-strat-arg index arglist))
 		 (cond ((consp arg-val)
-			(case (car arg-val)
-			  ((next-arg) (incf index))
-			  ((skip-opt) (incf index) (setf mode 'skipping))
+			(cl-case (car arg-val)
+			  ((next-arg) (cl-incf index))
+			  ((skip-opt) (cl-incf index) (setf mode 'skipping))
 			  ((done) (setf done t)))
 			(emit-arg nil (format " \"%s\"" (cdr arg-val))))
 		       ((equal arg-val "\\")
 			(unless (zerop index)
 			  (kill-region (car markers) (point))
 			  (set-marker (pop markers) nil)
-			  (decf index)))
+			  (cl-decf index)))
 		       ((equal arg-val ".") (setf done t))
 		       ((equal arg-val ";") (setf mode 'skipping))
 		       ((equal arg-val "")
@@ -346,7 +346,7 @@ expression and insert it into the *pvs* buffer."
 ;; results after an invocation via pvs-send*.
 
 (defun accept-find-any-status (status)
-  (case status
+  (cl-case status
     (bad-syntax (message "No syntactically valid subexpressions found."))
     (no-match   (message "Not a valid subexpression of current sequent.")))
   nil)
@@ -360,7 +360,7 @@ expression and insert it into the *pvs* buffer."
 (defun accept-find-any (segment)
   (if (symbolp segment)
       (let ((result (apply #'concat (reverse find-any-segments)))
-	    (patt-format (case segment
+	    (patt-format (cl-case segment
 			   (plain   " %S")
 			   (ee-form " (~ %S)"))))
 	(when patt-format (insert (format patt-format result)))

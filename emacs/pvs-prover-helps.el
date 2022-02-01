@@ -930,7 +930,7 @@ step-pat. Error if no matching step found."
 	(while (and (null found-it)
 		    (< (point) (point-max)))
 	  (pvs-prover-goto-next-step)
-	  (incf num)
+	  (cl-incf num)
 	  (let ((end (save-excursion (forward-sexp 1) (point))))
 	    (when (re-search-forward step-pat end t)
 	      (setq found-it t)))

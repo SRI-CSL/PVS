@@ -150,7 +150,7 @@ string that matches the pattern will be used.")
 (defvar completer-mode nil "Last completer mode.")
 (defvar completer-result nil "Last completer result.")
 
-(eval-when (eval load compile)
+(eval-when-compile
   (if (not (fboundp 'completion-display-completion-list-function))
       (setf completion-display-completion-list-function
 	    'display-completion-list)))

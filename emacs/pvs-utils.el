@@ -1698,7 +1698,7 @@ Point will be on the offending delimiter."
 		     (pvs-message "Checking for%s expected output"
 		       (if (null (cdr expected-list))
 			   ""
-			   (case (incf count)
+			   (cl-case (cl-incf count)
 			     (1 " 1st") (2 " 2nd") (3 " 3rd")
 			     (t (format " %dth" count)))))
 		     (let ((foundit nil))
@@ -1722,7 +1722,7 @@ Point will be on the offending delimiter."
 			   ""
 			   (let ((pos (position exp unexpected-list
 						:test 'equal)))
-			     (case pos
+			     (cl-case pos
 			       (0 " 1st") (1 " 2nd") (2 " 3rd")
 			       (t (format " %dth" (+ pos 1)))))))
 		     (let ((foundit nil))
@@ -2013,7 +2013,7 @@ existence and time differences to be whitespace")
 ;; 	(set-buffer "pvs")
 ;; 	(goto-char (point-min))
 ;; 	(message (buffer-string))))
-    (when timeout (decf timeout))
+    (when timeout (cl-decf timeout))
     (sleep-for 1)))
 
 (defun pvs-message (control-string &rest data)

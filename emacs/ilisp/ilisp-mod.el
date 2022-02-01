@@ -72,7 +72,7 @@
 (defun lisp-command-args (command-line)
   "Break up COMMAND-LINE into (command args ...)"
   (condition-case nil
-      (loop with start = 0
+      (cl-loop with start = 0
             while start
             for pos = (string-match "\\S-" command-line start)
             while pos

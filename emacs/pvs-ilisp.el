@@ -114,7 +114,7 @@ intervenes."
 
 (defun pvs-init ()
   (setq ilisp-prefix-match t)
-  (case (intern (getenv "PVSLISP"))
+  (cl-case (intern (getenv "PVSLISP"))
     (allegro (pvsallegro "pvs" nil))
     (cmulisp (pvscmulisp "pvs" nil))
     (sbclisp (pvssbclisp "pvs" nil))
@@ -680,7 +680,7 @@ window."
 		      (goto-char (point-max)))))
 		(if (= (point-min) (point-max))
 		    (message "PVS sent an empty buffer")
-		    (case (intern display)
+		    (cl-case (intern display)
 		      ((nil NIL) nil)
 		      ((popto POPTO)
 		       (pop-to-buffer buf)
@@ -850,7 +850,7 @@ window."
 	(push ch chars)
 	(when (= ch ?\")
 	  (push ?\\ chars))
-	(decf pos)))
+	(cl-decf pos)))
     (concat chars)))
 
 (defun resize-info-buffer ()
@@ -874,7 +874,7 @@ window."
       (dotimes (i lines)
 	(end-of-line)
 	(when (> (current-column) width)
-	  (incf num))
+	  (cl-incf num))
 	(beginning-of-line)
 	(forward-line 1)))
     (+ lines num)))
@@ -955,7 +955,7 @@ window."
 	(pvs-emacs-query 'query prompt)
 	(comint-simple-send
 	 (ilisp-process)
-	 (case query (?! ":auto") (?y "t") (t "nil"))))))
+	 (cl-case query (?! ":auto") (?y "t") (t "nil"))))))
 
 (defun pvs-make-items (item-list)
   (mapcar #'(lambda (x) (cons (cadr x) (caddr x)))
@@ -1058,7 +1058,7 @@ This displays information about the PVS command queue in the minibuffer."
 	  (when (and (consp form)
 		     (eq (car form) 'progn)
 		     (eq (car (caddr form)) 'pvs-errors))
-	    (push (list (case (car (cadr (caddr form)))
+	    (push (list (cl-case (car (cadr (caddr form)))
 			  (parse-file "ps")
 			  (typecheck-file "tc")
 			  (typecheckall "tca")
@@ -1071,7 +1071,7 @@ This displays information about the PVS command queue in the minibuffer."
 
 (defun pvs-prompt (out)
   (condition-case ()
-      (case (car (read-from-string (car out)))
+      (cl-case (car (read-from-string (car out)))
 	((directory DIRECTORY)
 	 (comint-simple-send (ilisp-process)
 			     (format "\"%s\""
@@ -1315,7 +1315,7 @@ a complete sexp, send it.  Otherwise, indent appropriately."
 	(when (= ch ?\\)
 	  (push ch chars))
 	(push ch chars)
-	(decf pos)))
+	(cl-decf pos)))
     (concat chars)))
 
 

@@ -196,8 +196,7 @@ is put in the send stream.")
   (if (and comint-log
 	   (or comint-log-verbose
 	       (not (string-match comint-noise-regexp string))))
-      (save-excursion
-	(set-buffer (get-buffer-create (process-name process)))
+      (with-current-buffer (get-buffer-create (process-name process))
 	(goto-char (point-max))
 	(if output
 	    (progn
@@ -301,8 +300,7 @@ an error, the prompt will be a list."
   "Update the process STATUS of the current buffer."
   (setq comint-status (format " :%s" status))
   (if comint-show-status
-      (progn
-	(save-excursion (set-buffer (other-buffer)))
+      (with-current-buffer (other-buffer)
 	(sit-for 0))))
 
 ;;;
@@ -775,8 +773,7 @@ It should return the output string.
 
 comint-interrupt-start is a function \(output) that returns the start
 of the interrupt text in output using comint-interrupt-regexp to find it."
-  (save-excursion
-    (set-buffer (process-buffer process))
+  (with-current-buffer (process-buffer process)
     (let* ((inhibit-quit t)
 	   (send (list string 
 		       no-insert
@@ -845,8 +842,7 @@ want to execute synchronous sends in the code or it will lock up. "
 ;;;
 (defun comint-default-send (process string)
   "Send to PROCESS top-level, STRING."  
-  (save-excursion
-    (set-buffer (process-buffer process))
+  (with-current-buffer (process-buffer process)
     (let* ((top (car comint-end-queue))
 	   (old (car top)))
       (rplaca (cdr (cdr (cdr (cdr (car comint-end-queue))))) string)
@@ -887,9 +883,8 @@ shows up in the output stream."
   "Abort all of the pending sends for optional PROCESS and show their
 messages in *Aborted Commands*."
   (interactive)
-  (save-excursion
-    (setq process (or process (get-buffer-process (current-buffer))))
-    (set-buffer (process-buffer process))
+  (setq process (or process (get-buffer-process (current-buffer))))
+  (with-current-buffer (process-buffer process)
     (setq comint-aborting t)
     (if (not (eq comint-send-queue comint-end-queue))
 	(let* ((inhibit-quit t)
@@ -912,14 +907,12 @@ messages in *Aborted Commands*."
 				 send (car (cdr (comint-send-variables send)))
 				 nil (cons nil nil))))
 		    (comint-interrupt-subjob)))) ;Already interrupting
-	  (save-excursion
-	    (set-buffer (get-buffer-create "*Aborted Commands*"))
+	  (with-current-buffer (get-buffer-create "*Aborted Commands*")
 	    (delete-region (point-min) (point-max)))
 	  (while (not (eq pointer comint-end-queue))
 	    (let ((send (car pointer)))
 	      (if (car (cdr (cdr (cdr (cdr send))))) ;Message
-		  (save-excursion
-		    (set-buffer "*Aborted Commands*")
+		  (with-current-buffer "*Aborted Commands*"
 		    (insert (comint-send-description send))
 		    (insert "\n\n")))
 	      (if (and comint-fix-error
@@ -950,8 +943,7 @@ messages in *Aborted Commands*."
   (if showp
       (with-output-to-temp-buffer comint-output-buffer
 	(let ((send comint-send-queue))
-	  (save-excursion
-	    (set-buffer comint-output-buffer)
+	  (with-current-buffer comint-output-buffer
 	    (insert "Pending commands:\n")
 	    (while send
 	      (let ((message (car (cdr (cdr (cdr (cdr (car send))))))))
@@ -968,8 +960,7 @@ messages in *Aborted Commands*."
   "Put TEXT in optional BUFFER and show it in a small temporary window."
   (setq buffer (or buffer comint-output-buffer))
   (with-output-to-temp-buffer buffer
-    (save-excursion
-      (set-buffer buffer)
+    (with-current-buffer buffer
       (insert text)
       (set-buffer-modified-p nil)))
   (ilisp-show-output (get-buffer buffer))
