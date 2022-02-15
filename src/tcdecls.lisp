@@ -176,7 +176,7 @@
 (defmethod typecheck* :around ((decl declaration) expected kind args)
    (declare (ignore expected kind args))
    (cond ((decl-formals decl)
-	  (assert (every #'decl-formal-type? (decl-formals decl)))
+	  (assert (every #'decl-formal? (decl-formals decl)))
 	  (typecheck-decl-formals (decl-formals decl) decl)
 	  ;;(typecheck* (decl-formals decl) nil nil nil)
 	  (dolist (fdecl (decl-formals decl))
@@ -1316,8 +1316,8 @@ In addition, it resets the id, and calls subst-new-map-decl-type to reset the ty
 
 (defmethod typecheck* ((decl type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (when (formals decl)
-    (type-error decl "Uninterpreted types may not have parameters"))
+  ;; (when (formals decl)
+  ;;   (type-error decl "Uninterpreted types may not have parameters"))
   (check-duplication decl)
   (setf (type-value decl)
 	(let* ((dacts (mk-dactuals (decl-formals decl)))
@@ -3266,12 +3266,17 @@ The dependent types are created only when needed."
 			      (declaration (type type))))))
 	     (set-type-for-application-parameters
 	      (parameters type) (car typeslist)))
-	   (let ((tval (substit te (pairlis (car (formals
-						  (declaration (type type))))
-					    (parameters type)))))
+	   (let ((tval (substit te
+			 (pairlis (car (formals (declaration (type type))))
+				  (parameters type))))
+		 (pt (or (substit (print-type te)
+			   (pairlis (car (formals (declaration (type type))))
+				    (parameters type)))
+			 type)))
 	     ;; tval now has the parameters
-	     (unless (print-type tval)
-	       (setf (print-type tval) type))
+	     (unless (and (type-application? pt)
+			  (occurs-in tval (module-instance (type pt))))
+	       (setf (print-type tval) pt))
 	     (when (or (nonempty-type-decl? (declaration (type type)))
 		       (nonempty? type))
 	       (setf (nonempty? tval) t)
