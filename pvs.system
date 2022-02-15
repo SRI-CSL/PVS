@@ -36,10 +36,16 @@
 
 (require :asdf)
 
-(#-(or cmu sbcl excl) progn
- #+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #+excl excl:without-package-locks
+;; Note that these should be available through quicklisp
+(ql:quickload :cl-json)
+(ql:quickload :babel)
+(ql:quickload :clack)
+(ql:quickload :hunchentoot)
+(ql:quickload :websocket-driver)
+(ql:quickload :lparallel)
+(ql:quickload :anaphora)
+
+(unless (fboundp 'defconstant-if-unbound)
  (defmacro defconstant-if-unbound (name value &optional doc)
    `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
 		       ,@(when doc (list doc))))
@@ -94,18 +100,18 @@
 (defpackage :ilisp (:nicknames :ILISP) (:use :common-lisp #+:CMU :conditions))
 (defpackage :bvec)
 
-(assert (find-package :asdf))
+;; (assert (find-package :asdf))
 
 ;;; Load cl-json.  First try from asdf, which should use the asdf location
 ;;; set by the user.  If that fails, use pvs/src/cl-json.
-(handler-case
-    (asdf:load-system :cl-json)
-  (asdf:missing-component ()
-    #+allegro
-    (asdf:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
-    #-allegro
-    (load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
-    (asdf:load-system :cl-json)))
+;; (handler-case
+;;     (asdf:load-system :cl-json)
+;;   (asdf:missing-component ()
+;;     #+allegro
+;;     (asdf:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
+;;     #-allegro
+;;     (load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
+;;     (asdf:load-system :cl-json)))
 
 (in-package :cl-user)
 
@@ -155,15 +161,6 @@
 (defpackage :pvs
   (:use :cl-user :common-lisp :sb-pcl :make)
   (:shadow :type :declaration :number :debug :class :keyword :condition :parse-error :type-error))
-#+sbcl
-(defpackage :pvs-xml-rpc
-  (:use :cl-user :common-lisp :sb-pcl :make)
-  (:export "PVS-SERVER"))
-#+sbcl
-(defpackage :pvs-json
-  (:use :json :cl-user :common-lisp :sb-pcl :make)
-  (:export :process-json-request :json-message :*interrupted-rpc*
-	   :update-ps-control-info-result))
 
 #-(or gcl cmu sbcl)
 (defpackage :rahd (:use :common-lisp #+allegro :excl))
@@ -235,6 +232,8 @@
 		  (generate-ess ergolisp)
 		  #+gcl
 		  (load (format nil "~a/ess/allegro-runtime.lisp" *pvs-path*))
+		  #+(or cmu sbcl)
+		  (load (format nil "~a/packages.lisp" *pvs-path*))
 		  #+allegro (require :loop)
 		  #+gcl (load (format nil "~a/src/loop" *pvs-path*))
 		  #-cmu18
@@ -340,6 +339,8 @@
 		  (:file "defcl")
 		  (:file "classes-expr"
 			 :depends-on ("defcl"))
+		  (:file "pvs-threads"
+			 :depends-on ("defcl"))
 		  (:file "classes-decl"
 			 :depends-on ("defcl"))
 		  (:file "prover/estructures"
@@ -354,7 +355,8 @@
 		  (:file "groundeval/eval-macros")
 		  (:file "globals")
 		  (:file "optimize")
-		  (:file "makes")))
+		  (:file "makes"))
+     :depends-on (packages))
    (:module utils
      :source-pathname "src/utils"
      :components ((:file "hashfn")
@@ -589,11 +591,13 @@
 		  (:file "named-callbacks")
 		  (:file "fcpo")
 		  (:file "nlyices")))
-   #+allegro
-   (:module xmlrpc
+   (:module rpc
      :source-pathname "src/interface"
-     :components ((:file "pvs-json-rpc")
-		  (:file "pvs-json")
+     :components ((:file "pvs-json")
+		  (:file "pvs-json-rpc")
 		  (:file "pvs-json-methods")
-		  (:file "pvs-xml-rpc")))
+		  (:file "pvs-websocket")
+		  ;;#+allegro
+		  ;;(:file "pvs-xml-rpc")
+		  ))
    ))
