@@ -48,8 +48,8 @@
 ;;; Status Theory - called from Emacs
 
 (defun status-theory (theoryref)
-  (with-pvs-file (fname thname) theoryref
-    (pvs-message (theory-status-string (or thname fname)))))
+  (with-theory (thname) theoryref
+    (pvs-message (theory-status-string thname))))
 
 
 ;;; Status PVS File - called from Emacs
@@ -112,8 +112,8 @@
 ;;; Using Status
 
 (defun show-importchain (theoryref)
-  (with-pvs-file (file theoryname) theoryref
-    (let ((te (get-context-theory-entry (or theoryname file))))
+  (with-theory (theoryname) theoryref
+    (let ((te (get-context-theory-entry theoryname)))
       (if te
 	  (let ((*modules-visited* nil)
 		(*disable-gc-printout* t))
@@ -121,7 +121,7 @@
 	      (with-output-to-string (*standard-output*)
 		(show-importchain* (id te)))
 	      t))
-	  (pvs-message "~a is not in the current context" theory)))))
+	  (pvs-message "~a is not in the current context" theoryref)))))
 
 (defun show-importchain* (tid &optional (indent 0))
   (let* ((th (get-theory tid)))
@@ -139,8 +139,8 @@
 
 ;;; Called from Emacs
 (defun status-importchain (theoryref &optional brief?)
-  (with-pvs-file (fname thname) theoryref
-    (let ((te (get-context-theory-entry (or thname fname))))
+  (with-theory (thname) theoryref
+    (let ((te (get-context-theory-entry thname)))
       (if te
 	  (let ((*modules-visited* nil)
 		(*disable-gc-printout* t))
@@ -182,8 +182,8 @@
 ;;; Usedby Status
 ;;; Called from Emacs
 (defun status-importbychain (theoryref &optional brief?)
-  (with-pvs-file (fname thname) theoryref
-    (let ((te (get-context-theory-entry (or thname fname))))
+  (with-theory (thname) theoryref
+    (let ((te (get-context-theory-entry thname)))
       (if te
 	  (let ((*modules-visited* nil)
 		(*disable-gc-printout* t))
@@ -234,9 +234,8 @@
 ;;; Status Proof Theory
 ;;; Called from Emacs
 (defun status-proof-theory (theoryref &optional unproved?)
-  (with-pvs-file (fname thname) theoryref
-    (let* ((theoryname (or thname fname))
-	   (theory (or (get-theory theoryname)
+  (with-theory (theoryname) theoryref
+    (let* ((theory (or (get-theory theoryname)
 		       (get-context-theory-entry theoryname)))
 	   (*disable-gc-printout* t))
       (if theory
@@ -272,8 +271,8 @@
 ;;; Status Proof Importchain
 ;;; Called from Emacs
 (defun status-proof-importchain (theoryref &optional unproved?)
-  (with-pvs-file (fname thname) theoryref
-    (let ((theories (context-usingchain (or thname fname)))
+  (with-theory (thname) theoryref
+    (let ((theories (context-usingchain thname))
 	  (*disable-gc-printout* t))
       (if theories
 	  (pvs-buffer "PVS Status"
@@ -439,8 +438,8 @@
 
 ;;; Called from emacs
 (defun status-proofchain-theory (theoryref)
-  (with-pvs-file (fname thname) theoryref
-    (let ((theory (get-theory (or thname fname)))
+  (with-theory (thname) theoryref
+    (let ((theory (get-theory thname))
 	  (*disable-gc-printout* t))
       (if theory
 	  (pvs-buffer "PVS Status"
@@ -463,8 +462,8 @@
 
 ;;; Called from Emacs
 (defun status-proofchain-importchain (theoryref)
-  (with-pvs-file (fname thname) theoryref
-    (let ((th (get-theory (or thname fname))))
+  (with-theory (thname) theoryref
+    (let ((th (get-theory thname)))
       (if th
 	  (let* ((*current-context* (saved-context th))
 		 (theories (collect-theory-usings thname))
@@ -637,9 +636,8 @@
 	     (ce-theories ce))))))
 
 (defun show-proofs-theory (theoryref)
-  (with-pvs-file (file theoryname) theoryref
-    (let* ((thname (or theoryname file)) 
-	   (th (get-theory thname))
+  (with-theory (thname) theoryref
+    (let* ((th (get-theory thname))
 	   (proofs (if th
 		       (collect-theories-proofs (list th))
 		       (when file (read-pvs-file-proofs file)))))
@@ -659,8 +657,8 @@
 	    (t (pvs-message "Theory not found in context; may need to retypecheck."))))))
 
 (defun show-proofs-importchain (theoryref)
-  (with-pvs-file (file theoryname) theoryref
-    (let* ((imports (context-usingchain (or theoryname file)))
+  (with-theory (theoryname) theoryref
+    (let* ((imports (context-usingchain theoryname))
 	   (files (delete-duplicates (mapcar #'context-file-of imports)
 				     :test #'string=))
 	   (valid? (every #'(lambda (ff)
@@ -702,9 +700,8 @@
     (show-all-proofs-file (cdr proofs) outstr valid?)))
 
 (defun show-all-proofs-theory (theoryref proofs outstr valid?)
-  (with-pvs-file (file theoryname) theoryref
-    (let* ((thname (or theoryname file))
-	   (te (get-context-theory-entry thname))
+  (with-theory (thname) theoryref
+    (let* ((te (get-context-theory-entry thname))
 	   (finfo (when te (te-formula-info te)))
 	   (th (get-theory thname)))
       (cond (th
@@ -1054,7 +1051,7 @@
 	     (flist (mapcar #'(lambda (d)
 				(json-decl-list d (ptype-of d) (module d)))
 		      decls))
-	     (json:*lisp-identifier-name-to-json* #'identity)
+	     (json:*lisp-identifier-name-to-json* 'identity)
 	     (fdecl-string (json:encode-json-to-string (or flist #()))))
 	fdecl-string)
       (pvs-message "~a has not been typechecked" oname)))
@@ -1429,7 +1426,7 @@
 				    (json-decl-list
 				     d (ptype-of d) (module d)))
 			  unused))
-		 (json:*lisp-identifier-name-to-json* #'identity)
+		 (json:*lisp-identifier-name-to-json* 'identity)
 		 (fdecl-string (json:encode-json-to-string flist)))
 	    fdecl-string)
 	  (pvs-message "No unused declarations found for ~a" formularefs)))))
@@ -1460,7 +1457,7 @@
 				      (json-decl-list
 				       d (ptype-of d) (module d)))
 			    decls))
-		   (json:*lisp-identifier-name-to-json* #'identity)
+		   (json:*lisp-identifier-name-to-json* 'identity)
 		   (fdecl-string (json:encode-json-to-string flist)))
 	      fdecl-string)
 	    (pvs-message "No unused declarations found for ~a" (id udecl)))))))

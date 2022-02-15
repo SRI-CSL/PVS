@@ -95,7 +95,7 @@
 	   (print-lisp-defns theoryname (format nil "~a.lisp" basename) t)))))
 
 (defun evaluation-mode (theoryref)
-  (with-pvs-file (fname thname) theoryref
+  (with-theory (thname) theoryref
     (let ((theory (get-theory (or thname fname))))
       (unwind-protect
 	   (if theory

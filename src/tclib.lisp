@@ -53,7 +53,8 @@
     (initialize-workspaces)))
 
 (defun load-core-prelude ()
-  (let ((theories (parse :file *prelude-filename*)))
+  (multiple-value-bind (theories time comments)
+      (parse :file *prelude-filename*)
     (when (and *prelude-theories*
 	       (or ;;(not (length= *prelude-theories* theories))
 		(let ((*current-context* *prelude-context*))

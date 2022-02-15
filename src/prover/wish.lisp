@@ -271,8 +271,8 @@
       (format t "show-proof-commands {~{~a ~}}" commands)))))
 
 (defun x-module-hierarchy (theoryref &optional include-libraries?)
-  (with-pvs-file (fname theoryname) theoryref
-    (let* ((ctheory (get-typechecked-theory (or theoryname fname)))
+  (with-theory (theoryname) theoryref
+    (let* ((ctheory (get-typechecked-theory theoryname))
 	   (*current-context* (context ctheory))
 	   (*modules-visited* nil))
       (pvs-wish-source

@@ -73,12 +73,12 @@ To change output prompt '~a':
 " *pvsio-promptin* *pvsio-promptout*))
 
 (defun evaluation-mode-pvsio (theoryref &optional input tccs? (banner? t))
-  (with-pvs-file (fname thname) theoryref
-    (let ((theory (get-typechecked-theory (or thname fname))))
+  (with-theory (thname) theoryref
+    (let ((theory (get-typechecked-theory thname)))
       (when theory
 	(with-open-file 
 	    (*error-output*
-	     (merge-pathnames (format nil "~a.log" (or thname fname)))
+	     (merge-pathnames (format nil "~a.log" thname))
 	     :direction :output 
 	     :if-does-not-exist :create
 	     :if-exists (if *pvs-emacs-interface* :supersede :append))

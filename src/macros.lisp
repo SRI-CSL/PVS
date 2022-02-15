@@ -242,7 +242,7 @@ After exiting, all of these are reverted to their previous values."
 	(ws (gentemp))
 	(truedir (gentemp))
 	(orig-dir (gentemp)))
-    `(let* ((,lref ,lib-ref)
+    `(let* ((,lref (or ,lib-ref (current-context-path)))
 	    (,lib-path (if (workspace-session? ,lref)
 			   (path ,lref)
 			   (get-library-path ,lref))))
@@ -272,91 +272,40 @@ After exiting, all of these are reverted to their previous values."
 			(set-working-directory ,orig-dir)))))
 	   (error "Library ~a does not exist" (or ,lib-path ,lref))))))
 
-;; (defmacro with-directory (dirstr &rest forms)
-;;   "This has the effect of cd, by creating a context in which
-;; *default-pathname-defaults* and (working-directory) are set to dir, making
-;; it the default."
-;;   (let ((dir (gentemp))
-;; 	(shortdir (gentemp))
-;; 	(orig-dir (gentemp)))
-;;     `(let ((,dir (directory-p ,dirstr)))
-;;        (if ,dir
-;; 	   (let* ((,orig-dir (working-directory))
-;; 		  (,shortdir (shortpath ,dir))
-;; 		  (*default-pathname-defaults* ,shortdir))
-;; 	     (unwind-protect
-;; 		  (progn (set-working-directory ,shortdir)
-;; 			 ,@forms)
-;; 	       (set-working-directory ,orig-dir)))
-;; 	   (error "Directory ~a does not exist" ,dirstr)))))
+(defmacro with-pvs-file (vars pvs-file-ref &rest body)
+  "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
+  'lib@file.pvs', but the 'dir/', 'lib@', and '.pvs' are all optional.
+  'lib' should be found as a subdirectory of the current directory, or in
+  PVS_LIBRARY_PATH. full-name is a variable bound to the absolute pathname."
+  (unless (and (listp vars)
+	       (< (length vars) 3)
+	       (every #'symbolp vars))
+    (error "Wrong form for vars"))
+  (let ((dir (gentemp))
+	(file (car vars)))
+    `(multiple-value-bind (,dir ,file)
+	 (get-pvs-file-ref ,pvs-file-ref)
+       (cond ((pathname-equal ,dir (current-context-path))
+	      ,@body)
+	     (t (with-workspace ,dir
+		  ,@body))))))
 
-(defun parse-referent (refobj)
-  "Given a ref string of the form dir/fname.ext#id1#id2, this returns the
-values fname dir ext id1 id2. Note that any of them may be missing down to a
-single name, which will be returned as the fname. Examples:
-  dir/fname.ext#id1#id2 => fname dir/ ext id1 id2
-  lib@fname.ext#id1#id2 => fname ldir/ ext id1 id2   ldir from PVS_LIBRARY_PATH
-  lib@fname.ext#id1#id2 => fname lib@ ext id1 id2    with '@' attached
-  fname#id1#id2         => fname nil nil id1 id2
-  fname#id1             => fname nil nil id1
-  fname                 => fname
-"
-  (let* ((ref (typecase refobj
-		(symbol (string refobj))
-		(pathname (namestring refobj))
-		(t refobj)))
-	 (args (split ref #\#))
-	 (path (car args))
-	 (dir (cond ((find #\/ path) ;; always a directory - note that it could contain '@'
-		     (subseq path 0 (1+ (position #\/ path :from-end t))))
-		    ((find #\@ path) ;; lib@file - try to look it up in PVS_LIBRARY_PATH
-		     (or (get-library-reference
-			  (subseq path 0 (position #\@ path)))
-			 (subseq path 0 (1+ (position #\@ path)))))))
-	 (file (cond ((find #\/ path)
-		      (subseq path (1+ (position #\/ path :from-end t))))
-		     ((find #\@ path)
-		      (subseq path (1+ (position #\@ path))))
-		     (t path)))
-	 (epos (search ".pvs" file :from-end t :test #'string-equal))
-	 (name (if (and epos
-			(= epos (- (length file) 4)))
-		   (subseq file 0 epos)
-		   file))
-	 (ext (when (and epos
-			 (= epos (- (length file) 4)))
-		"pvs")))
-    (assert name)
-    (unless (or (null ext) (string-equal ext "pvs"))
-      ;; Not a pvs extension, we push it back to the name in case
-      ;; name.ext.pvs is the actual filename, and "pvs" was omitted.
-      (setq name (format nil "~a.~a" name ext))
-      (setq ext nil))
-    (values-list (cons name (cons dir (cons ext (cdr args)))))))
-
-(defmacro with-pvs-file (vars context-ref &rest body)
-  "context-ref is generally a string with a filename reference followed by
-any number of args separated by #.  The idea is that the contex-ref is at
-least a pathname, but could include, e.g. a theoryname, or a place.  The
-vars are associated to the parts of this string.  Hence
-
-  (with-pvs-file (fname thname) \"~/pvs/Examples/sum.pvs#sum\"
-    (show-tccs fname thname))
-
-will pull out the directory, file, and theory, use with-workspace to
-temporarily change to that directory, and then execute body with fname bound
-to sum.pvs and thname bound to sum."
-  (let ((dir (gentemp)))
-    `(multiple-value-bind (,@vars) ;; name dir ext #1 #2 ...
-	 (parse-referent ,context-ref)
-       (let ((,dir ,(cadr vars)))
-	 (cond ((or (null ,dir)
-		    (pathname-equal ,dir #p"")
-		    (pathname-equal ,dir (current-context-path)))
-		,@body)
-	       (t (with-workspace ,dir
-		    ,@body)))))))
-	 
+(defmacro with-theory (vars theory-ref &rest body)
+  "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
+  'lib@file.pvs', but the 'dir/', 'lib@', and '.pvs' are all optional.
+  'lib' should be found as a subdirectory of the current directory, or in
+  PVS_LIBRARY_PATH. full-name is a variable bound to the absolute pathname."
+  (unless (and (listp vars)
+	       (null (cdr vars))
+	       (symbolp (car vars)))
+    (error "with-theory: wrong form for vars"))
+  (let ((dir (gentemp))
+	(file (gentemp))
+	(thname (car vars)))
+    `(multiple-value-bind (,dir ,file ,thname)
+	 (get-theory-ref ,theory-ref)
+       (declare (ignore ,file))
+       (with-workspace ,dir ,@body))))
 
 (defmacro add-to-alist (key entry alist)
   (let ((vkey (gentemp))
