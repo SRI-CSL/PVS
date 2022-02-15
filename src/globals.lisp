@@ -671,3 +671,80 @@ Allowed values are:
   ;; "a = b = c" is "a = b AND b = c".  Remember adding parentheses
   ;; means no chaining.
   '(= /= ≠))
+
+
+(defun current-path ()
+  (path *workspace-session*))
+
+(defun current-pvs-files ()
+  (pvs-files *workspace-session*))
+
+(defun current-pvs-theories ()
+  (pvs-theories *workspace-session*))
+
+(defun current-prelude-libraries ()
+  (prelude-libs *workspace-session*))
+
+(defsetf current-prelude-libraries () (plibs)
+  `(setf (prelude-libs *workspace-session*) ,plibs))
+
+(defun current-subdir-alist ()
+  (when (eq (subdir-alist *workspace-session*) :unbound)
+    (let ((alist
+	   (mapcan #'(lambda (subdir)
+		       (let ((sname (car (last (pathname-directory subdir)))))
+			 (when (and (not (string= sname "pvsbin"))
+				    (valid-pvs-id* sname))
+			   (list (cons subdir (intern sname :pvs))))))
+	     (uiop:subdirectories (path *workspace-session*)))))
+      (setf (subdir-alist *workspace-session*) alist)))
+  (subdir-alist *workspace-session*))
+
+(defun current-pvs-context ()
+  (pvs-context *workspace-session*))
+
+(defsetf current-pvs-context () (pvsctx)
+  `(setf (pvs-context *workspace-session*) ,pvsctx))
+
+(defun current-pvs-context-changed ()
+  (pvs-context-changed *workspace-session*))
+
+(defsetf current-pvs-context-changed () (cc)
+  `(setf (pvs-context-changed *workspace-session*) ,cc))
+
+(defun current-context ()
+  *current-context*)
+
+(defun current-pvs-file ()
+  (when *current-context*
+    (filename (theory *current-context*))))
+
+(defun current-theory ()
+  (when *current-context*
+    (theory *current-context*)))
+
+(defsetf current-theory () (theory)
+  `(if *current-context*
+       (setf (theory *current-context*) ,theory)
+       (error "setf current-theory: *current-context* is nil")))
+
+(defun current-theory-name ()
+  (theory-name *current-context*))
+
+(defun current-theory-name-with-dactuals ()
+  (let ((tname (current-theory-name))
+	(dfmls (decl-formals (current-declaration))))
+    (if dfmls
+	(copy tname :dactuals (mk-dactuals dfmls))
+	tname)))
+
+(defsetf current-theory-name () (name)
+  `(setf (theory-name *current-context*) ,name))
+
+(defun current-theory-name-dacts ()
+  (let ((thname (current-theory-name)))
+    (if (and (current-declaration)
+	     (decl-formals (current-declaration)))
+	(let ((dactuals (mk-dactuals (decl-formals (current-declaration)))))
+	  (copy thname :dactuals dactuals))
+	thname)))
