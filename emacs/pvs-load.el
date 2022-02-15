@@ -47,9 +47,7 @@
        the environment variable PVSIMAGE, set by the pvs shell script")
     (error "PVSIMAGE environment variable must be set"))
 
-(or (require 'cl-lib nil :noerr)
-    (require 'cl nil :noerr)
-    (error "This Emacs does not have cl-lib or cl package installed."))
+(require 'cl-lib)
 
 (require 'comint)
 (setq comint-log t)
@@ -63,6 +61,10 @@
 (defvar-local pvs-theory-modtime nil)
 (defvar-local pvs-prelude nil)
 (defvar-local pvs-buffer-kind nil)
+
+;; (let ((package-user-dir (concat pvs-path "/emacs/elpa")))
+;;   (package-install "promise")
+;;   (package-install "websocket"))
 
 (load "ilisp" nil noninteractive)
 (load "pvs-ilisp" nil noninteractive)
@@ -98,6 +100,7 @@
 (load "manip-debug-utils" nil noninteractive) ; Manip
 ;; No Field Emacs extensions
 (load "prooflite" nil noninteractive) ; ProofLite
+;; (load "pvs-websocket" nil noninteractive)
 
 (or (let ((load-path pvs-original-load-path))
       (load "newcomment" t noninteractive))

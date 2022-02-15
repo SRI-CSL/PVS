@@ -78,9 +78,7 @@
 ;; pvs-do-write-bin-files  - N/A
 ;; pvs-remove-bin-files    - N/A
 
-(or (require 'cl-lib nil :noerr)
-    (require 'cl nil :noerr)
-    (error "This Emacs does not have cl-lib or cl package installed."))
+(require 'cl-lib)
 (eval-when-compile (require 'pvs-macros))
 (provide 'pvs-cmds)
 
@@ -148,12 +146,18 @@ reparsing and retypechecking of the entire importchain."
   (cond ((or (get-pvs-file-buffer filename)
 	     (file-exists-p (pvs-file-name filename)))
 	 (pvs-bury-output)
-	 (pvs-send (format "(typecheck-file \"%s\" %s %s %s nil t)"
-		       filename (and current-prefix-arg t)
-		       prove-tccs-p importchain-p)
-		   nil (pvs-get-abbreviation cmd))
-	 ;;(pvs-check-for-tooltips)
-	 )
+	 (if (and (boundp 'pvs-ws-connection)
+		  (websocket-openp pvs-ws-connection))
+	     (let ((promise (pvs-send-request "typecheck"
+					      (list filename (and current-prefix-arg t)))))
+	       (promise-then promise
+			     (lambda (result) (pvs-message "pvs-typecheck-file: %s" result))))
+	     (pvs-send (format "(typecheck-file \"%s\" %s %s %s nil t)"
+			   filename (and current-prefix-arg t)
+			   prove-tccs-p importchain-p)
+		       nil (pvs-get-abbreviation cmd))
+	     ;;(pvs-check-for-tooltips)
+	     ))
 	(t (message "PVS file %s does not exist" filename))))
 
 ;;; Prettyprinting
