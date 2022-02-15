@@ -694,7 +694,7 @@ difficult."
 						       (ptype-of (car idecl))
 						       (cdr idecl)))
 			   (remove-if-not #'place *list-declarations*)))
-	   (json:*lisp-identifier-name-to-json* #'identity)
+	   (json:*lisp-identifier-name-to-json* 'identity)
 	   (fdecl-string (json:encode-json-to-string declarations)))
       fdecl-string)))
 
@@ -721,7 +721,7 @@ difficult."
 				    (list (json-decl-list d (ptype-of d) th))))
 			    (all-decls th))
 			  declarations))))
-	      (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	      (let* ((json:*lisp-identifier-name-to-json* 'identity)
 		     (fdecl-string (json:encode-json-to-string declarations)))
 		fdecl-string))
 	    (pvs-message "Could not find associated declaration")))
@@ -752,7 +752,7 @@ place set."
 			 (setq declarations
 			       (append (get-whereis-info sym th)
 				       declarations))))
-    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+    (let* ((json:*lisp-identifier-name-to-json* 'identity)
 	   (fdecl-string (json:encode-json-to-string declarations)))
       fdecl-string)))
 
@@ -1127,7 +1127,7 @@ place set."
 (defun names-info (fileref)
   (with-pvs-file (pvs-file) fileref
     (let ((info (collect-pvs-file-decls-info pvs-file))
-	  (json:*lisp-identifier-name-to-json* #'identity))
+	  (json:*lisp-identifier-name-to-json* 'identity))
       (json:encode-json-to-string info))))
 
 (defun collect-pvs-file-decls-info (pvs-file)
@@ -1529,7 +1529,7 @@ place set."
 (defun names-info-proof-formula (s-form &optional json?)
   (let* ((info (collect-visible-decl-info (cadr (view s-form)))))
     (if json?
-	(let ((json:*lisp-identifier-name-to-json* #'identity))
+	(let ((json:*lisp-identifier-name-to-json* 'identity))
 	  (json:encode-json-to-string info))
 	info)))
 
@@ -1568,7 +1568,7 @@ place set."
 	       (pvs-message "PVS file ~a is not typechecked" pvs-file))
 	      (t (let* ((subterms (get-subterms-at theories (list row col))))
 		   (if json?
-		       (let ((json:*lisp-identifier-name-to-json* #'identity))
+		       (let ((json:*lisp-identifier-name-to-json* 'identity))
 			 (json:encode-json-to-string subterms))
 		       subterms)))))))
 
@@ -2226,6 +2226,10 @@ place set."
 
 (defmethod all-formulas ((th module))
   (remove-if-not #'formula-decl? (all-decls th)))
+
+(defmethod all-formulas ((dt recursive-type))
+  ;; All generated formulas are axioms
+  nil)
 
 (defmethod formulas-referencing ((ref string))
   (formulas-referencing (intern ref :pvs)))
