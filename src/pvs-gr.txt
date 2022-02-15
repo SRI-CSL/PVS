@@ -171,9 +171,9 @@ datatype ::= {{'DATATYPE'|'CODATATYPE'}^k ['WITH' 'SUBTYPES' pidops^s]
                  |[codatatype(adtbody(plus),pidop)
 		  |codatatypes(pidops^s, adtbody(plus),pidop)]}^k>;
 
-id-datatype-elt ::= {pidop {{':' theory-decl [semic]} | adtcase}}
+id-datatype-elt ::= {pidop {{':' theory-decl [semic]} | {[theory-formals]^f adtcase}}}
                      <{id-theory-decl(pidop, theory-decl, opt)
-                      |id-adtcase(pidop, adtcase)}>;
+                      |id-adtcase(pidop, [nofmls() | theory-formals]^f, adtcase)}>;
 
 adtcase ::= {[constructor]^c ':' pidop^r [':' pidop^s]}
               <[adtcase(opt^c,pidop^r)
@@ -205,8 +205,10 @@ idopappl ::= {idop ['(' type-expr++',' ')']}
 theory-formal-decl ::= {type-keyword [{'FROM' type-expr}|{'<' ':' type-expr}]}
 		        <ftype-decl(type-keyword,[notype()|{type-expr|struct-subtype(type-expr)}])>
 		     | {type-expr} <fconst-decl(type-expr)>
+		     % | {type-expr [auto-extend]}
+                     %    <fconst-decl(type-expr, [noext()|auto-extend])>
 		     | {'THEORY' theory-decl-modname}
-                           <ftheory-decl(theory-decl-modname)>
+                        <ftheory-decl(theory-decl-modname)>
 		     ;
 
 exporting ::= {'EXPORTING' exportings [{ 'WITH' exportingmods}]}
@@ -371,12 +373,23 @@ const-decl ::= {type-expr [const-value]}
 		<[uninterp-const-decl(type-expr)
 		 |const-decl(type-expr,const-value)]>;
 
+% const-decl ::= {type-expr [auto-extend]^a [const-value]}
+% 		<[uninterp-const-decl(type-expr, [noext()|auto-extend]^a)
+% 		 |const-decl(type-expr, [noext()|auto-extend]^a, const-value)]>;
+
 const-value ::= {'=' expr} <expr>;
 
 def-decl ::= {'RECURSIVE' type-expr '=' expr 'MEASURE' expr^b ['BY' expr^r]}
 		<def-decl(type-expr,expr,expr^b, [noexpr()| expr^r])>;
 
+% def-decl ::= {'RECURSIVE' type-expr [auto-extend]^a '=' expr 'MEASURE' expr^b ['BY' expr^r]}
+% 		<def-decl(type-expr, [noext()|auto-extend]^a,
+%                  expr, expr^b, [noexpr()| expr^r])>;
+
 macro-decl ::= {'MACRO' type-expr '=' expr} <macro-decl(type-expr,expr)>;
+
+% macro-decl ::= {'MACRO' type-expr [auto-extend] '=' expr}
+%                 <macro-decl(type-expr, [noext()|auto-extend], expr)>;
 
 ind-decl ::= {'INDUCTIVE' type-expr '=' expr} <ind-decl(type-expr,expr)>;
 
@@ -436,6 +449,9 @@ dep-type-exprs ::= {dep-type-expr
 dep-type-expr ::= type-expr
 	       |  {idop ':' type-expr} <dep-binding(idop,type-expr)>
 	       ;
+
+% auto-extend ::= {'AUTO_EXTEND' {{idop 'WITH' expr} <ext(idop, expr)>} ++ ','}
+%                 <auto-extend(doubleplus)>;
 
 
 %% Expressions

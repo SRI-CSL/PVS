@@ -500,14 +500,17 @@
 
 ;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun save-proof-info (decl init-real-time init-run-time)
-  (let*((prinfo (default-proof decl))
-	(script (extract-justification-sexp
-		 (collect-justification *top-proofstate*)))
-	(auto-fixed-prf
-	 ;; if the prf was rerun in *auto-fix-on-rerun* mode and it ended proved, save it.
-	 (and *auto-fix-on-rerun*
-	      (eq (status-flag *top-proofstate*) '!)
-	      (not *context-modified*))))	
+  (let* ((prinfo (let ((sess (current-session)))
+		   (if sess
+		       (make-prf-info decl nil (id sess) "")
+		       (default-proof decl))))
+	 (script (extract-justification-sexp
+		  (collect-justification *top-proofstate*)))
+	 (auto-fixed-prf
+	  ;; if the prf was rerun in *auto-fix-on-rerun* mode and it ended proved, save it.
+	  (and *auto-fix-on-rerun*
+	       (eq (status-flag *top-proofstate*) '!)
+	       (not *context-modified*))))	
     (cond ((or (null (script prinfo))
 	       (equal (script prinfo) '("" (postpone) nil nil))
 	       (and (tcc-decl? decl)
@@ -516,14 +519,12 @@
 		    (eq (status-flag *top-proofstate*) '!)
 		    (or
 		     ;; next check is added to avoid crashing on malformed prf files.
-		     ;; should be handled somehow else (TODO)
+		     ;; should be handled another way (TODO)
 		     (not (or (equalp (car (script prinfo)) "")  
 			      (and (stringp (car (script prinfo)))
 				   (char= (char (car (script prinfo)) 0) #\;))))
 		     (script-structure-changed? prinfo script))))
-	   ;;[M3] Do not save by default while in server mode.
-	   (unless pvs:*ps-control-info*
-	     (setf (script prinfo) script)))
+	   (setf (script prinfo) script))
 	  ((and (or (not *proving-tcc*) auto-fixed-prf)
 		(or (not *noninteractive*)
 		    auto-fixed-prf)
@@ -551,9 +552,12 @@
 				 (id prinfo)))))
 		  (when (eq *multiple-proof-default-behavior* :overwrite)
 		    (format t "Overwriting proof named ~a" (id prinfo)))
-		  ;;[M3] Do not save by default while in server mode.
-		  (unless *ps-control-info*
-		    (setf (script prinfo) script)))
+		  (setf (script prinfo) script))
+		 ((let ((sess (current-session)))
+		    (when sess
+		      ;; Note that it isn't made the derault
+		      (setq prinfo
+			    (make-prf-info decl script (id sess) "")))))
 		 (t (let ((id (read-proof-id (next-proof-id decl)))
 			  (description (read-proof-description)))
 		      (setq prinfo
@@ -979,7 +983,7 @@
 	(if quiet-flag
 	    pp
 	    (unless *suppress-printing*
-	      (format t "~a" pp)))))))
+	      (commentary pp)))))))
 
 
 (defun if-form? (x) (and (typep x 'sequence)
@@ -1630,24 +1634,22 @@
 	  (next-flag (bump-report-flag flag proofstate)))
       (if  (null all-subgoals)
 	   (if (eq (status-flag proofstate) '!)
-	       (format t  "~%~VTThis completes the proof of ~a.~%"
-		 *prover-indent*
-		 (label proofstate))
-	       (format t "~%~VTPostponing the proof of ~a.~%"
-		 *prover-indent*
-		 (label proofstate)))
+	       (commentary "~%~VTThis completes the proof of ~a.~%"
+			   *prover-indent* (label proofstate))
+	       (commentary "~%~VTPostponing the proof of ~a.~%"
+			   *prover-indent* (label proofstate)))
 	   (cond ((> (length all-subgoals) 1)
-		  (format t "~%~VTwe get ~a subgoals:"
+		  (commentary "~%~VTwe get ~a subgoals:"
 		    *prover-indent*
 		    (length all-subgoals))
 		  (loop for x in  all-subgoals ;;(done-subgoals proofstate)
 			do (report-proof* x 0)))
 		 ((> (length (all-subgoals (car all-subgoals))) 1)
-		  (format t "~%~VTthis simplifies to:" *prover-indent*)
+		  (commentary "~%~VTthis simplifies to:" *prover-indent*)
 		  (report-proof* (car all-subgoals) 0))
 		 (t (when (and (or (null next-flag)(eql next-flag 0))
 			       (printout proofstate))
-		      (format t "~%~VTthis simplifies to:" *prover-indent*))
+		      (commentary "~%~VTthis simplifies to:" *prover-indent*))
 		    (report-proof* (car all-subgoals)
 				   next-flag)))))))
 
@@ -1891,8 +1893,8 @@
 		    (if (not (equal (label par-ps) (label ps)))
 			(format-if "~%~%This completes the proof of ~a.~%"
 				   (label ps)))
-		    (when (tcc-sequent? ps)
-		      (push ps *proved-tccs*))
+		    ;; (when (tcc-sequent? ps)
+		    ;;   (push ps *proved-tccs*))
 ;		    (setf (out-substitution par-ps)(out-substitution ps)
 ;			  (out-context par-ps)(out-context ps))
 		    (push ps (done-subgoals par-ps))))
@@ -2063,7 +2065,7 @@
 		  (*suppress-printing* (or *suppress-printing*
 					   (eq name 'lisp))))
 	     (when (memq name *ruletrace*)
-	       (format t "~%~vTEnter: ~a" *ruletracedepth*
+	       (commentary "~%~vTEnter: ~a" *ruletracedepth*
 		       (rule-input topstep))
 	       (incf *ruletracedepth*))
 	     (multiple-value-bind (signal subgoals updates)
@@ -2071,7 +2073,7 @@
 	       (cond ((eq signal '!)	     ;;success
 		      (when (memq name *ruletrace*)
 			(decf *ruletracedepth*)
-			(format t "~%~vT Exit: ~a -- Proved subgoal"
+			(commentary "~%~vT Exit: ~a -- Proved subgoal"
 			  *ruletracedepth* name ))
 		      (when (eq (car (rule-input topstep)) 'apply)
 			(let ((timeout-sect
@@ -2129,7 +2131,7 @@
 			(cond (false-tccforms
 			       ;;treated as a skip
 			       (unless *suppress-printing*
-				 (format t "~%No change. False TCCs: ~%~{  ~a, ~%~}"
+				 (commentary "~%No change. False TCCs: ~%~{  ~a, ~%~}"
 				   (mapcar #'tccinfo-formula false-tccforms)))
 			       (setf (status-flag ps) nil ;;start afresh
 				     (strategy ps)
@@ -2172,7 +2174,7 @@
 					       new-tcc-hash))
 				   (when (memq name *ruletrace*)
 				     (decf *ruletracedepth*)
-				     (format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
+				     (commentary "~%~vT Exit: ~a -- ~a subgoal(s) generated."
 				       *ruletracedepth* name (length subgoal-proofstates)))
 				   (push-references *tccforms* ps)
 				   (when (eq (car (rule-input topstep)) 'apply)
@@ -2206,7 +2208,7 @@
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
 			(decf *ruletracedepth*)
-			(format t "~%~vT Exit: ~a -- No change."
+			(commentary "~%~vT Exit: ~a -- No change."
 			  *ruletracedepth* name))
 		      (unless *suppress-printing*
 			(explain-errors)
@@ -2232,7 +2234,7 @@
 					   (list (current-goal ps))))
 					;nil
 	   ps)
-	  (t (format t "~%Bad rule: ~a~%" step);;treated as skip
+	  (t (commentary "~%Bad rule: ~a~%" step);;treated as skip
 					;(break)
 	     (setf (status-flag ps) nil;;start afresh
 		   (strategy ps)
@@ -2838,12 +2840,12 @@
   (cond ((null justification)
 	 nil)
 	(t (when (comment justification)
-	     (format t "~%~a" (comment justification)))
+	     (commentary "~%~a" (comment justification)))
 	   (cond ((equal (label justification) label)
-		  (format t "~%")
-		  (format t "~V@T" (+ 3 (length (string label)))))
-		 (t (format t "~%~a : " (label justification))))
-	   (write (format-rule (rule justification)) :pretty t)
+		  (commentary "~%")
+		  (commentary "~V@T" (+ 3 (length (string label)))))
+		 (t (commentary "~%~a : " (label justification))))
+	   (commentary "~a" (format-rule (rule justification)) :pretty t)
 	   (loop for entry in (reverse (subgoals justification))
 		 do (pp-justification* entry (car justification))))))
 
@@ -3601,13 +3603,13 @@
 
 (defun show-proof-skeleton (proofstate)
   (when (current-input proofstate)
-    (format t "~%~a:  ~a" (label proofstate)
+    (commentary "~%~a:  ~a" (label proofstate)
 	    (current-input proofstate))
     (when (eq (status-flag proofstate) '!)
-      (format t "  Done!") ))
+      (commentary "  Done!") ))
   (cond ((eq (status-flag proofstate) '!)
 	 (when (not (current-input proofstate))
-	   (format t "~%~a: Done!" (label proofstate)))
+	   (commentary "~%~a: Done!" (label proofstate)))
 	 (dolist (x (done-subgoals proofstate)) (show-proof-skeleton x)))
 	((or (done-subgoals proofstate)
 	     (pending-subgoals proofstate)
@@ -3618,9 +3620,9 @@
 	 (dolist (x (remaining-subgoals proofstate)) (show-proof-skeleton x))
 	 (show-proof-skeleton (current-subgoal proofstate)))
 	((eq (status-flag proofstate) '*)
-	 (format t "~%~a : *pending*" (label proofstate)))
+	 (commentary "~%~a : *pending*" (label proofstate)))
 	((fresh? proofstate)
-	 (format t "~%~a: *remaining*" (label proofstate)))
+	 (commentary "~%~a: *remaining*" (label proofstate)))
 	(t nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3648,9 +3650,9 @@
 	    (pvs-message "No hidden formulas in current sequent.")
 	    (pvs-buffer "Hidden"
 	      (with-output-to-string (*standard-output*)
-		(format t "The hidden formulas in the current sequent are:")
+		(commentary "The hidden formulas in the current sequent are:")
 		(let ((*print-ancestor* nil))
-		  (format t "~a" (make-instance 'sequent
+		  (commentary "~a" (make-instance 'sequent
 				   :s-forms hforms))))
 	      t t)))
       (pvs-message "No current proof")))
@@ -3670,7 +3672,7 @@
 
 (defmethod ancestry* ((ps proofstate))
   (when (current-rule ps)
-    (format t "~%follows by ~s from:" (current-rule ps))
+    (commentary "~%follows by ~s from:" (current-rule ps))
     (print-proofstate ps))
   (ancestry* (parent-proofstate ps)))
 
@@ -3691,15 +3693,15 @@
   (let ((par-ps (parent-proofstate ps)))
     (when par-ps
       (when (remaining-subgoals par-ps)
-	(format t "~%The remaining siblings are: ")
+	(commentary "~%The remaining siblings are: ")
 	(loop for subgoal in (remaining-subgoals par-ps)
 	      do (print-proofstate subgoal)))
       (when (pending-subgoals par-ps)
-	(format t "~%The postponed siblings are: ")
+	(commentary "~%The postponed siblings are: ")
 	(loop for subgoal in (pending-subgoals par-ps)
 	      do (print-proofstate subgoal)))
       (when (done-subgoals par-ps)
-	(format t "~%The proved siblings are: ")
+	(commentary "~%The proved siblings are: ")
 	(loop for subgoal in (done-subgoals par-ps)
 	      do (print-proofstate subgoal))))))
 
@@ -3715,13 +3717,13 @@
 			(kind (kind goal))
 			(tcc (tcc goal)))
 		   (case kind
-		     ((subtype)(format t "Subtype "))
-		     ((termination) (format t "Termination "))
-		     ((cases) (format t "Cases "))
-		     ((existence) (format t "Nonemptiness/Existence "))
-		     ((actuals) (format t "Actuals "))
-		     ((assuming) (format t "Assuming ")))
-		   (format t "TCC ~%~a ~%generated by typechecking~%~a : ~a"
+		     ((subtype)(commentary "Subtype "))
+		     ((termination) (commentary "Termination "))
+		     ((cases) (commentary "Cases "))
+		     ((existence) (commentary "Nonemptiness/Existence "))
+		     ((actuals) (commentary "Actuals "))
+		     ((assuming) (commentary "Assuming ")))
+		   (commentary "TCC ~%~a ~%generated by typechecking~%~a : ~a"
 		     tcc expr type)))
 	       t t))
 	   (pvs-message "Current goal is not a TCC goal"))

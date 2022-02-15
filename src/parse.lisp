@@ -29,11 +29,11 @@
 
 (in-package :pvs)
 
-(export '(theory-elt expr type-expr))
-
 (defvar *allowed-ids* nil)
 
 (defvar *allowed-typed-names* nil)
+
+(defvar *newline-comments* nil)
 
 ;;; Makes extensive use of the following functions from ERGO:
 ;;;	sim-term-op - returns the symbol which is the operator of a term
@@ -59,7 +59,8 @@
 (defun parse (&rest keys)
   (let* ((*current-file* (or (cadr (member :file keys))
 			     *current-file*))
-	 (start-time (when *current-file* (get-internal-real-time))))
+	 (start-time (when *current-file* (get-internal-real-time)))
+	 (*newline-comments* nil))
     (init-parser)
     (multiple-value-bind (term error? place msg args)
 	(apply #'pvs-parse :return-errors t keys)
@@ -82,12 +83,10 @@
 	(values parsed-object
 		(if *current-file*
 		    (realtime-since start-time)
-		    0))))))
+		    0)
+		(nreverse *newline-comments*))))))
 
 (defun init-parser ()
-  (setq sbrt:*last-syntax* nil)
-  (setq sbrt:*last-newline-comment* nil)
-  (setq sbrt:*num-keywords-skipped* -1)
   (setq *table-bracket-counter* 0)
   (setq *double-braces-counter* 0)
   (setq *elsif-places* nil)
@@ -248,7 +247,11 @@
 	(formal-nonempty-subtype-decl 'decl-formal-nonempty-subtype)
 	(formal-subtype-decl 'decl-formal-subtype)
 	(formal-nonempty-type-decl 'decl-formal-nonempty-type)
-	(formal-type-decl 'decl-formal-type))))
+	(formal-type-decl 'decl-formal-type)
+	(formal-nonempty-type-appl-decl 'decl-formal-nonempty-type-appl)
+	(formal-type-appl-decl 'decl-formal-type-appl)
+	(formal-const-decl 'decl-formal-const-decl)
+	(formal-theory-decl 'decl-formal-theory-decl))))
 
 (defun xt-theory-formal (theory-formal &optional decl-formal?)
   (let* ((importing (term-arg0 theory-formal))
@@ -257,9 +260,9 @@
     (multiple-value-bind (decl dtype)
 	(xt-declaration-body decl-body)
       (when decl-formal?
-	(unless (formal-type-decl? decl)
-	  (parse-error theory-formal
-	    "Only type declarations allowed for declaration parameters"))
+	;; (unless (formal-type-decl? decl)
+	;;   (parse-error theory-formal
+	;;     "Only type declarations allowed for declaration parameters"))
 	(change-to-decl-formal decl))
       (append (unless (is-sop 'THEORY-FORMAL-NULL-1 importing)
 		(xt-formal-importing-elt importing))
@@ -316,7 +319,8 @@
 
 (defun xt-id-adtcase (id-adtcase)
   (let* ((constrid (term-arg0 id-adtcase))
-	 (adtcase (term-arg1 id-adtcase))
+	 (dformals (xt-theory-formals (term-arg1 id-adtcase)))
+	 (adtcase (term-arg2 id-adtcase))
 	 (constructor (term-arg0 adtcase))
 	 (recognizer (term-arg1 adtcase))
 	 (constr (xt-constructor constrid constructor))
@@ -329,6 +333,7 @@
     (when subtype
       (change-class constr 'constructor-with-subtype)
       (setf (subtype constr) subtype))
+    (setf (decl-formals constr) dformals)
     (setf (recognizer constr) (xt-idop (xt-pidop recognizer)))
     (setf (place constr) (term-place constructor))
     constr))

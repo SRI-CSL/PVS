@@ -169,6 +169,10 @@
   (assuming :type list
 	    :documentation "a list of declarations and usings"
 	    :parse t)
+  newline-comments
+  ;; (newline-comments :type list
+  ;; 		    :documentation "list of (comment-string place) elements"
+  ;; 		    :parse t)
   (filename :type (or null string)
 	    :documentation "The filename sans directory or extension"
 	    :restore-as nil)

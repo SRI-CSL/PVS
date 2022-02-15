@@ -66,14 +66,14 @@
 
 ;; M3: This debugger is used when running the rpc server to automatically abort
 ;; to top-level on any signal, so they don't affect the server responsiveness [Sept 2020].
-(defun rpc-mode-debugger (condition me-or-my-encapsulation)
-  (format t "~&Error: ~A" condition)
-  (let ((*debugger-hook* me-or-my-encapsulation))
-    (if *in-checker*
-    	(progn
-	  (setf pvs-json::*interrupted-rpc* (format nil "Error: ~a" condition))
-    	  (restore))
-      (abort))))
+;; (defun rpc-mode-debugger (condition me-or-my-encapsulation)
+;;   (format t "~&Error: ~A" condition)
+;;   (let ((*debugger-hook* me-or-my-encapsulation))
+;;     (if *in-checker*
+;;     	(progn
+;; 	  (setf pvs-json::*interrupted-rpc* (format nil "Error: ~a" condition))
+;;     	  (restore))
+;;       (abort))))
 
 ;;; A robodoc header
 ;****f* interface/pvs-init
@@ -224,7 +224,7 @@
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
-      (pvs-xml-rpc:pvs-server :port (parse-integer port))
+      (pvs-ws:start-pvs-server :port (parse-integer port))
       ;; SO - Moved the following to pvs-server
       ;; M3: When running the server, signals automatically abort to top-level so they
       ;; don't affect the server responsiveness [Sept 2020].
@@ -681,6 +681,11 @@ use binfiles."
 		   (remove-associated-buffers (id th)))
 		 (values theories nil changed-theories)))))))
 
+(defun parse-all-pvs-files (dir)
+  (dolist (file (directory dir))
+    (when (string-equal (pathname-type file) "pvs")
+      (ignore-errors (parse-file file nil t nil)))))
+
 (defun adt-generated-file? (filename)
   (and (> (length filename) 4)
        (string= (subseq filename (- (length filename) 4)) "_adt")
@@ -745,11 +750,12 @@ use binfiles."
   (pvs-message "Parsing ~a" filename)
   (when (boundp '*parsing-files*)
     (pushnew filename *parsing-files* :test #'string=))
-  (multiple-value-bind (new-theories time)
+  (multiple-value-bind (new-theories time comments)
       (let ((*no-obligations-allowed* t))
 	(parse :file file))
     (check-for-theory-clashes new-theories filename forced?)
     ;;(check-import-circularities new-theories)
+    (add-comments-to-theories new-theories comments)
     (let ((changed
 	   (update-parsed-file filename file theories new-theories forced?)))
       (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
@@ -759,6 +765,25 @@ use binfiles."
       ;; (assert (every #'parsed? theories))
       (values (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)
 	      changed))))
+
+(defun add-comments-to-theories (theories comments)
+  ;; Comment entries are lists, car is the comment, cadr the place
+  (when (and theories comments)
+    (if (null (cdr theories))
+	(setf (newline-comments (car theories)) comments)
+	(let ((th-end (ending-row (place (car theories)))))
+	  (multiple-value-bind (th-cmts rest)
+	      (split-on #'(lambda (cmt) (<= (starting-row (cadr cmt)) th-end))
+			comments)
+	    (setf (newline-comments (car theories)) th-cmts)
+	    (add-comments-to-theories (cdr theories) rest))))))
+
+(defun get-theory-comments (thref)
+  (let ((th (get-theory thref)))
+    (if th
+	(mapcar #'(lambda (cmt) (list (car cmt) (coerce (cadr cmt) 'list)))
+	  (newline-comments th))
+	(error "Theory ~a not found"))))
 
 (defun check-for-theory-clashes (new-theories filename forced?)
   "Parsing filename gives the new-theories, we check for problems here"
@@ -1523,13 +1548,10 @@ use binfiles."
 	    (assuming theory)
 	    (theory theory))))
 
-(defun get-tccs (thref &optional thname)
-  (with-pvs-file (name thn) thref
-    (unless thname
-      (if thn
-	  (setq thname thn)
-	  (error "get-tccs: missing theory name?")))
-    (let* ((theory (get-typechecked-theory thname))
+(defun get-tccs (thref &optional theory-name)
+  (with-theory (thn) thref
+    (let* ((thname (or theory-name thn))
+	   (theory (get-typechecked-theory thname))
 	   (tccs (collect-tccs theory)))
       (mapcar #'(lambda (tcc)
 		  `((id . ,(id tcc))
@@ -2054,12 +2076,12 @@ Note that even proved ones get overwritten"
 ;;; View Theory
 
 (defun prettyprint-expanded (theoryref)
-  (with-pvs-file (fname thname) theoryref
+  (with-theory (thname) theoryref
     (let ((*no-comments* nil)
 	  (*unparse-expanded* t)
 	  (*xt-periods-allowed* t))
-      (pvs-buffer (format nil "~a.ppe" (or thname fname))
-	(let* ((theory (get-typechecked-theory (or thname fname)))
+      (pvs-buffer (format nil "~a.ppe" thname)
+	(let* ((theory (get-typechecked-theory thname))
 	       (thstring (unparse theory
 			   :string t
 			   :char-width *default-char-width*)))
@@ -2073,8 +2095,8 @@ Note that even proved ones get overwritten"
 
 
 (defun show-tccs (theoryref &optional arg)
-  (with-pvs-file (fname thname) theoryref
-    (let* ((theory (get-typechecked-theory (or thname fname)))
+  (with-theory (thname) theoryref
+    (let* ((theory (get-typechecked-theory thname))
 	   (unproved-only? (and arg (not (minusp arg))))
 	   (include-trivial? (and arg (minusp arg)))
 	   (*xt-periods-allowed* t)
@@ -2306,8 +2328,8 @@ Note that even proved ones get overwritten"
 		    importings)))))
 
 (defmethod typechecked? ((theoryref string))
-  (with-pvs-file (fname thname) theoryref
-    (let ((theory (get-theory (pc-parse (or thname fname) 'modname))))
+  (with-theory (thname) theoryref
+    (let ((theory (get-theory thname)))
       (and theory
 	   (typechecked? theory)))))
 
@@ -2564,82 +2586,139 @@ Note that even proved ones get overwritten"
 				    :pvs)
 			    '(tccs ppe))))))))
 
-(defun prove-formula (formref &optional formname rerun?)
-  "Starts a proof with formula given by formref.  If formname is provided,
-it is the name of the formula, and formref should be a theoryname.  If
-formname is nil, then formref should resolve to a unique name."
+
+;; ws-ref ::= dir '/' | lib '@'
+;;   where dir is a relative or absolute path, and lib usually found
+;;   as a subdirectory within PVS_LIBRARY_PATH.
+;; pvs-file-ref ::= [ ws-ref ] name [ '.pvs' ]
+;; theory-ref ::= [ file-ref ] [ '#' ] theory-id
+;; decl-ref ::= [ theory-ref ] [ '#' ] decl-id [ '#' num ]
+;;   where num is only used when the same declaration id occurs within
+
+;; For access, we use
+
+;; (with-workspace (ws) ws-ref &rest body)
+;;    Like change-workspace; but only within body
+;; (with-pvs-flle (file) pvs-file-ref &rest body)
+;;    with-workspace + binds file
+;; (with-theory (theory) theory-ref &rest body)
+;;    with-workspace + binds theory
+;; (with-decl (decl) decl-ref &rest body)
+
+;; formula-ref has the full form
+;;   dir/file.pvs#theory#fdecl
+;;   lib@file.pvs#theory#fdecl
+;; where: dir is a relative or absolute file name
+
+(defun prove-formula (formref &key rerun?)
+  "Starts a proof with formula given by formref."
   (when *in-checker*
     (pvs-error "Prove-formula error" "Must exit the prover first"))
-  (let ((fdecl (get-formula-decl formref formname)))
-    (with-workspace (context-path (module fdecl))
-      (let* ((strat (when rerun? '(rerun)))
-	     (*please-interrupt* t))
-	(read-strategies-files)
-	(setq *last-proof* (prove fdecl :strategy strat))))))
+  (let ((fdecls (collect-formula-decls formref)))
+    (cond ((null fdecls)
+	   (error "No declarations found matching ~a" formref))
+	  ((cdr fdecls)
+	   (error "~a has ~d matching declarations:~{~%  ~a~}"
+		  formref (length fdecls) (mapcar #'make-formref fdecls)))
+	  (t (let ((fdecl (car fdecls)))
+	       (with-workspace (context-path (module fdecl))
+		 (let* ((strat (when rerun? '(rerun))))
+		   (read-strategies-files)
+		   (setq *last-proof* (prove fdecl :strategy strat)))))))))
 
-;; (defun prove-formula (formref &optional formname rerun? new-process?)
-;;   "Starts a proof with formula given by formref.  If formname is provided,
-;; it is the name of the formula, and formref should be a theoryname.  If
-;; formname is nil, then formref should resolve to a unique name."
-;;   (let ((fdecl (get-formula-decl formref formname)))
-;;     (with-workspace (context-path (module fdecl))
-;;       (let* ((strat (when rerun? '(rerun)))
-;; 	     (*please-interrupt* t))
-;; 	(read-strategies-files)
-;; 	(if new-process?
-;; 	    (mp:process-run-function
-;; 	     (format nil "~a.~a" (id (module fdecl)) (id fdecl))
-;; 	     ;;name class reset-action run-reasons arrest-reasons priority quantum resume-hook suspend-hook initial-bindings run-immediately stack-allocation message-interrupt-function
-;; 	     ;; `((:name . ,(format nil "~a.~a" (id (module fdecl)) (id fdecl)))
-;; 	     ;;   excl:*required-top-level-bindings*)
-;; 	     #'prove fdecl :strategy strat)
-;; 	    (setq *last-proof* (prove fdecl :strategy strat)))))))
+(defun make-formref (fdecl)
+  (let ((th (module fdecl)))
+    (format nil "~a~a.pvs#~a#~a"
+      (context-path th) (filename th) (id th) (id fdecl))))
 
-(defun get-proof-status (formref &optional formname)
-  (let ((fdecl (get-formula-decl formref formname)))
+(defun collect-formula-decls (formref)
+  "Returns all formulas visible to the current context that satisfy formref.
+the idea being that you should be able to start the prover on any formula
+specifying as little as possible."
+  (if (formula-decl? formref)
+      (list formref)
+      (multiple-value-bind (pvsfile lib ext thname fmname)
+	  (parse-referent formref)
+	;; if only one of pvsfile thname fmname is set, it is the fmid If
+	;; two, thname is nil; hence if the file isn't found, it should be
+	;; treated as a theory name for matching purposes.
+	(let ((fmid (or fmname thname pvsfile))
+	      (thid (when fmname thname))
+	      (file (when (or fmname thname) pvsfile))
+	      (fdecls nil))
+	  (unless (or thname fmname (and (null lib) (null ext)))
+	    (error "formula name not specified: ~a" formref))
+	  (flet ((add-matching (th)
+		   (when (and (module? th)
+			      (or (null thid) (string= thid (id th))))
+		     (dolist (fmla (all-formulas th))
+		       ;; Could allow regexps here
+		       (when (string= fmid (id fmla))
+			 (push fmla fdecls))))))
+	    (if lib
+		(let* ((path (if (char= (uiop:last-char lib) #\@)
+				 (or (get-library-reference lib)
+				     (error "Library ~a not found" lib))
+				 lib))
+		       (ws (find path *all-workspace-sessions*
+				 :key #'path :test #'pathname-equal)))
+		  (unless (uiop:directory-exists-p path)
+		    (error "~a not found" path))
+		  (cond (ws
+			 (do-theories #'add-matching (pvs-theories ws)))
+			((pathname-equal (format nil "~a/lib/" *pvs-path*) lib)
+			 (do-theories #'add-matching *prelude*))
+			(t (let ((theories (typecheck-file (format nil "~a~a.pvs" path file))))
+			     (dolist (th theories) (add-matching th))))))
+		(do-all-theories #'add-matching))
+	    fdecls)))))
+
+(defun get-proof-status (formref)
+  (let ((fdecl (get-formula-decl formref)))
     (status (default-proof fdecl))))
 
-(defun get-formula-decl (formref &optional formname)
-  (with-pvs-file (name thname fname) formref
-    (assert (or formname fname thname name) ()
-	    "get-formula-decl missing formula name?")
-    (if formname
-	(unless thname
-	  (setf thname (or name fname)))
-	(if fname
-	    (setf formname fname
-		  thname (or thname name))
-	    (setf formname thname
-		  thname name)))
-    (let ((fdecls (get-matching-prove-formulas name thname formname)))
-      (cond ((cdr fdecls)
-	     (let ((locdecls (remove-if-not
-				 #'(lambda (fd)
-				     (pathname-equal
-				      (context-path (module fd))
-				      *default-pathname-defaults*))
-			       fdecls)))
-	       (cond ((cdr locdecls)
-		      ;; Only report errors on current context ambiguities
-		      (pvs-error "formula ambiguous error"
-			(format nil "formula ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
-		     ((null locdecls)
-		      ;; Ambiguous - give error for now
-		      (pvs-error "formula ambiguous error"
-			(format nil "formula ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-		     (t (car locdecls)))))
-	    ((null fdecls)
-	     (pvs-error "formula not found error"
-	       (format nil
-		   "Formula name ~a not found in any (typechecked) theories"
-		 (or formname name))))
-	    (t (car fdecls))))))
+(defmethod parse-decl-ref ((refobj theory-element))
+  refobj)
+
+(defmethod parse-decl-ref ((ref string))
+  "Given a ref string of the form dir/fname.ext#theory#decl, this returns
+the alist with keys :directory, :library, :file, :extension, :theory, :id,
+:index, and :kind. Note that any of them may be missing down to a single
+name, which will be returned as the fname. Examples:
+  dir/fname.pvs#id1#id2 => ((:directory dir) (:file fname) (:extension pvs)
+                            (:theory id1) (:declaration id2))
+  lib@fname#id1#id2     => ((:library lib) (:file fname) (:theory id1) (:declaration id2))
+  fname#id1#id2         => ((:file fname) (:theory id1) (:declaration id2))
+  id1#id2               => ((:theory id1) (:declaration id2))
+  id                    => ((:declaration id))"
+  (let* ((args (split ref #\#))
+	 (path (car args))
+	 (dir (cond ((find #\/ path) ;; always a directory - note that it could contain '@'
+		     (subseq path 0 (1+ (position #\/ path :from-end t))))
+		    ((find #\@ path) ;; lib@file - try to look it up in PVS_LIBRARY_PATH
+		     (or (get-library-reference
+			  (subseq path 0 (position #\@ path)))
+			 (subseq path 0 (1+ (position #\@ path)))))))
+	 (file (cond ((find #\/ path)
+		      (subseq path (1+ (position #\/ path :from-end t))))
+		     ((find #\@ path)
+		      (subseq path (1+ (position #\@ path))))
+		     (t path)))
+	 (epos (search ".pvs" file :from-end t :test #'string-equal))
+	 (name (if (and epos
+			(= epos (- (length file) 4)))
+		   (subseq file 0 epos)
+		   file))
+	 (ext (when (and epos
+			 (= epos (- (length file) 4)))
+		"pvs")))
+    (assert name)
+    (unless (or (null ext) (string-equal ext "pvs"))
+      ;; Not a pvs extension, we push it back to the name in case
+      ;; name.ext.pvs is the actual filename, and "pvs" was omitted.
+      (setq name (format nil "~a.~a" name ext))
+      (setq ext nil))
+    (values-list (cons name (cons dir (cons ext (cdr args)))))))
 
 (defun get-matching-prove-formulas (name thname formname)
   (let ((formulas nil))
@@ -2700,55 +2779,51 @@ formname is nil, then formref should resolve to a unique name."
   (prove-file-at name declname line rerun? origin buffer prelude-offset
 		 background? display? t))
 
-(defun get-proof-script (formref &optional formname)
+(defun get-proof-script (formref)
   "Gets the proof script for formula given by formref.  If formname is
 provided, it is the name of the formula, and formref should be a theoryname.
 If formname is nil, then formref should resolve to a unique formula name."
-  (with-pvs-file (name thname fname) formref
-    (unless (or formname fname thname name)
-      (error "get-proof-script missing formula name?"))
-    ;; Check for no dir, or it's already the current context-path
-    (unless formname
-      (if fname
-	  (setf formname fname
-		thname (or thname name))
-	  (setf formname thname
-		thname name)))
-    (let ((fdecls (get-matching-prove-formulas name thname formname)))
-      (cond ((cdr fdecls)
-	     (let ((locdecls (remove-if-not
-				 #'(lambda (fd)
-				     (pathname-equal
-				      (context-path (module fd))
-				      *default-pathname-defaults*))
-			       fdecls)))
-	       (cond ((cdr locdecls)
-		      ;; Only report errors on current context ambiguities
-		      (pvs-error "get-proof-script error"
-			(format nil "get-proof-script ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
-		     ((null locdecls)
-		      ;; Ambiguous - give error for now
-		      (pvs-error "get-proof-script error"
-			(format nil "get-proof-script ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-		     (t (if (default-proof (car locdecls))
-			    (get-proof-script-output-string (car locdecls))
-			    (pvs-error "Proof script error"
-			      (format nil "~a does not have a proof" formref)))))))
-	    ((null fdecls)
-	     (pvs-error "get-proof-script error"
-	       (format nil
-		   "get-proof-script formula name ~a not found in any (typechecked) theories"
-		 (or formname name))))
-	    (t (if (default-proof (car fdecls))
-		   (get-proof-script-output-string (car fdecls))
-		   (pvs-error "Proof script error"
-		     (format nil "~a does not have a proof" formref))))))))
+  (let ((fdecl (get-formula-decl formref)))
+    (if (default-proof fdecl)
+	(get-proof-script-output-string fdecl)
+	(pvs-error "Proof script error"
+	  (format nil "~a does not have a proof" formref)))))
+
+    ;; (let ((fdecls (get-matching-prove-formulas name thname formname)))
+    ;;   (cond ((cdr fdecls)
+    ;; 	     (let ((locdecls (remove-if-not
+    ;; 				 #'(lambda (fd)
+    ;; 				     (pathname-equal
+    ;; 				      (context-path (module fd))
+    ;; 				      *default-pathname-defaults*))
+    ;; 			       fdecls)))
+    ;; 	       (cond ((cdr locdecls)
+    ;; 		      ;; Only report errors on current context ambiguities
+    ;; 		      (pvs-error "get-proof-script error"
+    ;; 			(format nil "get-proof-script ambiguous for name ~a, ~
+    ;;                       it appears in the following theories:~%~{~a~^~%~}"
+    ;; 			  (or formname name)
+    ;; 			  (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
+    ;; 		     ((null locdecls)
+    ;; 		      ;; Ambiguous - give error for now
+    ;; 		      (pvs-error "get-proof-script error"
+    ;; 			(format nil "get-proof-script ambiguous for name ~a, ~
+    ;;                       it appears in the following theories:~%~{~a~^~%~}"
+    ;; 			  (or formname name)
+    ;; 			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
+    ;; 		     (t (if (default-proof (car locdecls))
+    ;; 			    (get-proof-script-output-string (car locdecls))
+    ;; 			    (pvs-error "Proof script error"
+    ;; 			      (format nil "~a does not have a proof" formref)))))))
+    ;; 	    ((null fdecls)
+    ;; 	     (pvs-error "get-proof-script error"
+    ;; 	       (format nil
+    ;; 		   "get-proof-script formula name ~a not found in any (typechecked) theories"
+    ;; 		 (or formname name))))
+    ;; 	    (t (if (default-proof (car fdecls))
+    ;; 		   (get-proof-script-output-string (car fdecls))
+    ;; 		   (pvs-error "Proof script error"
+    ;; 		     (format nil "~a does not have a proof" formref))))))))
 
 ;;; Non-interactive Proving
 
@@ -3464,10 +3539,9 @@ nil is returned in that case."
 
 (defmethod get-typechecked-theory ((theoryref string) &optional theories quiet?)
   "Theoryref may be a URI of the form [pvsfile '#'] thname"
-  (with-pvs-file (fname thname) theoryref
+  (with-theory (thname) theoryref
     (if thname
-	(let ((theories (typecheck-file fname)))
-	  (car (member thname theories :key #'id :test #'string=)))
+	(get-typechecked-theory (pc-parse thname 'modname) theories quiet?)
 	(get-typechecked-theory (pc-parse theoryref 'modname) theories quiet?))))
 
 (defmethod get-typechecked-theory ((theoryref symbol) &optional theories quiet?)
@@ -4195,8 +4269,9 @@ types."
   "Very crude way of renaming, basically does replaces old for new in the
 specified pvs-file, and its associated .prf file.  "
   (let ((pvsfile (make-specpath file-ref))
-	(proofs (read-pvs-file-proofs file-ref))
-	(prffile (make-prf-pathname file-ref)))
+	;;(proofs (read-pvs-file-proofs file-ref))
+	;;(prffile (make-prf-pathname file-ref))
+	)
     (uiop:run-program (list "sed" (format nil "'s/\\<~a\\>/~a/g'" old new) 
 			    ))))
 
@@ -4234,14 +4309,14 @@ specified pvs-file, and its associated .prf file.  "
 	(rename-in-formula-entries old new (cdr entries) (cons nform nforms)))))
 
 (defun rename-in-formula-entry (old new entry)
-  (let ((fid (rename-formula-id (car entry)))
+  (let ((fid (rename-formula-id old new (car entry)))
 	(index (cadr entry))
 	(prfinfos (rename-in-prfinfos old new (cddr entry))))
     `(,fid ,index ,@prfinfos)))
 
 (defun rename-formula-id (old new fid)
   "Handles fids also of the form 'old_TCC#', converting to 'new_TCC#'"
-  (assert (and (stringp old) (stringp new)) (symbolp fid))
+  (assert (and (stringp old) (stringp new) (symbolp fid)))
   (let ((fstr (string fid)))
     (cond ((string= fstr old)
 	   (intern new :pvs))
@@ -4267,6 +4342,7 @@ specified pvs-file, and its associated .prf file.  "
 	     ,@(when tcc-origin (list (rename-in-tcc-origin old new tcc-origin))))))
 
 (defun rename-in-proof-refers-to (old new refers-to)
+  (declare (ignore old new))
   refers-to)
 
 (defun rename-in-proof-script (old new script)
@@ -4312,9 +4388,8 @@ Returns
  - :parse-problem - foo.pvs-semi was created, but didn't parse
 "
   (let* ((*no-obligations-allowed* t)
-	 (full-pvs-file-path (car theories))
-	 (theories (parse :file file))
-	(needs-semi nil))
+	 (theories (parse :file fileref))
+	 (needs-semi nil))
     (dolist (theory theories)
       (dolist (decl (all-decls theory))
 	(unless (or (semi decl)
@@ -4323,7 +4398,7 @@ Returns
 	  (push decl needs-semi))))
     ;; needs-semi is backwards
     (if (null needs-semi)
-	(format t "File ~a already has necessary semicolons")
+	(format t "File ~a already has necessary semicolons" fileref)
 	(let* ((file (full-pvs-file-path (car theories)))
 	       (lines (file-get-lines file)))
 	  (dolist (decl needs-semi)

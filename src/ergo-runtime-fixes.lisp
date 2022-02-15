@@ -29,8 +29,7 @@
 
 (in-package :sbrt)
 
-(export '(*num-keywords-skipped* *last-syntax* *last-newline-comment*
-				 *hold-a4* *hold-b4*))
+(export '( *hold-a4* *hold-b4*))
 
 (defvar *end-place* nil)
 
@@ -245,16 +244,8 @@
   last token ended, points to beginning of white space before current
   first token in token stream")
 
-(defvar *collect-comments* nil
-  "Flag indicating that it is all right to collect comments.  Set by gettoken
-and gobble-token.  Otherwise comments may be collected when just peeking.")
-
 (defvar *hold-comments* nil
   "A place to keep comments until they can be processed")
-
-(defvar *num-keywords-skipped* 0
-  "Keeps track of the number of tokens skipped - this number is kept along
-with the comment so as to put it in the proper place")
 
 ;;; gettoken and gobbletoken are used to get the next token; they both call
 ;;; reader.  These are the right places to do processing of all tokens, rather
@@ -273,8 +264,9 @@ with the comment so as to put it in the proper place")
     ;;(format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
     ;;  type token place comment)
     (setq *end-place* (list type token place))
-    (setq *last-newline-comment* (nconc *last-newline-comment* comment))
-    ;;(format t "~%gettoken comment = ~s" comment)
+    (when comment
+      ;; (format t "~%gettoken comment = ~s" comment)
+      (push comment pvs:*newline-comments*))
     (cond (;; This branch of the COND is completely meaningless because
 	   ;; there is currently no way to cause a generated parser to return
 	   ;; a lex'ed keyword (e.g., 'begin', 'then', ':=').  Parsers merely
@@ -289,26 +281,23 @@ with the comment so as to put it in the proper place")
 ;;; Consume a token from the input stream.  The *hold-a1*, etc., values
 ;;; are the token type, token value, place, and comment, respectively.
 (defun gobble-token ()
-  (let ((*collect-comments* t))
-    (incf *num-keywords-skipped*)
-    ;;(format t "~%Skipping ~a - skipped ~d"
-    ;;  (peek-first) *num-keywords-skipped*)
-    (multiple-value-bind (v1 v2 v3 v4)
-	(cond (*hold-b1*
-	       (values (prog1 *hold-b1* (setq *hold-b1* nil))
-		       *hold-b2* *hold-b3* *hold-b4*))
-	      (*hold-a1*
-	       (values (prog1 *hold-a1* (setq *hold-a1* nil))
-		       *hold-a2* *hold-a3* *hold-a4*))
-	      (t (funcall *reader-fun*)))
-      ;;(format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
-      ;;   v1 v2 v3 v4)
-      (when (eq v1 'sbst::ELSIF)
-	(push v3 pvs::*elsif-places*))
-      (setq *end-place* (list v1 v2 v3))
-      (setq *last-newline-comment*
-	    (nconc *last-newline-comment* v4))
-      nil)))
+  (multiple-value-bind (v1 v2 v3 v4)
+      (cond (*hold-b1*
+	     (values (prog1 *hold-b1* (setq *hold-b1* nil))
+		     *hold-b2* *hold-b3* *hold-b4*))
+	    (*hold-a1*
+	     (values (prog1 *hold-a1* (setq *hold-a1* nil))
+		     *hold-a2* *hold-a3* *hold-a4*))
+	    (t (funcall *reader-fun*)))
+    ;;(format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
+    ;;   v1 v2 v3 v4)
+    (when (eq v1 'sbst::ELSIF)
+      (push v3 pvs::*elsif-places*))
+    (setq *end-place* (list v1 v2 v3))
+    (when v4
+      ;; (format t "~%gettoken comment v4 = ~s" v4)
+      (push v4 pvs:*newline-comments*))
+    nil))
 
 
 ;;; This function comes from rt-format.  I changed it so that extra
@@ -371,87 +360,74 @@ with the comment so as to put it in the proper place")
 					sbst::!string!)))
 	   (save-place-and-comment-info lterm place
 					(pvs::get-end-place token nil place t))
-	   (if *last-syntax*
-	       (incf *num-keywords-skipped*))
-	   (setq *last-syntax* lterm)
-	   ;;(setq *last-newline-comment*
-	   ;;	 (append *last-newline-comment* *hold-comments*))
 	   (setq *hold-comments* nil)
 	   ;;(format t "~%Found ~a, resetting num-comments" token)
-	   ;;(when *last-newline-comment*
-	     ;;(format t "~%*hold-comments* = ~a" *last-newline-comment*))
-	   (setq *num-keywords-skipped* 0)
 	   lterm)
 	  (t lterm))))
-
-(defvar *newline-comments* nil
-  "Used by lex-newline-comment to return the latest comments to
-   lexical-read.")
 
 (defvar *holding-char* nil)
 
 ;;; From rt-structs.lisp - only difference is that it sets *end-of-last-token*
 
 (defun lexical-read (self eofval &aux char place
-			  (readtable (lexical-stream-readtable self)))
-  (let ((*newline-comments* nil))
-    ;; This loop goes until we hit a character for which the macro returns
-    ;; some values.
-    (setq *end-of-last-token* (curplace (lexical-stream-stream self)))
-    (loop
-     ;; Scan till we hit non-whitespace or eof
-     (loop
-      (if *holding-char*
-	  (setq char *holding-char*)
-	  (setq char (lexical-read-char self :eof)))
-      (when (or (equal char :eof)
-		(not (null (elt readtable (char-code char)))))
-	(return)))
-     (unless *holding-char*
-       (lexical-unread-char self))
-     (setq place (curplace (lexical-stream-stream self))
-	   char (multiple-value-list
-		 (cond ((equal char :eof) eofval)
-		       ((or (char= char #\_)
-			    (equal (elt readtable (char-code char)) :alphabetic))
-			(let ((a (alpha-lexer self
-					      (lexical-read-char self nil))))
-			  (if (and (symbolp a)
-				   (memq (intern (string-upcase a) 'sbst)
-					 '(sbst::TYPE
-					   sbst::CONVERSION
-					   sbst::AUTO_REWRITE)))
-			      (let ((nch (lexical-read-char self nil)))
-				(cond ((and nch (char= nch #\+))
-				       (case (intern (string-upcase a) 'sbst)
-					 (sbst::TYPE 'sbst::TYPE+)
-					 (sbst::CONVERSION 'sbst::CONVERSION+)
-					 (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE+)
-					 (t (lexical-unread-char self)
-					    a)))
-				      ((and nch (char= nch #\-))
-				       (case (intern (string-upcase a) 'sbst)
-					 (sbst::CONVERSION 'sbst::CONVERSION-)
-					 (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE-)
-					 (t (lexical-unread-char self)
-					    a)))
-				      (t (lexical-unread-char self)
-					 a)))
-			      a)))
-		       ((is-lexical-escape? self char)
-			(lexical-read-char self nil)
-			(let ((char (lexical-read-char self :eof)))
-			  (if (equal char :eof)
-			      eofval
-			      (alpha-lexer self char))))
-		       (t (funcall (elt readtable (char-code char))
-				   self
-				   (if *holding-char*
-				       (prog1 *holding-char*
-					 (setq *holding-char* nil))
-				       (lexical-read-char self nil)))))))
-     (when char (return)))
-    (values (car char) place *newline-comments*)))
+				   (readtable (lexical-stream-readtable self)))
+  ;; This loop goes until we hit a character for which the macro returns
+  ;; some values.
+  (setq *end-of-last-token* (curplace (lexical-stream-stream self)))
+  (loop
+   ;; Scan till we hit non-whitespace or eof
+   (loop
+    (if *holding-char*
+	(setq char *holding-char*)
+	(setq char (lexical-read-char self :eof)))
+    (when (or (equal char :eof)
+	      (not (null (elt readtable (char-code char)))))
+      (return)))
+   (unless *holding-char*
+     (lexical-unread-char self))
+   (setq place (curplace (lexical-stream-stream self))
+	 char (multiple-value-list
+	       (cond ((equal char :eof) eofval)
+		     ((or (char= char #\_)
+			  (equal (elt readtable (char-code char)) :alphabetic))
+		      (let ((a (alpha-lexer self
+					    (lexical-read-char self nil))))
+			(if (and (symbolp a)
+				 (memq (intern (string-upcase a) 'sbst)
+				       '(sbst::TYPE
+					 sbst::CONVERSION
+					 sbst::AUTO_REWRITE)))
+			    (let ((nch (lexical-read-char self nil)))
+			      (cond ((and nch (char= nch #\+))
+				     (case (intern (string-upcase a) 'sbst)
+				       (sbst::TYPE 'sbst::TYPE+)
+				       (sbst::CONVERSION 'sbst::CONVERSION+)
+				       (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE+)
+				       (t (lexical-unread-char self)
+					  a)))
+				    ((and nch (char= nch #\-))
+				     (case (intern (string-upcase a) 'sbst)
+				       (sbst::CONVERSION 'sbst::CONVERSION-)
+				       (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE-)
+				       (t (lexical-unread-char self)
+					  a)))
+				    (t (lexical-unread-char self)
+				       a)))
+			    a)))
+		     ((is-lexical-escape? self char)
+		      (lexical-read-char self nil)
+		      (let ((char (lexical-read-char self :eof)))
+			(if (equal char :eof)
+			    eofval
+			    (alpha-lexer self char))))
+		     (t (funcall (elt readtable (char-code char))
+				 self
+				 (if *holding-char*
+				     (prog1 *holding-char*
+				       (setq *holding-char* nil))
+				     (lexical-read-char self nil)))))))
+   (when char (return)))
+  (values (car char) place))
 
 (defun alpha-lexer (stream char &aux 
 			        (buffer (lexical-stream-stringbuffer stream)))
@@ -527,12 +503,6 @@ with the comment so as to put it in the proper place")
 					;then after a, ':' hasn't been
 					;peeked.
   (set-term-place term splace (or eplace *end-of-last-token*))
-  (when (and *last-newline-comment* 
-	     (is-leaf-term term))
-    ;;(format t "~%~a gets comment ~s" term *last-newline-comment*)
-    (setf (getf (term:term-attr term) :comment)
-	  *last-newline-comment*)
-    (setq *last-newline-comment* nil))
   term)
 
 (defun set-term-place (term splace eplace)
@@ -546,33 +516,15 @@ with the comment so as to put it in the proper place")
 	  (vector sline scol eline ecol))))
 
 ;;; The following two functions replace things in rt-lex.lisp.  Comments
-;;; are put into *last-newline-comment*, and from there into *last-syntax*
-
-(defvar *last-syntax* nil 
-    "the last pvs object that can be given a comment")
-
-(defvar *last-newline-comment* nil
-  "collect newline comments to be plucked by syntactic objects
-   as they are created")
+;;; are put into *newline-comments*.
 
 (defun lex-newline-comment (stream open-comment)
   (if (eq *abs-syn-package* (find-package :pvs))
-      (let ((newline? (check-for-newline stream))
-	    (comment (collect-newline-comment-chars stream nil)))
-	;;(format t "~%lex-newline-comment: collecting = ~a, comment = ~s, skip = ~d"
-	  ;;*collect-comments* comment *num-keywords-skipped*)
-	(when *collect-comments*
-	  (setq *newline-comments*
-		(append *newline-comments*
-			(list (list comment *num-keywords-skipped*
-				    newline?)))))
-;; 	(if *collect-comments*
-;; 	    (setq *hold-comments*
-;; 		  (append *hold-comments* (list (list comment 0 newline?))))
-;; 	    (setq *last-newline-comment*
-;; 		  (append *last-newline-comment*
-;; 			  (list (list comment *num-keywords-skipped*
-;; 				      newline?)))))
+      (let ((newline? (check-for-newline stream)))
+	(multiple-value-bind (comment place)
+	    (collect-newline-comment-chars stream nil)
+	  ;;(format t "~%lex-newline-comment: ~s at ~s" comment place)
+	  (push (list comment place) pvs:*newline-comments*))
 	(values))
       (let ((*close-comment-char* #\newline))
 	(lex-comment stream open-comment))))
@@ -585,12 +537,21 @@ with the comment so as to put it in the proper place")
     
 
 (defun collect-newline-comment-chars (stream chars)
+  (let* ((splace (curplace (lexical-stream-stream stream)))
+	 (line (place-linenumber splace))
+	 (scol (1- (place-charnumber splace)))
+	 (comment (collect-newline-comment-chars* stream chars))
+	 ;; Don't want to unread, instead we use length of the lastline
+	 (ecol (length (placestream-lastline (lexical-stream-stream stream)))))
+    (values comment (vector line scol line ecol))))
+
+(defun collect-newline-comment-chars* (stream chars)
   (let ((char (lexical-read-char stream #\newline)))
     (cond ((is-lexical-escape? stream char)
-	   (collect-newline-comment-chars stream chars))
+	   (collect-newline-comment-chars* stream chars))
 	  ((equal char #\newline)
 	   (coerce (cons #\% (nreverse chars)) 'string))
-	  (t (collect-newline-comment-chars stream (cons char chars))))))
+	  (t (collect-newline-comment-chars* stream (cons char chars))))))
   
 
 (defun lex-comment (stream open-comment)

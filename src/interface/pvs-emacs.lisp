@@ -238,8 +238,8 @@
 ;;; them to a buffer.
 
 (defun show-theory-warnings (theoryref)
-  (with-pvs-file (fname thname) theoryref
-    (let ((theory (get-theory (or thname fname))))
+  (with-theory (thname) theoryref
+    (let ((theory (get-theory thname)))
       (cond ((null theory)
 	     (pvs-message "Theory ~a is not typechecked" theoryref))
 	    ((null (warnings theory))
@@ -284,18 +284,18 @@
   nil)
 
 (defun show-theory-messages (theoryref)
-  (with-pvs-file (fname theoryname) theoryref
-    (let ((theory (get-theory (or theoryname fname))))
+  (with-theory (theoryname) theoryref
+    (let ((theory (get-theory theoryname)))
       (cond ((null theory)
-	     (pvs-message "Theory ~a is not typechecked" (or theoryname fname)))
+	     (pvs-message "Theory ~a is not typechecked" theoryname))
 	    ((null (info theory))
-	     (pvs-message "Theory ~a has no informational messages" (or theoryname fname)))
+	     (pvs-message "Theory ~a has no informational messages" theoryname))
 	    (t (pvs-buffer "PVS Messages"
 		 (format nil
 		     "Messages for theory ~a:~
                     ~2%Use M-x show-theory-conversions to see the conversions.~
                     ~2%~{~a~^~2%~}"
-		   (or theoryname fname)
+		   theoryname
 		   (mapcar #'cdr (info theory)))
 		 t t))))))
 
@@ -339,18 +339,18 @@
   nil)
 
 (defun show-theory-conversions (theoryref)
-  (with-pvs-file (fname theoryname) theoryref
-    (let ((theory (get-theory (or theoryname fname))))
+  (with-theory (theoryname) theoryref
+    (let ((theory (get-theory theoryname)))
       (cond ((null theory)
-	     (pvs-message "Theory ~a is not typechecked" (or theoryname fname)))
+	     (pvs-message "Theory ~a is not typechecked" theoryname))
 	    ((null (conversion-messages theory))
-	     (pvs-message "Theory ~a has no conversions" (or theoryname fname)))
+	     (pvs-message "Theory ~a has no conversions" theoryname))
 	    (t (pvs-buffer "PVS Conversions"
 		 (format nil
 		     "Conversions for theory ~a:~
                     ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
                     ~2%~{~a~^~2%~}"
-		   (or theoryname fname)
+		   theoryname
 		   (mapcar #'cdr (conversion-messages theory)))
 		 t t))))))
 
@@ -681,91 +681,8 @@
 (defvar *proofstate-width* 80)
 (defvar *proofstate-indent* 6)
 
-(defmethod pvs2json ((ps proofstate))
-  (with-slots (label comment current-goal (pps parent-proofstate)) ps
-    (let ((action (when pps
-		    (string-trim '(#\Space #\Tab #\Newline)
-				 (format-printout pps t))))
-	  (num-subgoals (proofstate-num-subgoals ps))
-	  (sequent (pvs2json-seq current-goal pps))
-	  (prev-cmd (let ((wish-rule (wish-current-rule ps)))
-		      (cond (wish-rule (format nil "~s" wish-rule))
-			    (pps (format nil "~s" (current-rule pps)))
-			    (t nil))))
-	  (commentary (cond ((eq (status-flag ps) '!)
-			     (list (format nil "This completes the proof of ~a." (label ps))))
-			    (t 
-			     (if (listp *prover-commentary*)
-				 (reverse *prover-commentary*)
-				 (list *prover-commentary*))
-			     ))))
-      `(,@(when commentary
-	    `(("commentary" . ,commentary)))
-	,@(when action `(("action" . ,action)))
-	,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
-	("label" . ,label)
-	,@(when prev-cmd `( ;;("last-cmd" . ,prev-cmd)
-			   ("prev-cmd" . ,prev-cmd)))
-	,@(when comment `(("comment" . ,comment)))
-	("path" . ,(format nil "~{~a~^.~}" (path-from-top ps)))
-	("sequent" . ,sequent)))))
-
-(defstruct seqstruct
-  antecedents
-  succedents
-  hidden-antecedents
-  hidden-succedents
-  info)
-
-(defmethod json:encode-json ((ss seqstruct) &optional (stream json:*json-output*))
-  (json:with-object (stream)
-    (when (seqstruct-antecedents ss)
-      (json:as-object-member ("antecedents" stream)
-	(json:encode-json (seqstruct-antecedents ss) stream)))
-    (when (seqstruct-succedents ss)
-      (json:as-object-member ("succedents" stream)
-	(json:encode-json (seqstruct-succedents ss) stream)))
-    (when (seqstruct-hidden-antecedents ss)
-      (json:as-object-member ("hidden-antecedents" stream)
-	(json:encode-json (seqstruct-hidden-antecedents ss) stream)))
-    (when (seqstruct-hidden-succedents ss)
-      (json:as-object-member ("hidden-succedents" stream)
-	(json:encode-json (seqstruct-hidden-succedents ss) stream)))))
-
-(defmethod pvs2json-seq (seq parent-ps)
-  (let* ((par-sforms (when parent-ps
-		       (s-forms (current-goal parent-ps))))
-	 (hidden-s-forms (hidden-s-forms seq))
-	 (hn-sforms (neg-s-forms* hidden-s-forms))
-	 (hp-sforms (pos-s-forms* hidden-s-forms)))
-    (make-seqstruct 
-     :antecedents (pvs2json-sforms (neg-s-forms seq) t par-sforms)
-     :succedents (pvs2json-sforms (pos-s-forms seq) nil par-sforms)
-     :hidden-antecedents (pvs2json-sforms hn-sforms t par-sforms)
-     :hidden-succedents (pvs2json-sforms hp-sforms nil par-sforms)
-     :info (info seq))))
-
-(defun pvs2json-sforms (sforms neg? par-sforms)
-  (let ((c 0))
-    (mapcar #'(lambda (sf)
-		(let* ((fnum (if neg? (- (incf c)) (incf c))))
-		  (pvs2json-sform sf fnum par-sforms)))
-      sforms)))
-
-;; Note that this has the side effect of setting the view of the sform,
-;; Which is a cons of the string and its view (computed lazily).
-(defun pvs2json-sform (sform fnum par-sforms)
-  (let* ((nf (formula sform))
-	 (frm (if (negation? nf) (args1 nf) nf)))
-    (unless (view sform)
-      (multiple-value-bind (frmstr frmview)
-	  (pp-with-view frm *proofstate-indent* *proofstate-width*)
-	(setf (view sform) (list frmstr frmview))))
-    (let ((names-info (names-info-proof-formula sform)))
-      `(("labels" . ,(cons fnum (label sform)))
-	("changed" . ,(if (memq sform par-sforms) "false" "true"))
-	("formula" . ,(car (view sform)))
-	("names-info" . ,names-info)))))
+(defun strim (string)
+  (string-trim '(#\Space #\Tab #\Newline) string))
 
 (defun proofstate-num-subgoals (ps)
   (let ((pps (parent-proofstate ps)))
@@ -787,11 +704,11 @@
 ;;;   proof-show          /
 ;;;  layout-proof
 
-(defstruct (prooftree-info (:conc-name pt-info-))
-  delete
-  status
-  formula-id
-  theory-id)
+;; (defstruct (prooftree-info (:conc-name pt-info-))
+;;   delete
+;;   status
+;;   formula-id
+;;   theory-id)
 
 ;; (defun proofstate-tree-info (ps)
 ;;   (let* ((top-ps (or *top-proofstate* *last-proof*))
@@ -1265,6 +1182,26 @@
     (when place
       (format nil "(at line ~d, column ~d)"
 	(starting-row place) (starting-col place)))))
+
+(defun valid-place? (place)
+  (and (vectorp place)
+       (>= (length place) 4)
+       (let ((sr (svref place 0)) (sc (svref place 1))
+	     (er (svref place 2)) (ec (svref place 3)))
+	 (and (integerp sr) (integerp sc) (integerp er) (integerp ec)
+	      (or (< sr er) (and (= sr er) (< sc ec)))))))
+
+(defun place< (place1 place2)
+  (assert (and (valid-place? place1) (valid-place? place2)))
+  (flet ((pt< (r1 c1 r2 c2) (or (< r1 r2) (and (= r1 r2) (< c1 c2)))))
+    (let ((sr1 (svref place1 0)) (sc1 (svref place1 1))
+	  (er1 (svref place1 2)) (ec1 (svref place1 3))
+	  (sr2 (svref place2 0)) (sc2 (svref place2 1))
+	  (er2 (svref place2 2)) (ec2 (svref place2 3)))
+      (when (pt< sr1 sc1 sr2 sc2)
+	(cond ((pt< er1 ec1 sr2 sc2) (values t :strict))
+	      ((pt< er1 ec1 er2 ec2) (values t :overlap))
+	      (t (values t :contains)))))))
 
 (defun type-ambiguity (obj)
   (if (and (slot-exists-p obj 'resolutions)

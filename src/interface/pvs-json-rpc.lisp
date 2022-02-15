@@ -17,19 +17,14 @@
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
-(defpackage :pvs-jsonrpc (:use :json :cl-user :common-lisp))
+;; (defpackage :pvs-jsonrpc (:use :json :cl-user))
 
 (in-package :pvs-jsonrpc)
 
-;; (export '(process-jsonrpc *interrupted-rpc*
-;; 	  update-ps-control-info-result rpc-output-notify-proof-success
-;; 	  finish -proofstate-rpc-hook update-ps-control-info-result))
-
 (defun process-jsonrpc (message conn)
   ;; (format t "~%process-jsonrpc: message = ~a" message)
-  (setq pvs::mmm message)
   (handler-case
-      (let* ((json:*json-identifier-name-to-lisp* #'identity)
+      (let* ((json:*json-identifier-name-to-lisp* 'cl:identity)
 	     (msg-str (pvs:bytestring-to-string message))
 	     (msg (json:decode-json-from-string msg-str))
 	     (msg-obj (jsonrpc-object msg)))
@@ -37,7 +32,7 @@
     (error (c)
       ;; No id available if we got to this handler.
       (let* ((err (format nil "~a" c))
-	     (jerror (json:encode-json-to-string
+	     (jerror (json:encode-json-alist-to-string
 		      `((:error . ((:code . -32700) (:message . "Json-RPC Error") (:data . ,err)))
 			(:id . nil) (:jsonrpc . "2.0")))))
 	;;(format t "~%Have error for id ~a: ~%  ~a" (jreq-id req) jresult)
@@ -74,12 +69,7 @@
     (handler-case
 	(let ((*current-jsonrpc-request* req))
 	  ;; Used by the corresponding send
-	  (cond (pvs:*in-checker*
-		 (unless (string-equal (jreq-method req) "proof-command")
-		   (error "In the prover, only proof-command requests are accepted"))
-		 ;; We don't expect a result, prover hooks will return the sequent
-		 (apply reqfun (jreq-params req)))
-		(pvs:*in-evaluator*
+	  (cond (pvs:*in-evaluator*
 		 (unless (string-equal (jreq-method req) "pvsio-command")
 		   (error "In PVSio, only pvsio-command requests are accepted"))
 		 (apply reqfun (jreq-params req)))
@@ -103,7 +93,6 @@
 	  (format t "~%Have pvs-error: ~a" jerror)
 	  (wsd:send conn jerror)))
       (error (c)
-	(setq cc1 c)
 	(let* ((err (format nil "~a" c))
 	       (jerror (json:encode-json-alist-to-string
 			`((:error . ((:code . -32700) (:message . "PVS Error") (:data . ,err)))
@@ -112,22 +101,23 @@
 	  (format t "~%Have error: ~a" jerror)
 	  (wsd:send conn jerror))))))
 
-(defun send-response (obj)
-  (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	 (ps-json (pvs:pvs2json obj))
-	 (jresult (json:encode-json-alist-to-string
-		   `((:result . ,ps-json)
-		     (:id . ,(jreq-id *current-jsonrpc-request*))
-		     (:jsonrpc . "2.0"))))
-	 (ws-conn (pvs-ws:ws-current-connection)))
-    (assert ws-conn)
-    (wsd:send ws-conn jresult)))
+;; (defun send-response (obj)
+;;   (let* ((json:*lisp-identifier-name-to-json* #'identity)
+;; 	 (ps-json (pvs:pvs2json-response obj))
+;; 	 (jresult (json:encode-json-alist-to-string
+;; 		   `((:result . ,ps-json)
+;; 		     (:id . ,(jreq-id *current-jsonrpc-request*))
+;; 		     (:jsonrpc . "2.0"))))
+;; 	 (ws-conn (pvs-ws:ws-current-connection)))
+;;     (assert ws-conn)
+;;     (wsd:send ws-conn jresult)))
 
 (defmethod process-jsonrpc-object ((req jsonrpc-notification) conn)
+  (declare (ignore conn))
   (multiple-value-bind (reqfun reqsig)
       (get-json-request-function (jreq-method req))
     (check-params (jreq-params req) reqsig)
-    (apply reqfun params)))
+    (apply reqfun (jreq-params req))))
 
 (defmethod process-jsonrpc-object ((req jsonrpc-result) conn)
   (break "Needs defining"))
@@ -149,81 +139,81 @@
 	  () "Must be a jsonrpc message, with version 2.0")
   )
 
-(defun jsonrpc-object (msg)
-  "Checks the message is valid, and returns a corresponding struct"
-  ;;(format t "~%Checking jsonrpc for message~%  ~s" msg)
-  (check-jsonrpc-object-msg msg)
-  (cond ((let ((method (cdr (assoc "method" msg :test #'string=)))
-	       (bad-elt (find-if-not #'(lambda (elt)
-					 (member (car elt) '(jsonrpc method params id)
-						 :test #'string-equal))
-			  msg)))
-	   (when bad-elt
-	     (error "Method cannot have member ~a : ~a" (car bad-elt) (cdr bad-elt)))
-	   (unless (stringp method)
-	     (error "Method must be a string: ~a" method))
-	   (let ((params (cdr (assoc 'params msg :test #'string-equal)))
-		 (id (cdr (assoc :id msg :test #'string-equal))))
-	     (unless (listp params)
-	       (error "Params must be a list: ~a" params))
-	     (unless (or (null id) (integerp id) (stringp id))
-	       (error "Id must be a string: ~s: ~a" id (type-of id)))
-	     (if id
-		 (make-jsonrpc-request
-		  :method method
-		  :params params
-		  :id id)
-		 (make-jsonrpc-notification
-		  :method method
-		  :params params)))))
-	((let ((result (cdr (assoc "result" msg :test #'string=))))
-	   (when result
-	     (let ((bad-elt (find-if-not #'(lambda (elt)
-					     (member (car elt) '("jsonrpc" "result" "id")
-						     :test #'string=))
-			      msg)))
-	       (when bad-elt
-		 (error "Result cannot have member ~a : ~a" (car bad-elt) (cdr bad-elt))))
-	     (let ((id (cdr (assoc :id msg :test #'string-equal))))
-	       (unless (stringp id)
-		 (error "Id must be a string: ~a" id))
-	       (make-jsonrpc-result
-		:result result
-		:id id)))))
-	((let ((err (cdr (assoc "error" msg :test #'string=))))
-	   (when err
-	     (let ((bad-elt (find-if-not #'(lambda (elt)
-					     (member (car elt) '("jsonrpc" "error" "id")
-						     :test #'string=))
-			      msg)))
-	       (when bad-elt
-		 (error "Error cannot have member ~a : ~a" (car bad-elt) (cdr bad-elt))))
-	     (unless (and (listp err)
-			  (every #'(lambda (elt)
-				     (and (consp elt) (stringp (car elt))) err)
-				 err))
-	       (error "Bad error object: ~a" err))
-	     (let ((bad-err (find-if-not #'(lambda (elt)
-					     (member (car elt) '("code" "message" "data")
-						     :test #'string=))
-			      err)))
-	       (error "Error object cannot have member ~a : ~a" (car bad-err) (cdr bad-err)))
-	     (let ((id (cdr (assoc :id msg :test #'string-equal)))
-		   (code (cdr (assoc "code" err :test #'string=)))
-		   (message (cdr (assoc "message" err :test #'string=)))
-		   (data (cdr (assoc "data" err :test #'string=))))
-	       (unless (stringp id)
-		 (error "Id must be a string: ~a" id))
-	       (unless (integerp code)
-		 (error "Code must be an integer: ~a" code))
-	       (unless (stringp message)
-		 (error "Message must be a string: ~a" message))
-	       (make-jsonrpc-error
-		:code result
-		:message message
-		:data data
-		:id id)))))
-	(t (error "Invalid jsonrpc message: ~a" msg))))
+;; (defun jsonrpc-object (msg)
+;;   "Checks the message is valid, and returns a corresponding struct"
+;;   ;;(format t "~%jsonrpc-object:~%    ~s" msg)
+;;   (check-jsonrpc-object-msg msg)
+;;   (cond ((let ((method (cdr (assoc "method" msg :test #'string=)))
+;; 	       (bad-elt (find-if-not #'(lambda (elt)
+;; 					 (member (car elt) '(jsonrpc method params id)
+;; 						 :test #'string-equal))
+;; 			  msg)))
+;; 	   (when bad-elt
+;; 	     (error "Method cannot have member ~a : ~a" (car bad-elt) (cdr bad-elt)))
+;; 	   (unless (stringp method)
+;; 	     (error "Method must be a string: ~a" method))
+;; 	   (let ((params (cdr (assoc 'params msg :test #'string-equal)))
+;; 		 (id (cdr (assoc :id msg :test #'string-equal))))
+;; 	     (unless (listp params)
+;; 	       (error "Params must be a list: ~a" params))
+;; 	     (unless (or (null id) (integerp id) (stringp id))
+;; 	       (error "Id must be a string: ~s: ~a" id (type-of id)))
+;; 	     (if id
+;; 		 (make-jsonrpc-request
+;; 		  :method method
+;; 		  :params params
+;; 		  :id id)
+;; 		 (make-jsonrpc-notification
+;; 		  :method method
+;; 		  :params params)))))
+;; 	((let ((result (cdr (assoc "result" msg :test #'string=))))
+;; 	   (when result
+;; 	     (let ((bad-elt (find-if-not #'(lambda (elt)
+;; 					     (member (car elt) '("jsonrpc" "result" "id")
+;; 						     :test #'string=))
+;; 			      msg)))
+;; 	       (when bad-elt
+;; 		 (error "Result cannot have member ~a : ~a" (car bad-elt) (cdr bad-elt))))
+;; 	     (let ((id (cdr (assoc :id msg :test #'string-equal))))
+;; 	       (unless (stringp id)
+;; 		 (error "Id must be a string: ~a" id))
+;; 	       (make-jsonrpc-result
+;; 		:result result
+;; 		:id id)))))
+;; 	((let ((err (cdr (assoc "error" msg :test #'string=))))
+;; 	   (when err
+;; 	     (let ((bad-elt (find-if-not #'(lambda (elt)
+;; 					     (member (car elt) '("jsonrpc" "error" "id")
+;; 						     :test #'string=))
+;; 			      msg)))
+;; 	       (when bad-elt
+;; 		 (error "Error cannot have member ~a : ~a" (car bad-elt) (cdr bad-elt))))
+;; 	     (unless (and (listp err)
+;; 			  (every #'(lambda (elt)
+;; 				     (and (consp elt) (stringp (car elt))) err)
+;; 				 err))
+;; 	       (error "Bad error object: ~a" err))
+;; 	     (let ((bad-err (find-if-not #'(lambda (elt)
+;; 					     (member (car elt) '("code" "message" "data")
+;; 						     :test #'string=))
+;; 			      err)))
+;; 	       (error "Error object cannot have member ~a : ~a" (car bad-err) (cdr bad-err)))
+;; 	     (let ((id (cdr (assoc :id msg :test #'string-equal)))
+;; 		   (code (cdr (assoc "code" err :test #'string=)))
+;; 		   (message (cdr (assoc "message" err :test #'string=)))
+;; 		   (data (cdr (assoc "data" err :test #'string=))))
+;; 	       (unless (stringp id)
+;; 		 (error "Id must be a string: ~a" id))
+;; 	       (unless (integerp code)
+;; 		 (error "Code must be an integer: ~a" code))
+;; 	       (unless (stringp message)
+;; 		 (error "Message must be a string: ~a" message))
+;; 	       (make-jsonrpc-error
+;; 		:code code
+;; 		:message message
+;; 		:data data
+;; 		:id id)))))
+;; 	(t (error "Invalid jsonrpc message: ~a" msg))))
 
 ;;;;;;
 
@@ -240,7 +230,7 @@
   (assert (symbolp methodname) () "defrequest method must be a symbol")
   (assert (listp args) () "defrequest args must be a list")
   (assert (stringp docstring) () "defrequest docstring must be a string")
-  (let* ((pname (intern (format nil "jsonrpc-~a" methodname) :pvs-json)))
+  (let* ((pname (intern (format nil "jsonrpc-~a" methodname) :pvs-jsonrpc)))
     `(progn
        (let ((req (assoc ',methodname *pvs-request-methods*)))
 	 (format t "~%Adding ~a" ',methodname)
