@@ -34,11 +34,13 @@
   (require :prof)
   (require :ffcompat)
   (setq excl:*global-gc-behavior* :auto)
+  ;;(load "~/quicklisp/setup.lisp")
+  (load (sys:getenv "QUICKLISP"))
   (load (format nil "~a/pvs.system" *pvs-path*))
   (require :uri)
-  #+(version>= 6)
   (require :pxml-sax)
   (require :sock-s)
+  (require :smputil)
   (let ((excl:*enable-package-locked-errors* nil))
     ;; These are autoloaded functions - ed was accidentally used in a proof
     ;; and caused an unexpected error
