@@ -72,6 +72,10 @@ SUBVERSION = 0
 else
 SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
 endif
+export QUICKLISP = ~/quicklisp/setup.lisp
+ifeq ("$(wildcard $(QUICKLISP))","")
+$(error "$(QUICKLISP) not found, please install from quicklisp.org, edit the QUICKLISP path in Makefile, or use, e.g., 'make QUICKLISP=~/projects/ql/setup.lisp'")
+endif
 DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)
 DIST_ARCHIVES = $(DISTDIR).tar.gz
 ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_FILES) $(emacs-src) # $(SOURCE_FILES)
@@ -639,8 +643,7 @@ $(sbcl-rt) : $(image-deps) $(sbcllisp)
 	@echo "******* Compiling PVS files in Steel Bank Common Lisp (SBCL)"
 	$(SBCLISPEXE) --control-stack-size 2000 \
 		      --dynamic-space-size 2000 \
-		      --eval '(require :sb-posix)' \
-		      --eval '(require :sb-md5)' \
+		      --eval "(load \"$(QUICKLISP)\")" \
 		      --eval '(load "pvs.system" :verbose t)' \
 		      --eval "(let ((*load-pvs-prelude* nil)) \
 				(mk:operate-on-system :pvs :compile))" \
@@ -649,8 +652,7 @@ $(sbcl-rt) : $(image-deps) $(sbcllisp)
 	@echo "******* Building PVS image $@"
 	$(SBCLISPEXE) --control-stack-size 4000 \
 		      --dynamic-space-size 8000 \
-		      --eval '(require :sb-posix)' \
-		      --eval '(require :sb-md5)' \
+		      --eval "(load \"$(QUICKLISP)\")" \
 		      --eval '(load "pvs.system" :verbose t)' \
 		      --eval "(unwind-protect \
 				  (mk:operate-on-system :pvs :compile) \
@@ -703,7 +705,7 @@ $(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegroli
 	$(MKDIR) -p $(subst $(SYSTEM)-allegro,,$@)
 	rm -rf /tmp/pvs-allegro-build
 	@echo "******* Compiling PVS files in Allegro Lisp"
-	$(ALLEGROEXE) -e '(load "$(PVSPATH)pvs.system")' \
+	$(ALLEGROEXE) -e '(progn (load "$(QUICKLISP)") (load "$(PVSPATH)pvs.system"))' \
 		-e "(let ((code 1) \
                           (*load-pvs-prelude* nil)) \
                       (unwind-protect \
@@ -716,8 +718,7 @@ $(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegroli
                         (excl:exit code)))"
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	@echo "******* Building PVS image $@"
-	$(ALLEGROEXE) -e '(defvar *runtime* $(if $(findstring runtime,$@),t,nil))' \
-		-L $(PVSPATH)src/make-pvs.lisp
+	$(ALLEGROEXE) -e '(progn (defvar *runtime* $(if $(findstring runtime,$@),t,nil)) (load "$(PVSPATH)src/make-pvs.lisp"))'
 	touch $@
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
