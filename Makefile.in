@@ -66,8 +66,8 @@ MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
 TAG = $(PACKAGE)$(VERSION)
-ifeq ($(shell $(GIT) tag -l $(TAG)),)
 GIT_DESC := $(TAG)-0-g$(shell $(GIT) rev-parse --short HEAD)
+ifeq ($(shell $(GIT) tag -l $(TAG)),)
 SUBVERSION = 0
 else
 SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
@@ -409,7 +409,8 @@ pvs-src = src/closopt.lisp \
 	  src/add-decl.lisp \
 	  src/list-decls.lisp \
 	  src/tex-support.lisp \
-          src/raw-api.lisp
+          src/raw-api.lisp \
+          src/pvs-threads.lisp
 
 sbcllisp += src/utils/file-utils-sbcl.lisp
 cmulisp += src/utils/file-utils-cmu.lisp
@@ -421,7 +422,7 @@ interface = src/interface/pvs-emacs.lisp \
 	    src/interface/allegro.lisp \
 	    src/interface/cmulisp.lisp \
 	    src/interface/ilisp-pkg.lisp \
-	    src/interface/pvs-xml-rpc.lisp \
+	    src/interface/pvs-websocket.lisp \
 	    src/interface/pvs-json-rpc.lisp \
 	    src/interface/pvs-json-methods.lisp
 
