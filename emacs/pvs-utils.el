@@ -1327,16 +1327,9 @@ theoryname."
 	    spec))))
 
 (defun member-equal (item list)
-  (let ((ptr list)
-        (done nil)
-        (result '()))
-    (while (not (or done (endp ptr)))
-      (cond ((equal item (car ptr))
-             (setq done t)
-             (setq result ptr)))
-      (setq ptr (cdr ptr)))
-    result))
-
+  (dolist (elt list)
+    (when (equal elt item)
+      (return t))))
 
 (defun pvs-abbreviate (cmd abbrevs)
   (let ((abbrs (cl-remove-if #'fboundp
