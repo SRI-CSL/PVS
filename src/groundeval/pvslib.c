@@ -77,7 +77,7 @@ uint32_t mpz_hash(mpz_t x){
 }
 
 uint32_t uint64_hash(uint64_t x){
-  uint64_t y = x;
+  uint64_t y = x + 1;
   y = ((y >> 30) ^ y) * UINT64_C(0xbf58476d1ce4e5b9);
   y = ((y >> 27) ^ y) * UINT64_C(0x94d049bb133111eb);
   y = (y >> 31);
@@ -85,7 +85,7 @@ uint32_t uint64_hash(uint64_t x){
 }
 
 uint32_t uint32_hash(uint32_t x){
-  uint32_t y = x;
+  uint32_t y = x  + 1;
   y = ((y >> 16) ^ y) * 0x45d9f3b;
   y = ((y >> 16) ^ y) * 0x45d9f3b;
   y = (y >> 16) ^ y;
@@ -253,6 +253,10 @@ int128_t rem_int128_uint128(int128_t x, uint128_t y){
     }
   }
   return x%y;
+}
+
+uint32_t rem_mpz_uint32(mpz_t x, uint32_t y){
+  return mpz_fdiv_ui(x, y);  
 }
 
 mpz_ptr_t pvsfloor_q_z(mpq_t x){
@@ -478,6 +482,14 @@ stringliteral_t mk_string(uint32_t length, uint32_t * instring){
    for (uint32_t j = 0; j < length; j++) printf(" %"PRIu32",", result->elems[j]);    
    return result; 
  };
+
+char * byte2cstring(uint32_t length, uint8_t * bstring){
+  uint32_t slength = length++;
+  char * outstring = (char *) safe_malloc(slength++);
+  memcpy(outstring, bstring, length);
+  outstring[length] = '\0';
+  return outstring;
+};
 
 bool_t equal_uint64(pointer_t x, pointer_t y, ...){
   uint64_t ux = (uint64_t)x;

@@ -537,6 +537,73 @@
 ~%~8Tif (s2->count == 1){safe_free(s2)};~
 ~%~8Treturn result;~%}")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;attachments for file operations
+(def-c-attach-primitive-type "file" "file_descriptor" "uint64_t")
+(def-c-attach-primitive-type "file" "void_action" "uint8_t")
+
+(def-c-attach-primitive "file" "null_action" "uint8_t" '() '() "{return 1;}" nil)
+
+(def-c-attach-primitive "file" "open" "file__file_descriptor"
+  '(name)
+  '(bytestrings__bytestring)
+  nil
+  "{
+    uint64_t fd = open(byte2cstring(name), O_RDWR, S_IRUSR | S_IWUSR);
+    struct stat s;
+    if (fstat(fd, &s) == -1){
+       pvs2cerror(\"File size extraction failed.\n\");
+       }
+    uint32_t size = s.size;
+    uint32_t capacity = 4096 * (size/4096 + 1);
+    bytestrings__bytestring_t file_string = (bytestrings__bytestring_t) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    bytestrings__bytestring_t bs = new_bytestrings__bytestring();
+    bs->length = size;
+    bs->seq = file_string;
+    file__file_t ff = new_file__file();
+    ff->fd = fd;
+    ff->capacity = capacity;
+    ff->contents = bs;
+    ff->name = name;
+    return ff;
+   }")
+
+(def-c-attach-primitive "file" "append" "file__file" '(f b) '(file__file bytestrings__bytestring)
+  nil
+  "{uint64_t fd = f->fd;
+    uint32_t size = f->size;
+    uint32_t capacity = f->capacity;
+    char * contents = f->contents;
+    uint32_t len = b->length;
+    char * data = b->seq;
+    ftruncate(fd, size + len);
+    if (size + len < capacity){
+    for (size_t i = 0; i < len; i++)
+      contents[i + size] = data[i];
+  } else {
+    munmap(contents, capacity);
+    uint32_t new_capacity = capacity + (10 * 4096);
+    char * new_contents = mmap(NULL, new_capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
+    for (size_t i = 0; i < len; i++)
+      new_contents[i + size] = data[i];
+    f->contents = new_contents;
+ };
+   f->size = size + len;
+   return f;
+}")
+
+(def-c-attach-primitive "file" "printc" "uint8" '(b) '(bytestrings__bytestring) nil
+  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%c\", b->seq[i]);
+    return 0;
+   }
+")
+
+
+(def-c-attach-primitive "file" "printh" "uint8" '(b) '(bytestrings__bytestring) nil
+  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%02X\", b->seq[i]);
+    return 0;
+   }
+")
 
 
 

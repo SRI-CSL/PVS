@@ -4130,6 +4130,24 @@ integertypes: THEORY
      x32, y32, z32: VAR int32
      x64, y64, z64: VAR int64
 
+
+     subtype_u8_u16: JUDGEMENT uint8 SUBTYPE_OF uint16
+     subtype_u8_i16: JUDGEMENT uint8 SUBTYPE_OF int16     
+     subtype_u16_u32: JUDGEMENT uint16 SUBTYPE_OF uint32
+     subtype_u16_i32: JUDGEMENT uint16 SUBTYPE_OF int32     
+     subtype_u32_u64: JUDGEMENT uint32 SUBTYPE_OF uint64
+     subtype_u32_i64: JUDGEMENT uint32 SUBTYPE_OF int64          
+     
+     plus_u8_u8: JUDGEMENT +(ux8, uy8) HAS_TYPE uint16
+     plus_u16_u16: JUDGEMENT +(ux16, uy16) HAS_TYPE uint32
+     plus_u32_u32: JUDGEMENT +(ux32, uy32) HAS_TYPE uint64
+     plus_u8_i8: JUDGEMENT +(ux8, y8) HAS_TYPE int16
+     plus_i8_u8: JUDGEMENT +(x8, uy8) HAS_TYPE int16     
+     plus_u16_i16: JUDGEMENT +(ux16, y16) HAS_TYPE int32
+     plus_i16_u16: JUDGEMENT +(x16, uy16) HAS_TYPE int32     
+     plus_u32_i32: JUDGEMENT +(ux32, y32) HAS_TYPE int64
+     plus_i32_u32: JUDGEMENT +(x32, uy32) HAS_TYPE int64     
+
      u8plus(ux8, uy8): uint8 =
        LET gap:uint8 = max8 - ux8
         IN IF uy8 <= gap THEN ux8 + uy8 ELSE uy8 - gap - 1 ENDIF
@@ -4146,143 +4164,220 @@ integertypes: THEORY
        LET gap:uint64 = max64 - ux64
         IN IF uy64 <= gap THEN ux64 + uy64 ELSE uy64 - gap - 1 ENDIF
 
-      u8minus(ux8, uy8): uint8 =
+     minus_u8_u8: JUDGEMENT -(ux8, uy8) HAS_TYPE int16
+     minus_u16_u16: JUDGEMENT -(ux16, uy16) HAS_TYPE int32
+     minus_u32_u32: JUDGEMENT -(ux32, uy32) HAS_TYPE int64
+     minus_u8_i8: JUDGEMENT -(ux8, y8) HAS_TYPE int16
+     minus_i8_u8: JUDGEMENT -(x8, uy8) HAS_TYPE int16     
+     minus_u16_i16: JUDGEMENT -(ux16, y16) HAS_TYPE int32
+     minus_i16_u16: JUDGEMENT -(x16, uy16) HAS_TYPE int32     
+     minus_u32_i32: JUDGEMENT -(ux32, y32) HAS_TYPE int64
+     minus_i32_u32: JUDGEMENT -(x32, uy32) HAS_TYPE int64     
+
+     u8minus(ux8, uy8): uint8 =
        IF uy8 <= ux8 THEN ux8 - uy8 ELSE max8 - uy8 + ux8 + 1 ENDIF
 
-      u16minus(ux16, uy16): uint16 =
+     u16minus(ux16, uy16): uint16 =
        IF uy16 <= ux16 THEN ux16 - uy16 ELSE max16 - uy16 + ux16 + 1 ENDIF
 
-      u32minus(ux32, uy32): uint32 =
+     u32minus(ux32, uy32): uint32 =
        IF uy32 <= ux32 THEN ux32 - uy32 ELSE max32 - uy32 + ux32 + 1 ENDIF
 
-      u64minus(ux64, uy64): uint64 =
+     u64minus(ux64, uy64): uint64 =
        IF uy64 <= ux64 THEN ux64 - uy64 ELSE max64 - uy64 + ux64 + 1 ENDIF
 
-      u8pow2(n: below(8)): uint8 =
+     u8pow2(n: below(8)): uint8 =
        exp2(n)
 
-      u16pow2(n: below(16)): uint16 =
+     u16pow2(n: below(16)): uint16 =
        exp2(n)
 
-      u32pow2(n: below(32)): uint32 =
+     u32pow2(n: below(32)): uint32 =
        exp2(n)
 
-      u64pow2(n: below(64)): uint64 =
+     u64pow2(n: below(64)): uint64 =
        exp2(n)
 
-      u8lshift(ux8, (n: upto(8))): uint8 =
+     u8lshift(ux8, (n: upto(8))): uint8 =
        LET x: below(exp2(8 - n)) = nrem(ux8, exp2(8 - n))
            IN x * exp2(n)
 
-      u16lshift(ux16, (n: upto(16))): uint16 =
+     k : VAR nat
+
+     u8lshift_bound: JUDGEMENT
+        u8lshift(ux8, (n: upto(8))) HAS_TYPE upto(exp2(8) - exp2(n))
+
+     u16lshift(ux16, (n: upto(16))): uint16 =
        LET x: below(exp2(16 - n)) = nrem(ux16, exp2(16 - n))
            IN x * exp2(n)
 
-      u32lshift(ux32, (n: upto(32))): uint32 =
+     u16lshift_bound: JUDGEMENT
+        u16lshift(ux16, (n: upto(8))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+
+     u32lshift(ux32, (n: upto(32))): uint32 =
        LET x: below(exp2(32 - n)) = nrem(ux32, exp2(32 - n))
            IN x * exp2(n)
 
-      u64lshift(ux64, (n: upto(64))): uint64 =
+     u32lshift_bound: JUDGEMENT
+       u32lshift(ux32 , (n: upto(24))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+
+     u64lshift(ux64, (n: upto(64))): uint64 =
        LET x: below(exp2(64-n)) = nrem(ux64, exp2(64-n))
            IN x * exp2(n)
 
-      u8rshift(ux8, (n: upto(8))): uint8 =
+     u64lshift_bound: JUDGEMENT
+        u64lshift(ux64, (n: upto(56))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+
+     u8rshift(ux8, (n: upto(8))): uint8 =
        ndiv(ux8, exp2(n))
 
-      u16rshift(ux16, (n: upto(16))): uint16 =
+     u8rshift_bound: JUDGEMENT
+              u8rshift(ux8, (n: upto(8))) HAS_TYPE below(exp2(8 - n))
+
+     u16rshift(ux16, (n: upto(16))): uint16 =
        ndiv(ux16, exp2(n))
 
-      u32rshift(ux32, (n: upto(32))): uint32 =
+     u16rshift_bound: JUDGEMENT
+              u16rshift(ux16, (n: upto(16))) HAS_TYPE below(exp2(16 - n))
+	      
+     u32rshift(ux32, (n: upto(32))): uint32 =
        ndiv(ux32, exp2(n))
 
-      u64rshift(ux64, (n: upto(64))): uint64 =
-       ndiv(ux64, exp2(n))    
+     u32rshift_bound: JUDGEMENT
+              u32rshift(ux32, (n: upto(32))) HAS_TYPE below(exp2(32 - n))
 
-      u8times(ux8, uy8): uint8 =
+     u64rshift(ux64, (n: upto(64))): uint64 =
+       ndiv(ux64, exp2(n))
+
+     u64rshift_bound: JUDGEMENT
+              u64rshift(ux64, (n: upto(64))) HAS_TYPE below(exp2(64 - n))
+
+     times_u8_u8: JUDGEMENT *(ux8, uy8) HAS_TYPE uint16
+     times_u16_u16: JUDGEMENT *(ux16, uy16) HAS_TYPE uint32
+     times_u32_u32: JUDGEMENT *(ux32, uy32) HAS_TYPE uint64
+     times_u8_i8: JUDGEMENT *(ux8, y8) HAS_TYPE int16
+     times_i8_u8: JUDGEMENT *(x8, uy8) HAS_TYPE int16     
+     times_u16_i16: JUDGEMENT *(ux16, y16) HAS_TYPE int32
+     times_i16_u16: JUDGEMENT *(x16, uy16) HAS_TYPE int32     
+     times_u32_i32: JUDGEMENT *(ux32, y32) HAS_TYPE int64
+     times_i32_u32: JUDGEMENT *(x32, uy32) HAS_TYPE int64     
+
+     u8times(ux8, uy8): uint8 =
        LET ux16 = ux8 * uy8 IN nrem(ux16, exp2(8))
 
-      u16times(ux16, uy16): uint16 =
+     u16times(ux16, uy16): uint16 =
        LET ux32 = ux16 * uy16 IN nrem(ux32, exp2(16))
 
-      u32times(ux32, uy32): uint32 =
+     u32times(ux32, uy32): uint32 =
        LET ux64 = ux32 * uy32 IN nrem(ux64, exp2(32))
 
-      u64times(ux64, uy64): uint64 =
+     u64times(ux64, uy64): uint64 =
        nrem(ux64 * uy64, exp2(64))
 
-      u8div(ux8, (uy8 | uy8 /= 0)): uint8 =
+     nzu8: VAR {ux8 | ux8 /= 0}
+     nz8:  VAR {x8 | x8 /= 0}
+     nzu16: VAR {ux16 | ux16 /= 0}
+     nz16:  VAR {x16 | x16 /= 0}
+     nzu32: VAR {ux32 | ux32 /= 0}
+     nz32:  VAR {x32 | x32 /= 0}
+     nzu64: VAR {ux64 | ux64 /= 0}
+     nz64:  VAR {x64 | x64 /= 0}
+     
+
+     div_u8_u8: JUDGEMENT ndiv(ux8, nzu8) HAS_TYPE uint8
+     div_u16_u16: JUDGEMENT ndiv(ux16, nzu16) HAS_TYPE uint16
+     div_u32_u32: JUDGEMENT ndiv(ux32, nzu32) HAS_TYPE uint32
+     div_u64_u64: JUDGEMENT ndiv(ux64, nzu64) HAS_TYPE uint64     
+
+     u8div(ux8, (uy8 | uy8 /= 0)): uint8 =
        ndiv(ux8, uy8)
 
-      u16div(ux16, (uy16 | uy16 /= 0)): uint16 =
+     u16div(ux16, (uy16 | uy16 /= 0)): uint16 =
        ndiv(ux16, uy16)
 
-      u32div(ux32, (uy32 | uy32 /= 0)): uint32 =
+     u32div(ux32, (uy32 | uy32 /= 0)): uint32 =
        ndiv(ux32, uy32)
 
-      u64div(ux64, (uy64 | uy64 /= 0)): uint64 =
+     u64div(ux64, (uy64 | uy64 /= 0)): uint64 =
        ndiv(ux64, uy64)
 
-      u8rem(ux8, (uy8 | uy8 /= 0)): uint8 =
+     u8rem(ux8, (uy8 | uy8 /= 0)): uint8 =
        nrem(ux8, uy8)
 
-      u16rem(ux16, (uy16 | uy16 /= 0)): uint16 =
+     u16rem(ux16, (uy16 | uy16 /= 0)): uint16 =
        nrem(ux16, uy16)
 
-      u32rem(ux32, (uy32 | uy32 /= 0)): uint32 =
+     u32rem(ux32, (uy32 | uy32 /= 0)): uint32 =
        nrem(ux32, uy32)
 
-      u64rem(ux64, (uy64 | uy64 /= 0)): uint64 =
+     u64rem(ux64, (uy64 | uy64 /= 0)): uint64 =
        nrem(ux64, uy64)
 
-      u8max(ux8, uy8): uint8 = max(ux8, uy8)
+     u8max(ux8, uy8): uint8 = max(ux8, uy8)
 
-      u16max(ux16, uy16): uint16 = max(ux16, uy16)
+     u16max(ux16, uy16): uint16 = max(ux16, uy16)
 
-      u32max(ux32, uy32): uint32 = max(ux32, uy32)
+     u32max(ux32, uy32): uint32 = max(ux32, uy32)
 
-      u64max(ux64, uy64): uint64 = max(ux64, uy64)
+     u64max(ux64, uy64): uint64 = max(ux64, uy64)
 
-      i8max(x8, y8): int8 = max(x8, y8)
+     i8max(x8, y8): int8 = max(x8, y8)
 
-      i16max(x16, y16): int16 = max(x16, y16)
+     i16max(x16, y16): int16 = max(x16, y16)
 
-      i32max(x32, y32): int32 = max(x32, y32)
+     i32max(x32, y32): int32 = max(x32, y32)
 
-      i64max(x64, y64): int64 = max(x64, y64)
+     i64max(x64, y64): int64 = max(x64, y64)
 
-      x : VAR real
+     u8min(ux8, uy8): uint8 = min(ux8, uy8)
 
-      u8ceiling(x | 0 <= x AND x <= max8): uint8 = ceiling(x)
+     u16min(ux16, uy16): uint16 = min(ux16, uy16)
 
-      u16ceiling(x | 0 <= x AND x <= max16): uint16 = ceiling(x)
+     u32min(ux32, uy32): uint32 = min(ux32, uy32)
 
-      u32ceiling(x | 0 <= x AND x <= max32): uint32 = ceiling(x)
+     u64min(ux64, uy64): uint64 = min(ux64, uy64)
 
-      u64ceiling(x | 0 <= x AND x <= max64): uint64 = ceiling(x)
+     i8min(x8, y8): int8 = min(x8, y8)
 
-      u8floor(x | 0 <= x AND x <= max8): uint8 = floor(x)
+     i16min(x16, y16): int16 = min(x16, y16)
 
-      u16floor(x | 0 <= x AND x <= max16): uint16 = floor(x)
+     i32min(x32, y32): int32 = min(x32, y32)
 
-      u32floor(x | 0 <= x AND x <= max32): uint32 = floor(x)
+     i64min(x64, y64): int64 = min(x64, y64)
 
-      u64floor(x | 0 <= x AND x <= max64): uint64 = floor(x)
+     x : VAR real
 
-      i8ceiling(x | mini8 <= x AND x <= maxi8): int8 = ceiling(x)
+     u8ceiling(x | 0 <= x AND x <= max8): uint8 = ceiling(x)
 
-      i16ceiling(x | mini16 <= x AND x <= maxi16): int16 = ceiling(x)
+     u16ceiling(x | 0 <= x AND x <= max16): uint16 = ceiling(x)
 
-      i32ceiling(x | mini32 <= x AND x <= maxi32): int32 = ceiling(x)
+     u32ceiling(x | 0 <= x AND x <= max32): uint32 = ceiling(x)
 
-      i64ceiling(x | mini64 <= x AND x <= maxi64): int64 = ceiling(x)
+     u64ceiling(x | 0 <= x AND x <= max64): uint64 = ceiling(x)
 
-      i8floor(x | mini8 <= x AND x <= maxi8): int8 = floor(x)
+     u8floor(x | 0 <= x AND x <= max8): uint8 = floor(x)
 
-      i16floor(x | mini16 <= x AND x <= maxi16): int16 = floor(x)
+     u16floor(x | 0 <= x AND x <= max16): uint16 = floor(x)
 
-      i32floor(x | mini32 <= x AND x <= maxi32): int32 = floor(x)
+     u32floor(x | 0 <= x AND x <= max32): uint32 = floor(x)
 
-      i64floor(x | mini64 <= x AND x <= maxi64): int64 = floor(x)
+     u64floor(x | 0 <= x AND x <= max64): uint64 = floor(x)
+
+     i8ceiling(x | mini8 <= x AND x <= maxi8): int8 = ceiling(x)
+
+     i16ceiling(x | mini16 <= x AND x <= maxi16): int16 = ceiling(x)
+
+     i32ceiling(x | mini32 <= x AND x <= maxi32): int32 = ceiling(x)
+
+     i64ceiling(x | mini64 <= x AND x <= maxi64): int64 = ceiling(x)
+
+     i8floor(x | mini8 <= x AND x <= maxi8): int8 = floor(x)
+
+     i16floor(x | mini16 <= x AND x <= maxi16): int16 = floor(x)
+
+     i32floor(x | mini32 <= x AND x <= maxi32): int32 = floor(x)
+
+     i64floor(x | mini64 <= x AND x <= maxi64): int64 = floor(x)
 
 
 END integertypes
@@ -5476,15 +5571,15 @@ gen_strings : THEORY
 
 charstrings: THEORY
   BEGIN
-    charstring_bound: MACRO nat = 0x10000000 % exp2(28)
-    charstring: TYPE = [# length : below(charstring_bound),
+    charstring_bound: MACRO uint32 = exp2(28) %same as index, but only used in types
+    charstring: TYPE = [# length : index, %below(charstring_bound)
                         seq : ARRAY[below(length) -> char] #]
 
     c, c1, c2: VAR char
 
     s, s1, s2: VAR charstring
 
-    length(s): below(charstring_bound) = s`length
+    length(s): index  = s`length %below(charstring_bound)
 
     cget(s, (i: below(length(s)))): char = s`seq(i)
 
@@ -5609,18 +5704,18 @@ END charstrings
 bytestrings: THEORY
  BEGIN
 
-    byte : TYPE+ = below(256)
+    byte : TYPE+ = uint8
 
-    bytestring_bound: MACRO nat = 0x100000000 % exp2(32)
+    bytestring_bound: MACRO uint32 = exp2(28) % 0x100000000 
 
     b, b1, b2: VAR byte
 
-    bytestring: TYPE = [# length : below(bytestring_bound),
+    bytestring: TYPE = [# length : index, %below(bytestring_bound),
                           seq : ARRAY[below(length) -> byte] #]
 
     s, s1, s2: VAR bytestring
 
-    length(s): below(bytestring_bound) = s`length
+    length(s): index = s`length %below(bytestring_bound)
 
     get(s, (i: below(length(s)))): byte = s`seq(i)
 
@@ -5984,6 +6079,41 @@ union[T1, T2: TYPE]: DATATYPE
   inr(right: T2): inr?
  END union
 
+tostring[T: TYPE]: THEORY
+BEGIN
+%This theory and the tostring operation are just place-holders for semantic attachment.
+%If the result is too big to fit within the bytestring limit, then we assume that the
+%operation only retains a portion of the true string output.  There is no claim that this
+%operation is injective. 
+  tostring(x: T): bytestring
+
+END tostring
+
+file: THEORY
+BEGIN
+
+  void_action: TYPE+
+  null_action: void_action
+  file_descriptor : TYPE+ %uninterpreted
+  file: TYPE+ = [# name: bytestring, capacity: index, 
+                   fd : file_descriptor, contents : bytestring #]
+
+  lifted_file: DATATYPE
+  BEGIN
+    fail: fail?
+    pass(contents: file): pass?
+  END lifted_file
+
+  open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
+% don't need to close the file.  This is handled by reference counting.
+
+  append(f: file, b : bytestring): file % adds to the end of a writable file by remapping if needed.
+
+  printc(b : bytestring): void_action %prints characters
+
+  printh(b : bytestring): void_action %prints bytes
+
+END file
 
 % Defines fixpoints for sets, needed to support the mucalculus model checker.
 
