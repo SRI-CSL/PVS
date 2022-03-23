@@ -172,52 +172,54 @@
 	 (cons (translate-to-yices-subdatatype-constructor (car constructors)
 							   (car superconstructors)
 							   bindings)
-	       (translate-to-yices-subdatatype-constructors (cdr constructors)
-							    (cdr superconstructors)
-							    bindings)))
+		 (translate-to-yices-subdatatype-constructors (cdr constructors)
+							      (cdr superconstructors)
+							      bindings)))
 	(t nil)))
 
 (defun translate-to-yices-subdatatype-constructor
-  (constructor superconstructor bindings)
-  (let* ((cname (yices-name constructor))
-	 (accessors (accessors constructor))
-	 (ctype (if (> (length accessors) 1)
-		    (format nil "(-> ~{~a ~}~a)"
-			  (translate-to-yices* (types (domain (type constructor)))
-					       bindings)
-			  (translate-to-yices* (range (type constructor))
-					       bindings))
-		    (translate-to-yices* (type constructor) bindings)))
-	 (acc-ids (loop for acc in accessors
-			as i from 1
-			collect (format nil "x~a" i)))
-	 (cdef-arglist (if (> (length accessors) 1)
-			   (loop for acc-id in acc-ids
-			     as ty in (types (domain (type constructor)))
-			     collect (format nil "~a::~a"
-				       acc-id
-				       (translate-to-yices* ty
-							    bindings)))
-			   (if (eql (length accessors) 1)
-			       (format nil "x::~a" (translate-to-yices* (domain (type constructor)) bindings))
-			       nil)))
-	 (cdef (format nil "(lambda (~{~a ~}) (~a~{ ~a~}))" cdef-arglist
-		       (yices-name superconstructor)
-		       acc-ids))
-	 (defn-string (format nil "(define ~a::~a ~a)"
-			cname
-			ctype
-			(if accessors cdef (yices-name superconstructor))))
-	 (recognizer-defn-string (format nil "(define ~a::~a ~a)"
-			(format nil "~a?" cname)
-			(translate-to-yices* (type (recognizer constructor)) bindings)
-			(format nil "~a?" (yices-name superconstructor)))))
-    (push recognizer-defn-string *ydefns*)
-    (push defn-string *ydefns*)
-    (translate-to-yices-subdatatype-accessors accessors
-					      (accessors superconstructor)
-					      bindings)
-    cname)  )
+    (constructor superconstructor bindings)
+  (let ((cname (yices-name constructor))
+	(accessors (accessors constructor)))
+    (if accessors;null constructors are unchanged from superdatatype
+	(let* ((ctype (if (> (length accessors) 1)
+			  (format nil "(-> ~{~a ~}~a)"
+				  (translate-to-yices* (types (domain (type constructor)))
+						       bindings)
+				  (translate-to-yices* (range (type constructor))
+						       bindings))
+			(translate-to-yices* (type constructor) bindings)))
+	       (acc-ids (loop for acc in accessors
+			      as i from 1
+			      collect (format nil "x~a" i)))
+	       (cdef-arglist (if (> (length accessors) 1)
+				 (loop for acc-id in acc-ids
+				       as ty in (types (domain (type constructor)))
+				       collect (format nil "~a::~a"
+						       acc-id
+						       (translate-to-yices* ty
+									    bindings)))
+			       (if (eql (length accessors) 1)
+				   (format nil "x::~a" (translate-to-yices* (domain (type constructor)) bindings))
+				 nil)))
+	       (cdef (format nil "(lambda (~{~a ~}) (~a~{ ~a~}))" cdef-arglist
+			     (yices-name superconstructor)
+			     acc-ids))
+	       (defn-string (format nil "(define ~a::~a ~a)"
+				    cname
+				    ctype
+				    (if accessors cdef (yices-name superconstructor))))
+	       (recognizer-defn-string (format nil "(define ~a::~a ~a)"
+					       (format nil "~a?" cname)
+					       (translate-to-yices* (type (recognizer constructor)) bindings)
+					       (format nil "~a?" (yices-name superconstructor)))))
+	  (push recognizer-defn-string *ydefns*)
+	  (push defn-string *ydefns*)
+	  (translate-to-yices-subdatatype-accessors accessors
+						    (accessors superconstructor)
+						    bindings)
+	  cname)
+      cname)))
 
 (defun translate-to-yices-subdatatype-accessors (accessors superaccessors bindings)
   (cond ((consp accessors)

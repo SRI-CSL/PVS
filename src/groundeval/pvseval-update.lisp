@@ -898,15 +898,15 @@ if called."
     (let* ((clarg (pvs2cl_up* argument bindings livevars))
 	   (argtype (find-supertype (type argument)))
 	   (fieldnum (get-field-num (id expr) argtype)))
-      (if (tc-eq argtype *string-type*)  ;;NSH(9-9-20): trapping strings
-	  (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
+      ;; (if (tc-eq argtype *string-type*)  ;;NSH(9-9-20): trapping strings
+      ;; 	  (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
 	(if (finseq-type? argtype)
 	    (let ((fldapp (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))))
 	    `(let ((argval ,clarg))
 	       (if (stringp argval)
 		   ,fldapp
 		 (project ,(1+ fieldnum) ,clarg))))
-	  `(project ,(1+ fieldnum) ,clarg))))))
+	  `(project ,(1+ fieldnum) ,clarg)))))
 
 
 
@@ -1560,7 +1560,7 @@ if called."
 (defun pvs2cl-resolution (expr)
   (let* ((decl (declaration expr))
 	 (*current-context* (saved-context (module decl))))
-    (make-eval-info decl)
+    (make-c-eval-info decl)
     (if (datatype-constant? expr)
 	(or (lisp-function2 (declaration expr))
 	    (pvs2cl-datatype expr))
@@ -1597,7 +1597,7 @@ if called."
 	 (*pvs2cl-decl* decl))
     (cond ((null defax)
 	   (let ((undef (undefined decl)))
-	     (make-eval-info decl)
+	     (make-c-eval-info decl)
 	     (setf (ex-name decl) undef
 		   (ex-name-m decl) undef
 		   (ex-name-d decl) undef)
@@ -1633,7 +1633,7 @@ if called."
 			       (declarations
 				(pvs2cl-declare-vars formal-ids2
 						     (append formals defn-bindings))))
-			  (make-eval-info decl)
+			  (make-c-eval-info decl)
 			  (setf (ex-name decl) id)
 			  (let ((id2 (mk-newfsymb (format nil "~a__~a"
 						    (id (module decl))
@@ -1880,7 +1880,7 @@ if called."
 					  (or (internal (eval-info decl))
 					      (external (eval-info decl))))
 			       (progn
-				 (unless (eval-info decl)(make-eval-info decl))
+				 (unless (eval-info decl)(make-c-eval-info decl))
 				 (or (external-lisp-function decl)
 				     (pvs2cl-external-lisp-function decl))
 				 (or (lisp-function decl)
@@ -1951,9 +1951,9 @@ if called."
 		    (rec-decl (declaration recognizer))
 		    (rec-id (mk-newsymb (id recognizer)))
 		    (rec-defn `(defun ,rec-id (x) (eql x ,pos))))
-	       (unless (eval-info decl) (make-eval-info decl))
+	       (unless (eval-info decl) (make-c-eval-info decl))
 	       (setf (in-name decl) pos)
-	       (unless (eval-info rec-decl)(make-eval-info rec-decl))
+	       (unless (eval-info rec-decl)(make-c-eval-info rec-decl))
 	       (setf (in-name rec-decl) rec-id)
 	       (setf (definition (in-defn rec-decl))
 		     rec-defn)
@@ -1968,7 +1968,7 @@ if called."
 		      )
 ;;		 (break "pvs2cl-constructor")
 		 (unless (eval-info (declaration constructor))
-		   (make-eval-info (declaration constructor)))
+		   (make-c-eval-info (declaration constructor)))
 		 (setf (definition (in-defn-m (declaration constructor)))
 		       defn)
 		 (setf (in-name-m (declaration constructor))
@@ -1997,13 +1997,13 @@ if called."
 		     (setf (in-name (declaration constructor))
 			   uname)))
 		 (unless (eval-info (declaration (recognizer constructor)))
-		   (make-eval-info (declaration (recognizer constructor))))
+		   (make-c-eval-info (declaration (recognizer constructor))))
 		 (setf (in-name (declaration (recognizer constructor)))
 		       (makesym "~a?" struct-id))
 		 (loop for x in accessors
 		    do (unless (and (eval-info (declaration x))
 				    (lisp-function (declaration x)))
-			 (make-eval-info (declaration x)))
+			 (make-c-eval-info (declaration x)))
 		    do (pvs2cl-accessor-defn*
 			      (declaration x) constructor
 			      struct-id all-structs

@@ -96,6 +96,7 @@ extern int64_t rem_int64_uint64(int64_t x, uint64_t y);
 extern int64_t rem_int64_uint32(int64_t x, uint32_t y);
 extern uint128_t rem_uint128_uint128(int128_t x, uint128_t y); //deprecated
 extern int128_t rem_int128_uint128(int128_t x, uint128_t y); //deprecated
+extern uint32_t rem_mpz_uint32(mpz_t x, uint32_t y); 
 extern mpz_ptr_t pvsfloor_q_z(mpq_t x);
 extern mpq_ptr_t pvsfloor_q_q(mpq_t x);
 extern int64_t pvsfloor_q_i64(mpq_t x);
