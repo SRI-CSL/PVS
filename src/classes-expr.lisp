@@ -417,6 +417,9 @@
 (defcl set-list-expr (set-expr)
   exprs)
 
+(defcl array-expr (lambda-expr)
+  exprs)
+
 (defcl let-lambda-expr (lambda-expr))
 
 ;; After typechecking, a fieldex is converted to a fieldex-lambda-expr, to
