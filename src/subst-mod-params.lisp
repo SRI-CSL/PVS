@@ -1642,8 +1642,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 			    (t (substit (subst-mod-params* declared-type modinst bindings) alist))))
 		     (jtype (substit (subst-mod-params* judgement-type modinst bindings) alist))
 		     (ndecl (if (rassoc decl bindings) ;; already new
-				 decl
-				 (copy decl))))
+				decl
+				(copy decl))))
 		(setf (declared-type ndecl) ndecl-type
 		      (type ndecl) ntype
 		      (judgement-type ndecl) jtype
@@ -1656,9 +1656,30 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 					  (freevars (subst-mod-params* judgement-type modinst bindings))))
 		(values ndecl alist)))))
-	(progn
-	  (break "Check this")
-	  (copy decl :name (subst-mod-params* name modinst bindings))))))
+	(multiple-value-bind (nformals alist)
+	    (apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
+			       formals)
+	  (let* ((nname (subst-mod-params* name modinst bindings))
+		 (ntype (substit (subst-mod-params* type modinst bindings) alist))
+		 (ndecl-type
+		  (cond ((tc-eq declared-type type) ntype)
+			((and (print-type type)
+			      (typep declared-type '(or type-application)))
+			 (substit (subst-mod-params* (print-type type) modinst bindings) alist))
+			(t (substit (subst-mod-params* declared-type modinst bindings) alist))))
+		 (jtype (substit (subst-mod-params* judgement-type modinst bindings) alist)))
+	    (setf (declared-type decl) ndecl-type
+		  (type decl) ntype
+		  (judgement-type decl) jtype
+		  (name decl) nname
+		  (formals decl) nformals)
+	    #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+				      (freevars (substit ndecl-type alist))))
+	    #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+				      (freevars (substit ntype alist))))
+	    #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+				      (freevars (subst-mod-params* judgement-type modinst bindings))))
+	    decl)))))
 
 (defmethod subst-mod-params* ((decl rec-application-judgement) modinst bindings)
   (multiple-value-bind (ndecl alist)
