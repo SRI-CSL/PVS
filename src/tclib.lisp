@@ -391,7 +391,7 @@ lib-path, along with modification dates."
 	   (emacs-files-loaded (load-pvs-lib-emacs-file lib-path force?)))
       (when pvs-files-loaded
 	(pushnew lib-path (current-prelude-libraries)
-		 :test #'uiop:pathname-equal))
+		 :test #'pathname-equal))
       (if (or pvs-files-loaded
 	      lisp-files-loaded
 	      emacs-files-loaded)
@@ -572,12 +572,12 @@ point."
 	       (if loaded-files
 		   (pvs-message
 		       "Loaded prelude library context from ~a~
-                            ~%  and reset the context"
+                            ~%  and reset the context~%"
 		     lib-path)
 		   (pvs-message "Error loading prelude library context ~a~
-                                     ~%  no pvs files loaded"
+                                     ~%  no pvs files loaded~%"
 		     lib-path)))
-	      (t (pvs-message "~a.pvscontext is empty~%  no PVS files loaded"
+	      (t (pvs-message "~a.pvscontext is empty~%  no PVS files loaded~%"
 		   lib-path))))
       ;; Back to previous *workspace-session*
       ;; loaded-files and prelude-ctx have been updated
@@ -916,7 +916,8 @@ not a dir: if a valid id
 		 (symbol (string libref))
 		 (pathname (namestring libref))
 		 (t libref)))
-	 (dirp (when (directory-p pstr) (truename pstr)))
+	 (estr (ignore-errors (uiop:native-namestring pstr)))
+	 (dirp (when (and estr (directory-p estr)) (truename estr)))
 	 (lib-path (when dirp (merge-pathnames dirp))))
     ;; dirp works for both absolute and relative pathnames Note that a
     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
