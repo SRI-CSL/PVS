@@ -321,6 +321,9 @@ intervenes."
   (sit-for 1))
 
 (defun pvs-send* (string &optional message status and-go)
+  (when pvs-in-evaluator
+    (switch-to-lisp t)
+    (error "Must exit the ground evaluator first"))
   (with-current-buffer (ilisp-buffer)
     (setq buffer-read-only nil))
   (let (*pvs-output-pos*)

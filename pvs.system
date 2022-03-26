@@ -28,10 +28,11 @@
 (in-package :common-lisp)
 
 #+sbcl (require :sb-posix)
+#+sbcl (require :sb-cltl2)
+#+sbcl (require :sb-concurrency)
+#+sbcl (require :sb-rotate-byte)
 #+sbcl (require :sb-md5)
-
-#+sbcl ;; Needed in order to use quicklisp
-(require 'sb-bsd-sockets)
+#+sbcl (require 'sb-bsd-sockets)
 
 (require :asdf)
 
@@ -111,7 +112,7 @@
 (unless (find-package :make)
   (#-(or cmu sbcl excl) progn
    #+cmu ext:without-package-locks
-   #+sbcl sb-ext:without-package-locks
+   #+sbcl progn ;;sb-ext:without-package-locks
    #+excl excl:without-package-locks
    #+clisp
    (defpackage :make)
@@ -151,7 +152,9 @@
 (defpackage :pvs-xml-rpc (:use :cl-user :lisp :common-lisp :pcl :make))
 
 #+sbcl
-(defpackage :pvs (:use :cl-user :common-lisp :sb-pcl :make))
+(defpackage :pvs
+  (:use :cl-user :common-lisp :sb-pcl :make)
+  (:shadow :type :declaration :number :debug :class :keyword :condition :parse-error :type-error))
 #+sbcl
 (defpackage :pvs-xml-rpc
   (:use :cl-user :common-lisp :sb-pcl :make)
@@ -168,9 +171,9 @@
 #+(or gcl cmu sbcl)
 (defpackage :rahd (:use :common-lisp))
 
-#+sbcl
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (sb-ext:unlock-package :common-lisp))
+;; #+sbcl
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (sb-ext:unlock-package :common-lisp))
 
 #+cmu
 (eval-when (:execute :compile-toplevel :load-toplevel)
@@ -205,7 +208,9 @@
   :binary-extension #.*pvs-binary-type*
   :initially-do (unless *pvs-system-loaded*
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
-			      (safety 1) (speed 3) (debug 1)))
+			      (safety 1)
+			      (speed #+allegro 3 #+sbcl 2)
+			      (debug #+allegro 1 #+sbcl 3)))
 		  ;; Note that these do very little SBCL simply does
 		  ;; not want to shut up
 		  #+sbcl
@@ -309,7 +314,8 @@
 		(pvs::write-pvs-version-file)
 		)
   :components
-  ((:module ground-prover
+  ((:file "packages")
+   (:module ground-prover
      :source-pathname "src/ground-prover/"
      :components ((:file "prmacros")
 		  (:file "interface"
@@ -440,6 +446,7 @@
 		  (:file "tex-support")
 		  (:file "pp-html")
 		  (:file "pp-xml")
+		  (:file "mlpp")
 		  (:file "raw-api"))
      :depends-on (basic))
    (:module proof-checker
@@ -583,11 +590,11 @@
 		  (:file "named-callbacks")
 		  (:file "fcpo")
 		  (:file "nlyices")))
-   #+allegro
    (:module xmlrpc
      :source-pathname "src/interface"
      :components ((:file "pvs-json-rpc")
 		  (:file "pvs-json")
 		  (:file "pvs-json-methods")
+		  #+allegro
 		  (:file "pvs-xml-rpc")))
    ))

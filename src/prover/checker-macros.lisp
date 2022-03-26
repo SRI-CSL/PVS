@@ -188,6 +188,7 @@
 (defvar *quant-simp?* nil)
 (defvar *implicit-typepreds?* nil)
 (defvar *assert-eval?* nil)
+(defvar *query-input* nil)
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)
