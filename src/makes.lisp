@@ -533,7 +533,7 @@
 ;      (change-name-expr-class-if-needed (declaration nres) nex))
 ;    nex))
 
-(defmethod mk-name-expr ((id number) &optional actuals mod-id res
+(defmethod mk-name-expr ((id cl:number) &optional actuals mod-id res
 			 &key mappings library target dactuals)
   (if res
       (make!-name-expr id actuals mod-id res mappings library target)
