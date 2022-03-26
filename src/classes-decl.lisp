@@ -141,8 +141,8 @@
 	  type-decl type-def-decl type-expr type-name type-name? type-value
 	  typed-declaration types update-expr using-hash var-decl visible?
 	  recursive-type inline-recursive-type adt-constructor))
-#+(or cmu sbcl)
-(#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
+#+cmu
+(ext:without-package-locks
  (defgeneric class (x))
  (defgeneric (setf class) (x y))
  (defgeneric keyword (x))
@@ -334,9 +334,6 @@
 ;;; unparser.  The type is set by the typechecker to the canonical value
 ;;; of the declared-type.
 
-(
- #-sbcl progn
- #+sbcl sb-ext:without-package-locks
 (defcl declaration (theory-element)
   (newline-comment :restore-as nil)
   (id :type (or symbol number) :parse t :restore-as nil)
@@ -353,7 +350,6 @@
   (semi :parse t :restore-as nil)
   (tcc-form :fetch-as nil :ignore t)
   (typecheck-time :restore-as nil))
-)
 
 ;; A mixin
 (defcl mapped-decl ())
@@ -378,10 +374,8 @@
   (type-value :store-as ignore-self-reference-type-values)
   (ir-type-value :restore-as nil :fetch-as nil))
 
-(#-sbcl progn #+sbcl sb-ext:without-package-locks
 (defcl nonempty-type-decl (type-decl)
   (keyword :restore-as nil))
-)
 
 ;;; A mixin
 (defcl type-def-decl (type-decl)
@@ -1023,16 +1017,12 @@ restored, the TCCs are checked")
 (defcl tcc-proof-info (proof-info)
   origin)
 
-(
- #-sbcl progn
- #+sbcl sb-ext:without-package-locks
 (defcl decl-reference ()
   id
   class
   type
   theory-id
   library)
-)
 
 ;; *all-workspace-sessions* is a list of workspace-session instances, which are used
 ;; by with-pvs-context to execute a given expression under a different
