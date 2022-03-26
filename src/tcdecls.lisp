@@ -2862,10 +2862,15 @@ The dependent types are created only when needed."
 	      (parameters type) (car typeslist)))
 	   (let ((tval (substit te (pairlis (car (formals
 						  (declaration (type type))))
-					    (parameters type)))))
+					    (parameters type))))
+		 (pt (or (substit (print-type te)
+			   (pairlis (car (formals (declaration (type type))))
+				    (parameters type)))
+			 type)))
 	     ;; tval now has the parameters
-	     (unless (print-type tval)
-	       (setf (print-type tval) type))
+	     (unless (and (type-application? pt)
+			  (occurs-in tval (module-instance (type pt))))
+	       (setf (print-type tval) pt))
 	     (when (or (nonempty-type-decl? (declaration (type type)))
 		       (nonempty? type))
 	       (setf (nonempty? tval) t)
@@ -4141,6 +4146,7 @@ The dependent types are created only when needed."
       (type-error (expr decl)
 	"Cannot determine the type associated with ~a:~%  Please provide more ~
          information, i.e., actual parameters or a coercion." (expr decl))))
+  ;;(set-type (expr decl) (type (expr decl)))
   (check-conversion-applicability decl)
   (setf (k-combinator? decl) (k-combinator? (expr decl)))
   (push decl (conversions *current-context*))
