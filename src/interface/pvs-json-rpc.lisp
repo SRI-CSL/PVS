@@ -17,7 +17,8 @@
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
-(defpackage :pvs-json (:use :json :cl-user :common-lisp :pvs))
+(defpackage :pvs-json
+  (:use :cl-user :json))
 
 (in-package :pvs-json)
 
@@ -330,9 +331,8 @@
 	   (ps-json (pvs:pvs2json ps)))
       (pvs:xmlrpc-output-proofstate (list ps-json)))
     (when *interrupted-rpc*
-	    (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	    (mp:process-wait "Waiting for next Proofstate"
-			     #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))))
+      (open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+      (wait-on-gate (pvs:psinfo-res-gate pvs:*ps-control-info*)))))
 
 ;; M3: hook for finishing proofstates [Sept 2020].
 (defun finish-proofstate-rpc-hook (ps)
@@ -350,7 +350,7 @@
 		   (pvs:collect-justification pvs:*top-proofstate*)))
 	  (decl (pvs:declaration ps)))
       (setf pvs:*last-attempted-proof* (list decl script)))
-    (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
+    (open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
 
 ;; M3: hook for successfully closed branches.
 (defun rpc-output-notify-proof-success (proofstate)

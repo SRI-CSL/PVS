@@ -18,11 +18,6 @@
 (defvar *pvs-message-hooks* nil)
 (defvar *pvs-error-hooks* nil)
 
-(defmethod prover-read :around ()
-  (if *pvs-interface*
-      (prover-read* *pvs-interface*)
-      (call-next-method)))
-
 (defmethod output-proofstate :around (proofstate)
   (call-next-method))
 

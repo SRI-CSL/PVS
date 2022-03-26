@@ -638,9 +638,9 @@
                                                                 :res-gate ~a~%~
                                                                 :json-result ~a~%~
                                                                 :lock ~a>"
-				 (mp:gate-open-p (psinfo-cmd-gate psi))
+				 (gate-open-p (psinfo-cmd-gate psi))
 				 (psinfo-command psi)
-				 (mp:gate-open-p (psinfo-res-gate psi))
+				 (gate-open-p (psinfo-res-gate psi))
 				 (psinfo-json-result psi)
 				 (psinfo-lock psi)))))
   command
@@ -660,37 +660,8 @@
 	   ps-json))))
 
 ;;; Support for displaying proofs
-(defmethod prover-read :around ()
-  "Called from prover qread function, which is how the "
-  (cond (*ps-control-info*
-	 ;; bad idea: (format t "~%prover-read: about to wait")
-	 #+allegro
-	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
-	   (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	   (mp:process-wait "Waiting for next Proofstate"
-			    #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))
-	 #+allegro
-	 (mp:process-wait
-	  "Prover Waiting"
-	  #'(lambda ()
-	      (or (and *ps-control-info*
-		       (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
-		       (psinfo-command *ps-control-info*))
-		  (excl:read-no-hang-p *terminal-io*))))
-	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
-	 #+allegro
-	 (if (and *ps-control-info*
-		  (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
-	     (unwind-protect
-		  (multiple-value-bind (input err)
-		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
-		    (when err
-		      (format t "~%~a" err))
-		    input)
-	       (mp:close-gate (psinfo-cmd-gate *ps-control-info*))
-	       (setf (psinfo-command *ps-control-info*) nil))
-	     (call-next-method)))
-	(t (call-next-method))))
+
+
 
 ;;; Summary of prover (from eproofcheck.lisp)
 ;;; prove-decl -> prove-decl-body -> prove* -> (prove*-int -> output-proofstate)*
@@ -1022,9 +993,6 @@ list of interface names that are currently open."
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
-(#+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #-(or cmu sbcl) progn
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch*
@@ -1081,7 +1049,6 @@ list of interface names that are currently open."
 		 (line-begin (place obj))
 		 (col-begin (place obj)))))
 	   (error "Parse error"))))
-)
 
 (defvar *type-error* nil)
 (defvar *type-error-argument* nil)
@@ -1091,9 +1058,6 @@ list of interface names that are currently open."
   ((term :accessor term :initarg :term)
    (msg :accessor msg :initarg :msg)))
 
-(#+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #-(or cmu sbcl) progn
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))
     (cond (*type-error-catch*
@@ -1142,7 +1106,6 @@ list of interface names that are currently open."
 	   (pvs-abort))
 	  (t (format t "~%~a" errmsg)
 	     (error "Typecheck error")))))
-)
 
 (defun plain-type-error (obj message &rest args)
   (let ((*skip-all-conversion-checks* t))

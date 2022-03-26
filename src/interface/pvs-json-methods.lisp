@@ -183,12 +183,14 @@
   "Searches for all declarations with the given id"
   (pvs:find-declaration id))
 
+#+allegro
 (defrequest reset ()
   "Resets PVS"
   (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
     (mp:process-interrupt proc #'pvs:pvs-abort)))
 
 ;; Modified by M3 to allow restore to Rule? prompt when in-checker [Sept 2020]
+#+allegro
 (defrequest interrupt ()
   "Interrupts PVS."
   (when *pvs-lisp-process*
@@ -230,7 +232,53 @@
 ;;; commands will come in on other threads.
 
 ;;; The tricky thing here is that we are running the prover in the initial
-;;; thread, from an XML-RPC thread.  
+;;; thread, from an XML-RPC thread.
+
+#+allegro
+(defun request-prover-read ()
+  "Called from prover qread function, which is how the "
+  (cond (*ps-control-info*
+	 ;; bad idea: (format t "~%prover-read: about to wait")
+	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
+	   (close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	   (wait-on-gate  (pvs:psinfo-res-gate pvs:*ps-control-info*)))
+	 (wait-on-gate (psinfo-cmd-gate *ps-control-info*))
+	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
+	 (if (and *ps-control-info*
+		  (gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	     (unwind-protect
+		  (multiple-value-bind (input err)
+		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
+		    (when err
+		      (format t "~%~a" err))
+		    input)
+	       (close-gate (psinfo-cmd-gate *ps-control-info*))
+	       (setf (psinfo-command *ps-control-info*) nil))
+	     (call-next-method)))
+	(t (call-next-method))))
+
+#+sbcl
+(defun request-prover-read ()
+  "Called from prover qread function, which is how the "
+  (cond (*ps-control-info*
+	 ;; bad idea: (format t "~%prover-read: about to wait")
+	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
+	   (sb-concurrency:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	   (sb-concurrency:wait-on-gate (pvs:psinfo-res-gate pvs:*ps-control-info*)))
+	 (sb-concurrency:wait-on-gate (psinfo-cmd-gate *ps-control-info*))
+	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
+	 (if (and *ps-control-info*
+		  (sb-concurrency:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	     (unwind-protect
+		  (multiple-value-bind (input err)
+		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
+		    (when err
+		      (format t "~%~a" err))
+		    input)
+	       (sb-concurrency:close-gate (psinfo-cmd-gate *ps-control-info*))
+	       (setf (psinfo-command *ps-control-info*) nil))
+	     (call-next-method)))
+	(t (call-next-method))))
 
 (defrequest prove-formula (formula theory &optional rerun?)
   "Starts interactive proof of a formula from a given theory
@@ -246,7 +294,10 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   ;; Thus we make sure we're not in the checker, that the theory typechecks,
   ;; and that the formula exists in that theory.
   (when (and *pvs-lisp-process*
-	     (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
+	     #+allegro
+	     (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+	     #+sbcl
+	     (sb-thread:symbol-value-in-thread 'pvs:*in-checker* *pvs-lisp-process*))
     (pvs-error "Prove-formula error" "Must exit the prover first"))
   (pvs:get-formula-decl theory formula)
   ;;(format t "~%prove-formula: after get-formula-decl")
@@ -254,10 +305,10 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   ;;   (format t "~%About to quit prover~%")
   ;;   (throw 'pvs:quit nil)
   ;;   (format t "~%After quitting prover~%"))
-  (let ((res-gate (mp:make-gate nil)) ;; initially closed
-	(cmd-gate (mp:make-gate nil)) ;;   "
-	(lock (mp:make-process-lock))
-	(proc (mp:process-name-to-process "Initial Lisp Listener")))
+  (let ((res-gate (make-gate nil)) ;; initially closed
+	(cmd-gate (make-gate nil)) ;;   "
+	(lock #+allegro (mp:make-process-lock))
+	(proc #+allegro (mp:process-name-to-process "Initial Lisp Listener")))
     (setq pvs:*multiple-proof-default-behavior* :noquestions)
     (setq pvs:*prover-commentary* nil)
     (setq pvs:*ps-control-info*
@@ -265,13 +316,15 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	   :lock lock
 	   :res-gate res-gate
 	   :cmd-gate cmd-gate))
+    (add-prover-input-hook #'request-prover-read)
     ;;(format t "~%prove-formula: Waiting...~%")
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     ;; process-interrupt interrupts the main pvs process proc, and invokes
     ;; prove-formula
-    (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
+    #+allegro (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
     ;;(format t "~%prove-formula: after process-interrupt, about to wait")
-    (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
+    #+allegro (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
+    #+allegro
     (mp:with-process-lock (lock)
       (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))
 	;;(format t "~%prove-formula: returning json-result ~a~%" json-result)
@@ -291,6 +344,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 ;;     (pvs:prove-formula theory formula rerun?)))
 
 ;; Modified by M3 to enrich server response on glassbox strategy applications [Sept 2020]
+#+allegro
 (defrequest proof-command (form)
   "Sends a command to the prover"
   #+pvsdebug (format t "~%[proof-command] form ~a~%" form) ;;debug
@@ -340,6 +394,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	       (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	       psjson))))))
 
+#+allegro
 (defrequest prover-status ()
   "Checks the status of the prover: active or inactive."
   (format nil "~a" (if *pvs-lisp-process*
@@ -465,25 +520,25 @@ to the associated declaration."
 (defun json-term (term)
   (json-term* term))
 
-(defmethod json-term* ((term module))
+(defmethod json-term* ((term pvs:module))
   `((:kind . :theory)
     (:id . ,(id term))
     (:place . ,(place-list (place term)))))
 
-(defmethod json-term* ((term recursive-type))
+(defmethod json-term* ((term pvs:recursive-type))
   `((:kind . :recursive-type)
     (:id . ,(id term))
     (:place . ,(place-list (place term)))))
 
-(defmethod json-term* ((term declaration))
+(defmethod json-term* ((term pvs:declaration))
   (pvs:json-decl-list term (pvs:ptype-of term) (module term)))
 
-(defmethod json-term* ((term type-expr))
+(defmethod json-term* ((term pvs:type-expr))
   `((:kind . :type)
     (:string . ,(str term))
     (:place . ,(place-list (place term)))))
 
-(defmethod json-term* ((term expr))
+(defmethod json-term* ((term pvs:expr))
   `((:kind . :expr)
     (:string . ,(str term))
     (:place . ,(place-list (place term)))))
