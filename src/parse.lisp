@@ -1796,6 +1796,7 @@
     (NAME-BIND-EXPR (xt-name-bind-expr expr))
     (SET-EXPR (xt-set-expr expr))
     (SET-LIST-EXPR (xt-set-list-expr expr))
+    (ARRAY-EXPR (xt-array-expr expr))
     (LET-EXPR (xt-let-expr expr))
     (WHERE-EXPR (xt-where-expr expr))
     (UPDATE-EXPR (xt-update-expr expr))
@@ -2655,6 +2656,13 @@
 	 ;;(tvar (make-new-variable 'x exprs))
 	 )
     (make-instance 'set-list-expr
+      :exprs exprs)))
+
+(defun xt-array-expr (exs)
+  (let* ((exprs (mapcar #'xt-expr (term-args exs)))
+	 ;;(tvar (make-new-variable 'x exprs))
+	 )
+    (make-instance 'array-expr
       :exprs exprs)))
 
 ;; Note that xt-let-expr works as a lisp let* - this is so that later

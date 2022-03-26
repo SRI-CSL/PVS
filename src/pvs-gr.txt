@@ -51,7 +51,7 @@ Operators
 	'<<' '>>' '::' '#' '@' '@@' '##' '|[' ']|' '!'
         '<<=' '>>=' '`' % '\''
         '..' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
-	 '§'
+	 '§' '[:' ':]'
         %% Bracketing operators 
 	'[|' '|]' '[||]' '(|' '|)' '(||)' '{|' '|}' '{||}'
         %% Unicode bracketing operators (TeX input method map shown)
@@ -635,6 +635,7 @@ name-expr ::= {name [':' type-expr]^t ['%VBAR' expr]^e}
 
 bracket-expr ::= tuple-expr
                | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
+               | {'[:' {expr ** ','} ':]'} <array-expr(expr*)>
                | {'[|' {expr ** ','} '|]'} <bracket-expr(\[\|\|\](), btup(expr*))>
                | {'(|' {expr ** ','} '|)'} <bracket-expr(\(\|\|\)(), btup(expr*))>
                | {'{|' {expr ** ','} '|}'} <bracket-expr(\{\|\|\}(), btup(expr*))>
