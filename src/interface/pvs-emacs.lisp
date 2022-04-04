@@ -1042,7 +1042,7 @@ list of interface names that are currently open."
 	       (col-begin (place obj)))))
 	 (pvs-abort))
 	(t (format t "~%~?~@[~%In file ~a~]~@[~a~]"
-	     message args
+	     (protect-format-string message) args
 	     (when *current-file* (pathname-name *current-file*))
 	     (when (place obj)
 	       (format nil " (line ~a, col ~a)"
