@@ -176,7 +176,7 @@
 (defcl ir-recordtype (ir-type)
   ir-field-types)
 
-(defcl ir-filetype (ir-recordtype)) %keep track of records that are actually files. 
+(defcl ir-filetype (ir-recordtype)) ;; keep track of records that are actually files. 
 
 (defcl ir-tupletype (ir-recordtype))
 
