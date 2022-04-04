@@ -447,6 +447,7 @@
       (dump-sequents-to-file *top-proofstate*)))
   (when *dump-proof-data-to-file*
     (assert *mlpp-type-hash*)
+    
     (let* ((data (reverse *mlpp-proof-data*))
 	   (date (car data))
 	   (prf-data (mapcar #'(lambda (d)
@@ -462,8 +463,8 @@
 		     (:type-hash . ,(print-type-hash))))
 	   (json:*lisp-identifier-name-to-json* #'identity))
       (with-open-file (prfdump *dump-proof-data-to-file*
-			     :direction :output :if-exists :supersede
-			     :if-does-not-exist :create)
+			       :direction :output :if-exists :supersede
+			       :if-does-not-exist :create)
 	(json:encode-json prdata prfdump))))
   (when *subgoals*
     (setq *subgoals*
@@ -2210,8 +2211,7 @@ e.g., for thread support."
 			;;   (format prfdump "~%~s ::: ~s" (mlpp ps) (parsed-input ps)))
 			(assert *mlpp-type-hash*)
 			(push (mlpp ps) *mlpp-proof-data*)
-			(push (cons :input (parsed-input ps)) *mlpp-proof-data*)
-			)
+			(push (mlpp-input (parsed-input ps)) *mlpp-proof-data*))
 		      ps)
 		     ((eq signal '?) ;;subgoals generated
 		      (make-updates updates ps)
@@ -2326,8 +2326,8 @@ e.g., for thread support."
 				     ;; 	 (mlpp ps) (parsed-input ps)))
 				     (assert *mlpp-type-hash*)
 				     (push (mlpp ps) *mlpp-proof-data*)
-				     (push (cons :input (parsed-input ps)) *mlpp-proof-data*)
-				     )
+				     (push (mlpp-input (parsed-input ps))
+					   *mlpp-proof-data*))
 				   ps)))))
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
@@ -2364,6 +2364,28 @@ e.g., for thread support."
 		   (strategy ps)
 		   (failure-strategy (strategy ps)))
 	     ps))))
+
+(defun mlpp-input (inp)
+  (let* ((inp-args (mlpp-input-args inp))
+	 (mlpp-inp `((:tag . :input)
+		     (:rule . ,(car inp))
+		     (:arguments . ,inp-args))))
+    ;;(json:encode-json mlpp-inp)
+    mlpp-inp))
+
+(defun mlpp-input-args (input)
+  (let ((rule (car input)))
+    ;; rule may be needed in some cases
+    (mlpp-input-args* (cdr input) rule nil)))
+
+(defun mlpp-input-args* (args rule mlpp-args)
+  (if (null args)
+      (nreverse mlpp-args)
+      (let* ((ml-arg (mlpp (car args)))
+	     (mlpp-arg (typecase ml-arg
+			 ((or list string symbol number) ml-arg)
+			 (t (break "mlpp-input-args*: ~s" ml-arg)))))
+	(mlpp-input-args* (cdr args) rule (cons mlpp-arg mlpp-args)))))
 
 (defun make-tcc-subgoals (tccforms ps)
   (mapcar #'(lambda (x)
