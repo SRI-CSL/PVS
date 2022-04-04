@@ -241,7 +241,7 @@
     (dolist (file (directory-files pdir t emacs-lisp-file-regexp))
       ;; With these args, will byte-compile if needed, and load after
       ;; file force elc-flag load
-      (pvs-message "loading %s" file)
+      (pvs-log "loading %s" file)
       (byte-recompile-file file nil 0 t))))
 
 (defpvs pvs environment ()
