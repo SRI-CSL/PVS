@@ -271,7 +271,8 @@
   (number expr))
 
 (defmethod translate-to-prove ((expr rational-expr))
-  `(DIVIDE ,(numerator (number expr)) ,(denominator (number expr))))
+  ;; SBCL has a problem with the generic function NUMBER, even though it's been shadowed
+  `(DIVIDE ,(numerator (slot-value expr 'number)) ,(denominator (slot-value expr 'number))))
 
 (defmethod translate-to-prove ((ex string-expr))
   (string->int (string-value ex)))

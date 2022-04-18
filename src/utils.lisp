@@ -479,6 +479,16 @@ is replaced with replacement."
   (and (directory-p dir)
        (uiop:absolute-pathname-p dir)))
 
+#-sbcl
+(defun pathname-equal (p1 p2)
+  (uiop:pathname-equal p1 p2))
+
+#+sbcl
+(defun pathname-equal (p1 p2)
+  ;; Fails in comparing "~/foo" to "/home/user/foo" in SBCL
+  ;; We don't use truename, as that assumes the paths exist
+  (uiop:pathname-equal (uiop:native-namestring p1) (uiop:native-namestring p2)))
+
 (defun environment-variable (string)
   #+allegro
   (sys:getenv string)
@@ -784,7 +794,7 @@ is replaced with replacement."
   (typecase x
     (symbol x)
     (string (intern x :pvs))
-    (number x)
+    (cl:number x)
     (t (id x))))
 
 (defun last-id (x)
@@ -1070,7 +1080,13 @@ is replaced with replacement."
     (if tail
 	(append (ldiff list tail) (cons new-elt tail))
 	(cons new-elt tail))))
-      
+
+(defun add-indentations (string indent)
+  (with-output-to-string (str)
+    (loop for ch across string
+	  do (if (char= ch #\newline)
+		 (format str "~%~vt" indent)
+		 (write-char ch str)))))
 
 ;;(defmethod generated-by ((u importing)) nil)
 
@@ -4062,6 +4078,13 @@ space")
     (mapobject #'(lambda (ex) (declare (ignore ex)) (incf depth) nil) expr)
     depth))
 
+(defun iso8601-date (&optional (time (get-universal-time)))
+  (multiple-value-bind (sec min hour date month year day-of-week dst time-zone)
+      (decode-universal-time time)
+    (declare (ignore day-of-week dst))
+    (format nil "~4d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d~@d"
+      year month date hour min sec time-zone)))
+
 (defun date-string (time)
   (multiple-value-bind (sec min hour date month year day-of-week dst time-zone)
       (decode-universal-time time)
@@ -4087,10 +4110,10 @@ space")
   (get-internal-run-time))
 
 (defun runtime-since (time)
-  (floor (* (- (get-run-time) time) millisecond-factor)))
+  (max (floor (* (- (get-run-time) time) millisecond-factor)) 0))
 
 (defun realtime-since (time)
-  (floor (* (- (get-internal-real-time) time) millisecond-factor)))
+  (max (floor (* (- (get-internal-real-time) time) millisecond-factor)) 0))
   
 
 (defmethod change-application-class-if-necessary (expr new-expr)
@@ -5131,3 +5154,190 @@ space")
 	     (multiple-value-bind (d3 r3) (floor d2 #x8)
 	       (vector (logior #xf0 d2) (logior #x80 r3) (logior #x80 r2) (logior #x80 r1))))))
 	(t (error "code is too large"))))
+
+
+
+;; Using Allegro functions with their nearest equivalents
+#+allegro ;; Allegro's make-gate doesn't support gatep or names, so we use this hash-table
+(defvar *gate-names* (make-hash-table :weak-keys t))
+
+(defun make-gate (&key name open)
+  #+allegro (let ((gate (mp:make-gate open)))
+	      (setf (gethash gate *gate-names*) name)
+	      gate)
+  #+sbcl (sb-concurrency:make-gate :name name :open open))
+
+(defun gatep (object)
+  #+allegro (nth-value 1 (gethash object *gate-names*))
+  #+sbcl (sb-concurrency:gatep object))
+
+(defun open-gate (gate)
+  #+allegro (mp:open-gate gate)
+  #+sbcl (sb-concurrency:open-gate gate))
+
+(defun gate-open-p (gate)
+  #+allegro (mp:gate-open-p gate)
+  #+sbcl (sb-concurrency:gate-open-p gate))
+
+(defun close-gate (gate)
+  #+allegro (mp:close-gate gate)
+  #+sbcl (sb-concurrency:close-gate gate))
+
+(defun gate-name (gate)
+  #+allegro (get-hash gate *gate-names*)
+  #+sbcl (sb-concurrency:gate-name gate))
+
+(defun wait-on-gate (gate)
+  #+allegro (mp:process-wait (format nil "Waiting for ~a" (gate-name gate))
+			     #'(lambda () (mp:gate-open-p gate)))
+  #+sbcl (sb-concurrency:wait-on-gate gate))
+
+;; (defun process-lock-locker (lock)
+;;   #+allegro (mp:process-lock-locker lock)
+;;   #+sbcl (sb-thread:mutex-owner lock))
+
+;; (defun process-wait (whostate function &rest arguments)
+;;   #+allegro (apply #'mp:process-wait whostate function arguments)
+;;   ;; Not quite the same
+;;   #+sbcl (sb-ext:process-wait process &optional check-for-stopped))
+
+;; (defun process-name-to-process (name) ;; &key abbrev error
+;;   #+allegro (mp:process-name-to-process name)
+;;   #+sbcl (find-if #'(lambda (th) (string= (sb-thread:thread-name th) name))
+;; 	   (sb-thread:list-all-threads)))
+
+;; (defun process-interrupt (process function) ;; &rest args
+;;   #+allegro (mp:process-interrupt process function)
+;;   #+sbcl (sb-thread:interrupt-thread thread function))
+				
+;; (defun symeval-in-process (symbol process)
+;;   #+allegro (mp:symeval-in-process symbol process)
+;;   #+sbcl (sb-thread:symbol-value-in-thread symbol process))
+
+;; (defun process-run-function (name-or-keywords function &rest args)
+;;   #+allegro (apply #'mp:process-run-function name-or-keywords function args)
+;;   #+sbcl (sb-thread:make-thread function &key name arguments))
+
+(defun do-all-proof-file-scripts (fn &key (dir ".") recursive-p)
+  "Runs FN on all proof-scripts found in directory :dir, recursively going
+down subdirectories if :recursive-p is t. FN will be funcalled with arguments
+(script fmla-id thry-id proof-file)."
+  (let ((dirs nil))
+    (if recursive-p
+	(uiop:collect-sub*directories
+	 dir
+	 #'(lambda (x) t) ;; collectp - do we collect in this directory
+	 #'(lambda (x) t) ;; recursep - obvious
+	 #'(lambda (x) (push x dirs))) ;; collect
+	(setf dirs (list dir)))
+    (dolist (d dirs)
+      (dolist (prf-file (uiop:directory-files d "*.prf"))
+	(do-proof-file-scripts prf-file fn)))))
+
+(defun do-proof-file-scripts (prf-file fn)
+  "Given a PVS proof file (extension .prf), funcalls FN on each script with arguments
+(script fmla-id thry-id proof-file)."
+  (let ((proofs (read-pvs-file-proofs prf-file)))
+    (dolist (thry-proofs proofs)
+      (let ((thry-id (car thry-proofs)))
+	(dolist (fmla-proofs (cdr thry-proofs))
+	  (let* ((fmla-id (car fmla-proofs))
+		 (pindex (cadr fmla-proofs))
+		 (fprf-entry (nth pindex (cddr fmla-proofs)))
+		 (fproof (editable-justification (cadddr fprf-entry))))
+	    (funcall fn fproof fmla-id thry-id prf-file)))))))
+
+(defvar *n-grams* nil)
+
+;; script := nil
+;;         | ( strat arg+ )
+;;         | ( label script+ )
+;;   where strat is a symbol, label is a string of digits, and args
+;;   depends on strat
+
+(defun proof-ngram (script n &optional prefix)
+  ;;(let ((*n-grams* nil))
+  (proof-ngram* script n prefix)
+  ;;*n-grams*)
+  )
+
+(defun proof-ngram* (script n prefix)
+  (cond ((null script) nil)
+	((symbolp (car script))
+	 (let ((strat (car script)))
+	   (when (= (1+ (length prefix)) n)
+	     (let* ((ng (append prefix (list strat)))
+		    (elt (assoc ng *n-grams* :test #'equal)))
+	       (incf (cdr elt))
+	       (push (cons ng 1) *n-grams*)))))
+	((stringp (car script))
+	 ;; in a branch
+	 (proof-ngram-list (cdr script) n prefix))
+	((listp (car script))
+	 ;; subgoals from previous rule
+	 (dolist (subscript (car script))
+	   (proof-ngram* subscript n prefix)))
+	(t (error "bad script: ~a" script))))
+
+(defun proof-ngram-list (strats n prefix)
+  (when strats
+    (cond ((stringp (car strats))
+	   (assert (string= (subseq (car strats) 0 3) ";;;"))
+	   (proof-ngram-list (cdr strats) n prefix))
+	  ((symbolp (caar strats))
+	   (let ((strat (caar strats)))
+	     (if (= (1+ (length prefix)) n)
+		 (let* ((ng (append prefix (list strat)))
+			(elt (assoc ng *n-grams* :test #'equal)))
+		   (if elt
+		       (incf (cdr elt))
+		       (push (cons ng 1) *n-grams*))
+		   (proof-ngram-list (cdr strats) n (cdr prefix)))
+		 (proof-ngram-list (cdr strats) n (append prefix (list strat))))))
+	  ((listp (caar strats))
+	   (dolist (branch (car strats))
+	     (proof-ngram-list (cdr branch) n prefix)))
+	  (t (proof-ngram-list (break "proof-ngram-list"))))))
+
+(defun proofs-ngrams (n &optional (dir "."))
+  "Given n, produces all ngrams of all proof-scripts found in DIR/**/*.prf files.
+Walks through each script, collecting ngrams for each strategy name. 1-grams are obvious, but we respect tree structure when collecting higher n-grams."
+  (let ((*n-grams* nil))
+    (do-all-proof-file-scripts
+	#'(lambda (script fmla-id thry-id proof-file)
+	    (proof-ngram script n))
+      :dir dir :recursive-p t)
+    *n-grams*))
+
+(defvar *flattened-script*)
+
+(defun flatten-proof-script (script)
+  (let ((*flattened-script* nil))
+    (flatten-proof-script* script)
+    (reverse *flattened-script*)))
+
+(defun flatten-proof-script* (script)
+  (cond ((null script) nil)
+	((symbolp (car script))
+	 (push script *flattened-script*))
+	((stringp (car script))
+	 ;; in a branch
+	 (flatten-proof-script-list (cdr script)))
+	((listp (car script))
+	 ;; subgoals from previous rule
+	 (dolist (subscript (car script))
+	   (flatten-proof-script* subscript)))
+	(t (error "bad script: ~a" script))))
+
+(defun flatten-proof-script-list (strats)
+  (when strats
+    (cond ((stringp (car strats))
+	   (assert (string= (subseq (car strats) 0 3) ";;;"))
+	   (flatten-proof-script-list (cdr strats)))
+	  ((symbolp (caar strats))
+	   (push (car strats) *flattened-script*)
+	   (flatten-proof-script-list (cdr strats)))
+	  ((listp (caar strats))
+	   (dolist (branch (car strats))
+	     (flatten-proof-script-list (cdr branch))))
+	  (t (flatten-proof-script-list (break "flatten-proof-script-list"))))))

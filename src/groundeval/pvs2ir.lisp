@@ -178,7 +178,7 @@
   ir-label ;needed for type dependencies
   ir-field-types)
 
-(defcl ir-filetype (ir-recordtype)) %keep track of records that are actually files. 
+(defcl ir-filetype (ir-recordtype)) ;; keep track of records that are actually files. 
 
 (defcl ir-tupletype (ir-recordtype))
 
@@ -8470,8 +8470,8 @@
 			  when (not (same-id thy theory-id))
 			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
 		    (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
-		    (format output " -I ~asrc/groundeval/" *pvs-path*)
-		    (format output " ~asrc/groundeval/pvslib.c " *pvs-path*)
+		    (format output " -I ~a/include" *pvs-path*)
+		    (format output " ~a/lib/pvslib.c " *pvs-path*)
 		    (format output " -I ~alib" *pvs-path*)
 		    (loop for thy in preceding-prelude-theories
 			  do (format output " ~alib/~a_c.c" *pvs-path* (id thy)))

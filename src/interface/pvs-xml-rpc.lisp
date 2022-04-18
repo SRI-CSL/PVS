@@ -77,7 +77,9 @@
 	'("pvs.request" xmlrpc-pvs-request t "Request a PVS method.")
       :string :string :string)
     (setq *pvs-xmlrpc-server* cmdsrv)
-    (setq pvs:*pvs-lisp-process* mp:*current-process*)
+    (setq pvs:*pvs-lisp-process*
+	  #+allegro mp:*current-process*
+	  #+sbcl sb-thread:*current-thread*)
     ;; M3: When running the server, signals automatically abort to top-level so they
     ;; don't affect the server responsiveness [Sept 2020].
     (setf *debugger-hook* #'pvs:rpc-mode-debugger)
@@ -129,12 +131,17 @@
     (json:encode-json-to-string result)))
 
 (defun pvs-current-mode ()
-  (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
+  (let ((proc #+allegro (mp:process-name-to-process "Initial Lisp Listener")
+	      #+sbcl (find-if #'(lambda (th)
+				  (string= (sb-thread:thread-name th) "main thread"))
+		       (sb-thread:list-all-threads))))
     (multiple-value-bind (inchecker cbound?)
-	(mp:symeval-in-process 'pvs:*in-checker* proc)
+	#+allegro (mp:symeval-in-process 'pvs:*in-checker* proc)
+	#+sbcl (sb-thread:symbol-value-in-thread 'pvs:*in-checker* proc)
       (declare (ignore cbound?))
       (multiple-value-bind (ineval ebound?)
-	  (mp:symeval-in-process 'pvs:*in-evaluator* proc)
+	  #+allegro (mp:symeval-in-process 'pvs:*in-evaluator* proc)
+	  #+sbcl (sb-thread:symbol-value-in-thread 'pvs:*in-evaluator* proc)
 	(declare (ignore ebound?))
 	(cond (inchecker "prover")
 	      (ineval "evaluator")

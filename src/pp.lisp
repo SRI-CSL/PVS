@@ -1639,17 +1639,19 @@ then uses unpindent* to add the indent to each line"
 ;;; Expressions
 
 (defmethod pp* :around ((ex expr))
-  (if (and *ppmacros*
-	   (current-theory)
-	   (from-macro ex))
-      (pp* (from-macro ex))
-      (if (typep ex 'binding)
-	  (call-next-method)
-	  (progn (dotimes (p (parens ex))
-		   (write-char #\())
-		 (call-next-method)
-		 (dotimes (p (parens ex))
-		   (write-char #\)))))))
+  (cond ((and *ppmacros*
+	      (current-theory)
+	      (from-macro ex))
+	 (pp* (from-macro ex)))
+	((or (typep ex 'binding)
+	     (and (not *show-conversions*)
+		  (typep ex '(or argument-conversion implicit-conversion))))
+	 (call-next-method))
+	(t (dotimes (p (parens ex))
+	     (write-char #\())
+	   (call-next-method)
+	   (dotimes (p (parens ex))
+	     (write-char #\))))))
 
 (defmethod pp* :around ((ex infix-application))
   (cond ((and *pp-print-parens*

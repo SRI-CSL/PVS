@@ -230,6 +230,20 @@
       (message "Type M-x pvs to restart PVS")
       (keyboard-quit)))
 
+(defpvs download-pvs-patches environment ()
+  (interactive)
+  (pvs-send "(download-pvs-patches)"
+	    nil (pvs-get-abbreviation 'download-pvs-patches)))
+
+(defpvs load-pvs-emacs-patch-files environment ()
+  (interactive)
+  (let ((pdir (format "%s/pvs-patches" pvs-path)))
+    (dolist (file (directory-files pdir t emacs-lisp-file-regexp))
+      ;; With these args, will byte-compile if needed, and load after
+      ;; file force elc-flag load
+      (pvs-log "loading %s" file)
+      (byte-recompile-file file nil 0 t))))
+
 (defpvs pvs environment ()
   "Starts the PVS process
 
@@ -285,6 +299,7 @@ get to the same state."
       (unless noninteractive
 	(pvs-auto-set-linelength (selected-frame))
 	(pvs-welcome (equal (buffer-name) "*scratch*")))
+      (load-pvs-emacs-patch-files)
       (when (and (file-exists-p "~/.pvsemacs")
 		 (not (pvs-getenv "PVSMINUSQ")))
 	(load "~/.pvsemacs"))

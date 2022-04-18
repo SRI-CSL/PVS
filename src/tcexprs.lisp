@@ -1886,6 +1886,21 @@ field-decls, etc."
 			 :id (make-new-variable 'T expr))))
 	     (setf (types expr) (list tvar))))))
 
+(defmethod typecheck* ((expr array-expr) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (cond ((exprs expr)
+	 (typecheck* (exprs expr) nil nil nil)
+	 (let ((types (get-possible-set-list-types (exprs expr))))
+	   (unless types
+	     (type-error expr
+	       "Could not find a compatible type for ~a" expr))
+	   (let ((domtype (tc-type (format nil "below(~d)" (length (exprs expr))))))
+	     (setf (types expr)
+		   (mapcar #'(lambda (ty) (mk-funtype domtype ty)) types)))))
+	(t (let ((tvar (make-instance 'type-variable
+			 :id (make-new-variable 'T expr))))
+	     (setf (types expr) (list tvar))))))
+
 (defun get-possible-set-list-types (exprs)
   (get-possible-set-list-types*
    (ptypes (car exprs)) (cdr exprs)))

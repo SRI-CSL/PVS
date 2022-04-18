@@ -2797,7 +2797,7 @@ subgoal is proved)."
 			       (make!-projection-application index newarg))))
 	     (do-auto-rewrite new-expr sig)))))
 
-(defmethod dependencies ((index number) (tuptype tupletype))
+(defmethod dependencies ((index cl:number) (tuptype tupletype))
   (dependencies (nth (1- index) (types tuptype)) tuptype))
 
 (defun tuple-update-reduce (index arg)
@@ -3012,14 +3012,21 @@ subgoal is proved)."
 (defun ground-arith-simplifiable? (op arg)
   (and *use-rationals*
        (name-expr? op)
-       (memq (id op) '(+ - * /))
+       (memq (id op) '(+ - * / |exp2|))
        (resolution op)
        (eq (id (module-instance op)) '|number_fields|)
+       ;;(memq (id (module-instance op)) '(|number_fields| |exp2|))
        (if (tuple-expr? arg)
 	   (every #'rational-expr? (exprs arg))
-	   (rational-expr? arg))
+	   (rational-expr? arg)
+	   ;; (if (eq (id op) 'exp2)
+	   ;;     (int-expr? arg)
+	   ;;     (rational-expr? arg))
+	   )
        (or (not (eq (id op) '/))
 	   (not (zerop (number (cadr (exprs arg))))))))
+
+;; (defun |exp2| (i) (expt 2 i))
 
 (defun simplify-ground-arith (op arg)
   (when (ground-arith-simplifiable? op arg)

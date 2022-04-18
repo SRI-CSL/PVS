@@ -41,6 +41,8 @@
  :noquestions = no questions, automatically overwrites if the proof is different
  :overwrite = same as :noquestions, but sys that it is overwriting")
 
+(defvar *prover-log* nil)
+
 (defvar *default-proof-description* nil)
 
 (defvar *record-undone-proofstate* nil)
@@ -215,6 +217,8 @@
 (defvar *force-dp* nil)
 
 (defvar *dump-sequents-to-file* nil)
+(defvar *dump-proof-data-to-file* nil)
+(defvar *mlpp-proof-data* nil)
 (defvar *show-parens-in-proof* nil)
 
 (defmethod prove-decl :around ((decl formula-decl) &key strategy context)
@@ -289,7 +293,11 @@
 	 (*subtype-names* nil)
 	 (*local-typealist* *local-typealist*)
 	 (*rec-type-dummies* nil)
-	 (*named-exprs* nil))
+	 (*named-exprs* nil)
+	 (*query-input* nil)
+	 (*mlpp-type-hash* (make-pvs-hash-table))
+	 (*mlpp-proof-data* nil))
+    (assert *mlpp-type-hash*)
     (reset-pseudo-normalize-caches)
     (reset-beta-cache)
     (newcounter *translate-id-counter*)
@@ -320,12 +328,26 @@
 	     (cur-all-subst-mod-params-caches
 	      (all-subst-mod-params-caches *workspace-session*))
 	     (new-all-subst-mod-params-caches
-	      (copy-subst-mod-params-cache)))
+	      (copy-subst-mod-params-cache))
+	     (theory (current-theory))
+	     ;; (*dump-proof-data-to-file*
+	     ;;  (when *dump-proof-data-to-file*
+	     ;;  	(format nil "~a-~a.prfdmp" (id theory) (id decl))))
+	     )
 	(before-prove*)
 	(setf (all-subst-mod-params-caches *workspace-session*)
 	      new-all-subst-mod-params-caches)
 	(unwind-protect
-	     (dpi-start #'prove-decl-body)
+	     (progn (when *dump-proof-data-to-file*
+		      ;; (with-open-file (prfdump *dump-proof-data-to-file*
+		      ;; 			       :direction :output
+		      ;; 			       :if-exists :supersede
+		      ;; 			       :if-does-not-exist :create)
+		      ;; 	(format prfdump "Proof dump for ~a at ~a"
+		      ;; 	  (id decl) (iso8601-date)))
+		      (push (iso8601-date) *mlpp-proof-data*)
+		      )
+		    (dpi-start #'prove-decl-body))
 	  (setf (all-subst-mod-params-caches *workspace-session*)
 	      cur-all-subst-mod-params-caches)
 	  (after-prove*)
@@ -421,15 +443,36 @@
 	      *noninteractive*)
       (pvs-emacs-eval "(pvs-checker-ready)")
       (display-proofstate nil))
-    (when *dump-sequents-to-file*
+    (when *dump-sequents-to-file* ;; SO prover-session logs
       (dump-sequents-to-file *top-proofstate*)))
+  (when *dump-proof-data-to-file*
+    (assert *mlpp-type-hash*)
+    
+    (let* ((data (reverse *mlpp-proof-data*))
+	   (date (car data))
+	   (prf-data (mapcar #'(lambda (d)
+				 (assert (listp d))
+				 ;; proofstates already in mlpp form, need :inputs also
+				 (if (symbolp (car d))
+				     (mlpp d)
+				     d))
+		       (cdr data)))
+	   (prdata `((:tag . :proof-session)
+		     (:time . ,date)
+		     (:proof . ,prf-data)
+		     (:type-hash . ,(print-type-hash))))
+	   (json:*lisp-identifier-name-to-json* #'identity))
+      (with-open-file (prfdump *dump-proof-data-to-file*
+			       :direction :output :if-exists :supersede
+			       :if-does-not-exist :create)
+	(json:encode-json prdata prfdump))))
   (when *subgoals*
     (setq *subgoals*
 	  (mapcar #'current-goal
 	    (collect-all-remaining-subgoals *top-proofstate*))))
-  
   (unless *recursive-prove-decl-call*
-    (clear-proof-hashes)))
+    (clear-proof-hashes))
+  (write-prover-log))
 
 (defun dump-sequents-to-file (ps)
   (let* ((*prover-print-length* nil)
@@ -438,6 +481,7 @@
 	 (decl (declaration ps))
          (theory (current-theory))
          (file (format nil "~a-~a.sequents" (id theory) (id decl))))
+    (break "dump-sequents-to-file")
     (if (eq (status-flag *top-proofstate*) '!)
         (when (file-exists-p file)
           (delete-file file))
@@ -559,8 +603,8 @@
     ;; For some reason, this can go negative.  One possibility is that the proof
     ;; starts on one core, and finishes on another, each with it's own counter
     ;; We make sure it is not negative
-    (setf (real-time prinfo) (max (- (get-internal-real-time) init-real-time) 0))
-    (setf (run-time prinfo) (max (- (get-run-time) init-run-time) 0))
+    (setf (real-time prinfo) (realtime-since init-real-time))
+    (setf (run-time prinfo) (runtime-since init-run-time))
     (setf (run-date prinfo) (get-universal-time))
     (when *use-default-dp?*
       (setf (decision-procedure-used prinfo) *default-decision-procedure*))
@@ -657,6 +701,7 @@
 	     ;;(NSH:11.17.94): commented out
 	     )
     (unless *suppress-printing*
+      (prover-log proofstate)
       (catch-restore
        (output-proofstate proofstate))
 ;;      (setq *prover-commentary* nil) ;; M3: moved to qread [Sept 2020]
@@ -685,6 +730,67 @@
 		  proofstate)
 		 (t (prove*-int nextstate))))
 	  (t (prove*-int nextstate)))))
+
+;; Prover log functions
+;;  (prover-log ps) creates a prlog instance, with the time and proofstate
+;;                  and puts it in the *prover-log* list. Called from prove*-int
+;;  (write-prover-log) appends *prover-log* to <PVS>/prover-log.yaml and clears it.
+;;                     Called from after-prove*
+
+(defun prlog-print (prlog stream depth)
+  (declare (ignore depth))
+  (let* ((ps (prlog-ps prlog))
+	 (command (prlog-input prlog)))
+    (format stream "~%- time: ~a~%  command: ~a~%  sequent: ~a"
+      (prlog-time prlog)
+      command
+      (add-indentations (format nil "~a" ps) 4))))
+
+(defun get-logged-command (ps)
+  (let* ((pps (parent-proofstate ps))
+	 (command (if (top-proofstate? ps)
+		      "Top"
+		      (when pps
+			(or ;;(current-rule pps)
+			    (current-input pps))))))
+    (when (and (consp command)
+	       (eq (car command) 'instantiate))
+      (break "get-logged-command"))
+    command))
+
+(defstruct (prlog (:print-function prlog-print))
+  time
+  input
+  ps)
+
+(defun prover-log (ps)
+  (push (make-prlog
+	 :time (get-universal-time)
+	 :input (or *query-input*
+		    (and (top-proofstate? ps) '(prove-decl)))
+	 :ps ps)
+	*prover-log*))
+
+(defun write-prover-log ()
+  (when *prover-log*
+    (setq *last-prlog* *prover-log*)
+    (if (write-permission? *pvs-path*)
+	(let* ((logfile (format nil "~a/prover-log.yaml" *pvs-path*))
+	       (new? (not (file-exists-p logfile)))
+	       (logs (reverse *prover-log*)))
+	  (with-open-file (out logfile :direction :output
+			       :if-does-not-exist :create :if-exists :append)
+	    (when new?
+	      (format out "# This logs the proof commands used under this PVS installation.~%")
+	      (format out "# We would like to use this in some machine learning research we are doing,.~%")
+	      (format out "# We would appreciate if you would send it to pvs@csl.sri.com.~%"))
+	    (format out "--- # Start of proof session~%")
+	    (dolist (log logs)
+	      (write log :stream out)))
+	  (setq *prover-log* nil))
+	(pvs-message "Cannot write prover log"))))
+
+;; End of prover log functions
 
 ;;; This was pulled out to be able to capture the output for JSON (i.e., Eclipse)
 ;;; print-proofstate-if is a macro that eventually expands to a format, and
@@ -755,8 +861,7 @@
 	  (t
 	   (check-command-arguments (car pcmd) keywords (cdr pcmd) has-rest?)))))
 
-;;; This provides a hook for, e.g., JSON
-(defmethod prover-read ()
+(defun prover-read ()
   (multiple-value-bind (input err)
       (ignore-errors (read))
     (when err
@@ -764,8 +869,11 @@
     input))
 
 (defun qread (prompt)
-  (setq *prover-commentary* nil) ;; M3: Brought from prove*-int [Sept 2020]
-  (format t "~%~a"  prompt)
+  "qread is called from the query* strategy, which normally
+prints the prompt to stdout and reads from stdin.
+See query* for how to add hooks to either monitor or replace the prompt/read,
+e.g., for thread support."
+  (format t "~%~a" prompt)
   (force-output)
   (let ((input (prover-read)))
     (cond ((and (consp input)
@@ -823,6 +931,7 @@
      (let ((post-proofstate ;;check if current goal is prop-axiom.
 	    (cond ((eq (check-prop-axiom (s-forms (current-goal proofstate)))
 		       '!) ;;set flag to proved! and update fields.
+		   #+allegro
 		   (pvs-json:update-ps-control-info-result proofstate) ; M3 so the sequent
 					; it's accumulated for the rpc response.
 					; It could be a call to output-proofstate
@@ -880,8 +989,7 @@
 	      (cond ((> (length (remaining-subgoals post-proofstate)) 1)
 		     (when (and *rerunning-proof*
 				(integerp *rerunning-proof-message-time*)
-				(> (- (get-internal-real-time)
-				      *rerunning-proof-message-time*)
+				(> (realtime-since *rerunning-proof-message-time*)
 				   3000)) ;;print mini-buffer msg
 		       (setq *rerunning-proof* (format nil "~a." *rerunning-proof*))
 		       (setq *rerunning-proof-message-time*
@@ -1387,11 +1495,19 @@
 ;; (defun quoted? (x) (and (consp x)(eq (car x) 'quote)))
 ;;; DELETE
 
-(defun subst-stratexpr (expr alist reverse-alist)  
+(defun subst-stratexpr (expr alist reverse-alist)
   (cond ((symbolp expr)
 	 (let ((entry (assoc expr reverse-alist)))
 	   (if (null entry) expr
 	       (cdr entry))))
+	#+sbcl ;; for e.g., ",x" allegro would have the cons "(excl::bq-comma x)"
+	;; SBCL has a comma struct
+	((sb-int:comma-p expr)
+	 (let* ((ex (sb-int:comma-expr expr))
+		(sub (subst-stratexpr ex alist reverse-alist)))
+	   (if (eq sub ex)
+	       expr
+	       (sb-int:unquote sub))))
 	((not (consp expr)) expr)
 	((if-form? expr)  ;;NSH(9.12.94)
 	 `(if ,(let ((letbind (loop for (x . y) in alist
@@ -2089,6 +2205,13 @@
 						 :rule (rule-input topstep)
 						 :comment (new-comment ps)))
 		      (make-updates updates ps)
+		      (when (and (current-input ps) *dump-proof-data-to-file*)
+			;; (with-open-file (prfdump *dump-proof-data-to-file*
+			;; 			 :direction :output :if-exists :append)
+			;;   (format prfdump "~%~s ::: ~s" (mlpp ps) (parsed-input ps)))
+			(assert *mlpp-type-hash*)
+			(push (mlpp ps) *mlpp-proof-data*)
+			(push (mlpp-input (parsed-input ps)) *mlpp-proof-data*))
 		      ps)
 		     ((eq signal '?) ;;subgoals generated
 		      (make-updates updates ps)
@@ -2195,6 +2318,16 @@
 					 (remaining-subgoals ps) subgoal-proofstates)
 				   (unless (typep ps 'top-proofstate)
 				     (setf (strategy ps) nil))
+				   (when (and (current-input ps) *dump-proof-data-to-file*)
+				     ;; (with-open-file (prfdump *dump-proof-data-to-file*
+				     ;; 			      :direction :output
+				     ;; 			      :if-exists :append)
+				     ;;   (format prfdump "~%~s ::: ~s"
+				     ;; 	 (mlpp ps) (parsed-input ps)))
+				     (assert *mlpp-type-hash*)
+				     (push (mlpp ps) *mlpp-proof-data*)
+				     (push (mlpp-input (parsed-input ps))
+					   *mlpp-proof-data*))
 				   ps)))))
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
@@ -2231,6 +2364,28 @@
 		   (strategy ps)
 		   (failure-strategy (strategy ps)))
 	     ps))))
+
+(defun mlpp-input (inp)
+  (let* ((inp-args (mlpp-input-args inp))
+	 (mlpp-inp `((:tag . :input)
+		     (:rule . ,(car inp))
+		     (:arguments . ,inp-args))))
+    ;;(json:encode-json mlpp-inp)
+    mlpp-inp))
+
+(defun mlpp-input-args (input)
+  (let ((rule (car input)))
+    ;; rule may be needed in some cases
+    (mlpp-input-args* (cdr input) rule nil)))
+
+(defun mlpp-input-args* (args rule mlpp-args)
+  (if (null args)
+      (nreverse mlpp-args)
+      (let* ((ml-arg (mlpp (car args)))
+	     (mlpp-arg (typecase ml-arg
+			 ((or list string symbol number) ml-arg)
+			 (t (break "mlpp-input-args*: ~s" ml-arg)))))
+	(mlpp-input-args* (cdr args) rule (cons mlpp-arg mlpp-args)))))
 
 (defun make-tcc-subgoals (tccforms ps)
   (mapcar #'(lambda (x)
@@ -2325,6 +2480,7 @@
 				(current-xrule newps) nil
 				(printout newps) nil
 				(strategy newps) (query*-step))
+			  
 			  newps)
 			 (t (setf (strategy ps) (query*-step))
 			    ps))))))))

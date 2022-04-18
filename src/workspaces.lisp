@@ -37,7 +37,9 @@
   "Creates the initial *workspace-session*, and adds it to an empty
   *all-workspace-sessions*"
   (setq *all-workspace-sessions* nil)
-  (setq *workspace-session* (get-workspace-session (working-directory))))
+  (let ((ws (get-workspace-session (working-directory))))
+    (assert (pvs-context ws))
+    (setq *workspace-session* ws)))
 
 (defmethod get-workspace-session (libref)
   "get-workspace-session gets the absolute pathname associated with libref,

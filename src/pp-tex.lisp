@@ -194,10 +194,14 @@
 		   theory-formal-decls)
 	  (pp-tex-theory-formal-decls theory-formal-decls))
 	(pp-tex-assuming (if *unparse-expanded*
-			     assuming
+			     (remove-if #'(lambda (d) (and (generated-by d)
+							   (typep d '(or conversion-decl))))
+			       assuming)
 			     (remove-if #'generated-by assuming)))
 	(pp-tex-theory (if *unparse-expanded*
-			   theory
+			   (remove-if #'(lambda (d) (and (generated-by d)
+							 (typep d '(or conversion-decl))))
+			     theory)
 			   (remove-if #'generated-by theory)))
 	(pprint-indent :block 1)
 	(pprint-newline :mandatory)
@@ -530,7 +534,8 @@
   (with-slots (id decl-formals module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
-	      (not (generated-by decl)))
+	      (not (generated-by decl))
+	      (typep decl 'adtdecl))
       (when (@decl? semi)
 	(pp-tex-keyword '@DECL))
       (cond ((theory-abbreviation-decl? decl)
@@ -1282,17 +1287,19 @@
 ;;; Expressions
 
 (defmethod pp-tex* :around ((ex expr))
-  (if (and *ppmacros*
-	   (current-theory)
-	   (from-macro ex))
-      (pp-tex* (from-macro ex))
-      (if (typep ex 'binding)
-	  (call-next-method)
-	  (progn (dotimes (p (parens ex))
-		   (pp-tex-id '\())
-		 (call-next-method)
-		 (dotimes (p (parens ex))
-		   (pp-tex-id '\)))))))
+  (cond ((and *ppmacros*
+	      (current-theory)
+	      (from-macro ex))
+	 (pp-tex* (from-macro ex)))
+	((or (typep ex 'binding)
+	     (and (not *show-conversions*)
+		  (typep ex '(or argument-conversion implicit-conversion))))
+	 (call-next-method))
+	(t (dotimes (p (parens ex))
+	     (pp-tex-id '\())
+	   (call-next-method)
+	   (dotimes (p (parens ex))
+	     (pp-tex-id '\))))))
 
 (defmethod pp-tex* :around ((ex infix-application))
   (cond ((and *pp-print-parens*
@@ -1627,8 +1634,10 @@
 	  (pprint-logical-block (nil nil)
 	    (pprint-indent :block 1)
 	    (if (and (zerop (parens lhs))
+		     (not (chained-relation? lhs))
 		     (< (precedence lhs 'left)
-			(gethash oper (second *expr-prec-info*))))
+			(or (gethash oper (second *expr-prec-info*))
+			    180)))
 		(progn (pp-tex-id '\()
 		       (pp-tex* lhs)
 		       (pp-tex-id '\)))
@@ -1643,8 +1652,10 @@
 	    (unless *in-tex-math-mode*
 	      (pprint-newline :fill))
 	    (if (and (zerop (parens rhs))
+		     (not (chained-relation? rhs))
 		     (< (precedence rhs 'right)
-			(gethash oper (third *expr-prec-info*))))
+			(or (gethash oper (third *expr-prec-info*))
+			    180)))
 		(progn (pp-tex-id '\()
 		       (pp-tex* rhs)
 		       (pp-tex-id '\)))

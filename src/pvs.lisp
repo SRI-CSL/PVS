@@ -414,6 +414,22 @@ nil."
 		(list pathstr)
 		(nreverse (cons (subseq pathstr spos) paths)))))))
 
+(defparameter *pvs-patch-url*
+  ;; "http://www.csl.sri.com/users/owre/drop/pvs-patches" ; for testing
+  "http://pvs.csl.sri.com/pvs-patches")
+
+(defun download-pvs-patches ()
+  ;; -nv - no-verbose
+  ;; -r  - recurse down directories
+  ;; -l1 - recursion depth
+  ;; -np - don't go up to parent
+  ;; -nd - no directories
+  ;; -A  - suffixes to accept
+  (uiop:run-program
+      (format nil "(cd ~a/pvs-patches; wget -nv -r -l1 -np -nd -A lisp,el ~a)"
+	*pvs-path* *pvs-patch-url*))
+  )
+
 (defvar *pvs-patches-loaded* nil)
 
 (defun load-pvs-patches ()
@@ -622,6 +638,7 @@ is in (current-pvs-files) and its write-date should match that in the
 pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
+  (unless *workspace-session* (initialize-workspaces))
   (with-pvs-file (filename) fileref
     (assert (current-pvs-context))
     (let* ((*current-file* filename)
@@ -2599,46 +2616,48 @@ formname is nil, then formref should resolve to a unique name."
     (status (default-proof fdecl))))
 
 (defun get-formula-decl (formref &optional formname)
-  (with-pvs-file (name thname fname) formref
-    (assert (or formname fname thname name) ()
-	    "get-formula-decl missing formula name?")
-    (if formname
-	(unless thname
-	  (setf thname (or name fname)))
-	(if fname
-	    (setf formname fname
-		  thname (or thname name))
-	    (setf formname thname
-		  thname name)))
-    (let ((fdecls (get-matching-prove-formulas name thname formname)))
-      (cond ((cdr fdecls)
-	     (let ((locdecls (remove-if-not
-				 #'(lambda (fd)
-				     (uiop:pathname-equal
-				      (context-path (module fd))
-				      *default-pathname-defaults*))
-			       fdecls)))
-	       (cond ((cdr locdecls)
-		      ;; Only report errors on current context ambiguities
-		      (pvs-error "formula ambiguous error"
-			(format nil "formula ambiguous for name ~a, ~
+  (if (formula-decl? formref)
+      formref
+      (with-pvs-file (name thname fname) formref
+	(assert (or formname fname thname name) ()
+		"get-formula-decl missing formula name?")
+	(if formname
+	    (unless thname
+	      (setf thname (or name fname)))
+	    (if fname
+		(setf formname fname
+		      thname (or thname name))
+		(setf formname thname
+		      thname name)))
+	(let ((fdecls (get-matching-prove-formulas name thname formname)))
+	  (cond ((cdr fdecls)
+		 (let ((locdecls (remove-if-not
+				     #'(lambda (fd)
+					 (pathname-equal
+					  (context-path (module fd))
+					  *default-pathname-defaults*))
+				   fdecls)))
+		   (cond ((cdr locdecls)
+			  ;; Only report errors on current context ambiguities
+			  (pvs-error "formula ambiguous error"
+			    (format nil "formula ambiguous for name ~a, ~
                           it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
-		     ((null locdecls)
-		      ;; Ambiguous - give error for now
-		      (pvs-error "formula ambiguous error"
-			(format nil "formula ambiguous for name ~a, ~
+			      (or formname name)
+			      (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
+			 ((null locdecls)
+			  ;; Ambiguous - give error for now
+			  (pvs-error "formula ambiguous error"
+			    (format nil "formula ambiguous for name ~a, ~
                           it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-		     (t (car locdecls)))))
-	    ((null fdecls)
-	     (pvs-error "formula not found error"
-	       (format nil
-		   "Formula name ~a not found in any (typechecked) theories"
-		 (or formname name))))
-	    (t (car fdecls))))))
+			      (or formname name)
+			      (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
+			 (t (car locdecls)))))
+		((null fdecls)
+		 (pvs-error "formula not found error"
+		   (format nil
+		       "Formula name ~a not found in any (typechecked) theories"
+		     (or formname name))))
+		(t (car fdecls)))))))
 
 (defun get-matching-prove-formulas (name thname formname)
   (let ((formulas nil))
@@ -2717,7 +2736,7 @@ If formname is nil, then formref should resolve to a unique formula name."
       (cond ((cdr fdecls)
 	     (let ((locdecls (remove-if-not
 				 #'(lambda (fd)
-				     (uiop:pathname-equal
+				     (pathname-equal
 				      (context-path (module fd))
 				      *default-pathname-defaults*))
 			       fdecls)))
@@ -3289,7 +3308,30 @@ If formname is nil, then formref should resolve to a unique formula name."
 
 (defun quit (&optional (status 0))
   (when (y-or-n-p "Do you really want to kill the PVS process? ")
-    (cl-user:bye status)))
+    (quit! status)))
+
+;; From https://www.cliki.net/Portable%20Exit
+(defun quit! (&optional code)
+  ;; This group from "clocc-port/ext.lisp"
+  #+allegro (excl:exit code)
+  #+clisp (#+lisp=cl ext:quit #-lisp=cl lisp:quit code)
+  #+cmu (ext:quit code)
+  #+cormanlisp (win32:exitprocess code)
+  #+gcl (lisp:bye code)                     ; XXX Or is it LISP::QUIT?
+  #+lispworks (lw:quit :status code)
+  #+lucid (lcl:quit code)
+  #+sbcl (sb-ext:exit :code code)
+  ;; This group from Maxima
+  #+kcl (lisp::bye)                         ; XXX Does this take an arg?
+  #+scl (ext:quit code)                     ; XXX Pretty sure this *does*.
+  #+(or openmcl mcl) (ccl::quit)
+  #+abcl (cl-user::quit)
+  #+ecl (si:quit)
+  ;; This group from <hebi...@math.uni.wroc.pl>
+  #+poplog (poplog::bye)                    ; XXX Does this take an arg?
+  #-(or allegro clisp cmu cormanlisp gcl lispworks lucid sbc
+        kcl scl openmcl mcl abcl ecl)
+  (error 'not-implemented :proc (list 'quit code)))
 
 (defun exit-pvs (&optional dont-ask)
   (multiple-value-bind (ignore condition)
@@ -3360,7 +3402,7 @@ nil is returned in that case."
 		(parsed? mod)
 		;; (or (not (lib-datatype-or-theory? mod))
 		;;     (member (context-path mod) (current-prelude-libraries)
-		;; 	    :test #'uiop:pathname-equal)
+		;; 	    :test #'pathname-equal)
 		;;     (and (name? theoryref)
 		;; 	 (library theoryref)))
 		)

@@ -486,8 +486,8 @@
   #+sbcl
   (remove-if #'null
     (list (find-symbol "QUASIQUOTE" :sb-int)
-	  (find-symbol "BACKQ-CONS" :sb-impl)
-	  (find-symbol "BACKQ-LIST" :sb-impl))))
+	  (find-symbol "List*" :sb-impl)
+	  (find-symbol "List" :sb-impl))))
 
 (defparameter *unbackquote-symbols*
   #+allegro
@@ -1319,15 +1319,47 @@ then turns off all the installed rewrites.  Examples:
 (defstrat query* ()
   (if (or *proving-tcc* *in-apply*)
       (postpone)
-      (let ((input (let ((input (qread "Rule? ")))
-		     (setf (current-input *ps*)
-			   input)
+      (let ((input (let ((input (or (run-prover-input-hooks)
+				    (qread "Rule? "))))
+		     (setq *prover-commentary* nil)
+		     (setf (current-input *ps*) input)
 		     input))
 	    (dummy (setq *rule-args-alist* nil))
-	    (rule (retypecheck-sexp (unformat-rule input))))
+	    (rule (setq *query-input* (retypecheck-sexp (unformat-rule input)))))
 	(try rule (query*) (query*))))
   "The basic strategy that queries the user for the next step.")
 
+(defvar *prover-input-hooks* nil)
+
+(defun run-prover-input-hooks (&optional (hooks *prover-input-hooks*))
+  (when hooks
+    (or (funcall (car hooks))
+	(run-prover-input-hooks (cdr hooks)))))
+
+(defun find-hook-fn (hook-fn)
+  (if (symbolp hook-fn)
+      (fboundp hook-fn)
+      (or (and (functionp hook-fn) hook-fn)
+	  (and (listp hook-fn)
+	       (memq (car hook-fn) '(lambda function))
+	       (let ((efn (eval hook-fn)))
+		 (and (functionp efn) efn))))))
+
+(defun add-prover-input-hook (hook-fn)
+  (let ((fn (find-hook-fn hook-fn)))
+    (assert (functionp fn) () "Illegal hook-fn, must be a function")
+    (pushnew hook-fn *prover-input-hooks*)))
+
+(defun remove-prover-input-hook (hook-fn)
+  (let ((fn (find-hook-fn hook-fn)))
+    (assert (functionp fn) () "Illegal hook-fn, must be a function")
+    (setq *prover-input-hooks* (delete fn *prover-input-hooks*))))
+
+(defmacro with-prover-input-hook (hook-fn &body body)
+  (let ((fn (gentemp)))
+  `(let* ((,fn ,(find-hook-fn hook-fn))
+	  (*prover-input-hooks* (cons ,fn *prover-input-hooks*)))
+     ,@body)))
 
 ;;The else strategy
 

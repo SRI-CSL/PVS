@@ -1548,7 +1548,7 @@
   ;;   "id" nil (translate-characters-to-xml-string (string ex)) "id")
   )
 
-(defmethod pp-xml* (stream (ex number) &optional colon? atsign?)
+(defmethod pp-xml* (stream (ex cl:number) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (format stream "~d" ex))
 

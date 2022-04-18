@@ -1,11 +1,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; make-pvs-parser.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Tue Dec 29 02:55:05 1998
-;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Dec 29 03:28:07 1998
-;; Update Count    : 1
-;; Status          : Stable
+
+;; This file is intended to be called directly from a lisp image, to create
+;; the PVS parser from the Ergo system. Hence it is invoked directly from
+;; the PVS Makefile, not from pvs.system
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -29,14 +28,10 @@
 
 (in-package :common-lisp)
 
-(#-(or cmu sbcl excl) progn
- #+cmu ext:without-package-locks
- #+sbcl sb-ext:without-package-locks
- #+excl excl:without-package-locks
- (defmacro defconstant-if-unbound (name value &optional doc)
-   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-		       ,@(when doc (list doc))))
- (export 'defconstant-if-unbound))
+(defmacro defconstant-if-unbound (name value &optional doc)
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
+(export 'defconstant-if-unbound)
 
 (in-package :cl-user)
 

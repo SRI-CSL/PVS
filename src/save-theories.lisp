@@ -39,6 +39,10 @@
 
 (defvar *bin-theories-set*)
 
+(defvar *restoring-theory* nil)
+
+(defvar *restoring-declaration*)
+
 (defun save-theory (theory)
   (pvs-log "~%Saving ~a" (binpath-id theory))
   (store-object-to-file (cons *binfile-version* theory)
@@ -890,10 +894,6 @@ instances, e.g., other declarations within the theory, or self-references."
 (defun restore-object (obj)
   (restore-object* obj))
 
-(defvar *restoring-theory* nil)
-
-(defvar *restoring-declaration*)
-
 (defmethod restore-object* :around ((obj datatype-or-module))
   (if (inline-recursive-type? obj)
       (call-next-method)
@@ -1499,7 +1499,7 @@ instances, e.g., other declarations within the theory, or self-references."
 (defmethod restore-object* ((obj pathname))
   obj)
 
-(defmethod restore-object* ((obj number))
+(defmethod restore-object* ((obj cl:number))
   obj)
 
 (defmethod restore-object* ((obj hash-table))

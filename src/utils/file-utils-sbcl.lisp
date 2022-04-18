@@ -23,23 +23,17 @@
 	  file-write-time get-file-info))
 
 (defun file-exists-p (file)
-   (probe-file file))
+   (uiop:file-exists-p file))
 
 (defun directory-p (dir)
-  (handler-case
-      (let ((pfile (probe-file dir)))
-	(when (and pfile
-		   (sb-posix:s-isdir (sb-posix:stat-mode (sb-posix:stat pfile))))
-	  ;; Needs to end with a slash!!!
-	  (uiop:ensure-directory-pathname pfile)))
-    (sb-posix:syscall-error () nil)))
+  (uiop:directory-exists-p dir))
 
 (defun read-permission? (file)
   (handler-case (zerop (sb-posix:access file sb-posix:r-ok))
     (sb-posix:syscall-error () nil)))
 
 (defun write-permission? (&optional (file *default-pathname-defaults*))
-  (let ((pfile (probe-file file)))
+  (let ((pfile (uiop:file-exists-p file)))
     (and pfile
 	 (handler-case (zerop (sb-posix:access pfile sb-posix:w-ok))
 	   (sb-posix:syscall-error () nil)))))
@@ -47,13 +41,13 @@
 (defconstant u1970 (encode-universal-time 0 0 0 1 1 1970 0))
 
 (defun file-write-time (file)
-  (let ((pfile (probe-file file)))
+  (let ((pfile (uiop:file-exists-p file)))
     (and pfile
 	 (handler-case (+ u1970 (sb-posix:stat-mtime (sb-posix:stat pfile)))
 	   (sb-posix:syscall-error () nil)))))
 
 (defun get-file-info (file)
-  (let ((pfile (probe-file file)))
+  (let ((pfile (uiop:file-exists-p file)))
     (and pfile
 	 (handler-case
 	     (let ((stat (sb-posix:stat pfile)))
