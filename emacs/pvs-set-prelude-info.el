@@ -23,15 +23,15 @@
 
 (defvar start-pvs nil) ; don't need to run pvs, just load the files
 
-(if (getenv "PVSPATH")
-    (defconst pvs-path (getenv "PVSPATH"))
-    (error "PVSPATH must be set"))
+(defconst pvs-path (or (getenv "PVSPATH") default-directory))
 
 (setq load-path
   (append (list pvs-path
 		(concat pvs-path "/emacs")
 		(concat pvs-path "/emacs/ilisp"))
           load-path))
+
+(load "pvs-utils")
 
 (defvar region-file
   "emacs/pvs-prelude-files-and-regions.el")

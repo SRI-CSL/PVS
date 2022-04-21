@@ -764,7 +764,7 @@ tar :
 $(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
                   $(PVSPATH)emacs/pvs-set-prelude-info.el \
                   $(PVSPATH)lib/prelude.pvs
-	-./pvs -batch -l emacs/pvs-set-prelude-info.el \
+	-$(EMACS) -batch -q -l emacs/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
 $(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/%.el
