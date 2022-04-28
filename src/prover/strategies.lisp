@@ -3951,8 +3951,18 @@ in the given fnums."
   (let ((*decomposable-formulas-tried* nil)
 	(sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
-				(list fnum))))
-	(fm (find-if
+			      (list fnum)))))
+    (decompose-equality-step sforms hide?))
+  "Decomposes an equality or disequality to the component equalities.
+This only works for equalities between functions, records, or tuples.  If
+HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
+the consequents or a disequality in the antecedents then this simply
+invokes apply-extensionality.  Otherwise it decomposes the
+ (dis)equality into its component equalities."
+  "Applying decompose-equality")
+
+(defhelper decompose-equality-step (sforms hide? &inherit simplify replace* grind)
+  (let ((fm (find-if
 		#'(lambda (sf)
 		    (or (decomposable-equality? (formula sf))
 			(and (negation? (formula sf))
@@ -3999,15 +4009,16 @@ in the given fnums."
 		      (then (flatten) (replace* :hide? nil)
 			    (grind :defs nil :if-match nil :hide? nil)))))
 	 (skip)
-	 (decompose-equality))
+	 (decompose-equality-step sforms hide?))
 	(skip-msg "Couldn't find a suitable equation")))
-  "Decomposes an equality or disequality to the component equalities.
-This only works for equalities between functions, records, or tuples.  If
-HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
+  "Helper for decompose-equality.  Decomposes an equality or disequality to the
+component equalities.  This only works for equalities between functions, records, or tuples.
+If HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
 the consequents or a disequality in the antecedents then this simply
 invokes apply-extensionality.  Otherwise it decomposes the
  (dis)equality into its component equalities."
   "Applying decompose-equality")
+
 
 (defmethod component-equalities (lhs rhs (te recordtype))
   (make-conjunction
