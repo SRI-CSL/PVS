@@ -29,6 +29,13 @@
 
 (in-package :cl-user)
 
+#+sbcl (require :sb-posix)
+#+sbcl (require :sb-cltl2)
+#+sbcl (require :sb-concurrency)
+#+sbcl (require :sb-rotate-byte)
+#+sbcl (require :sb-md5)
+#+sbcl (require 'sb-bsd-sockets)
+
 (eval-when (:execute :load-toplevel)
   ;; This sets *pvs-path* and sets *pvs-binary-type*
   (load "pvs-config.lisp"))
