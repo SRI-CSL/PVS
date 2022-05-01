@@ -516,7 +516,7 @@
   (call-next-method (lift-adt expr) bindings))
 
 
-(defmethod translate-to-yices* ((expr number-expr) bindings)
+(defmethod translate-to-yices* ((expr rational-expr) bindings)
   (declare (ignore bindings))
   (number expr))
 

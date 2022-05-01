@@ -425,7 +425,7 @@
   (call-next-method (lift-adt expr) bindings))
 
 
-(defmethod translate-to-yices2* ((expr number-expr) bindings)
+(defmethod translate-to-yices2* ((expr rational-expr) bindings)
   (declare (ignore bindings))
   (number expr))
 
