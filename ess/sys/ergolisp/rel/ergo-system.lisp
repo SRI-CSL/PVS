@@ -21,15 +21,10 @@
 (in-package :ergo-system)
 #-sbcl (use-package :ergolisp)
 
-#-(or allegro lucid cmu sbcl)
-(eexport '(memq))
 #+harlequin-common-lisp
 (eexport '(assq))
 (eexport '(ergo-disksave def-disksave-hook mover))
 (eexport '(ergo-ignore-if-unused))
-
-#-(or allegro lucid cmu sbcl)
-(defun memq (item list) (member item list :test #'eq))
 
 #+harlequin-common-lisp
 (defun assq (item list) (assoc item list :test #'eq))

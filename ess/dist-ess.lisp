@@ -36,16 +36,14 @@
 
 ;;; Why are these constants put into the tools package??
 
-#+sbcl (defpackage :ergolisp (:use :common-lisp))
-#+sbcl (defpackage :toolw (:use :common-lisp :ergolisp))
 (in-package :tools)
 
-(export '(*ess-version* *ess-version-date*))
-(export '(*ess-feature-alist*))
-(export '(*ess-name* *ess-temp-name*))
-(export '(nice-time-string sys-parameters-string))
-(export '(build-ess-lisp generate-ess-lisp recompile-ess-lisp load-ess-lisp))
-(export '(save-ess-lisp))
+;; (export '(*ess-version* *ess-version-date*))
+;; (export '(*ess-feature-alist*))
+;; (export '(*ess-name* *ess-temp-name*))
+;; (export '(nice-time-string sys-parameters-string))
+;; (export '(build-ess-lisp generate-ess-lisp recompile-ess-lisp load-ess-lisp))
+;; (export '(save-ess-lisp))
 
 (defparameter *ess-version* "0.15")
 (defparameter *ess-version-date* "[12 Feb 90]")
@@ -203,11 +201,11 @@ in the file dist-ess.lisp.")
 implementation.  You may add them by defining USE-DEVELOPMENT-COMPILER
 in the file dist-ess.lisp.")
 
-(defmacro build-ess (filename &rest features)
-  `(tools:build-ess-lisp ,filename ',features))
+(defun build-ess (filename &rest features)
+  (tools:build-ess-lisp filename features))
 
-(defmacro generate-ess (&rest features)
-  `(tools:generate-ess-lisp ',features))
+(defun generate-ess (&rest features)
+  (tools:generate-ess-lisp features))
 
-(defmacro save-ess (filename &rest features)
-  `(tools:save-ess-lisp ,filename ',features))
+(defun save-ess (filename &rest features)
+  (tools:save-ess-lisp filename features))

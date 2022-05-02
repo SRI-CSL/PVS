@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: LANGUAGE -*-
+;;; -*- Mode: Lisp; Package: language -*-
 ;;; Sccs Id 9/21/89 @(#)attr-lang-lib.lisp	1.3
 ;;; ******************************************************************* ;;;
 ;;;          (c) Copyright 1989 by Carnegie Mellon University.          ;;;

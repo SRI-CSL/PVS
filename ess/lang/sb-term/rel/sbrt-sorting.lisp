@@ -1,12 +1,12 @@
-;;; -*- Mode: Lisp; Package: SB-RUNTIME -*-
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+;;; -*- Mode: Lisp; Package: sb-runtime -*-
+(in-package :sb-runtime)  (use-package :ergolisp)
 
-(use-package '("OPER" "OCC" "TERM" "SORT" "LANG"))
+(use-package '(:oper :occ :term :sort :lang))
 
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 
 (defparameter *sbrt-sort-table*

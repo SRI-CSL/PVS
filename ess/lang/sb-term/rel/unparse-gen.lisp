@@ -299,8 +299,8 @@
   (cond ((is-keyword term)
 	 (sbst-intern-ncase (ds-keyword term)))
 	((and (is-id term)
-	      (memq (ds-id term)
-		    '(arb op lt)))
+	      (member (ds-id term)
+		    '(arb op lt) :test #'eq))
 	 (keyword-intern (ds-literal term)))
 	((and (is-id term)
 	      (is-lexical-terminal (sb-intern-case (ds-id term))
@@ -513,10 +513,10 @@
 		  ,@(do ((i (1- (get-nt-slot-total nt)) (1- i))
 			 (result () (cons (var i) result)))
 			((= i -1) result)))
-		 (setf ,(var (cond ((and (memq (pattern-kind nt-pat)
-					       '(alt opt))
-					 (not (memq nt-pat
-						    *top-level-alts*)))
+		 (setf ,(var (cond ((and (member (pattern-kind nt-pat)
+					       '(alt opt) :test #'eq)
+					 (not (member nt-pat
+						    *top-level-alts* :test #'eq)))
 				    ;; @hack, documented in inter-phase
 				    (+ 1 (get-pattern-slot nt-pat)))
 				   (t 
@@ -572,10 +572,10 @@
 		 (gen-augment-unparser (get-pattern-augment pat))))
 	  (gen-pattern-unparser pat))))
     (if (pattern-gets-uterm? pat)
-	`((unp-uterm ,(var (cond ((and (memq (pattern-kind pat)
-					     '(alt opt))
-				       (not (memq pat
-						  *top-level-alts*)))
+	`((unp-uterm ,(var (cond ((and (member (pattern-kind pat)
+					     '(alt opt) :test #'eq)
+				       (not (member pat
+						  *top-level-alts* :test #'eq)))
 				  ;; @hack, documented in inter-phase
 				  (1+ (get-pattern-slot pat)))
 				 (t 
@@ -590,8 +590,8 @@
   (or (is-pat-iterator pat)
       (and (get-pattern-binding-aug pat)
 	   (pattern-augment pat)		; non-defaulted augment.
-	   (not (memq (augment-kind (pattern-augment pat))
-		      '(name ext-name))))))
+	   (not (member (augment-kind (pattern-augment pat))
+		      '(name ext-name) :test #'eq)))))
 
 
 
@@ -659,8 +659,8 @@
 
     ((plus star)
      (let* ((indiv-slot
-	     (cond ((memq (pattern-kind (pattern-son0 pat))
-			  '(opt alt star doublestar))
+	     (cond ((member (pattern-kind (pattern-son0 pat))
+			  '(opt alt star doublestar) :test #'eq)
 		    (var (1+ (get-pattern-slot (pattern-son0 pat)))))
 		   (t
 		    (var (get-pattern-slot (pattern-son0 pat))))))
@@ -676,8 +676,8 @@
 
     ((doubleplus doublestar)
      (let* ((indiv-slot
-	     (cond ((memq (pattern-kind (pattern-son0 pat))
-			  '(opt alt star doublestar))
+	     (cond ((member (pattern-kind (pattern-son0 pat))
+			  '(opt alt star doublestar) :test #'eq)
 		    (var (1+ (get-pattern-slot (pattern-son0 pat)))))
 		   (t
 		    (var (get-pattern-slot (pattern-son0 pat))))))

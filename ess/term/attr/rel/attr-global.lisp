@@ -1,4 +1,4 @@
-;;; -*- Package: NEWATTR -*-
+;;; -*- Package: newattr -*-
 ;;; Sccs Id 9/21/89 @(#)attr-global.lisp	1.5
 ;;; ******************************************************************* ;;;
 ;;;          (c) Copyright 1989 by Carnegie Mellon University.          ;;;
@@ -16,7 +16,7 @@
 ;;; a global language :global.  All other functions just refer to the
 ;;; "language-specific" versions of the ADT.
 
-(in-package "NEWATTR")  (use-package :ergolisp)
+(in-package :newattr)  (use-package :ergolisp)
 
 (export '(defgcon defgsyn defgattr))
 (export '(defgcon-deltafun defgsyn-compfun defgattr-attrfun))

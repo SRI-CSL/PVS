@@ -52,8 +52,8 @@
 (eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro atomic (pat)
-  `(memq (get-kind ,pat)
-	 '(nonterminal ukeyword just-as ext-nonterminal jux)))
+  `(member (get-kind ,pat)
+	 '(nonterminal ukeyword just-as ext-nonterminal jux) :test #'eq))
 
 (defmacro get-first-son (pat)
   `(let ((pat ,pat))

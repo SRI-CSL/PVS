@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: GTERM -*-
+;;; -*- Mode: Lisp; Package: gterm -*-
 ;;; Sccs Id 9/21/89 @(#)attr-prims.lisp	1.4
 ;;; ******************************************************************* ;;;
 ;;;          (c) Copyright 1989 by Carnegie Mellon University.          ;;;
@@ -20,10 +20,10 @@
 ;;; attributes.
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package "TERM")
-    (make-package "TERM" :nicknames '("GTERM")
-			 :use '(:cl-user :common-lisp :ergolisp))))
-(in-package "TERM")
+  (unless (find-package :term)
+    (make-package :term :nicknames '(:gterm)
+		  :use '(:cl-user :common-lisp :ergolisp))))
+(in-package :term)
 
 (export '(attr-clear-one attr-clear-all))
 

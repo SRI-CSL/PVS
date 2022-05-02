@@ -17,17 +17,15 @@
 ;;; Scott Dietzen, Fri Oct 10 14:48:20 1986
 ;;;
 ;;; fp , Mon Jan  2 11:02:12 1989
-;;; Took out the memq macro, since it was defined as a function elsewhere.
-;;; Now centralized.
 
-;;(in-package "SB" :nicknames '("SYNTAX-BOX"))
+;;(in-package :sb :nicknames '(:syntax-box))
 
 #+sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package :syntax-box)
-    (defpackage :syntax-box (:nicknames "SB")
+    (defpackage :syntax-box (:nicknames :sb)
       (:use :common-lisp :ergolisp :oper :term :sort :sb-runtime :lang)
-      (:shadowing-import-from :sb-int memq))))
+      (:shadowing-import-from :sb-int))))
 #+sbcl (in-package :syntax-box)
 #-sbcl (in-package :syntax-box :nicknames '(:sb))
 
@@ -156,9 +154,6 @@
       `(if (not ,p)
 	   (sb-system-error))))
 
-  ;;  (defmacro memq (target list)
-  ;;  `(member ,target ,list :test #'eq))
-
 )   ;; eval-when
 
 
@@ -279,7 +274,7 @@
     with exclamation points around it if true." 
     ;;; The explanation points are used as a reference name in parser
     ;;; generation.  Not the best place to due this, but no big deal. 
-  (if (memq name (grammar-lexical-terminals grammar))
+  (if (member name (grammar-lexical-terminals grammar) :test #'eq)
       (sbst-intern-ncase
        (concatenate 'string "!" (symbol-name name) "!"))))
 					; The above is a name used by the
@@ -844,8 +839,8 @@
 
 (defun is-pat-iterator (pat)
   (and (pattern-p pat)
-       (memq (pattern-kind pat)
-	     '(plus star doubleplus doublestar))))
+       (member (pattern-kind pat)
+	       '(plus star doubleplus doublestar) :test #'eq)))
 
 
 (defun make-pattern (&key kind (name ()) (sons ()) (slot ())
@@ -1068,8 +1063,8 @@
 
 (defun is-aug-iterator (aug)
   (and (augment-p aug)
-       (memq (augment-kind aug)
-	     '(star plus))))
+       (member (augment-kind aug)
+	     '(star plus) :test #'eq)))
 
 
 (defun make-augment (&key kind (leaf-value ())  (name ()) (args ())

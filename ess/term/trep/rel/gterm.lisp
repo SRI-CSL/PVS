@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: GTERM -*-
+;;; -*- Mode: Lisp; Package: gterm -*-
 ;;;
 ;;; Author: Conal Elliott
 ;;;
@@ -30,10 +30,10 @@
 ;;; 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package "TERM")
-    (make-package "TERM" :nicknames '("GTERM")
-                         :use '(:cl-user :common-lisp :ergolisp))))
-(in-package "TERM")
+  (unless (find-package :term)
+    (make-package :term :nicknames '(:gterm)
+                  :use '(:cl-user :common-lisp :ergolisp))))
+(in-package :term)
 
 (export '(term  termp mk-term ds-term term-op term-args
 		term-attr set-term-attr))

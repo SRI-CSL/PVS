@@ -12,8 +12,6 @@
 ;;; The sort-specific part.
 ;;; Author: fp
 
-#-gcl
-(defpackage :newattr #+sbcl (:use :common-lisp :ergolisp))
 (in-package :newattr) #-sbcl(use-package :ergolisp)
 
 (export '(defconfam defsynfam defattrfam))

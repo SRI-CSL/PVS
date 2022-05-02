@@ -13,12 +13,7 @@
 
 ;;; Scott Dietzen, Tue May 26 13:36:26 1987
 
-#-gcl
-(defpackage :term #+sbcl (:use :common-lisp :ergolisp :oper :occ))
-(in-package :term) #-sbcl (use-package :ergolisp)
-
-
-#-sbcl (use-package '(:oper :occ))
+(in-package :term)
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction

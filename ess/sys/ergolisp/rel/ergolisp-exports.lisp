@@ -25,17 +25,6 @@
 
 ;;;; ERGO-SYSTEM
 
-#+(and lucid lcl3.0)
-(import '(lcl:memq) :ergolisp)
-#+(and lucid (not lcl3.0))
-(import '(system:memq) :ergolisp)
-#+cmu
-(import '(extensions:memq) :ergolisp)
-#+allegro-v4.2
-(import '(excl:memq) :ergolisp)
-
-#-(or cmu sbcl)
-(export '(memq))
 #+harlequin-common-lisp
 (export '(assq))
 (export '(ergo-disksave def-disksave-hook mover))

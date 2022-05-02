@@ -14,7 +14,7 @@
 
 ;;; Scott Dietzen, Mon Sep 21 16:08:08 1987
 
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 
 (export '(*default-char-width*

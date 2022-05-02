@@ -13,9 +13,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :constr #+sbcl (:use :common-lisp :ergolisp))
-(in-package :constr) #-sbcl (use-package :ergolisp)
+(in-package :constr)
 
 (eexport '(defconstr defmulticonstr))
 
@@ -109,9 +107,6 @@ image).  This doesn't work.  It always insists on inline expanding.")
 			     ,(keyword-constr-fun adt)
 			     ,(disc-fun adt)
 			     ,@sel-funs))))))
-
-#+harlequin-common-lisp ;; compiler doesn't detect GTERM as a pkg nickname
-(defpackage :term (:nicknames :gterm))
 
 (defun print-constr (obj adt-name parts stream)
   "Print a constr object given the object, its constructor name, a list

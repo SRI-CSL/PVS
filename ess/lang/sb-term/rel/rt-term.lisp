@@ -19,11 +19,11 @@
 
 
 
-#+sbcl (in-package "SB-RUNTIME")
-#-sbcl (in-package "SB-RUNTIME" :nicknames '("RT-SB" "RTSB" "SB-RT" "SBRT"))
+#+sbcl (in-package :sb-runtime)
+#-sbcl (in-package :sb-runtime :nicknames '(:rt-sb :rtsb :sb-rt :sbrt))
 (use-package :ergolisp)
 
-(use-package '("TERM" "OCC" "OPER")) 
+(use-package '(:term :occ :oper))
 
 
 
@@ -35,10 +35,10 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *sbst-package* 
-    (cond ((find-package "SBST"))
+    (cond ((find-package :sbst))
 	  (t
-	   (make-package "SBST"
-			 :nicknames '("SB-ST" "SB-SYMBOL-TABLE") :use '())))))
+	   (make-package :sbst
+			 :nicknames '(:sb-st :sb-symbol-table) :use '())))))
 
 
 (defvar *no-sb-system-graphics* nil)

@@ -311,8 +311,8 @@
   (assert-sb (augment-p aug))
   ;; The following group must have associated syntax.
   (cond ((augment-base-p aug))  ; nothing to do.
-	((memq (augment-kind aug)
-	       '(plus star alt opt name ext-name))
+	((member (augment-kind aug)
+	       '(plus star alt opt name ext-name) :test #'eq)
 	 (let ((path (search-pattern-list aug path-list)))
 	   (cond ((or (null path)
 		      (eq path 'ambiguous))
@@ -404,8 +404,8 @@
     
     (cond     
      ((pattern-leaf-p pat))		; bottom of recursion. do nothing.
-     ((not (memq (pattern-kind pat)
-		 '(opt alt plus doubleplus star doublestar)))
+     ((not (member (pattern-kind pat)
+		 '(opt alt plus doubleplus star doublestar) :test #'eq))
       ;; We may not search below these special patterns.
       (setq 
        check-below
@@ -493,9 +493,9 @@
 		     (or (and (eq (pattern-kind pat) 'nonterminal)
 			      (eq (augment-leaf-ds aug) ; e.g.{ E ';'}<E>
 				  (pattern-leaf-ds pat)))
-			 (and (memq (pattern-kind pat) ; e.g. {[ A ] ';'} <opt>
+			 (and (member (pattern-kind pat) ; e.g. {[ A ] ';'} <opt>
 				    '(plus doubleplus star doublestar
-					   opt alt seq jux))
+					   opt alt seq jux) :test #'eq)
 			      (or (eq (pattern-kind pat)
 				      (augment-leaf-ds aug))))))
 
@@ -594,8 +594,8 @@
 	    (check-sons
 	     (cond ((augment-leaf-p aug)
 		    ())			; bottom of recursion, do nothing. 
-		   ((not (memq (augment-kind aug)
-			       '(star plus opt alt)))
+		   ((not (member (augment-kind aug)
+			       '(star plus opt alt) :test #'eq))
 		    (do ((args (augment-args aug)
 			       (cdr args))
 			 (search-result 
@@ -933,7 +933,7 @@
 	 (augment-path aug))
 	(t
 	 (let ((initial-restriction
-		(cond ((memq (augment-kind aug) '(opt alt name ext-name))
+		(cond ((member (augment-kind aug) '(opt alt name ext-name) :test #'eq)
 		       (augment-path aug))
 					; abstract syntax which may not be
 					; moved below a certain location, their
@@ -974,7 +974,7 @@
 
 (defun move-down (aug new-pat old-pat)
   (let* ((new-name (gensym))
-	 (new-aug (cond ((memq (augment-kind aug) '(bind plus star))
+	 (new-aug (cond ((member (augment-kind aug) '(bind plus star) :test #'eq)
 			 aug)
 			(t
 			 (make-augment :kind 'bind
@@ -1070,7 +1070,7 @@
 						    ;; augments
   (assert-sb (augment-p aug))
   (if (not (augment-leaf-p aug))
-      (cond ((memq target-aug (augment-args aug))
+      (cond ((member target-aug (augment-args aug) :test #'eq)
 	     (do ((son-runner (augment-args aug) (cdr son-runner))
 		  (i 0 (1+ i)))
 		 ((eq target-aug (car son-runner))
@@ -1252,7 +1252,7 @@
 	     (incr-slot-count slot-count 
 			      (cond ((and (or (get-pattern-referenced pat)
 					      (get-pattern-bound pat))
-					  (not (memq pat *top-level-alts*)))
+					  (not (member pat *top-level-alts* :test #'eq)))
 				     2)	; @hack, see above doc.
 				    (t 1))))
 	    (local-max-slot-count 0)
@@ -1344,10 +1344,10 @@
 	    (set-augment-key-slot
 	     aug
 	     (cond ((pattern-p (car (augment-path aug)))
-		    (cond ((and (memq (pattern-kind (car (augment-path aug)))
-				      '(opt alt))
-				(not (memq (car (augment-path aug))
-					   *top-level-alts*))) ; @hack (see
+		    (cond ((and (member (pattern-kind (car (augment-path aug)))
+				      '(opt alt) :test #'eq)
+				(not (member (car (augment-path aug))
+					   *top-level-alts* :test #'eq))) ; @hack (see
 							       ; above)
 			   (+ 1 (get-pattern-slot (car (augment-path aug)))))
 			  (t
@@ -1366,11 +1366,11 @@
 	       aug
 	       (cond ((pattern-p (car (augment-path aug)))
 		      ;; we are binding to a pattern
-		      (cond ((and (memq (pattern-kind
+		      (cond ((and (member (pattern-kind
 					 (car (augment-path aug)))
-					'(opt alt))
-				  (not (memq (car (augment-path aug))
-					     *top-level-alts*))) 
+					'(opt alt) :test #'eq)
+				  (not (member (car (augment-path aug))
+					     *top-level-alts* :test #'eq))) 
 			     ;; @hack (see above)
 			     (+ 1 (get-pattern-slot
 				   (car (augment-path aug)))))

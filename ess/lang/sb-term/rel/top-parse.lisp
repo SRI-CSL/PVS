@@ -139,8 +139,8 @@
 (defun initialize-file (stream file-type)
   (sb-write
    (format stream ";;; -*- Mode: Lisp; Package: ~A -*-~%~
-                  (in-package ~S)  ;; creates package for abstract syntax. ~%~%~
-                  (in-package ~S)  ;; enters package for generated code.  ~%~%~
+                  (in-package :~a)  ;; creates package for abstract syntax. ~%~%~
+                  (in-package :~a)  ;; enters package for generated code.  ~%~%~
 	          (use-package '~S)~3%"
      *code-package-spec*
      *abs-syn-package-spec*

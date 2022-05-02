@@ -29,9 +29,9 @@
 
 (export '(sb sb-make))
 
-(defconstant-if-unbound sb-version "1 Feb 88")
+(defparameter sb-version "1 Feb 88")
 
-(defconstant-if-unbound gen-src-file-ext "lisp")
+(defparameter gen-src-file-ext "lisp")
 
 
 (defmacro string-empty? (s)
@@ -404,7 +404,7 @@ and SUFFIX (without the file type)."
 
     (setq *unparser-gen-error* nil)
     (when unparser-file
-      (format t "   generating unparser ...~%")
+      (format t "   generating unparser ~a~%" unparser-file)
       (setq unparse-nts
 	    (cond ((or (eq unparse-nts t)
 		       (and (null unparse-nts)
@@ -424,14 +424,14 @@ and SUFFIX (without the file type)."
 
     (setq *parser-error* nil)
     (when parser-file
-      (format t "   generating parser ...~%")
+      (format t "   generating parser ~a~%" parser-file)
       (generate-parser grammar parser-file))
     (when *parser-error* (return-from error-exit-block))
 
     (setq *global-operator-list* nil)
     (when lexer-file
       (cond (parser-file
-	     (format t "   generating lexer ...~%")
+	     (format t "   generating lexer ~a~%" lexer-file)
 	     (generate-custom-lexer grammar lexer-file))
 	    (t
 	     (warn "Can't make a lexer if you didn't make a parser."))))
@@ -465,9 +465,9 @@ and SUFFIX (without the file type)."
     (initialize-file s :sorts)
     (sb-write
      (let ((*package* (lang:lang-code-package *language*)))
-       (format s "#+(and allegro-version>= (version>= 8 2))~
-                    (eval-when (:execute :compile-toplevel :load-toplevel)~
-                      (setq *readtable* cl::*pvs-readtable*))")
+       ;; (format s "#+(and allegro-version>= (version>= 8 2))~
+       ;;              (eval-when (:execute :compile-toplevel :load-toplevel)~
+       ;;                (setq *readtable* cl::*pvs-readtable*))")
        (pprint (construct-opsig-table-function) s)
        (format s "~%~%")
        (pprint (construct-sort-table-function) s)
@@ -562,6 +562,3 @@ and SUFFIX (without the file type)."
        (format nil "~A-~A" conc prompt2)
        default)
       nil))
-
-
-

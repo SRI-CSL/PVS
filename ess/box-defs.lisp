@@ -1,4 +1,4 @@
-;; -*- Mode: lisp; Package: TOOLS -*-
+;; -*- Mode: lisp; Package: tools -*-
 ;;;
 ;;; This file is the central clearinghouse for tools and
 ;;; applications that are available in the Ergo Support System.
@@ -16,15 +16,14 @@
 ;;; ******************************************************************* ;;;
 
 (in-package :tools)
-(use-package :ergolisp)
 
 (export '(*plain-readtable*))
 
 (import '(cl-user::*ess-path*))
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 (defparameter *plain-readtable* (copy-readtable nil))
 
@@ -150,7 +149,7 @@ Lisp programming environment."
    "clet"				; ==> ergomisc
    "regression-test"
    )
-  (:load-hook (use-package "TOOLS")))
+  (:load-hook (use-package :tools)))
 
 (defbox internal-boxes
   "Box with one file: the boxes that are not exported."
@@ -379,7 +378,7 @@ Lisp programming environment."
    ("sb-lexer"          :compile "access"
 			:compile "rt-term")
    ("sb-gr.txt"         :language "meta-grammar" :conc-name "sb"
-                        :abs-syn-package "SYNTAX-BOX" :code-package "SYNTAX-BOX"
+                        :abs-syn-package :syntax-box :code-package :syntax-box
 			:suppress-sort-errors t)
 
    ("aux-funs"		:compile "access" :compile "access-par")
@@ -441,7 +440,7 @@ Lisp programming environment."
 	  "ex1.pas"			; example text
 	  ("pascal-gr.txt"         
 	   :language "pascal" :conc-name "pascal"
-	   :abs-syn-package "PASCAL" :code-package "PASCAL"
+	   :abs-syn-package :pascal :code-package :pascal ;
 	   :suppress-sort-errors t)
 	  ))
 
@@ -459,7 +458,7 @@ Lisp programming environment."
 	  "ex2.txt"
 	  ("form-gr.txt"         
 	   :language "formtest" :conc-name "form"
-	   :abs-syn-package "FORM" :code-package "FORM"
+	   :abs-syn-package :form :code-package :form
 	   :suppress-sort-errors t)
 	  ))
 
@@ -482,10 +481,10 @@ Lisp programming environment."
 	      )
   (:files ("af-gr.txt" :language "agg"
 	   :conc-name "af"
-	   :code-package "ANALYSIS-FACILITY"
-	   :abs-syn-package "ANALYSIS-FACILITY"
+	   :code-package :analysis-facility
+	   :abs-syn-package :analysis-facility
 	   :suppress-sort-errors t)
-	  ("af-agr.txt" :package "ANALYSIS-FACILITY"
+	  ("af-agr.txt" :package :analysis-facility
 			:analyzer "af-analyzer.lisp")
 	  "af-top"
 	  "af-analyzer"
@@ -520,9 +519,9 @@ Lisp programming environment."
   (:readme (format nil "~a/lang/ab-term/examples/README" *ess-path*))
   (:files
    "calc-test" "calc-top"
-   ("calc-agr.txt" :package "CALC" :analyzer "calc-analyzer")
+   ("calc-agr.txt" :package :calc :analyzer "calc-analyzer")
    "calc-analyzer" "calc-aux"
-   ("calc-gr.txt" :language "CALC")
+   ("calc-gr.txt" :language :calc)
    "calc-parser" "calc-lexer"
    "calc-sorts"))
 
@@ -543,7 +542,7 @@ Lisp programming environment."
   (:path (format nil "~a/lang/ab-term/examples/dv/" *ess-path*))
   (:files
    "dv-test"
-   ("dv-agr.txt" :package "TL" :analyzer "dv-analyzer")
+   ("dv-agr.txt" :package :tl :analyzer "dv-analyzer")
    "dv-analyzer" "dv-aux"))
 
 (defbox sf
@@ -553,9 +552,9 @@ Lisp programming environment."
   (:path (format nil "~a/lang/ab-term/examples/sf/" *ess-path*))
   (:files
    "sf-test"
-   ("sf-agr.txt" :package "SF" :analyzer "sf-analyzer")
+   ("sf-agr.txt" :package :sf :analyzer "sf-analyzer")
    "sf-analyzer" "sf-aux"
-   ("sf-gr.txt" :language "SF")
+   ("sf-gr.txt" :language :sf)
    "sf-unparser" "sf-parser" "sf-lexer"
    "sf-sorts"))
 
@@ -571,8 +570,8 @@ ML-like concrete syntax.  The Lisp type syntax should be factored out someday."
   (:files
    "defsconstr"
    ("constr-gr.txt" :language "constr"
-    :abs-syn-package "CONSTR-TERM-REP"
-    :code-package "CONSTRG"
+    :abs-syn-package :constr-term-rep
+    :code-package :constrg
     :unparser? nil)
    "constr-parser"
    "constr-lexer"
@@ -660,8 +659,8 @@ tevars in lp terms."
   (:path (format nil "~a/elp/grammar/rel/" *ess-path*))
   (:files
    ("slterm-gr.txt" :language "slterm"
-    :abs-syn-package "SLTERM"
-    :code-package "SLTERMG"
+    :abs-syn-package :slterm
+    :code-package :sltermg
     :suppress-sort-errors t)
    "slterm-unparser"
    "slterm-parser"

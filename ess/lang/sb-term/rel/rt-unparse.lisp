@@ -14,9 +14,9 @@
 
 ;;; Scott Dietzen, Sat Aug  8 16:45:27 1987
 
-(in-package "SB-RUNTIME")
+(in-package :sb-runtime)
 
-(use-package '("OPER" "TERM" "SORT"))
+(use-package '(:oper :term :sort))
 
 (export '(*bracket-info* *prec-info* *pat-nesting*
 	  *key-token-map* *lt-token-map* *key-esc-token-map* *lt-esc-token-map*

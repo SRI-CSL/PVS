@@ -54,9 +54,9 @@
 (eexport '(\#>))
 (eexport '(push2 pop2))
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 ;;;
 ;;; Structure and variable definitions.
@@ -509,8 +509,7 @@ Makes some destructive changes to the processs-spec!"
       (check-type (first process-arg) symbol)
       ;; Replace symbol by corresponding keyword once and forall.
       (setf (first process-arg)
-	    (intern (symbol-name (first process-arg))
-		    (find-package "KEYWORD")))
+	    (intern (symbol-name (first process-arg)) :keyword))
       (let ((keyname (first process-arg)))
 	(when (rest process-arg)
 	  (let ((default (second process-arg)))

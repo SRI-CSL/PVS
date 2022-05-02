@@ -13,13 +13,7 @@
 
 ;;; Scott Dietzen, Thu May 21 12:49:21 1987
 
-#-gcl
-(defpackage :sort #+sbcl (:use :common-lisp :ergolisp :oper))
-(in-package :sort) #-sbcl (use-package :ergolisp)
-
-#-sbcl (use-package '(:oper))
-
-
+(in-package :sort)
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction
@@ -67,9 +61,9 @@
 	  ))
 
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 ;;; The two types defined here each have a macro character and sexp printed
 ;;; representation:   #t is used for ttypes (term types) and #@ is used for
@@ -714,7 +708,7 @@
 
 
 
-(eval-when (:load-toplevel)
+(eval-when (:execute :load-toplevel)
   (setq *global-sort-table* (make-sort-table))
   (setq *global-opsig-table* (make-opsig-table)))
 

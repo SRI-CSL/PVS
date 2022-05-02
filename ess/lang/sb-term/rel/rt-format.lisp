@@ -137,7 +137,7 @@
 (defun get-token-space-kind (token)
   (case (token-kind token)
     (:keyword
-     (cond ((memq (token-value token) *unparser-op-list*)
+     (cond ((member (token-value token) *unparser-op-list* :test #'eq)
 	    :op)
 	   ((eq (token-subkind token) :jux)
 	    :jux)
@@ -163,29 +163,29 @@
 (defun special-default-spaces (token1 token2)
   (null-sb-chars-to-pixels
    (cond ((and (eq (token-kind token2) :keyword)
-	       (memq (token-value token2) *unparser-op-list*)
-	       (memq (token-value token2)
+	       (member (token-value token2) *unparser-op-list* :test #'eq)
+	       (member (token-value token2)
 		     '( sbst::|,|
 			      sbst::|;|
 			      sbst::|:|
 			      sbst::|.|
 			      sbst::|)|    
 			      sbst::|]|
-			      sbst::|}| )))
+			      sbst::|}| ) :test #'eq))
 	  0)
 	 ((and (eq (token-kind token1) :keyword)
-	       (memq (token-value token1) *unparser-op-list*)
-	       (memq (token-value token1)
+	       (member (token-value token1) *unparser-op-list* :test #'eq)
+	       (member (token-value token1)
 		     '(sbst::|(|
 			     sbst::|[|
-			     sbst::|{| )))
+			     sbst::|{| ) :test #'eq))
 	  0)
 	 ((and (not (eq (token-kind token1) :keyword))
 	       (eq (token-kind token2) :keyword)
-	       (memq (token-value token2) *unparser-op-list*)
-	       (memq (token-value token2)
+	       (member (token-value token2) *unparser-op-list* :test #'eq)
+	       (member (token-value token2)
 		     '(sbst::|(| 
-			     sbst::|[| )))
+			     sbst::|[| ) :test #'eq))
 	  0))))
 
 
@@ -196,7 +196,7 @@
 
 
 (defun lang-special-spaces (token1 token2 name1 name2)
-  (let* ((op2? (memq (token-value token2) *unparser-op-list*))
+  (let* ((op2? (member (token-value token2) *unparser-op-list* :test #'eq))
 	 (jux2? (eq (token-subkind token2) :jux))
 	 (lt1? (if (not (eq (token-kind token1) :keyword))
 		   name1))
@@ -504,8 +504,8 @@
    (do ((tokens formats (cdr tokens))
 	(hit? nil
 	      (and (eq (token-kind (car tokens)) :whitespace)
-		   (memq (token-subkind (car tokens))
-			 '(:indent :unindent :tab-left :tab-right :untab)))))
+		   (member (token-subkind (car tokens))
+			 '(:indent :unindent :tab-left :tab-right :untab) :test #'eq))))
        ((or hit? (null tokens))
 	hit?))))
    

@@ -558,8 +558,8 @@
 	 (let* ((fs-first-son (get-first-son first-son))
 		(second (get-second-son current-pattern))
 					; second son
-		(second-son (cond ((memq (get-kind second)
-					 '(seq internal-seq))
+		(second-son (cond ((member (get-kind second)
+					 '(seq internal-seq) :test #'eq)
 				   (get-first-son second))
 				  (t second)))
 		(ss-kind (get-kind second-son))

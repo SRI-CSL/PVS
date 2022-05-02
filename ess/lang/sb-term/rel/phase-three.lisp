@@ -1184,8 +1184,8 @@
         ; value from that slot.
     ((name ext-name)
      (cond ((and (pattern-p (car (augment-path as-pat)))
-		 (memq (pattern-kind (car (augment-path as-pat)))
-		       '(star doublestar plus doubleplus)))
+		 (member (pattern-kind (car (augment-path as-pat)))
+		       '(star doublestar plus doubleplus) :test #'eq))
 	    `(ck-rept-ref ,(slot-code (get-as-key as-pat))))
 	   ;; srd revised.  This is a hack. It would be better if all these
 	   ;; values were initialed properly, but this is hard because of the

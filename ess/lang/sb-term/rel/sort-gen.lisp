@@ -104,7 +104,7 @@
   (set-pattern-ttype
    pat
    (cond ((get-pattern-ttype pat))	; bound by lower augment.
-         ((memq (pattern-kind pat) '(plus doubleplus star doublestar))
+         ((member (pattern-kind pat) '(plus doubleplus star doublestar) :test #'eq)
           (sort:mk-list-ttype
            (get-pattern-ttype (pattern-son0 pat))))
          ((and (eq (pattern-kind pat) 'nonterminal)

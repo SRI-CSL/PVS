@@ -13,9 +13,7 @@
 
 ;;; Scott Dietzen, Tue May 26 14:30:09 1987
 
-#-gcl
-(defpackage :occ #+sbcl (:use :common-lisp :ergolisp))
-(in-package :occ) #-sbcl (use-package :ergolisp)
+(in-package :occ)
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction
@@ -40,9 +38,9 @@
 	  ))
 
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 
 ;;; The representation --

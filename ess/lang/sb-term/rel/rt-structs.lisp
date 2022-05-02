@@ -20,10 +20,9 @@
 ;;; New version 31 Aug 85  (Ulrik)
 ;;; Lexical-stream defstruct added by Tim Freeman, April 1986
 ;;; 
-;;; Took out memq, since it was also defined elsewhere.  Now centralized.
 ;;; fp, Mon Jan  2 11:03:45 1989
 
-(in-package "SB-RUNTIME") (use-package :ergolisp)
+(in-package :sb-runtime) (use-package :ergolisp)
 
 (export '(open-lexical-stream
 	  open-placestream lexical-read lexical-clear-input
@@ -34,10 +33,6 @@
 (defvar *sbst-package*)
 
 (defvar *case-sensitive*)		; defined elsewhere. 
-
-;;; Fix to make sure memq is defined.
-;;; Now centralized.  fp.
-;;; (defun memq (item list) (member item list :test #'eq))
 
 ;;; For now, make a lexical stream which is equivalent to the old lexical
 ;;; streams.  The user may not specify a readtable; the readtable must default.

@@ -20,7 +20,7 @@
 ;;; Scott Dietzen, Fri Oct 10 12:36:12 1986
 
 
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 (export '(*sbst-package* *abs-syn-package* *keyword-list* *single-char-op-list*
 	  *multi-char-op-list* *new-line-comment-char* *open-comment-char*
@@ -51,10 +51,10 @@
 ;;; behavior on different machines.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *sbst-package* 
-    (cond ((find-package "SBST"))
+    (cond ((find-package :sbst))
 	  (t
-	   (make-package "SBST"
-			 :nicknames '("SB-ST" "SB-SYMBOL-TABLE") :use '())))))
+	   (make-package :sbst
+			 :nicknames '(:sb-st :sb-symbol-table) :use '())))))
 
 
 ;;; This is dynamically bound by generated parsers to their package, 

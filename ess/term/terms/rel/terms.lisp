@@ -31,9 +31,7 @@
 ;;;   since this file is compiled after other files which do NOT have a
 ;;;   use-package.
 
-#-gcl
-(defpackage :term #+sbcl (:use :common-lisp :ergolisp))
-(in-package :term) #-sbcl (use-package :ergolisp)
+(in-package :term)
 
 ;;; (use-package '("OPER" "OCC"))  ; take out. fp Mon Jan  2 10:04:59 1989.
 ;;; In this files uses of the above packages are still prefixed for
@@ -61,9 +59,9 @@
 (import '(*print-level* *print-length*))
 
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 ;;; Terms have a sexp printed representation.  Sexp's prefixed with #! are
 ;;; terms. 

@@ -13,8 +13,6 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :ergolisp #+sbcl (:use :common-lisp))
 (in-package :ergolisp)
 
 (export '(eexport))

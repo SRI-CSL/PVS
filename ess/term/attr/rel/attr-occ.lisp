@@ -1,4 +1,4 @@
-;;; -*- Package: NEWATTR -*-
+;;; -*- Package: newattr -*-
 ;;; Sccs Id 9/21/89 @(#)attr-occ.lisp	1.3
 ;;; ******************************************************************* ;;;
 ;;;          (c) Copyright 1989 by Carnegie Mellon University.          ;;;
@@ -13,7 +13,7 @@
 ;;;
 ;;; Author: fp
 
-(in-package "NEWATTR")   (use-package :ergolisp)
+(in-package :newattr)   (use-package :ergolisp)
 
 (export '(revocc tocc))			; Global context and attribute.
 

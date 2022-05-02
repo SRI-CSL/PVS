@@ -13,8 +13,6 @@
 
 ;;; Scott Dietzen, Thu Apr 23 00:16:13 1987
 
-#-gcl
-(defpackage :oper #+sbcl (:use :common-lisp :ergolisp))
 (in-package :oper) #-sbcl (use-package :ergolisp)
 
 
@@ -45,9 +43,9 @@
 	  ))
 
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (setq *readtable* cl::*pvs-readtable*))
+;; #+(and allegro-version>= (version>= 8 2))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (setq *readtable* cl::*pvs-readtable*))
 
 
 

@@ -14,11 +14,7 @@
 ;;; Scott Dietzen, Thu Jun 18 03:15:27 1987
 
 
-#-gcl
-(defpackage :lang #+sbcl (:use :common-lisp :ergolisp))
 (in-package :lang)
-#-sbcl (use-package :ergolisp)
-
 
 (export '(lang langp ck-lang-type
 	  find-lang coerce-find-lang
@@ -86,11 +82,11 @@
 
 
 (defconstant-if-unbound standard-use-packages
-  '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR")
+  '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr)
   "The standard packages used by SB output files.")
 
 (defconstant-if-unbound standard-use-languages
-  '("LEXICAL-TERMINALS")
+  '(:lexical-terminals)
   "The standard languages used by SB output files.")
 
 
@@ -107,9 +103,9 @@
 (defstruct (lang-struct (:predicate langp))
   "Information about a language."
   (name "" 			:type string)
-  (conc-name ""			:type string)		     
-  (working-dir ""		:type string)		     
-  (code-package ""		:type string)				
+  (conc-name ""			:type string)
+  (working-dir ""		:type string)
+  (code-package ""		:type string)
   (abs-syn-package ""		:type string)
   (use-packages ()		:type list)
   (grammar-file ""		:type string)
@@ -279,7 +275,7 @@
 				    (lang-abs-syn-package-name old-lang)
 				    (if (not-empty-str? code-package)
 					code-package
-					(string-upcase conc-name))))
+				        conc-name)))
 	   :use-packages (union standard-use-packages
 				(cond (use-packages)
 				      (old-lang
@@ -452,7 +448,7 @@
 ;;; LISTIFY-USE-PACKAGES coerces the string of use-packages names to
 ;;; a list of strings whose names are uppercases of the names in the string.
 (defun listify-use-packages (use-packages)
-  (mapcar #'string-upcase (string-to-list use-packages)))
+  (string-to-list use-packages))
 
 
 ;;; Convert a string with a bunch of words separated by spaces into
@@ -496,25 +492,22 @@
 				   default default)))
     (setq code-package
 	  (let ((default
-		  (string-upcase (cond ((not-empty-str?
-					 (lang-code-package-name lang))
-					(lang-code-package-name lang))
-				       (t name)))))
-	    (string-upcase
-	     (read-trim-and-default "Package specification for generated files:"
-		 default default))))
+		 (cond ((not-empty-str?
+			 (lang-code-package-name lang))
+			(lang-code-package-name lang))
+		       (t name))))
+	    (read-trim-and-default "Package specification for generated files:"
+				   default default)))
     (setq abs-syn-package
 	  (let ((default
-		  (string-upcase
 		   (cond ((not-empty-str? (lang-abs-syn-package-name lang))
 			  (lang-abs-syn-package-name lang))
 			 ((not-empty-str? code-package)
 			  code-package)
-			 (t name)))))
-	    (string-upcase
+			 (t name))))
 	     (read-trim-and-default
 		 "Package specification for produced abstract syntax:"
-		 default default))))
+		 default default)))
     (setq conc-name
 	  (let ((default (cond ((not-empty-str? (lang-conc-name lang))
 				(lang-conc-name lang))

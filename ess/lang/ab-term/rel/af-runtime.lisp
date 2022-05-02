@@ -26,11 +26,11 @@
 ;;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package "AF-RUNTIME-LIB")
-    (make-package "AF-RUNTIME-LIB"
-		  :nicknames '("ABRT" "AFRT")
-		  :use '("COMMON-LISP"))))
-(in-package "AF-RUNTIME-LIB") 
+  (unless (find-package :af-runtime-lib)
+    (make-package :af-runtime-lib
+		  :nicknames '(:abrt :afrt)
+		  :use '(:common-lisp))))
+(in-package :af-runtime-lib) 
 
 (export '(opcase argcase rt-delta-error rt-term-argn rt-term-args
 	  rt-symbol rt-ite rt-opt rt-function rt-ast

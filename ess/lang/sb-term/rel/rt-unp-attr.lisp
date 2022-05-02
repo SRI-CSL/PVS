@@ -13,15 +13,15 @@
 
 ;;; Scott Dietzen, Tue Oct  6 15:32:22 1987
 
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 
 ;;; The following is a hack to avoid the problems inherent in the circularity
 ;;; between the two packages. 
 
-(cond ((find-package "NEWATTR"))
+(cond ((find-package :newattr))
       (t
-       (make-package "NEWATTR")))
+       (make-package :newattr)))
 
 
 (export '(theuterm theaw

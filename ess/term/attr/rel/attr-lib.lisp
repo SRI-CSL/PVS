@@ -1,4 +1,4 @@
-;;; -*- Package: NEWATTR -*-
+;;; -*- Package: newattr -*-
 ;;; Sccs Id 12/18/89 @(#)attr-lib.lisp	2.8
 ;;; ******************************************************************* ;;;
 ;;;          (c) Copyright 1989 by Carnegie Mellon University.          ;;;
@@ -11,7 +11,7 @@
 ;;; Attribute examples and extensions.
 ;;; Author: fp
 
-(in-package "NEWATTR")  (use-package :ergolisp)
+(in-package :newattr)  (use-package :ergolisp)
 
 (export '(empty-gcon defemptysyn empty-gsyn))
 (export '(termself))

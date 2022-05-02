@@ -1,4 +1,4 @@
-;;; -*- Package: NEWATTR -*-
+;;; -*- Package: newattr -*-
 ;;; Sccs Id 9/21/89 @(#)attr-lang.lisp	1.6
 ;;; ******************************************************************* ;;;
 ;;;          (c) Copyright 1989 by Carnegie Mellon University.          ;;;
@@ -16,7 +16,7 @@
 ;;; a global sort :global.  All other functions just refer to the
 ;;; "sort-specific" versions of the ADT.
 
-(in-package "NEWATTR")   (use-package :ergolisp)
+(in-package :newattr)   (use-package :ergolisp)
 
 (export '(defcon defsyn defattr))
 (export '(defcon-deltafun defsyn-compfun defattr-attrfun))

@@ -16,7 +16,7 @@
 ;;; Access macros for the grammar abstract syntax (output of the
 ;;;    sb-parser). 
 
-(in-package "SYNTAX-BOX")  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
 
 (defvar *pre-process-error* ())
@@ -53,8 +53,8 @@
   (let ((lexical-nts (grammar-lexical-terminals grammar)))
     (do ((nt-name-runner nt-name-list (cdr nt-name-runner)))
         ((null nt-name-runner))
-      (if (memq (car nt-name-runner)
-                lexical-nts)
+      (if (member (car nt-name-runner)
+                lexical-nts :test #'eq)
           (pre-process-error
 	   (format  nil
 	       "Overlap between nonterminals and lexical terminal ~A~%"
@@ -67,8 +67,8 @@
   "Checks for multiple nonterminal defintions for a single name."
   (do ((nt-name-runner nt-name-list (cdr nt-name-runner)))
       ((null nt-name-runner))
-    (if (memq (car nt-name-runner)
-              (cdr nt-name-runner))
+    (if (member (car nt-name-runner)
+              (cdr nt-name-runner) :test #'eq)
 	(pre-process-error
 	 (format  nil
 	     "Duplicate nonterminal ~A~%."
@@ -84,16 +84,16 @@
 		 (grammar-bracket-information grammar))))
     (do ((bracket-nt-runner bracket-nt-name-list (cdr bracket-nt-runner)))
         ((null bracket-nt-runner))
-      (if (not (memq (car bracket-nt-runner)
-                     nt-name-list))
+      (if (not (member (car bracket-nt-runner)
+                     nt-name-list :test #'eq))
 	(pre-process-error
 	 (format  nil
 	     "The nonterminal ~A is undefined, but it was mentioned ~%~
 	      in the bracket list.~%"
 	   (car bracket-nt-runner))
 	 t))
-      (if (memq (car bracket-nt-runner)
-                (cdr bracket-nt-runner))
+      (if (member (car bracket-nt-runner)
+                (cdr bracket-nt-runner) :test #'eq)
 	(pre-process-error
 	 (format  nil
 	     "Multiple bracket entry for nonterminal ~A.~%" 
@@ -108,16 +108,16 @@
 		 (grammar-precedence-information grammar))))
     (do ((prec-nt-runner prec-nt-name-list (cdr prec-nt-runner)))
         ((null prec-nt-runner))
-      (if (not (memq (car prec-nt-runner)
-                     nt-name-list))
+      (if (not (member (car prec-nt-runner)
+                     nt-name-list :test #'eq))
 	  (pre-process-error
 	   (format  nil
 	       "The nonterminal ~A is undefined, but it was mentioned ~%~
 	        in the precedence list.~%" 
 	     (car prec-nt-runner))
 	   t))
-      (if (memq (car prec-nt-runner)
-                (cdr prec-nt-runner))
+      (if (member (car prec-nt-runner)
+                (cdr prec-nt-runner) :test #'eq)
 	  (pre-process-error
 	   (format  nil
 	       "Multiple precedence entry for nonterminal ~A.~%"
@@ -141,14 +141,14 @@
     (jux
      (let ((nt1 (car (pattern-sons pat)))
            (nt2 (cadr (pattern-sons pat))))
-       (cond ((or (not (memq (pattern-kind nt1) '(nonterminal ext-nonterminal)))
-		  (not (memq (pattern-kind nt2) '(nonterminal ext-nonterminal))))
+       (cond ((or (not (member (pattern-kind nt1) '(nonterminal ext-nonterminal) :test #'eq))
+		  (not (member (pattern-kind nt2) '(nonterminal ext-nonterminal) :test #'eq)))
               (pre-process-error 
 	       (format nil
 		   "The patterns adjacent to a jux must be either nonterminals~%~
                     or external nonterminals, but this one was ~A."
-		 (if (not (memq (pattern-kind nt1)
-				'(nonterminal ext-nonterminal)))
+		 (if (not (member (pattern-kind nt1)
+				'(nonterminal ext-nonterminal) :test #'eq))
 		     (pattern-kind nt1)
 		     (pattern-kind nt2)))
 	       t)))))
