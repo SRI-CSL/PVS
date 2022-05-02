@@ -43,15 +43,17 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(in-package :pvs)
+
 (defconstant  true 'true  )
 (defconstant  false 'false )
 
-(defconstant-if-unbound  primtypealist
+(alexandria:define-constant primtypealist
     '((true .  bool)
       (false . bool)
       (and . bool)
       (or . bool)
-      (not . bool)        ;; 6-May-88 FvH  added - was it ever there before ??
+      (not . bool) ;; 6-May-88 FvH  added - was it ever there before ??
       (implies . bool)
       (iff . bool)
       (equal . bool)
@@ -71,7 +73,7 @@
       (TUPSEL-integer . integer)
       (TUPSEL-number . number)
       (TUPSEL-bool . bool)
-     )) ;NSH from prglobals.lisp
+      ) :test #'equalp) ;NSH from prglobals.lisp
 
 (defvar interpsyms
      '(PLUS MINUS DIFFERENCE TIMES DIVIDE
@@ -144,29 +146,31 @@
 
 ;;; the following (til end-of-file) are taken from prpp:
 
-(defconstant-if-unbound *infixlist*	;temporary list of infixes	
+(alexandria:define-constant *infixlist*	;temporary list of infixes	
    '(equal nequal lessp greaterp lesseq lesseqp greatereq greatereqp
-	   PLUS MINUS TIMES DIVIDE DIFFERENCE) )
+     PLUS MINUS TIMES DIVIDE DIFFERENCE)
+  :test #'equalp)
 
-(defconstant-if-unbound precedence-alist 					
-  '((iff 1)
-    (implies 2)
-    (or 3)
-    (and 4)
-    (not 5)
-    (equal 6)
-    (nequal 6)
-    (lessp 6)
-    (greaterp 6)
-    (lesseq 6)
-    (lesseqp 6)
-    (greatereq 6)
-    (greatereqp 6)
-    (PLUS 7)
-    (MINUS 7)
-    (DIFFERENCE 7)
-    (TIMES 8)
-    (DIVIDE 8)))
+(alexandria:define-constant precedence-alist
+    '((iff 1)
+      (implies 2)
+      (or 3)
+      (and 4)
+      (not 5)
+      (equal 6)
+      (nequal 6)
+      (lessp 6)
+      (greaterp 6)
+      (lesseq 6)
+      (lesseqp 6)
+      (greatereq 6)
+      (greatereqp 6)
+      (PLUS 7)
+      (MINUS 7)
+      (DIFFERENCE 7)
+      (TIMES 8)
+      (DIVIDE 8))
+  :test #'equalp)
 
 (defvar precedence-stack nil)
 

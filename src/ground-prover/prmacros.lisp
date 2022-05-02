@@ -23,6 +23,7 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(in-package :pvs)
 
 (defmacro newcontext (form)
   `(let ((sigalist sigalist) (findalist findalist) (usealist usealist))
@@ -55,20 +56,20 @@
 (defun prerr (&rest args)
   (apply #'error args))
 
-(defconstant-if-unbound *truecons* '(true))
+(alexandria:define-constant *truecons* '(true) :test #'equal)
 
-(defconstant-if-unbound *eqarithrels* '(greatereqp lesseqp))
+(alexandria:define-constant *eqarithrels* '(greatereqp lesseqp) :test #'equal)
 
-(defconstant-if-unbound *ifops* '(if if*))
+(alexandria:define-constant *ifops* '(if if*) :test #'equal)
 
-(defconstant-if-unbound *boolconstants* '(false true))
+(alexandria:define-constant *boolconstants* '(false true) :test #'equal)
 
-(defconstant-if-unbound *arithrels* '(lessp lesseqp greaterp greatereqp))
+(alexandria:define-constant *arithrels* '(lessp lesseqp greaterp greatereqp) :test #'equal)
 
-(defconstant-if-unbound *arithops* '(PLUS TIMES DIFFERENCE MINUS))
+(alexandria:define-constant *arithops* '(PLUS TIMES DIFFERENCE MINUS) :test #'equal)
 
-(defconstant-if-unbound *boolops* '(and or implies not ;;if
-				    iff))
+(alexandria:define-constant *boolops* '(and or implies not ;;if
+				    iff) :test #'equal)
 
 (defmacro singleton? (obj)
   `(and (consp ,obj) (null (cdr ,obj))))

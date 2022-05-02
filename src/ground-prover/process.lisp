@@ -46,6 +46,8 @@
 ;;; fix up the protecting stuff (e.g. remove).
 ;;;
 
+(in-package :pvs)
+
 (defmacro conv-lambda-body (exp)
   `(cadr ,exp))
 

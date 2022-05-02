@@ -23,8 +23,10 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-;(defmacro-whole den (x) (list 'caddr (cadr x)))
-;(defmacro-whole num (x) (list 'cadr (cadr x)))	
+(in-package :pvs)
+
+;;(defmacro-whole den (x) (list 'caddr (cadr x)))
+;;(defmacro-whole num (x) (list 'cadr (cadr x)))	
 
 (defmacro den (x) `(caddr ,x))
 (defmacro num (x) `(cadr ,x))
