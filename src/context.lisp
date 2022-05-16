@@ -145,12 +145,12 @@
   theory-id
   (library nil))
 
-(defun context-entries-not-updated ()
-  (mapcan #'(lambda (ce)
-	      (let ((nce (create-context-entry (ce-file ce))))
-		(unless (ce-eq ce nce)
-		  (list ce))))
-    (pvs-context-entries)))
+;; (defun context-entries-not-updated ()
+;;   (mapcan #'(lambda (ce)
+;; 	      (let ((nce (create-context-entry (ce-file ce))))
+;; 		(unless (ce-eq ce nce)
+;; 		  (list ce))))
+;;     (pvs-context-entries)))
 
 (defun ce-eq (ce1 ce2)
   (and (equal (ce-file ce1) (ce-file ce2))
@@ -235,7 +235,7 @@ again during the same PVS session, it will be exactly as you left it."
   (let ((dir (get-library-path directory)))
     (unless dir
       (pvs-error "Change Workspace"
-	(format nil "Workspace directory %s not found")))
+	(format nil "Workspace directory ~s not found" directory)))
     (if (and (not init?) (file-equal dir *default-pathname-defaults*))
 	(pvs-message "Change Workspace: already in ~a" directory)
 	(let* ((have-ws (get-workspace-session dir))
@@ -243,7 +243,9 @@ again during the same PVS session, it will be exactly as you left it."
 			    (let ((ws (make-instance 'workspace-session :path dir)))
 			      (push ws *all-workspace-sessions*)
 			      ws))))
-	  (unless init? (save-context)) ;; Saves .pvscontext
+	  (unless (or init?
+		      (not (file-exists-p (current-context-path))))
+	    (save-context)) ;; Saves .pvscontext
 	  (set-working-directory dir)
 	  (setq *default-pathname-defaults* dir)
 	  (push *workspace-session* *workspace-stack*)
@@ -335,8 +337,8 @@ retypechecked."
 	      (declare (ignore value))
 	      (cond (condition
 		     (pvs-message "~a" condition))
-		    (t (setf (pvs-context *workspace-session*) context)
-		       (setf (pvs-context-changed *workspace-session*) nil)
+		    (t (setf (pvs-context ws) context)
+		       (setf (pvs-context-changed ws) nil)
 		       (pvs-log "Context file ~a written~%"
 				(namestring (context-pathname)))))))
 	  (pvs-log "Context file ~a not written, do not have write permission"
@@ -460,6 +462,11 @@ retypechecked."
   (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
   t)
 
+(defun initial-context ()
+  (list *pvs-version*
+	(when (current-workspace) (pvs-context-libraries))
+	(context-parameters)))
+
 (defun make-pvs-context (&optional (ws *workspace-session*))
   "Returns a list representing the .pvscontext file.
 Has form (version (prelude-libnames) ce1 ce2 ...)
@@ -500,9 +507,7 @@ declaration-entry has slots
 		  (push entry context)))
 	    (pvs-context-entries))
       (assert (not (duplicates? context :key #'ce-file)))
-      (cons *pvs-version*
-	    (cons (pvs-context-libraries)
-		  (cons (context-parameters) context))))))
+      (append (initial-context) context))))
 
 (defun context-parameters ()
   (nconc (when *default-decision-procedure*
@@ -522,10 +527,12 @@ declaration-entry has slots
 ;;; updated, and the (current-pvs-context-changed) variable is set.  Note that this
 ;;; doesn't actually write out the .pvscontext file.
 
-(defun update-context (filename)
-  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-  (let ((oce (get-context-file-entry filename))
-	(nce (create-context-entry filename)))
+(defun update-context (fname)
+  (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)) ()
+	  "update-context: dups")
+  (let* ((filename (pvs-filename fname))
+	 (oce (get-context-file-entry filename))
+	 (nce (create-context-entry filename)))
     (unless (and (not (current-pvs-context-changed))
 		 oce
 		 (equal (ce-write-date oce)
@@ -536,14 +543,12 @@ declaration-entry has slots
 	;;   (ce-object-date oce) nce)
 	(setf (ce-object-date nce) (ce-object-date oce)))
       (let ((nctx-entries (cons nce (remove oce (pvs-context-entries)))))
-	(assert (not (duplicates? nctx-entries :key #'ce-file)))
+	(assert (not (duplicates? nctx-entries :key #'ce-file)) ()
+		"update-context: 2")
 	(setf (pvs-context *workspace-session*)
-	      (cons *pvs-version*
-		    (cons (pvs-context-libraries)
-			  (cons (list :default-decision-procedure
-				      *default-decision-procedure*)
-				nctx-entries))))
-	(assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+	      (append (initial-context) nctx-entries))
+	(assert (not (duplicates? (pvs-context-entries) :key #'ce-file)) ()
+		"update-context: 3")
 	(setf (pvs-context-changed *workspace-session*) t)))))
 
 (defun delete-file-from-workspace (filename)
@@ -585,7 +590,7 @@ its dependencies."
 (defun create-context-entry (pathname)
   (let ((specpath (make-specpath pathname)))
     (when (file-exists-p specpath)
-      (let* ((filename (pathname-name specpath))
+      (let* ((filename (pvs-filename specpath))
 	     (file-entry (get-context-file-entry filename))
 	     (theories (or (gethash filename (current-pvs-files))
 			   (and file-entry (ce-theories file-entry))))
@@ -693,7 +698,7 @@ its dependencies."
 					      (list (list lib-path nm))))))
 			   (push (makesym "~a" (lcopy inm 'library nil))
 				 thlist)))
-	      (nconc libalist (list (cons nil (nreverse thlist))))))))
+	      (nconc libalist (when thlist (list (cons nil (nreverse thlist)))))))))
       (let ((te (get-context-theory-entry (id theory))))
 	(when te
 	  (te-dependencies te)))))
@@ -822,7 +827,8 @@ its dependencies."
     deps))
 
 (defun file-dependencies* (filename)
-  (let ((theories (cdr (gethash filename (current-pvs-files)))))
+  (let* ((fname (pvs-filename filename))
+	 (theories (cdr (gethash fname (current-pvs-files)))))
     (if (and theories
 	     (every #'(lambda (th) (memq 'typechecked (status th))) theories))
 	(let ((depfiles nil))
@@ -855,12 +861,13 @@ its dependencies."
 	    (mapcar #'string (delete-if #'null (ce-dependencies entry))))))))
 
 (defun circular-file-dependencies (filename)
-  (let ((deps (assoc filename *circular-file-dependencies* :test #'equal)))
+  (let* ((fname (pvs-filename filename))
+	 (deps (assoc fname *circular-file-dependencies* :test #'equal)))
     (if deps
 	(cdr deps)
 	(let ((cdeps (circular-file-dependencies*
-		      (cdr (gethash filename (current-pvs-files))))))
-	  (push (cons filename (car cdeps)) *circular-file-dependencies*)
+		      (cdr (gethash fname (current-pvs-files))))))
+	  (push (cons fname (car cdeps)) *circular-file-dependencies*)
 	  (car cdeps)))))
 
 (defun circular-file-dependencies* (theories &optional deps circs)
@@ -924,7 +931,7 @@ its dependencies."
 
 (defun get-pvs-file-dependencies (fileref)
   (with-pvs-file (filename) fileref
-    (if (gethash filename (current-pvs-files))
+    (if (gethash (pvs-filename filename) (current-pvs-files))
 	;; Things have been parsed, we can use that information
 	(let ((*file-dependencies* nil))
 	  (get-pvs-file-dependencies* filename)
@@ -932,25 +939,26 @@ its dependencies."
 	;; Not even parsed - must go by the .pvscontext information
 	(cons filename (file-dependencies filename)))))
 
-(defun get-pvs-file-dependencies* (filename)
-  (unless (member filename *file-dependencies* :test #'string=)
-    (push filename *file-dependencies*)
-    (let ((theories (cdr (gethash filename (current-pvs-files)))))
-      (dolist (theory theories)
-	(if (rectype-theory? theory)
-	    (get-pvs-file-dependencies*
-	     (filename (get-theory (generated-by theory))))
-	    (dolist (importing (get-immediate-usings theory))
-	      (let ((itheory (unless (library importing)
-			       (gethash (id importing) (current-pvs-theories)))))
-		(if itheory
-		    (if (rectype-theory? itheory)
-			(get-pvs-file-dependencies*
-			 (filename (get-theory (generated-by itheory))))
-			(get-pvs-file-dependencies* (filename itheory)))
-		    (unless (or (library importing)
-				(gethash (id importing) *prelude*))
-		      (pvs-message "~a not available" importing))))))))))
+(defun get-pvs-file-dependencies* (fname)
+  (let ((filename (pvs-filename fname)))
+    (unless (member filename *file-dependencies* :test #'string=)
+      (push filename *file-dependencies*)
+      (let ((theories (cdr (gethash filename (current-pvs-files)))))
+	(dolist (theory theories)
+	  (if (rectype-theory? theory)
+	      (get-pvs-file-dependencies*
+	       (filename (get-theory (generated-by theory))))
+	      (dolist (importing (get-immediate-usings theory))
+		(let ((itheory (unless (library importing)
+				 (gethash (id importing) (current-pvs-theories)))))
+		  (if itheory
+		      (if (rectype-theory? itheory)
+			  (get-pvs-file-dependencies*
+			   (filename (get-theory (generated-by itheory))))
+			  (get-pvs-file-dependencies* (filename itheory)))
+		      (unless (or (library importing)
+				  (gethash (id importing) *prelude*))
+			(pvs-message "~a not available" importing)))))))))))
 
 (defun get-theory-dependencies (theoryid)
   (let ((te (get-context-theory-entry theoryid)))
@@ -980,9 +988,9 @@ are all the same."
 	  (file-error (err)
 	    (pvs-message "PVS context problem - resetting")
 	    (pvs-log "  ~a" err)
-	    (setf (pvs-context ws) (list *pvs-version*))
+	    (setf (pvs-context ws) (initial-context))
 	    (write-context)))
-	(setf (pvs-context ws) (list *pvs-version*))))
+	(setf (pvs-context ws) (initial-context))))
   nil)
 
 (defun read-context-file (ctx-file)
@@ -992,7 +1000,8 @@ are all the same."
 		       (and (char= (read-char in) #\()
 			    (char= (read-char in) #\")))
 		     (with-open-file (in ctx-file) (read in))
-		     (fetch-object-from-file ctx-file))))
+		     (or (ignore-errors (fetch-object-from-file ctx-file))
+			 (initial-context)))))
     (assert (uiop:directory-exists-p *default-pathname-defaults*))
     (setf (cdddr context)
 	  (remove-duplicates (cdddr context) :key #'ce-file :test #'equal :from-end t))
@@ -1011,9 +1020,9 @@ are all the same."
 	  (setf (ce-dependencies ce) nil)
 	  (setf (ce-object-date ce) nil)
 	  (setf (ce-theories ce) nil))))
-    (cond ((duplicate-theory-entries?)
+    (cond ((duplicate-theory-entries? context)
 	   (pvs-message "PVS context has duplicate entries - resetting")
-	   (list *pvs-version*))
+	   (initial-context))
 	  (t ;;(same-major-version-number (car context) *pvs-version*)
 	   ;; Hopefully we are backward compatible between versions
 	   ;; 3 and 4.
@@ -1047,11 +1056,18 @@ are all the same."
 		  context)
 		 (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
-		    (list *pvs-version*)))))))
+		    (initial-context)))))))
 
-(defun duplicate-theory-entries? ()
-  (and *workspace-session*
-       (duplicates? (mapcar #'car (cdr (collect-theories))) :test #'string=)))
+(defun duplicate-theory-entries? (fe)
+  (let ((thids (collect-theory-entry-ids fe)))
+    (duplicates? thids)))
+
+(defun collect-theory-entry-ids (fe)
+  (let ((thids nil))
+    (dolist (ce (cdddr fe))
+      (dolist (te (ce-theories ce))
+	(push (te-id te) thids)))
+    thids))
 
 (defvar *theories-restored* nil)
 (defvar *files-seen* nil)
@@ -1070,9 +1086,10 @@ are all the same."
 ;;;             restore-theory-proofs-from-file ->
 ;;;               restore-theory-proofs ->
 ;;;                 restore-theory-proofs*
-(defun restore-theories (filename)
+(defun restore-theories (fname)
   (let* ((*theories-restored* nil)
-	 (*adt-type-name-pending* nil))
+	 (*adt-type-name-pending* nil)
+	 (filename (pvs-filename fname)))
     (dolist (te (ce-theories (get-context-file-entry filename)))
       (loop for (lib-ref . theories) in (te-dependencies te)
 	    do (restore-theories* lib-ref theories))
@@ -1109,7 +1126,7 @@ are all the same."
 	  (assert (filename theory))
 	  (push theory *theories-restored*)
 	  (when (filename theory)
-	    (setf (gethash (filename theory) (current-pvs-files))
+	    (setf (gethash (pvs-filename (filename theory)) (current-pvs-files))
 		  (cons (file-write-time (make-specpath (filename theory)))
 			theories)))
 	  (dolist (th theories)
@@ -1136,7 +1153,7 @@ are all the same."
   (let* ((adt-theories (adt-generated-theories adt))
 	 (adt-file (filename (car adt-theories))))
     (assert adt-file)
-    (setf (gethash adt-file (current-pvs-files))
+    (setf (gethash (pvs-filename adt-file) (current-pvs-files))
 	  (cons (file-write-time (make-specpath adt-file)) adt-theories))
     (mapc #'update-restored-theories adt-theories)))
 
@@ -1196,9 +1213,12 @@ are all the same."
   *workspace-session*)
 
 (defun current-context-path ()
-  (if *workspace-session*
-      (shortname (path *workspace-session*))
-      (shortname *default-pathname-defaults*)))
+  (let ((cpath (if *workspace-session*
+		   (path *workspace-session*)
+		   *default-pathname-defaults*)))
+    (if (file-exists-p cpath)
+	(shortname cpath)
+	cpath)))
 
 
 ;;; For a given filename, valid-context-entry returns two values: the
@@ -2684,8 +2704,8 @@ Note that the lists might not be the same length."
   (assert (or (stringp fname) (pathnamep fname)))
   (let* ((pname (pathname fname))
 	 (name (if (let ((type (pathname-type pname)))
-		     (and type (not (string= type "pvs")) (not (string= type "prf"))))
-		   (format nil "~s" pname)
+		     (and type (not (member type '("pvs" "prf") :test #'string=))))
+		   (format nil "~a" pname)
 		 (pathname-name pname)))
 	 (fdir (pathname-directory pname)))
     (make-pathname :directory (or fdir (pathname-directory dir))
