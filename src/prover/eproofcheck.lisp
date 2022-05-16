@@ -1539,7 +1539,9 @@ e.g., for thread support."
        (> (length x) 2)
        (eq (car x) 'let)
        (loop for y in (cadr x)
-	     always (and (not (null y))(typep (car y) 'symbol)))))
+	     always (and (not (null y))
+			 (or (typep y 'symbol)
+			     (typep (car y) 'symbol))))))
 
 (defun let-bindings (x) (when (let-form? x)(cadr x)))
 (defun let-body (x) (when (let-form? x)(caddr x)))
