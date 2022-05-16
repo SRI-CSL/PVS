@@ -873,75 +873,75 @@
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
   (declare (type hash-table *subst-mod-params-cache* *subst-mod-params-eq-cache*))
-  (assert obj)
-  #+badassert
-  (assert (or (module? obj)
-	      (declaration? obj)
-	      (mappings modinst)
-	      (not (some #'(lambda (bdg)
-			     (and (decl-formal? (car bdg))
-				  (not (mapping-lhs? *subst-mod-params-declaration*))
-				  (not (memq (car bdg) (decl-formals *subst-mod-params-declaration*)))
-				  (not (memq (car bdg) (decl-formals (current-declaration))))))
-			 bindings))))
-  (let ((fixed-type (car (member obj (list *boolean* *number* *number_field*
-					   *real* *rational* *integer* *naturalnumber*)
-				 :test #'tc-eq))))
-    (cond (fixed-type
-	   (if (or (null (print-type obj))
-		   (null (free-params (print-type obj))))
-	       obj
-	       (let ((pt (subst-mod-params* (print-type obj) modinst bindings)))
-		 (lcopy obj :print-type pt))))
-	  (t
-	   (let ((hobj (or (gethash obj *subst-mod-params-eq-cache*)
-			   (gethash obj *subst-mod-params-cache*))))
-	     (if hobj
-		 (progn (unless (fully-typed? hobj) (break "not fully-typed?"))
-			(if (strong-tc-eq hobj obj) obj hobj))
-		 (let ((nobj
-			(if (and (null (mappings modinst))
-				 (not (typep obj '(or module declaration
-						   inline-recursive-type list)))
-				 (not (some #'(lambda (b)
-						(typep (car b)
-						       '(or formal-theory-decl
-							 decl-formal declaration)))
-					    bindings))
-				 (no-matching-free-params
-				  obj *subst-mod-free-params*))
-			    obj
-			    (call-next-method))))
-		   (when (and (typep obj 'type-expr)
-			      (typep nobj 'type-expr))
-		     (let ((nnobj (subst-mod-params-print-type obj nobj modinst bindings)))
-		       (setq nobj nnobj))
-		     (when (from-conversion obj)
-		       (let ((fconv (subst-mod-params* (from-conversion obj)
-						       modinst bindings)))
-			 (setq nobj (lcopy nobj :from-conversion fconv)))))
-		   (unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
-							:test #'same-declaration))
-				 (freevars nobj))
-		     (if (and (not (some #'decl-formal? (free-params nobj)))
-			      (relatively-fully-instantiated? nobj))
-			 (setf (gethash obj *subst-mod-params-cache*) nobj)
-			 (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
-		   #+pvsdebug
-		   (assert (every #'(lambda (fv)
-				      (or (binding? fv)
-					  (member fv (freevars obj)
-						  :test #'same-declaration)
-					  (member fv (freevars modinst)
-						  :test #'same-declaration)))
-				  (freevars nobj)))
-		   #+pvsdebug
-		   (when (actual? obj)
-		     (assert (actual? nobj)))
-		   ;;(assert (or (not (strong-tc-eq obj nobj)) (eq obj nobj)))
-		   #+badassert
-		   (assert (or (not (fully-instantiated? modinst)) (fully-instantiated? nobj)))
-		   nobj)))))))
+  (when obj
+    #+badassert
+    (assert (or (module? obj)
+		(declaration? obj)
+		(mappings modinst)
+		(not (some #'(lambda (bdg)
+			       (and (decl-formal? (car bdg))
+				    (not (mapping-lhs? *subst-mod-params-declaration*))
+				    (not (memq (car bdg) (decl-formals *subst-mod-params-declaration*)))
+				    (not (memq (car bdg) (decl-formals (current-declaration))))))
+			   bindings))))
+    (let ((fixed-type (car (member obj (list *boolean* *number* *number_field*
+					     *real* *rational* *integer* *naturalnumber*)
+				   :test #'tc-eq))))
+      (cond (fixed-type
+	     (if (or (null (print-type obj))
+		     (null (free-params (print-type obj))))
+		 obj
+		 (let ((pt (subst-mod-params* (print-type obj) modinst bindings)))
+		   (lcopy obj :print-type pt))))
+	    (t
+	     (let ((hobj (or (gethash obj *subst-mod-params-eq-cache*)
+			     (gethash obj *subst-mod-params-cache*))))
+	       (if hobj
+		   (progn (unless (fully-typed? hobj) (break "not fully-typed?"))
+			  (if (strong-tc-eq hobj obj) obj hobj))
+		   (let ((nobj
+			  (if (and (null (mappings modinst))
+				   (not (typep obj '(or module declaration
+						     inline-recursive-type list)))
+				   (not (some #'(lambda (b)
+						  (typep (car b)
+							 '(or formal-theory-decl
+							   decl-formal declaration)))
+					      bindings))
+				   (no-matching-free-params
+				    obj *subst-mod-free-params*))
+			      obj
+			      (call-next-method))))
+		     (when (and (typep obj 'type-expr)
+				(typep nobj 'type-expr))
+		       (let ((nnobj (subst-mod-params-print-type obj nobj modinst bindings)))
+			 (setq nobj nnobj))
+		       (when (from-conversion obj)
+			 (let ((fconv (subst-mod-params* (from-conversion obj)
+							 modinst bindings)))
+			   (setq nobj (lcopy nobj :from-conversion fconv)))))
+		     (unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
+							  :test #'same-declaration))
+				   (freevars nobj))
+		       (if (and (not (some #'decl-formal? (free-params nobj)))
+				(relatively-fully-instantiated? nobj))
+			   (setf (gethash obj *subst-mod-params-cache*) nobj)
+			   (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
+		     #+pvsdebug
+		     (assert (every #'(lambda (fv)
+					(or (binding? fv)
+					    (member fv (freevars obj)
+						    :test #'same-declaration)
+					    (member fv (freevars modinst)
+						    :test #'same-declaration)))
+				    (freevars nobj)))
+		     #+pvsdebug
+		     (when (actual? obj)
+		       (assert (actual? nobj)))
+		     ;;(assert (or (not (strong-tc-eq obj nobj)) (eq obj nobj)))
+		     #+badassert
+		     (assert (or (not (fully-instantiated? modinst)) (fully-instantiated? nobj)))
+		     nobj))))))))
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
   "subst-mod-params-print-type is called with the original obj, and nobj:
@@ -1268,13 +1268,20 @@ type-name, datatype-subtype, type-application, expr-as-type"
 
 (defmethod subst-mod-params* ((nrectype inline-recursive-type) modinst bindings)
   (assert (generated-by nrectype))
+  (break "check this")
   (let ((nconstr (subst-mod-params* (constructors nrectype) modinst bindings))
-	(ntype-name (subst-mod-params* (adt-type-name nrectype) modinst bindings))
-	(gen-theories (subst-mod-params* (generated nrectype) modinst bindings)))
-    (break "check this")
-    (setf (constructors nrectype) nconstr
-	  (adt-type-name nrectype) ntype-name
-	  (generated nrectype) gen-theories)
+	(ntype-name (subst-mod-params* (adt-type-name nrectype) modinst bindings)))
+    ;; importings
+    ;; adt-theory
+    ;; decl-formals
+    (multiple-value-bind (nass abindings)
+	(subst-mod-params-decls (assuming nrectype) modinst bindings (module nrectype))
+      (multiple-value-bind (ngen tbindings)
+	  (subst-mod-params-decls (generated nrectype) modinst abindings (module nrectype))
+	(let ((gen-theories (subst-mod-params-decls (generated nrectype) modinst bindings)))
+	  (setf (constructors nrectype) nconstr
+		(adt-type-name nrectype) ntype-name
+		(generated nrectype) gen-theories))))
     nrectype))
 
 (defmethod subst-mod-params* ((adt recursive-type) modinst bindings)
@@ -1322,6 +1329,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
   (with-slots (type-value contains) ndecl
     (assert (generated-by ndecl)) ;; Should be new
     (let ((tn (if (adt-type-name? type-value)
+		  (mk-adt-type-name (id ndecl))
 		  (break "subst-mod-params* type-decl for adt-type-name")
 		  ;; (let ((sadt (cdr (assq (adt type-value) owlist))))
 		  ;;   (assert sadt)
@@ -1585,7 +1593,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 (defmethod subst-mod-params* ((ndecl formula-decl) modinst bindings)
   (with-slots (definition closed-definition) ndecl
     (assert (generated-by ndecl)) ;; Should be new
-    (assert (every #'(lambda (df) (assq df bindings)) (decl-formals (generated-by ndecl))))
+    (assert (every #'(lambda (df)
+		       (assq df bindings)) (decl-formals (generated-by ndecl))))
     (let* (;;(nmodinst (copy modinst :dactuals dacts))
 	   (ndef (subst-mod-params* definition modinst bindings))
 	   (ncdef (if (freevars ndef)
