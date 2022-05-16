@@ -648,7 +648,7 @@ use binfiles."
 	     (unless no-message?
 	       (pvs-message "PVS file ~a is not in the current context" filename)))
 	    ((and (not forced?)
-		  (gethash filename (current-pvs-files))
+		  (gethash (pathname-name filename) (current-pvs-files))
 		  (parsed-file? file))
 	     (unless no-message?
 	       (pvs-message "~a is already parsed" filename))
@@ -818,6 +818,20 @@ use binfiles."
 	  (remhash clfname (current-pvs-files))
 	  (delete-file-from-workspace clfname))
 	(reset-typecheck-caches)))))
+
+(defmethod pvs-filename ((str string))
+  "Extracts the filename from the string, assuming it is a pvs-file
+reference; pathname-name doesn't work if the file is of the form
+'/home/user/foo.bar', where the '.pvs' extension was omitted."
+  (let ((fname (pathname-name str))
+	(ext (pathname-type str)))
+    (if (or (null ext)
+	    (string-equal ext "pvs"))
+	fname
+	(format nil "~a.~a" fname ext))))
+
+(defmethod pvs-filename ((path pathname))
+  (pvs-filename (namestring path)))
 
 (defun check-import-circularities (theories)
   (let ((*modules-visited* nil))
@@ -4077,6 +4091,111 @@ nil is returned in that case."
     (when file
       (format out "~2%Defined in file: ~s" (namestring file)))))
 
+(defvar *rules-used*)
+
+(defun collect-rules-used (name)
+  (let ((rule (gethash name *rules*)))
+    (if rule
+	(let ((*rules-used* nil))
+	  (collect-rules-used* (defn rule))
+	  *rules-used*)
+	(let ((step (gethash name *steps*)))
+	  (if step
+	      (break "step")
+	      (let ((prule (gethash name *rulebase*))) ;; primitive rules
+		(if prule
+		    (break "primitive-rule"))))))))
+
+(defun find-proof-rule (name)
+  (or (gethash name *rulebase*)
+      (gethash name *steps*)
+      (gethash name *rules*)))
+
+(defun all-proof-commands-json ()
+  (let* ((rule-deps (collect-rule-dependencies))
+	 (prf-cmds (mapcar #'(lambda (rdep)
+			       `(("tag" . "proof-command")
+				 ("id" . ,(car rdep))
+				 ("depends-on" . ,(cdr rdep))
+				 ("ignore" . :unknown)
+				 ("conditional" . :unknown)
+				 ("equiv-to" . :unknown)))
+		     rule-deps))
+	 (json:*lisp-identifier-name-to-json* #'identity))
+    (json:encode-json prf-cmds)))
+
+(defun collect-rule-dependencies ()
+  (let ((rule-deps nil))
+    (maphash #'(lambda (id rule)
+		 (let ((*rules-used* nil))
+		   (collect-rules-used* (defn rule) nil)
+		   (push (cons id *rules-used*) rule-deps)))
+	     *rules*)
+    rule-deps))
+
+(defun collect-rules-used* (sexp &optional bindings)
+  (cond ((null sexp) nil)
+	((symbolp sexp)
+	 (collect-rules-used-for-symbol sexp nil bindings))
+	((stringp sexp) nil)
+	((numberp sexp) nil)
+	((not (consp sexp))
+	 (break "sexp = ~s" sexp))
+	((if-form? sexp)
+	 (collect-rules-used* (caddr sexp) bindings)
+	 (collect-rules-used* (cadddr sexp) bindings))
+	((let-form? sexp)
+	 ;; The following are lisp functions that create steps
+	 ;;   inst*-steps
+	 ;;   make-implicit-typepreds-cmd
+	 ;;   gen-manip-response
+	 ;;   let-name-replace-step
+	 (collect-rules-used* (caddr sexp)
+			      (append (mapcar #'(lambda (b)
+						  (if (listp b) b (list b)))
+					(cadr sexp))
+				      bindings)))
+	((try-form? sexp)
+	 (collect-rules-used* (cdr sexp) bindings))
+	((backquoted? sexp)
+	 (collect-rules-used* (cdr sexp) bindings))
+	((unbackquoted? sexp)
+	 (break "unbackquoted?")
+	 (cons (car sexp) (collect-rules-used* (cdr sexp) bindings)))
+	((symbolp (car sexp))
+	 (collect-rules-used-for-symbol (car sexp) (cdr sexp) bindings))
+	((stringp (car sexp))
+	 (collect-rules-used* (cdr sexp) bindings))
+	((numberp (car sexp))
+	 (collect-rules-used* (cdr sexp) bindings))
+	((listp (car sexp))
+	 (collect-rules-used* (car sexp) bindings)
+	 (collect-rules-used* (cdr sexp) bindings))
+	(t (break "fallthrough"))))
+
+(defun collect-rules-used-for-symbol (symbol sexp bindings)
+  (if (find-proof-rule symbol)
+      (case symbol
+	((then then@)
+	 (mapc #'(lambda (ex) (collect-rules-used* ex bindings)) sexp))
+	(mapstep (collect-rules-used* (car sexp) bindings))
+	(branch (collect-rules-used* sexp bindings))
+	((repeat repeat*) (collect-rules-used* (car sexp) bindings))
+	(with-fresh-labels (collect-rules-used* (cdr sexp) bindings))
+	(when (collect-rules-used* (cdr sexp) bindings))
+	(t (pushnew symbol *rules-used*)
+	   (collect-rules-used* sexp bindings)))
+      (case symbol
+	(function (collect-rules-used* (car sexp) bindings))
+	(lambda (collect-rules-used* (cadr sexp) bindings))
+	#+allegro
+	(excl::bq-comma (collect-rules-used* (cadr sexp) bindings))
+	(t
+	 (let ((bnd (assq symbol bindings)))
+	   (if bnd
+	       (collect-rules-used* (cdr bnd) (remove bnd bindings))
+	       (collect-rules-used* sexp bindings)))))))
+
 (defun prelude-stats ()
   (let ((consts 0) (defs 0) (recs 0) (inds 0) (coinds 0) (utdecls 0)
 	(tdecls 0) (tcc-decls 0) (ass-decls 0) (subjdgs 0) (jdgs 0) (convs 0)
@@ -4275,14 +4394,14 @@ specified pvs-file, and its associated .prf file.  "
 	(rename-in-formula-entries old new (cdr entries) (cons nform nforms)))))
 
 (defun rename-in-formula-entry (old new entry)
-  (let ((fid (rename-formula-id (car entry)))
+  (let ((fid (rename-formula-id old new (car entry)))
 	(index (cadr entry))
 	(prfinfos (rename-in-prfinfos old new (cddr entry))))
     `(,fid ,index ,@prfinfos)))
 
 (defun rename-formula-id (old new fid)
   "Handles fids also of the form 'old_TCC#', converting to 'new_TCC#'"
-  (assert (and (stringp old) (stringp new)) (symbolp fid))
+  (assert (and (stringp old) (stringp new) (symbolp fid)))
   (let ((fstr (string fid)))
     (cond ((string= fstr old)
 	   (intern new :pvs))
@@ -4308,6 +4427,7 @@ specified pvs-file, and its associated .prf file.  "
 	     ,@(when tcc-origin (list (rename-in-tcc-origin old new tcc-origin))))))
 
 (defun rename-in-proof-refers-to (old new refers-to)
+  (declare (ignore old new))
   refers-to)
 
 (defun rename-in-proof-script (old new script)
@@ -4353,9 +4473,9 @@ Returns
  - :parse-problem - foo.pvs-semi was created, but didn't parse
 "
   (let* ((*no-obligations-allowed* t)
-	 (full-pvs-file-path (car theories))
-	 (theories (parse :file file))
-	(needs-semi nil))
+	 (theories (parse :file fileref))
+	 ;;(full-pvs-file-path (car theories))
+	 (needs-semi nil))
     (dolist (theory theories)
       (dolist (decl (all-decls theory))
 	(unless (or (semi decl)
@@ -4364,7 +4484,7 @@ Returns
 	  (push decl needs-semi))))
     ;; needs-semi is backwards
     (if (null needs-semi)
-	(format t "File ~a already has necessary semicolons")
+	(format t "File ~a already has necessary semicolons" fileref)
 	(let* ((file (full-pvs-file-path (car theories)))
 	       (lines (file-get-lines file)))
 	  (dolist (decl needs-semi)
