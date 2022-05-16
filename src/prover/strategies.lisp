@@ -695,15 +695,11 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &key &rest &inherit)))
 			 args))))
-	  `(progn #-(or cmu sbcl)
-		  (defun ,(makesym "(defstep) ~a" name) ,largs
-		    ,@lbody
-		    (list ,@largs))
-		  (defstep* ',name ',args ',body
-		    (format nil "~s :~%    ~a"
-		      (cons ',(makesym "~a/$" name) ',args)
-		      ,doc)
-		    (format nil "~%~a," ,format))))
+	  `(defstep* ',name ',args ',body
+		     (format nil "~s :~%    ~a"
+		       (cons ',(makesym "~a/$" name) ',args)
+		       ,doc)
+		     (format nil "~%~a," ,format)))
 	`(defstep* ',name ',args ',body
 	   (format nil "~s :~%    ~a"
 	     (cons ',(makesym "~a/$" name) ',args)
