@@ -210,7 +210,7 @@
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 			      (safety 1)
 			      (speed #+allegro 3 #+sbcl 2)
-			      (debug #+allegro 1 #+sbcl 3)))
+			      (debug #+allegro 1 #+sbcl 1)))
 		  ;; Note that these do very little SBCL simply does
 		  ;; not want to shut up
 		  #+sbcl

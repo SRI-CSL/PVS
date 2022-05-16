@@ -7470,8 +7470,8 @@
 		(or (and (or (null tname)(eq c-type-name tname)) c-type-name)
 		    (let* ((c-field-types (loop for ft in ir-field-types
 						collect (add-c-type-definition (ir-ftype ft))))
-			   (c-field-type-params (loop for ft in ir-field-types
-						      collect (pvs2ir-type-parameters ft)))
+			   ;; (c-field-type-params (loop for ft in ir-field-types
+			   ;; 			      collect (pvs2ir-type-parameters ft)))
 			   (type-name-root (or tname (format nil "~a_record_~a"
 							     *theory-id*
 							     (length *c-type-info-table*))))
