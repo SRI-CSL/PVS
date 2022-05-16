@@ -1095,6 +1095,7 @@ place set."
 ;	  (t
 
 (defvar *max-row* nil)
+(defvar *decls-theories*)
 
 ;;; names-info returns the tooltip information for a pvs-file in JSON form
 ;;; For each declaration, and each identifier in the body of the declaration,
@@ -1132,13 +1133,14 @@ place set."
   (if (member pvs-file '("prelude" "pvsio_prelude") :test #'string=)
       (collect-visible-decl-info *prelude-theories*)
       (let* ((file (make-specpath pvs-file))
-	     (theories (get-theories pvs-file))
-	     (*max-row* (when theories (svref (place (car (last theories))) 2))))
+	     (*decls-theories* (get-theories pvs-file))
+	     (*max-row* (when *decls-theories*
+			  (svref (place (car (last *decls-theories*))) 2))))
 	(cond ((not (file-exists-p file))
 	       (pvs-message "PVS file ~a is not in the current context" pvs-file))
-	      ((null theories)
+	      ((null *decls-theories*)
 	       (pvs-message "PVS file ~a is not typechecked" pvs-file))
-	      (t (collect-visible-decl-info theories))))))
+	      (t (collect-visible-decl-info *decls-theories*))))))
 
 ;; This doesn't work
 ;; (defun collect-name-to-decl-alist (obj)
@@ -1484,8 +1486,12 @@ place set."
 
 (defun name-visible-decl-info (obj place)
   (when (and place
-	     (or (resolution obj)
-		 (simple-decl? obj)))
+	     (let ((decl (cond ((resolution obj) (declaration obj))
+			       ((simple-decl? obj) obj))))
+	       (and decl
+		    (or (simple-decl? decl)
+			(some #'(lambda (th) (memq decl (all-decls th)))
+			      *decls-theories*)))))
     (when (and *max-row* (> (svref place 2) *max-row*))
       (break "Something's wrong"))
     ;;(format t "~%~a: ~a - ~a" x (declaration x) (place x))
