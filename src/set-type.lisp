@@ -4272,17 +4272,33 @@ type of the lhs."
                       (type-ambiguity ex))
                      (t (dolist (e (exprs ex))
                           (set-type* e (range est)))
+			;; Need to convert to a lambda-expr:
+			;; [: 13, 17, 19 :] => λ (x: below(3)): cases x of 0: 13, 
                         (let* ((id (make-new-variable '|x| ex))
                                (bd (make-bind-decl id (domain est)))
                                (var (make-variable-expr bd))
-                               (sels (make!-disjunction*
-                                    (mapcar #'(lambda (e)
-                                                (make!-equation var e))
-                                      (exprs ex)))))
+                               (if-expr (make-array-if-expr var (exprs ex))))
                           (setf (bindings ex) (list bd))
-                          (setf (expression ex) dj)
-                          (setf (type ex) (car ctypes))))))))))
-    
+                          (setf (expression ex) if-expr)
+                          (setf (type ex) (car ctypes))
+			  (check-for-subtype-tcc ex expected)))))))))
+
+(defun make-array-if-expr (var exprs)
+  (cond ((null exprs)
+	 (break))
+	((null (cdr exprs))
+	 (car exprs))
+	(t (make-array-if-expr* var exprs (- (length exprs) 2) (car (last exprs))))))
+
+(defun make-array-if-expr* (var exprs index else-expr)
+  (if (< index 0)
+      else-expr
+      (let* ((cond-expr (make!-equation var (make!-number-expr index)))
+	     (then-expr (nth index exprs))
+	     (elsif-expr (if (zerop index)
+			     (make!-if-expr cond-expr then-expr else-expr)
+			     (make!-chained-if-expr cond-expr then-expr else-expr))))
+	(make-array-if-expr* var exprs (1- index) elsif-expr))))
 
 (defmethod set-type* ((ex bind-decl) expected)
   (declare (ignore expected))

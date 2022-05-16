@@ -624,7 +624,9 @@
     (typecheck* (expression expr) nil nil nil))
   (let ((atypes	(remove-if-not #'(lambda (ty)
 				   (or (cotupletype? (find-supertype ty))
-				       (adt? (find-supertype ty))))
+				       (adt? (find-supertype ty))
+				       ;; (compatible? ty *naturalnumber*)
+				       ))
 		  (ptypes (expression expr)))))
     (unless (singleton? atypes)
       (if atypes
@@ -636,9 +638,12 @@
 	   (stype (find-supertype type))
 	   ;; {x: list[nat] | length(x) = 3} has stype list[number], dtype list[nat]
 	   (dtype (find-declared-adt-supertype type)))
-      (if (adt? stype)
-	  (typecheck-selections expr (adt stype) dtype arguments expected)
-	  (typecheck-coselections expr stype arguments expected))))
+      (cond ((adt? stype)
+	     (typecheck-selections expr (adt stype) dtype arguments expected))
+	    (t ;; (cotupletype? stype)
+	     (typecheck-coselections expr stype arguments expected))
+	    ;; (t (typecheck-nat-selections expr stype arguments expected))
+	    )))
   (setf (types expr)
 	(compatible-types
 	 (nconc (mapcar #'(lambda (s) (reverse (ptypes (expression s))))
@@ -823,6 +828,21 @@
 	       (string= "IN_" strid :end2 3)
 	       (every #'digit-char-p (subseq strid 3)))
       (parse-integer strid :start 3))))
+
+(defun typecheck-nat-selections (expr stype arguments expected)
+  (typecheck-nat-selections* (selections expr) expr stype arguments expected))
+
+(defun typecheck-nat-selections* (sels expr stype arguments expected)
+  ;; sel has slots constructor, args, and expression
+  (let* ((sel (car sels))
+	 (num-expr (constructor sel))
+	 (num-str (string (id num-expr)))
+	 (num (when (valid-number? num-str) (parse-number num-str))))
+    (unless num
+      (type-error sel "CASES exprs over nat only work for number literals"))
+    (when (args sel)
+      (type-error sel "CASES selection args unexpected here"))
+    (change-class num-expr 'number-expr :number num :type *naturalnumber*)))
 
 ;;; expr is a cases-expr, adt is recursive-type, type is the type instance,
 ;;; and args are the arguments to the expr

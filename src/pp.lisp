@@ -1792,6 +1792,24 @@ then uses unpindent* to add the indent to each line"
 (defmethod pp* ((ex null-expr))
   (write "(: :)"))
 
+(defmethod pp* ((ex array-expr))
+  (if (valid-array-expr? ex)
+      (pprint-logical-block (nil (exprs ex) :prefix "[: " :suffix " :]")
+	(pprint-indent :current 0)
+	(loop (pp* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill)))
+      (call-next-method)))
+
+(defmethod valid-array-expr? ((ex array-expr))
+  (listp (exprs ex)))
+
+(defmethod valid-array-expr? ((ex expr))
+  nil)
+  
+
 (defmethod pp* ((ex bracket-expr))
   (multiple-value-bind (lb rb)
       (get-bracket-symbols (operator ex))

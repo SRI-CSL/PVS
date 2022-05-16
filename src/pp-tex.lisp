@@ -1384,6 +1384,20 @@
   (pp-tex-keyword '|(:|)
   (pp-tex-keyword '|:)|))
 
+(defmethod pp-tex* ((ex array-expr))
+  (if (valid-array-expr? ex)
+      (pprint-logical-block
+	  (nil (list-arguments ex)
+	       :prefix (get-pp-tex-id '\[\:)
+	       :suffix (get-pp-tex-id '\:\]))
+	(pprint-indent :current 0)
+	(loop (pp-tex* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill)))
+      (call-next-method)))
+
 (defmethod pp-tex* ((ex bracket-expr))
   (multiple-value-bind (lb rb)
       (get-bracket-tex-symbols (operator ex))
