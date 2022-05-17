@@ -4132,27 +4132,7 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (mapobject #'(lambda (ex)
-		   (when (and (expr? ex)
-			      (not (type ex)))
-		     (if (singleton? (types ex))
-			 (setf (type ex) (car (types ex)))
-			 (let ((inst-types
-				(remove-if (complement #'fully-instantiated?)
-				  (types ex))))
-			   (cond ((singleton? inst-types)
-				  (setf (type ex) (car inst-types))
-				  (when (name-expr? ex)
-				    (setf (resolutions ex)
-					  (remove-if
-					      (complement
-					       #'(lambda (r)
-						   (tc-eq (type r)
-							  (car inst-types))))
-					    (resolutions ex)))))
-				 (t (type-ambiguity ex)))))
-		     nil))
-	       (expr decl))
+    (resolve-conversion-expr (expr decl))
     (when (has-type-vars? (type (expr decl)))
       (type-error (expr decl)
 	"Cannot determine the type associated with ~a:~%  Please provide more ~
@@ -4162,6 +4142,26 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
   (setf (k-combinator? decl) (k-combinator? (expr decl)))
   (push decl (conversions *current-context*))
   decl)
+
+(defmethod resolve-conversion-expr ((ex name-expr))
+  ;; ex has been typechecked, but may have ambiguities
+  (let ((reses (resolutions ex)))
+    (when (cdr reses)
+      (let ((gres (find-if-not #'fully-instantiated? reses)))
+	;; No need to keep any but the generic form
+	(when gres
+	  (setf (resolutions ex) (list gres)
+		(type ex) (type gres)))))))
+
+(defmethod resolve-conversion-expr ((ex expr))
+  ;; ex has been typechecked, but may have ambiguities
+  (when (and (expr? ex)
+	     (not (type ex)))
+    (if (singleton? (types ex))
+	(setf (type ex) (car (types ex)))
+	(let ((gtype (find-if-not #'fully-instantiated? (types ex))))
+	  (when gtype
+	    (setf (type ex) gtype))))))
 
 (defun check-conversion-applicability (decl)
   (let* ((ctype (type (expr decl)))
@@ -4208,31 +4208,12 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (mapobject #'(lambda (ex)
-		   (when (and (expr? ex)
-			      (not (type ex)))
-		     (if (singleton? (types ex))
-			 (setf (type ex) (car (types ex)))
-			 (let ((inst-types
-				(remove-if #'fully-instantiated?
-				  (types ex))))
-			   (cond ((singleton? inst-types)
-				  (setf (type ex) (car inst-types))
-				  (when (name-expr? ex)
-				    (setf (resolutions ex)
-					  (remove-if
-					      (complement
-					       #'(lambda (r)
-						   (tc-eq (type r)
-							  (car inst-types))))
-					    (resolutions ex)))))
-				 (t (type-ambiguity ex)))))
-		     nil))
-	       (expr decl))
-    (when (has-type-vars? (type (expr decl)))
-      (type-error (expr decl)
-	"Cannot determine the type associated with ~a:~%  Please provide more ~
-         information, i.e., actual parameters or a coercion." (expr decl))))
+    (resolve-conversion-expr (expr decl))
+    (dolist (type (ptypes (expr decl)))
+      (when (has-type-vars? type)
+	(type-error (expr decl)
+	  "Cannot determine the type associated with ~a:~%  Please provide more ~
+           information, i.e., actual parameters or a coercion." (expr decl)))))
   (disable-conversion decl)
   decl)
 
@@ -4267,7 +4248,7 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
 		   (cons decl
 			 (append dconvs
 				 (disabled-conversions *current-context*))))
-	     (if (fully-instantiated? (expr decl))
+	     (if dconvs
 		 (setf (conversions *current-context*) new-convs)
 		 (setf (conversions *current-context*)
 		       (if (name-expr? (expr decl))
