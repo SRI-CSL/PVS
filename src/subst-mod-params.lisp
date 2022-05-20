@@ -1531,7 +1531,9 @@ type-name, datatype-subtype, type-application, expr-as-type"
 	 (cons nfml nfmls) nfmls-list))))
 
 (defmethod subst-mod-params* ((ndecl def-decl) modinst bindings)
-  (with-slots (formals declared-type type definition declared-measure ordering) ndecl
+  (with-slots (formals declared-type type definition positive-types
+		       declared-measure measure ordering recursive-signature)
+      ndecl
     (assert (generated-by ndecl))
     (multiple-value-bind (nfmls alist)
 	(apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
@@ -1539,14 +1541,21 @@ type-name, datatype-subtype, type-application, expr-as-type"
       (let ((ndtype (substit (subst-mod-params* declared-type modinst bindings) alist))
 	    (ntype (substit (subst-mod-params* type modinst bindings) alist))
 	    (ndef (substit (subst-mod-params* definition modinst bindings) alist))
+	    ;; (nptypes (substit (subst-mod-params* positive-types modinst bindings) alist))
 	    (ndmeas (substit (subst-mod-params* declared-measure modinst bindings) alist))
-	    (nord (when ordering (substit (subst-mod-params* ordering modinst bindings) alist))))
+	    (nmeas (substit (subst-mod-params* measure modinst bindings) alist))
+	    (nord (when ordering (substit (subst-mod-params* ordering modinst bindings) alist)))
+	    (nrecsig (substit (subst-mod-params* recursive-signature  modinst bindings) alist)))
 	(setf (formals ndecl) nfmls
 	      (declared-type ndecl) ndtype
 	      (type ndecl) ntype
+	      (positive-types ndecl) nil
 	      (definition ndecl) ndef
 	      (declared-measure ndecl) ndmeas
-	      (ordering ndecl) nord)
+	      (measure ndecl) nmeas
+	      (ordering ndecl) nord
+	      (recursive-signature ndecl) nrecsig
+	      (def-axiom ndecl) nil)
 	ndecl))))
 
 (defmethod subst-mod-params* ((decl tcc-decl) modinst bindings)
