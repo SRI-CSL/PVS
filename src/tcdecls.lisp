@@ -4132,11 +4132,7 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (resolve-conversion-expr (expr decl))
-    (when (has-type-vars? (type (expr decl)))
-      (type-error (expr decl)
-	"Cannot determine the type associated with ~a:~%  Please provide more ~
-         information, i.e., actual parameters or a coercion." (expr decl))))
+    (resolve-conversion-expr (expr decl)))
   ;;(set-type (expr decl) (type (expr decl)))
   (check-conversion-applicability decl)
   (setf (k-combinator? decl) (k-combinator? (expr decl)))
@@ -4145,23 +4141,35 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
 
 (defmethod resolve-conversion-expr ((ex name-expr))
   ;; ex has been typechecked, but may have ambiguities
-  (let ((reses (resolutions ex)))
-    (when (cdr reses)
-      (let ((gres (find-if-not #'fully-instantiated? reses)))
-	;; No need to keep any but the generic form
-	(when gres
-	  (setf (resolutions ex) (list gres)
-		(type ex) (type gres)))))))
+  (let* ((reses (resolutions ex))
+	 (valid-reses (remove-if #'has-type-vars? reses :key #'type)))
+    (unless valid-reses
+      (type-error ex
+	"Cannot determine the type associated with ~a:~%  Please provide more ~
+           information, i.e., actual parameters or a coercion." ex))
+    (if (singleton? valid-reses)
+	(setf (resolutions ex) valid-reses
+	      (type ex) (type (car valid-reses)))
+	(let ((gres (find-if-not #'fully-instantiated? valid-reses)))
+	  ;; No need to keep any but the generic form
+	  (when gres
+	    (setf (resolutions ex) (list gres)
+		  (type ex) (type gres)))))))
 
 (defmethod resolve-conversion-expr ((ex expr))
   ;; ex has been typechecked, but may have ambiguities
   (when (and (expr? ex)
 	     (not (type ex)))
-    (if (singleton? (types ex))
-	(setf (type ex) (car (types ex)))
-	(let ((gtype (find-if-not #'fully-instantiated? (types ex))))
-	  (when gtype
-	    (setf (type ex) gtype))))))
+    (let ((valid-types (remove-if #'has-type-vars? (ptypes ex))))
+      (unless valid-types
+	(type-error ex
+	  "Cannot determine the type associated with ~a:~%  Please provide more ~
+           information, i.e., actual parameters or a coercion." ex))
+      (if (singleton? valid-types)
+	  (setf (type ex) (car valid-types))
+	  (let ((gtype (find-if-not #'fully-instantiated? valid-types)))
+	    (when gtype
+	      (setf (type ex) gtype)))))))
 
 (defun check-conversion-applicability (decl)
   (let* ((ctype (type (expr decl)))
@@ -4169,10 +4177,6 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
     (unless (typep stype 'funtype)
       (type-error (expr decl)
 	"Conversion is not a function:~%  ~a: ~a" (expr decl) ctype))
-    (when (has-type-vars? ctype)
-      (type-error (expr decl)
-	"Cannot determine the conversion type for ~a:~%  Please provide more ~
-         information, i.e., actual parameters or a coercion." (expr decl)))
     (when (strict-compatible? (domain stype) (range stype))
       (type-error (expr decl)
 	"The domain and range of this conversion are compatible;~%~
@@ -4208,12 +4212,7 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (resolve-conversion-expr (expr decl))
-    (dolist (type (ptypes (expr decl)))
-      (when (has-type-vars? type)
-	(type-error (expr decl)
-	  "Cannot determine the type associated with ~a:~%  Please provide more ~
-           information, i.e., actual parameters or a coercion." (expr decl)))))
+    (resolve-conversion-expr (expr decl)))
   (disable-conversion decl)
   decl)
 
