@@ -2841,13 +2841,16 @@
 	      (if check-range
 		  (mk-ir-arraytype check-range (or ir-high-expr check-range)
 				   ir-dom (pvs2ir-type* range new-tbinding))
-		  (with-slots ((ir-defined-low ir-low) (ir-defined-high ir-high)) defined-ir-domtype
-		    (let ((check-defined-range (check-arraytype-ir-subrange ir-defined-low ir-defined-high)))
-		      (if check-defined-range 
-			  (mk-ir-arraytype check-defined-range (or ir-high-expr check-defined-range)
-					   ir-dom (pvs2ir-type* range new-tbinding))
-			(mk-ir-funtype ir-dom
-				       (pvs2ir-type* range new-tbinding))))))))
+		(if defined-ir-domtype
+		    (with-slots ((ir-defined-low ir-low) (ir-defined-high ir-high)) defined-ir-domtype
+		      (let ((check-defined-range (check-arraytype-ir-subrange ir-defined-low ir-defined-high)))
+			(if check-defined-range 
+			    (mk-ir-arraytype check-defined-range (or ir-high-expr check-defined-range)
+					     ir-dom (pvs2ir-type* range new-tbinding))
+			  (mk-ir-funtype ir-dom
+					 (pvs2ir-type* range new-tbinding)))))
+		  (mk-ir-funtype ir-dom
+				 (pvs2ir-type* range new-tbinding))))))
 	(mk-ir-funtype ir-dom
 		       (pvs2ir-type* range new-tbinding))))))
 
@@ -3745,33 +3748,86 @@
   (mk-ir-variable 'result ir-type))
 
 (defun ir2c-theory-formals (ir-theory-formals theory-formals)
-  (loop for ir-formal in ir-theory-formals
-	as tformal in theory-formals
-	collect (let ((*pvs2c-current-decl* tformal))
-		  (format nil "~a_t ~a"
-			  (if (formal-const-decl? tformal)
-			      (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))
-			    'type_actual)
-			  (ir-formal-id ir-formal)))))
+  (let ((*ir-theory-formals* nil)
+	(*theory-formals* nil))
+    (ir2c-theory-formals-rec ir-theory-formals theory-formals nil nil nil)))
+
+(defun ir2c-theory-formals-rec (ir-theory-formals theory-formals pre-ir-theory-formals pre-theory-formals accum)
+  (cond ((null theory-formals)
+	 (nreverse accum))
+	(t (let* ((tformal (car theory-formals))
+		  (ir-formal (car ir-theory-formals))
+		  (new-pre-ir-theory-formals (append pre-ir-theory-formals (list ir-formal)))
+		  (new-pre-theory-formals (append pre-theory-formals (list tformal)))
+		  (*pvs2c-current-decl* tformal)
+		  (result (format nil "~a_t ~a"
+				  (if (formal-const-decl? tformal)
+				      (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))
+				    'type_actual)
+				  (ir-formal-id ir-formal))))
+	     (let ((*ir-theory-formals* new-pre-ir-theory-formals)
+		   (*theory-formals* new-pre-theory-formals)
+		   )
+	       (ir2c-theory-formals-rec (cdr ir-theory-formals)(cdr theory-formals)
+					new-pre-ir-theory-formals
+					new-pre-theory-formals
+					(cons result accum)))))))
 
 (defun ir2c-theory-formal-types (ir-theory-formals theory-formals)
-  (loop for ir-formal in ir-theory-formals
-	as tformal in theory-formals
-	collect (let ((*pvs2c-current-decl* tformal))
-		  (if (formal-const-decl? tformal)
-		      (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))
-		    'type_actual))))
+    (let ((*ir-theory-formals* nil)
+	  (*theory-formals* nil))
+      (ir2c-theory-formals-types-rec ir-theory-formals theory-formals nil nil nil)))
+
+
+(defun ir2c-theory-formals-types-rec (ir-theory-formals theory-formals pre-ir-theory-formals pre-theory-formals accum)
+  (cond ((null theory-formals)
+	 (nreverse accum))
+	(t (let* ((tformal (car theory-formals))
+		  (ir-formal (car ir-theory-formals))
+		  (new-pre-ir-theory-formals (append pre-ir-theory-formals (list (car ir-theory-formals))))
+		  (new-pre-theory-formals (append pre-theory-formals (list (car theory-formals))))
+		  (*pvs2c-current-decl* tformal)
+		  (result (if (formal-const-decl? tformal)
+			      (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))
+			    'type_actual))
+		  (*ir-theory-formals* new-pre-ir-theory-formals)
+		  (*theory-formals* new-pre-theory-formals)
+		  )
+	     (ir2c-theory-formals-types-rec
+	      (cdr ir-theory-formals)(cdr theory-formals)
+	      new-pre-ir-theory-formals
+	      new-pre-theory-formals
+	      (cons result accum))))))
 
 (defun ir2c-theory-formals-variadic (cvarname ir-theory-formals theory-formals)
-  (loop for ir-formal in ir-theory-formals
-	as tformal in theory-formals
-	collect (let* ((*pvs2c-current-decl* tformal)
-		       (ir-type (if (formal-const-decl? tformal)
-				    (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))
-				'type_actual))
-		       (ir-var (ir-formal-id ir-formal)));;should be make-c-assignment (mppointer-type)
-		  (format nil "~a_t ~a = ~a->~a"  ;va_arg(args, ~a_t)
-			  ir-type ir-var cvarname ir-var))))
+    (let ((*ir-theory-formals* nil)
+	  (*theory-formals* nil))
+      (ir2c-theory-formals-variadic-rec cvarname ir-theory-formals theory-formals nil nil nil)))
+
+(defun ir2c-theory-formals-variadic-rec (cvarname ir-theory-formals theory-formals pre-ir-theory-formals pre-theory-formals accum)
+  (cond ((null theory-formals)
+	 (nreverse accum))
+	(t (let* ((new-pre-ir-theory-formals (append pre-ir-theory-formals (list (car ir-theory-formals))))
+		  (new-pre-theory-formals (append pre-theory-formals (list (car theory-formals))))
+		  (tformal (car theory-formals))
+		  (ir-formal (car ir-theory-formals))
+		  (*pvs2c-current-decl* tformal)
+		  (result (let* ((ir-type
+				  (if (formal-const-decl? tformal)
+				      (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype ir-formal))))
+				    'type_actual))
+				 (ir-var (ir-formal-id ir-formal))) ;;should be make-c-assignment (mppointer-type)
+			    (format nil "~a_t ~a = ~a->~a" ;va_arg(args, ~a_t)
+				    ir-type ir-var cvarname ir-var)))
+		  (*ir-theory-formals* new-pre-ir-theory-formals)
+		  (*theory-formals* new-pre-theory-formals)
+		  )
+	     (ir2c-theory-formals-variadic-rec
+	      cvarname (cdr ir-theory-formals)(cdr theory-formals)
+	      new-pre-ir-theory-formals
+	      new-pre-theory-formals
+	      (cons result accum))))))
+
 
 (defun ir2c (ir-expr return-type);;this is called on a whole definition with a result
   ;(when (null return-type) (break "ir2c"))
@@ -8767,7 +8823,9 @@ successful."
 	 ;;(formal-ids (loop for decl in *theory-formals* do (pvs2ir-decl decl)))
 	 (*theory-type-formals* (loop for formal in *theory-formals* when  (formal-type-decl? formal) collect formal))
 	 (*ir-theory-formals* (loop for formal in *theory-formals*
-				    do (let ((*current-context* (decl-context formal)))
+				    do (let ((*current-context* (decl-context formal))
+					     (*var-counter* nil))
+					 (newcounter *var-counter*)
 					 (pvs2ir-decl* formal))
 				    collect (cond ((formal-const-decl? formal)
 						   (ir-defn (ir (eval-info formal))))
