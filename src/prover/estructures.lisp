@@ -180,10 +180,9 @@
   name source-formals source-defn formals defn docstring format-string)
 
 (defmethod print-object ((entry defrule-entry) stream)
-  (format stream "#<~a: (~a ~{~a~^ ~})>"
+  (format stream "#<~a: ~a>"
     (class-name (class-of entry))
-    (name entry)
-    (formals entry)))
+    (cons (name entry) (formals entry))))
 
 (defcl defstep-entry (defrule-entry))
 (defcl defhelper-entry (defstep-entry))

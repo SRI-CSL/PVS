@@ -696,6 +696,11 @@
   (untypecheck-theory (bindings ex))
   (untypecheck-theory (expression ex)))
 
+(defmethod untypecheck-theory ((ex array-expr))
+  (setf (bindings ex) nil
+	(expression ex) nil)
+  (when (next-method-p) (call-next-method)))
+
 (defmethod untypecheck-theory ((ex update-expr))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (expression ex))

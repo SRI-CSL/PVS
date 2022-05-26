@@ -2480,6 +2480,22 @@
 (defmethod make!-bind-decl (id (type dep-binding))
   (make!-bind-decl id (type type)))
 
+(defun make!-cases-expr (expr selections &optional else-part)
+  (assert (fully-typed? expr))
+  (assert (every #'fully-typed? selections))
+  (assert (or (null else-part) (fully-typed? else-part)))
+  (let* ((ctype (compatible-types
+		 (compatible-types
+		  (nconc (mapcar #'(lambda (s) (type (expression s))) selections)
+			 (when (else-part expr) (list (type else-part)))))))
+	 (cex (make-instance 'cases-expr
+		:expression expr
+		:selections selections
+		:else-part else-part
+		:type ctype)))
+    (assert ctype)
+    cex))
+
 (defun make!-floor (ex)
   (assert (type ex))
   (assert (tc-eq (find-supertype (type ex)) *number*))

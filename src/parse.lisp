@@ -2663,7 +2663,8 @@
 	 ;;(tvar (make-new-variable 'x exprs))
 	 )
     (make-instance 'array-expr
-      :exprs exprs)))
+      :exprs exprs
+      :place (term-place exs))))
 
 ;; Note that xt-let-expr works as a lisp let* - this is so that later
 ;; bindings may refer to earlier ones.  Thus

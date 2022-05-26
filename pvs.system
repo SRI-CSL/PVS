@@ -374,7 +374,7 @@
      :source-pathname "src/"
      :components((:file "pvs-methods"
 			:initially-do
-			(pvs::write-deferred-methods-to-file))))
+			(pvs::write-deferred-methods-to-file t))))
    (:module language
      :source-pathname "src/"
      :components ((:file "ergo-runtime-fixes")

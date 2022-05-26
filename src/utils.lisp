@@ -4327,8 +4327,9 @@ space")
 
 (defmethod variable? ((expr name-expr))
   (with-slots (resolutions) expr
-    (assert (singleton? resolutions))
-    (typep (declaration (car resolutions)) '(or var-decl binding))))
+    ;;(assert (singleton? resolutions))
+    (every #'(lambda (res) (typep (declaration res) '(or var-decl binding)))
+	   resolutions)))
 
 (defmethod variable? ((expr field-assignment-arg))
   nil)

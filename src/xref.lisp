@@ -211,7 +211,8 @@
   (generate-xref (formals d)))
 
 (defmethod generate-xref ((d conversion-decl))
-  (generate-xref (expr d)))
+  (when (type (expr d))
+    (generate-xref (expr d))))
 
 (defmethod generate-xref ((d auto-rewrite-decl))
   (generate-xref (rewrite-names d)))
