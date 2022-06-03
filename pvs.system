@@ -344,6 +344,8 @@
 			 :depends-on ("defcl"))
 		  (:file "prover/estructures"
 			 :depends-on ("defcl"))
+		  (:file "groundeval/pvs2ir-classes"
+			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-utils" ; has macros
 			 :depends-on ("defcl"))))
    (:module macros
