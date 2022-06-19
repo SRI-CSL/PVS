@@ -69,10 +69,10 @@ or minus forms - as well as normal IN-PACKAGE or DEFPACKAGE forms."
       (progn
         (message (format "Buffer package not found. Using fallback-package: %s"
                          (ilisp-value 'ilisp-fallback-package)))
-        (values (ilisp-value 'ilisp-fallback-package) t))
+        (cl-values (ilisp-value 'ilisp-fallback-package) t))
       (progn
         (message "Buffer package: %s" package)
-        (values package nil)))))
+        (cl-values package nil)))))
 
 ;;;
 (defun lisp-find-hash-form ()		; Was: find-hash-form.
@@ -137,7 +137,7 @@ Common Lisp."
 	 (package nil)
          (should-not-cache-p nil))
     (if (not hash-form-regexp)
-        (values nil nil)
+        (cl-values nil nil)
       (save-excursion
         (goto-char (point-min))
 
@@ -159,7 +159,7 @@ Common Lisp."
                          (push hash-expr hash-defpackage-forms-list))
                         t)))))
 
-        (multiple-value-bind (package package-not-in-core-p)
+        (cl-multiple-value-bind (package package-not-in-core-p)
             (ilisp-check-package-advanced
              (nreverse hash-defpackage-forms-list) 
              (nreverse hash-in-package-forms-list))
@@ -181,7 +181,7 @@ Common Lisp."
                                (1+ (match-beginning 1)) (1- (match-end 1)))))
             ;; => without double-quotes
 
-            (values package should-not-cache-p)))))))
+            (cl-values package should-not-cache-p)))))))
 
 ;;;
 (defun set-package-lisp-always ()
@@ -222,7 +222,7 @@ calling this more than once is cheap."
 	(t
 	 (make-local-variable 'buffer-package)
 	 (make-local-variable 'buffer-mode-name)
-         (multiple-value-bind (package should-not-cache-p)
+         (cl-multiple-value-bind (package should-not-cache-p)
              (lisp-buffer-package-internal)
 	   (setq buffer-package (if (or should-not-cache-p lisp-dont-cache-package)
                                     'not-yet-computed package))
@@ -636,7 +636,7 @@ the process interface."
      (ilisp-process) command t nil 'load
      (format "Loading %s" file)
      (function (lambda (error wait message output last)
-       (let* ((file (first (last ilisp-load-files)))
+       (let* ((file (car (last ilisp-load-files)))
 	      (process (get-buffer-process (current-buffer)))
 	      (case-fold-search t))
 	 (if (and output 
@@ -658,9 +658,9 @@ the process interface."
 			    (comint-display-error output)
 			    (abort-commands-lisp
 			     (format "Error sending %s"
-				     (first (last ilisp-load-files)))))
+				     (car (last ilisp-load-files)))))
 			  (setq ilisp-load-files
-				(delq (first (last ilisp-load-files))
+				(delq (car (last ilisp-load-files))
 				      ilisp-load-files))))))))
 	       (when error (ilisp-handler error wait message output last))
 	       (setq ilisp-load-files (delq file ilisp-load-files)))))))))
