@@ -1327,9 +1327,7 @@ theoryname."
 	    spec))))
 
 (defun member-equal (item list)
-  (dolist (elt list)
-    (when (equal elt item)
-      (return t))))
+  (cl-member item list :test 'equal))
 
 (defun pvs-abbreviate (cmd abbrevs)
   (let ((abbrs (cl-remove-if #'fboundp
@@ -1494,7 +1492,7 @@ Point will be on the offending delimiter."
 	(classes nil))
     (dolist (cmd cmds)
       (let ((class (get cmd 'pvs-command)))
-	(pushnew class classes)))
+	(cl-pushnew class classes)))
     classes))
 
 (defun pvs-commands-of-class (class)
