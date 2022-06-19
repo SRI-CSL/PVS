@@ -2,6 +2,8 @@
 ;; Utilities to help testing
 ;;
 
+(in-package :pvs)
+
 (load-nl "polyrep-totdeglex")
 (load-nl "decide3_2.lisp.save")
 

@@ -3,6 +3,8 @@
 ;; this requires test_fcpo.so
 ;;========================================
 
+(in-package :pvs)
+
 (require :foreign)
 
 (load-nl "polyrep-totdeglex.lisp")

@@ -21,6 +21,8 @@
 ;;;  processor.
 ;;;
 
+(in-package :pvs)
+
 (defun demod-nl-unit-clauses (f)
   (let* ((unit-clauses (remove-if #'(lambda (x) (> (length x) 1)) f))
 	 (unit-eqs (remove-if #'(lambda (x) (not (equal (caar x) '=))) 

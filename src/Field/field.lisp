@@ -16,6 +16,9 @@
 ;; Micaela Mayero (Micaela.Mayero@inria.fr). 
 ;;
 ;; Strategies in Field:
+
+(in-package :pvs)
+
 (defparameter *field-strategies* "
 %  field, grind-reals, real-props, 
 %  neg-formula, add-formulas, sub-formulas,

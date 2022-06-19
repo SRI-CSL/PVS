@@ -26,6 +26,8 @@
 ;;; documentation summarizes the strategy support available for vectors.
 ;;;
 
+(in-package :pvs)
+
 (defhelper manip-vectors ()
   (skip)
   "[Manip] The following strategies provide support for vectors:

@@ -30,6 +30,8 @@
 ;; Loading the corresponding Emacs Lisp file adds TAB shortcuts for
 ;; invoking the trace feature (optional).
 
+(in-package :pvs)
+
 (defvar *strat-trace-max* 0)
 (defvar *strat-trace-depth* 0)
 (defvar *trace-excluded-names* '(trace-strat))

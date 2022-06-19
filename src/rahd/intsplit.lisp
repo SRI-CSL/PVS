@@ -23,6 +23,8 @@
 ;;;  the interval for term tm will be split at pt.
 ;;;
 
+(in-package :pvs)
+
 (defun split-term-for-case (c &optional tm pt)
   (let ((a (if tm tm (car (all-vars-in-conj c))))
 	(p (if pt pt 0)))

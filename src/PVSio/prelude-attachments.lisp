@@ -14,6 +14,8 @@
 ;; Semantic attachments for PVSio standard library
 ;;
 
+(in-package :pvs)
+
 (decimals:define-decimal-formatter c (:round-magnitude -6) (:show-trailing-zeros t))
 (decimals:define-decimal-formatter d (:round-magnitude -6))
 

@@ -12,6 +12,8 @@
 ;; Rights Reserved.
 ;;
 
+(in-package :pvs)
+
 (defparameter *prooflite-version* "7.1.0 (Nov 05, 2020)")
 
 (defun associate-proof-with-formulas (theory-name formula-name strategy force

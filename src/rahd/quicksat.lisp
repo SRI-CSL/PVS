@@ -17,6 +17,8 @@
 ;;; I-POINTS: Given an interval, return a list of points within it.
 ;;;
 
+(in-package :pvs)
+
 (defun i-points (i v)
   (cond ((i-empty? i) nil)
 	(t (let ((lb (i-lb i)) (ub (i-ub i))

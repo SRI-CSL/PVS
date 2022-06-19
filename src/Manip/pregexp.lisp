@@ -2,6 +2,7 @@
 ;(c) Dorai Sitaram, 
 ;http://www.ccs.neu.edu/~dorai/scmxlate/scmxlate.html
 
+(in-package :pvs)
 
 (defparameter *pregexp-version* 20050425)
 

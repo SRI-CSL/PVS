@@ -1,3 +1,5 @@
+(in-package :pvs)
+
 (load-nl "polyrep-totdeglex.lisp")
 (load-nl "decide3_2a.lisp")
 (load-nl "nlsolver.lisp")
