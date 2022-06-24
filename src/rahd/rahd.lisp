@@ -28,15 +28,17 @@
 ;;; Create the RAHD package and make it our current home.
 ;;;
 
-(defpackage :rahd (:use :common-lisp #+allegro :excl))
+(defpackage :rahd
+  (:use :common-lisp #+allegro :excl)
+  (:export #:canon-tms #:contra-eqs #:demod-lin #:demod-num #:extract-non-refuted-cases
+	   #:fert-tsos #:g #:gen-ex-cad #:go! #:int-dom-zpb #:open-ex-inf-cad
+	   #:open-frag-ex-inf-cad #:rahd-reset-state #:rcr-ineqs #:rcr-svars
+	   #:residue-class-ring-ineqs #:simp-arith #:simp-gls #:simp-real-null
+	   #:simp-tvs #:simp-zrhs #:triv-ideals #:univ-sturm-ineqs))
+
 (in-package :rahd)
 
-(export '(g go! rahd-reset-state extract-non-refuted-cases
-	    canon-tms contra-eqs demod-lin demod-num fert-tsos
-	    gen-ex-cad int-dom-zpb open-ex-inf-cad open-frag-ex-inf-cad
-	    rcr-ineqs rcr-svars residue-class-ring-ineqs simp-arith
-	    simp-gls simp-real-null simp-tvs simp-zrhs triv-ideals
-	    univ-sturm-ineqs))
+
 
 ;;;
 ;;; Current version of RAHD.
