@@ -12,7 +12,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+(in-package :pvs)
 
 ;; -------- Classe result of translating functions -------------------
 (defcl C-expr () (var) (instr) (destr))
