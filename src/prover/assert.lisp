@@ -4236,17 +4236,17 @@ subgoal is proved)."
 
 
 (defmethod collect-auto-rewrite-res ((fnumrw fnum-rewrite))
-  (let ((num (fnum fnumrw)))
-    (if (minusp num)
+  (let ((nnum (fnum fnumrw)))
+    (if (minusp nnum)
 	(let* ((fmlas (mapcar #'formula
 			(select-seq (s-forms (current-goal *ps*))
-				    (list num))))
+				    (list nnum))))
 	       (fmla (when fmlas (args1 (car fmlas)))))
-	  (when fmla (list (cons num fmla))))
+	  (when fmla (list (cons nnum fmla))))
 	(progn
 	  (error-format-if
 	   "~%Consequent formula numbered ~a cannot be used for rewriting."
-	   num)
+	   nnum)
 	  nil))))
 		       
 (defmethod collect-auto-rewrite-res ((name rewrite-name))
