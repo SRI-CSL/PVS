@@ -95,7 +95,6 @@
 	      (error 'cl2pvs-error :sexpr sexpr :type type))))))
 
 (defun make-subrange-conds (lower upper nvar sexpr rtype depbnd idx conds)
-  (declare (:explain :tailmerging))
   (if (> lower upper)
       (nreverse conds)
       (let* ((rty (if depbnd
