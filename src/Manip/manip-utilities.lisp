@@ -58,6 +58,7 @@
 ;; values are returned.
 
 (defun match-regexp (regexp match-string &key shortest (return :string))
+  (declare (ignore shortest))
   (let* ((match-fn (if (eq return ':index)
 		       #'pregexp-match-positions
 		       #'pregexp-match))
@@ -100,7 +101,7 @@
 			    expr))
 		   (t expr))))
     (handler-case (build-cmd cmd)
-      (error (c) (format t "~a")))))
+      (error (c) (format t "~a" c)))))
 
 ;; Embedded extended expressions are allowed in strings using the form
 ;; "%! ...%".  Extract these, convert to (! ...) form, evaluate them,
