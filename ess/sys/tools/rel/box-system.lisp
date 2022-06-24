@@ -14,20 +14,20 @@
 ;;; ******************************************************************* ;;;
 
 
-(in-package :tools) (use-package #+sbcl :common-lisp :ergolisp)
+(in-package :tools) ;;(use-package #+sbcl :common-lisp :ergolisp)
 ;; For some reason the next line does NOT work in compiled code in Lucid.
 ;; It is therefore repeated in the init-load file.
-#+lucid (import '(system::cd) :tools)
-#+allegro (import '(cl-user::cd) :tools)
+;; #+lucid (import '(system::cd) :tools)
+;; #+allegro (import '(cl-user::cd) :tools)
 
-(export '(user-name))
-(export '(cd wdir while-connected-to))	; No longer necessary, but useful.
-(export '(getenv windowsystem)) ; Environment queries.
-(export '(*time-function* ;; touch-time adjusted-time
-	  )) ; For timing
+;; (export '(user-name))
+;; (export '(cd wdir while-connected-to))	; No longer necessary, but useful.
+;; (export '(getenv windowsystem)) ; Environment queries.
+;; (export '(*time-function* ;; touch-time adjusted-time
+;; 	  )) ; For timing
 
-(export '(*load-messages*))
-(export '(*compiler-messages*))
+;; (export '(*load-messages*))
+;; (export '(*compiler-messages*))
 
 (defun user-name ()
   "Name of current user."

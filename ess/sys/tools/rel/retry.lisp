@@ -13,23 +13,11 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage :retry #+sbcl (:use :common-lisp :ergolisp))
-(in-package :retry) #-sbcl (use-package :ergolisp)
+;;(defpackage :retry #+sbcl (:use :common-lisp :ergolisp))
+(in-package :retry)
 
 ;;; The next three forms should be replaced by eexport, once this is moved
 ;;; to the ergolisp box.
-
-;;; First a lucid 2.1 bug workaround.
-#+(or (and lucid (not lcl3.0)) harlequin-common-lisp)
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (dolist (s '("*catchers*" "retry" "retry-catch" "reinit-retry-catch"))
-    (export (list (intern s :lisp)) :lisp)))
-
-#-sbcl
-(export '(lisp::*catchers* #-allegro lisp::retry
-			   lisp::retry-catch lisp::reinit-retry-catch)
-	:lisp)
-(export '(*catchers* retry retry-catch reinit-retry-catch))
 
 ;; #-harlequin-common-lisp ;; apparent bug in re-defvaring *catchers*
 (defvar *catchers* nil
