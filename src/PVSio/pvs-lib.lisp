@@ -28,9 +28,7 @@
 	    (newdate (file-write-date file)))
 	(when (or force (not date) (not newdate) (< date newdate))
 	  (setf (gethash file *pvsio-update-files*) newdate)
-	  (compile-file file
-			:load-after-compile t
-			:verbose verbose))))))
+	  (load (compile-file file :verbose verbose)))))))
 		
 (defun libload-attachments (dir file &optional force (verbose t))
   (if (probe-file (merge-pathnames dir file))
