@@ -116,7 +116,14 @@
 (defcl ir-exit (ir-expr)
   ir-message
   ir-code)
-  
+
+(defcl ir-last (ir-expr)
+  ir-var)
+
+(defcl ir-release (ir-expr) ;;these are the variables that should be freed on the then/else branches
+  pre-ir-vars
+  post-ir-vars
+  ir-body)
 
 (defcl ir-type-actual (ir-type)
   ir-actual-type)
@@ -198,3 +205,79 @@
 
 (defcl formal-const-eval-info (eval-info)
   )
+
+(defcl ir-defn ()
+  ir-function-name
+  ir-args
+  ir-return-type
+  ir-defn)
+
+(defcl ir-constructor-defn (ir-defn)
+  ir-constructor-type)
+
+(defcl ir-accessor-defn (ir-defn)
+  ir-update-defn) ;this slot is itself an ir-defn
+
+(defcl ir-formal-const-defn (ir-defn))
+
+(defcl if-instr ()
+  if-cond
+  then-instr
+  else-instr)
+
+(defcl for-instr ()
+  for-index
+  for-body)
+
+(defcl c-defn-info ()
+  op-name
+  op-arg-types
+  op-return-type
+  op-header
+  op-defn)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcl simple-c-type-info ()
+  ir-texpr tname tdefn act-defn);act-defn is the type for the actual for this type.
+
+
+(defcl closure-c-type-info  (simple-c-type-info)
+  tdecl
+  ftable-type-defn
+  release-info
+  hash-entry-type-defn
+  hash-type-defn
+  copy-info
+  lookup-info
+  dupdate-info
+  update-info
+  equal-info)
+
+
+(defcl c-type-info (simple-c-type-info)
+  new-info
+  release-info
+  release-ptr-info
+  copy-info
+  equal-info
+  equal-ptr-info
+  update-info
+  upgrade-info)
+
+
+(defcl c-closure-info ()
+  ir-lambda-expr
+  tname
+  tdecl
+  tdefn
+  fdefn
+  mdefn
+  hdefn
+  new-info
+  release-info
+  copy-info)
+
+
+(defcl ir-actual-info ()
+  ir-actual-type-defn
+  ir-actual-fun-header
+  ir-actual-fun-defn)

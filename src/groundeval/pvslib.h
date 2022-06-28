@@ -274,6 +274,14 @@ struct stream_s {
   FILE * strm;
 };
 
+struct file_s {
+  uint64_t fd; //file descriptor
+  uint32_t size;
+  uint32_t capacity;
+  char * name; 
+  char * contents; 
+} * file_t;
+
 struct pointer_s {uint32_t count;};
 typedef struct pointer_s * pointer_t;
 typedef struct type_actual_s * type_actual_t;
