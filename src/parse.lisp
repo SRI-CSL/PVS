@@ -2253,7 +2253,7 @@
 (defun xt-coercion (coercion)
   (let* ((expr (term-arg0 coercion))
 	 (type (term-arg0 (term-arg1 coercion)))
-	 (var (makesym "x%~a" (funcall *coercion-var-counter*))))
+	 (var (makesym "x¢~a" (funcall *coercion-var-counter*))))
     (make-instance 'coercion
       :operator (mk-lambda-expr (list (mk-bind-decl var (xt-type-expr type)))
 		  (mk-name-expr var))
