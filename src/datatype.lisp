@@ -274,7 +274,7 @@ generated")
       (push 'typechecked (status adt))
       (dolist (th adt-theories)
 	(setf (filename th) adt-file))
-      (setf (gethash adt-file (current-pvs-files))
+      (setf (gethash (pathname-name adt-file) (current-pvs-files))
 	    (cons fdate (adt-generated-theories adt)))
       (cond (ce2
 	     (setf (ce-write-date ce2) fdate)
