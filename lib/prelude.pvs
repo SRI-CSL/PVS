@@ -6094,9 +6094,11 @@ BEGIN
 
   void_action: TYPE+
   null_action: void_action
-  file_descriptor : TYPE+ %uninterpreted
-  file: TYPE+ = [# name: bytestring, capacity: index, 
-                   fd : file_descriptor, contents : bytestring #]
+  %file_descriptor : TYPE+ %uninterpreted
+  file: TYPE+ %= [# name: bytestring, capacity: index, 
+               %   fd : file_descriptor, contents : bytestring #]
+
+  max_file_size: int32  %defined by semantic attachment in c-primitive-attachments
 
   lifted_file: DATATYPE
   BEGIN
@@ -6107,7 +6109,13 @@ BEGIN
   open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
 % don't need to close the file.  This is handled by reference counting.
 
-  append(f: file, b : bytestring): file % adds to the end of a writable file by remapping if needed.
+  append(f: file, b : bytestring): lifted_file % adds to the end of a writable file by remapping if needed.
+
+  file_size(f: file): uint32
+
+  getbyte(f: file, (i : below(file_size(f)))): byte
+
+  setbyte(f: file, (i : below(file_size(f))), (b: byte)): lifted_file
 
   printc(b : bytestring): void_action %prints characters
 

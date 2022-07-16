@@ -2844,7 +2844,7 @@ e.g., for thread support."
 				  (declared-type form))
 			     (type form)))
 			:string t)))
-	(t (unparse form :string t))))
+	(t (format nil "~a" form))))
 
 (defmethod extract-justification-sexp ((list list))
   (cond ((null list) nil)

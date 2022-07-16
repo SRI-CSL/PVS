@@ -76,91 +76,6 @@
 							   'destructive (make-instance 'eval-defn))))
 	     (eval-info decl)))))
 
-(defcl ir-defn ()
-  ir-function-name
-  ir-args
-  ir-return-type
-  ir-defn)
-
-(defcl ir-constructor-defn (ir-defn)
-  ir-constructor-type)
-
-(defcl ir-accessor-defn (ir-defn)
-  ir-update-defn) ;this slot is itself an ir-defn
-
-(defcl ir-formal-const-defn (ir-defn))
-
-(defcl ir-last (ir-expr)
-  ir-var)
-
-(defcl ir-release (ir-expr) ;;these are the variables that should be freed on the then/else branches
-  pre-ir-vars
-  post-ir-vars
-  ir-body)
-
-(defcl if-instr ()
-  if-cond
-  then-instr
-  else-instr)
-
-(defcl for-instr ()
-  for-index
-  for-body)
-
-(defcl c-defn-info ()
-  op-name
-  op-arg-types
-  op-return-type
-  op-header
-  op-defn)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defcl simple-c-type-info ()
-  ir-texpr tname tdefn act-defn);act-defn is the type for the actual for this type.
-
-(defmethod print-ir ((ir-texpr simple-c-type-info))
-  (print-ir ir-texpr))
-
-(defcl closure-c-type-info  (simple-c-type-info)
-  tdecl
-  ftable-type-defn
-  release-info
-  hash-entry-type-defn
-  hash-type-defn
-  copy-info
-  lookup-info
-  dupdate-info
-  update-info
-  equal-info)
-
-
-(defcl c-type-info (simple-c-type-info)
-  new-info
-  release-info
-  release-ptr-info
-  copy-info
-  equal-info
-  equal-ptr-info
-  update-info
-  upgrade-info)
-
-
-(defcl c-closure-info ()
-  ir-lambda-expr
-  tname
-  tdecl
-  tdefn
-  fdefn
-  mdefn
-  hdefn
-  new-info
-  release-info
-  copy-info)
-
-
-(defcl ir-actual-info ()
-  ir-actual-type-defn
-  ir-actual-fun-header
-  ir-actual-fun-defn)
 
 ;;other types are char, bool, int32_t, int64_t, uint32_t, uint64_t, mpi, and mpz
 ;;we'll add floats later on.
@@ -632,6 +547,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defmethod print-ir ((ir-expr ir-integer))
   (with-slots (ir-intval) ir-expr
 	      ir-intval))
@@ -777,6 +693,9 @@
 
 (defmethod print-ir ((ir-expr t))
   ir-expr)
+
+(defmethod print-ir ((ir-texpr simple-c-type-info))
+  (print-ir ir-texpr))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;pvs-integer computes the integer value of a number or unary-negated number
@@ -1239,8 +1158,9 @@
 		      (setf (eval-info decl) new-einfo)
 		      new-einfo))))
     (setf (ir einfo) (make-instance 'ir-formal-const-defn))
-    (setf (ir-function-name (ir einfo)) (mk-ir-function (id decl) decl))
-    (setf (ir-defn (ir einfo)) (mk-ir-const-formal (id decl) (pvs2ir-type (type decl))))
+    (setf (ir-function-name (ir einfo)) (mk-ir-function (pvs2ir-unique-decl-id decl) decl))
+    (setf (ir-defn (ir einfo)) (mk-ir-const-formal (pvs2ir-unique-decl-id decl)
+						   (pvs2ir-type (type decl))))
     (id decl)))
 
 (defun pvs2ir-formals (irvars pvars bindings);irvars and pvars (pvsvars) are same length
@@ -1846,7 +1766,7 @@
 	  (let* ((opdecl (declaration op))
 		 (theory (module opdecl)))
 	    (if (memq (id theory) *primitive-prelude-theories*);;NSH(6-16-21)
-		(mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR")
+		(progn (break "undefined primitive")(mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
 		(let* ((formals (formals-sans-usings (module opdecl)))
 		       (actuals (actuals (module-instance op))) ;;handling theory actuals
 		       (ref-actuals (loop for act in actuals ;;collect const actuals and ref actuals
@@ -3316,7 +3236,7 @@
 		 (preprocess-ir* ir-bind-expr (union (apply-bindings bindings
 								     body-freevars)
 						     livevars :test #'eq)
-				 bindings)))
+				 bindings)));(break "preprocess ir-let: ~a" (ir-name ir-vartype))
 					;(when (eq (ir-name ir-vartype) 'ivar_13)(break "preprocess ir-let: ~a" (ir-name ir-vartype)))
 	    (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
 			      (not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
@@ -6581,32 +6501,40 @@
 				 release-fields))))
     (mk-c-defn-info release-name release-header release-defn (list funtype-root) 'void)))
 
+(defmacro push-new-type-info (c-type-info info-table)
+  `(let ((c-type-info ,c-type-info))
+     (unless (get-c-type-info (ir-texpr c-type-info))
+       (push c-type-info ,info-table))))
+
 										  
 (defmethod push-type-info-to-decl (c-type-info (decl const-decl))
 					;  (when (consp c-type-info) (break "push-type-info-to-decl"))
   (assert (or (not (ir-type? (ir-texpr c-type-info)))
 	      (not (null (unique-name (ir-texpr c-type-info))))))
-  (push c-type-info *c-type-info-table*)
-  (push c-type-info (c-type-info-table (eval-info decl))))
+;;  (assert (null (get-c-type-info (ir-texpr c-type-info))))
+  (push-new-type-info  c-type-info *c-type-info-table*)
+  (push-new-type-info c-type-info (c-type-info-table (eval-info decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl formal-const-decl))
 					;  (when (consp c-type-info) (break "push-type-info-to-decl"))
     (assert (or (not (ir-type? (ir-texpr c-type-info)))
-	      (not (null (unique-name (ir-texpr c-type-info))))))
-  (push c-type-info *c-type-info-table*)
-  (push c-type-info (c-type-info-table (eval-info decl))))
+		(not (null (unique-name (ir-texpr c-type-info))))))
+;;    (assert (null (get-c-type-info (ir-texpr c-type-info))))
+  (push-new-type-info c-type-info *c-type-info-table*)
+  (push-new-type-info c-type-info (c-type-info-table (eval-info decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl type-decl))
 					;  (when (consp c-type-info) (break "push-type-info-to-decl"))
     (assert (or (not (ir-type? (ir-texpr c-type-info)))
-	      (not (null (unique-name (ir-texpr c-type-info))))))
-  (push c-type-info *c-type-info-table*)
+		(not (null (unique-name (ir-texpr c-type-info))))))
+;;    (assert (null (get-c-type-info (ir-texpr c-type-info))))
+  (push-new-type-info c-type-info *c-type-info-table*)
   (when (null (ir-type-value decl))
     (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) nil nil nil decl)));;added params
-      (push ir-type-name *ir-type-info-table*)
+      (push-new-type-info ir-type-name *ir-type-info-table*)
       (setf (ir-type-value decl)
 	    (mk-eval-type-info ir-type-name))))
-  (push c-type-info (c-type-info-table (ir-type-value decl))))
+  (push-new-type-info c-type-info (c-type-info-table (ir-type-value decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl t))
   ;;  (when (consp c-type-info) (break "push-type-info-to-decl"))
@@ -6614,7 +6542,7 @@
     (format t "\nEmpty decl"))
   (with-slots (ir-expr tname) c-type-info
     (format t "~%Adding ~a: ~a to c-type-info-table" tname (print-ir ir-expr)))
-  (push c-type-info *c-type-info-table*))
+  (push-new-type-info  c-type-info *c-type-info-table*))
 
 (defmethod get-c-type-info-table ((decl  const-decl))
   (c-type-info-table (eval-info decl)))
@@ -6791,7 +6719,8 @@
 				(dupdate-info (when hashtype (make-function-dupdate-info type-name-root c-domain-root hashtype c-range-root elemtype c-param-arg-string c-param-decl-string)))
 				(update-info (when hashtype (make-function-update-info type-name-root c-domain-root c-range-root c-param-arg-string c-param-decl-string)))
 				(equal-info (make-function-equal-info type-name-root c-param-decl-string)))
-			  ;;equal is defined to return false on function types. 
+			  ;;equal is defined to return false on function types.
+			  (when (get-c-type-info ir2c-type) (break "add-c- ir-funtype"))
 			  (push-type-info-to-decl
 			   (mk-closure-c-type-info ir2c-type type-name-root type-decl type-defn ftable-type-defn
 						   release-info copy-info  hash-entry-type-defn hash-type-defn
@@ -7365,6 +7294,7 @@
 										       c-param-arg-string
 										       c-param-decl-string)))
 			     (actual-info (make-actual-info type-name-root theory-params c-param-decl-string)))
+			(when (get-c-type-info ir2c-type) (break "add-c- ir-recordtype"))
 			(push-type-info-to-decl
 			 (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info)
 			 *pvs2c-current-decl*)
@@ -7472,7 +7402,7 @@
 			 (format nil "void release_~a(~a_t x~a){~%~8Tx->count--;~%~8Tif (x->count <= 0){~{~%~8T~8T~a;~}~%~8T//printf(\"\\nFreeing\\n\");~a~%~8Tsafe_free(x);}}"
 				 type-name-root type-name-root c-param-decl-string release-fields
 				 (if (file-type-name? type-name-root)
-				     (format nil "~%~8T~8Tmunmap(x->contents, x->size);~%~8T~8Tclose(x->fd);")
+				     (format nil "~%~8T~8Tmunmap(x->contents, x->capacity);~%~8T~8Tclose(x->fd);")
 				   (format nil ""))))))
     (mk-c-defn-info release-name release-header release-defn (list type-name-root) 'void)))
 
@@ -7733,6 +7663,7 @@
 		(ir2c-tcompatible* elemtype1 elemtype2))))
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-subrange )(texpr2 ir-subrange))
+  (eq (ir2c-type texpr1)(ir2c-type texpr2)))
   (and (fixnum-type (ir2c-type texpr1))
        (fixnum-type (ir2c-type texpr2))))
 
@@ -8143,9 +8074,9 @@
 	       )
 	  (unless *to-emacs* ;; causes problems
 	    (format t "~%Function ~a"  ir-function-name)
-	    ;;(format t "~%MPvars ~{~a, ~}" (print-ir *mpvar-parameters*))
-	    ;(format t "~%Before  preprocessing = ~%~a" (print-ir pre-ir))	   
-	    ;(format t "~%After preprocessing = ~%~a" (print-ir post-ir))
+	    ;(format t "~%MPvars ~{~a, ~}" (print-ir *mpvar-parameters*))
+	    (format t "~%Before  preprocessing = ~%~a" (print-ir pre-ir))	   
+	    (format t "~%After preprocessing = ~%~a" (print-ir post-ir))
 	    (format t "~%Generates C definition = ~%~a" c-defn))
 	  (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn c-arg-types
 			  c-result-type)))))

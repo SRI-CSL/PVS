@@ -539,36 +539,37 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;attachments for file operations
-(def-c-attach-primitive-type "file" "file_descriptor" "uint64_t")
+;;(def-c-attach-primitive-type "file" "file_descriptor" "uint64_t")
 (def-c-attach-primitive-type "file" "void_action" "uint8_t")
+(def-c-attach-primitive-type "file" "file" "file_t")
+(def-c-attach-primitive "file" "null_action" "uint8" '() '() "{return 1;}" nil)
 
-(def-c-attach-primitive "file" "null_action" "uint8_t" '() '() "{return 1;}" nil)
 
-(def-c-attach-primitive "file" "open" "file__file_descriptor"
+(def-c-attach-primitive "file" "open" "file__lifted_file"
   '(name)
   '(bytestrings__bytestring)
   nil
   "{
-    uint64_t fd = open(byte2cstring(name), O_RDWR, S_IRUSR | S_IWUSR);
+    char * filenamestring = byte2cstring(name);
+    uint64_t fd = open(filenamestring, O_RDWR, S_IRUSR | S_IWUSR);
+    release_bytestrings__bytestring(name); 
+    safe_free(filenamestring);
     struct stat s;
     if (fstat(fd, &s) == -1){
-       pvs2cerror(\"File size extraction failed.\n\");
+       return file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
        }
     uint32_t size = s.size;
     uint32_t capacity = 4096 * (size/4096 + 1);
-    bytestrings__bytestring_t file_string = (bytestrings__bytestring_t) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    bytestrings__bytestring_t bs = new_bytestrings__bytestring();
-    bs->length = size;
-    bs->seq = file_string;
-    file__file_t ff = new_file__file();
+    char * contents = (char *) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     ff->fd = fd;
+    ff->size = size
     ff->capacity = capacity;
-    ff->contents = bs;
-    ff->name = name;
-    return ff;
+    ff->contents = contents
+    ff->name = name->seq;
+    return file__pass(ff);
    }")
 
-(def-c-attach-primitive "file" "append" "file__file" '(f b) '(file__file bytestrings__bytestring)
+(def-c-attach-primitive "file" "append" "file__lifted_file" '(f b) '(file__file bytestrings__bytestring)
   nil
   "{uint64_t fd = f->fd;
     uint32_t size = f->size;
@@ -589,7 +590,20 @@
     f->contents = new_contents;
  };
    f->size = size + len;
-   return f;
+   return file_pass(f);
+}")
+
+(def-c-attach-primitive "file" "getbyte" "file__lifted_file" (f i) '(file__lifted_file uint32)
+  nil
+  "{return f->contents[i];}
+}")
+;;(6-3-22): Need to add reference count to file type and treat it as a reference type in the IR
+(def-c-attach-primitive "file" "setbyte" "file__lifted_file" (f i b) '(file__lifted_file uint32 uint8)
+  nil
+  "{if (f->count == 1){
+     f->contents[i] = b;
+     }
+    return f;
 }")
 
 (def-c-attach-primitive "file" "printc" "uint8" '(b) '(bytestrings__bytestring) nil
