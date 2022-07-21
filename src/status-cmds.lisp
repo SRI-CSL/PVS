@@ -718,15 +718,15 @@
     (show-all-proofs-file (cdr proofs) outstr valid?)))
 
 (defun show-all-proofs-theory (theoryref proofs outstr valid?)
-    (let* ((te (get-context-theory-entry theoryref))
-	   (finfo (when te (te-formula-info te)))
-	   (th (get-theory theoryref)))
-      (cond (th
-	     (show-all-proofs-theory* outstr proofs (all-decls th) th))
-	    (finfo
-	     (show-all-proofs-theory-ctx outstr proofs finfo theory valid?))
-	    (t
-	     (show-all-proofs-nostatus outstr theory proofs))))))
+  (let* ((te (get-context-theory-entry theoryref))
+	 (finfo (when te (te-formula-info te)))
+	 (th (get-theory theoryref)))
+    (cond (th
+	   (show-all-proofs-theory* outstr proofs (all-decls th) th))
+	  (finfo
+	   (show-all-proofs-theory-ctx outstr proofs finfo theory valid?))
+	  (t
+	   (show-all-proofs-nostatus outstr theory proofs)))))
 
 ;; (defun show-all-proofs-nostatus (outstr theoryid proofs)
 ;;   (dolist (prf proofs)
