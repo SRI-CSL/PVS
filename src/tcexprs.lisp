@@ -1536,7 +1536,8 @@ field-decls, etc."
 
 (defmethod find-supertype-without-freevars* ((type tupletype) boundvars)
   (if (unbound-freevars? type boundvars)
-      (find-supertype-without-freevars* (types type) boundvars)
+      (let ((stypes (find-supertype-without-freevars* (types type) boundvars)))
+	(mk-tupletype stypes))
       type))
 
 (defmethod find-supertype-without-freevars* ((type cotupletype) boundvars)
