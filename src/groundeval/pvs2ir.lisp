@@ -7664,8 +7664,8 @@
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-subrange )(texpr2 ir-subrange))
   (eq (ir2c-type texpr1)(ir2c-type texpr2)))
-  (and (fixnum-type (ir2c-type texpr1))
-       (fixnum-type (ir2c-type texpr2))))
+  ;; (and (fixnum-type (ir2c-type texpr1))
+  ;;      (fixnum-type (ir2c-type texpr2))))
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-typename)(texpr2 ir-typename))
   (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
