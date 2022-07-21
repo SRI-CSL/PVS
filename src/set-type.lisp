@@ -4383,6 +4383,7 @@ type of the lhs."
 ;;; To do this, we need to compare with the expected type at the right time.
 
 (defmethod set-type* ((expr update-expr) (expected recordtype))
+  (assert (or *in-checker* *in-evaluator* (place expr)))
   (with-slots (expression assignments) expr
     (set-type-update-expr-recordtype expression assignments expr expected)))
 
@@ -4391,6 +4392,8 @@ type of the lhs."
     (set-type-update-expr-recordtype expression assignments expr expected)))
 
 (defun set-type-update-expr-recordtype (expression assignments expr expected)
+  (assert (or *in-checker* *in-evaluator* (place expression)))
+  (assert (or *in-checker* *in-evaluator* (null expr) (place expr)))
   (let ((etypes (collect-compatible-recordtypes (ptypes expr) expected)))
     (check-unique-type etypes expr expected)
     (let* ((stype (find-supertype (car etypes)))
@@ -4481,6 +4484,7 @@ type of the lhs."
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
+  (assert (place expr))
   (let ((stype (find-update-supertype expected)))
     ;; Find-update-supertype walks up subtypes, until a datatype-subtype or
     ;; non-subtype is reached, e.g., list[int] rather than list[number]
@@ -4538,6 +4542,7 @@ type of the lhs."
 (defun set-assignment-arg-types (args-list values ex expr expected)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (assert (type-expr? expected))
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (set-assignment-arg-types* args-list values ex expr expected))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr expected)
@@ -4572,6 +4577,7 @@ type of the lhs."
 
 (defmethod set-assignment-arg-types* (args-list values ex expr (expected recordtype))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (with-slots (fields) expected
     (if (every #'null args-list)
         (call-next-method)
@@ -4591,6 +4597,7 @@ type of the lhs."
 
 (defun set-assignment-arg-types-recordtype (fields args-list values ex expr expected)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (mapc #'(lambda (a v) (unless a (set-type* v expected)))
         args-list values)
   ;; This is wrong - if we're going to recurse we need to make all
@@ -4759,7 +4766,8 @@ type of the lhs."
 	    (when fappl
 	      (set-extended-place fappl ex
 				  "creating field application from ~a and ~a"
-				  ex (car fields)))
+				  ex (car fields))
+	      (assert (place fappl)))
 	    ;;; different in check-assignment-rec-arg-types:
 	    ;;; should it be (nreverse (cons value cvalues)) instead of cdr-vals?
 	    (set-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
@@ -4795,13 +4803,17 @@ type of the lhs."
                                    fields)
                              (if (and ex (some (complement #'null) cdr-args))
                                  (let* ((fapp (make!-field-application (car fields) ex))
-                                        (ass (make-assignment (car cdr-args) (car cdr-vals)))
-                                        (val (make-update-expr fapp (list ass))))
-				   ;; (assert (place ex))
-				   ;; ;; (push (list fapp ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
-				   ;; ;; (push (list val ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
-				   ;; (break)
-                                   (subst-rec-dep-type val (car fields) (cdr fields)))
+                                        (ass (make-assignment (car cdr-args) (car cdr-vals))))
+				   (set-extended-place fapp ex
+						       "creating field application from ~a and ~a"
+						       ex (car fields))
+                                   (let ((val (make!-update-expr fapp (list ass))))
+				     ;; (assert (place ex))
+				     (set-extended-place val ex
+							 "creating update expr from ~a and ~a"
+							 fapp ass)
+				     (assert (place val))
+                                     (subst-rec-dep-type val (car fields) (cdr fields))))
                                  (subst-rec-dep-type value (car fields) (cdr fields)))
                              (cdr fields))
                          fields)))
@@ -5216,7 +5228,7 @@ type of the lhs."
           (append (ldiff types (cdr rest)) srest)))))
 
 (defmethod complete-assignments (args-list values ex expr (rtype recordtype))
-  (assert (or (null ex) (place ex)))
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   ;; Used to check for dependent?, but we really need all assignments if
   ;; we're going to generate correct TCCs.
   ;; Since field-decls don't point to their associated recordtypes
@@ -5241,7 +5253,7 @@ type of the lhs."
     (complete-rec-assignments args-list values (fields rtype) ex expr nil nil)))
 
 (defun complete-rec-assignments (args-list values fields ex expr cargs cvalues)
-  (assert (or (null ex) (place ex)))
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (if (null fields)
       (values (append args-list (nreverse cargs))
               (append values (nreverse cvalues)))
@@ -5258,7 +5270,7 @@ type of the lhs."
 	     (vals (if pos
 		       cvalues
 		       (let ((fappl (make!-field-application (car fields) ex)))
-			 (assert (place ex))
+			 (assert (or *in-checker* *in-evaluator* (place ex)))
 			 (set-extended-place fappl ex
 					     "completing field application for ~a"
 					     fappl)
