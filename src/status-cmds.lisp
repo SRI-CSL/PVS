@@ -664,7 +664,7 @@
 		 (format outstr "Proof scripts for theory ~a:" theoryname)
 		 (let ((valid? (or th (valid-proofs-file (context-entry-of theoryname))))
 		       (thproofs (assq (intern theoryname :pvs) proofs)))
-		   (show-all-proofs-theory (car thproofs) (cdr thproofs)
+		   (show-all-proofs-theory (or th (car thproofs)) (cdr thproofs)
 					   outstr valid?)))
 	       'popto t)
 	     t)
@@ -718,10 +718,9 @@
     (show-all-proofs-file (cdr proofs) outstr valid?)))
 
 (defun show-all-proofs-theory (theoryref proofs outstr valid?)
-  (with-pvs-file (file theoryname) theoryref
-    (let* ((te (get-context-theory-entry (or theoryref file)))
+    (let* ((te (get-context-theory-entry theoryref))
 	   (finfo (when te (te-formula-info te)))
-	   (th (get-theory theory)))
+	   (th (get-theory theoryref)))
       (cond (th
 	     (show-all-proofs-theory* outstr proofs (all-decls th) th))
 	    (finfo
