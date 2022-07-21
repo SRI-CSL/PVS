@@ -3944,7 +3944,7 @@ in the given fnums."
 
 (defstep decompose-equality (&optional (fnum *) (hide? t)
 				       &inherit simplify replace* grind)
-  (let ((*decomposable-formulas-tried* nil)
+  (let ((dummy (setq *decomposable-formulas-tried* nil)) ;; (*decomposable-formulas-tried* nil)
 	(sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
 			      (list fnum)))))
@@ -3964,6 +3964,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 			(and (negation? (formula sf))
 			     (decomposable-equality? (args1 (formula sf))))))
 	      sforms))
+	(fnum (find-sform (s-forms (current-goal *ps*)) '* #'(lambda (sf) (eq sf fm))))
 	(ffm (when fm (formula fm)))
 	(equality? (when fm
 		     (or (equation? ffm)
