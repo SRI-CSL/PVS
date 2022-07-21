@@ -1145,7 +1145,7 @@ The following are not possible variables: ~{~a,~}" badnames)
 				   (cdr (assoc x nsubalist
 					       :test #'same-id)))))))
 		(when form ;;NSH(10.20.94)(let ((*generate-tccs* 'all)))
-		  (typecheck (module-instance res)
+		  (typecheck (lcopy (module-instance res) 'dactuals nil)
 		    :tccs 'all)
 		  (tc-alist newalist) ;;does tccs all.
 		  )
