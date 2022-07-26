@@ -3943,7 +3943,7 @@ in the given fnums."
       (push fmla *decomposable-formulas-tried*))))
 
 (defstep decompose-equality (&optional (fnum *) (hide? t)
-				       &inherit simplify replace* grind)
+				       &inherit simplify (replace* :except hide?) (grind :except hide?))
   (let ((dummy (setq *decomposable-formulas-tried* nil)) ;; (*decomposable-formulas-tried* nil)
 	(sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
@@ -3957,7 +3957,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
  (dis)equality into its component equalities."
   "Applying decompose-equality")
 
-(defhelper decompose-equality-step (sforms hide? &inherit simplify replace* grind)
+(defhelper decompose-equality-step (sforms hide? &inherit simplify (replace* :except hide?) (grind :except hide?))
   (let ((fm (find-if
 		#'(lambda (sf)
 		    (or (decomposable-equality? (formula sf))
@@ -5151,7 +5151,7 @@ Or:
 							   :test #'same-declaration))
 					       rhs-freevars)
 				    (push ex let-exprs)))))))
-		     expr)
+		     pforms)
 	  let-exprs))))
 
 ;; Given:
