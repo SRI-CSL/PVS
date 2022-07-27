@@ -4211,22 +4211,25 @@ integertypes: THEORY
        LET x: below(exp2(16 - n)) = nrem(ux16, exp2(16 - n))
            IN x * exp2(n)
 
-     u16lshift_bound: JUDGEMENT
-        u16lshift(ux16, (n: upto(8))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+     % Counterexample: n = 0, ux16 = exp2(16) - 1
+     % u16lshift_bound: JUDGEMENT
+     %    u16lshift(ux16, (n: upto(8))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
 
      u32lshift(ux32, (n: upto(32))): uint32 =
        LET x: below(exp2(32 - n)) = nrem(ux32, exp2(32 - n))
            IN x * exp2(n)
 
-     u32lshift_bound: JUDGEMENT
-       u32lshift(ux32 , (n: upto(24))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+     % Counterexample: n = 0, ux32 = exp2(32) - 1
+     % u32lshift_bound: JUDGEMENT
+     %   u32lshift(ux32 , (n: upto(24))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
 
      u64lshift(ux64, (n: upto(64))): uint64 =
        LET x: below(exp2(64-n)) = nrem(ux64, exp2(64-n))
            IN x * exp2(n)
 
-     u64lshift_bound: JUDGEMENT
-        u64lshift(ux64, (n: upto(56))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+     % Counterexample: n = 0, ux64 = exp2(64) - 1
+     % u64lshift_bound: JUDGEMENT
+     %    u64lshift(ux64, (n: upto(56))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
 
      u8rshift(ux8, (n: upto(8))): uint8 =
        ndiv(ux8, exp2(n))
