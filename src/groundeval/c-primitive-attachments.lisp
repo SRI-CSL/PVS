@@ -593,12 +593,12 @@
    return file_pass(f);
 }")
 
-(def-c-attach-primitive "file" "getbyte" "file__lifted_file" (f i) '(file__lifted_file uint32)
+(def-c-attach-primitive "file" "getbyte" "file__lifted_file" '(f i) '(file__lifted_file uint32)
   nil
   "{return f->contents[i];}
 }")
 ;;(6-3-22): Need to add reference count to file type and treat it as a reference type in the IR
-(def-c-attach-primitive "file" "setbyte" "file__lifted_file" (f i b) '(file__lifted_file uint32 uint8)
+(def-c-attach-primitive "file" "setbyte" "file__lifted_file" '(f i b) '(file__lifted_file uint32 uint8)
   nil
   "{if (f->count == 1){
      f->contents[i] = b;

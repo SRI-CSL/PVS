@@ -3239,29 +3239,31 @@
 						     livevars :test #'eq)
 				 bindings)));(break "preprocess ir-let: ~a" (ir-name ir-vartype))
 					;(when (eq (ir-name ir-vartype) 'ivar_13)(break "preprocess ir-let: ~a" (ir-name ir-vartype)))
-	    (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
-			      (not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
-			 (ir-last? new-ir-bind-expr))
-		     (ir2c-tcompatible (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
-		     )
+	    (if (eq ir-vartype ir-body)
+		new-ir-bind-expr
+	      (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
+				(not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
+			   (ir-last? new-ir-bind-expr))
+		       (ir2c-tcompatible (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
+		       )
 					;binds var to var with same type
-		(preprocess-ir* ir-body livevars
-				(acons ir-vartype  ; should be eq to new-ir-vartype
-				       (get-assoc (get-ir-last-var new-ir-bind-expr) bindings)
-				       bindings))
-	      (let* ((new-ir-body (preprocess-ir* ir-body livevars bindings))) ;(break "preprocess*(ir-let)")
-		;;(acons ir-vartype new-ir-vartype bindings)
+		  (preprocess-ir* ir-body livevars
+				  (acons ir-vartype ; should be eq to new-ir-vartype
+					 (get-assoc (get-ir-last-var new-ir-bind-expr) bindings)
+					 bindings))
+		(let* ((new-ir-body (preprocess-ir* ir-body livevars bindings))) ;(break "preprocess*(ir-let)")
+		  ;;(acons ir-vartype new-ir-vartype bindings)
 					;(when (ir-lett? ir-expr) (break "ir-lett"))
-		;;(format t "old-ir-body: ~a" (print-ir ir-body))
-		;;(format t "preprocess-ir*: output = (let ~a ~a ~a)" (print-ir new-ir-vartype)(print-ir new-ir-bind-expr)(print-ir new-ir-body))
-;;		(format t "~%old-ir~%~s" (print-ir ir-expr))
-		(if (ir-lett? ir-expr)
-		    (let ((new-ir-expr (make-ir-lett new-ir-vartype (rename-type (ir-bind-type ir-expr) bindings)
-						new-ir-bind-expr
-						new-ir-body)))
-		      (format t "~%new-ir~%~s" (print-ir new-ir-expr))
-		      new-ir-expr)
-		  (mk-ir-let  new-ir-vartype new-ir-bind-expr new-ir-body)))))
+		  ;;(format t "old-ir-body: ~a" (print-ir ir-body))
+		  ;;(format t "preprocess-ir*: output = (let ~a ~a ~a)" (print-ir new-ir-vartype)(print-ir new-ir-bind-expr)(print-ir new-ir-body))
+		  ;;		(format t "~%old-ir~%~s" (print-ir ir-expr))
+		  (if (ir-lett? ir-expr)
+		      (let ((new-ir-expr (make-ir-lett new-ir-vartype (rename-type (ir-bind-type ir-expr) bindings)
+						       new-ir-bind-expr
+						       new-ir-body)))
+			(format t "~%new-ir~%~s" (print-ir new-ir-expr))
+			new-ir-expr)
+		    (mk-ir-let  new-ir-vartype new-ir-bind-expr new-ir-body))))))
 					;(progn (format t "~%not free: ~a" (ir-name ir-vartype))
 	(preprocess-ir* ir-body livevars bindings)))))
 
@@ -7667,7 +7669,6 @@
   (eq (ir2c-type texpr1)(ir2c-type texpr2)))
   ;; (and (fixnum-type (ir2c-type texpr1))
   ;;      (fixnum-type (ir2c-type texpr2)))
-
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-typename)(texpr2 ir-typename))
   (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1

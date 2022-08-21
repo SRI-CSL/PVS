@@ -953,7 +953,8 @@ decl, args, and mappings."
 			       (or (tc-eq cath (car mthinsts))
 				   (fully-instantiated? cath)))
 			   cathinsts)))
-	(if (fully-instantiated? (car mthinsts))
+	(if (and (fully-instantiated? (car mthinsts))
+		 (null (dactuals (car cathinsts))))
 	    (when cathinsts
 	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
 	    (dolist (thinst cathinsts)

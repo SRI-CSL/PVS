@@ -1684,10 +1684,14 @@
 	  (error "make-assignment bad arguments: must be expression, list of exprs, or list of list of exprs"))))
 
 (defun make-update-expr (expression assignments &optional expected)
-  (typecheck (make-instance 'update-expr
-			    'expression expression
-			    'assignments assignments)
-	     :expected expected))
+  (let ((uexpr (make-instance 'update-expr
+		 'expression expression
+		 'assignments assignments)))
+    (when (place expression)
+      (set-extended-place uexpr expression
+			  "creating update expr from ~a and ~a"
+			  expression assignments))
+    (typecheck uexpr :expected expected)))
 
 (defun make-greatereq (x y)
   (typecheck (mk-greatereq x y) :expected *boolean* :tccs 'top))
@@ -2167,11 +2171,16 @@
 			 :key #'(lambda (a) (id (caar (arguments a)))))))
 	  (assert ass)
 	  (expression ass))
-	(let ((ftype (make!-field-application-type fid (type arg) arg)))
-	  (make-instance 'fieldappl
-	    :id fid
-	    :argument arg
-	    :type ftype)))))
+	(let* ((ftype (make!-field-application-type fid (type arg) arg))
+	       (fappl (make-instance 'fieldappl
+			:id fid
+			:argument arg
+			:type ftype)))
+	  (when (place arg)
+	    (set-extended-place fappl arg
+				"creating field application from ~a and ~a"
+				arg field-name))
+	  fappl))))
 
 ;;; We provide an optional type, in case we need to make sure the list
 ;;; of field applications matches the order of fields in that type
@@ -2207,13 +2216,18 @@
 
 (defun make!-update-expr (expression assignments)
   (assert (type expression))
-  (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
-	     assignments)
-      (make-instance 'update-expr
-	:expression expression
-	:assignments assignments
-	:type (find-supertype (type expression)))
-      (make-update-expr expression assignments)))
+  (let ((uexpr (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
+			  assignments)
+		   (make-instance 'update-expr
+		     :expression expression
+		     :assignments assignments
+		     :type (find-supertype (type expression)))
+		   (make-update-expr expression assignments))))
+    (when (place expression)
+      (set-extended-place uexpr assignments
+			  "creating update expr from ~a and ~a"
+			  expression assignments))
+    uexpr))
 
 (defun make!-recognizer-name-expr (rec-id adt-type-name)
   (let* ((adt (adt adt-type-name))

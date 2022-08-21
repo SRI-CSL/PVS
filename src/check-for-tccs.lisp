@@ -648,7 +648,7 @@
       (t (call-next-method)))))
 
 (defmethod check-assignment-arg-types* (args-list values ex expr (expected recordtype))
-  (assert (or (null ex) (place ex)))
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (fields) expected
     (if (every #'null args-list)
