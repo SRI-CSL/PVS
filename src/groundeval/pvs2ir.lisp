@@ -1766,7 +1766,8 @@
 	  (let* ((opdecl (declaration op))
 		 (theory (module opdecl)))
 	    (if (memq (id theory) *primitive-prelude-theories*);;NSH(6-16-21)
-		(progn (break "undefined primitive")(mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
+		(progn ;(break "undefined primitive")
+		       (mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
 		(let* ((formals (formals-sans-usings (module opdecl)))
 		       (actuals (actuals (module-instance op))) ;;handling theory actuals
 		       (ref-actuals (loop for act in actuals ;;collect const actuals and ref actuals
@@ -7664,8 +7665,9 @@
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-subrange )(texpr2 ir-subrange))
   (eq (ir2c-type texpr1)(ir2c-type texpr2)))
-  (and (fixnum-type (ir2c-type texpr1))
-       (fixnum-type (ir2c-type texpr2))))
+  ;; (and (fixnum-type (ir2c-type texpr1))
+  ;;      (fixnum-type (ir2c-type texpr2)))
+
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-typename)(texpr2 ir-typename))
   (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
@@ -7726,22 +7728,26 @@
 						    (make-c-assignment (format nil "~a" lhs-field)
 								      cft1 rhs-field
 								      (add-c-type-definition (ir-ftype ft2)))
-						    (make-c-decl-assignment-with-count
-						    (intern (format nil "~a_~a" irl1 id-ft1))
-						    (ir-ftype ft1)
-						    lhs-field
-						    cft1)))
+						    nil
+						    ;; (make-c-decl-assignment-with-count
+						    ;; (intern (format nil "~a_~a" irl1 id-ft1))
+						    ;; (ir-ftype ft1)
+						    ;; lhs-field
+						    ;; cft1)
+						    ))
 					   (append (copy-type* (ir-ftype ft1)(ir-ftype ft2)
 							       lhs-field
 							       rhs-field)
-						   (make-c-decl-assignment-with-count
-						    (intern (format nil "~a_~a" irl1 id-ft1))
-						    (ir-ftype ft1)
-						    lhs-field
-						    cft1))))))
-	    (finalize-instrs (loop for ft1 in ift1
-				   append (decrement-or-clear-instrs (intern (format nil "~a_~a" irl1 (ir-id ft1)))
-								     (add-c-type-definition (ir-ftype ft1))))))
+						   ;; (make-c-decl-assignment-with-count
+						   ;;  (intern (format nil "~a_~a" irl1 id-ft1))
+						   ;;  (ir-ftype ft1)
+						   ;;  lhs-field
+						   ;;  cft1)
+						   )))))
+	    (finalize-instrs nil) ;; (loop for ft1 in ift1
+				  ;;  append (decrement-or-clear-instrs (intern (format nil "~a_~a" irl1 (ir-id ft1)))
+				  ;; 				     (ir-ftype ft1)))
+	    )
 	(list (cons new-instr (append field-instrs finalize-instrs))) ;;make this a block
 	))))
 
@@ -8438,7 +8444,7 @@ successful."
 	     exponentiation ;euclidean_division
 	     divides modulo_arithmetic subrange_inductions bounded_int_inductions bounded_nat_inductions
 	     subrange_type int_types nat_types ;exp2 integertypes
-	     nat_fun_props finite_sets restrict_set_props extend_set_props function_image_aux
+	     nat_fun_props finite_sets restrict_set_props extend_set_props function_image_aux 
 					;function_iterate sequences
 	     seq_functions ;finite_sequences more_finseq
 					;ordinals lex2 lex3 lex4
@@ -8448,7 +8454,7 @@ successful."
 	     map_props more_map_props ; filters
 	     list2finseq
 	     list2set character_adt
-	     disjointness ; strings gen_strings charstrings bytestrings
+	     disjointness file; strings gen_strings charstrings bytestrings
 	     mucalculus ctlops fairctlops Fairctlops ; bit bv bv_concat_def
 	     bv_bitwise bv_nat ; empty_bv bv_caret integer_bv_ops
 	     mod  ;bv_arith_nat_defs  bv_int_defs bv_arithmetic_defs bv_extend_defs
