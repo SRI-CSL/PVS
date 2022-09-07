@@ -22,15 +22,15 @@
 ;;; 
 ;;; fp, Mon Jan  2 11:03:45 1989
 
-(in-package :sb-runtime) (use-package :ergolisp)
+(in-package :sb-runtime) ;;(use-package :ergolisp)
 
-(export '(open-lexical-stream
-	  open-placestream lexical-read lexical-clear-input
-	  lexical-make-macro lexical-make-escape lexical-read-char
-	  string-lexer is-lexical-escape?
-	  lexical-unread-char placestream))
+;; (export '(open-lexical-stream
+;; 	  open-placestream lexical-read lexical-clear-input
+;; 	  lexical-make-macro lexical-make-escape lexical-read-char
+;; 	  string-lexer is-lexical-escape?
+;; 	  lexical-unread-char placestream))
 
-(defvar *sbst-package*)
+(defvar *sbst-package* (find-package :sbst))
 
 (defvar *case-sensitive*)		; defined elsewhere. 
 
@@ -40,7 +40,7 @@
 ;;; place-unread-char operators work
 (defstruct (lexical-stream (:print-function
 			   (lambda (ps stream depth)
-			     (declare (ignore depth))
+			     (declare (ignore ps depth))
 			     (format stream "<lexical-stream>"))))
   stream
   readtable
@@ -190,9 +190,9 @@
 
 ;;; A place in a line.
 (defstruct (place (:print-function place-printer))
-	    (linetext "")
-	    (linenumber 0)
-	    (charnumber 0))
+  (linetext "")
+  (linenumber 0)
+  (charnumber 0))
 
 ;;; Print out a place.  This would be nicer if ~& worked properly.
 (defun place-printer (place stream level)
@@ -213,7 +213,7 @@
 ;;; initialize the stream field.
 (defstruct (placestream (:print-function
 			   (lambda (ps stream depth)
-			     (declare (ignore depth))
+			     (declare (ignore ps depth))
 			     (format stream "<placestream>"))))
 	    stream
 	    (linetext "")

@@ -23,8 +23,8 @@
 ;;;
 ;;;     07-22-87	rln	Initial development release.
 
-(in-package "ANALYSIS-FACILITY")
-(use-package '("AF-RUNTIME-LIB"))
+(in-package :analysis-facility)
+(use-package '(:af-runtime-lib))
 (use-package '(:ergolisp))
 
 (defun get-confam-name (pass)
@@ -86,7 +86,7 @@
 (defmacro get-used (item)
   `(mapcan #'(lambda (x) (cdr x)) ,item))
 
-;;; ergo-ignore-if-unused is declared on the entire context because the ABOX
+;;; (declare (ignorable ...)) is declared on the entire context because the ABOX
 ;;; passes on the context, but has no way of knowing if it actually gets used.
 ;;; This will suppress the warning messages that these variables are declared but not used.
 
@@ -104,7 +104,7 @@
 			    #+termocc ,(cons '%termocc% context)
 			    #-termocc ,context
 			    ;;(declare (ignore ,@ignore))
-			    (ergo-ignore-if-unused ,@context)
+			    (declare (ignorable ,@context))
 			    (opcase %term% ,@code))))
 
 (defun rulesyn-fun (synfam name context altcode)
@@ -116,7 +116,7 @@
 			   #+termocc ,(cons '%termocc% context)
 			   #-termocc ,context
 			   ;;(declare (ignore ,@ignore))
-			   (ergo-ignore-if-unused ,@context)
+			   (declare (ignorable ,@context))
 			   (opcase %term% ,@code))))
 
 (defun rulecontlist-fun (confam synfam sort attrs subsort)
@@ -130,7 +130,7 @@
 			      #+termocc ,(cons '%termocc% context)
 			      #-termocc ,context
 			      ;;(declare (ignore ,@ignore))
-			      (ergo-ignore-if-unused ,@context)
+			      (declare (ignorable ,@context))
 			      ,code))))
 
 
@@ -148,7 +148,7 @@
 			     #+termocc ,(cons '%termocc% context)
 			     #-termocc ,context
 			     ;;(declare (ignore ,@ignore))
-			     (ergo-ignore-if-unused ,@context)
+			     (declare (ignorable ,@context))
 			     ,code))))
 
 
@@ -163,7 +163,7 @@
 				#-termocc ,context
 				,syntext
 				;;(declare (ignore ,@ignore))
-				(ergo-ignore-if-unused ,@context)
+				(declare (ignorable ,@context))
 				(opcase %term%
 					,@code)))))
 

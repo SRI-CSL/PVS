@@ -13,10 +13,10 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :constr-term-rep #+sbcl (:use :common-lisp :ergolisp))
+;; #-gcl
+;; (defpackage :constr-term-rep #+sbcl (:use :common-lisp :ergolisp))
 (in-package :constr-term-rep)
-#-sbcl (use-package :ergolisp)
+;; #-sbcl (use-package :ergolisp)
 
 (ddefun mk-items (_ items)
   `(progn ,@items))

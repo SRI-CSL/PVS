@@ -13,15 +13,15 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :ergo-types #+sbcl (:use :common-lisp :ergolisp))
-(in-package :ergo-types) #-sbcl (use-package :ergolisp)
+;; #-gcl
+;; (defpackage :ergo-types #+sbcl (:use :common-lisp :ergolisp))
+(in-package :ergo-types) ;; #-sbcl (use-package :ergolisp)
 
-(eexport '(Nat Optional Ref
-	       ;;Boolean
-	       boolean-equal List-of
-	       Sequence-of Function-of
-	       Alist-of Hash-table-of))
+;; (eexport '(Nat Optional Ref
+;; 	       ;;Boolean
+;; 	       boolean-equal List-of
+;; 	       Sequence-of Function-of
+;; 	       Alist-of Hash-table-of))
 
 (deftype Nat ()
   "The type of natural nubmers"

@@ -21,8 +21,8 @@
     )
   #+sbcl
   (unless (find-package :ergolisp) (make-package :ergolisp :use '(:common-lisp)))
-  (load (format nil "~a/sys/ergolisp/rel/ergolisp.lisp" *ess-path*))
-  (load (format nil "~a/sys/ergolisp/rel/ergolisp-exports.lisp" *ess-path*))
+  ;;(load (format nil "~a/sys/ergolisp/rel/ergolisp.lisp" *ess-path*))
+  ;;(load (format nil "~a/sys/ergolisp/rel/ergolisp-exports.lisp" *ess-path*))
   (load (format nil "~a/sys/ergolisp/rel/ergo-system.lisp" *ess-path*))
   (load (format nil "~a/sys/tools/rel/retry.lisp" *ess-path*))
   #+(or clisp cmu sbcl)

@@ -14,31 +14,31 @@
 
 ;;; Scott Dietzen, Mon Sep 21 16:08:08 1987
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  ;;(use-package :ergolisp)
 
 
-(export '(*default-char-width*
-	  is-nt-opsig?
-	  unparse-term
-	  term-to-uterm uterm-to-aw term-to-aw
-	  read-parse-term
-	  unparse-runtime-error
-	  *unparse-style* *formatting-off* *parens-off*
-	  ))
+;; (export '(*default-char-width*
+;; 	  is-nt-opsig?
+;; 	  unparse-term
+;; 	  term-to-uterm uterm-to-aw term-to-aw
+;; 	  read-parse-term
+;; 	  unparse-runtime-error
+;; 	  *unparse-style* *formatting-off* *parens-off*
+;; 	  ))
 
 (defvar *default-char-width* 80
   "Number of characters (fix-width) that fit accross the screen. (This value
    may be superseded with the :char-width parameter to the unparsing routines.)")
 
-(defvar *formatting-off* nil
-  "Disables formatting line breaks.")
+;; (defvar *formatting-off* nil
+;;   "Disables formatting line breaks.")
 
-(defvar *parens-off* nil
-  "Disables paren insertion.")
+;; (defvar *parens-off* nil
+;;   "Disables paren insertion.")
 
-(defvar *unparse-style* nil
-  "Global variable containing keyword symbol or list of keyword symbols ~
-   describing the desired unparsing style.")
+;; (defvar *unparse-style* nil
+;;   "Global variable containing keyword symbol or list of keyword symbols ~
+;;    describing the desired unparsing style.")
 
 
 (defun is-nt-opsig? (nt-name term)

@@ -1,12 +1,12 @@
 ;;; -*- Mode: Lisp; Package: :constrg -*-
-(in-package :constr-term-rep)  ;; creates package for abstract syntax. 
+;; (in-package :constr-term-rep)  ;; creates package for abstract syntax. 
 
 (in-package :constrg)  ;; enters package for generated code.  
 
-(use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
+;; (use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
 
 
-(export '( constr-parse ))
+;; (export '( constr-parse ))
 
 (defparameter constr-abs-syn-package (find-package :constr-term-rep))
 
@@ -64,7 +64,7 @@
 
 (defun !ptype! (rbp &optional (bracket-list (empty-bracket-list)))
   (let (mtemp v0 v1 v2 v3)
-    (ergo-ignore-if-unused v0 v1 v2 v3)
+    (declare (ignorable v0 v1 v2 v3))
     (stack-brackets sbst::|(| ptype)
     (initials ((la-match ((sbst::|'|)))
                (progn (lam ((sbst::|'| epsilon)) (gobble-token))
@@ -358,7 +358,7 @@
   (declare (ignore rbp))
   (declare (ignore bracket-list))
   (let (v0 v1 v2 v3)
-    (ergo-ignore-if-unused v0 v1 v2 v3)
+    (declare (ignorable v0 v1 v2 v3))
     (initials-only ((la-match ((sbst::!id! sbst::|:|)))
                     (progn (lam ((sbst::!id! epsilon)) (gobble-to-slot v2))
                            (lam ((sbst::|:| epsilon)) (gobble-token))
@@ -408,7 +408,7 @@
   (declare (ignore rbp))
   (declare (ignore bracket-list))
   (let (v0 v1 v2 v3 v4)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4)
+    (declare (ignorable v0 v1 v2 v3 v4))
     (initials-only ((la-match ((sbst::!id!)))
                     (progn (lam ((sbst::!id! epsilon)) (gobble-to-slot v1))
                            (opt-parse ((sbst::of
@@ -510,7 +510,7 @@
   (declare (ignore rbp))
   (declare (ignore bracket-list))
   (let (v0 v1 v2 v3 v4)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4)
+    (declare (ignorable v0 v1 v2 v3 v4))
     (initials-only ((la-match ((sbst::datatype)))
                     (progn (lam ((sbst::datatype epsilon)) (gobble-token))
                            (alt-parse ((la-match ((sbst::!id! sbst::=)))
@@ -565,7 +565,7 @@
   (declare (ignore rbp))
   (declare (ignore bracket-list))
   (let (v0 v1 v2 v3)
-    (ergo-ignore-if-unused v0 v1 v2 v3)
+    (declare (ignorable v0 v1 v2 v3))
     (initials-only ((la-match ((sbst::abbrev)))
                     (progn (lam ((sbst::abbrev epsilon)) (gobble-token))
                            (lam ((sbst::!id! epsilon)) (gobble-to-slot v1))
@@ -597,7 +597,7 @@
   (declare (ignore rbp))
   (declare (ignore bracket-list))
   (let (v0 v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (initials-only ((la-match ((sbst::abbrev)))
                     (progn (code-to-slot v1 (!abbrev! 0)) (value-to-slot v0 0)
                            (as-to-slot v1
@@ -622,7 +622,7 @@
   (declare (ignore rbp))
   (declare (ignore bracket-list))
   (let (v0 v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (initials-only ((la-match ((sbst::datatype) (sbst::abbrev)))
                     (progn (code-to-slot v1 (!item! 0)) nil
                            (cons-to-slot v0 v1)

@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: AF-RUNTIME-LIB -*-
+;;; -*- Mode: Lisp; Package: af-runtime-lib -*-
 ;;;
 ;;; Sccs Id @(#)af-runtime.lisp	1.5 9/28/89");
 ;;; ******************************************************************* ;;;
@@ -25,29 +25,29 @@
 ;;;     07-22-87	rln	Initial development release.
 ;;;
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package :af-runtime-lib)
-    (make-package :af-runtime-lib
-		  :nicknames '(:abrt :afrt)
-		  :use '(:common-lisp))))
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (unless (find-package :af-runtime-lib)
+;;     (make-package :af-runtime-lib
+;; 		  :nicknames '(:abrt :afrt)
+;; 		  :use '(:common-lisp))))
 (in-package :af-runtime-lib) 
 
-(export '(opcase argcase rt-delta-error rt-term-argn rt-term-args
-	  rt-symbol rt-ite rt-opt rt-function rt-ast
-	  #+termocc rt-termocc #+termocc rt-mk-termocc #+termocc rt-termocc-argn
-	  rt-trap-constraint-errors rt-constraint-check
-	  rt-first-child rt-last-child rt-nchild
-	  rt-defconfam rt-defsynfam rt-defattrfam
-	  rt-defconfam-deltafun rt-defsynfam-compfun rt-defattrfam-attrfun
-	  rt-delta-confam
-	  rt-get-synfam rt-get-synfam-argn
-	  rt-opt-present rt-get-synfam-list
-	  rt-get-synfam-opt rt-get-synfam-argn-opt
-	  rt-get-iterate rt-get-iterate-opt
-	  rt-get-attrfam
-	  rt-get-attrfam-at
-	  rt-mvb rt-vls
-	  ))
+;; (export '(opcase argcase rt-delta-error rt-term-argn rt-term-args
+;; 	  rt-symbol rt-ite rt-opt rt-function rt-ast
+;; 	  #+termocc rt-termocc #+termocc rt-mk-termocc #+termocc rt-termocc-argn
+;; 	  rt-trap-constraint-errors rt-constraint-check
+;; 	  rt-first-child rt-last-child rt-nchild
+;; 	  rt-defconfam rt-defsynfam rt-defattrfam
+;; 	  rt-defconfam-deltafun rt-defsynfam-compfun rt-defattrfam-attrfun
+;; 	  rt-delta-confam
+;; 	  rt-get-synfam rt-get-synfam-argn
+;; 	  rt-opt-present rt-get-synfam-list
+;; 	  rt-get-synfam-opt rt-get-synfam-argn-opt
+;; 	  rt-get-iterate rt-get-iterate-opt
+;; 	  rt-get-attrfam
+;; 	  rt-get-attrfam-at
+;; 	  rt-mvb rt-vls
+;; 	  ))
 
 
 (defconstant undefined :undefined)
@@ -313,13 +313,6 @@
 
 (defvar *term-var*)
 
-(defmacro term-case (term &rest clauses)
-  (let ((*term-var* (gentemp)))
-    `(let ((,*term-var* ,term))
-       (ecase (oper:ds-sim-op (term:term-op ,*term-var*))
-	 ,@(mapcar #'term-case-clause clauses)))))
-
-
 (defun term-case-clause (clause)
   (multiple-value-bind (op arg-names)
       (get-op-and-arg-names (first clause))
@@ -328,6 +321,13 @@
 		  rest
 		  `((let ,(arg-binders arg-names 0)
 		      ,@rest)))))))
+
+
+(defmacro term-case (term &rest clauses)
+  (let ((*term-var* (gentemp)))
+    `(let ((,*term-var* ,term))
+       (ecase (oper:ds-sim-op (term:term-op ,*term-var*))
+	 ,@(mapcar #'term-case-clause clauses)))))
 
 
 (defun get-op-and-arg-names (key)

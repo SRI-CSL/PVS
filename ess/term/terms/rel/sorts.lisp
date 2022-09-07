@@ -26,39 +26,39 @@
 
 
 
-(export '(ttype ttypep 
-	  opsig opsigp 
-	  check-ttype-type
-	  check-opsig-type
-	  ;; mk-ttype ttype-kind ttype-arg
-	  mk-opsig opsig-inputs opsig-output opsig-arity opsig-lang-name
+;; (export '(ttype ttypep 
+;; 	  opsig opsigp 
+;; 	  check-ttype-type
+;; 	  check-opsig-type
+;; 	  ;; mk-ttype ttype-kind ttype-arg
+;; 	  mk-opsig opsig-inputs opsig-output opsig-arity opsig-lang-name
 
-	  mk-id-ttype  is-id-ttype  ds-id-ttype
-	  mk-num-ttype is-num-ttype ds-num-ttype
-	  mk-str-ttype is-str-ttype ds-str-ttype
-	  mk-lit-ttype is-lit-ttype ds-lit-ttype
-	  ;; Only the above leaf ttypes can appear directly in abstract syntax
-	  ;; (.i.e. not inserted by lexical terminals.)
+;; 	  mk-id-ttype  is-id-ttype  ds-id-ttype
+;; 	  mk-num-ttype is-num-ttype ds-num-ttype
+;; 	  mk-str-ttype is-str-ttype ds-str-ttype
+;; 	  mk-lit-ttype is-lit-ttype ds-lit-ttype
+;; 	  ;; Only the above leaf ttypes can appear directly in abstract syntax
+;; 	  ;; (.i.e. not inserted by lexical terminals.)
 
-	  mk-op-ttype is-op-ttype ds-op-ttype
-	  mk-sort-ttype is-sort-ttype ds-sort-ttype
-	  mk-list-ttype is-list-ttype ds-list-ttype
-	  mk-null-ttype is-null-ttype 
-	  mk-elist-ttype is-elist-ttype 
-	  mk-union-ttype is-union-ttype ds-union-ttype
+;; 	  mk-op-ttype is-op-ttype ds-op-ttype
+;; 	  mk-sort-ttype is-sort-ttype ds-sort-ttype
+;; 	  mk-list-ttype is-list-ttype ds-list-ttype
+;; 	  mk-null-ttype is-null-ttype 
+;; 	  mk-elist-ttype is-elist-ttype 
+;; 	  mk-union-ttype is-union-ttype ds-union-ttype
 
-	  ttype-equal opsig-equal ttype-overlap?
-          ttype-to-sexp sexp-to-ttype 
-	  opsig-to-sexp sexp-to-opsig
+;; 	  ttype-equal opsig-equal ttype-overlap?
+;;           ttype-to-sexp sexp-to-ttype 
+;; 	  opsig-to-sexp sexp-to-opsig
 
-	  make-sort-table sort-table-insert sort-table-delete
-	  add-ttype-to-sort 
-	  sort-table-lookup sort-table-contents
+;; 	  make-sort-table sort-table-insert sort-table-delete
+;; 	  add-ttype-to-sort 
+;; 	  sort-table-lookup sort-table-contents
 	  
-	  make-opsig-table opsig-table-insert opsig-table-delete
-	  opsig-table-lookup opsig-table-contents
+;; 	  make-opsig-table opsig-table-insert opsig-table-delete
+;; 	  opsig-table-lookup opsig-table-contents
 
-	  ))
+;; 	  ))
 
 
 ;; #+(and allegro-version>= (version>= 8 2))
@@ -77,12 +77,9 @@
   kind
   arg)
 
-#+lcl4.1
-(defmethod make-load-form ((obj ttype-struct))
-  (make-load-form-saving-slots obj))
-
 #+(or allegro cmu sbcl)
 (defmethod make-load-form ((obj ttype-struct) &optional environment)
+  (declare (ignore environment))
   (make-load-form-saving-slots obj))
   
 (deftype ttype ()
@@ -109,6 +106,7 @@
 
 #+(or allegro cmu sbcl)
 (defmethod make-load-form ((obj opsig-struct) &optional environment)
+  (declare (ignore environment))
   (make-load-form-saving-slots obj))
 
 (deftype opsig ()

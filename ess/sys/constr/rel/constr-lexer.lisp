@@ -1,12 +1,12 @@
 ;;; -*- Mode: Lisp; Package: CONSTRG -*-
-(in-package :constr-term-rep)  ;; creates package for abstract syntax. 
+;; (in-package :constr-term-rep)  ;; creates package for abstract syntax. 
 
 (in-package :constrg)  ;; enters package for generated code.  
 
-(use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
+;; (use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
 
 
-(export '())
+;; (export '())
 
 (defparameter constr-keyword-list
     (quote

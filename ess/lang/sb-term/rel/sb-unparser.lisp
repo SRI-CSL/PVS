@@ -1,12 +1,12 @@
 ;;; -*- mode: lisp; package: syntax-box -*-
 (in-package :syntax-box)  ;; creates package for abstract syntax. 
 
-(in-package :syntax-box)  ;; enters package for generated code.  
+;;(in-package :syntax-box)  ;; enters package for generated code.  
 
-(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
+;;(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 
-(export '( sb-unparse  sb-win-unparse ))
+;;(export '( sb-unparse  sb-win-unparse ))
 
 (defvar sb-bracket-info (make-hash-table :test #'eq)) 
 (clrhash sb-bracket-info) 
@@ -360,9 +360,9 @@
         v30
         v31
         v32)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                            v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27
-                           v28 v29 v30 v31 v32)
+                           v28 v29 v30 v31 v32))
     (setf v0 as)
     (nt-unp 'meta-grammar as
             ((upats
@@ -792,7 +792,7 @@
   (let (v0
         v1
         v2)
-    (ergo-ignore-if-unused v0 v1 v2)
+    (declare (ignorable v0 v1 v2))
     (setf v0 as)
     (nt-unp 'external-grammars as
             ((unp-uterm v0
@@ -838,7 +838,7 @@
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5)
+    (declare (ignorable v0 v1 v2 v3 v4 v5))
     (setf v0 as)
     (nt-unp 'comment-character as
             ((unp-uterm v0
@@ -899,7 +899,7 @@
 (defun sb-unp-escape-character-aux (as)
   (let (v0
         v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (setf v0 as)
     (nt-unp 'escape-character as
             ((unp-uterm v0
@@ -922,7 +922,7 @@
   (let (v0
         v1
         v2)
-    (ergo-ignore-if-unused v0 v1 v2)
+    (declare (ignorable v0 v1 v2))
     (setf v0 as)
     (nt-unp 'operator-information as
             ((unp-uterm v0
@@ -959,7 +959,7 @@
         v4
         v5
         v6)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6))
     (setf v0 as)
     (nt-unp 'lexical-terminals as
             ((unp-uterm v0
@@ -1069,7 +1069,7 @@
         v5
         v6
         v7)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7))
     (setf v0 as)
     (nt-unp 'bracketing-information as
             ((unp-uterm v0
@@ -1175,8 +1175,8 @@
         v14
         v15
         v16)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
-                           v15 v16)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
+                           v15 v16))
     (setf v0 as)
     (nt-unp 'spacing-information as
             ((unp-uterm v0
@@ -1594,7 +1594,7 @@
         v4
         v5
         v6)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6))
     (setf v0 as)
     (nt-unp 'precedence-information as
             ((unp-uterm v0
@@ -1664,7 +1664,7 @@
 (defun sb-unp-multiple-levels-aux (as)
   (let (v0
         v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (setf v0 as)
     (nt-unp 'multiple-levels as
             ((unp-uterm v0
@@ -1698,7 +1698,7 @@
 (defun sb-unp-single-level-aux (as)
   (let (v0
         v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (setf v0 as)
     (nt-unp 'single-level as
             ((unp-uterm v0
@@ -1729,7 +1729,7 @@
         v6
         v7
         v8)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8))
     (setf v0 as)
     (nt-unp 'single-op-precedence as
             ((unp-uterm v0
@@ -1885,7 +1885,7 @@
   (let (v0
         v1
         v2)
-    (ergo-ignore-if-unused v0 v1 v2)
+    (declare (ignorable v0 v1 v2))
     (setf v0 as)
     (nt-unp 'nonterminal-definition as
             ((unp-uterm v0
@@ -1915,7 +1915,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (setf v0 as)
     (nt-unp 'pattern as
             ((unp-bind 'alt_ v0)
@@ -1994,7 +1994,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-1 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2004,7 +2004,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'nonterminal_ v1) (unp-term-const 'nonterminal)
                 (unp-name 'id v1) (unp-lt 'sbst::id v1))))) 
@@ -2012,7 +2012,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-2 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2022,7 +2022,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'ext-nonterminal)
                 (unp-name 'id v2) (unp-name 'id v3)
@@ -2039,7 +2039,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-3 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2049,7 +2049,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'nonterminal_ v1) (unp-term-const 'ukeyword)
                 (unp-name 'keyword v1) (unp-lt 'sbst::keyword v1))))) 
@@ -2057,7 +2057,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-4 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2067,7 +2067,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'jux)
                 (unp-name 'pattern v2) (unp-name 'pattern v3)
@@ -2112,7 +2112,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-5 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2122,7 +2122,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'opt) (unp-list-const)
                 (unp-name 'plus v2)
@@ -2147,7 +2147,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-6 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2157,7 +2157,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-list-const) (unp-name 'plus v2)
                 (unp-seq
@@ -2181,7 +2181,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-7 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2191,7 +2191,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (upats
      ((:parse)
       (unp-uterm v1
@@ -2252,7 +2252,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-8 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2262,7 +2262,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'star)
                 (unp-name 'pattern v2)
@@ -2276,7 +2276,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-9 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2286,7 +2286,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'plus)
                 (unp-name 'pattern v2)
@@ -2300,7 +2300,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-10 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2310,7 +2310,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1)
                 (dis-opt v4
@@ -2361,7 +2361,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-11 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2371,7 +2371,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1)
                 (dis-opt v4
@@ -2422,7 +2422,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-12 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2432,7 +2432,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'tag)
                 (unp-name 'pattern v2) (unp-name 'alt v4)
@@ -2460,7 +2460,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-13 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2470,7 +2470,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (upats
      ((:pats :augs :noform :elided)
       (unp-uterm v1
@@ -2503,7 +2503,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-14 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2513,7 +2513,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (upats
      ((:pats :upats :noaugs)
       (unp-uterm v1
@@ -2552,7 +2552,7 @@
 
 
 (defun sb-unp-pattern-aux-alt-15 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
@@ -2562,7 +2562,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (upats
      ((:pats :augs :noupats :elided :noform)
       (unp-uterm v1
@@ -2873,7 +2873,7 @@
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5)
+    (declare (ignorable v0 v1 v2 v3 v4 v5))
     (setf v0 as)
     (nt-unp 'augment as
             ((unp-bind 'alt_ v0)
@@ -2955,12 +2955,12 @@
 
 
 (defun sb-unp-augment-aux-alt-1 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'nonterminal_ v1) (unp-term-const 'string-aug)
                 (unp-name 'string v1) (unp-lt 'sbst::string v1))))) 
@@ -2968,12 +2968,12 @@
 
 
 (defun sb-unp-augment-aux-alt-2 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'nonterminal_ v1) (unp-term-const 'number-aug)
                 (unp-name 'number v1) (unp-lt 'sbst::number v1))))) 
@@ -2981,12 +2981,12 @@
 
 
 (defun sb-unp-augment-aux-alt-3 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'nonterminal_ v1) (unp-term-const 'literal-aug)
                 (unp-name 'literal v1) (unp-lt 'sbst::literal v1))))) 
@@ -2994,12 +2994,12 @@
 
 
 (defun sb-unp-augment-aux-alt-4 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'nonterminal_ v1) (unp-term-const 'name)
                 (unp-name 'id v1) (unp-lt 'sbst::id v1))))) 
@@ -3007,12 +3007,12 @@
 
 
 (defun sb-unp-augment-aux-alt-5 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::opt))))) 
@@ -3020,12 +3020,12 @@
 
 
 (defun sb-unp-augment-aux-alt-6 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::alt))))) 
@@ -3033,12 +3033,12 @@
 
 
 (defun sb-unp-augment-aux-alt-7 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::plus))))) 
@@ -3046,12 +3046,12 @@
 
 
 (defun sb-unp-augment-aux-alt-8 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::doubleplus))))) 
@@ -3059,12 +3059,12 @@
 
 
 (defun sb-unp-augment-aux-alt-9 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::star))))) 
@@ -3072,12 +3072,12 @@
 
 
 (defun sb-unp-augment-aux-alt-10 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::doublestar))))) 
@@ -3085,12 +3085,12 @@
 
 
 (defun sb-unp-augment-aux-alt-11 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'name) (unp-base-lit)
                 (unp-keyword 'sbst::seq))))) 
@@ -3098,12 +3098,12 @@
 
 
 (defun sb-unp-augment-aux-alt-12 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'ext-name)
                 (unp-name 'id v2) (unp-name 'id v3)
@@ -3120,12 +3120,12 @@
 
 
 (defun sb-unp-augment-aux-alt-13 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'null)
                 (unp-keyword 'sbst::null))))) 
@@ -3133,12 +3133,12 @@
 
 
 (defun sb-unp-augment-aux-alt-14 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-list-const) (unp-name 'doublestar v2)
                 (unp-seq
@@ -3168,12 +3168,12 @@
 
 
 (defun sb-unp-augment-aux-alt-15 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'cons)
                 (unp-name 'augment v2) (unp-name 'augment v3)
@@ -3197,12 +3197,12 @@
 
 
 (defun sb-unp-augment-aux-alt-16 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'bcons)
                 (unp-name 'augment v2) (unp-name 'augment v3)
@@ -3226,12 +3226,12 @@
 
 
 (defun sb-unp-augment-aux-alt-17 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'append)
                 (unp-name 'augment v2) (unp-name 'augment v3)
@@ -3255,12 +3255,12 @@
 
 
 (defun sb-unp-augment-aux-alt-18 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-list-const) (unp-cons)
                 (dis-alt v2
@@ -3308,12 +3308,12 @@
 
 
 (defun sb-unp-augment-aux-alt-19 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'star-aug)
                 (unp-name 'augment v2)
@@ -3327,12 +3327,12 @@
 
 
 (defun sb-unp-augment-aux-alt-20 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'plus-aug)
                 (unp-name 'augment v2)
@@ -3346,12 +3346,12 @@
 
 
 (defun sb-unp-augment-aux-alt-21 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (upats
      ((:parse)
       (unp-uterm v1
@@ -3412,12 +3412,12 @@
 
 
 (defun sb-unp-augment-aux-alt-22 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'opt-aug)
                 (unp-name 'augment v2)
@@ -3434,12 +3434,12 @@
 
 
 (defun sb-unp-augment-aux-alt-23 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v2 v3 v4 v5)
+    (declare (ignorable v2 v3 v4 v5))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'tag-aug)
                 (unp-name 'augment v2) (unp-name 'alt v4)
@@ -3472,7 +3472,7 @@
         v2
         v3
         v4)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4)
+    (declare (ignorable v0 v1 v2 v3 v4))
     (setf v0 as)
     (nt-unp 'format-command as
             ((unp-bind 'alt_ v0)
@@ -3517,11 +3517,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-1 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'seq_ v1)
                 (dis-opt v2
@@ -3542,11 +3542,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-2 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'cr)
                 (unp-keyword 'sbst::|#|))))) 
@@ -3554,11 +3554,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-3 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'incr-bp)
                 (unp-name 'number v2)
@@ -3572,11 +3572,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-4 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'decr-bp)
                 (unp-name 'number v2)
@@ -3590,11 +3590,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-5 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'seq_ v1) (unp-term-const 'unite) (unp-name 'alt v3)
                 (unp-seq
@@ -3619,11 +3619,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-6 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'seq_ v1)
                 (dis-opt v2
@@ -3646,11 +3646,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-7 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'pop-indent)
                 (unp-keyword 'sbst::!-))))) 
@@ -3658,11 +3658,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-8 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'push-tab-left)
                 (unp-keyword 'sbst::@<))))) 
@@ -3670,11 +3670,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-9 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'push-tab-right)
                 (unp-keyword 'sbst::@>))))) 
@@ -3682,11 +3682,11 @@
 
 
 (defun sb-unp-format-command-aux-alt-10 (v0 v1)
-  (ergo-ignore-if-unused v0 v1)
+  (declare (ignorable v0 v1))
   (let (v2
         v3
         v4)
-    (ergo-ignore-if-unused v2 v3 v4)
+    (declare (ignorable v2 v3 v4))
     (unp-uterm v1
                ((unp-bind 'ukeyword_ v1) (unp-term-const 'pop-tab)
                 (unp-keyword 'sbst::@^))))) 

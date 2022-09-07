@@ -16,7 +16,7 @@
 ;;; Revised, Scott Dietzen, Mon Oct 13 16:05:43 1986
 
 
-(in-package :syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box) ;; (use-package :ergolisp)
 
 
 ;;; srd revised: moved global varaible definitions to globals.lisp 
@@ -138,34 +138,10 @@
 
 (defun initialize-file (stream file-type)
   (sb-write
-   (format stream ";;; -*- Mode: Lisp; Package: ~A -*-~%~
-                  (in-package :~a)  ;; creates package for abstract syntax. ~%~%~
-                  (in-package :~a)  ;; enters package for generated code.  ~%~%~
-	          (use-package '~S)~3%"
+   (format stream ";;; -*- Mode: Lisp; Package: ~(:~a~) -*-~%~
+                  (in-package ~(:~a~))  ;; enters package for generated code.  ~%~%"
      *code-package-spec*
-     *abs-syn-package-spec*
-     *code-package-spec*
-     *use-packages-spec*)
-   (format stream "(export '(")
-   (mapc #'(lambda (symbol) (format stream " ~A " symbol))
-     (case file-type
-       (:unparser
-	(append (if (eq (symbol-package
-			 (lang:lang-unparse-routine-name *language*))
-			(lang:lang-code-package *language*))
-		    (list (lang:lang-unparse-routine-name *language*)))
-		(if (eq (symbol-package
-			 (lang:lang-win-unparse-routine-name *language*))
-			(lang:lang-code-package *language*))
-		    (list (lang:lang-win-unparse-routine-name *language*)))))
-       (:parser
-	(append (if (eq (symbol-package
-			 (lang:lang-parse-routine-name *language*))
-			(lang:lang-code-package *language*))
-		    (list (lang:lang-parse-routine-name *language*)))))
-       ((:sorts :lexer)
-	())))
-   (format stream "))~%")))
+     *code-package-spec*)))
 
 
 

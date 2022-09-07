@@ -20,41 +20,44 @@
 ;;; Scott Dietzen, Fri Oct 10 12:36:12 1986
 
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  ;; (use-package :ergolisp)
 
-(export '(*sbst-package* *abs-syn-package* *keyword-list* *single-char-op-list*
-	  *multi-char-op-list* *new-line-comment-char* *open-comment-char*
-	  *close-comment-char* *case-sensitive* 
-	  *reader-fun* *apply-lex-term-constr-fun*
-	  *apply-lex-term-discr-fun* *apply-lex-term-destr-fun*
-	  *keyword-table* *lexical-stream* *hold-a1*
-	  *delexical-stream* *escape-character* 
-	  *unparse-style* *restricted-chars*
-	  *hold-a2* *hold-a3* *hold-b1* *hold-b2* *hold-b3*
-	  init-lexical-readtable init-keyword-table
-	  gettoken gobble-token peek-first peek-second flush-lexer
-	  illegal-token-error init-delexer close-delexer
-          reader error-peek-token
-	  insert-escapes?
-	  read-keyword-string read-sb-string read-literal
-	  ))
+;; (export '(*sbst-package* *abs-syn-package* *keyword-list* *single-char-op-list*
+;; 	  *multi-char-op-list* *new-line-comment-char* *open-comment-char*
+;; 	  *close-comment-char* *case-sensitive* 
+;; 	  *reader-fun* *apply-lex-term-constr-fun*
+;; 	  *apply-lex-term-discr-fun* *apply-lex-term-destr-fun*
+;; 	  *keyword-table* *lexical-stream* *hold-a1*
+;; 	  *delexical-stream* *escape-character* 
+;; 	  *unparse-style* *restricted-chars*
+;; 	  *hold-a2* *hold-a3* *hold-b1* *hold-b2* *hold-b3*
+;; 	  init-lexical-readtable init-keyword-table
+;; 	  gettoken gobble-token peek-first peek-second flush-lexer
+;; 	  illegal-token-error init-delexer close-delexer
+;;           reader error-peek-token
+;; 	  insert-escapes?
+;; 	  read-keyword-string read-sb-string read-literal
+;; 	  ))
 
 
-(defconstant-if-unbound possible-single-char-operators
+(alexandria:define-constant possible-single-char-operators
   '(#\(  #\)  #\[  #\]  #\{  #\}  #\<  #\>  #\,  #\;  #\|  #\^  #\#  #\~  #\/
-    #\!  #\@  #\$  #\&  #\_  #\-  #\?  #\%  #\'  #\:  #\*  #\+  #\`  #\=  #\\))
+    #\!  #\@  #\$  #\&  #\_  #\-  #\?  #\%  #\'  #\:  #\*  #\+  #\`  #\=  #\\)
+  :test #'equalp)
 
 
 ;;; The ":use '()" below is important because different common lisps will 
 ;;; export different symbols from the LISP package, so it is important that
 ;;; the SBST package does not use the LISP package, so we can get repeatable
 ;;; behavior on different machines.
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *sbst-package* 
-    (cond ((find-package :sbst))
-	  (t
-	   (make-package :sbst
-			 :nicknames '(:sb-st :sb-symbol-table) :use '())))))
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (defvar *sbst-package* 
+;;     (cond ((find-package :sbst))
+;; 	  (t
+;; 	   (make-package :sbst
+;; 			 :nicknames '(:sb-st :sb-symbol-table) :use '())))))
+
+(defvar *sbst-package* (find-package :sbst))
 
 
 ;;; This is dynamically bound by generated parsers to their package, 
@@ -64,8 +67,8 @@
 (defvar *close-comment-char* nil
   "The character that ends comments the lexer should skip.")
 
-(defvar *case-sensitive* nil
-  "Is the language case sensitive?")
+;; (defvar *case-sensitive* nil
+;;   "Is the language case sensitive?")
 
 ;;; This is dynamically bound by generated parsers.  Usually it is bound
 ;;; to the READER fun in this file, but if the application must have special

@@ -17,9 +17,9 @@
 
 (in-package :tools)
 
-(export '(*plain-readtable*))
+;; (export '(*plain-readtable*))
 
-(import '(cl-user::*ess-path*))
+;; (import '(cl-user::*ess-path*))
 
 ;; #+(and allegro-version>= (version>= 8 2))
 ;; (eval-when (:execute :compile-toplevel :load-toplevel)
@@ -41,12 +41,12 @@ a conflict with the lisp-processor for files with .lisp extension."
   (:needs)
   (:path)
   (:generates "tools::lisp-load" &key
-	      (file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
+	      (file #.(concatenate 'string "*" lisp-compiled-suffix-string)
 		    :input)))
 
 (defbox lisp-source-loader
   (:generates "tools::lisp-load" &key
-	      (file #.(concatenate 'string "*" *lisp-source-suffix-string*)
+	      (file #.(concatenate 'string "*" lisp-source-suffix-string)
 		    :input)))
 
 (defbox ccom
@@ -67,8 +67,8 @@ a conflict with the lisp-processor for files with .lisp extension."
   (:needs)
   (:path)
   (:generates "tools::lisp-compile" &key
-	      (source-file #.(concatenate 'string "*" *lisp-source-suffix-string*) :input)
-	      (compiled-file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
+	      (source-file #.(concatenate 'string "*" lisp-source-suffix-string) :input)
+	      (compiled-file #.(concatenate 'string "*" lisp-compiled-suffix-string)
 			     :output)))
 
 (defbox cload

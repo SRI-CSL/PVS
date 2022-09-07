@@ -13,11 +13,11 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :defsconstr #+sbcl (:use :common-lisp :ergolisp))
-(in-package :defsconstr) #-sbcl (use-package :ergolisp)
+;;#-gcl
+;;(defpackage :defsconstr #+sbcl (:use :common-lisp :ergolisp))
+(in-package :defsconstr) ;;#-sbcl (use-package :ergolisp)
 
-(eexport '(defsconstr))
+;; (eexport '(defsconstr))
 
 (defmacro defsconstr (string)
   "Declare a collection of constr Items in concrete syntax."

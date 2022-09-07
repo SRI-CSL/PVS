@@ -16,11 +16,11 @@
 ;;; a global sort :global.  All other functions just refer to the
 ;;; "sort-specific" versions of the ADT.
 
-(in-package :newattr)   (use-package :ergolisp)
+(in-package :newattr) ;;  (use-package :ergolisp)
 
-(export '(defcon defsyn defattr))
-(export '(defcon-deltafun defsyn-compfun defattr-attrfun))
-(export '(delta-con get-syn get-syn-argn get-attr))
+;; (export '(defcon defsyn defattr))
+;; (export '(defcon-deltafun defsyn-compfun defattr-attrfun))
+;; (export '(delta-con get-syn get-syn-argn get-attr))
 
 ;;; The definition functions.
 ;;; This cannot merely refer to the corresponding functions for the

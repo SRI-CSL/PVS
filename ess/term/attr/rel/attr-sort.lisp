@@ -12,11 +12,11 @@
 ;;; The sort-specific part.
 ;;; Author: fp
 
-(in-package :newattr) #-sbcl(use-package :ergolisp)
+(in-package :newattr) ;; #-sbcl(use-package :ergolisp)
 
-(export '(defconfam defsynfam defattrfam))
-(export '(defconfam-deltafun defsynfam-compfun defattrfam-attrfun))
-(export '(delta-confam get-synfam get-synfam-argn get-attrfam))
+;; (export '(defconfam defsynfam defattrfam))
+;; (export '(defconfam-deltafun defsynfam-compfun defattrfam-attrfun))
+;; (export '(delta-confam get-synfam get-synfam-argn get-attrfam))
 
 ;;; The representation of contexts, syntexts, and attributes.
 

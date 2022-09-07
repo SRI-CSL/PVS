@@ -67,7 +67,3 @@
 
 (export '(\#>))
 (export '(push2 pop2))
-
-;;;; IGNORE
-
-(export '(ergo-ignore-if-unused))

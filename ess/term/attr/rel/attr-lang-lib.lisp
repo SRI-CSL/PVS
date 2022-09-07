@@ -13,14 +13,14 @@
 ;;;
 ;;; Interface to Language, Sort, Operator Packages.
 
-#-gcl
-(defpackage :language #+sbcl (:use :common-lisp :ergolisp))
-(in-package :language) #-sbcl (use-package :ergolisp)
+;; #-gcl
+;; (defpackage :language #+sbcl (:use :common-lisp :ergolisp))
+(in-package :language) ;;#-sbcl (use-package :ergolisp)
 
-(export '(op-sort check-op))
+;;(export '(op-sort check-op))
 
-(export '(subsort-p))
-(export '(language-sortlist sublanguage-p))
+;; (export '(subsort-p))
+;; (export '(language-sortlist sublanguage-p))
 
 (defun op-p (op)
   "Returns true iff op is an operator structure or names an operator."

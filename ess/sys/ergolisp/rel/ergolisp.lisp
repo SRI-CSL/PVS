@@ -15,25 +15,25 @@
 
 (in-package :ergolisp)
 
-(export '(eexport))
+;; (export '(eexport))
 
-(defun eexport (symbol-or-symbols
-		&optional (package (package-name *package*)))
-  "Ergo-export.  First, check that the given symbol or symbols are already
-exported from the ergolisp package.  This should have happened in
-ergolisp-exports.lisp.  Then also export them from the current package."
-  (flet ((already-exported (sym)
-	   (when (package-name (symbol-package sym))
-	     (string= (package-name (symbol-package sym))
-		      (string :ergolisp)))))
-    (let ((symbols (if (listp symbol-or-symbols)
-		       symbol-or-symbols
-		       (list symbol-or-symbols))))
-      (if (every #'already-exported symbols)
-	  (export symbols package)
-	  (progn
-	   (warn "Some of the eexported symbols are not yet exported from ERGOLISP, 
-so I won't export them here.  Add to ergolisp-exports.lisp.
-  The unexported symbols are ~s."
-		 (remove-if #'already-exported symbols))
-	   (export (remove-if-not #'already-exported symbols) package))))))
+;; (defun eexport (symbol-or-symbols
+;; 		&optional (package (package-name *package*)))
+;;   "Ergo-export.  First, check that the given symbol or symbols are already
+;; exported from the ergolisp package.  This should have happened in
+;; ergolisp-exports.lisp.  Then also export them from the current package."
+;;   (flet ((already-exported (sym)
+;; 	   (when (package-name (symbol-package sym))
+;; 	     (string= (package-name (symbol-package sym))
+;; 		      (string :ergolisp)))))
+;;     (let ((symbols (if (listp symbol-or-symbols)
+;; 		       symbol-or-symbols
+;; 		       (list symbol-or-symbols))))
+;;       (if (every #'already-exported symbols)
+;; 	  (export symbols package)
+;; 	  (progn
+;; 	   (warn "Some of the eexported symbols are not yet exported from ERGOLISP, 
+;; so I won't export them here.  Add to ergolisp-exports.lisp.
+;;   The unexported symbols are ~s."
+;; 		 (remove-if #'already-exported symbols))
+;; 	   (export (remove-if-not #'already-exported symbols) package))))))

@@ -14,7 +14,7 @@
 
 ;;; Scott Dietzen, Tue Jul 26 13:35:17 1988
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime) ;; (use-package :ergolisp)
 
 
 
@@ -24,8 +24,8 @@
   "Conversion factor from spaces to TeX em units.")
 
 
-(defvar *s* nil
-  "Outstring for accumulated tokens")
+;; (defvar *s* nil
+;;   "Outstring for accumulated tokens")
 
 (defvar *indent-sequence* nil
   "Sequence of indents or unindents to be added at the end of the current

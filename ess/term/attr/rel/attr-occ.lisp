@@ -13,11 +13,11 @@
 ;;;
 ;;; Author: fp
 
-(in-package :newattr)   (use-package :ergolisp)
+(in-package :newattr)  ;; (use-package :ergolisp)
 
-(export '(revocc tocc))			; Global context and attribute.
+;; (export '(revocc tocc))			; Global context and attribute.
 
-(export '(get-syn-at get-attr-at))	; Macros to access syntext and
+;; (export '(get-syn-at get-attr-at))	; Macros to access syntext and
 					; attribute at a subterm, eg after
 					; pointing.
 

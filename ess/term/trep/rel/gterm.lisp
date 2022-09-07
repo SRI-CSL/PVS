@@ -29,30 +29,30 @@
 ;;; instead of a real operator.
 ;;; 
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package :term)
-    (make-package :term :nicknames '(:gterm)
-                  :use '(:cl-user :common-lisp :ergolisp))))
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (unless (find-package :term)
+;;     (make-package :term :nicknames '(:gterm)
+;;                   :use '(:cl-user :common-lisp :ergolisp))))
 (in-package :term)
 
-(export '(term  termp mk-term ds-term term-op term-args
-		term-attr set-term-attr))
-(export '(*default-mk-term-impl* *default-ds-term-impl*
-	  *default-get-term-attr-impl* *default-set-term-attr-impl*))
-(export '(nil-get-term-attr-impl nil-set-term-attr-impl))
+;; (export '(term  termp mk-term ds-term term-op term-args
+;; 		term-attr set-term-attr))
+;; (export '(*default-mk-term-impl* *default-ds-term-impl*
+;; 	  *default-get-term-attr-impl* *default-set-term-attr-impl*))
+;; (export '(nil-get-term-attr-impl nil-set-term-attr-impl))
 
-(export '(mk-term-impl ds-term-impl))
-(export '(defrep defrep-case defrep-cases))
-(export '(defrep-oneway defrep-case-oneway defrep-cases-oneway))
-(export '(expand-constr-cases))
-(export '(trace-rep-functions untrace-rep-functions))
-(export '(term-attr get-term-attr-impl set-term-attr-impl))
+;; (export '(mk-term-impl ds-term-impl))
+;; (export '(defrep defrep-case defrep-cases))
+;; (export '(defrep-oneway defrep-case-oneway defrep-cases-oneway))
+;; (export '(expand-constr-cases))
+;; (export '(trace-rep-functions untrace-rep-functions))
+;; (export '(term-attr get-term-attr-impl set-term-attr-impl))
 
-(export '(*cache-ds-term-p* clear-ds-term)) ; ds-term caching stuff
+;; (export '(*cache-ds-term-p* clear-ds-term)) ; ds-term caching stuff
 
-(export '(op-arglist op-args))
+;; (export '(op-arglist op-args))
 
-(export '(oper-sort))		; should be elsewhere
+;; (export '(oper-sort))		; should be elsewhere
 
 ;;;  Primitive Term support
 
@@ -107,7 +107,6 @@ value of this, so I use T."
 *default-set-term-attr-impl* to this to turn off default attribute hashing."
   (declare (ignore term slot)))
 
-(defsetf term-attr set-term-attr)  
 
 ;;; This implementation of ds-term optionally does caching.  This is extremely
 ;;; useful with the current implementation of the SB, whose generated unparsers
@@ -307,7 +306,7 @@ list used by trace-rep-functions and untrace-rep-functions."
 	(ds (ds-name sort-sym)))
     `(progn
        (ddefun ,mk ((oper:mk-sim-op ,(op-sym-arg)) ,(args-arg))
-	 (ergo-ignore-if-unused ,(op-sym-arg) ,(args-arg))
+	 (declare (ignorable ,(op-sym-arg) ,(args-arg)))
 	 ,constr-body)
        (defun ,ds (,sort-sym)
 	 ,ds-body)

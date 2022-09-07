@@ -14,10 +14,10 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-(in-package :TOOLS) (use-package :ergolisp)
+(in-package :tools) ;; (use-package :ergolisp)
 
-(export '(list-box-files list-boxes-in-crates))
-(export '(list-all-crates list-tar-crates))
+;;(export '(list-box-files list-boxes-in-crates))
+;;(export '(list-all-crates list-tar-crates))
 
 (defvar *write-file-line-hook* nil
   "NIL, or function to be called on a filename, when it would try to write
@@ -73,7 +73,7 @@ per Lisp core image."
     (list-some-files full-filename
 		     #'(lambda (efile)
 			 (and (eq (efile-box efile) box)
-			      (not (string= *lisp-compiled-extension*
+			      (not (string= lisp-compiled-extension
 					    (pathname-type (efile-name efile))))))
 		     absolute
 		     readme-files)))
@@ -93,7 +93,7 @@ per Lisp core image."
   (list-some-files filename
 		   #'(lambda (efile)
 		       (and (member (efile-box efile) boxes)
-			    (not (string= *lisp-compiled-extension*
+			    (not (string= lisp-compiled-extension
 					  (pathname-type (efile-name efile))))))
 		   #'box-absolute
 		   (mapcan #'readme-filelist boxes)

@@ -13,19 +13,19 @@
 
 ;;; Scott Dietzen, Wed Aug 26 17:16:29 1987
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  ;; (use-package :ergolisp)
 
-(export '(token-p make-token token-kind token-subkind 
-	  token-value token-str-value 
-	  bp-p make-bp bp-united-flag bp-value
-	  bp-format bp-crs bp-spaces 
-	  aw-parent aw-oct aw-children aw-outstring
-	  aw-term aw-maxwidth 
-	  leftx rightx topy boty topdent botdent topliney botliney
-	  width height 
+;; (export '(token-p make-token token-kind token-subkind 
+;; 	  token-value token-str-value 
+;; 	  bp-p make-bp bp-united-flag bp-value
+;; 	  bp-format bp-crs bp-spaces 
+;; 	  aw-parent aw-oct aw-children aw-outstring
+;; 	  aw-term aw-maxwidth 
+;; 	  leftx rightx topy boty topdent botdent topliney botliney
+;; 	  width height 
 
-	  print-token print-bp print-oct print-uterm print-aw
-	 ))
+;; 	  print-token print-bp print-oct print-uterm print-aw
+;; 	 ))
 
 
 (defconstant mult-line-threshold 60)
@@ -33,7 +33,8 @@
 (defvar *sbrt-debug* nil
   "Causes more detailed printing of some unparsing structures.")
 
-
+(defvar *formatting-off* nil
+  "Disables formatting line breaks.")
 
 
 

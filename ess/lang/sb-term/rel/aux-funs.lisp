@@ -17,7 +17,7 @@
 ;;; Scott Dietzen, Mon Oct 13 16:05:43 1986
 
 
-(in-package :syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box) ;; (use-package :ergolisp)
 
 
 (defparameter *sb-package* (find-package :sb))
@@ -33,11 +33,11 @@
 
 
 ;;; Global variable set to the grammar structure. 
-(defvar *grammar-term* nil)
+;; (defvar *grammar-term* nil)
 
 
 ;;; Global variable whether target language is case-sensitive. 
-(defvar *grammar-case-sensitive?* nil)
+;; (defvar *grammar-case-sensitive?* nil)
 
 
 ;;; *parser-gen-error* is True when there has been an error found
@@ -119,7 +119,7 @@
 (defvar *nt-lst* nil "Intermediate list where look-nti structures are stored")
 
 
-(defvar *top-level-alts* nil)
+;; (defvar *top-level-alts* nil)
 
 
 (defvar *unparser-gen-error* nil)

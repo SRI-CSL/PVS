@@ -7,13 +7,13 @@
 ;;; Author: Conal.  Last Modified Wed Feb 15 16:54:17 1989
 ;;;
 
-#-gcl
-(defpackage :dlambda #+sbcl (:use :common-lisp :ergolisp))
-(in-package :dlambda) #-sbcl (use-package :ergolisp)
+;; #-gcl
+;; (defpackage :dlambda #+sbcl (:use :common-lisp :ergolisp))
+(in-package :dlambda) ;; #-sbcl (use-package :ergolisp)
 
-(eexport '(dlambda fdlambda ddefun dlet dlet* dcase))
+;; (eexport '(dlambda fdlambda ddefun dlet dlet* dcase))
 
-(eexport '(declare-constructor defreconstr all-constructors))
+;; (eexport '(declare-constructor defreconstr all-constructors))
 
 (defvar *constructors-table* (make-hash-table)
   "The constructor hashtable.  Maps a constructor name to a list containing
@@ -26,8 +26,8 @@ name.")
   ;; This is a macro so that setf will work for declare-constructor
   `(gethash ,constr *constructors-table* :no-info))
 
-(defconstant-if-unbound *reserved-constrs* '(:as)
-  "List of symbols that may not be used as constructors.")
+(alexandria:define-constant reserved-constrs '(:as) :test #'equal
+  :documentation "List of symbols that may not be used as constructors.")
 
 (defmacro defreconstr (constr argcnt &key equal)
   "Define a spine-copying reconstruction function called `re-CONSTR'.  The
@@ -40,7 +40,7 @@ later.  The keyword argument :equal is a list of equality function names to
 use.  If absent, defaults to a list of EQ's.  If a single name is given, it is
 re-interpreted as a list of ARGCNT instances of that name."
   ;; First "normalize" the EQUAL argument.
-  (unless equal (setq equal 'EQ))
+  (unless equal (setq equal 'eq))
   (if (listp equal)
       (assert (= (length equal) argcnt) ()
 	      "defreconstr: ARGCNT (~d) not equal to length of EQUAL ~s"
@@ -55,7 +55,7 @@ re-interpreted as a list of ARGCNT instances of that name."
 		 (olds () (cons (gensym) olds))
 		 (news () (cons (gensym) news)))
 		((= argcnt-left 0) (values olds news)))
-	  `(defun ,(intern (concatenate 'string "RE-" (symbol-name constr)))
+	  `(defun ,(intern (concatenate 'string (string :re-) (symbol-name constr)))
 	     (,obj-arg ,@old-args ,@new-args)
 	     (if (and ,@(mapcar #'(lambda (old new equal)
 				    `(,equal ,old ,new))
@@ -85,18 +85,24 @@ a single name is given, it is re-interpreted as a list of that name."
   (if (or (null rest)
 	  (keywordp (first rest)))
       `(do-declare-constructor 
-	,constr ,selectors 
-	,(intern (format nil
-			 (if (position #\-
-				       (symbol-name constr))
-			     "~:@(~a~)-P"
-			     "~:@(~a~)P")
-			 constr))
-	,@rest)
+	   ,constr ,selectors
+	   #+allegro
+	   ,(if (eq excl:*current-case-mode* :case-sensitive-lower)
+		(intern (format nil (if (position #\- (symbol-name constr))
+					"~(~a~)-p" "~(~a~)p")
+			  constr))
+		(intern (format nil (if (position #\- (symbol-name constr))
+					"~:@(~a~)-P" "~:@(~a~)P")
+			  constr)))
+	   #-allegro
+	   ,(intern (format nil (if (position #\- (symbol-name constr))
+					"~:@(~a~)-P" "~:@(~a~)P")
+			  constr))
+	   ,@rest)
       `(do-declare-constructor
-	,constr ,selectors
-	,(first rest)
-	,@(rest rest))))
+	   ,constr ,selectors
+	   ,(first rest)
+	   ,@(rest rest))))
 
 (defmacro do-declare-constructor (constr selectors discrim &key equal)
   "Helper macro for declare-constructor, in which the discrim argument is
@@ -106,7 +112,7 @@ mandatory.  EQUAL keyword argument defaults to EQ"
 	  ()
 	  "Ill-formed use of declare-constructor: ~s ~s ~s"
 	  constr selectors discrim)
-  (assert (not (member constr *reserved-constrs*))
+  (assert (not (member constr reserved-constrs))
 	  () "Attempt to declare constructor ~a, which is a reserved name"
 	  constr)
   ;; I don't think this value stuff really works right.

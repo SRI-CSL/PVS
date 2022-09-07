@@ -79,9 +79,7 @@ the tape includes documentation and examples.
 accessible via anonymous ftp.")
 
 (defun string-or-name-equal (ssym1 ssym2)
-  (let ((str1 (if (symbolp ssym1) (symbol-name ssym1) ssym1))
-	(str2 (if (symbolp ssym2) (symbol-name ssym2) ssym2)))
-    (string-equal ssym1 ssym2)))
+  (string-equal ssym1 ssym2))
 
 (defun filter-features (features)
   (remove-if-not #'(lambda (feat) (member (car feat) features

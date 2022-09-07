@@ -16,11 +16,11 @@
 ;;; a global language :global.  All other functions just refer to the
 ;;; "language-specific" versions of the ADT.
 
-(in-package :newattr)  (use-package :ergolisp)
+(in-package :newattr) ;; (use-package :ergolisp)
 
-(export '(defgcon defgsyn defgattr))
-(export '(defgcon-deltafun defgsyn-compfun defgattr-attrfun))
-(export '(delta-gcon get-gsyn get-gsyn-argn get-gattr))
+;; (export '(defgcon defgsyn defgattr))
+;; (export '(defgcon-deltafun defgsyn-compfun defgattr-attrfun))
+;; (export '(delta-gcon get-gsyn get-gsyn-argn get-gattr))
 
 ;;; The definition functions.
 ;;; Simple refering to the language-specific macros.

@@ -1,12 +1,12 @@
 ;;; -*- Mode: Lisp; Package: SYNTAX-BOX -*-
 (in-package :syntax-box)  ;; creates package for abstract syntax. 
 
-(in-package :syntax-box)  ;; enters package for generated code.  
+;; (in-package :syntax-box)  ;; enters package for generated code.  
 
-(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
+;; (use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 
-(export '( sb-parse ))
+;; (export '( sb-parse ))
 
 (defparameter sb-abs-syn-package (find-package :syntax-box)) 
 
@@ -74,7 +74,6 @@
           (values abs-syntax *parser-error* error-place error-string error-args)
           (values abs-syntax *parser-error*))))) 
 
-
 (defun !format-command! (rbp &optional (bracket-list (empty-bracket-list)))
   (declare (ignore rbp))
   (declare (ignore bracket-list))
@@ -83,7 +82,7 @@
         v2
         v3
         v4)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4)
+    (declare (ignorable v0 v1 v2 v3 v4))
     (initials-only
      ((la-match ((sbst::/+)))
       (progn
@@ -172,7 +171,7 @@
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5)
+    (declare (ignorable v0 v1 v2 v3 v4 v5))
     (stack-brackets sbst::{ augment)
     (initials
      ((la-match ((sbst::[)))
@@ -570,7 +569,7 @@
         v8
         v9
         v10)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10))
     (initials
      ((la-match ((sbst::{)))
       (progn
@@ -990,7 +989,7 @@
   (let (v0
         v1
         v2)
-    (ergo-ignore-if-unused v0 v1 v2)
+    (declare (ignorable v0 v1 v2))
     (initials-only
      ((la-match ((sbst::!id!)))
       (progn
@@ -1015,7 +1014,7 @@
         v6
         v7
         v8)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8))
     (initials-only
      ((la-match ((sbst::jux)))
       (progn
@@ -1141,7 +1140,7 @@
   (declare (ignore bracket-list))
   (let (v0
         v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (initials-only
      ((la-match ((sbst::!keyword!) (sbst::jux)))
       (progn
@@ -1167,7 +1166,7 @@
   (declare (ignore bracket-list))
   (let (v0
         v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (initials-only
      ((la-match ((sbst::!keyword!) (sbst::jux)))
       (progn
@@ -1201,7 +1200,7 @@
         v4
         v5
         v6)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6))
     (initials-only
      ((la-match ((sbst::precedence)))
       (progn
@@ -1242,8 +1241,7 @@
         v14
         v15
         v16)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
-                           v15 v16)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16))
     (initials-only
      ((la-match ((sbst::spacing)))
       (progn
@@ -1397,7 +1395,7 @@
         v5
         v6
         v7)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7))
     (initials-only
      ((la-match ((sbst::bracketing)))
       (progn
@@ -1431,7 +1429,7 @@
         v4
         v5
         v6)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6)
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6))
     (initials-only
      ((la-match ((sbst::lexical)))
       (progn
@@ -1463,7 +1461,7 @@
   (let (v0
         v1
         v2)
-    (ergo-ignore-if-unused v0 v1 v2)
+    (declare (ignorable v0 v1 v2))
     (initials-only
      ((la-match ((sbst::operators)))
       (progn
@@ -1481,7 +1479,7 @@
   (declare (ignore bracket-list))
   (let (v0
         v1)
-    (ergo-ignore-if-unused v0 v1)
+    (declare (ignorable v0 v1))
     (initials-only
      ((la-match ((sbst::escape)))
       (progn
@@ -1503,7 +1501,7 @@
         v3
         v4
         v5)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5)
+    (declare (ignorable v0 v1 v2 v3 v4 v5))
     (initials-only
      ((la-match ((sbst::comment)))
       (progn
@@ -1537,7 +1535,7 @@
   (let (v0
         v1
         v2)
-    (ergo-ignore-if-unused v0 v1 v2)
+    (declare (ignorable v0 v1 v2))
     (initials-only
      ((la-match ((sbst::external)))
       (progn
@@ -1588,9 +1586,9 @@
         v30
         v31
         v32)
-    (ergo-ignore-if-unused v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
+    (declare (ignorable v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                            v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27
-                           v28 v29 v30 v31 v32)
+                           v28 v29 v30 v31 v32))
     (initials-only
      ((la-match ((sbst::grammar)))
       (progn

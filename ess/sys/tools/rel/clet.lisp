@@ -12,7 +12,7 @@
 
 ;;; Next two forms to be superseded by an eexport eventually.
 ;;(import 'clet* :ergolisp)
-(export 'clet*)
+;; (export 'clet*)
 
 ;;; Evaluate code in a peculiar environment.
 ;;; Var&vals is a list of things of the form (variable value . cleanup)
@@ -48,7 +48,7 @@
 	   
 (defmacro clet* (vars&vals &body code)
     "Like let* but also does unwind-protect's.  C is for Cleanup."
-    (labels ((ignorep (sym) (equal (symbol-name sym) "IGNORE"))
+    (labels ((ignorep (sym) (string-equal (symbol-name sym) "IGNORE"))
 	     (make-ignores (ignore-list)
 		 (if ignore-list
 		     `((declare (ignore . ,ignore-list)))

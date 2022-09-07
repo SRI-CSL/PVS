@@ -8,8 +8,8 @@
 			   #+cmu (cdr (assoc :PVSPATH
 					     extensions::*environment-list*))
 			   ".")))
-(load (format nil "~a/sys/ergolisp/rel/ergolisp" *ess-path*))
-(load (format nil "~a/sys/ergolisp/rel/ergolisp-exports" *ess-path*))
+;; (load (format nil "~a/sys/ergolisp/rel/ergolisp" *ess-path*))
+;; (load (format nil "~a/sys/ergolisp/rel/ergolisp-exports" *ess-path*))
 ;;[Regenerating and Loading box #>B"ERGOMISC".]
 (load (format nil "~a/sys/ergolisp/rel/ergo-system" *ess-path*))
 (load (format nil "~a/sys/ergolisp/rel/ergo-types" *ess-path*))

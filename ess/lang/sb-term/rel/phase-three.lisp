@@ -16,9 +16,9 @@
 
 
 
-(in-package :syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box) ;;  (use-package :ergolisp)
 
-(use-package '(:sb-runtime))
+;; (use-package '(:sb-runtime))
 
 
 ; process-grammar
@@ -1312,5 +1312,6 @@
      ;; (cons (get-as-kind as-pat) (mapcar #'(lambda (x) (as-parse-gen  x
      ;; gram-struct)) (get-as-args as-pat))))))
      
-    
-
+(defun get-term-const-op (as-pat)
+  (declare (ignore as-pat))
+  (break "Needs definition"))

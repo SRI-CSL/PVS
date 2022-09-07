@@ -25,22 +25,22 @@
 ;;; complex clients).
 
 
-(export '(term-equal
-	  search-list-for-term 
-	  search-list-for-term-with-subterm
+;; (export '(term-equal
+;; 	  search-list-for-term 
+;; 	  search-list-for-term-with-subterm
 
-	  mk-sim-term is-sim-term sim-term-op 
-	  mk-leaf-term is-leaf-term leaf-term-kind leaf-term-value
+;; 	  mk-sim-term is-sim-term sim-term-op 
+;; 	  mk-leaf-term is-leaf-term leaf-term-kind leaf-term-value
 
-	  mk-id is-id ds-id 
-	  mk-cid is-cid ds-cid 
-	  mk-number is-number ds-number 
-	  mk-string is-string ds-string 
-	  mk-literal is-literal ds-literal 
-	  mk-keyword is-keyword ds-keyword 
+;; 	  mk-id is-id ds-id 
+;; 	  mk-cid is-cid ds-cid 
+;; 	  mk-number is-number ds-number 
+;; 	  mk-string is-string ds-string 
+;; 	  mk-literal is-literal ds-literal 
+;; 	  mk-keyword is-keyword ds-keyword 
 
-	  is-op ck-term ck-term-op
-	  is-sop ck-term-sop memq-sop))
+;; 	  is-op ck-term ck-term-op
+;; 	  is-sop ck-term-sop memq-sop))
 
 
 

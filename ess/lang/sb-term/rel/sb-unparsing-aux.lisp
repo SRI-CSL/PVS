@@ -1,12 +1,13 @@
-;;; -*- Mode: Lisp; Package: SYNTAX-BOX -*-
-(in-package :syntax-box)  (use-package :ergolisp)
+;;; -*- Mode: Lisp; Package: syntax-box -*-
+(in-package :syntax-box) ;; (use-package :ergolisp)
 
 ;;; The following hacks revise the precedences in the unparser for grammars
 ;;; since there is some wierd anomaly with the parsing of |. 
 
-(defvar sb-bracket-info
-        (make-hash-table :test #'eq))
-;;(clrhash sb-bracket-info)
+;; (defvar sb-bracket-info
+;;   (make-hash-table :test #'eq))
+
+(clrhash sb-bracket-info)
 (mapc
   #'(lambda (entry)
      (set-bracket-info (car entry) (cadr entry) (caddr entry) sb-bracket-info))
@@ -14,10 +15,10 @@
 
 
 (defvar sb-prec-info
-        (make-hash-table :test #'eq))
-;;(clrhash sb-prec-info)
-;;(mapc #'(lambda (nt)
-;;          (init-prec-info nt sb-prec-info))
+  (make-hash-table :test #'eq))
+;; (clrhash sb-prec-info)
+;; (mapc #'(lambda (nt)
+;;           (init-prec-info nt sb-prec-info))
 ;;       '(pattern augment))
 (mapc
   #'(lambda (entry)

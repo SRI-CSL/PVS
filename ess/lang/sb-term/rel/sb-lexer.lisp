@@ -1,12 +1,12 @@
 ;;; -*- mode: lisp; package: syntax-box -*-
 (in-package :syntax-box)  ;; creates package for abstract syntax. 
 
-(in-package :syntax-box)  ;; enters package for generated code.  
+;; (in-package :syntax-box)  ;; enters package for generated code.  
 
-(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
+;; (use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 
-(export '())
+;; (export '())
 
 (defparameter sb-keyword-list
               '(sbst::} sbst::{ sbst::|(| sbst::|,| sbst::|)| sbst::append

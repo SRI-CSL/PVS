@@ -13,20 +13,20 @@
 
 ;;; Scott Dietzen, Tue Oct  6 15:32:22 1987
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime) ;; (use-package :ergolisp)
 
 
 ;;; The following is a hack to avoid the problems inherent in the circularity
 ;;; between the two packages. 
 
-(cond ((find-package :newattr))
-      (t
-       (make-package :newattr)))
+;; (cond ((find-package :newattr))
+;;       (t
+;;        (make-package :newattr)))
 
 
-(export '(theuterm theaw
-	  memo-uterm memo-aw
-	  *disable-caching* *disable-uterm-caching* *disable-aw-caching*))
+;; (export '(theuterm theaw
+;; 	  memo-uterm memo-aw
+;; 	  *disable-caching* *disable-uterm-caching* *disable-aw-caching*))
 
 
 

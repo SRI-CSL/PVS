@@ -13,11 +13,11 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :dlambda-lib #+sbcl (:use :common-lisp :ergolisp))
-(in-package :dlambda-lib) #-sbcl (use-package :ergolisp)
+;; #-gcl
+;; (defpackage :dlambda-lib #+sbcl (:use :common-lisp :ergolisp))
+(in-package :dlambda-lib) ;; #-sbcl (use-package :ergolisp)
 
-(eexport '(re-cons re-acons re-mapcar))
+;; (eexport '(re-cons re-acons re-mapcar))
 
 
 (declare-constructor cons (first rest))

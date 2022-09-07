@@ -29,17 +29,17 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :type-check #+sbcl (:use :common-lisp :ergolisp))
-(in-package :type-check) #-sbcl (use-package '(:ergolisp))
+;; #-gcl
+;; (defpackage :type-check #+sbcl (:use :common-lisp :ergolisp))
+(in-package :type-check) ;;#-sbcl (use-package '(:ergolisp))
 
 ;;; Programming support
-(eexport '(declare-ftype proclaim-ftype))
+;; (eexport '(declare-ftype proclaim-ftype))
 
 ;;; Runtime environment support.  (Should they be eexported?)
-(eexport '(undeclare-ftype
-	   type-check type-check-functions type-uncheck
-	   *type-check-exceptions*))
+;; (eexport '(undeclare-ftype
+;; 	   type-check type-check-functions type-uncheck
+;; 	   *type-check-exceptions*))
 
 
 ;;;; Programming support

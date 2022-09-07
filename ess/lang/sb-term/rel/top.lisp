@@ -25,9 +25,9 @@
 ;;;    Added calls to preprocessing phase. 
 
 
-(in-package :syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box) ;; (use-package :ergolisp)
 
-(export '(sb sb-make))
+;; (export '(sb sb-make))
 
 (defparameter sb-version "1 Feb 88")
 
@@ -274,7 +274,6 @@ and SUFFIX (without the file type)."
     
     (if (string-empty? grammar-file)
 	(setq grammar-file (lang:lang-grammar-file lang)))
-
     (if (and info? (string-empty? info-file))
 	(setq info-file (default-output-filename working-dir
 			  (lang-conc-name lang) "-info")))
@@ -304,7 +303,6 @@ and SUFFIX (without the file type)."
 	    (cond ((find-package *code-package-spec*))
 		  (t (make-package *code-package-spec*))))
 	   (*use-packages-spec* (lang:lang-use-packages lang)))
-      
       (use-package *use-packages-spec* *abs-syn-lisp-package*)
       (use-package *use-packages-spec* *code-lisp-package*)
 
@@ -393,10 +391,10 @@ and SUFFIX (without the file type)."
 				     (unparser-file nil)
 				     (unparse-nts nil))
   "SB-BACKEND coordinates code generation for the syntax box." 
-  (block error-exit-block        ;; Forgive me father, for I have sinned...
+  (block error-exit-block        ;; Forgive me father, for I have sinned...0
     (get-external-grammars-info lang)
     (format t "   writing code for package ~A.~%" *code-package-spec*)
-    (format t "   using packages ~S~%" *use-packages-spec*)
+    ;;(format t "   using packages ~S~%" *use-packages-spec*)
     (gen-var/const-names (lang:lang-conc-name lang))
 
     (when sorts-file

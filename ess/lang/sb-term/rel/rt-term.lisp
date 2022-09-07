@@ -17,13 +17,13 @@
 ;;;   output).   
 ;;; Scott Dietzen, Fri Oct 10 14:16:59 1986
 
+(in-package :sb-runtime)
 
+;; #+sbcl (in-package :sb-runtime)
+;; #-sbcl (in-package :sb-runtime :nicknames '(:rt-sb :rtsb :sb-rt :sbrt))
+;; (use-package :ergolisp)
 
-#+sbcl (in-package :sb-runtime)
-#-sbcl (in-package :sb-runtime :nicknames '(:rt-sb :rtsb :sb-rt :sbrt))
-(use-package :ergolisp)
-
-(use-package '(:term :occ :oper))
+;; (use-package '(:term :occ :oper))
 
 
 
@@ -33,23 +33,24 @@
 ;;; the SBST package does not use the LISP package, so we can get repeatable
 ;;; behavior on different machines.
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *sbst-package* 
-    (cond ((find-package :sbst))
-	  (t
-	   (make-package :sbst
-			 :nicknames '(:sb-st :sb-symbol-table) :use '())))))
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (defvar *sbst-package* 
+;;     (cond ((find-package :sbst))
+;; 	  (t
+;; 	   (make-package :sbst
+;; 			 :nicknames '(:sb-st :sb-symbol-table) :use '())))))
 
+(defvar *sbst-package* (find-package :sbst))
 
 (defvar *no-sb-system-graphics* nil)
 ;;; See rt-format.lisp for explanation. 
 
 
 
-(export '(*sbst-package* 
-          apply-lexical-terminal-constructor
-          apply-lexical-terminal-discriminator
-          apply-lexical-terminal-destructor))
+;; (export '(*sbst-package* 
+;;           apply-lexical-terminal-constructor
+;;           apply-lexical-terminal-discriminator
+;;           apply-lexical-terminal-destructor))
 
 
 
@@ -79,8 +80,3 @@
     (sbst::number (ds-number arg))
     (sbst::literal (ds-literal arg))
     (sbst::keyword (ds-keyword arg))))
-
-
-
-
-

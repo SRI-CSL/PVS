@@ -14,7 +14,7 @@
 
 ;;; This is the unparser generator written by Scott Dietzen.
 
-(in-package :syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  ;; (use-package :ergolisp)
 
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
@@ -36,7 +36,7 @@
 
 (defvar *nt-name* ())
 
-(defvar *top-level-alts* ())
+;; (defvar *top-level-alts* ())
 
 ;;;    @Hack: Documented in inter-phase.
 
@@ -487,7 +487,10 @@
       (sb-write (pprint (car routine-runner)
 			output-file)))
     (terpri output-file)))
-    
+
+;; (defun unp-code-revision (nt-unp-routines)
+;;   (declare (ignore nt-unp-routines))
+;;   (break "Need definition for unp-code-revision"))
     
 
 
@@ -509,10 +512,10 @@
 			 (result () (cons (var i) result)))
 			((= i -1) result)))
 		 ;; suppresses compiler warnings if available
-		 (ergo-ignore-if-unused 
+		 (declare (ignorable
 		  ,@(do ((i (1- (get-nt-slot-total nt)) (1- i))
 			 (result () (cons (var i) result)))
-			((= i -1) result)))
+			((= i -1) result))))
 		 (setf ,(var (cond ((and (member (pattern-kind nt-pat)
 					       '(alt opt) :test #'eq)
 					 (not (member nt-pat
@@ -639,7 +642,7 @@
 	  ,(intern (if *grammar-case-sensitive?*
 		       (symbol-name nt)
 		       #+(and allegro (version>= 6))
-		       (string-dwoncase (symbol-name nt))
+		       (string-downcase (symbol-name nt))
 		       #-(and allegro (version>= 6))
 		       (string-upcase (symbol-name nt)))
 		   (lang:get-lang-abs-syn-package lg-name))

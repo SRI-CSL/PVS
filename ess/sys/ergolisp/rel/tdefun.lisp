@@ -14,11 +14,11 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage :tdefun #+sbcl (:use :common-lisp :ergolisp))
-(in-package :tdefun) #-sbcl (use-package :ergolisp)
+;; #-gcl
+;; (defpackage :tdefun #+sbcl (:use :common-lisp :ergolisp))
+(in-package :tdefun) ;; #-sbcl (use-package :ergolisp)
 
-(eexport '(tdefun tdefvar defstype))
+;; (eexport '(tdefun tdefvar defstype))
 
 (defmacro tdefun (name arg-pats type-spec doc-string &rest rest)
   "Like ddefun, but list of arg patterns is followed by a type specification, as

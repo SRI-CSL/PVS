@@ -11,11 +11,11 @@
 ;;; Attribute examples and extensions.
 ;;; Author: fp
 
-(in-package :newattr)  (use-package :ergolisp)
+(in-package :newattr) ;; (use-package :ergolisp)
 
-(export '(empty-gcon defemptysyn empty-gsyn))
-(export '(termself))
-(export '(undefined mvb mvs vls))
+;; (export '(empty-gcon defemptysyn empty-gsyn))
+;; (export '(termself))
+;; (export '(undefined mvb mvs vls))
 
 
 ;;; Some useful macros.

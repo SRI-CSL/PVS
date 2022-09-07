@@ -19,13 +19,14 @@
 ;;; features from the terms, so it is the default method for storing
 ;;; attributes.
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package :term)
-    (make-package :term :nicknames '(:gterm)
-		  :use '(:cl-user :common-lisp :ergolisp))))
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (unless (find-package :term)
+;;     (make-package :term :nicknames '(:gterm)
+;; 		  :use '(:cl-user :common-lisp :ergolisp))))
+
 (in-package :term)
 
-(export '(attr-clear-one attr-clear-all))
+;; (export '(attr-clear-one attr-clear-all))
 
 (defvar *attr-table*)			; The hash table
 

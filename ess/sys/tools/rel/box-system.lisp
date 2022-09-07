@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: TOOLS -*-
+;;; -*- Mode: Lisp; Package: tools -*-
 ;;;
 ;;; The system-dependent stuff that is used by the box facility.
 ;;;
@@ -190,11 +190,10 @@ Other keys are allowed, but will be ignored."
   (when lisp-compiler
     (when boot
       (load source-file))
-    (let ((*readtable* (if readtable readtable *readtable*))
-	  #+sbcl (*compiler-progress* messages))
+    (let ((*readtable* (if readtable readtable *readtable*)))
 	(compile-file source-file :output-file compiled-file
 	     #+(or lucid allegro) :messages #+(or lucid allegro) messages
-	     #+cmu :progress #+cmu messages
+	     #+(or sbcl cmu) :progress #+(or sbcl cmu) messages
 	     ))
     )
   ;;  #+kcl (rename-file (merge-pathnames ".o" source-file) compiled-file)
@@ -234,8 +233,9 @@ Other keys are allowed, but will be ignored."
 
 (defun c-make (&rest stuff &key source-file object-file
 		     #|header-file|# (ccom t)
-		     (compiler-options *c-compiler-options*)
-		     &allow-other-keys)
+			     ;;(compiler-options *c-compiler-options*)
+			     &allow-other-keys)
+  (declare (ignore stuff))
   (when (and source-file object-file ccom)
     (let* ((arguments `("-c" ,source-file #+sun "-DSUN"
 			"-o" ,object-file
@@ -310,32 +310,32 @@ foreign function, so you'll surely lose.~%")
   (assert (equal (baz 3) 5))
   (assert (equal (bar2 3 "ab") 7)))
 
-(defparameter *default-libraries* '("-lc")
-  "The default libraries to use when loading .o files.")
+;; (defparameter *default-libraries* '("-lc")
+;;   "The default libraries to use when loading .o files.")
 
-(defun c-load (&rest stuff &key object-file (libraries *default-libraries*)
-		     (cload t)
-		     ;; The following should be a list of strings,
-		     ;; which will be the C names of the functions we
-		     ;; intend to use.  This seems to be necessary for
-		     ;; Allegro's foreign function interface if we
-		     ;; want to be able to regenerate and reload the
-		     ;; file without user intervention.
-		     (entry-points '())
-		     &allow-other-keys)
-  #+lucid (declare (ignore entry-points))
-  (when (and object-file cload)
-    #+lucid (load-foreign-files `(,object-file) libraries)
-    #+allegro
-    (progn
-      (mapc #'(lambda (entry-point)
-		(ff:remove-entry-point (ff:convert-to-lang
-					entry-point :language :c)))
-	    entry-points)
-      (load object-file)
-      (when (and libraries (not (equal libraries '("-lc"))))
-	(warn "Don't know how to load libraries ~s in allegro." libraries))))
-  nil)
+;; (defun c-load (&rest stuff &key object-file (libraries *default-libraries*)
+;; 		     (cload t)
+;; 		     ;; The following should be a list of strings,
+;; 		     ;; which will be the C names of the functions we
+;; 		     ;; intend to use.  This seems to be necessary for
+;; 		     ;; Allegro's foreign function interface if we
+;; 		     ;; want to be able to regenerate and reload the
+;; 		     ;; file without user intervention.
+;; 		     (entry-points '())
+;; 		     &allow-other-keys)
+;;   #+lucid (declare (ignore entry-points))
+;;   (when (and object-file cload)
+;;     #+lucid (load-foreign-files `(,object-file) libraries)
+;;     #+allegro
+;;     (progn
+;;       (mapc #'(lambda (entry-point)
+;; 		(ff:remove-entry-point (ff:convert-to-lang
+;; 					entry-point :language :c)))
+;; 	    entry-points)
+;;       (load object-file)
+;;       (when (and libraries (not (equal libraries '("-lc"))))
+;; 	(warn "Don't know how to load libraries ~s in allegro." libraries))))
+;;   nil)
 
 ;;; Timing functions.  These are here because file-server
 ;;; and machine may be out of synch, leading to problems with
@@ -388,8 +388,8 @@ Currently only #'get-universal-time is supported.")
 ;;; all source files are .lisp, so we need only one set.
 ;;; Recommend not changing the source extension. -fp
 
-(defconstant-if-unbound *lisp-source-extension* "lisp")
-(defconstant-if-unbound *lisp-compiled-extension*
+(alexandria:define-constant lisp-source-extension "lisp" :test #'string=)
+(alexandria:define-constant lisp-compiled-extension
   #+(and allegro sparc) "fasl"		; Sun4
   #+(and allegro rios) "rfasl"		; PowerPC/RS6000
   #+(and allegro hpux) "hfasl"		; HP 9000
@@ -414,21 +414,22 @@ Currently only #'get-universal-time is supported.")
   #+(and clisp pc386) "clfasl"
   #+harlequin-common-lisp "wfasl"
   #+clisp "fas"
-  )
+  :test #'string=)
+
 
 #-(or lucid allegro cmu sbcl ibcl kcl harlequin-common-lisp)
-(warn "You may need to redefine the constant tools:*lisp-compiled-extension*
+(warn "You may need to redefine the constant tools:lisp-compiled-extension
 for this implementation of Lisp in the file sys/tools/rel/box-system.lisp.
 Right now it is assumed to be \"bin\".")
 
-(defconstant-if-unbound *lisp-source-suffix-string*
-  (concatenate 'string "." *lisp-source-extension*))
+(alexandria:define-constant lisp-source-suffix-string
+  (concatenate 'string "." lisp-source-extension) :test #'string=)
 
-(defconstant-if-unbound *lisp-compiled-suffix-string*
-  (concatenate 'string "." *lisp-compiled-extension*))
+(alexandria:define-constant lisp-compiled-suffix-string
+  (concatenate 'string "." lisp-compiled-extension) :test #'string=)
 
-(defconstant-if-unbound *lisp-source-extension-pathname*
-  (make-pathname :type *lisp-source-extension*))
+(alexandria:define-constant lisp-source-extension-pathname
+  (make-pathname :type lisp-source-extension) :test #'equal)
 
-(defconstant-if-unbound *lisp-compiled-extension-pathname*
-  (make-pathname :type *lisp-compiled-extension*))
+(alexandria:define-constant lisp-compiled-extension-pathname
+  (make-pathname :type lisp-compiled-extension) :test #'equal)

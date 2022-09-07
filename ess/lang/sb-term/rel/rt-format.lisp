@@ -13,18 +13,18 @@
 
 ;;; Scott Dietzen, Wed Aug 26 17:16:29 1987
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  ;;(use-package :ergolisp)
 
-(export '(
-	  format-uterm 
-	  *unparser-op-list* *spacing-info* *formatting-off*
-	  *sb-format-warnings?* *zero-space-bp*
-	  sb-deffontheight sb-deffontwidth ;; do no need to export.
-	  oct-points
-	 ))
+;; (export '(
+;; 	  format-uterm 
+;; 	  *unparser-op-list* *spacing-info* *formatting-off*
+;; 	  *sb-format-warnings?* *zero-space-bp*
+;; 	  sb-deffontheight sb-deffontwidth ;; do no need to export.
+;; 	  oct-points
+;; 	 ))
 
-(defvar *formatting-off* nil
-  "Disables formatting line breaks.")
+;; (defvar *formatting-off* nil
+;;   "Disables formatting line breaks.")
 
 (defvar *unparser-op-list* nil
   "Bound by unparsers and used to recognize those keywords distinguished as

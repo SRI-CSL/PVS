@@ -16,7 +16,7 @@
 
 ;;;;    Basic Function: Collapse fragments into lisp functions
 
-(in-package :syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  ;; (use-package :ergolisp)
 
 
 ; The purpose of collapse is to take the fragments produced by process-grammar
@@ -74,8 +74,7 @@
 	(let ,(make-let-variables number-of-slots)
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 	  ,branch-list
 	  ,nt-as
 	      ; final result is always in slot 0
@@ -136,8 +135,7 @@
 	(let ,(make-let-variables number-of-slots)
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 
 	     ; keep track of all the leading brackets.
 	  (stack-brackets ,leading-bracket ,nt)
@@ -305,8 +303,7 @@
 	(let ,var-list
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 
 	  ,init-list
 	  ,nt-as
@@ -437,8 +434,7 @@
 	(let ,var-list
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 
 	     ; keep track of all leading brackets.
 	  (stack-brackets ,leading-bracket ,nt)

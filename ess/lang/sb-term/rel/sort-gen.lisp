@@ -14,9 +14,9 @@
 ;;; Scott Dietzen, Sat Jun 13 15:43:19 1987
 
 
-(in-package :syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box)  ;; (use-package :ergolisp)
 
-(use-package '(:sb-runtime :sort :oper))
+;; (use-package '(:sb-runtime :sort :oper))
 
 
 
@@ -35,8 +35,8 @@
 (defvar *union-to-sort-assoc* ())
 
 
-(defvar *current-nt-name* nil
-  "Name of the current nonterminal used in error reporting.")
+;; (defvar *current-nt-name* nil
+;;   "Name of the current nonterminal used in error reporting.")
 
 
 (defvar *pattern-augment-checked* (make-hash-table :test #'eq))

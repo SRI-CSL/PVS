@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: ERGO-SYSTEM -*-
+;;; -*- Mode: Lisp; Package: ergo-system -*-
 ;;;
 ;;; Ergo modification that may be system specific.
 ;;; This should be changed to another package which is imported by
@@ -16,18 +16,13 @@
 ;;; ******************************************************************* ;;;
 
 
-#-gcl
-(defpackage :ergo-system #+sbcl (:use :common-lisp :ergolisp))
+;; #-gcl
+;; (defpackage :ergo-system #+sbcl (:use :common-lisp :ergolisp))
 (in-package :ergo-system)
-#-sbcl (use-package :ergolisp)
+;; #-sbcl (use-package :ergolisp)
 
-#+harlequin-common-lisp
-(eexport '(assq))
-(eexport '(ergo-disksave def-disksave-hook mover))
-(eexport '(ergo-ignore-if-unused))
+;; (eexport '(ergo-disksave def-disksave-hook mover))
 
-#+harlequin-common-lisp
-(defun assq (item list) (assoc item list :test #'eq))
 ;;; If there is something that you want to happen when the lisp image
 ;;; restarts, wrap it in a def-disksave-hook and put it on the top
 ;;; level.  Beware that if you load a file containing a
@@ -123,14 +118,10 @@ in the file sys/ergolisp/rel/ergo-system.lisp.")
     (when (probe-file file-name)
       (rename-file file-name next-file-name))))
 
-(eval-when (:compile-toplevel :execute :load-toplevel)
-  (defmacro ergo-ignore-if-unused (&rest vars)
-    #+excl				; for allegro
-    nil ;;`(declare (excl:ignore-if-unused ,@vars))
-    #+(or cmu sbcl)
-    nil
-    #+lucid
-    `(declare (ignore ,@vars))		; lucid inconsistency
-    #-(or excl lucid cmu sbcl)
-    `(declare))
-  )
+;; It is illegal to have a macro that expands to a declare form
+;; Replaced with (declare (ignorable ...))
+
+;; (eval-when (:compile-toplevel :execute :load-toplevel)
+;;   (defmacro ergo-ignore-if-unused (&rest vars)
+;;     `(declare (ignorable ,@vars))
+;;   ))

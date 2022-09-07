@@ -15,13 +15,13 @@
 
 ;;; Parser Runtime System
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  ;;(use-package :ergolisp)
 
-(export '(lbp lam-error
-	      *parser-error-count* *parser-error* *parser-return-errors*
-	      *ask-about-bad-tokens*
-	      *parser-abort-threshold* parser-abort-catch initial-error
-	      medial-error mk-null do-syntax-error))
+;; (export '(lbp lam-error
+;; 	      *parser-error-count* *parser-error* *parser-return-errors*
+;; 	      *ask-about-bad-tokens*
+;; 	      *parser-abort-threshold* parser-abort-catch initial-error
+;; 	      medial-error mk-null do-syntax-error))
 
 (defvar *parser-error*)
 (defvar *parser-return-errors*)

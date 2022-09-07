@@ -16,46 +16,46 @@
 
 (in-package :sb-runtime)
 
-(use-package '(:oper :term :sort))
+;; (use-package '(:oper :term :sort))
 
-(export '(*bracket-info* *prec-info* *pat-nesting*
-	  *key-token-map* *lt-token-map* *key-esc-token-map* *lt-esc-token-map*
-	  *case-sensitive* *escape-character* *restricted-chars*
-	  *sb-print-length* *sb-print-depth*
-	  *current-print-length* *current-print-depth*
-	  *string-char* *keyword-char* *literal-char*
-	  *unparse-style* *parens-off* *no-escapes*
- 	  *uterm-bp-count* *uterm-son-count* *uterm-nt-name*
-	  bracket-nesting-const
-	  *as-stack* *uterm*
-	  *apply-lt-dis-fun* *apply-lt-des-fun*
-	  *apply-lt-token-cons-fun* apply-lt-token-constructor
-	  dis-op get-term-args mk-unp-rept
-	  init-as-stack as-peek as-pop as-push as-push-args
-	  token
-	  mk-keyword-token mk-seq-bp
-	  uterm
-	  make-uterm-lt init-nt-uterm queue-uterm-son
-	  queue-uterm-bp make-spec-bp
-	  set-bracket-info set-prec-info init-prec-info
-	  unp-keyword unp-jux-keyword dis-lt unp-lt
-	  nt-unp unp-uterm upats
-	  unp-nt unp-ext-nt unp-opt
-	  unp-alt unp-rept unp-double-rept unp-seq unp-jux 
-	  match-id match-num match-str match-lit
-	  unp-base-id unp-base-num unp-base-str unp-base-lit
-	  unp-list unp-cons unp-bcons
-	  unp-elist-const unp-null-const unp-list-const unp-term-const
-	  unp-name unp-bind
-          dis-opt unp-opt-aug dis-alt unp-alt-aug 
-	  bracket-uterm
-	  toss-name toss-rept
+;; (export '(*bracket-info* *prec-info* *pat-nesting*
+;; 	  *key-token-map* *lt-token-map* *key-esc-token-map* *lt-esc-token-map*
+;; 	  *case-sensitive* *escape-character* *restricted-chars*
+;; 	  *sb-print-length* *sb-print-depth*
+;; 	  *current-print-length* *current-print-depth*
+;; 	  *string-char* *keyword-char* *literal-char*
+;; 	  *unparse-style* *parens-off* *no-escapes*
+;;  	  *uterm-bp-count* *uterm-son-count* *uterm-nt-name*
+;; 	  bracket-nesting-const
+;; 	  *as-stack* *uterm*
+;; 	  *apply-lt-dis-fun* *apply-lt-des-fun*
+;; 	  *apply-lt-token-cons-fun* apply-lt-token-constructor
+;; 	  dis-op get-term-args mk-unp-rept
+;; 	  init-as-stack as-peek as-pop as-push as-push-args
+;; 	  token
+;; 	  mk-keyword-token mk-seq-bp
+;; 	  uterm
+;; 	  make-uterm-lt init-nt-uterm queue-uterm-son
+;; 	  queue-uterm-bp make-spec-bp
+;; 	  set-bracket-info set-prec-info init-prec-info
+;; 	  unp-keyword unp-jux-keyword dis-lt unp-lt
+;; 	  nt-unp unp-uterm upats
+;; 	  unp-nt unp-ext-nt unp-opt
+;; 	  unp-alt unp-rept unp-double-rept unp-seq unp-jux 
+;; 	  match-id match-num match-str match-lit
+;; 	  unp-base-id unp-base-num unp-base-str unp-base-lit
+;; 	  unp-list unp-cons unp-bcons
+;; 	  unp-elist-const unp-null-const unp-list-const unp-term-const
+;; 	  unp-name unp-bind
+;;           dis-opt unp-opt-aug dis-alt unp-alt-aug 
+;; 	  bracket-uterm
+;; 	  toss-name toss-rept
 
-	  ellipsis-token cr-token unindent-token
-	  tab-left-token tab-right-token untab-token
+;; 	  ellipsis-token cr-token unindent-token
+;; 	  tab-left-token tab-right-token untab-token
 
-	  vnil
-	  ))
+;; 	  vnil
+;; 	  ))
 
 (defvar vnil nil)			; HACK, to avoid warning message for
 					; nonsense variables in generated
@@ -63,8 +63,8 @@
 
 
 
-(defvar *unparse-style* nil
-  "Unparsing pattern symbol to select for unparsing.")
+;; (defvar *unparse-style* nil
+;;   "Unparsing pattern symbol to select for unparsing.")
 (defvar *parens-off* nil
   "Disables the insertion of parens during unparsing.")
 (defvar *no-escapes* nil
@@ -117,18 +117,24 @@
 
 ;;; Just so we don't repeatedly cons identical tokens.
 
-(defconstant-if-unbound ellipsis-token
-  (make-token :kind :lt :subkind :string :value "#"))
-(defconstant-if-unbound cr-token
-  (make-token :kind :whitespace :subkind :cr))
-(defconstant-if-unbound unindent-token
-  (make-token :kind :whitespace :subkind :unindent))
-(defconstant-if-unbound tab-left-token
-  (make-token :kind :whitespace :subkind :tab-left))
-(defconstant-if-unbound tab-right-token
-  (make-token :kind :whitespace :subkind :tab-right))
-(defconstant-if-unbound untab-token
-  (make-token :kind :whitespace :subkind :untab))
+(alexandria:define-constant ellipsis-token
+    (make-token :kind :lt :subkind :string :value "#")
+  :test #'equalp)
+(alexandria:define-constant cr-token
+    (make-token :kind :whitespace :subkind :cr)
+  :test #'equalp)
+(alexandria:define-constant unindent-token
+    (make-token :kind :whitespace :subkind :unindent)
+  :test #'equalp)
+(alexandria:define-constant tab-left-token
+    (make-token :kind :whitespace :subkind :tab-left)
+  :test #'equalp)
+(alexandria:define-constant tab-right-token
+    (make-token :kind :whitespace :subkind :tab-right)
+  :test #'equalp)
+(alexandria:define-constant untab-token
+    (make-token :kind :whitespace :subkind :untab)
+  :test #'equalp)
 
 
 

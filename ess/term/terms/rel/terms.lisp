@@ -46,17 +46,17 @@
 ;;; complex clients).
 
 
-(export '(term-argn term-arity
-	  term-arg0 term-arg1 term-arg2 term-arg3 term-arg4
-	  term-arg5 term-arg6 term-arg7 term-arg8 term-arg9
-	  term-arity0? term-arity1? term-arity2? term-arity3? term-arity4?
-	  term-arity5? term-arity6? term-arity7? term-arity8? term-arity9?
-	  sexp-to-term term-to-sexp
-	  print-term-hook sbrt-print-term-hook standard-print-term
-	  *disable-auto-unparsing*
-	  get-subterm replace-subterm replace-argn))
+;; (export '(term-argn term-arity
+;; 	  term-arg0 term-arg1 term-arg2 term-arg3 term-arg4
+;; 	  term-arg5 term-arg6 term-arg7 term-arg8 term-arg9
+;; 	  term-arity0? term-arity1? term-arity2? term-arity3? term-arity4?
+;; 	  term-arity5? term-arity6? term-arity7? term-arity8? term-arity9?
+;; 	  sexp-to-term term-to-sexp
+;; 	  print-term-hook sbrt-print-term-hook standard-print-term
+;; 	  *disable-auto-unparsing*
+;; 	  get-subterm replace-subterm replace-argn))
 
-(import '(*print-level* *print-length*))
+;; (import '(*print-level* *print-length*))
 
 
 ;; #+(and allegro-version>= (version>= 8 2))
@@ -212,10 +212,10 @@
   "Convert an sexp into a term."
   (mk-term (oper:sexp-to-oper (car sexp)) (mapcar #'sexp-to-term (cdr sexp))))
 
-(defun term-to-sexp (term)
-  "Convert an sexp into a term."
-  (cons (oper:oper-to-sexp (term-op term))
-	(mapcar #'term-to-sexp (term-args term))))
+;; (defun term-to-sexp (term)
+;;   "Convert an sexp into a term."
+;;   (cons (oper:oper-to-sexp (term-op term))
+;; 	(mapcar #'term-to-sexp (term-args term))))
 
 
 (defun term-to-sexp-aux (term depth)
@@ -240,7 +240,6 @@
 
 (defun new-print-term (term stream depth)
   "Uses term-to-sexp to show a nice printed representation of TERM."  
-  (declare (ignore depth))
   (if (fboundp 'print-term-hook)
       (print-term-hook term stream depth)
       (if (and (not *disable-auto-unparsing*)
@@ -248,10 +247,10 @@
 	  (sbrt-print-term-hook term stream depth)
 	  (standard-print-term term stream depth))))
 
-(defun standard-print-term (term stream depth)
-  "The standard printing function for terms"
-  (write-string "#!" stream)
-  (write (term-to-sexp-aux term depth) :stream stream :pretty nil))
+;; (defun standard-print-term (term stream depth)
+;;   "The standard printing function for terms"
+;;   (write-string "#!" stream)
+;;   (write (term-to-sexp-aux term depth) :stream stream :pretty nil))
 
 (defun read-sexp-to-term (stream subchar arg)
   (declare (ignore subchar arg))

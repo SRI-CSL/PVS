@@ -1,12 +1,12 @@
 ;;; -*- mode: lisp; package: syntax-box -*-
 (in-package :syntax-box)  ;; creates package for abstract syntax. 
 
-(in-package :syntax-box)  ;; enters package for generated code.  
+;;(in-package :syntax-box)  ;; enters package for generated code.  
 
-(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
+;;(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 
-(export '())
+;;(export '())
 
 ;; #+(and allegro-version>= (version>= 8 2))
 ;; (eval-when (:execute :compile-toplevel :load-toplevel)

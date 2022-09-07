@@ -14,13 +14,13 @@
 ;;;
 ;;; Author: fp
 
-(in-package :newattr)  (use-package :ergolisp)
+(in-package :newattr) ;; (use-package :ergolisp)
 
-(export '(sort))			; Global context and attribute.
+;; (export '(sort))			; Global context and attribute.
 
-(export '(numval idsym strval))		; To retrieve value of a number.
-					; symbol of an identifier.
-					; Lisp string of a string.
+;; (export '(numval idsym strval))		; To retrieve value of a number.
+;; 					; symbol of an identifier.
+;; 					; Lisp string of a string.
 
 (defgattr sort empty-gsyn
   "The global attribute of the sort of a term.")

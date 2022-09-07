@@ -1,15 +1,15 @@
 ;;; -*- Mode: Lisp; Package: CONSTRG -*-
-#-sbcl (in-package :constr-term-rep)  ;; creates package for abstract syntax. 
-(defpackage :constrg
-  #+sbcl (:use :common-lisp :ergolisp :newattr :lang :sb-runtime
-	       :sort :term :occ :oper))
+;; #-sbcl (in-package :constr-term-rep)  ;; creates package for abstract syntax. 
+;; (defpackage :constrg
+;;   #+sbcl (:use :common-lisp :ergolisp :newattr :lang :sb-runtime
+;; 	       :sort :term :occ :oper))
 (in-package :constrg)  ;; enters package for generated code.  
 
-#-sbcl
-(use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
+;; #-sbcl
+;; (use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
 
 
-(export '())
+;; (export '())
 
 ;; #+(and allegro-version>= (version>= 8 2))
 ;; (eval-when (:execute :compile-toplevel :load-toplevel)

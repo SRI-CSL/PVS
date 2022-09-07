@@ -19,23 +19,24 @@
 ;;; fp , Mon Jan  2 11:02:12 1989
 
 ;;(in-package :sb :nicknames '(:syntax-box))
+(in-package :syntax-box)
 
-#+sbcl
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package :syntax-box)
-    (defpackage :syntax-box (:nicknames :sb)
-      (:use :common-lisp :ergolisp :oper :term :sort :sb-runtime :lang)
-      (:shadowing-import-from :sb-int))))
-#+sbcl (in-package :syntax-box)
-#-sbcl (in-package :syntax-box :nicknames '(:sb))
+;; #+sbcl
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (unless (find-package :syntax-box)
+;;     (defpackage :syntax-box (:nicknames :sb)
+;;       (:use :common-lisp :ergolisp :oper :term :sort :sb-runtime :lang)
+;;       (:shadowing-import-from :sb-int))))
+;; #+sbcl (in-package :syntax-box)
+;; #-sbcl (in-package :syntax-box :nicknames '(:sb))
 
-#-sbcl (use-package :ergolisp)
-#-sbcl (use-package '(:oper :term :sort :sb-runtime :lang))
+;; #-sbcl (use-package :ergolisp)
+;; #-sbcl (use-package '(:oper :term :sort :sb-runtime :lang))
 
 (defparameter *sb-package* (find-package :sb))
 
-(defvar *abs-syn-lisp-package*
-  "Package of client abstract syntax.")
+;; (defvar *abs-syn-lisp-package*
+;;   "Package of client abstract syntax.")
 
 (defvar *code-lisp-package*
   "Package of client code.")
@@ -50,7 +51,7 @@
 
 (defvar *language*)
 
-(import '(*sbst-package*))
+;; (import '(*sbst-package*))
 
 
 

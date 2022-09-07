@@ -25,17 +25,17 @@
 ;;; complex clients).
 
 
-(export '(occ occp check-occ-type
-	  make-empty-occ is-empty-occ
-	  nil-occ null-occ
-	  occ-path occ-parent occ-top occ-rest
-	  occ-push 
-	  occ-push0 occ-push1 occ-push2 occ-push3 occ-push4
-	  occ-push5 occ-push6 occ-push7 occ-push8 occ-push9
-	  occ-equal
-	  occ-to-list list-to-occ
-	  occ-diff
-	  ))
+;; (export '(occ occp check-occ-type
+;; 	  make-empty-occ is-empty-occ
+;; 	  nil-occ null-occ
+;; 	  occ-path occ-parent occ-top occ-rest
+;; 	  occ-push 
+;; 	  occ-push0 occ-push1 occ-push2 occ-push3 occ-push4
+;; 	  occ-push5 occ-push6 occ-push7 occ-push8 occ-push9
+;; 	  occ-equal
+;; 	  occ-to-list list-to-occ
+;; 	  occ-diff
+;; 	  ))
 
 
 ;; #+(and allegro-version>= (version>= 8 2))

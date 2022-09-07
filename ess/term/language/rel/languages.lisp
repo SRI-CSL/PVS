@@ -16,40 +16,40 @@
 
 (in-package :lang)
 
-(export '(lang langp ck-lang-type
-	  find-lang coerce-find-lang
-	  lang-define
+;; (export '(lang langp ck-lang-type
+;; 	  find-lang coerce-find-lang
+;; 	  lang-define
 
-	  lang-name lang-conc-name lang-working-dir
-	  lang-abs-syn-package-name lang-code-package-name
-	  lang-use-packages lang-grammar-file lang-lexer-file lang-parser-file
-	  lang-unparse-nts lang-unparser-file lang-info-file lang-sorts-file
-	  lang-parse-routine-name
-	  lang-unparse-routine-name lang-win-unparse-routine-name
-	  lang-sort-table-name lang-opsig-table-name
-	  lang-sub-languages 
+;; 	  lang-name lang-conc-name lang-working-dir
+;; 	  lang-abs-syn-package-name lang-code-package-name
+;; 	  lang-use-packages lang-grammar-file lang-lexer-file lang-parser-file
+;; 	  lang-unparse-nts lang-unparser-file lang-info-file lang-sorts-file
+;; 	  lang-parse-routine-name
+;; 	  lang-unparse-routine-name lang-win-unparse-routine-name
+;; 	  lang-sort-table-name lang-opsig-table-name
+;; 	  lang-sub-languages 
 
-	  get-lang-name get-lang-conc-name get-lang-working-dir
-          get-lang-abs-syn-package-name get-lang-code-package-name 
-          get-lang-use-packages get-lang-grammar-file
-	  get-lang-lexer-file get-lang-parser-file get-lang-unparse-nts
-	  get-lang-unparser-file get-lang-info-file get-lang-sorts-file 
-	  get-lang-parse-routine-name
-	  get-lang-unparse-routine-name get-lang-win-unparse-routine-name
-	  get-lang-sort-table-name get-lang-opsig-table-name
-	  get-lang-sub-languages 
+;; 	  get-lang-name get-lang-conc-name get-lang-working-dir
+;;           get-lang-abs-syn-package-name get-lang-code-package-name 
+;;           get-lang-use-packages get-lang-grammar-file
+;; 	  get-lang-lexer-file get-lang-parser-file get-lang-unparse-nts
+;; 	  get-lang-unparser-file get-lang-info-file get-lang-sorts-file 
+;; 	  get-lang-parse-routine-name
+;; 	  get-lang-unparse-routine-name get-lang-win-unparse-routine-name
+;; 	  get-lang-sort-table-name get-lang-opsig-table-name
+;; 	  get-lang-sub-languages 
 
-	  interactively-define-lang read-lang
-	  write-lang write-reduced-lang
-	  lang-code-package get-lang-code-package 
-	  lang-abs-syn-package get-lang-abs-syn-package
+;; 	  interactively-define-lang read-lang
+;; 	  write-lang write-reduced-lang
+;; 	  lang-code-package get-lang-code-package 
+;; 	  lang-abs-syn-package get-lang-abs-syn-package
 
-	  load-lang load-lang-source
-	  compile-lang rec-compile-lang
-	  compile-load-lang 
+;; 	  load-lang load-lang-source
+;; 	  compile-lang rec-compile-lang
+;; 	  compile-load-lang 
 
-	  *porting-system*
-	  ))
+;; 	  *porting-system*
+;; 	  ))
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction
@@ -81,19 +81,21 @@
 
 
 
-(defconstant-if-unbound standard-use-packages
-  '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr)
-  "The standard packages used by SB output files.")
+(alexandria:define-constant standard-use-packages
+    '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr)
+  :test #'equal
+  :documentation "The standard packages used by SB output files.")
 
-(defconstant-if-unbound standard-use-languages
-  '(:lexical-terminals)
-  "The standard languages used by SB output files.")
+(alexandria:define-constant standard-use-languages
+    '(:lexical-terminals)
+  :test #'equal
+  :documentation "The standard languages used by SB output files.")
 
 
-(defconstant-if-unbound gen-src-file-ext "lisp")
+(alexandria:define-constant gen-src-file-ext "lisp" :test #'string=)
 
-(defconstant-if-unbound per-gen-src-file-ext
-  (concatenate 'string "." gen-src-file-ext))
+(alexandria:define-constant per-gen-src-file-ext
+  (concatenate 'string "." gen-src-file-ext) :test #'string=)
 
 
 
@@ -139,7 +141,8 @@
 
 
 (defun do-intern (string package-name)
-  (intern (string-upcase string)
+  (intern #+case-sensitive string
+	  #-case-sensitive (string-upcase string)
 	  (cond ((find-package package-name))
 		(t
 		 (make-package package-name)))))
@@ -151,8 +154,8 @@
 (defun find-lang (lang-name)
   "Look up LANG-NAME in the global language table.  If not found, return nil."
   (let ((lang-name (if (stringp lang-name)
-		       (do-intern lang-name "LANG")
-		       (do-intern (symbol-name lang-name) "LANG"))))
+		       (do-intern lang-name (string :lang))
+		       (do-intern (symbol-name lang-name) (string :lang)))))
     (gethash lang-name *lang-table*)))
 
 
@@ -244,7 +247,7 @@
   "This routine defines a language structure given the keyword arguments which
    make it up.  For an interactive definition, use INTERACTIVELY-DEFINE-LANG."
   (setq *name-last-lang-read* name)
-  (let* ((hash-name (do-intern name "LANG"))
+  (let* ((hash-name (do-intern name (string :lang)))
 	 (old-lang (find-lang hash-name))
 	 (lang
 	  (make-lang-struct
@@ -268,7 +271,8 @@
 				       (lang-code-package-name old-lang)
 				       (if (not-empty-str? package)
 					   package
-					   (string-upcase conc-name)))))
+					   #+case-sensitive conc-name
+					   #-case-sensitive (string-upcase conc-name)))))
 	   :abs-syn-package (if (not-empty-str? abs-syn-package)
 				abs-syn-package
 				(if old-lang
@@ -286,63 +290,69 @@
 				       (old-lang
 					(lang-sub-languages  old-lang)))
 				 :test #'string=)
-	   :grammar-file (namestring
-			  (merge-pathnames
-			   (if (not-empty-str? grammar-file)
-			       grammar-file
-			       (if old-lang
-				   (lang-grammar-file old-lang)
-				   (concatenate 'string conc-name "-gr.txt")))
-			   working-dir))
-	   :lexer-file (namestring
-			(merge-pathnames
-			 (if (not-empty-str? lexer-file)
-			     lexer-file
-			     (if old-lang
-				 (lang-lexer-file old-lang)
+	   :grammar-file (if (and old-lang
+				  (probe-file (lang-grammar-file old-lang)))
+			     (lang-grammar-file old-lang)
+			     (namestring
+			      (merge-pathnames
+			       (if (not-empty-str? grammar-file)
+				   grammar-file
+				   (concatenate 'string conc-name "-gr.txt"))
+			       working-dir)))
+	   :lexer-file (if (and old-lang
+				(probe-file (lang-lexer-file old-lang)))
+			   (lang-lexer-file old-lang)
+			   (namestring
+			    (merge-pathnames
+			     (if (not-empty-str? lexer-file)
+				 lexer-file
 				 (concatenate 'string
-				   conc-name "-lexer." gen-src-file-ext)))
-			 working-dir))
-	   :parser-file (namestring
-			 (merge-pathnames
-			  (if (not-empty-str? parser-file)
-			      parser-file
-			      (if old-lang
-				  (lang-parser-file old-lang)
+				   conc-name "-lexer." gen-src-file-ext))
+			     working-dir)))
+	   :parser-file (if (and old-lang
+				 (probe-file (lang-parser-file old-lang)))
+			    (lang-parser-file old-lang)
+			    (namestring
+			     (merge-pathnames
+			      (if (not-empty-str? parser-file)
+				  parser-file
 				  (concatenate 'string
-				    conc-name "-parser." gen-src-file-ext)))
-			  working-dir))
+				    conc-name "-parser." gen-src-file-ext))
+			      working-dir)))
 	   :unparse-nts (or unparse-nts
 			    (and old-lang
 				 (lang-unparse-nts old-lang))
 			    t)
-	   :unparser-file (namestring
-			   (merge-pathnames
-			    (if (not-empty-str? unparser-file)
-				unparser-file
-				(if old-lang
-				    (lang-unparser-file old-lang)
+	   :unparser-file (if (and old-lang
+				   (probe-file (lang-unparser-file old-lang)))
+			      (lang-unparser-file old-lang)
+			      (namestring
+			       (merge-pathnames
+				(if (not-empty-str? unparser-file)
+				    unparser-file
 				    (concatenate 'string
-				      conc-name "-unparser." gen-src-file-ext)))
-			    working-dir))
-	   :info-file (namestring
-		       (merge-pathnames
-			(if (not-empty-str? info-file)
-			    info-file
-			    (if old-lang
-				(lang-info-file old-lang)
+				      conc-name "-unparser." gen-src-file-ext))
+				working-dir)))
+	   :info-file (if (and old-lang
+			       (probe-file (lang-info-file old-lang)))
+			  (lang-info-file old-lang)
+			  (namestring
+			   (merge-pathnames
+			    (if (not-empty-str? info-file)
+				info-file
 				(concatenate 'string
-				  conc-name "-info." gen-src-file-ext)))
-			working-dir))
-	   :sorts-file (namestring
-			(merge-pathnames
-			 (if (not-empty-str? sorts-file)
-			     sorts-file
-			     (if old-lang
-				 (lang-sorts-file old-lang)
+				  conc-name "-info." gen-src-file-ext))
+			    working-dir)))
+	   :sorts-file (if (and old-lang
+				(probe-file (lang-sorts-file old-lang)))
+			   (lang-sorts-file old-lang)
+			   (namestring
+			    (merge-pathnames
+			     (if (not-empty-str? sorts-file)
+				 sorts-file
 				 (concatenate 'string
-				   conc-name "-sorts." gen-src-file-ext)))
-			 working-dir))
+				   conc-name "-sorts." gen-src-file-ext))
+			     working-dir)))
 	  :parse-routine-name (or parse-routine-name
 				  (and old-lang
 				       (lang-parse-routine-name old-lang))
@@ -376,10 +386,6 @@
 					   code-package))
 	  )))
 
-    ;; The following is not really worht it.
-    ;; (if (and old-lang
-    ;;          (not (equal old-lang lang)))
-    ;;	   (warn "Redefining language ~S.~%~%" name))
     (setf (gethash hash-name
 		   *lang-table*)
 	  lang)
@@ -757,9 +763,9 @@
     (with-open-file (s file-name :direction :output
 		       :if-exists :supersede)
       (format s 
-	  "(in-package ~S)  ;; package for abstract syntax. ~%~%~
-           (in-package ~S)  ;; package for generated code.  ~%~%~
-           (use-package '~S)~%~%~
+	  "(in-package ~(:~A~))  ;; package for abstract syntax. ~%~%~
+           (in-package ~(:~A~))  ;; package for generated code.  ~%~%~
+           (use-package ~(:~A~))~%~%~
 	   (lang:lang-define ~%~
 	    :name ~S~%~
 	    :conc-name ~S~%~

@@ -13,7 +13,7 @@
 
 ;;; Scott Dietzen, Thu Apr 23 00:16:13 1987
 
-(in-package :oper) #-sbcl (use-package :ergolisp)
+(in-package :oper) ;; #-sbcl (use-package :ergolisp)
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction
@@ -26,21 +26,21 @@
 
 
 
-(export '(oper operp
-	  check-oper-type
-          oper-to-sexp sexp-to-oper 
-	  oper-equal
+;; (export '(oper operp
+;; 	  check-oper-type
+;;           oper-to-sexp sexp-to-oper 
+;; 	  oper-equal
 
-	  mk-sim-op is-sim-op ds-sim-op
-	  mk-leaf-op is-leaf-op ds-leaf-op leaf-op-kind leaf-op-value
+;; 	  mk-sim-op is-sim-op ds-sim-op
+;; 	  mk-leaf-op is-leaf-op ds-leaf-op leaf-op-kind leaf-op-value
 
-	  mk-id-op  is-id-op  ds-id-op
-	  mk-cid-op is-cid-op ds-cid-op
-	  mk-num-op is-num-op ds-num-op
-	  mk-str-op is-str-op ds-str-op
-	  mk-lit-op is-lit-op ds-lit-op
-	  mk-key-op is-key-op ds-key-op
-	  ))
+;; 	  mk-id-op  is-id-op  ds-id-op
+;; 	  mk-cid-op is-cid-op ds-cid-op
+;; 	  mk-num-op is-num-op ds-num-op
+;; 	  mk-str-op is-str-op ds-str-op
+;; 	  mk-lit-op is-lit-op ds-lit-op
+;; 	  mk-key-op is-key-op ds-key-op
+;; 	  ))
 
 
 ;; #+(and allegro-version>= (version>= 8 2))
@@ -63,12 +63,9 @@
   arg
   )
 
-#+lcl4.1
-(defmethod make-load-form ((obj oper-struct))
-  (make-load-form-saving-slots obj))
-
 #+(or allegro cmu sbcl)
 (defmethod make-load-form ((obj oper-struct) &optional environment)
+  (declare (ignore environment))
   (make-load-form-saving-slots obj))
 
 (deftype oper ()

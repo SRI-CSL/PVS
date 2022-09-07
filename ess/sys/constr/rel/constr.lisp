@@ -15,11 +15,11 @@
 
 (in-package :constr)
 
-(eexport '(defconstr defmulticonstr))
+;; (eexport '(defconstr defmulticonstr))
 
 ;; Control variables.  Note that these must be set at compile time.
 ;; This mechanism doesn't work in Lucid.
-(export '(proclaim-constrs-inline))
+;; (export '(proclaim-constrs-inline))
 
 
 (defvar *proclaim-constrs-inline* nil

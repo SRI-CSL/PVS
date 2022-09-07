@@ -20,27 +20,27 @@
 ;;; parsing repetitive patterns. 
 
 
-(in-package :sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  ;;(use-package :ergolisp)
 
-(export '(leading-epsilon-p make-var-name      ;; rt-second-epsilon-p
-	  epsilon full-la-match
-	  la-match lam look-ahead-match gobble-to-slot constructor-to-slot
-	  slot-to-slot cons-to-slot code-to-slot toss-value as-to-slot
-	  value-to-slot initials medials initials-only alt-parse
-	  make-slot-array opt-parse
-	  star-parse gen-star-parse plus-parse doublestar-parse
-	  doubleplus-parse parser-error push-bracket pop-bracket bracket-list
-	  top-bracket empty-bracket-list not-empty-bracket-list stack-brackets
-	  eat-brackets clean-variables
+;; (export '(leading-epsilon-p make-var-name      ;; rt-second-epsilon-p
+;; 	  epsilon full-la-match
+;; 	  la-match lam look-ahead-match gobble-to-slot constructor-to-slot
+;; 	  slot-to-slot cons-to-slot code-to-slot toss-value as-to-slot
+;; 	  value-to-slot initials medials initials-only alt-parse
+;; 	  make-slot-array opt-parse
+;; 	  star-parse gen-star-parse plus-parse doublestar-parse
+;; 	  doubleplus-parse parser-error push-bracket pop-bracket bracket-list
+;; 	  top-bracket empty-bracket-list not-empty-bracket-list stack-brackets
+;; 	  eat-brackets clean-variables
 
-	  make-sb-term
-	  mk-temp-rept ds-temp-rept mk-temp-star mk-temp-plus ck-rept-ref
-	  ))
+;; 	  make-sb-term
+;; 	  mk-temp-rept ds-temp-rept mk-temp-star mk-temp-plus ck-rept-ref
+;; 	  ))
 
 ;;; This is necessary because some of these macros do not take all the
 ;;; arguments they should, and this is the minimal effort, if not safest,
 ;;; fix.
-(export '(rbp))
+;; (export '(rbp))
 
 
 (eval-when (:compile-toplevel :execute :load-toplevel)

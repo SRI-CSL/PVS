@@ -14,7 +14,7 @@
 ;;; This code modifies unparser generator code.
 ;;; Scott Dietzen, Wed Nov 11 15:38:39 1987
 
-(in-package :SB)   (use-package :ergolisp)
+(in-package :syntax-box)  ;; (use-package :ergolisp)
 
 
 (defun unp-code-revision (routines)
@@ -65,10 +65,10 @@
 			 (cons `(defun ,(make-routine-name routine-name i)
 				  (v0 v1)
 				  ;; suppresses compiler warnings if available
-				  (ergo-ignore-if-unused v0 v1)
+				  (declare (ignorable v0 v1))
 			          (let ,locals
 				    ;; suppresses compiler warnings if available
-				    (ergo-ignore-if-unused ,@locals)
+				    (declare (ignorable ,@locals))
 				    ,@(car alt-branches)))
 			       routines)))
 	      ((null alt-branches)

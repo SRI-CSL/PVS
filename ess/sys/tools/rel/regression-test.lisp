@@ -1,20 +1,20 @@
 ;;; -*- package: ergo-lisp -*-
-#-gcl
-(defpackage :ergo-lisp #+sbcl (:use :common-lisp))
+;; #-gcl
+;; (defpackage :ergo-lisp #+sbcl (:use :common-lisp))
 (in-package :ergo-lisp)
-(export '(regression-test regression-test-only regression-test-opt
-			  next-key next-value *regression-testing-p*
-			  move-script regressible-error regressible-warn))
+;; (export '(regression-test regression-test-only regression-test-opt
+;; 			  next-key next-value *regression-testing-p*
+;; 			  move-script regressible-error regressible-warn))
 
 ;;; Puzzle for the devoted:  How can I rewrite regression-test so that
 ;;; it can regression-test itself?  I would like to be able to
 ;;; automatically run the test cases commented out below at load time
 ;;; and automatically verify that they generate the correct output.
 
-#-sbcl (use-package '(:ergo-lisp) :lisp)
-#-sbcl (export '(regression-test regression-test-only regression-test-opt
-				 regressible-error regressible-warn)
-	       (find-package :lisp))
+;; #-sbcl (use-package '(:ergo-lisp) :lisp)
+;; #-sbcl (export '(regression-test regression-test-only regression-test-opt
+;; 				 regressible-error regressible-warn)
+;; 	       (find-package :lisp))
 
 (defvar *regression-testing-p* nil)
 
