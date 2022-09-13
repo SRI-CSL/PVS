@@ -13,6 +13,13 @@
 
 #include<string.h>
 
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+
 //exit codes
 #define PVS2C_EXIT_OUT_OF_MEMORY   16
 #define PVS2C_EXIT_SYNTAX_ERROR    17
@@ -258,6 +265,8 @@ uint32_t code(uint32_t x);
 
 extern stringliteral_t mk_string(uint32_t length, uint32_t * instring);
 
+extern char * byte2cstring(uint32_t length, uint8_t * bstring);
+
 /* struct bytestring_s { */
 /*   uint32_t count; */
 /*   uint32_t length; */
@@ -267,7 +276,7 @@ extern stringliteral_t mk_string(uint32_t length, uint32_t * instring);
 
 /* extern bytestring_t mk_bytestring(char * instring); */
 
-enum mode_t {r, w, a};
+//enum mode_t {r, w, a};
 
 struct stream_s {
   uint32_t count;
@@ -275,12 +284,18 @@ struct stream_s {
 };
 
 struct file_s {
+  uint32_t count; //reference count
   uint64_t fd; //file descriptor
   uint32_t size;
   uint32_t capacity;
   char * name; 
   char * contents; 
-} * file_t;
+} file_s;
+typedef struct file_s * file_t;
+
+extern void release_file__file(file_t file);
+
+extern bool_t equal_file__file(file_t file1, file_t file2);
 
 struct pointer_s {uint32_t count;};
 typedef struct pointer_s * pointer_t;
@@ -297,6 +312,7 @@ typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
    equal_ptr_t equal_ptr; 
    release_ptr_t release_ptr;
  };
+
 
  /* actual_uint64 = {(*equal_uint64), (*release_uint64)}; */
 

@@ -6106,6 +6106,10 @@ BEGIN
     pass(contents: file): pass?
   END lifted_file
 
+  f, f1, f2: VAR file
+
+  open?(f): bool % semantically attached predicate that checks if a file handle is open
+
   open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
 % don't need to close the file.  This is handled by reference counting.
 
@@ -6115,7 +6119,9 @@ BEGIN
 
   getbyte(f: file, (i : below(file_size(f)))): byte
 
-  setbyte(f: file, (i : below(file_size(f))), (b: byte)): lifted_file
+  getbytestring(f: file, (i : below(file_size(f))), size: below(file_size(f) - i)): bytestring
+
+  setbyte(f: file, (i : below(file_size(f))), (b: byte)): file
 
   printc(b : bytestring): void_action %prints characters
 

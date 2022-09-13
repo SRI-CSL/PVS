@@ -3854,38 +3854,40 @@
 (defmethod ir2c* ((ir-expr ir-record) return-var return-type)
   (with-slots (ir-fields ir-recordtype) ir-expr ;(break "ir2c*(ir-record)")
     (let ((ctype (add-c-type-definition (ir2c-type ir-recordtype)))
-	  (c-return-type (add-c-type-definition (ir2c-type return-type))))
-      (cons (format nil "~a = (~a_t)new_~a();" return-var c-return-type ctype)
-	    (loop for fld in ir-fields
-		  as fldtype in (ir-field-types (ir-type-def return-type))  ;;ir-recordtype))
-		  append
-		  (with-slots (ir-fieldname ir-value) fld
-		    (let* ((rhs-var (get-ir-last-var ir-value))
-			   (c-rhs-type (add-c-type-definition (ir2c-type (ir-vtype rhs-var))))
-			   (c-ftype (add-c-type-definition (ir2c-type (ir-ftype fldtype))))
-			   (c-field-expr (format nil "~a->~a"  return-var ir-fieldname))
-			   (c-field-assignment (make-c-assignment 
-						c-field-expr c-ftype
-						(ir-name rhs-var)
-						c-rhs-type))
-			   (c-field-assign-instrs
-			    (if (mpnumber-type? c-ftype)
-				(list (format nil "~a_init(~a)" c-ftype c-field-expr)
-				      c-field-assignment)
-			      (list c-field-assignment))))
+	  (c-return-type (add-c-type-definition (ir2c-type return-type)))
+	  (tmpvar (gentemp "tmp")))
+      (cons (format nil "~a_t ~a = new_~a();" ctype tmpvar ctype)
+	    (cons (format nil "~a = (~a_t)~a" return-var c-return-type tmpvar)
+		  (loop for fld in ir-fields
+			as fldtype in (ir-field-types (ir-type-def ir-recordtype)) ;;NSH(8-27-22) was return-type
+			append
+			(with-slots (ir-fieldname ir-value) fld
+			  (let* ((rhs-var (get-ir-last-var ir-value))
+				 (c-rhs-type (add-c-type-definition (ir2c-type (ir-vtype rhs-var))))
+				 (c-ftype (add-c-type-definition (ir2c-type (ir-ftype fldtype))))
+				 (c-field-expr (format nil "~a->~a"  tmpvar ir-fieldname))
+				 (c-field-assignment (make-c-assignment 
+						      c-field-expr c-ftype
+						      (ir-name rhs-var)
+						      c-rhs-type))
+				 (c-field-assign-instrs
+				  (if (mpnumber-type? c-ftype)
+				      (list (format nil "~a_init(~a)" c-ftype c-field-expr)
+					    c-field-assignment)
+				    (list c-field-assignment))))
 					;(break "ir2c(ir-record)")
-		      (append c-field-assign-instrs
-			      (cond ((and (ir-reference-type? (ir-vtype rhs-var))
-					  (not (ir-last? ir-value)))
-				     (list (format nil "~a->count++" (ir-name rhs-var))))
-				    ((and (ir-last? ir-value)
-					  (gmp-type? c-rhs-type)
+			    (append c-field-assign-instrs
+				    (cond ((and (ir-reference-type? (ir-vtype rhs-var))
+						(not (ir-last? ir-value)))
+					   (list (format nil "~a->count++" (ir-name rhs-var))))
+					  ((and (ir-last? ir-value)
+						(gmp-type? c-rhs-type)
 					;(not (member rhs-var *mpvar-parameters*))
-					  )
-				     (list (format nil "~a_clear(~a)" c-rhs-type
-						   (ir-name rhs-var))
-					   ))
-				    (t nil))))))))))
+						)
+					   (list (format nil "~a_clear(~a)" c-rhs-type
+							 (ir-name rhs-var))
+						 ))
+					  (t nil)))))))))))
 						      
 
 (defun ir-record-field-type (rectype field)
@@ -6528,13 +6530,14 @@
 
 (defmethod push-type-info-to-decl (c-type-info (decl type-decl))
 					;  (when (consp c-type-info) (break "push-type-info-to-decl"))
-    (assert (or (not (ir-type? (ir-texpr c-type-info)))
-		(not (null (unique-name (ir-texpr c-type-info))))))
+  (assert (or (null (ir-texpr c-type-info))
+	      (not (ir-type? (ir-texpr c-type-info)))
+	      (not (null (unique-name (ir-texpr c-type-info))))))
 ;;    (assert (null (get-c-type-info (ir-texpr c-type-info))))
   (push-new-type-info c-type-info *c-type-info-table*)
   (when (null (ir-type-value decl))
     (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) nil nil nil decl)));;added params
-      (push-new-type-info ir-type-name *ir-type-info-table*)
+      (push ir-type-name *ir-type-info-table*)
       (setf (ir-type-value decl)
 	    (mk-eval-type-info ir-type-name))))
   (push-new-type-info c-type-info (c-type-info-table (ir-type-value decl))))
@@ -7058,11 +7061,12 @@
 
 (defmethod ir-reference-type? ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn) ir-type
-    (ir-reference-type? ir-type-defn)))
+    (or (eq (ir-type-id ir-type) 'file__file)
+	(ir-reference-type? ir-type-defn))))
 
-(defmethod ir-reference-type? ((ir-type t))
-  ;(break "ir-reference-type? fall-through")
+(defmethod ir-reference-type? ((ir-type t));;fallthrough case
   nil)
+
 
 (defmethod ir-actualparameter-type? (ir-type);used for checking valid type actuals
   ;;parameters are automatically reference counted so we can't handle  (memq ir-type '(mpz uint64))
@@ -8455,7 +8459,7 @@ successful."
 	     map_props more_map_props ; filters
 	     list2finseq
 	     list2set character_adt
-	     disjointness file; strings gen_strings charstrings bytestrings
+	     disjointness; file strings gen_strings charstrings bytestrings
 	     mucalculus ctlops fairctlops Fairctlops ; bit bv bv_concat_def
 	     bv_bitwise bv_nat ; empty_bv bv_caret integer_bv_ops
 	     mod  ;bv_arith_nat_defs  bv_int_defs bv_arithmetic_defs bv_extend_defs

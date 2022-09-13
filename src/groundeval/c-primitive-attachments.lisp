@@ -100,7 +100,7 @@
 (def-c-attach-primitive "integertypes" "i8max"
   "int8" '(x y) '(int8 int8) "{return (int8_t)(x< y ? y : x);}")
 
-(def-c-attach-primitive "integertypes" "16max"
+(def-c-attach-primitive "integertypes" "i16max"
   "int16" '(x y) '(int16 int16) "{return (int16_t)(x< y ? y : x);}")
 
 (def-c-attach-primitive "integertypes" "i32max"
@@ -108,6 +108,30 @@
 
 (def-c-attach-primitive "integertypes" "i64max"
   "int64" '(x y) '(int64 int64) "{return (int64_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u8min"
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u16min"
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u32min"
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "u64min"
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i8min"
+  "int8" '(x y) '(int8 int8) "{return (int8_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i16min"
+  "int16" '(x y) '(int16 int16) "{return (int16_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i32min"
+  "int32" '(x y) '(int32 int32) "{return (int32_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i64min"
+  "int64" '(x y) '(int64 int64) "{return (int64_t)(x< y ? x : y);}")
 
 (def-c-attach-primitive "integertypes" "u8pow2"
   "uint8"  '(x) '(uint8) "{return (uint8_t)1<<x;}")
@@ -544,13 +568,19 @@
 (def-c-attach-primitive-type "file" "file" "file_t")
 (def-c-attach-primitive "file" "null_action" "uint8" '() '() "{return 1;}" nil)
 
+(def-c-attach-primitive "file" "file_size" "uint32" '(f) '(file__file)
+  nil
+  "{uint32_t result = f->size;
+    release_file__file(f);
+    return result;}")
 
-(def-c-attach-primitive "file" "open" "file__lifted_file"
+
+(def-c-attach-primitive "file" "open" "file__lifted_file_adt"
   '(name)
   '(bytestrings__bytestring)
   nil
   "{
-    char * filenamestring = byte2cstring(name);
+    char * filenamestring = byte2cstring(name->length, name->seq->elems);
     uint64_t fd = open(filenamestring, O_RDWR, S_IRUSR | S_IWUSR);
     release_bytestrings__bytestring(name); 
     safe_free(filenamestring);
@@ -558,25 +588,27 @@
     if (fstat(fd, &s) == -1){
        return file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
        }
-    uint32_t size = s.size;
+    uint32_t size = s.st_size;
     uint32_t capacity = 4096 * (size/4096 + 1);
     char * contents = (char *) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    file_t ff = (file_t) safe_malloc(sizeof(file_s));
+    ff->count = 1;
     ff->fd = fd;
-    ff->size = size
+    ff->size = size;
     ff->capacity = capacity;
-    ff->contents = contents
-    ff->name = name->seq;
+    ff->contents = contents;
+    ff->name = filenamestring;
     return file__pass(ff);
    }")
 
-(def-c-attach-primitive "file" "append" "file__lifted_file" '(f b) '(file__file bytestrings__bytestring)
+(def-c-attach-primitive "file" "append" "file__lifted_file_adt" '(f b) '(file__file bytestrings__bytestring)
   nil
   "{uint64_t fd = f->fd;
     uint32_t size = f->size;
     uint32_t capacity = f->capacity;
     char * contents = f->contents;
     uint32_t len = b->length;
-    char * data = b->seq;
+    char * data = (char *)b->seq->elems;
     ftruncate(fd, size + len);
     if (size + len < capacity){
     for (size_t i = 0; i < len; i++)
@@ -590,31 +622,46 @@
     f->contents = new_contents;
  };
    f->size = size + len;
-   return file_pass(f);
+   return file__pass(f);
 }")
 
-(def-c-attach-primitive "file" "getbyte" "file__lifted_file" '(f i) '(file__lifted_file uint32)
+(def-c-attach-primitive "file" "getbyte" "uint8" '(f i) '(file__file uint32)
   nil
-  "{return f->contents[i];}
+  "{uint8_t result = f->contents[i];
+    release_file__file(f);
+    return result;
 }")
+
+(def-c-attach-primitive "file" "getbytestring" "bytestrings__bytestring" '(f i size) '(file__file uint32 uint32)
+  nil
+  "{bytestrings_array_0_t newarray = new_bytestrings_array_0(size);
+    memcpy(newarray, (char *) f->contents + i, size);
+    bytestrings__bytestring_t newstring = new_bytestrings__bytestring();
+    newstring->length = size;
+    newstring->seq = newarray;
+    release_file__file(f);
+    return newstring;
+    }")
+
+
 ;;(6-3-22): Need to add reference count to file type and treat it as a reference type in the IR
-(def-c-attach-primitive "file" "setbyte" "file__lifted_file" '(f i b) '(file__lifted_file uint32 uint8)
+(def-c-attach-primitive "file" "setbyte" "file__file" '(f i b) '(file__file uint32 uint8)
   nil
   "{if (f->count == 1){
      f->contents[i] = b;
-     }
+     };
     return f;
 }")
 
 (def-c-attach-primitive "file" "printc" "uint8" '(b) '(bytestrings__bytestring) nil
-  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%c\", b->seq[i]);
+  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%c\", b->seq->elems[i]);
     return 0;
    }
 ")
 
 
 (def-c-attach-primitive "file" "printh" "uint8" '(b) '(bytestrings__bytestring) nil
-  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%02X\", b->seq[i]);
+  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%02X\", b->seq->elems[i]);
     return 0;
    }
 ")
