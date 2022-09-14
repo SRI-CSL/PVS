@@ -470,16 +470,16 @@ uint32_t code(uint32_t x){
 
 stringliteral_t mk_string(uint32_t length, uint32_t * instring){ 
   stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(uint32_t)));
-  printf("\nmk_string input =");
+  //  printf("\nmk_string input =");
   for (uint32_t i = 0; i < length; i++) printf(" %"PRIu32",", instring[i]); 
 
    result->count = 1;
    result->size = length;
    result->max = length;
    memcpy(result->elems, (uint32_t *) instring, 4 * length);
-   printf("\nmk_string output: count = %"PRIu32", size = %"PRIu32", max = %"PRIu32"\n",
-	  result->count, result->size, result->max);
-   for (uint32_t j = 0; j < length; j++) printf(" %"PRIu32",", result->elems[j]);    
+   //printf("\nmk_string output: count = %"PRIu32", size = %"PRIu32", max = %"PRIu32"\n",
+   //	  result->count, result->size, result->max);
+   //for (uint32_t j = 0; j < length; j++) printf(" %"PRIu32",", result->elems[j]);    
    return result; 
  };
 
@@ -499,3 +499,20 @@ bool_t equal_uint64(pointer_t x, pointer_t y, ...){
 
 void release_uint64(pointer_t x, ...){
 };
+
+void release_file__file(file_t file){
+  if (file->count <= 1){
+    munmap(file->contents, file->capacity);
+    safe_free(file);
+  } else
+    {
+      file->count--;
+    }
+}
+
+bool_t equal_file__file(file_t file1, file_t file2){
+  bool_t result =  (file1 == file2);
+  release_file__file(file1);
+  release_file__file(file2);
+  return result;
+}

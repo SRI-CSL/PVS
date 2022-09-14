@@ -1766,7 +1766,8 @@
 	  (let* ((opdecl (declaration op))
 		 (theory (module opdecl)))
 	    (if (memq (id theory) *primitive-prelude-theories*);;NSH(6-16-21)
-		(progn (break "undefined primitive")(mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
+		(progn ;(break "undefined primitive")
+		       (mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
 		(let* ((formals (formals-sans-usings (module opdecl)))
 		       (actuals (actuals (module-instance op))) ;;handling theory actuals
 		       (ref-actuals (loop for act in actuals ;;collect const actuals and ref actuals
@@ -3238,29 +3239,31 @@
 						     livevars :test #'eq)
 				 bindings)));(break "preprocess ir-let: ~a" (ir-name ir-vartype))
 					;(when (eq (ir-name ir-vartype) 'ivar_13)(break "preprocess ir-let: ~a" (ir-name ir-vartype)))
-	    (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
-			      (not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
-			 (ir-last? new-ir-bind-expr))
-		     (ir2c-tcompatible (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
-		     )
+	    (if (eq ir-vartype ir-body)
+		new-ir-bind-expr
+	      (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
+				(not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
+			   (ir-last? new-ir-bind-expr))
+		       (ir2c-tcompatible (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
+		       )
 					;binds var to var with same type
-		(preprocess-ir* ir-body livevars
-				(acons ir-vartype  ; should be eq to new-ir-vartype
-				       (get-assoc (get-ir-last-var new-ir-bind-expr) bindings)
-				       bindings))
-	      (let* ((new-ir-body (preprocess-ir* ir-body livevars bindings))) ;(break "preprocess*(ir-let)")
-		;;(acons ir-vartype new-ir-vartype bindings)
+		  (preprocess-ir* ir-body livevars
+				  (acons ir-vartype ; should be eq to new-ir-vartype
+					 (get-assoc (get-ir-last-var new-ir-bind-expr) bindings)
+					 bindings))
+		(let* ((new-ir-body (preprocess-ir* ir-body livevars bindings))) ;(break "preprocess*(ir-let)")
+		  ;;(acons ir-vartype new-ir-vartype bindings)
 					;(when (ir-lett? ir-expr) (break "ir-lett"))
-		;;(format t "old-ir-body: ~a" (print-ir ir-body))
-		;;(format t "preprocess-ir*: output = (let ~a ~a ~a)" (print-ir new-ir-vartype)(print-ir new-ir-bind-expr)(print-ir new-ir-body))
-;;		(format t "~%old-ir~%~s" (print-ir ir-expr))
-		(if (ir-lett? ir-expr)
-		    (let ((new-ir-expr (make-ir-lett new-ir-vartype (rename-type (ir-bind-type ir-expr) bindings)
-						new-ir-bind-expr
-						new-ir-body)))
-		      (format t "~%new-ir~%~s" (print-ir new-ir-expr))
-		      new-ir-expr)
-		  (mk-ir-let  new-ir-vartype new-ir-bind-expr new-ir-body)))))
+		  ;;(format t "old-ir-body: ~a" (print-ir ir-body))
+		  ;;(format t "preprocess-ir*: output = (let ~a ~a ~a)" (print-ir new-ir-vartype)(print-ir new-ir-bind-expr)(print-ir new-ir-body))
+		  ;;		(format t "~%old-ir~%~s" (print-ir ir-expr))
+		  (if (ir-lett? ir-expr)
+		      (let ((new-ir-expr (make-ir-lett new-ir-vartype (rename-type (ir-bind-type ir-expr) bindings)
+						       new-ir-bind-expr
+						       new-ir-body)))
+			(format t "~%new-ir~%~s" (print-ir new-ir-expr))
+			new-ir-expr)
+		    (mk-ir-let  new-ir-vartype new-ir-bind-expr new-ir-body))))))
 					;(progn (format t "~%not free: ~a" (ir-name ir-vartype))
 	(preprocess-ir* ir-body livevars bindings)))))
 
@@ -3851,38 +3854,40 @@
 (defmethod ir2c* ((ir-expr ir-record) return-var return-type)
   (with-slots (ir-fields ir-recordtype) ir-expr ;(break "ir2c*(ir-record)")
     (let ((ctype (add-c-type-definition (ir2c-type ir-recordtype)))
-	  (c-return-type (add-c-type-definition (ir2c-type return-type))))
-      (cons (format nil "~a = (~a_t)new_~a();" return-var c-return-type ctype)
-	    (loop for fld in ir-fields
-		  as fldtype in (ir-field-types (ir-type-def return-type))  ;;ir-recordtype))
-		  append
-		  (with-slots (ir-fieldname ir-value) fld
-		    (let* ((rhs-var (get-ir-last-var ir-value))
-			   (c-rhs-type (add-c-type-definition (ir2c-type (ir-vtype rhs-var))))
-			   (c-ftype (add-c-type-definition (ir2c-type (ir-ftype fldtype))))
-			   (c-field-expr (format nil "~a->~a"  return-var ir-fieldname))
-			   (c-field-assignment (make-c-assignment 
-						c-field-expr c-ftype
-						(ir-name rhs-var)
-						c-rhs-type))
-			   (c-field-assign-instrs
-			    (if (mpnumber-type? c-ftype)
-				(list (format nil "~a_init(~a)" c-ftype c-field-expr)
-				      c-field-assignment)
-			      (list c-field-assignment))))
+	  (c-return-type (add-c-type-definition (ir2c-type return-type)))
+	  (tmpvar (gentemp "tmp")))
+      (cons (format nil "~a_t ~a = new_~a();" ctype tmpvar ctype)
+	    (cons (format nil "~a = (~a_t)~a" return-var c-return-type tmpvar)
+		  (loop for fld in ir-fields
+			as fldtype in (ir-field-types (ir-type-def ir-recordtype)) ;;NSH(8-27-22) was return-type
+			append
+			(with-slots (ir-fieldname ir-value) fld
+			  (let* ((rhs-var (get-ir-last-var ir-value))
+				 (c-rhs-type (add-c-type-definition (ir2c-type (ir-vtype rhs-var))))
+				 (c-ftype (add-c-type-definition (ir2c-type (ir-ftype fldtype))))
+				 (c-field-expr (format nil "~a->~a"  tmpvar ir-fieldname))
+				 (c-field-assignment (make-c-assignment 
+						      c-field-expr c-ftype
+						      (ir-name rhs-var)
+						      c-rhs-type))
+				 (c-field-assign-instrs
+				  (if (mpnumber-type? c-ftype)
+				      (list (format nil "~a_init(~a)" c-ftype c-field-expr)
+					    c-field-assignment)
+				    (list c-field-assignment))))
 					;(break "ir2c(ir-record)")
-		      (append c-field-assign-instrs
-			      (cond ((and (ir-reference-type? (ir-vtype rhs-var))
-					  (not (ir-last? ir-value)))
-				     (list (format nil "~a->count++" (ir-name rhs-var))))
-				    ((and (ir-last? ir-value)
-					  (gmp-type? c-rhs-type)
+			    (append c-field-assign-instrs
+				    (cond ((and (ir-reference-type? (ir-vtype rhs-var))
+						(not (ir-last? ir-value)))
+					   (list (format nil "~a->count++" (ir-name rhs-var))))
+					  ((and (ir-last? ir-value)
+						(gmp-type? c-rhs-type)
 					;(not (member rhs-var *mpvar-parameters*))
-					  )
-				     (list (format nil "~a_clear(~a)" c-rhs-type
-						   (ir-name rhs-var))
-					   ))
-				    (t nil))))))))))
+						)
+					   (list (format nil "~a_clear(~a)" c-rhs-type
+							 (ir-name rhs-var))
+						 ))
+					  (t nil)))))))))))
 						      
 
 (defun ir-record-field-type (rectype field)
@@ -6525,13 +6530,14 @@
 
 (defmethod push-type-info-to-decl (c-type-info (decl type-decl))
 					;  (when (consp c-type-info) (break "push-type-info-to-decl"))
-    (assert (or (not (ir-type? (ir-texpr c-type-info)))
-		(not (null (unique-name (ir-texpr c-type-info))))))
+  (assert (or (null (ir-texpr c-type-info))
+	      (not (ir-type? (ir-texpr c-type-info)))
+	      (not (null (unique-name (ir-texpr c-type-info))))))
 ;;    (assert (null (get-c-type-info (ir-texpr c-type-info))))
   (push-new-type-info c-type-info *c-type-info-table*)
   (when (null (ir-type-value decl))
     (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) nil nil nil decl)));;added params
-      (push-new-type-info ir-type-name *ir-type-info-table*)
+      (push ir-type-name *ir-type-info-table*)
       (setf (ir-type-value decl)
 	    (mk-eval-type-info ir-type-name))))
   (push-new-type-info c-type-info (c-type-info-table (ir-type-value decl))))
@@ -7055,11 +7061,12 @@
 
 (defmethod ir-reference-type? ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn) ir-type
-    (ir-reference-type? ir-type-defn)))
+    (or (eq (ir-type-id ir-type) 'file__file)
+	(ir-reference-type? ir-type-defn))))
 
-(defmethod ir-reference-type? ((ir-type t))
-  ;(break "ir-reference-type? fall-through")
+(defmethod ir-reference-type? ((ir-type t));;fallthrough case
   nil)
+
 
 (defmethod ir-actualparameter-type? (ir-type);used for checking valid type actuals
   ;;parameters are automatically reference counted so we can't handle  (memq ir-type '(mpz uint64))
@@ -7665,7 +7672,7 @@
 (defmethod ir2c-tcompatible* ((texpr1 ir-subrange )(texpr2 ir-subrange))
   (eq (ir2c-type texpr1)(ir2c-type texpr2)))
   ;; (and (fixnum-type (ir2c-type texpr1))
-  ;;      (fixnum-type (ir2c-type texpr2))))
+  ;;      (fixnum-type (ir2c-type texpr2)))
 
 (defmethod ir2c-tcompatible* ((texpr1 ir-typename)(texpr2 ir-typename))
   (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
@@ -7726,22 +7733,26 @@
 						    (make-c-assignment (format nil "~a" lhs-field)
 								      cft1 rhs-field
 								      (add-c-type-definition (ir-ftype ft2)))
-						    (make-c-decl-assignment-with-count
-						    (intern (format nil "~a_~a" irl1 id-ft1))
-						    (ir-ftype ft1)
-						    lhs-field
-						    cft1)))
+						    nil
+						    ;; (make-c-decl-assignment-with-count
+						    ;; (intern (format nil "~a_~a" irl1 id-ft1))
+						    ;; (ir-ftype ft1)
+						    ;; lhs-field
+						    ;; cft1)
+						    ))
 					   (append (copy-type* (ir-ftype ft1)(ir-ftype ft2)
 							       lhs-field
 							       rhs-field)
-						   (make-c-decl-assignment-with-count
-						    (intern (format nil "~a_~a" irl1 id-ft1))
-						    (ir-ftype ft1)
-						    lhs-field
-						    cft1))))))
-	    (finalize-instrs (loop for ft1 in ift1
-				   append (decrement-or-clear-instrs (intern (format nil "~a_~a" irl1 (ir-id ft1)))
-								     (add-c-type-definition (ir-ftype ft1))))))
+						   ;; (make-c-decl-assignment-with-count
+						   ;;  (intern (format nil "~a_~a" irl1 id-ft1))
+						   ;;  (ir-ftype ft1)
+						   ;;  lhs-field
+						   ;;  cft1)
+						   )))))
+	    (finalize-instrs nil) ;; (loop for ft1 in ift1
+				  ;;  append (decrement-or-clear-instrs (intern (format nil "~a_~a" irl1 (ir-id ft1)))
+				  ;; 				     (ir-ftype ft1)))
+	    )
 	(list (cons new-instr (append field-instrs finalize-instrs))) ;;make this a block
 	))))
 
@@ -8438,7 +8449,7 @@ successful."
 	     exponentiation ;euclidean_division
 	     divides modulo_arithmetic subrange_inductions bounded_int_inductions bounded_nat_inductions
 	     subrange_type int_types nat_types ;exp2 integertypes
-	     nat_fun_props finite_sets restrict_set_props extend_set_props function_image_aux
+	     nat_fun_props finite_sets restrict_set_props extend_set_props function_image_aux 
 					;function_iterate sequences
 	     seq_functions ;finite_sequences more_finseq
 					;ordinals lex2 lex3 lex4
@@ -8448,7 +8459,7 @@ successful."
 	     map_props more_map_props ; filters
 	     list2finseq
 	     list2set character_adt
-	     disjointness ; strings gen_strings charstrings bytestrings
+	     disjointness; file strings gen_strings charstrings bytestrings
 	     mucalculus ctlops fairctlops Fairctlops ; bit bv bv_concat_def
 	     bv_bitwise bv_nat ; empty_bv bv_caret integer_bv_ops
 	     mod  ;bv_arith_nat_defs  bv_int_defs bv_arithmetic_defs bv_extend_defs
