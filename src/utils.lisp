@@ -626,8 +626,7 @@ is replaced with replacement."
       (get-theory* id library))))
 
 (defmethod get-theory ((str string))
-  (with-theory (thname) str
-    (get-theory (pc-parse thname 'modname))))
+  (get-theory (pc-parse str 'modname)))
 
 (defmethod get-theory ((id symbol))
   (get-theory* id nil))
