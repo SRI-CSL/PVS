@@ -4166,7 +4166,11 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
 	  "Cannot determine the type associated with ~a:~%  Please provide more ~
            information, i.e., actual parameters or a coercion." ex))
       (if (singleton? valid-types)
-	  (setf (type ex) (car valid-types))
+	  (if (and (fully-instantiated? (car valid-types))
+		   (fully-typed? (car valid-types)))
+	      (set-type ex (car valid-types))
+	      (progn ;; (break "Check resolve-conversion-expr")
+		     (setf (type ex) (car valid-types))))
 	  (let ((gtype (find-if-not #'fully-instantiated? valid-types)))
 	    (when gtype
 	      (setf (type ex) gtype)))))))
