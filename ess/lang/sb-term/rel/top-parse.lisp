@@ -216,11 +216,11 @@
 		   `(setf ,place
 			  (intern ,(if (eq name-type :special)
 				       `(concatenate 'string
-					    "*" conc-name
-					    ,name-ending "*")
+					  "*" conc-name
+					  ,name-ending "*")
 				       `(concatenate 'string
-					    conc-name
-					    ,name-ending))
+					  conc-name
+					  ,name-ending))
 				  *sb-package*))))
 	(save *conc-keyword-list* "-KEYWORD-LIST" :constant)
 	(save *conc-single-char-op-list* "-SINGLE-CHAR-OP-LIST" :constant)

@@ -69,6 +69,8 @@
 ;;; representation:   #t is used for ttypes (term types) and #@ is used for
 ;;; opsig's (operator signatures).
 
+(defvar *suppress-operator-sort-warnings* t)
+
 
 ;;; The representation. 
 
@@ -651,6 +653,7 @@
 	   (type opsig opsig))
   (let ((op-name (oper-to-symbol oper)))
     (if (and (not no-warnings)
+	     (not *suppress-operator-sort-warnings*)
 	     (gethash op-name opsig-table)
 	     (not (opsig-equal opsig
 			       (opsig-table-lookup oper opsig-table))))

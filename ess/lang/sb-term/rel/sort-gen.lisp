@@ -24,6 +24,8 @@
 
 (defvar *suppress-sort-errors* nil)
 
+(defvar *suppress-sort-warnings* t)
+
 (defvar *error-occurred-sort?* nil)
 
 (defvar *local-error-occurred-sort?* nil)
@@ -60,6 +62,8 @@
 ;;; Control the processing of each nonterminal pattern. This is the main
 ;;; exported routine.
 
+(defvar *suppress-sort-nt-name-printing* t)
+
 (defun sort-grammar (grammar &optional (suppress-errors nil))
   (setq *suppress-sort-errors* suppress-errors)
   (setq *sort-table* (sort:make-sort-table))
@@ -72,7 +76,8 @@
        (if *error-occurred-sort?*
 	   'error-occurred))
     (setq *current-nt-name* (nt-name (car nt-runner)))
-    (format t "   ~A ... ~%" *current-nt-name*)	; progress report
+    (unless *suppress-sort-nt-name-printing*
+      (format t "   ~A ... ~%" *current-nt-name*))	; progress report
     (sort-nt (car nt-runner))))
 
 
@@ -603,14 +608,12 @@
       (setq *local-error-occurred-sort?* error?))
   (if (not *error-occurred-sort?*)
       (setq *error-occurred-sort?* error?))
-  (cond ((not *suppress-sort-errors*)
-	 (if error?
-	     (format t
-		 "~%  Error in nonterminal definition: ~A~%"
-	       *current-nt-name*)
-	     (format t
-		 "~%  Warning in nonterminal definition: ~A~%"
-	       *current-nt-name*))
-	 (format t
-	     error-string))))
+  (cond ((and error? (not *suppress-sort-errors*))
+	 (format t "~%  Error in nonterminal definition: ~A~%"
+	   *current-nt-name*)
+	 (format t error-string))
+	((not *suppress-sort-warnings*)
+	 (format t "~%  Warning in nonterminal definition: ~A~%"
+	   *current-nt-name*)
+	 (format t error-string))))
 

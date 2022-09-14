@@ -293,12 +293,14 @@
 	   :grammar-file (if (and old-lang
 				  (probe-file (lang-grammar-file old-lang)))
 			     (lang-grammar-file old-lang)
-			     (namestring
-			      (merge-pathnames
-			       (if (not-empty-str? grammar-file)
-				   grammar-file
-				   (concatenate 'string conc-name "-gr.txt"))
-			       working-dir)))
+			     (let ((gfile (namestring
+					   (merge-pathnames
+					    (if (not-empty-str? grammar-file)
+						grammar-file
+						(concatenate 'string conc-name "-gr.txt"))
+					    working-dir))))
+			       ;;(unless (probe-file gfile) (break "bad grammar-file"))
+			       gfile))
 	   :lexer-file (if (and old-lang
 				(probe-file (lang-lexer-file old-lang)))
 			   (lang-lexer-file old-lang)
@@ -827,16 +829,16 @@
 	"(lang:lang-define ~%~
 	    :name ~S~%~
 	    :conc-name ~S~%~
-	    :code-package ~S~%~
-            :abs-syn-package ~S~%~
+	    :code-package (string :~(~A~))~%~
+            :abs-syn-package (string :~(~A~))~%~
 	    :use-packages '~S~%~
 	    :sub-languages '~S~%~
 	    :unparse-nts '~S~%~
-	    :parse-routine-name '~A::~A~%~
-	    :unparse-routine-name '~A::~A~%~
-	    :win-unparse-routine-name '~A::~A~%~
-	    :sort-table-name '~A::~A~%~
-	    :opsig-table-name '~A::~A~%~
+	    :parse-routine-name '~(~A::~A~)~%~
+	    :unparse-routine-name '~(~A::~A~)~%~
+	    :win-unparse-routine-name '~(~A::~A~)~%~
+	    :sort-table-name '~(~A::~A~)~%~
+	    :opsig-table-name '~(~A::~A~)~%~
             )~%"
       (lang-name lang)
       (lang-conc-name lang)

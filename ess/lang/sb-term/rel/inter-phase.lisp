@@ -124,6 +124,8 @@
 ;;; Control the processing of each nonterminal pattern. This is the main
 ;;; exported routine.
 
+(defvar *suppress-nt-name-printing* t)
+
 (defun crunch-grammar (grammar)
   (setq *error-occurred-inter?* nil)
   (setq *top-level-alts* nil)
@@ -133,7 +135,8 @@
        (if *error-occurred-inter?*
 	   'error-occurred))
     (setq *current-nt-name* (nt-name (car nt-runner)))
-    (format t "   ~A ... ~%" *current-nt-name*) ; progress report
+    (unless *suppress-nt-name-printing*
+      (format t "   ~A ... ~%" *current-nt-name*)) ; progress report
     (crunch-nt (car nt-runner))))
 
 
