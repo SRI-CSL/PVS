@@ -626,9 +626,8 @@ is replaced with replacement."
       (get-theory* id library))))
 
 (defmethod get-theory ((str string))
-  (with-pvs-file (pfile th) str
-    (let ((thname (or th pfile)))
-      (get-theory (pc-parse thname 'modname)))))
+  (with-theory (thname) str
+    (get-theory (pc-parse thname 'modname))))
 
 (defmethod get-theory ((id symbol))
   (get-theory* id nil))
@@ -3004,6 +3003,10 @@ prove itself from the mapped axioms."
 (defmethod ref-to-id ((ref expr-judgement))
   (or (id ref)
       '|expr_judgement|))
+
+(defmethod ref-to-id ((ref conversion-decl))
+  (or (id ref)
+      '|conversion_decl|))
 
 
 ;;; CASES v OF                      IF c1?(v) THEN e1
