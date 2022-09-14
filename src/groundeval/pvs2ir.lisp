@@ -2626,15 +2626,15 @@
 (defun pvs2ir-tuplefields (types tbinding &optional  tuple-label (index 1))
   (cond ((consp types)
 	 (let* ((field-id (intern (format nil "project_~a" index)))
-		(car-irtype (mk-ir-fieldtype field-id
-					     (pvs2ir-type* (car types) tbinding)))
+		(car-irtype (pvs2ir-type* (car types) tbinding))
+		(car-ir-fieldtype (mk-ir-fieldtype field-id car-irtype))
 		(varname (intern (format nil "~a_~a" tuple-label field-id)))
 		(type-variable (mk-ir-variable varname car-irtype))
 		(new-tbinding (if (binding? (car types))
 				  (acons (car types) type-variable
 					 tbinding)
 				tbinding)))
-	   (cons car-irtype
+	   (cons car-ir-fieldtype
 		 (pvs2ir-tuplefields (cdr types) new-tbinding tuple-label (1+ index)))))
 	(t nil)))
 
@@ -6760,7 +6760,7 @@
 						(list c-domain-root c-domain-root)))
 	 (body   (format nil "{
 ~8Tuint32_t mask = htbl->size - 1;
-~8Tuint32_t hashindex = ihash & mask;~
+~8Tuint32_t hashindex = ihash & mask;
 ~8T~a_hashentry_t data = htbl->data[hashindex];
 ~8Tbool_t keyzero;
 ~{~%~8T~a;~}
@@ -6771,8 +6771,8 @@
 ~16Thashindex++;
 ~16Thashindex = hashindex & mask;
 ~16Tdata = htbl->data[hashindex];
-~{~%~8T~a;~}
-~{~%~8T~a;~}
+~{~%~16T~a;~}
+~{~%~16T~a;~}
 ~16T}
 ~8Treturn hashindex;
 ~8T}"
@@ -7236,7 +7236,7 @@
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1 && i < x->max){y = x;}~%~16T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2 ? 2*x->max: UINT32_MAX;~%~16Ty = safe_malloc(sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);} else {y = copy_~a(x);~%~22Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1 && i < x->max){y = x;}~%~16T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2 ? 2*x->max: UINT32_MAX;~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);} else {y = copy_~a(x);~%~22Tx->count--;};~%~8T~
                      ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;}~%~8T~
                      if (yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string
@@ -7246,7 +7246,7 @@
 	      c-range-root
 	      (make-release-call ir-range c-range-root "yelems[i]" c-param-arg-string)
 	      )
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y; ~%~8T if (x->count == 1 && i < x->max){y = x;}~%~10T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2 ? 2*x->max: UINT32_MAX;~%~16Ty = safe_malloc(sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y; ~%~8T if (x->count == 1 && i < x->max){y = x;}~%~10T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2 ? 2*x->max: UINT32_MAX;~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
                     ~a;~%~8T~
                     return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string type-name-root
@@ -7301,7 +7301,7 @@
 										       c-param-arg-string
 										       c-param-decl-string)))
 			     (actual-info (make-actual-info type-name-root theory-params c-param-decl-string)))
-			(when (get-c-type-info ir2c-type) (break "add-c- ir-recordtype"))
+			;(when (get-c-type-info ir2c-type) (break "add-c- ir-recordtype"))
 			(push-type-info-to-decl
 			 (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info)
 			 *pvs2c-current-decl*)
