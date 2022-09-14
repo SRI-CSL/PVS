@@ -213,6 +213,7 @@
 
 (defun tupineqprocess (left right rel) ;;generates process for 
   (if (and (consp left)(consp right))  ;;lex ineq. <,<=, on tups.
+      ;; SO: This must not happen, since I can't find a definition for prove1
       (let ((lex1 (newcontext
 		   (prove1 (list `(lessp ,(car left) ,(car right))) nil))))
 	(case  lex1

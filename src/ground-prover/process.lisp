@@ -303,7 +303,7 @@
 ;;  (when (and (consp t1)(eq (cadr t1) 's!1_56)) (break "pr-merge"))
 ;  (when (not (equal t1 (pr-find t1))) (break "pr-merge"))
 ;   (when (and (consp t1)
-; 	      (memq (funsym t1) *arithrels*)
+; 	      (memq (funsym t1) +arithrels+)
 ; 	      (eq t2 'false))
 ; 	 (break "pr-merge"))
   (prog(use2 vptr newsig t2-is-lambda)
@@ -405,8 +405,8 @@
 ; 				     (and (consp x)
 ; 					  (not (ordered-ineq? (arg1 x)))))
 ; 			    do (break "pr-merge"))
-	       (cond ((and (memq (funsym u) *eqarithrels*)
-			   (equal solvelist *truecons*))
+	       (cond ((and (memq (funsym u) +eqarithrels+)
+			   (equal solvelist +truecons+))
 		      (if (equal
 			   (catch 'context
 			       (solve
@@ -415,7 +415,7 @@
 					  'greatereqp)
 				      args)))
 			     
-			   *truecons*)
+			   +truecons+)
 			  (addprm2pot (solve `(equal ,@args)))
 ;;was			  (setq s (append (solve `(equal ,@args)) s))
 			                 ;;NSH(9-21-02) was solvecan
@@ -641,7 +641,7 @@
 	(greatereqp (sigma-ineq term))
 	(lessp (sigma-ineq term))
 	(lesseqp (sigma-ineq term))
-	(floor      (sigfloor term))
+	;; (floor      (sigfloor term))
 	(t          term)
       ))))
 
@@ -685,12 +685,12 @@
        (needed-if*
 	(ncons (lift-bools (liftif atf))))
        (t (ncons (lift-bools atf))))) 
-     ((memq (funsym atf) *ifops*)
+     ((memq (funsym atf) +ifops+)
       (if *split-on-if-in-solve*
 	  (let ((leftsolve (catch 'context (solve (arg2 atf))))
 		(rightsolve (catch 'context (solve (arg3 atf)))))
 	    (if (equal leftsolve rightsolve)
-		(if (memq leftsolve *boolconstants*) ;NSH:was member
+		(if (memq leftsolve +boolconstants+) ;NSH:was member
 					; Sept 14, 1990: DAC
 					; solve should always return a list
 					; but catching 'context might not.
@@ -700,7 +700,7 @@
 	(if (equal (arg2 atf) (arg3 atf))
 	    (solve (arg2 atf))
 	  (ncons atf))))
-     ((memq (funsym atf) *arithrels*)
+     ((memq (funsym atf) +arithrels+)
       (arithsolve atf))
      (t
       ;; KLUDGE -- look at arg2 if arg1 is nil
@@ -762,12 +762,12 @@
        (needed-if*
 	(ncons (list 'not (lift-bools (liftif atf)))))
        (t (ncons (list 'not (lift-bools atf))))))
-     ((memq (funsym atf) *ifops*)
+     ((memq (funsym atf) +ifops+)
       (if *split-on-if-in-solve*
 	  (let ((leftnsolve (catch 'context (nsolve (arg2 atf))))
 		(rightnsolve (catch 'context (nsolve (arg3 atf)))))
 	    (if (equal leftnsolve rightnsolve)
-		(if (memq leftnsolve *boolconstants*)
+		(if (memq leftnsolve +boolconstants+)
 					; Sept 14, 1990: DAC
 					; nsolve should always return a list
 					; but catching 'context might not.
@@ -777,7 +777,7 @@
 	(if (equal (arg2 atf) (arg3 atf))
 	    (nsolve (arg2 atf))
 	  (ncons (list 'not (liftif* atf))))))
-     ((memq (funsym atf) *arithrels*)
+     ((memq (funsym atf) +arithrels+)
       (arithnsolve atf))
      (t
 					; KLUDGE -- look at arg2 if arg1 is nil
@@ -962,7 +962,7 @@
    ((integerp term) 'integer)
    ((atom term) nil)
    ((eq (funsym term) 'if*) (or (prtype (arg2 term)) (prtype (arg3 term))))
-   ((memq (funsym term) *arithops*)
+   ((memq (funsym term) +arithops+)
     (if (loop for arg in (argsof term) always (eq (prtype arg) 'integer))
 	'integer
 	'number))
@@ -1219,7 +1219,7 @@
 (defun needs-bool-lifting1 (exp)
   (cond
     ((atom exp) nil)
-    ((memq (funsym exp) *boolops*)
+    ((memq (funsym exp) +boolops+)
      (throw 'bool-lifting t))
     ;; the next case probably wont occur -  need to check ***
     ;;((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))

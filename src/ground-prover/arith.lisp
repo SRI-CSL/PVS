@@ -593,16 +593,16 @@
     (return
      (cond
       ((equal (arg1 lit)(arg2 lit)) (retfalse))
-      ((eq (setq res (newcontext (process lit))) 'false) *truecons*) 
+      ((eq (setq res (newcontext (process lit))) 'false) +truecons+) 
       ((eq res 'true) (retfalse))
       (t (let ((norm (normineq lit)))
 	   (cond ((eq norm 'ident) (retfalse))
 		 ((eq norm true) (retfalse))
-		 ((eq norm false) *truecons*)
+		 ((eq norm false) +truecons+)
 		 (t (let ((eqlits (equalsolve lit)))
 		      (if (singleton? eqlits)
 			  (if (eq (car eqlits) false);;NSH(8-27-03)
-			      *truecons*
+			      +truecons+
 			  `((nequal ,(arg1 (car eqlits)) ,(arg2 (car eqlits)))))
 			`((nequal ,(arg1 norm) ,(arg2 norm)))))))))))))
 
@@ -635,7 +635,7 @@
 
 (defun isineq? (ineq)
   (and (consp ineq)
-       (memq (funsym ineq) *arithrels*)))
+       (memq (funsym ineq) +arithrels+)))
 
 (defun negineq(ineq)
   (list
@@ -655,11 +655,11 @@
     (setq norm (normineq ineq))      ; normalize it
     (return
      (cond
-      ((eq norm 'true) *truecons*)
+      ((eq norm 'true) +truecons+)
       ((eq norm 'false) (retfalse))
-      ((eq norm 'ident) *truecons*)
+      ((eq norm 'ident) +truecons+)
       ((eq (setq res (newcontext (process1 (ncons (negineq norm))))) 'false)
-       *truecons*) ;dac 8-28-91: used to be true, but process1 could have returned false
+       +truecons+) ;dac 8-28-91: used to be true, but process1 could have returned false
 		      ; due to using a recently generated pr-union in pr-merge
                       ; but would have retruned true if it didn't use that pr-union.
                       ; thus this is safer as the contradiction will be found later.
@@ -846,6 +846,7 @@
 ; with x > z
 
 (defun numeric-upper-bounds (chainineqs &optional bestineq)
+  (declare (ignore bestineq))
   (loop for ineq in chainineqs
 	when (and (qnumberp (caddr ineq))
 		  (or (eq (car ineq) 'lesseqp)
@@ -862,7 +863,7 @@
 
 (defun bound-inequality? (expr)
   (and (consp expr)
-       (memq (car expr) *arithrels*)
+       (memq (car expr) +arithrels+)
        (qnumberp (caddr expr))))
 
 (defun subsumed-upper? (ineq1 ineq2) ;;ineq must be lessp or lesseqp

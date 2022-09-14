@@ -56,19 +56,19 @@
 (defun prerr (&rest args)
   (apply #'error args))
 
-(alexandria:define-constant *truecons* '(true) :test #'equal)
+(alexandria:define-constant +truecons+ '(true) :test #'equal)
 
-(alexandria:define-constant *eqarithrels* '(greatereqp lesseqp) :test #'equal)
+(alexandria:define-constant +eqarithrels+ '(greatereqp lesseqp) :test #'equal)
 
-(alexandria:define-constant *ifops* '(if if*) :test #'equal)
+(alexandria:define-constant +ifops+ '(if if*) :test #'equal)
 
-(alexandria:define-constant *boolconstants* '(false true) :test #'equal)
+(alexandria:define-constant +boolconstants+ '(false true) :test #'equal)
 
-(alexandria:define-constant *arithrels* '(lessp lesseqp greaterp greatereqp) :test #'equal)
+(alexandria:define-constant +arithrels+ '(lessp lesseqp greaterp greatereqp) :test #'equal)
 
-(alexandria:define-constant *arithops* '(PLUS TIMES DIFFERENCE MINUS) :test #'equal)
+(alexandria:define-constant +arithops+ '(PLUS TIMES DIFFERENCE MINUS) :test #'equal)
 
-(alexandria:define-constant *boolops* '(and or implies not ;;if
+(alexandria:define-constant +boolops+ '(and or implies not ;;if
 				    iff) :test #'equal)
 
 (defmacro singleton? (obj)

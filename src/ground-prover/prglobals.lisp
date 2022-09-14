@@ -146,10 +146,10 @@
 
 ;;; the following (til end-of-file) are taken from prpp:
 
-(alexandria:define-constant *infixlist*	;temporary list of infixes	
-   '(equal nequal lessp greaterp lesseq lesseqp greatereq greatereqp
-     PLUS MINUS TIMES DIVIDE DIFFERENCE)
-  :test #'equalp)
+;; (alexandria:define-constant *infixlist*	;temporary list of infixes	
+;;    '(equal nequal lessp greaterp lesseq lesseqp greatereq greatereqp
+;;      PLUS MINUS TIMES DIVIDE DIFFERENCE)
+;;   :test #'equalp)
 
 (alexandria:define-constant precedence-alist
     '((iff 1)
