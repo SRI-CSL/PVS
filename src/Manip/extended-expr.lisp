@@ -32,13 +32,18 @@
 ;; (defconstant rich-pat-char       #\@ )
 ;; (defconstant subst-symb-char     #\$ )
 
-(defconstant-if-unbound deep-wild-symbols
-  (list deep-wild-all deep-wild-term deep-wild-nonterm))
-(defconstant-if-unbound goto-index-symbols (list goto-index-symb goto-all-symb))
-(defconstant-if-unbound all-but-symbols (list all-but-symb all-but-ante all-but-cons))
-(defconstant-if-unbound all-but-symbols-loc (list all-but-symb all-but-symb-all))
-(defconstant-if-unbound all-but-dict
-  (list (cons all-but-symb '*) (cons all-but-ante '-) (cons all-but-cons '+)))
+(alexandria:define-constant deep-wild-symbols
+    (list deep-wild-all deep-wild-term deep-wild-nonterm)
+  :test #'equal)
+(alexandria:define-constant goto-index-symbols (list goto-index-symb goto-all-symb)
+  :test #'equal)
+(alexandria:define-constant all-but-symbols (list all-but-symb all-but-ante all-but-cons)
+  :test #'equal)
+(alexandria:define-constant all-but-symbols-loc (list all-but-symb all-but-symb-all)
+  :test #'equal)
+(alexandria:define-constant all-but-dict
+    (list (cons all-but-symb '*) (cons all-but-ante '-) (cons all-but-cons '+))
+  :test #'equal)
 
 
 ;;; ===============

@@ -24,12 +24,15 @@
 (defconstant all-but-cons        '+^ )   ;; '+- ?
 (defconstant rich-pat-char       #\@ )
 (defconstant subst-symb-char     #\$ )
-(defconstant-if-unbound all-but-symbols (list all-but-symb all-but-ante all-but-cons))
-(defconstant-if-unbound loc-ref-flat-symb   '!  )
-(defconstant-if-unbound loc-ref-full-symb   '!! )
-(defconstant-if-unbound loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb))
-(defconstant-if-unbound ext-expr-symbols
-  (apply #'list syntax-match-symb pat-match-symb loc-ref-symbols))
+(alexandria:define-constant all-but-symbols (list all-but-symb all-but-ante all-but-cons)
+  :test #'equal)
+(alexandria:define-constant loc-ref-flat-symb   '!  )
+(alexandria:define-constant loc-ref-full-symb   '!! )
+(alexandria:define-constant loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb)
+  :test #'equal)
+(alexandria:define-constant ext-expr-symbols
+    (apply #'list syntax-match-symb pat-match-symb loc-ref-symbols)
+  :test #'equal)
 
 (defvar *manip-gensym-count* 0)
 
