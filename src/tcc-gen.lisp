@@ -427,13 +427,14 @@ looking in bindings and substs."
 
 
 (defun insert-tcc-decl (kind expr type ndecl)
-  (let ((origin (make-instance 'tcc-origin
-		 :root (tcc-root-name expr)
-		 :kind kind
-		 :expr (if (eq kind 'existence)
-			   ""
-			   (str (raise-actuals expr t :all) :char-width nil))
-		 :type (str (raise-actuals type t :all) :char-width nil))))
+  (let* ((root (tcc-root-name expr))
+	 (origin (make-instance 'tcc-origin
+		   :root (or root (break "No root?"))
+		   :kind kind
+		   :expr (if (eq kind 'existence)
+			     ""
+			     (str (raise-actuals expr t :all) :char-width nil))
+		   :type (str (raise-actuals type t :all) :char-width nil))))
     (if (or *in-checker* *in-evaluator* *collecting-tccs*)
 	(add-tcc-info kind expr type ndecl origin)
 	(insert-tcc-decl1 kind expr type ndecl origin))))
