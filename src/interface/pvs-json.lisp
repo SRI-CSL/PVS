@@ -59,7 +59,6 @@
 ;;     (pushnew 'output-json-proofstate *proofstate-hooks*)
 ;;     (pushnew 'json-pvs-buffer *pvs-buffer-hooks*)
 ;;     (pushnew 'json-pvs-message *pvs-message-hooks*)
-;;     (pushnew 'json-pvs-error *pvs-error-hooks*)
 ;;     (setq *pvs-json-initialized* t)))
 
 ;; (defun pvs-json (json-string)
@@ -165,8 +164,8 @@
 
 (defun json-notification (method params)
   (let* ((explist (cons :object
-			`((:method . ,method)
-			  ,@(when params (list (cons :params
+			`(("method" . ,method)
+			  ,@(when params (list (cons "params"
 						     (if (consp params)
 							 (cons :array params)
 							 (list :array params))))))))
@@ -265,11 +264,11 @@
 		   (label (label ps))
 		   (sequent (json-sequent (current-goal ps) par-sforms))
 		   (result (cons :object
-				 (nconc (when printout `((:printout . ,printout)))
-					(when yields `((:yields . ,yields)))
-					`((:label . ,label))
-					(when comment `((:comment . ,comment)))
-					`((:sequent . ,sequent))))))
+				 (nconc (when printout `(("printout" . ,printout)))
+					(when yields `(("yields" . ,yields)))
+					`(("label" . ,label))
+					(when comment `(("comment" . ,comment)))
+					`(("sequent" . ,sequent))))))
 	      (setq *current-json-ps* ps)
 	      (json-result result json-id)))))))
 
@@ -331,23 +330,23 @@
 
 (defmethod json:encode-json ((ps proof-scripts) &optional (stream json:*json-output*))
   (json:with-object (stream)
-    (json:as-object-member (:pvs-file stream)
+    (json:as-object-member ("pvs-file" stream)
       (json:encode-json (pscripts-pvs-file ps) stream))
-    (json:as-object-member (:theory-scripts stream)
+    (json:as-object-member ("theory-scripts" stream)
       (json:encode-json (pscripts-theory-scripts ps) stream))))
 
 (defmethod json:encode-json ((ts theory-scripts) &optional (stream json:*json-output*))
   (json:with-object (stream)
-    (json:as-object-member (:theory-id stream)
+    (json:as-object-member ("theory-id" stream)
       (json:encode-json (tscripts-theory-id ts) stream))
-    (json:as-object-member (:formula-scripts stream)
+    (json:as-object-member ("formula-scripts" stream)
       (json:encode-json (tscripts-formula-scripts ts) stream))))
 
 (defmethod json:encode-json ((fs formula-script) &optional (stream json:*json-output*))
   (json:with-object (stream)
-    (json:as-object-member (:formula-id stream)
+    (json:as-object-member ("formula-id" stream)
       (json:encode-json (fscript-formula-id fs) stream))
-    (json:as-object-member (:formula-script stream)
+    (json:as-object-member ("formula-script" stream)
       (json:encode-json (proof-script-to-string (fscript-formula-script fs)) stream))))
 
 (defun proof-script-to-string (script)

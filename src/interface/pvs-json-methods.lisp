@@ -35,8 +35,8 @@
   (multiple-value-bind (reqfun argspec docstring)
       (get-json-request-function methodname)
     (if reqfun
-	`((:argspec ,argspec)
-	  (:docstring . ,docstring))
+	`(("argspec" ,argspec)
+	  ("docstring" . ,docstring))
 	(error "~a not found" methodname))))
 
 (defrequest lisp (string)
@@ -48,50 +48,62 @@
   "Change PVS workspace"
   (pvs:change-workspace dir))
 
+(defrequest clear-workspace (&optional workspace
+				       empty-pvs-context
+				       delete-binfiles
+				       dont-load-prelude-libraries)
+  "Clear the workspace(s)"
+  (pvs:clear-workspace
+   :workspace (cond ((member workspace '("all" ":all" "t") :test #'string-equal)
+		     "all")
+		    ((string-equal workspace "nil") nil)
+		    (t workspace))
+   :empty-pvs-context (unless (string-equal empty-pvs-context "nil") t)
+   :delete-binfiles (unless (string-equal delete-binfiles "nil") t)
+   :dont-load-prelude-libraries (unless (string-equal dont-load-prelude-libraries "nil") t)))
+
 (defrequest change-context (dir)
   "Change PVS workspace"
+  ;;(format t "~%change-context: ~s" dir)
   (pvs:change-workspace dir))
 
 (defrequest parse (filename)
   "Parse a file"
   (let ((theories (pvs:parse-file filename)))
     (pvs:save-context)
-    (xmlrpc-theories theories)))
+    (json-theories theories)))
+
+(defparameter *fff* nil)
 
 (defrequest typecheck (filename &optional force?)
   "Typecheck a file"
-  (format t "~%Request tc ~s" filename)
-  (let ((theories (pvs:typecheck-file filename force?)))
-    (pvs:save-context)
-    (xmlrpc-theories theories)))
+  ;; (format t "~%Request tc ~s" filename)
+  (push filename *fff*)
+  (let* ((theories (pvs:typecheck-file filename force?))
+	 (jtheories (json-theories theories)))
+    ;; (format t "~%Saving context for tc ~s" filename)
+    ;;(pvs:save-context)
+    ;;(format t "~%Returning theories for ~s" filename)
+    jtheories))
 
-(defstruct theory-struct
-  id
-  decls)
+(defun json-theories (theories)
+  (json-theories* theories nil))
 
-(defun xmlrpc-theories (theories &optional thstructs)
+(defun json-theories* (theories &optional thstructs)
   (if (null theories)
       (nreverse thstructs)
-      (let ((thstruct (xmlrpc-theory (car theories))))
-	(xmlrpc-theories (cdr theories) (cons thstruct thstructs)))))
+      (let ((thstruct (json-theory (car theories))))
+	(json-theories* (cdr theories) (cons thstruct thstructs)))))
 
-(defun xmlrpc-theory (theory)
-  (make-theory-struct
-   :id (pvs:id theory)
-   :decls (xmlrpc-theory-decls (pvs:all-decls theory))))
+(defun json-theory (theory)
+  `(("id" . ,(string (pvs:id theory)))
+    ("decls" . ,(json-theory-decls (pvs:all-decls theory)))))
 
-(defmethod json:encode-json ((ts theory-struct) &optional (stream json:*json-output*))
-  (json:with-object (stream)
-    (json:as-object-member (:id stream)
-      (json:encode-json (theory-struct-id ts) stream))
-    (json:as-object-member (:decls stream)
-      (json:encode-json (theory-struct-decls ts) stream))))
-
-(defun xmlrpc-theory-decls (decls &optional thdecls)
+(defun json-theory-decls (decls &optional thdecls)
   (if (null decls)
       (nreverse thdecls)
-      (let ((thdecl (xmlrpc-theory-decl (car decls))))
-	(xmlrpc-theory-decls
+      (let ((thdecl (json-theory-decl (car decls))))
+	(json-theory-decls
 	 (cdr decls)
 	 (if thdecl
 	     (cons thdecl thdecls)
@@ -99,78 +111,81 @@
 
 (defvar *idgensymctr*)
 
-(defun xmlrpc-theory-decl (decl)
+(defun json-theory-decl (decl)
   (let ((*idgensymctr* nil))
-    (xmlrpc-theory-decl* decl)))
+    (json-theory-decl* decl)))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:var-decl))
+(defmethod json-theory-decl* ((decl pvs:var-decl))
   nil)
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:inline-recursive-type))
-  `((:id . ,(pvs:id decl))
-    (:kind . ,(pvs:kind-of decl))
-    (:constructors . ,(mapcar #'xmlrpc-theory-decl*
-			(pvs:constructors decl)))
-    (:place . ,(pvs:place-list decl))))
+(defmethod json-theory-decl* ((decl pvs:inline-recursive-type))
+  (obj `(("id" . ,(string (pvs:id decl)))
+	 ("kind" . ,(string-downcase (pvs:kind-of decl)))
+	 ("constructors" . ,(arr (mapcar #'json-theory-decl*
+				   (pvs:constructors decl))))
+	 ("place" . ,(pvs:place-list decl)))))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:adt-constructor))
-  `((:id . ,(pvs:id decl))
-    (:recognizer . ,(pvs:recognizer decl))
-    (:accessors . ,(mapcar #'xmlrpc-theory-decl*
-		     (pvs:arguments decl)))
-    (:place . ,(pvs:place-list decl))))
+(defmethod json-theory-decl* ((decl pvs:adt-constructor))
+  (obj `(("id" . ,(string (pvs:id decl)))
+	 ("recognizer" . ,(string (pvs:recognizer decl)))
+	 ,@(when (pvs:arguments decl)
+	     `(("accessors" . ,(arr (mapcar #'json-theory-decl*
+				      (pvs:arguments decl))))))
+	 ("place" . ,(pvs:place-list decl)))))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:adtdecl))
-  `((:id . ,(pvs:id decl))
-    (:type . ,(pvs:str (pvs:type decl)))
-    (:place . ,(pvs:place-list decl))))
+(defmethod json-theory-decl* ((decl pvs:adtdecl))
+  (obj `(("id" . ,(string (pvs:id decl)))
+	 ("type" . ,(pvs:str (pvs:type decl)))
+	 ("place" . ,(pvs:place-list decl)))))
 
-(defmethod xmlrpc-theory-decl* ((imp pvs:importing))
-  `((:importing . ,(pvs:str (pvs:theory-name imp)))
-    (:kind . :importing)
-    (:place . ,(pvs:place-list imp))))
+(defmethod json-theory-decl* ((imp pvs:importing))
+  (obj `(("importing" . ,(pvs:str (pvs:theory-name imp)))
+	 ("kind" . "importing")
+	 ("place" . ,(pvs:place-list imp)))))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:typed-declaration))
+(defmethod json-theory-decl* ((decl pvs:typed-declaration))
   (let ((id (or (pvs:id decl)
-		(gen-id (pvs:kind-of decl)))))
-    `((:id . ,id)
-      (:kind . ,(pvs:kind-of decl))
-      ;;(:class . ,(class-name (class-of decl)))
-      (:type . ,(pvs:str (pvs:type decl)))
-      ,@(when (pvs:generated-by decl)
-	  `((:generated-by . ,(pvs:ref-to-id (pvs:generated-by decl)))))
-      (:place . ,(pvs:place-list decl)))))
+		(gen-id (string-downcase (pvs:kind-of decl))))))
+    (obj `(("id" . ,(string id))
+	   ("kind" . ,(string-downcase (pvs:kind-of decl)))
+	   ;;("class" . ,(class-name (class-of decl)))
+	   ("type" . ,(pvs:str (pvs:type decl)))
+	   ,@(when (pvs:generated-by decl)
+	       `(("generated-by" . ,(string (pvs:ref-to-id (pvs:generated-by decl))))))
+	   ("place" . ,(pvs:place-list decl))))))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:declaration))
+(defmethod json-theory-decl* ((decl pvs:declaration))
   (let ((id (or (pvs:id decl)
-		(gen-id (pvs:kind-of decl)))))
-    `((:id . ,id)
-      (:kind . ,(pvs:kind-of decl))
-      (:place . ,(pvs:place-list decl)))))
+		(gen-id (string-downcase (pvs:kind-of decl))))))
+    (obj `(("id" . ,(string id))
+	   ("kind" . ,(string-downcase (pvs:kind-of decl)))
+	   ("place" . ,(pvs:place-list decl))))))
   
 (defun gen-id (kind)
   (let ((num (gen-id-number kind)))
     (format nil "~a_~d" kind num)))
 
+(defvar *idgensymctr* nil)
+
 (defun gen-id-number (kind)
-  (let ((entry (assq kind *idgensymctr*)))
+  (let ((entry (assoc kind *idgensymctr*)))
     (cond (entry
 	   (incf (cdr entry)))
 	  (t (push (cons kind 0) *idgensymctr*)
 	     0))))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
+(defmethod json-theory-decl* ((decl pvs:formula-decl))
   (let* ((proved? (not (null (pvs:proved? decl))))
 	 (complete? (and proved?
 			 (string= (pvs:pc-complete decl)
 				  "complete")))
 	 (has-proofscript? (not (null (pvs:justification decl)))))
-    `((:id . ,(pvs:id decl))
-      (:kind . :formula)
-      (:proved? . ,proved?)
-      (:complete? . ,complete?)
-      (:has-proofscript? . ,has-proofscript?)
-      (:place . ,(pvs:place-list decl)))))
+    (obj `(("id" . ,(string (pvs:id decl)))
+	   ("kind" . "formula")
+	   ("proved?" . ,proved?)
+	   ("complete?" . ,complete?)
+	   ("has-proofscript?" . ,has-proofscript?)
+	   ("place" . ,(pvs:place-list decl))))))
 
 ;;; Info
 
@@ -200,87 +215,79 @@
 
 ;;; Prover interface
 
+(defrequest quit-all-proof-sessions ()
+  "Tries to quit from all existing proof sessions"
+  (pvs:quit-all-proof-sessions))
+
 (defrequest prove-formula (formula-ref &optional rerun?)
   "Starts interactive proof of a formula from a given theory.  First it
 determines the formula declaration, then creates a new proof-session,
 returning the unique id (within a PVS session)."
-  (format t "~%prove-formula: ~s" formula-ref)
-  (let* ((fdecl (pvs:get-formula-decl formula-ref)))
-    (format t "~%  decl = ~s" fdecl)
-    (let* ((prf-result (pvs:prover-init fdecl rerun?))
-	   (json:*lisp-identifier-name-to-json* 'identity))
-      (pvs2json-response prf-result))))
+  ;; (pvs:pvs-log "~%prove-formula: ~s" formula-ref)
+  ;;(format t "~%prove-formula: (prove-formula ~a)" formula-ref)
+  (let* ((prf-result (pvs:prover-init formula-ref rerun?))
+	 (prf-alist (pvs2json-response prf-result))
+	 (prf-json (json:encode-json-to-string prf-alist)))
+    ;;(format t "~%prove-formula: response = ~s" prf-alist)
+    (values prf-alist prf-json)))
+
+;; It gets confusing when qread from the prover uses *standard-input*,
+;; instead we use bordeaux-thread condition variables to wait for entries in
+;; the queue. After this, proof-command will find this entry, add to the queue, and
+;; call bt:condition-notify
+
+(defrequest proof-command (proof-id form)
+  "Sends a command to the prover thread."
+  (let* ((prf-result (pvs:prover-step proof-id form))
+	 (prf-alist (pvs2json-response prf-result))
+	 (prf-json (json:encode-json-to-string prf-alist)))
+    ;;(format t "~%proof-command: after prf-json")
+    (values prf-alist prf-json)))
 
 (defun pvs2json-response (prv-result)
-  "prv-result is an alist of the form ((:proofstate ...) (:log ...) (:id ...) (:status ...)."
-  (let* ((id (cdr (assoc :id prv-result)))
-	 (ps (cdr (assoc :proofstate prv-result)))
-	 (log (cdr (assoc :log prv-result)))
-	 (status (cdr (assoc :status prv-result)))
-	 (ps-json (pvs2json-ps ps log id status)))
-    (format t "~%pvs2json-prover-result:~%  ~s~%" ps-json)
+  "prv-result is an alist of the form
+ ((\"proofstate\" ...) (\"commentary\" ...) (\"id\" ...) (\"status\" ...))"
+  (let* ((id (cdr (assoc "id" prv-result :test #'string-equal)))
+	 (ps (cdr (assoc "proofstate" prv-result :test #'string-equal)))
+	 (commentary (cdr (assoc "commentary" prv-result :test #'string-equal)))
+	 (status (cdr (assoc "status" prv-result :test #'string-equal)))
+	 (ps-json (pvs2json-ps ps commentary id status)))
+    ;; (format t "~%pvs2json-response: ps-json =~%  ~s~%" ps-json)
     ps-json))
 
-(defmethod pvs2json-ps (ps log id status)
-  (with-slots (label comment current-goal (pps parent-proofstate)) ps
-    (let* ((pps (parent-proofstate ps))
-	   (action (when pps (strim (format-printout pps t))))
-	   (num-subgoals (proofstate-num-subgoals ps))
-	   (sequent (pvs2json-seq (current-goal ps) pps))
-	   (prev-cmd (let ((wish-rule (wish-current-rule ps)))
+(defun pvs2json-ps (ps commentary id status)
+  (with-slots (pvs:label pvs:comment pvs:current-goal (pps pvs:parent-proofstate)) ps
+    (let* ((action (when pps (pvs:strim (pvs:format-printout pps t))))
+	   (num-subgoals (pvs:proofstate-num-subgoals ps))
+	   (sequent (pvs2json-seq pvs:current-goal pps))
+	   (prev-cmd (let* ((wish-rule (pvs:wish-current-rule ps)))
 		       (cond (wish-rule (format nil "~s" wish-rule))
-			     (pps (format nil "~s" (current-rule pps)))
+			     (pps (format nil "~s" (pvs:current-rule pps)))
 			     (t nil))))
 	   (commentary (mapcar #'(lambda (e)
-				   (strim (if (stringp e) e (format nil "~a" e))))
-			 log)))
-      `(("id" . ,id)
-	("status" . ,status)
-	,@(when commentary
-	    `(("commentary" . ,commentary)))
-	,@(when action `(("action" . ,action)))
-	,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
-	("label" . ,(label ps))
-	,@(when prev-cmd `( ;;("last-cmd" . ,prev-cmd)
-			   ("prev-cmd" . ,prev-cmd)))
-	,@(when (comment ps) `(("comment" . ,(comment ps))))
-	("path" . ,(format nil "~{~a~^.~}" (path-from-top ps)))
-	("sequent" . ,sequent)))))
+				   (pvs:strim (if (stringp e) e (format nil "~a" e))))
+			 commentary)))
+      (obj `(("id" . ,(string id))
+	     ("status" . ,(string status))
+	     ,@(when commentary `(("commentary" . ,commentary)))
+	     ,@(when action `(("action" . ,action)))
+	     ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
+	     ("label" . ,pvs:label)
+	     ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
+	     ,@(when pvs:comment `(("comment" . ,pvs:comment)))
+	     ("path" . ,(format nil "~{~a~^.~}" (pvs:path-from-top ps)))
+	     ("sequent" . ,sequent))))))
 
-(defstruct seqstruct
-  antecedents
-  succedents
-  hidden-antecedents
-  hidden-succedents
-  info)
-
-(defmethod json:encode-json ((ss seqstruct) &optional (stream json:*json-output*))
-  (json:with-object (stream)
-    (when (seqstruct-antecedents ss)
-      (json:as-object-member ("antecedents" stream)
-	(json:encode-json (seqstruct-antecedents ss) stream)))
-    (when (seqstruct-succedents ss)
-      (json:as-object-member ("succedents" stream)
-	(json:encode-json (seqstruct-succedents ss) stream)))
-    (when (seqstruct-hidden-antecedents ss)
-      (json:as-object-member ("hidden-antecedents" stream)
-	(json:encode-json (seqstruct-hidden-antecedents ss) stream)))
-    (when (seqstruct-hidden-succedents ss)
-      (json:as-object-member ("hidden-succedents" stream)
-	(json:encode-json (seqstruct-hidden-succedents ss) stream)))))
-
-(defmethod pvs2json-seq (seq parent-ps)
-  (let* ((par-sforms (when parent-ps
-		       (s-forms (current-goal parent-ps))))
-	 (hidden-s-forms (hidden-s-forms seq))
-	 (hn-sforms (neg-s-forms* hidden-s-forms))
-	 (hp-sforms (pos-s-forms* hidden-s-forms)))
-    (make-seqstruct 
-     :antecedents (pvs2json-sforms (neg-s-forms seq) t par-sforms)
-     :succedents (pvs2json-sforms (pos-s-forms seq) nil par-sforms)
-     :hidden-antecedents (pvs2json-sforms hn-sforms t par-sforms)
-     :hidden-succedents (pvs2json-sforms hp-sforms nil par-sforms)
-     :info (info seq))))
+(defun pvs2json-seq (seq parent-ps)
+  (let* ((par-sforms (when parent-ps (pvs:s-forms (pvs:current-goal parent-ps))))
+	 (hidden-s-forms (pvs:hidden-s-forms seq))
+	 (hn-sforms (pvs:neg-s-forms* hidden-s-forms))
+	 (hp-sforms (pvs:pos-s-forms* hidden-s-forms)))
+    (obj `(("antecedents" . ,(arr (pvs2json-sforms (pvs:neg-s-forms seq) t par-sforms)))
+	   ("succedents" . ,(arr (pvs2json-sforms (pvs:pos-s-forms seq) nil par-sforms)))
+	   ("hidden-antecedents" . ,(arr (pvs2json-sforms hn-sforms t par-sforms)))
+	   ("hidden-succedents" . ,(arr (pvs2json-sforms hp-sforms nil par-sforms)))
+	   ("info" . ,(pvs:info seq))))))
 
 (defun pvs2json-sforms (sforms neg? par-sforms)
   (let ((c 0))
@@ -292,44 +299,34 @@ returning the unique id (within a PVS session)."
 ;; Note that this has the side effect of setting the view of the sform,
 ;; Which is a cons of the string and its view (computed lazily).
 (defun pvs2json-sform (sform fnum par-sforms)
-  (let* ((nf (formula sform))
-	 (frm (if (negation? nf) (args1 nf) nf)))
-    (unless (view sform)
+  (let* ((nf (pvs:formula sform))
+	 (frm (if (pvs:negation? nf) (pvs:args1 nf) nf)))
+    (unless (pvs:view sform)
       (multiple-value-bind (frmstr frmview)
-	  (pp-with-view frm *proofstate-indent* *proofstate-width*)
-	(setf (view sform) (list frmstr frmview))))
-    (let ((names-info (names-info-proof-formula sform)))
-      `(("labels" . ,(cons fnum (label sform)))
-	("changed" . ,(if (memq sform par-sforms) "false" "true"))
-	("formula" . ,(car (view sform)))
-	("names-info" . ,names-info)))))
+	  (pvs:pp-with-view frm pvs:*proofstate-indent* pvs:*proofstate-width*)
+	(setf (pvs:view sform) (list frmstr frmview))))
+    (let ((names-info (pvs:names-info-proof-formula sform)))
+      (obj `(("labels" . ,(arr (cons fnum (pvs:label sform))))
+	     ("changed" . ,(if (member sform par-sforms) "false" "true"))
+	     ("formula" . ,(car (pvs:view sform)))
+	     ("names-info" . ,names-info))))))
 
-;; It gets confusing when qread from the prover uses *standard-input*,
-;; instead we use bordeaux-thread condition variables to wait for entries in
-;; the queue. After this, proof-command will find this entry, add to the queue, and
-;; call bt:condition-notify
+(defun null-equivalent (obj)
+  (member obj '("" "nil" "null" "none" "()") :test #'string-equal))
 
-(defrequest proof-command (proof-id form)
-  "Sends a command to the prover thread."
-  (format t "~%proof-command: ~a~%  ~a" proof-id form)
-  (let* ((prf-result (pvs:prover-step proof-id form))
-	 (json:*lisp-identifier-name-to-json* 'identity))
-    (pvs2json-response prf-result)))
-
-(defrequest prover-status ()
+(defrequest prover-status (&optional proof-id)
   "Checks the status of the proof sessions: active or inactive.
 Returns a list of the form ((id . status) (id . status) ...)"
-  (or (pvs:prover-status)
-      :null))
+  (pvs:prover-status (unless (null-equivalent proof-id) proof-id)))
 
-(defrequest proof-status (formref &optional formname)
+(defrequest proof-status (formref)
   "Checks the status of the given formula, proved, unchecked, unfininshed,
 or unproved."
-  (pvs:get-proof-status formref formname))
+  (pvs:get-proof-status formref))
 
-(defrequest proof-script (fname formula)
+(defrequest proof-script (formref)
   "Returns the proof script, as with the show-proof command."
-  (pvs:get-proof-script fname formula))
+  (pvs:get-proof-script formref))
 
 (defrequest show-tccs (fname)
   "Returns the tccs, as with the show-tccs command."
@@ -405,6 +402,29 @@ to the associated declaration."
       (declare (ignore containing-terms)) ; might be useful later
       (json-term term))))
 
+(defrequest all-proofs-of-formula (form-ref)
+  "Returns all the proofs associated with the given formula."
+  (let* ((fdecl (pvs:get-formula-decl form-ref))
+	 (proofs (pvs:proofs fdecl)))
+    (mapcar #'(lambda (proof)
+		`(("id" . ,(string (pvs:id proof)))
+		  ("description" . ,(pvs:description proof))
+		  ("script" . ,(pvs:script proof))
+		  ("status" . ,(pvs:status proof))))
+      proofs)))
+
+(defrequest delete-proof-of-formula (form-ref proof-id)
+  "Deletes the proof-id of the formula."
+  (let* ((fdecl (pvs:get-formula-decl form-ref))
+	 (proofs (pvs:proofs fdecl))
+	 (proof (find proof-id proofs :test #'string= :key #'pvs:id)))
+    (unless proof
+      (error "proof-id ~s not found in formula ~a" proof-id form-ref))
+    (let ((nproofs (remove proof proofs)))
+      (when (eq proof (pvs:default-proof fdecl))
+	(setf (pvs:default-proof fdecl) (car (last nproofs)))) ; could be nil
+      (setf (pvs:proofs fdecl) nproofs))))
+
 ;; M3: Request to save proofs to prf file [Sept 2020]
 (defrequest save-all-proofs (theoryref)
   "Stores the declaration proofs into the corresponding PRF file"
@@ -414,23 +434,22 @@ to the associated declaration."
     (pvs:save-all-proofs theory)))
 
 ;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
-(defrequest store-last-attempted-proof (formula theory &optional overwrite? new-script-id new-script-desc)
-  "Store the last attempted proof script in the provided formula, only if the script was produced for it."
-  (unless pvs:*last-attempted-proof*
-    (pvs-error "store-last-attempted-proof error" "There is no attempted proof script to be saved."))
-  (error "store-last-attempted-proof called")
-  (let ((dst-decl (pvs:get-formula-decl theory formula)))
-    (if (equal dst-decl (car pvs:*last-attempted-proof*))
-	(let ((script (cdr pvs:*last-attempted-proof*)))
-	  (if overwrite?
-	      (setf (pvs:script (pvs:default-proof dst-decl)) (car script))
-	    (let ((id (or new-script-id (pvs:next-proof-id dst-decl)))
-		  (description (or new-script-desc "")))
-	      (setf (pvs:default-proof dst-decl)
-		    (pvs:make-default-proof dst-decl (car script) id description)))))
-      (pvs-error "store-last-attempted-proof error"
-		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
-			 (car pvs:*last-attempted-proof*) dst-decl)))))
+;; (defrequest save-proof (proof-id &optional new-script-id new-script-desc)
+;;   "Store current proof script in the provided formula, by default as the proof-id.
+;; "
+;;   (error "store-last-attempted-proof called")
+;;   (let ((dst-decl (pvs:get-formula-decl theory formula)))
+;;     (if (equal dst-decl (car pvs:*last-attempted-proof*))
+;; 	(let ((script (cdr pvs:*last-attempted-proof*)))
+;; 	  (if overwrite?
+;; 	      (setf (pvs:script (pvs:default-proof dst-decl)) (car script))
+;; 	    (let ((id (or new-script-id (pvs:next-proof-id dst-decl)))
+;; 		  (description (or new-script-desc "")))
+;; 	      (setf (pvs:default-proof dst-decl)
+;; 		    (pvs:make-default-proof dst-decl (car script) id description)))))
+;;       (pvs:pvs-error "store-last-attempted-proof error"
+;; 		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
+;; 			 (car pvs:*last-attempted-proof*) dst-decl)))))
 
 (defrequest add-pvs-library (string)
   "Just evaluate the string in lisp"
@@ -458,27 +477,27 @@ Returns JSON of the form:
   (json-term* term))
 
 (defmethod json-term* ((term pvs:module))
-  `((:kind . :theory)
-    (:id . ,(id term))
-    (:place . ,(place-list (place term)))))
+  (obj `(("kind" . "theory")
+	 ("id" . ,(string (pvs:id term)))
+	 ("place" . ,(pvs:place-list (pvs:place term))))))
 
 (defmethod json-term* ((term pvs:recursive-type))
-  `((:kind . :recursive-type)
-    (:id . ,(id term))
-    (:place . ,(place-list (place term)))))
+  (obj `(("kind" . "recursive-type")
+	 ("id" . ,(string (pvs:id term)))
+	 ("place" . ,(pvs:place-list (pvs:place term))))))
 
 (defmethod json-term* ((term pvs:declaration))
-  (pvs:json-decl-list term (pvs:ptype-of term) (module term)))
+  (pvs:json-decl-list term (pvs:ptype-of term) (pvs:module term)))
 
 (defmethod json-term* ((term pvs:type-expr))
-  `((:kind . :type)
-    (:string . ,(str term))
-    (:place . ,(place-list (place term)))))
+  (obj `(("kind" . "type")
+	 ("string" . ,(pvs:str term))
+	 ("place" . ,(pvs:place-list (pvs:place term))))))
 
 (defmethod json-term* ((term pvs:expr))
-  `((:kind . :expr)
-    (:string . ,(str term))
-    (:place . ,(place-list (place term)))))
+  (obj `(("kind" . "expr")
+	 ("string" . ,(pvs:str term))
+	 ("place" . ,(pvs:place-list (pvs:place term))))))
 
 (defmethod json:encode-json (any &optional (stream json:*json-output*))
   ;; Just return nil in this case, there's a problem on some Macs that this deals with.

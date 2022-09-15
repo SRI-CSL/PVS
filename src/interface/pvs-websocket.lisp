@@ -66,10 +66,6 @@
 
 ;; (require :sb-cltl2 "~/sbcl/obj/sbcl-home/contrib/sb-cltl2")
 
-(defpackage :pvs-websocket
-  (:use :cl-user :common-lisp)
-  (:nicknames :pvs-ws))
-
 (in-package :pvs-websocket)
 
 ;; Uses websocket-driver package, abbreviated :wsd
@@ -80,10 +76,7 @@
 ;;   (sb-thread:terminate-thread (fourth (sb-thread:list-all-threads)))
 ;;   where fourth here is then hunchentoot-listener
 
-(defvar *websocket-server*)
-
-(defvar *ws-pvs-connections* nil
-  "Assigns a generated id to the connection")
+(defvar *websocket-server* nil)
 
 (defvar *ws-thread-connections* nil
   "Keeps association between threads and connections")
@@ -94,8 +87,9 @@
   (setq *websocket-server* (clack:clackup #'websocket-pvs-server :port port)))
 
 (defun stop-pvs-server ()
-  (clack:stop *websocket-server*)
-  (hunchentoot:stop *websocket-server*))
+  (when *websocket-server*
+    (clack:stop *websocket-server*)
+    (hunchentoot:stop *websocket-server*)))
 
 (defun websocket-pvs-server (env)
   (let ((ws (wsd:make-server env)))
@@ -121,39 +115,46 @@
 
 (defun ws-open (conn)
   ;;(format t "~%ws-open called~%")
-  (push (cons conn (gentemp "conn-")) *ws-pvs-connections*)
   (push (cons (bt:current-thread) conn) *ws-thread-connections*))
 
+(defvar *debug-ws* t)
+
 (defun ws-message (conn message)
-  ;; (format t "~%Got WS message of type ~a from ~a:~%  ~a"
-  ;;   (type-of message) (cdr (assoc conn *ws-pvs-connections*)) message)
-  ;;(wsd:send conn (format nil "Got PVS message: ~a" message))
-  (let ((pvs::*pvs-emacs-interface* nil))
-    (if t
+  ;;(format t "~%ws-message: ~s" message)
+  (let ((pvs:*pvs-emacs-interface* nil)
+	(pvs:*pvs-websocket-interface* t))
+    (if *debug-ws*
 	(pvs-jsonrpc:process-jsonrpc message conn)
 	(handler-case
 	    (pvs-jsonrpc:process-jsonrpc message conn)
 	  (error (c) (format t "~a" c))))))
 
 (defun ws-close (conn code reason)
-  (let ((telt (assoc (bordeaux-threads:current-thread) *ws-thread-connections*))
-	(celt (assoc conn *ws-pvs-connections*)))
+  (declare (ignore code reason))
+  (let ((telt (assoc (bordeaux-threads:current-thread) *ws-thread-connections*)))
     (assert telt)
     (assert (eq (cdr telt) conn))
-    (assert celt)
-    (format t "~%Closing PVS connection for ~a, code: ~a, reason: ~a"
-      (cdr (assoc conn *ws-pvs-connections*)) code reason)
-    (setf *ws-thread-connections* (remove telt *ws-thread-connections*))
-    (setf *ws-pvs-connections* (remove celt *ws-pvs-connections*))))
+    ;; (format t "~%Closing PVS connection, code: ~a, reason: ~a~%" code reason)
+    (finish-output)
+    (setf *ws-thread-connections* (remove telt *ws-thread-connections*))))
 
 (defun ws-error (conn errmsg)
+  (declare (ignore conn))
+  (format t "Websocket error: ~a~%" errmsg)
+  (finish-output)
   ;; Happens when the connection is dropped without sending close
-  (format t "~%Got error from ~a:~%  ~a" (assoc conn *ws-pvs-connections*) errmsg)
+  ;;(format t "~%Got error:~%  ~a" errmsg)
   ;; (defgeneric send (ws data &key start end type code callback))
-  (wsd:send conn errmsg))
+  ;; (wsd:send conn errmsg)
+  )
 
 (defun ws-current-connection ()
   (cdr (assoc (bt:current-thread) *ws-thread-connections*)))
+
+(defun remove-dead-thread-connections ()
+  (setq *ws-thread-connections*
+	(remove-if-not #'(lambda (elt) (bt:thread-alive-p (car elt)))
+	  *ws-thread-connections*)))
 
 ;; (defvar *ws-proof-connections* nil)
 
@@ -238,42 +239,10 @@
 ;; *ws-thread-connections*.
 
 (defun set-pvs-hooks ()
-  ;;(setf pvs:*pvs-error-hook* #'ws-pvs-error-hook)
-  (setf pvs:*pvs-message-hook* #'ws-pvs-message-hook)
+  (setf pvs:*pvs-message-hook* #'pvs-jsonrpc:pvs-message-hook)
   ;; (setf pvs:*pvs-warning-hook* #'ws-pvs-warning-hook)
   ;; (setf pvs:*pvs-buffer-hook* #'ws-pvs-buffer-hook)
-  ;; (setf pvs:*pvs-y-or-n-hook* #'ws-pvs-y-or-n-hook)
+  ;; (setf pvs:*pvs-y-or-n-hook* #'pvs-jsonrpc:pvs-y-or-n-hook)
   ;; (setf pvs:*pvs-query-hook* #'ws-pvs-query-hook)
   ;; (setf pvs:*pvs-dialog-hook* #'ws-pvs-dialog-hook)
   )
-
-;; (defun ws-pvs-error-hook (msg err &optional file-name place)
-;;   (let ((conn (cdr (assoc (bordeaux-threads:current-thread) *ws-thread-connections*))))
-;;     (unless conn
-;;       (format t "~%ws-pvs-error-hook: couldn't find thread ~a in *ws-thread-connections*~%"
-;; 	(bordeaux-threads:current-thread)))
-;;     ;; Need to be careful here; this could be a result of a request, in
-;;     ;; which case we need to make sure it gets returned correctly.
-;;     ;; Errors should be handled by the condition-handler of the open event
-;;     (when conn
-;;       (let ((jerror (json:encode-json-to-string
-;; 		     `((:error . ((:code . -32700) (:message . "PVS Error") (:data . ,err)))
-;; 		       (:id . nil) (:jsonrpc . "2.0")))))
-;; 	(websocket-driver:send conn jerr)
-;; 	(format t "~%ws-pvs-error-hook: shouldn't be here~%")))))
-    
-(defun ws-pvs-message-hook (msg)
-  (unless (string= (bt:thread-name (bt:current-thread))
-		   "Initial Lisp Listener")
-    ;; (format t "~%ws-pvs-message-hook: ~a" msg)
-    (assert (stringp msg))
-    (let ((conn (cdr (assoc (bordeaux-threads:current-thread) *ws-thread-connections*))))
-      (unless conn
-	(format t "~%ws-pvs-message-hook: couldn't find thread ~a in *ws-thread-connections*~%"
-	  (bordeaux-threads:current-thread)))
-      (when conn
-	(let* ((notif `((:method . :pvs-message)
-			(:params .  (,msg))))
-	       (jnotif (json:encode-json-alist-to-string notif)))
-	  (wsd:send conn jnotif))))))
-

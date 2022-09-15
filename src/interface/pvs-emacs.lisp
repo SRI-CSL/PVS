@@ -31,7 +31,6 @@
 
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)
-(defvar *pvs-error-hook* nil)
 (defvar *pvs-buffer-hook* nil)
 (defvar *pvs-y-or-n-hook* nil)
 (defvar *pvs-query-hook* nil)
@@ -40,7 +39,6 @@
 (defun clear-pvs-hooks ()
   (setq *pvs-message-hook* nil
 	*pvs-warning-hook* nil
-	*pvs-error-hook* nil
 	*pvs-buffer-hook* nil
 	*pvs-y-or-n-hook* nil
 	*pvs-query-hook* nil
@@ -74,29 +72,40 @@
 (defmacro pvs-errors (form)
   "Handle PVS errors when evaluating form"
   `(progn
-    (princ " ")				; Make sure we have output
-    (handler-case
-	(let ((*to-emacs* t))
-	  (setq *print-length* nil)
-	  (setq *print-level* nil)
-	  (if (and #-(or multiprocessing mp) nil
-		   *noninteractive*
-		   *noninteractive-timeout*
-		   ,(not (and (listp form)
-			      (memq (car form) *prover-invoking-commands*))))
-	      #-(or multiprocessing mp sbcl) nil
-	      #+(or multiprocessing mp)
-	      (mp:with-timeout (*noninteractive-timeout*
-				(format t "Timed out!"))
-			       ,form)
-	      #+sbcl
-	      (sb-ext:with-timeout *noninteractive-timeout*
-		(handler-case ,form
-		  (sb-ext:timeout () (format t "Timed out!"))))
-	      ,form))
-	(string (error)
-		(with-output-to-string (string)
-		  (format string "PVS: ~a" error))))))
+     (princ " ")			; Make sure we have output
+     (handler-case
+	 (let ((*to-emacs* t))
+	   (setq *print-length* nil)
+	   (setq *print-level* nil)
+	   (if (and #-(or multiprocessing mp) nil
+		    *noninteractive*
+		    *noninteractive-timeout*
+		    ,(not (and (listp form)
+			       (memq (car form) *prover-invoking-commands*))))
+	       #-(or multiprocessing mp sbcl) nil
+	       #+(or multiprocessing mp)
+	       (mp:with-timeout (*noninteractive-timeout*
+				 (format t "Timed out!"))
+		   ,form)
+	       #+sbcl
+	       (sb-ext:with-timeout *noninteractive-timeout*
+		 (handler-case ,form
+		   (sb-ext:timeout () (format t "Timed out!"))))
+	       ,form))
+       (pvs-error (err)
+	 (let* ((*print-pretty* nil)
+		(*output-to-emacs*
+		 (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
+		   (when (file-name err) (protect-emacs-output (namestring (file-name err))))
+		   (unless *from-buffer*
+		     (protect-emacs-output (namestring *default-pathname-defaults*)))
+		   (protect-emacs-output (message err))
+		   (write-to-temp-file (error-string err))
+		   (line-begin (place err)) (col-begin (place err)))))
+	   (to-emacs)
+	   (if *in-checker*
+	       (restore)
+	       (pvs-abort)))))))
 
 #+(or akcl harlequin-common-lisp)
 (defmacro pvs-errors (form)
@@ -110,6 +119,15 @@
 
 (defmacro lisp (form)
   `,form)
+
+(define-condition pvs-error (simple-error)
+  ((message :accessor message :initarg :message)
+   (error-string :accessor error-string :initarg :error-string)
+   (file-name :accessor file-name :initarg :file-name)
+   (place :accessor place :initarg :place))
+  (:report (lambda (c stream)
+	     (with-slots (error-string) c
+	       (format stream "~a" error-string)))))
 
 (defvar *old-result* nil)
 
@@ -180,21 +198,21 @@
 
 (defun pvs-message (ctl &rest args)
   (let ((str (format nil "~?" ctl args)))
-    (when *pvs-message-hook*
-      ;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
-      ;; Note that hooks are mostly for display, so we call them all.
-      (if (listp *pvs-message-hook*)
-	  (dolist (hook *pvs-message-hook*)
-	    (funcall hook str))
-	  (funcall *pvs-message-hook* str)))
-    (unless *suppress-msg*
-      (if *to-emacs*
-	  (let* ((*print-pretty* nil)
-		 (*output-to-emacs*
-		  (protect-emacs-output
-		   (format nil ":pvs-msg ~a :end-pvs-msg" str))))
-	    (to-emacs))
-	  (format t "~%~a" str))))
+    (if *pvs-message-hook*
+	;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
+	;; Note that hooks are mostly for display, so we call them all.
+	(if (listp *pvs-message-hook*)
+	    (dolist (hook *pvs-message-hook*)
+	      (funcall hook str))
+	    (funcall *pvs-message-hook* str))
+	(unless *suppress-msg*
+	  (if *to-emacs*
+	      (let* ((*print-pretty* nil)
+		     (*output-to-emacs*
+		      (protect-emacs-output
+		       (format nil ":pvs-msg ~a :end-pvs-msg" str))))
+		(to-emacs))
+	      (format t "~%~a" str)))))
   nil)
 
 (defun pvs-message-with-context (obj ctl &rest args)
@@ -218,9 +236,7 @@
 (defun pvs-warning (ctl &rest args)
   (when *pvs-warning-hook*
     (funcall *pvs-warning-hook* (format nil "~?" ctl args)))
-  (if *noninteractive*
-      (pvs-message "~% ~?~%" ctl args)
-      (format t "~% ~?~%" ctl args))
+  (pvs-log "~% ~?~%" ctl args)
   (when (and (current-theory)
 	     (not *in-checker*)
 	     (not *in-evaluator*))
@@ -238,16 +254,15 @@
 ;;; them to a buffer.
 
 (defun show-theory-warnings (theoryref)
-  (with-theory (thname) theoryref
-    (let ((theory (get-theory thname)))
-      (cond ((null theory)
-	     (pvs-message "Theory ~a is not typechecked" theoryref))
-	    ((null (warnings theory))
-	     (pvs-message "Theory ~a has no warning messages" theoryref))
-	    (t (pvs-buffer "PVS Warnings"
-		 (format nil "Warnings for theory ~a:~2%~{~a~^~2%~}"
-		   thname (mapcar #'cdr (warnings theory)))
-		 t t))))))
+  (let ((theory (get-theory theoryref)))
+    (cond ((null theory)
+	   (pvs-message "Theory ~a is not typechecked" theoryref))
+	  ((null (warnings theory))
+	   (pvs-message "Theory ~a has no warning messages" theoryref))
+	  (t (pvs-buffer "PVS Warnings"
+	       (format nil "Warnings for theory ~a:~2%~{~a~^~2%~}"
+		 thname (mapcar #'cdr (warnings theory)))
+	       t t)))))
 
 (defun show-pvs-file-warnings (fileref)
   (with-pvs-file (filename) fileref
@@ -284,20 +299,19 @@
   nil)
 
 (defun show-theory-messages (theoryref)
-  (with-theory (theoryname) theoryref
-    (let ((theory (get-theory theoryname)))
-      (cond ((null theory)
-	     (pvs-message "Theory ~a is not typechecked" theoryname))
-	    ((null (info theory))
-	     (pvs-message "Theory ~a has no informational messages" theoryname))
-	    (t (pvs-buffer "PVS Messages"
-		 (format nil
-		     "Messages for theory ~a:~
+  (let ((theory (get-theory theoryref)))
+    (cond ((null theory)
+	   (pvs-message "Theory ~a is not typechecked" theoryref))
+	  ((null (info theory))
+	   (pvs-message "Theory ~a has no informational messages" theoryref))
+	  (t (pvs-buffer "PVS Messages"
+	       (format nil
+		   "Messages for theory ~a:~
                     ~2%Use M-x show-theory-conversions to see the conversions.~
                     ~2%~{~a~^~2%~}"
-		   theoryname
-		   (mapcar #'cdr (info theory)))
-		 t t))))))
+		 theoryref
+		 (mapcar #'cdr (info theory)))
+	       t t)))))
 
 (defun show-pvs-file-messages (fileref)
   (with-pvs-file (filename) fileref
@@ -339,20 +353,19 @@
   nil)
 
 (defun show-theory-conversions (theoryref)
-  (with-theory (theoryname) theoryref
-    (let ((theory (get-theory theoryname)))
-      (cond ((null theory)
-	     (pvs-message "Theory ~a is not typechecked" theoryname))
-	    ((null (conversion-messages theory))
-	     (pvs-message "Theory ~a has no conversions" theoryname))
-	    (t (pvs-buffer "PVS Conversions"
-		 (format nil
-		     "Conversions for theory ~a:~
+  (let ((theory (get-theory theoryref)))
+    (cond ((null theory)
+	   (pvs-message "Theory ~a is not typechecked" theoryref))
+	  ((null (conversion-messages theory))
+	   (pvs-message "Theory ~a has no conversions" theoryref))
+	  (t (pvs-buffer "PVS Conversions"
+	       (format nil
+		   "Conversions for theory ~a:~
                     ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
                     ~2%~{~a~^~2%~}"
-		   theoryname
-		   (mapcar #'cdr (conversion-messages theory)))
-		 t t))))))
+		 theoryref
+		 (mapcar #'cdr (conversion-messages theory)))
+	       t t)))))
 
 (defun show-pvs-file-conversions (fileref)
   (with-pvs-file (filename) fileref
@@ -375,15 +388,28 @@
 
 ;;; Used to put messages in a log file
 
+(defvar *pvs-log-stream* nil)
+
+(defvar *pvs-log-directory* "~/.pvslog/")
+
 (defun pvs-log (ctl &rest args)
-  (unless *suppress-msg*
-    (if *to-emacs*
-	(let* ((*print-pretty* nil)
-	       (*output-to-emacs*
-		(protect-emacs-output
-		 (format nil ":pvs-log ~? :end-pvs-log" ctl args))))
-	  (to-emacs))
-	(format t "~%~?" ctl args))))
+  (multiple-value-bind (sec min hour date month year)
+      (decode-universal-time (get-universal-time))
+    ;; First time will set the log file and open it for writing
+    (unless *pvs-log-stream*
+      (let ((fname (format nil "~apvs-~4,'0d-~2,'0d-~2,'0d.log"
+		     *pvs-log-directory* year month date)))
+	(ensure-directories-exist *pvs-log-directory*)
+	(setq *pvs-log-stream*
+	      (open (uiop:native-namestring fname) :direction :output
+		    :if-exists :append :if-does-not-exist :create))))
+    ;; (unless (open-p *pvs-log-stream*)
+    ;;   (setq *pvs-log-stream*
+    ;; 	    (open *pvs-log-stream* :direction :output
+    ;; 		  :if-exists :append :if-does-not-exist :create)))
+    (format *pvs-log-stream* "[~2,'0d:~2,'0d:~2,'0d] ~?" hour min sec ctl args)
+    ;;(uiop:finish-outputs *pvs-log-stream*)
+    ))
 
 (defun verbose-msg (ctl &rest args)
   ;; Writes out a message.  The message should fit on one line, and
@@ -409,59 +435,30 @@
 	    (to-emacs)))
 	(format t "~?" ctl args))))
 
+(defun in-the-debugger ()
+  ;; Calls wrapped in "lisp" so it works in or out of the prover
+  #+sbcl (lisp sb-debug:*in-the-debugger*)
+  #+allegro (lisp (plusp (debug:debug-break-level))))
+
 (defun pvs-error (msg err &optional file-name place)
   ;; Indicates an error; no recovery possible.
   (assert (or (null file-name)
 	      *from-buffer*
 	      (file-exists-p file-name)))
-  (cond (*pvs-error-hook*
-	 (let* ((place (if *adt-decl* (place *adt-decl*) place))
-		(buff (if *adt-decl*
-			  (or (filename *generating-adt*)
-			      (and (current-theory)
-				   (filename (current-theory)))
-			      *current-file*)
-			  (or *from-buffer* file-name))))
-	   (funcall *pvs-error-hook* msg err buff place)))
-	(*rerunning-proof*
-	 (restore))
-	((and *pvs-emacs-interface*
-	      *to-emacs*)
-	 (let* ((place (if *adt-decl* (place *adt-decl*) place))
-		(buff (if *adt-decl*
-			  (or (filename *generating-adt*)
-			      (and (current-theory)
-				   (filename (current-theory)))
-			      *current-file*)
-			  (or *from-buffer* file-name)))
-		(*print-pretty* nil)
-		(*output-to-emacs*
-		 (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
-		   (when buff (protect-emacs-output (namestring buff)))
-		   (unless *from-buffer*
-		     (protect-emacs-output (namestring *default-pathname-defaults*)))
-		   (protect-emacs-output msg)
-		   (write-to-temp-file err)
-		   (line-begin place) (col-begin place))))
-	   (to-emacs)
-	   (if *in-checker*
-	       (restore)
-	       (pvs-abort))))
-	((null *pvs-emacs-interface*)
-	 (format t "~%<pvserror msg=\"~a\">~%\"~a~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
-	   (protect-emacs-output msg)
-	   (protect-emacs-output err)
-	   file-name
-	   (when place
-	     (format nil " (line ~a, col ~a)"
-	       (line-begin place)
-	       (col-begin place))))
-	 (pvs-abort))
-	(t
-	 (format t "~%~%~a~%~a" msg err)
-	 (if *in-checker*
-	     (restore)
-	     (error "~a: ~a" msg err)))))
+  (let* ((place (if *adt-decl* (place *adt-decl*) place))
+	 (buff (if *adt-decl*
+		   (or (filename *generating-adt*)
+		       (and (current-theory)
+			    (filename (current-theory)))
+		       *current-file*)
+		   (or *from-buffer* file-name))))
+    (cond (*rerunning-proof*
+	   (restore))
+	  (t (error 'pvs-error
+		    :message msg
+		    :error-string err
+		    :file-name buff
+		    :place place)))))
 
 (defun pvs-abort ()
   #-allegro (abort)
@@ -601,7 +598,8 @@
 	     (read))))
 
 (defun pvs-emacs-eval (form)
-  (when *pvs-emacs-interface*
+  (when (and *pvs-emacs-interface*
+	     (not (current-session)))
     (let* ((*print-pretty* nil)
 	   (*output-to-emacs*
 	    (format nil ":pvs-eval ~a :end-pvs-eval" form)))
@@ -624,40 +622,9 @@
 	(format t "~%Not a valid choice - try again~%choice? ")
 	(read-choice query))))
 
-(defstruct (ps-control-info (:conc-name psinfo-)
-			    #+allegro
-			    (:print-function
-			     (lambda (psi stream depth)
-			       (declare (ignore depth))
-			       (format stream "<ps-control-info :cmd-gate ~a~%~
-                                                                :command ~a~%~
-                                                                :res-gate ~a~%~
-                                                                :json-result ~a~%~
-                                                                :lock ~a>"
-				 (mp:gate-open-p (psinfo-cmd-gate psi))
-				 (psinfo-command psi)
-				 (mp:gate-open-p (psinfo-res-gate psi))
-				 (psinfo-json-result psi)
-				 (psinfo-lock psi)))))
-  command
-  json-result
-  lock
-  cmd-gate
-  res-gate)
-
-(defun add-psinfo (psi ps-json)
-  #+allegro
-  (mp:with-process-lock
-   ((psinfo-lock psi))
-   ;; M3 if there's something in (psinfo-json-result psi), append the new information.
-   (setf (psinfo-json-result psi)
-	 (if (psinfo-json-result psi)
-	     (append (psinfo-json-result psi) ps-json)
-	   ps-json))))
-
 ;;; The primary method (i.e., call-next-method) simply prints the proofstate in the
 ;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
-;;; XML-RPC clients
+;;; Websocket clients
 
 (defvar *pvs-emacs-output-proofstate-p* nil
   "Set to t to try the Emacs frame interface - stiil in progress.")
@@ -767,15 +734,17 @@
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
   (when *pvs-buffer-hook*
     (funcall *pvs-buffer-hook* name contents display? read-only? append? kind))
-  (if *to-emacs*
-      (let* ((*print-pretty* nil)
-	     (*output-to-emacs*
-	      (format nil ":pvs-buf ~a&~a&~a&~a&~a&~a :end-pvs-buf"
-		name (when contents (write-to-temp-file contents))
-		display? read-only? append? kind)))
-	(to-emacs))
-      (if display?
-	  (format t "~&~a" contents))))
+  (cond (*pvs-websocket-interface*
+	 (format nil "~a" contents))
+	(*to-emacs*
+	 (let* ((*print-pretty* nil)
+		(*output-to-emacs*
+		 (format nil ":pvs-buf ~a&~a&~a&~a&~a&~a :end-pvs-buf"
+		   name (when contents (write-to-temp-file contents))
+		   display? read-only? append? kind)))
+	   (to-emacs)))
+	(display?
+	 (format t "~&~a" contents))))
 
 (defun pvs-display (name instance type value)
   ;; note no test for *to-emacs* 
@@ -822,6 +791,7 @@
       (coerce (nreverse result) 'string)))
 
 (defun protect-string-output (string)
+  "Escapes backslash and double-quote if argument is a string, returns it otherwise."
   (if (stringp string)
       (with-output-to-string (str)
 	(loop for ch across string
@@ -832,6 +802,7 @@
       string))
 
 (defun protect-string-output* (string pos &optional result)
+  "Escapes backslash and double-quote."
   (if (< pos (length string))
       (protect-string-output*
        string
@@ -852,15 +823,6 @@
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
-(define-condition pvs-error (simple-error)
-  ((message :accessor message :initarg :message)
-   (error-string :accessor error-string :initarg :error-string)
-   (file-name :accessor file-name :initarg :file-name)
-   (place :accessor place :initarg :place))
-  (:report (lambda (c stream)
-	     (with-slots (error-string) c
-	       (format stream "~a" error-string)))))
-
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch* ; From with-no-parse-errors macro
@@ -870,12 +832,11 @@
 		       (format nil "~?" message args)
 		       message)
 		   obj)))
-	((or *pvs-error-hook*
-	     (and (or *to-emacs*
-		      (null *pvs-emacs-interface*))
-		  (or (not *in-checker*)
-		      (not *in-evaluator*)
-		      *tc-add-decl*)))
+	((and (or *to-emacs*
+		  (null *pvs-emacs-interface*))
+	      (or (not *in-checker*)
+		  (not *in-evaluator*)
+		  *tc-add-decl*))
 	 (let ((file-name
 		(when *current-file*
 		  (if (pathnamep *current-file*)
@@ -892,6 +853,7 @@
 	     (place obj))))
 	((and (or *in-checker*
 		  *in-evaluator*)
+	      (not (current-session))
 	      (not *tcdebug*))
 	 (format t "~%~?~@[~a~]" message args
 		 (when (place obj)
@@ -900,6 +862,14 @@
 		     (col-begin (place obj)))))
 	 (format t "~%Restoring the state.")
 	 (restore))
+	((pvs-ws:ws-current-connection)
+	 (error "~?~@[~%In file ~a~]~@[~a~]"
+	   message args
+	   (when *current-file* (pathname-name *current-file*))
+	   (when (place obj)
+	     (format nil " (line ~a, col ~a)"
+	       (line-begin (place obj))
+	       (col-begin (place obj))))))
 	((null *pvs-emacs-interface*)
 	 (format t "~%<pvserror msg=\"parse-error\">~%\"~?~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
 	   message args
@@ -943,10 +913,9 @@
 			       (format nil "~a" errmsg))
 			      (format nil "~a" errmsg))
 			  obj)))
-	  ((or *pvs-error-hook*
-	       (and *to-emacs*
-		    (or (not *in-checker*)
-			*tc-add-decl*)))
+	  ((and *to-emacs*
+		(or (not *in-checker*)
+		    *tc-add-decl*))
 	   (pvs-error "Typecheck error"
 	     errmsg
 	     (let ((fname (or (and (current-theory)
@@ -962,23 +931,19 @@
 						  (place (current-declaration)))))))
 		 (place *adt*)
 		 (place obj))))
-	  ((and *in-checker* (not *tcdebug*))
+	  ((and *in-checker* (not *tcdebug*) (not (current-session)))
 	   (format t "~%~a" errmsg)
 	   (format t "~%Restoring the state.")
 	   (restore))
 	  ((and *in-evaluator* (not *evaluator-debug*))
 	   (error 'tcerror :term obj :msg errmsg))
-	  ((null *pvs-emacs-interface*)
-	   (format t "~%<pvserror msg=\"type error\">~%\"~a~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
-	     (protect-emacs-output errmsg)
-	     (when *current-file* (pathname-name *current-file*))
-	     (when (place obj)
-	       (format nil " (line ~a, col ~a)"
-		 (line-begin (place obj))
-		 (col-begin (place obj)))))
-	   (pvs-abort))
 	  (t (let* ((file-name (when *current-file*
-				 (format nil "~a~a.pvs" (current-path) *current-file*)))
+				 (let ((len (length *current-file*)))
+				   (if (and (> len 4)
+					    (string= (subseq *current-file* (- len 4))
+						     ".pvs"))
+				       (format nil "~a~a" (current-path) *current-file*)
+				       (format nil "~a~a.pvs" (current-path) *current-file*)))))
 		    (message-str (format nil "~?" message args))
 		    (error-str (format nil "~a~@[~%In file ~a~]~@[~a~]"
 				 message-str file-name
@@ -1087,7 +1052,6 @@
 (defun clear-hooks ()
   (setq *pvs-message-hook* nil)
   (setq *pvs-warning-hook* nil)
-  (setq *pvs-error-hook* nil)
   (setq *pvs-buffer-hook* nil)
   (setq *pvs-y-or-n-hook* nil)
   (setq *pvs-query-hook* nil)
@@ -1189,7 +1153,7 @@
        (let ((sr (svref place 0)) (sc (svref place 1))
 	     (er (svref place 2)) (ec (svref place 3)))
 	 (and (integerp sr) (integerp sc) (integerp er) (integerp ec)
-	      (or (< sr er) (and (= sr er) (< sc ec)))))))
+	      (or (< sr er) (and (= sr er) (<= sc ec))))))) ; Empty string has sc = ec
 
 (defun place< (place1 place2)
   (assert (and (valid-place? place1) (valid-place? place2)))

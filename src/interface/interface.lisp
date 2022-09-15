@@ -10,13 +10,14 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(in-package :pvs)
+
 ;;; The generic interface to the PVS lisp image; currently supports Emacs
 ;;; and JSON interfaces.  See pvs-emacs.lisp and pvs-json.lisp
 
 ;;(defvar *pvs-interface* nil)
 (defvar *pvs-buffer-hooks* nil)
 (defvar *pvs-message-hooks* nil)
-(defvar *pvs-error-hooks* nil)
 
 ;; (defmethod prover-read :around ()
 ;;   (if *pvs-interface*
