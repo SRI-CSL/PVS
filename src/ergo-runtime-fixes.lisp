@@ -40,12 +40,12 @@
 ;;; complicated expressions.  This variable is set to null while unparsing ada
 ;;; abstract syntax, as auto-bracketing is used there.
 
-(setq sbrt:*parens-off* t)
+;;(setq sbrt:*parens-off* t)
 
 ;;; Set *rept-indent-units* to 0, otherwise first element of a rept is
 ;;; indented different from the rest (I don't know why).
 
-(setq sbrt::*rept-indent-units* 0)
+;;(setq sbrt::*rept-indent-units* 0)
 
 ;;; Turn off indentation increasing with depth of nonterminals in the grammar
 ;(setq sbrt::*uterm-indent-units* 0)
@@ -63,6 +63,8 @@
 
 (in-package :pvs)
 
+(defvar *newline-comments*)
+
 (defparameter *infix-operators*
   '(O ∘ IFF <=> ⇔ IMPLIES => ⇒ WHEN OR ∨ \\/ AND /\\ ∧ & XOR ANDTHEN ORELSE
 	^ + - * / ++ ~ ** // ^^ \|- ⊢ \|= ⊨ <\| \|> = /= ≠ == < <= > >=
@@ -74,6 +76,15 @@
 (defparameter *unary-operators* '(NOT ¬ + - ~ □ ◇ <> ◯ √))
 
 (defvar *elsif-places* nil)
+
+;;; An association list of operators and their places.  The problem is
+;;; that operators are thrown away, and later make-sb-term is called with
+;;; just an id.  We thus keep all possible places associated with an id,
+;;; and in make-sb-term set the place attribute if there is a unique one,
+;;; otherwise we set a places attribute, and wait for parse to determine
+;;; the right place from the argument places.
+
+(defvar *operator-places* nil)
 
 ;;; Shadows a macro in rt-parse-mac.lisp, in dir ess/lang/sb-term/rel.  It
 ;;; took 2 args before, now third one is lexical position at start of
@@ -100,6 +111,24 @@
 
 (defvar *last-end-place* nil)
 (defvar *last-end-value* nil)
+
+;;; Makes extensive use of the following functions from ERGO:
+;;;	sim-term-op - returns the symbol which is the operator of a term
+;;;	is-sop	    - checks whether a given symbol is the operator of a term
+;;;	term-args   - returns the list of arguments of a term
+;;;	ds-id       - returns the symbol of an id term
+
+(defun term-place (absyn)
+  (getf (term:term-attr absyn) :place))
+
+(defsetf term-place (absyn) (place)
+  `(setf (getf (term:term-attr ,absyn) :place) ,place))
+
+(defun term-comment (absyn)
+  (getf (term:term-attr absyn) :comment))
+
+(defsetf term-comment (absyn) (comment)
+  `(setf (getf (term:term-attr ,absyn) :comment) ,comment))
 
 (defun get-end-place (sim-op args splace token?)
   (cond ((eq *last-end-place* sbrt::*end-place*)
@@ -168,13 +197,16 @@
   (or (< (svref place1 2) (svref place2 0))
       (and (= (svref place1 2) (svref place2 0))
 	   (<= (svref place1 3) (svref place2 1)))))
+
+(defun white-space (c)
+  (member c '(#\Space #\Tab)))
        
     
 (defun reader ()
   (multiple-value-bind (token place comment)
       (lexical-read *lexical-stream* :eof)
-    ;;(format t "~%reader: token = ~s, place = ~s, comment = ~s"
-    ;;  token place comment)
+    ;; (format t "~%reader: token = ~s, place = ~s, comment = ~s"
+    ;;   token place comment)
     (cond ((consp token)
 	   (case (car token)
 	     (:literal
@@ -185,7 +217,7 @@
 					  (string-upcase
 					   (symbol-name (cdr token))))
 				      (cdr token))))
-			(intern name *abs-syn-package*))
+			(intern name (or *abs-syn-package* :pvs)))
 		      place comment))
 	     (:string
 	      (values 'sbst::!string!
@@ -212,7 +244,7 @@
 			     (string token)
 			     (string-upcase token)))
 		  (pvs-sym (intern upstr :pvs)))
-	     (when (memq pvs-sym pvs::*infix-operators*)
+	     (when (member pvs-sym pvs::*infix-operators* :test #'eq)
 	       (let ((oplace (vector (sbrt::place-linenumber place)
 				     (sbrt::place-charnumber place)
 				     (sbrt::place-linenumber place)
@@ -221,7 +253,7 @@
 					(the fixnum
 					  (length (string token)))))))
 		 (push (cons pvs-sym oplace) pvs::*operator-places*)))
-	     (values (intern upstr 'sbst)
+	     (values (intern upstr :sbst)
 		     :keyword-internal-flag place comment)))
 	  ((eq token :eof) (values :eof nil place comment))
 	  ((or (eq token :illegal-token)
@@ -232,7 +264,7 @@
 				       (member token '(λ) :test #'string=))
 				   (symbol-name token)
 				   (string-upcase (symbol-name token)))
-			       *abs-syn-package*)))
+			       (or *abs-syn-package* :pvs))))
 	       (values 'sbst::!id! id place comment))))))
 
 (in-package :sbrt)
@@ -264,7 +296,8 @@
     ;;(format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
     ;;  type token place comment)
     (setq *end-place* (list type token place))
-    (when comment
+    (when (and comment
+	       (boundp 'pvs:*newline-comments*))
       ;; (format t "~%gettoken comment = ~s" comment)
       (push comment pvs:*newline-comments*))
     (cond (;; This branch of the COND is completely meaningless because
@@ -294,7 +327,8 @@
     (when (eq v1 'sbst::ELSIF)
       (push v3 pvs::*elsif-places*))
     (setq *end-place* (list v1 v2 v3))
-    (when v4
+    (when (and v4
+	       (boundp 'pvs:*newline-comments*))
       ;; (format t "~%gettoken comment v4 = ~s" v4)
       (push v4 pvs:*newline-comments*))
     nil))
@@ -356,8 +390,8 @@
 		 (sbst::!literal! (mk-literal token))     
 		 (sbst::!keyword! (mk-keyword token)))))
     (cond ((and lterm
-		(memq type '(sbst::!id! sbst::!literal! sbst::!number!
-					sbst::!string!)))
+		(member type '(sbst::!id! sbst::!literal! sbst::!number! sbst::!string!)
+			:test #'eq))
 	   (save-place-and-comment-info lterm place
 					(pvs::get-end-place token nil place t))
 	   (setq *hold-comments* nil)
@@ -393,20 +427,21 @@
 		      (let ((a (alpha-lexer self
 					    (lexical-read-char self nil))))
 			(if (and (symbolp a)
-				 (memq (intern (string-upcase a) 'sbst)
-				       '(sbst::TYPE
-					 sbst::CONVERSION
-					 sbst::AUTO_REWRITE)))
+				 (member (intern (string-upcase a) :sbst)
+					 '(sbst::TYPE
+					   sbst::CONVERSION
+					   sbst::AUTO_REWRITE)
+					 :test #'eq))
 			    (let ((nch (lexical-read-char self nil)))
 			      (cond ((and nch (char= nch #\+))
-				     (case (intern (string-upcase a) 'sbst)
+				     (case (intern (string-upcase a) :sbst)
 				       (sbst::TYPE 'sbst::TYPE+)
 				       (sbst::CONVERSION 'sbst::CONVERSION+)
 				       (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE+)
 				       (t (lexical-unread-char self)
 					  a)))
 				    ((and nch (char= nch #\-))
-				     (case (intern (string-upcase a) 'sbst)
+				     (case (intern (string-upcase a) :sbst)
 				       (sbst::CONVERSION 'sbst::CONVERSION-)
 				       (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE-)
 				       (t (lexical-unread-char self)
@@ -430,7 +465,7 @@
   (values (car char) place))
 
 (defun alpha-lexer (stream char &aux 
-			        (buffer (lexical-stream-stringbuffer stream)))
+			          (buffer (lexical-stream-stringbuffer stream)))
   (setf (fill-pointer buffer) 0)
   (vector-push-extend char buffer)
   (loop
@@ -458,11 +493,12 @@
 	    ((and integer
 		  (= length 1)
 		  (char= (char str 0) #\0)
-		  (memq (char str 1) '(#\x #\X #\o #\O #\b #\B)))
+		  (member (char str 1) '(#\x #\X #\o #\O #\b #\B) :test #'char=))
 	     (let* ((radix (case (char str 1)
 			     ((#\x #\X) 16)
 			     ((#\o #\O) 8)
-			     ((#\b #\B) 2)))
+			     ((#\b #\B) 2)
+			     (t 10))) ;; Added to satisfy SBCL
 		    (len (nth-value 1
 			   (parse-integer str :junk-allowed t :radix radix :start 2))))
 	       (cond ((and integer
@@ -520,11 +556,15 @@
 
 (defun lex-newline-comment (stream open-comment)
   (if (eq *abs-syn-package* (find-package :pvs))
-      (let ((newline? (check-for-newline stream)))
+      (let (;;(newline? (check-for-newline stream))
+	    (buffer (lexical-stream-stringbuffer stream)))
+	(setf (fill-pointer buffer) 0)
+	(vector-push-extend #\% buffer)
 	(multiple-value-bind (comment place)
-	    (collect-newline-comment-chars stream nil)
+	    (collect-newline-comment-chars stream buffer)
 	  ;;(format t "~%lex-newline-comment: ~s at ~s" comment place)
-	  (push (list comment place) pvs:*newline-comments*))
+	  (when (boundp 'pvs:*newline-comments*)
+	    (push (list comment place) pvs:*newline-comments*)))
 	(values))
       (let ((*close-comment-char* #\newline))
 	(lex-comment stream open-comment))))
@@ -536,22 +576,23 @@
     (not (find-if-not #'pvs::white-space text :end (1- col)))))
     
 
-(defun collect-newline-comment-chars (stream chars)
+(defun collect-newline-comment-chars (stream buffer)
   (let* ((splace (curplace (lexical-stream-stream stream)))
 	 (line (place-linenumber splace))
 	 (scol (1- (place-charnumber splace)))
-	 (comment (collect-newline-comment-chars* stream chars))
+	 (comment (collect-newline-comment-chars* stream splace buffer))
 	 ;; Don't want to unread, instead we use length of the lastline
 	 (ecol (length (placestream-lastline (lexical-stream-stream stream)))))
     (values comment (vector line scol line ecol))))
 
-(defun collect-newline-comment-chars* (stream chars)
+(defun collect-newline-comment-chars* (stream splace buffer)
   (let ((char (lexical-read-char stream #\newline)))
     (cond ((is-lexical-escape? stream char)
-	   (collect-newline-comment-chars* stream chars))
+	   (collect-newline-comment-chars* stream splace buffer))
 	  ((equal char #\newline)
-	   (coerce (cons #\% (nreverse chars)) 'string))
-	  (t (collect-newline-comment-chars* stream (cons char chars))))))
+	   (copy-seq buffer))
+	  (t (vector-push-extend char buffer)
+	     (collect-newline-comment-chars* stream splace buffer)))))
   
 
 (defun lex-comment (stream open-comment)
@@ -662,13 +703,13 @@
 	  pvs::*unary-operators*))
 
 (defun parse-error-list-string (list)
-  (let* ((binops? (every #'(lambda (e) (memq e list)) *sbst-infix-operators*))
-	 (unops? (every #'(lambda (e) (memq e list)) *sbst-unary-operators*))
+  (let* ((binops? (every #'(lambda (e) (member e list)) *sbst-infix-operators*))
+	 (unops? (every #'(lambda (e) (member e list)) *sbst-unary-operators*))
 	 (nlist (remove-if #'(lambda (x)
 			       (or (and binops?
-					(memq x *sbst-infix-operators*))
+					(member x *sbst-infix-operators*))
 				   (and unops?
-					(memq x *sbst-unary-operators*))))
+					(member x *sbst-unary-operators*))))
 		  list)))
     (orify (substitute '|identifier| 'sbst::!ID!
 		       (cond ((and binops? unops?)
