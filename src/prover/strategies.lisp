@@ -645,20 +645,12 @@
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
-		       (remove-if #'(lambda (a)
-				      (memq a '(&optional &rest)))
-			 args))))
-	  ;; the defun |(DEFRULE) name| is only there for cross referencing
-	  `(progn #-(or cmu sbcl)
-		  (defun ,(makesym "(DEFRULE) ~a" name) ,largs
-		    ,@lbody
-		    (list ,@largs))
-		  (defrule* ',name ',args ',body
-		    (format nil "~s :~%    ~a"
-		      (cons ',(makesym "~a/$" name) ',args)
-		      ,doc)
-		    (format nil "~%~a," ,format))))
+	;; the defun |(DEFRULE) name| is only there for cross referencing
+	`(defrule* ',name ',args ',body
+		   (format nil "~s :~%    ~a"
+		     (cons ',(makesym "~a/$" name) ',args)
+		     ,doc)
+		   (format nil "~%~a," ,format))
 	`(defrule* ',name ',args
 	   ',body
 	   (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
@@ -668,20 +660,11 @@
   (check-prover-macro-args name args body doc (or format ""))
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
-		       (remove-if #'(lambda (a)
-				      (memq a '(&optional &rest)))
-			 args)))
-	      )
-	  `(progn #-(or cmu sbcl)
-		  (defun ,(makesym "(defstrat) ~a" name) ,largs
-		    ,@lbody
-		    (list ,@largs))
-		  (defstrat* ',name ',args ',body
+	`(defstrat* ',name ',args ',body
 		    (format nil "~s :~%    ~a"
 		      (cons ',(makesym "~a/$" name) ',args)
 		      ,doc)
-		    (format nil "~%~a," ,format))))
+		    (format nil "~%~a," ,format))
 	`(defstrat* ',name ',args
 	   ',body
 	   (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
@@ -691,19 +674,11 @@
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
-		       (remove-if #'(lambda (a)
-				      (memq a '(&optional &key &rest &inherit)))
-			 args))))
-	  `(progn #-(or cmu sbcl)
-		  (defun ,(makesym "(defstep) ~a" name) ,largs
-		    ,@lbody
-		    (list ,@largs))
-		  (defstep* ',name ',args ',body
-		    (format nil "~s :~%    ~a"
-		      (cons ',(makesym "~a/$" name) ',args)
-		      ,doc)
-		    (format nil "~%~a," ,format))))
+	`(defstep* ',name ',args ',body
+		   (format nil "~s :~%    ~a"
+		     (cons ',(makesym "~a/$" name) ',args)
+		     ,doc)
+		   (format nil "~%~a," ,format))
 	`(defstep* ',name ',args ',body
 	   (format nil "~s :~%    ~a"
 	     (cons ',(makesym "~a/$" name) ',args)
@@ -715,19 +690,11 @@
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
-		       (remove-if #'(lambda (a)
-				      (memq a '(&optional &rest)))
-			 args))))
-	  `(progn #-(or cmu sbcl)
-		  (defun ,(makesym "(DEFHELPER) ~a" name) ,largs
-		    ,@lbody
-		    (list ,@largs))
-		  (defhelper* ',name ',args ',body
-		    (format nil "~s :~%    ~a"
-		      (cons ',(makesym "~a/$" name) ',args)
-		      ,doc)
-		    (format nil "~%~a," ,format))))
+	`(defhelper* ',name ',args ',body
+		     (format nil "~s :~%    ~a"
+		       (cons ',(makesym "~a/$" name) ',args)
+		       ,doc)
+		     (format nil "~%~a," ,format))
 	`(defhelper* ',name ',args
 	   ',body
 	   (format nil "~s :~%    ~a"
@@ -1319,12 +1286,13 @@ then turns off all the installed rewrites.  Examples:
 (defstrat query* ()
   (if (or *proving-tcc* *in-apply*)
       (postpone)
-      (let ((input (let ((input (qread "Rule? ")))
-		     (setf (current-input *ps*)
-			   input)
+      (let ((input (let ((input (or (run-prover-input-hooks)
+				    (qread "Rule? "))))
+		     (setq *prover-commentary* nil)
+		     (setf (current-input *ps*) input)
 		     input))
 	    (dummy (setq *rule-args-alist* nil))
-	    (rule (retypecheck-sexp (unformat-rule input))))
+	    (rule (setq *query-input* (retypecheck-sexp (unformat-rule input)))))
 	(try rule (query*) (query*))))
   "The basic strategy that queries the user for the next step.")
 
@@ -3900,21 +3868,25 @@ in the given fnums."
 
 (defun disequality? (expr)(disequation? expr))
 
-(defun decomposable-equality? (formula)
-  (let ((fmla (if (negation? formula) (args1 formula) formula)))
-    (and (or (equation? fmla)
-	     (disequality? fmla))
-	 (or (typep (find-supertype (type (args1 fmla)))
-		    '(or funtype recordtype tupletype cotupletype))
-	     (adt? (find-supertype
-		    (type (args1 fmla))))))))
+(defvar *decomposable-formulas-tried*)
+
+(defun decomposable-equality? (fmla)
+  (unless (memq fmla *decomposable-formulas-tried*)
+    (prog1 (and (or (equation? fmla)
+		    (disequality? fmla))
+		(or (typep (find-supertype (type (args1 fmla)))
+			   '(or funtype recordtype tupletype cotupletype))
+		    (adt? (find-supertype
+			   (type (args1 fmla))))))
+      (push fmla *decomposable-formulas-tried*))))
 
 (defstep decompose-equality (&optional (fnum *) (hide? t)
-				       &inherit simplify replace* grind)
-  (let ((sforms (find-all-sformnums (s-forms (current-goal *ps*))
-				    (if (memq fnum '(* + -)) fnum (list fnum))
-				    #'decomposable-equality?)))
-    (decompose-equality-helper sforms hide?))
+				       &inherit simplify (replace* :except hide?) (grind :except hide?))
+  (let ((dummy (setq *decomposable-formulas-tried* nil)) ;; (*decomposable-formulas-tried* nil)
+	(sforms (select-seq (s-forms (current-goal *ps*))
+			    (if (memq fnum '(* + -)) fnum
+				(list fnum)))))
+    (decompose-equality-step sforms hide?))
   "Decomposes an equality or disequality to the component equalities.
 This only works for equalities between functions, records, or tuples.  If
 HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
@@ -3923,10 +3895,14 @@ invokes apply-extensionality.  Otherwise it decomposes the
  (dis)equality into its component equalities."
   "Applying decompose-equality")
 
-(defhelper decompose-equality-helper (&optional dfnums (hide? t)
-						&inherit simplify replace* grind)
-  (let ((sforms (select-seq (s-forms (current-goal *ps*)) (car dfnums)))
-	(fm (car sforms))
+(defhelper decompose-equality-step (sforms hide? &inherit simplify (replace* :except hide?) (grind :except hide?))
+  (let ((fm (find-if
+		#'(lambda (sf)
+		    (or (decomposable-equality? (formula sf))
+			(and (negation? (formula sf))
+			     (decomposable-equality? (args1 (formula sf))))))
+	      sforms))
+	(fnum (find-sform (s-forms (current-goal *ps*)) '* #'(lambda (sf) (eq sf fm))))
 	(ffm (when fm (formula fm)))
 	(equality? (when fm
 		     (or (equation? ffm)
@@ -3946,7 +3922,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
     (if fmla
 	(try
 	 (if equality?
-	     (apply-extensionality fnum :hide? hide)
+	     (apply-extensionality fnum :hide? hide?)
 	     (branch (case comp-equalities)
 		     ((then (let ((fnums *new-fmla-nums*))
 			      (simplify fnums))
@@ -3968,11 +3944,11 @@ invokes apply-extensionality.  Otherwise it decomposes the
 		      (then (flatten) (replace* :hide? nil)
 			    (grind :defs nil :if-match nil :hide? nil)))))
 	 (skip)
-	 (decompose-equality-helper (cdr dfnums)))
+	 (decompose-equality-step sforms hide?))
 	(skip-msg "Couldn't find a suitable equation")))
-  "Decomposes an equality or disequality to the component equalities.
-This only works for equalities between functions, records, or tuples.  If
-HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
+  "Helper for decompose-equality.  Decomposes an equality or disequality to the
+component equalities.  This only works for equalities between functions, records, or tuples.
+If HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
 the consequents or a disequality in the antecedents then this simply
 invokes apply-extensionality.  Otherwise it decomposes the
  (dis)equality into its component equalities."
@@ -5112,7 +5088,7 @@ Or:
 							   :test #'same-declaration))
 					       rhs-freevars)
 				    (push ex let-exprs)))))))
-		     expr)
+		     pforms)
 	  let-exprs))))
 
 ;; Given:
