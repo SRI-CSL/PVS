@@ -97,20 +97,10 @@
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
-		       (remove-if #'(lambda (a)
-				      (memq a '(&optional &rest)))
-			 args))))
-	  ;; the defun |(DEFRULE) name| is only there for cross referencing
-	  `(progn #-(or cmu sbcl)
-		  (defun ,(makesym "(DEFRULE) ~a" name) ,largs
-		    ,@lbody
-		    (list ,@largs))
-		  (defrule* ',name ',args ',body
-			    (format nil "~s :~%    ~a"
-			      (cons ',(makesym "~a/$" name) ',args)
-			      ,doc)
-			    (format nil "~%~a," ,format))))
+	`(defrule* ',name ',args ',body
+		   (format nil "~s :~%    ~a"
+		     (cons ',(makesym "~a/$" name) ',args) ,doc)
+		   (format nil "~%~a," ,format))
 	`(defrulepr* ',name ',args ',body
 		     (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
 		     (format nil "~%~a," ,format)))))
@@ -235,7 +225,8 @@ used since the undo by (undo undo)")
 (defun lisp-rule (lexp)
   #'(lambda (ps)
       (declare (ignore ps))
-      (format t "~%~s~%"  (eval lexp))
+      (let ((*suppress-printing* nil))
+	(format-if "~%~s~%"  (eval lexp)))
       (values 'X nil nil)))
 
 (addrule 'lisp (lexp) nil
@@ -353,8 +344,8 @@ See also HIDE, REVEAL"
 		   (newps0 (copy ps
 			     'strategy new-strat
 			     'parent-proofstate nil))
-		   (newps (change-class newps0 'apply-proofstate))
-		   (dummy (setf (apply-parent-proofstate newps) ps))
+		   (newps (change-class newps0 'apply-proofstate
+			    :apply-parent-proofstate ps))
 		   (*noninteractivemode* t)
 		   (*suppress-printing* t)
 		   (*dependent-decls* nil)
@@ -647,7 +638,8 @@ are reduced.  Example reduction steps are:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
-	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
+	  rewrite-flag flush? ;; linear?
+	  cases-rewrite? (type-constraints? t)
 	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?
 	  ignore-typepreds?)
   (invoke-simplification fnums record? rewrite?
