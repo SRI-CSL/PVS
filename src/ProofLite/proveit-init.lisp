@@ -320,13 +320,11 @@
 	  (top-already-exists (cnd)
 	   (format t "~%*** Warning: ~a. Omitting generation.~%" (format nil "~a" cnd)))))
       #+pvsdebug (format t "~&[proveit-init.proveit] after autotop checkpoint~%")
-      (when pvsfile 
-	(let ((*pvs-error-hook*
-	       (lambda (msg err buff place)
-		 (declare (ignore buff place))
-		 (format t "~&Error: ~a - ~a~%" (remove-newline msg) (remove-newline err))
-		 (bye 1))))
-	  (typecheck-file pvsfile nil nil nil t)))
+      (when pvsfile
+	(handler-case (typecheck-file pvsfile nil nil nil t)
+	  (error (err)
+	    (format t "~%Error: ~a" err)
+	    (bye 1))))
       #+pvsdebug (format t "~&[proveit-init.proveit] after typecheck checkpoint~%")
       (save-context)
       (let* ((theory-names (or theories (and pvsfile (theories-in-file pvsfile))))
@@ -418,11 +416,7 @@
     (setq *modules-visited* nil)
     (let ((theories-in-dir (loop for f in files-in-dir
 				 for theories-in-file
-				 = (let ((*pvs-error-hook*
-					  (lambda (msg err buff place)
-					    (declare (ignore buff place))
-					    (error (format nil "~a - ~a" msg err)))))
-				     (typecheck-file f nil nil nil t))
+				 = (typecheck-file f nil nil nil t)
 				 do (loop for th in theories-in-file
 					  do (module-hierarchy* th nil))
 				 append (delete-if #'generated-by theories-in-file))))
