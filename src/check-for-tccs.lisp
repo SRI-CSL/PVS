@@ -133,8 +133,8 @@
 	  (push expr *exprs-generating-actual-tccs*)))
       (when (or acts dacts)
 	(check-type-actuals* (append acts dacts)
-			     (append (formals-sans-usings theory)
-				     (decl-formals decl))
+			     (append (when acts (formals-sans-usings theory))
+				     (when dacts (decl-formals decl)))
 			     theory)
 	(when acts
 	  ;; Generate TCCs as instances of assumings dacts are not involved
@@ -643,9 +643,9 @@
       (t (call-next-method)))))
 
 (defmethod check-assignment-arg-types* (args-list values ex expr (expected recordtype))
-  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
-  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (fields) expected
+    (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
+    (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
     (if (every #'null args-list)
 	(call-next-method)
  	(progn
@@ -679,20 +679,18 @@
 	  (check-assignment-tup-arg-types cargs-list cvalues ex types 1 expr)))))
 
 (defmethod check-assignment-arg-types* (args-list values ex expr (expected funtype))
-  (with-slots (domain range) expected
+  (with-slots (domain range) expected 
     (if (every #'null args-list)
 	(call-next-method)
 	(check-assignment-fun-arg-types args-list values ex expr expected))))
 
-(defmethod check-assignment-arg-types* (args-list values ex expr
-						(expected datatype-subtype))
+(defmethod check-assignment-arg-types* (args-list values ex expr (expected datatype-subtype))
   (assert (typep expr '(or record-expr update-expr)))
   (if (every #'null args-list)
       (check-assignment-arg-type (car args-list) (car values) ex expr expected)
       (check-assignment-update-arg-types args-list values ex expr expected)))
 
-(defmethod check-assignment-arg-types* (args-list values ex expr
-						(expected adt-type-name))
+(defmethod check-assignment-arg-types* (args-list values ex expr (expected adt-type-name))
   (assert (typep expr '(or record-expr update-expr)))
   (if (every #'null args-list)
       (call-next-method)
@@ -712,71 +710,67 @@
 			   (remove value values :count 1 :start pos)
 			   values))
 	   (done-with-field? (not (member (car fields) rem-args
-					  :test #'same-id :key #'caar)))
-	   (cdr-args (when done-with-field?
-		       (mapcar #'cdr (nreverse (cons args cargs)))))
-	   (cdr-vals (when done-with-field?
-                       (nreverse (cons value cvalues))))
-	   )
-      (when args
-	(assert (field-assignment-arg? (caar args)))
-	(when done-with-field?
-	  (let* ((fappl (when (and ex (some (complement #'null) cdr-args))
-			  (make!-field-application (car fields) ex)))
-		 (fldtype (type (car fields)))
-		 (ftype (find-supertype fldtype)))
-	    (when fappl
-	      (set-extended-place fappl ex
-				  "creating field application from ~a and ~a"
-				  ex (car fields)))
-	    (check-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
-	    (when (and fappl
-		       (funtype? (find-supertype ftype))
-		       ;;(caar cdr-args)
-		       )
-	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
-		     (bd (make-bind-decl bid (domtype ftype)))
-		     (bvar (make-variable-expr bd))
-		     (deqn (if (cdr (caar cdr-args))
-			       ;; Should have a tuple domtype with matching length
-			       (let ((tup (make!-tuple-expr* (caar cdr-args))))
-				 (set-extended-place tup (caaar cdr-args)
-						     "creating tuple ~a for record type" tup)
-				 (make!-disequation bvar tup))
-			       (make!-disequation bvar (caaar cdr-args))))
-		     (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
-		     (app (make!-application fappl bvar))
-		     (expected (if (dep-binding? (domain ftype))
-				   (substit (range ftype)
-				     (acons (domain ftype) bvar nil))
-				   (range ftype))))
-		(set-extended-place bvar ex
-				    "creating variable ~a for recordtype"
-				    bvar)
-		(set-extended-place deqn (caaar cdr-args)
-				    "creating disequation ~a for recordtype"
-				    deqn)
-		(check-for-tccs* app expected))))))
-      (let ((nfields (if done-with-field?
-			 (if (some #'(lambda (fld)
-				       (member (car fields) (freevars fld)
-					       :key #'declaration))
-				   fields)
-			     (if (and ex (some (complement #'null) cdr-args))
-				 (let* ((fapp (make!-field-application (car fields) ex))
-					(ass (make-assignment (car cdr-args) (car cdr-vals)))
-					(val (make!-update-expr fapp (list ass))))
-				   (subst-rec-dep-type val (car fields) (cdr fields)))
-				 (subst-rec-dep-type value (car fields) (cdr fields)))
-			     (cdr fields))
-			 fields)))
-	(if nfields
-	    (check-assignment-rec-arg-types rem-args rem-values ex nfields expr
-					    (unless done-with-field?
-					      (cons args cargs))
-					    (unless done-with-field?
-					      (cons value cvalues)))
-	    (check-assignment-rec-arg-maplet-types rem-args rem-values ex expr))))))
+					  :test #'same-id :key #'caar))))
+      (multiple-value-bind (cdr-args cdr-vals)
+	  (when done-with-field?
+	    (rec-arg-types-cdrs (cons args cargs) (cons value cvalues) nil nil))
+	(when args
+	  (assert (field-assignment-arg? (caar args)))
+	  (when done-with-field?
+	    (let* ((fappl (when (and ex (some (complement #'null) cdr-args))
+			    (make!-field-application (car fields) ex)))
+		   (fldtype (type (car fields)))
+		   (ftype (find-supertype fldtype)))
+	      (when fappl
+		(set-extended-place fappl ex
+				    "creating field application from ~a and ~a"
+				    ex (car fields)))
+	      (check-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
+	      (when (and fappl
+			 (funtype? (find-supertype ftype)))
+		(let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
+		       (bd (make-bind-decl bid (domtype ftype)))
+		       (bvar (make-variable-expr bd))
+		       (deqn (if (cdr (caar cdr-args))
+				 ;; Should have a tuple domtype with matching length
+				 (let ((tup (make!-tuple-expr* (caar cdr-args))))
+				   (set-extended-place tup (caaar cdr-args)
+						       "creating tuple ~a for record type" tup)
+				   (make!-disequation bvar tup))
+				 (make!-disequation bvar (caaar cdr-args))))
+		       (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
+		       (app (make!-application fappl bvar))
+		       (expected (if (dep-binding? (domain ftype))
+				     (substit (range ftype)
+				       (acons (domain ftype) bvar nil))
+				     (range ftype))))
+		  (set-extended-place bvar ex
+				      "creating variable ~a for recordtype"
+				      bvar)
+		  (set-extended-place deqn (caaar cdr-args)
+				      "creating disequation ~a for recordtype"
+				      deqn)
+		  (check-for-tccs* app expected))))))
+	(let ((nfields (if done-with-field?
+			   (if (some #'(lambda (fld)
+					 (member (car fields) (freevars fld)
+						 :key #'declaration))
+				     fields)
+			       (if (and ex (some (complement #'null) cdr-args))
+				   (let* ((fapp (make!-field-application (car fields) ex))
+					  (ass (make-assignment (car cdr-args) (car cdr-vals)))
+					  (val (make!-update-expr fapp (list ass))))
+				     (subst-rec-dep-type val (car fields) (cdr fields)))
+				   (subst-rec-dep-type value (car fields) (cdr fields)))
+			       (cdr fields))
+			   fields)))
+	  (if nfields
+	      (check-assignment-rec-arg-types rem-args rem-values ex nfields expr
+					      (unless done-with-field?
+						(cons args cargs))
+					      (unless done-with-field?
+						(cons value cvalues)))
+	      (check-assignment-rec-arg-maplet-types rem-args rem-values ex expr)))))))
 
 (defun check-assignment-rec-arg-maplet-types (args-list values ex expr)
   (assert (typep expr '(or record-expr update-expr)))
@@ -839,11 +833,16 @@
       (let ((domtypes (domain-types* (domain funtype))))
 	(dolist (arg cargs)
 	  (when arg
+		
 	    (if (length= domtypes (car arg))
 		(check-tup-types (car arg) domtypes)
 		(check-for-tccs* (caar arg) (domain funtype))))))
       (let* ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs))))
-	     (app (when (and ex arg) (make!-application ex arg))))
+	     (app (when (and ex arg)
+		    (let ((app (make!-application ex arg)))
+		      (set-extended-place app expr
+					  "making application ~a" app)
+		      app))))
 	(when (and arg (null (place arg)) (tuple-expr? arg))
 	    (set-extended-place arg (caaar cargs)
 				"creating tuple from assignment args ~a" (caar cargs)))
