@@ -702,7 +702,8 @@
 		conds))))
       (collect-conds (arguments expr) boundvars)))
 
-(defmethod collect-conds ((expr binding-expr) &optional  boundvars)
+(defmethod collect-conds ((expr binding-expr) &optional boundvars)
+  (declare (ignore boundvars))
   nil);;NSH(9-10-10): Conditions collected within binding exprs might depend
       ;;on governing conditions from the bindings for type correctness
 
@@ -1629,6 +1630,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	     (values 'X nil)))))
 
 (defun cotuple-extensionality-step (texpr given ps)
+  (declare (ignore given))
   (let ((fmla (cotuple-extensionality-formula texpr)))
     (values '?
 	    (list (copy (current-goal ps)
