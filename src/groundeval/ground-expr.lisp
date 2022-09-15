@@ -71,10 +71,10 @@
 
 (defmethod ground-expr?* ((expr quant-expr))
   (with-slots (bindings) expr
-	      (loop for bnd in bindings
-		    always (or (enum-adt? (find-supertype (type bnd)))
-			       (simple-subrange (type bnd)));could scan the supertypes
-		    )))
+    (loop for bnd in bindings
+	  always (or (enum-adt? (find-supertype (type bnd)))
+		     (simple-subrange? (type bnd))) ;could scan the supertypes
+	  )))
 	      
 ; No higher-order equality
 
@@ -159,17 +159,17 @@
 
 ;;this shouldn't be reachable given that quant-exprs and lambda-exprs have methods. 
 (defmethod ground-expr?* ((expr binding-expr))
-  (declare (ignore expr))
+  ;;(declare (ignore expr))
   t)
 
 (defmethod ground-expr?* ((expr field-assignment-arg))
-  (declare (ignore expr))
+  ;;(declare (ignore expr))
   t)
 
 ; fundamental things are ground
 
 (defmethod ground-expr?* ((expr rational-expr))
-  (declare (ignore expr))
+  ;;(declare (ignore expr))
   t)
   
 ; temporary method to see what we're not catching.
