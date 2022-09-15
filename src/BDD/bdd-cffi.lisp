@@ -42,7 +42,7 @@
 ;;; #define NULL_LIST ((LIST) 0)
 
 ;;; int null_list_p (LIST x)
-(cffi:defcfun (null_list_p "bdd___null_list_p") :int
+(cffi:defcfun (null_list_p "bdd___null_list_p") :int32
   (x :pointer))
 
 ;;; void *elem_contents (LIST_ELEM_PTR x)
@@ -58,7 +58,7 @@
   (x :pointer))
   
 ;;; LIST_INFO list_info (LIST x)
-(cffi:defcfun (list_info "bdd___list_info") :pointer
+(cffi:defcfun (list_info "bdd___list_info") :int32
   (x :pointer))
 
 ;;; LIST_ELEM_PTR list_next (LIST_ELEM_PTR x)
@@ -72,28 +72,28 @@
 ;;; int bdd_do_gc;	            /* default 1 */
 ;;; set_bdd_do_gc (int flag)
 (cffi:defcfun (set_bdd_do_gc "bdd___set_bdd_do_gc") :void
-  (flag :unsigned-int))
+  (flag :int32))
 
 ;;; int bdd_do_dynamic_ordering;/* default 1 */
 ;;; set_bdd_do_dynamic_ordering (int flag)
 (cffi:defcfun (set_bdd_do_dynamic_ordering "bdd___set_bdd_do_dynamic_ordering")
-    :unsigned-int
-  (flag :unsigned-int))
+    :int32
+  (flag :int32))
 
 ;;; int bdd_verbose;            /* default 0 */
 ;;; set_bdd_verbose (int flag)
 (cffi:defcfun (set_bdd_verbose "bdd___set_bdd_verbose") :void
-  (flag :unsigned-int))
+  (flag :int32))
 
 ;;; int bdd_use_neg_edges;      /* default 1*/
 ;;; set_bdd_use_neg_edges (int flag)
-(cffi:defcfun (set_bdd_use_neg_edges "bdd___set_bdd_use_neg_edges") :unsigned-int
-  (flag :unsigned-int))
+(cffi:defcfun (set_bdd_use_neg_edges "bdd___set_bdd_use_neg_edges") :int32
+  (flag :int32))
 
 ;;; int bdd_use_inv_edges;  /* default 1; 0 when bdd_do_dynamic_ordering = 1 */
 ;;; set_bdd_use_inv_edges (int flag)
-(cffi:defcfun (set_bdd_use_inv_edges "bdd___set_bdd_use_inv_edges") :unsigned-int
-  (flag :unsigned-int))
+(cffi:defcfun (set_bdd_use_inv_edges "bdd___set_bdd_use_inv_edges") :int32
+  (flag :int32))
 
 ;;; int bdd_sizeof_user_data;   /* default 0 */
 ;;; int BDD_COMPUTED_TABLE_SIZE;/* default DEFAULT_BDD_COMPUTED_TABLE_SIZE */
@@ -109,8 +109,8 @@
 
 ;;; BDD_VARID (F)
 ;;; bdd_varid (BDDPTR f)
-(cffi:defcfun (bdd_varid "bdd___bdd_varid") :pointer
-  (f :unsigned-int))
+(cffi:defcfun (bdd_varid "bdd___bdd_varid") :uint32
+  (f :pointer))
 
 ;;; BDD_THEN (F)
 ;;; BDD_ELSE (F)
@@ -124,47 +124,47 @@
 
 ;;; BDD_VOID_P (f)
 ;;; int bdd_void_p (BDDPTR f)
-(cffi:defcfun (bdd_void_p "bdd___bdd_void_p") :unsigned-int
+(cffi:defcfun (bdd_void_p "bdd___bdd_void_p") :int32
     (f :pointer))
 
 ;;; BDD_1_P (f)
 ;;; bdd_1_p (BDDPTR f)
-(cffi:defcfun (bdd_1_p "bdd___bdd_1_p") :int
+(cffi:defcfun (bdd_1_p "bdd___bdd_1_p") :int32
     (f :pointer))
 
 ;;; BDD_0_P (f)
 ;;; bdd_0_p (BDDPTR f)
-(cffi:defcfun (bdd_0_p "bdd___bdd_0_p") :int
+(cffi:defcfun (bdd_0_p "bdd___bdd_0_p") :int32
   (f :pointer))
 
 ;;; BDD_X_P (f)
 ;;; bdd_x_p (BDDPTR f)
-(cffi:defcfun (bdd_x_p "bdd___bdd_x_p") :int
+(cffi:defcfun (bdd_x_p "bdd___bdd_x_p") :int32
   (f :pointer))
 
 ;;; BDD_CONST_P (f)
 ;;; int bdd_const_p (BDDPTR f)
-(cffi:defcfun (bdd_const_p "bdd___bdd_const_p") :int
+(cffi:defcfun (bdd_const_p "bdd___bdd_const_p") :int32
   (f :pointer))
 
 ;;; BDD_TERM_P (f)
 ;;; bdd_term_p (BDDPTR f)
-(cffi:defcfun (bdd_term_p "bdd___bdd_term_p") :int
+(cffi:defcfun (bdd_term_p "bdd___bdd_term_p") :int32
   (f :pointer))
 
 ;;; BDD_LIT_P (f)
 ;;; bdd_lit_p (BDDPTR f)
-(cffi:defcfun (bdd_lit_p "bdd___bdd_lit_p") :int
+(cffi:defcfun (bdd_lit_p "bdd___bdd_lit_p") :int32
   (f :pointer))
 
 ;;; BDD_POSLIT_P (f)
 ;;; int bdd_poslit_p (BDDPTR f)
-(cffi:defcfun (bdd_poslit_p "bdd___bdd_poslit_p") :int
+(cffi:defcfun (bdd_poslit_p "bdd___bdd_poslit_p") :int32
   (f :pointer))
 
 ;;; BDD_NEGLIT_P (f)
 ;;; int bdd_neglit_p (BDDPTR f)
-(cffi:defcfun (bdd_neglit_p "bdd___bdd_neglit_p") :int
+(cffi:defcfun (bdd_neglit_p "bdd___bdd_neglit_p") :int32
   (f :pointer))
 
 ;;; BDD_COFACTOR_POS (f)
@@ -182,7 +182,7 @@
 ;;; void bdd_traverse_post (register BDDPTR v, void (*post_action)(BDDPTR))
 
 ;;; int bdd_size (BDDPTR f)
-(cffi:defcfun (BDD_bdd_size "bdd___BDD_bdd_size") :int
+(cffi:defcfun (BDD_bdd_size "bdd___BDD_bdd_size") :int32
   (f :pointer))
 
 ;;; int bdd_size_vec (BDDPTR *f_vec, int size)
@@ -197,7 +197,7 @@
   (f :pointer))
 
 ;;; int bdd_gc (void)
-(cffi:defcfun (bdd_gc "bdd___bdd_gc") :unsigned-int
+(cffi:defcfun (bdd_gc "bdd___bdd_gc") :int32
   )
 
 ;;; BDDPTR bdd_ite (BDDPTR F, BDDPTR G, BDDPTR H)
@@ -219,7 +219,7 @@
 
 ;;; BDDPTR bdd_create_var (int v)
 (cffi:defcfun (bdd_create_var "bdd___bdd_create_var") :pointer
-  (v :pointer))
+  (v :int32))
 
 ;;; BDDPTR bdd_create_var_first	(void)
 (cffi:defcfun (bdd_create_var_first "bdd___bdd_create_var_first") :pointer
@@ -252,23 +252,23 @@
 ;;; int bdd_memsize_limit (void)
 ;;; void bdd_set_memsize_limit_and_handler (int limit, void (*handler) (void))
 ;;; int bdd_nodes_alive (void)
-(cffi:defcfun (bdd_nodes_alive "bdd___bdd_nodes_alive") :unsigned-int
+(cffi:defcfun (bdd_nodes_alive "bdd___bdd_nodes_alive") :int32
   )
 
 ;;; int bdd_nodes_allocated (void)
-(cffi:defcfun (bdd_nodes_allocated "bdd___bdd_nodes_allocated") :unsigned-int
+(cffi:defcfun (bdd_nodes_allocated "bdd___bdd_nodes_allocated") :int32
   )
 
 ;;; int bdd_nr_occurs_var (int id)
 ;;; int bdd_compl_p (BDDPTR f, BDDPTR g)
 ;;; int bdd_equal_p (BDDPTR F, BDDPTR G)
-(cffi:defcfun (bdd_equal_p "bdd___bdd_equal_p") :unsigned-int
+(cffi:defcfun (bdd_equal_p "bdd___bdd_equal_p") :int32
   (f :pointer)
   (g :pointer))
 
 ;;; int bdd_implies_taut (BDDPTR F, BDDPTR G)
 ;;; BDDPTR bdd_not (BDDPTR F)
-(cffi:defcfun (bdd_not "bdd___bdd_not") :unsigned-int
+(cffi:defcfun (bdd_not "bdd___bdd_not") :pointer
   (f :pointer))
 
 ;;; BDDPTR bdd_and (BDDPTR F, BDDPTR G)
@@ -370,15 +370,15 @@
 ;;; BDD_LIST bdd_sum_of_cubes (BDDPTR f, int irredundant)
 (cffi:defcfun (bdd_sum_of_cubes "bdd___bdd_sum_of_cubes") :pointer
   (f :pointer)
-  (irredundant :unsigned-int))
+  (irredundant :int32))
 
 ;;; The following were obtained by looking through mu.c and collecting
 ;;; functions not mentioned above.
 
 ;;; int bdd_reorder_var (int var_id, int target_var_id)
-(cffi:defcfun (bdd_reorder_var "bdd___bdd_reorder_var") :unsigned-int
-  (var_id :unsigned-int)
-  (target_var_id :unsigned-int))
+(cffi:defcfun (bdd_reorder_var "bdd___bdd_reorder_var") :int32
+  (var_id :int32)
+  (target_var_id :int32))
 
 ;;; BDDPTR bdd_and_smooth (BDDPTR f, BDDPTR g, BDD_LIST vars)
 (cffi:defcfun (bdd_and_smooth "bdd___bdd_and_smooth") :pointer
@@ -392,7 +392,7 @@
 
 ;;; BDDPTR bdd_quantify (int existential, BDDPTR f, BDD_LIST vars)
 (cffi:defcfun (bdd_quantify "bdd___bdd_quantify") :pointer
-  (existential :unsigned-int)
+  (existential :int32)
   (f :pointer)
   (vars :pointer))
 
@@ -411,22 +411,22 @@
 ;;; void bdd_free_vec (BDDPTR *f_vec, int size)
 (cffi:defcfun (bdd_free_vec "bdd___bdd_free_vec") :void
   (f_vec :pointer)
-  (size :int))
+  (size :int32))
 
 ;;; const char *bdd_get_output_string (int idx)
 (cffi:defcfun (bdd_get_output_string "bdd___bdd_get_output_string") :string
-  (idx :int))
+  (idx :int32))
 
 ;;; void bdd_set_output_string (int idx, const char *str)
 (cffi:defcfun (bdd_set_output_string "bdd___bdd_set_output_string") :void
-  (idx :int)
+  (idx :int32)
   (str :string))
 
 ;;; void bdd_print_as_sum_of_cubes (FILE *fp, BDDPTR f, int irredundant)
 (cffi:defcfun (bdd_print_as_sum_of_cubes "bdd___bdd_print_as_sum_of_cubes") :void
   (fp :pointer)
   (f :pointer)
-  (irredundant :unsigned-int))
+  (irredundant :int32))
 
 ;;; BDDPTR bdd_diff (BDDPTR f, BDD_LIST vars)
 (cffi:defcfun (bdd_diff "bdd___bdd_diff") :pointer
@@ -436,18 +436,18 @@
 ;;; BDDPTR bdd_one_of_vec (BDDPTR *vec, int size)
 (cffi:defcfun (bdd_one_of_vec "bdd___bdd_one_of_vec") :pointer
   (vec :pointer)
-  (size :unsigned-int))
+  (size :int32))
 
 ;;; BDDPTR bdd_none_of_vec (BDDPTR *args, int size)
 (cffi:defcfun (bdd_none_of_vec "bdd___bdd_none_of_vec") :pointer
   (args :pointer)
-  (size :unsigned-int))
+  (size :int32))
 
 ;;; BDDPTR bdd_subst (BDDPTR f, int var, BDDPTR g)
 (cffi:defcfun (bdd_subst "bdd___bdd_subst") :pointer
   (f :pointer)
-  (var :unsigned-int)
-  (g :unsigned-int integer))
+  (var :int32)
+  (g :pointer))
 
 ;;; BDD_LIST bdd_sum_of_cubes_as_list (BDDPTR f)
 (cffi:defcfun (bdd_sum_of_cubes_as_list "bdd___bdd_sum_of_cubes_as_list") :pointer
@@ -455,7 +455,7 @@
 
 ;;; int bdd_traverse_cube (BDDPTR cube,
 ;;;                        void (*action) (int index, int neg, int first))
-(cffi:defcfun (bdd_traverse_cube "bdd___bdd_traverse_cube") :unsigned-int
+(cffi:defcfun (bdd_traverse_cube "bdd___bdd_traverse_cube") :int32
   (cube :pointer)
   (action :pointer))
 
