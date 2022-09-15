@@ -162,8 +162,8 @@
   (cond ((is-keyword term)
 	 (sbst-intern-ncase (ds-keyword term)))
 	((and (is-id term)
-	      (memq (ds-id term)
-		    '(arb op lt)))
+	      (member (ds-id term)
+		      '(arb op lt) :test #'eq))
 	 (keyword-intern (ds-literal term)))
 	((and (is-id term)
 	      (is-lexical-terminal (sb-intern-case (ds-id term))
@@ -244,8 +244,7 @@
 	(let ,(make-let-variables number-of-slots)
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 	  ;; next line added to ergo code -- SJP 9/5/90
 	  (let* ((peek (multiple-value-list (peek-first)))
 		 (place (caddr peek))
@@ -303,8 +302,7 @@
 	(let ,(make-let-variables number-of-slots)
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 	  ;; next line added to ergo code -- SJP 9/5/90
 	  (let* ((peek (multiple-value-list (peek-first)))
 		 (place (caddr peek))
@@ -410,8 +408,7 @@
 	(let ,var-list
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 	  ;; next line added to ergo code -- SJP 9/5/90
 	  (let* ((peek (multiple-value-list (peek-first)))
 		 (place (caddr peek))
@@ -531,8 +528,7 @@
 	(let ,var-list
 
 	  ;; suppresses compiler warnings if available
-	  (ergo-ignore-if-unused
-	   ,@(make-let-variables number-of-slots))
+	  (declare (ignorable ,@(make-let-variables number-of-slots)))
 	  ;; next line added to ergo code -- SJP 9/5/90
 	  (let* ((peek (multiple-value-list (peek-first)))
 		 (place (caddr peek))
@@ -648,8 +644,8 @@
         ; value from that slot.
     ((name ext-name)
      (cond ((and (pattern-p (car (augment-path as-pat)))
-		 (memq (pattern-kind (car (augment-path as-pat)))
-		       '(star doublestar plus doubleplus)))
+		 (member (pattern-kind (car (augment-path as-pat)))
+		       '(star doublestar plus doubleplus) :test #'eq))
 	    `(ck-rept-ref ,(slot-code (get-as-key as-pat))))
 	   ;; srd revised.  This is a hack. It would be better if all these
 	   ;; values were initialed properly, but this is hard because of the
