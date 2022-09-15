@@ -579,15 +579,15 @@ that the seach is incomplete."
 
 
 (defun decl-for-json (decl theory)
-  `((:id . ,(id decl))
-    (:type . ,(when (declared-type decl) (str (declared-type decl))))
-    (:theoryid . ,(id theory))
-    (:filename . ,(filename theory))
-    (:filedir . ,*default-pathname-defaults*)
+  `(("id" . ,(id decl))
+    ("type" . ,(when (declared-type decl) (str (declared-type decl))))
+    ("theoryid" . ,(id theory))
+    ("filename" . ,(filename theory))
+    ("filedir" . ,*default-pathname-defaults*)
     ,@(when (lib-datatype-or-theory? theory)
-	`((:library . ,(get-library-id (context-path theory)))))
-    (:decl-ppstring . ,(unparse-decl decl))
-    (:place . ,(place decl))))
+	`(("library" . ,(get-library-id (context-path theory)))))
+    ("decl-ppstring" . ,(unparse-decl decl))
+    ("place" . ,(place decl))))
 
 
 ;;; Called by GUIs - find-declaration command
@@ -651,7 +651,8 @@ Note that the place may be missing, for example, with TCCs.
 
 This only returns declarations with matching ids, and ignores var-decls.
 Importings (but not theory-abbreviation-decls), judgements, conversions, and
-auto-rewrites are ignored unless they are given an optional id.
+auto-rewrites are ignored unless they were declared with an id, which is
+optional.
 
 dep-bindings, field-decls, let-bindings, and lambda etc., bindings are more
 difficult."
@@ -780,15 +781,8 @@ place set."
 ;;;    filename		- the name of the file containing the theory
 ;;;    location		- (startline startcol endline endcol)
 
-;; (defstruct decl-list-struct
-;;   declname
-;;   type
-;;   theoryname
-;;   filename
-;;   place
-;;   decl-string)
-
 (defun json-decl-list (decl type theory)
+  (assert type)
   (let ((declname (if (typep decl '(or importing auto-rewrite-decl))
 		      (unparse decl :string t :no-newlines? t)
 		      (string (id decl))))
@@ -798,7 +792,11 @@ place set."
 				     "pvsio_prelude"
 				     "prelude")))
 			((filename theory)
-			 (format nil "~a.pvs" (pvs-filename theory)))
+			 (let ((fname (pvs-filename theory)))
+			   (if (and (> (length fname) 4)
+				    (string= (subseq fname (- (length fname) 4)) ".pvs"))
+			       fname
+			       (format nil "~a.pvs" (pvs-filename theory)))))
 			((rectype-theory? theory)
 			 (format nil "~a.pvs" (id theory)))
 			(t (break "Couldn't find filename in json-decl-list ~
@@ -840,7 +838,11 @@ place set."
 	     (declared-type decl))
 	(if (and (slot-exists-p decl 'formals)
 		 (formals decl))
-	    (unparse (type decl) :string t)
+	    (if (type decl)
+		(unparse (type decl) :string t)
+		;; Want to make f(x:int)(y,z: nat): nat
+		;; into [x: int -> [(y, z: nat) -> nat]]
+		"function")
 	    (unparse (declared-type decl) :string t))
 	(typecase decl
 	  ((or const-decl def-decl)
@@ -1164,26 +1166,6 @@ place set."
 
 (defvar *visible-decl-info*)
 
-(defstruct decl-info
-  id
-  place
-  decl
-  decl-file
-  decl-place)
-
-(defmethod json:encode-json ((dinfo decl-info) &optional (stream json:*json-output*))
-  (json:with-object (stream)
-    (json:as-object-member ("id" stream)
-      (json:encode-json (decl-info-id dinfo) stream))
-    (json:as-object-member ("place" stream)
-      (json:encode-json (decl-info-place dinfo) stream))
-    (json:as-object-member ("decl" stream)
-      (json:encode-json (decl-info-decl dinfo) stream))
-    (json:as-object-member ("decl-file" stream)
-      (json:encode-json (decl-info-decl-file dinfo) stream))
-    (json:as-object-member ("decl-place" stream)
-      (json:encode-json (decl-info-decl-place dinfo) stream))))
-
 (defun collect-visible-decl-info (obj)
   (let ((*visible-decl-info* nil)
 	(*print-escape* nil)
@@ -1476,10 +1458,9 @@ place set."
 
 (defun field-appl-id-visible-decl-info (fappl place)
   (when place
-    (push (make-decl-info
-	   :id (id fappl)
-	   :place (id-place-list fappl place)
-	   :decl (format nil "FieldAccess: ~a: ~a" (id fappl) (type fappl)))
+    (push `(("id" . ,(id fappl))
+	    ("place" . ,(id-place-list fappl place))
+	    ("decl" . ,(format nil "FieldAccess: ~a: ~a" (id fappl) (type fappl))))
 	  *visible-decl-info*)))
 
 (defvar *tooltip-char-width* *default-char-width*)
@@ -1490,41 +1471,43 @@ place set."
 		 (simple-decl? obj)))
     (when (and *max-row* (> (svref place 2) *max-row*))
       (break "Something's wrong"))
-    ;;(format t "~%~a: ~a - ~a" x (declaration x) (place x))
-    (push (make-decl-info
-	   :id (id obj)
-	   :place (id-place-list obj place)
-	   :decl (let ((*default-char-width* *tooltip-char-width*))
-		   (if (resolution obj)
-		       (if (and (simple-decl? (declaration obj))
-				(null (declared-type (declaration obj))))
-			   (format nil "~a: ~a"
-			     (id (declaration obj))
-			     (type (declaration obj)))
-			   (if (datatype-or-module? (declaration obj))
-			       (format nil "~a~a: theory"
-				 (id (declaration obj))
-				 (with-output-to-string (*standard-output*)
-				   (pp-theory-formals (formals (declaration obj)))))
-			       (if (skolem-constant? obj)
-				   (format nil "Skolem Constant: ~a" (type obj))
-				   (str (declaration obj)
-					:char-width *tooltip-char-width*))))
-		       (if (and (declared-type obj)
-				(not (untyped-bind-decl? obj)))
-			   (str obj :char-width *tooltip-char-width*)
-			   (format nil "~a: ~a" (id obj) (type obj)))))
-	   :decl-file (unless (skolem-constant? obj)
-			(let* ((decl (declaration obj))
-			       (th (if (and (recursive-type? decl)
-					    (not (inline-recursive-type? decl)))
-				       decl (module decl))))
-			  ;;(unless th (break "No module?"))
-			  (when th (theory-filename th))))
-	   :decl-place (unless (skolem-constant? obj)
-			 (place-list (declaration obj))))
-	  *visible-decl-info*)))
+    (let ((decl-string (decl-info-decl obj)))
+      ;;(format t "~%~a: ~a - ~a" x (declaration x) (place x))
+      (push `(("id" . ,(string (id obj)))
+	      ("place" . ,(id-place-list obj place))
+	      ("decl" . ,decl-string)
+	      ("decl-file" . ,(unless (skolem-constant? obj)
+				(let* ((decl (declaration obj))
+				       (th (if (and (recursive-type? decl)
+						    (not (inline-recursive-type? decl)))
+					       decl (module decl))))
+				  ;;(unless th (break "No module?"))
+				  (when th (theory-filename th)))))
+	      ("decl-place" . ,(unless (skolem-constant? obj)
+				 (place-list (declaration obj)))))
+	    *visible-decl-info*))))
 
+(defun decl-info-decl (obj)
+  (let ((*default-char-width* *tooltip-char-width*))
+    (if (resolution obj)
+	(if (and (simple-decl? (declaration obj))
+		 (null (declared-type (declaration obj))))
+	    (format nil "~a: ~a"
+	      (id (declaration obj))
+	      (type (declaration obj)))
+	    (if (datatype-or-module? (declaration obj))
+		(format nil "~a~a: theory"
+		  (id (declaration obj))
+		  (with-output-to-string (*standard-output*)
+		    (pp-theory-formals (formals (declaration obj)))))
+		(if (skolem-constant? obj)
+		    (format nil "Skolem Constant: ~a" (type obj))
+		    (str (declaration obj)
+			 :char-width *tooltip-char-width*))))
+	(if (and (declared-type obj)
+		 (not (untyped-bind-decl? obj)))
+	    (str obj :char-width *tooltip-char-width*)
+	    (format nil "~a: ~a" (id obj) (type obj))))))
 
 (defun names-info-proof-formula (s-form &optional json?)
   (let* ((info (collect-visible-decl-info (cadr (view s-form)))))
