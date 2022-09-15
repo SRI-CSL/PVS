@@ -82,6 +82,105 @@
   `(name (ex-defn-d ,decl)))
 
 
+(defstruct pvs-array
+  contents diffs size)
+
+(defstruct pvs-array-closure
+  size closure)
+
+(defstruct pvs-outer-array
+  inner-array offset diffs size)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;pvs-closure-hash is used to destructively evaluate non-array
+;;functions.  It consists of a pair of a hash-table and a closure.
+;;All updates are applied to the hash-table, and lookup goes through
+;;the hash-table first and then the closure. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defstruct pvs-closure-hash
+  hash closure size) ;size can be nil to indicate that it is unbounded or not an array
+
+(defmacro pvs-funcall (fun &rest args)
+  (let ((funval (gentemp)))
+    `(let ((,funval ,fun))
+       ;; (declare (type pvs-funcallable ,funval))
+       (if (arrayp ,funval)
+	   (aref ,funval ,@args)
+	   (if (pvs-array-closure-p ,funval)
+	       (pvs-array-closure-lookup ,funval ,@args)
+	       (if (pvs-outer-array-p ,funval)
+		   (pvs-outer-array-lookup ,funval ,@args)
+		   (if (pvs-closure-hash-p ,funval) ;;NSH(9-19-12)
+		       (pvs-closure-hash-lookup ,funval ,@args)
+		       (funcall ,funval ,@args))))))))
+
+(deftype pvs-funcallable ()
+  '(or array pvs-outer-array pvs-closure-hash function))
+
+(defstruct pvs-lisp-subrange  ;;represents [low, high)
+  low high)
+
+(defstruct pvs-lisp-scalar
+  constructors)
+
+(defstruct pvs-lisp-subtype
+  supertype predicate)
+
+(defstruct pvs-lisp-tuple
+  elemtypes)
+
+(defstruct pvs-lisp-array
+  bound offset rangetype)
+
+
+(defmacro mk-pvs-closure-hash (hash closure)
+  `(let ((vclosure ,closure))
+     (if (functionp vclosure)
+       (make-pvs-closure-hash :hash ,hash
+			      :closure vclosure)
+       (let ((fclosure #'(lambda (x) (pvs-funcall vclosure x))))
+	 (make-pvs-closure-hash :hash ,hash
+			      :closure fclosure)))))
+
+(defmacro pvs-closure-hash-lookup (function argument)
+  `(let ((funval ,function)
+	 (argval ,argument))
+     (multiple-value-bind (val found)
+	 (gethash argval (pvs-closure-hash-hash funval))
+       (if found val
+	   (funcall (pvs-closure-hash-closure funval) argval)))))
+
+(defmacro mk-pvs-array-closure (size closure)
+  (let ((sz (gentemp))
+	(cl (gentemp)))
+    `(let ((,sz ,size)
+	   (,cl ,closure))
+       (make-pvs-array-closure :size ,sz
+			  :closure ,cl))))
+
+(defmacro pvs-array-closure-lookup (array index)
+  `(funcall (pvs-array-closure-closure ,array) ,index))
+
+(defmacro pvs-function-update (function argument value)
+    `(let ((funval ,function)
+	   (argval ,argument)
+	   (val ,value))
+       (cond ((pvs-closure-hash-p funval)
+	      (setf (gethash argval (pvs-closure-hash-hash funval))
+		    val)
+	      funval)
+	     (t (let ((hash (make-hash-table :test 'pvs_equalp)))
+		  (setf (gethash argval hash) val)
+		  (mk-pvs-closure-hash hash funval))))))
+
+(defmacro mkcopy-pvs-closure-hash (function)
+  `(let ((funval ,function))
+     (if (pvs-closure-hash-p funval)
+	 (copy-pvs-closure-hash funval)
+       (let ((hash (make-hash-table :test 'pvs_equalp)))
+	 (mk-pvs-closure-hash hash funval)))))
+
 
 ;;unary primitives
 (defun |pvs_=| (x) (pvs_equalp (svref x 0)(svref x 1)))
@@ -210,18 +309,8 @@
        (if (eq val 'undefined)(undefined nil) val)   ;; what can we do here?
 	 )))
 
-(defmacro pvs-funcall (fun &rest args)
-  (let ((funval (gentemp)))
-    `(let ((,funval ,fun))
-       (if (arrayp ,funval)
-	   (aref ,funval ,@args)
-	 (if (pvs-array-closure-p ,funval)
-	     (pvs-array-closure-lookup ,funval ,@args)
-	   (if (pvs-outer-array-p ,funval)
-	       (pvs-outer-array-lookup ,funval ,@args)
-	     (if (pvs-closure-hash-p ,funval) ;;NSH(9-19-12)
-		 (pvs-closure-hash-lookup ,funval ,@args)
-	       (funcall ,funval ,@args))))))))
+(defun myaref (x i)
+  (aref x i))
 
 (defun pvs_equalp (x y)
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"
@@ -258,25 +347,8 @@
 			    (mk-fun-array (pvs-array-closure-closure y) y-size)))))
 	;; These are pvs-funcallable
 	;;(typep x '(or array pvs-outer-array pvs-closure-hash function))
-        ((vectorp x)
-         (let ((length (length x)))
-           (cond ((vectorp y)
-                  (= length (length y))
-                  (dotimes (i length t)
-                    (let ((x-el (aref x i))
-                          (y-el (aref y i)))
-                      (unless (pvs_equalp x-el y-el) ;;(NSH:4/25/2013)
-			;;removed redundant eq test
-			(return nil)))))
-		 ;; Vectors may be compared to closures
-		 ((typep y '(or array pvs-outer-array pvs-closure-hash function))
-		  ;; Can't test the length of a closure, but it should be OK
-		  (dotimes (i length t)
-		    (let ((x-el (aref x i))
-                          (y-el (pvs-funcall y i)))
-                      (unless (pvs_equalp x-el y-el)
-			(return nil)))))
-		 (t (error 'equality-unknown :lhs x :rhs y)))))
+        ;; ((vectorp x)
+	;;  (pvs_equalp-vector x y))
         ((arrayp x)
          (cond ((arrayp y)
 		(and (= (array-rank x) (array-rank y))
@@ -293,7 +365,7 @@
 	       ((typep y '(or pvs-outer-array pvs-closure-hash function))
 		;; Can't test the length of a closure, but it should be OK
 		(dotimes (i (array-total-size x) t)
-		  (let ((x-el (aref x i))
+		  (let ((x-el (myaref x i))
                         (y-el (pvs-funcall y i)))
                     (unless (pvs_equalp x-el y-el)
 		      (return nil)))))
@@ -322,6 +394,28 @@
 	     (error 'equality-unknown :lhs x :rhs y)))
         (t (error 'equality-unknown :lhs x :rhs y))))
 
+;;; SO - not used, was pulled out of pvs_equalp because of the way SBCL handles vectors
+(defun pvs_equalp-vector (x y)
+  (assert (vectorp x))
+  (let ((length (length x)))
+    (cond ((vectorp y)
+           (= length (length y))
+           (dotimes (i length t)
+             (let ((x-el (svref x i))
+                   (y-el (svref y i)))
+               (unless (pvs_equalp x-el y-el)
+		 ;;removed redundant eq test
+		 (return nil)))))
+	  ;; Vectors may be compared to closures
+	  ((typep y '(or pvs-outer-array pvs-closure-hash function)) ;;'pvs-funcallable)
+	   ;; Can't test the length of a closure, but it should be OK
+	   (dotimes (i length t)
+	     (let ((x-el (svref x i))
+                   (y-el (pvs-funcall y i)))
+               (unless (pvs_equalp x-el y-el)
+		 (return nil)))))
+	  (t (error 'equality-unknown :lhs x :rhs y)))))
+
 (defmacro pvs-setf (A i v) ;;use gentemp below
   (let ((AA (gentemp))
 	(ii (gentemp))
@@ -339,72 +433,7 @@
 		(setf (aref ,AA ,ii) ,vv))) ;;setf, otherwise.
        ,AA)))
 
-(defstruct pvs-array-closure
-  size closure)
-
-(defmacro mk-pvs-array-closure (size closure)
-  (let ((sz (gentemp))
-	(cl (gentemp)))
-    `(let ((,sz ,size)
-	   (,cl ,closure))
-       (make-pvs-array-closure :size ,sz
-			  :closure ,cl))))
-
-(defmacro pvs-array-closure-lookup (array index)
-  `(funcall (pvs-array-closure-closure ,array) ,index))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;pvs-closure-hash is used to destructively evaluate non-array
-;;functions.  It consists of a pair of a hash-table and a closure.
-;;All updates are applied to the hash-table, and lookup goes through
-;;the hash-table first and then the closure. 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defstruct pvs-closure-hash
-  hash closure size) ;size can be nil to indicate that it is unbounded or not an array
-
-(defmacro mk-pvs-closure-hash (hash closure)
-  `(let ((vclosure ,closure))
-     (if (functionp vclosure)
-       (make-pvs-closure-hash :hash ,hash
-			      :closure vclosure)
-     (let ((fclosure #'(lambda (x) (pvs-funcall vclosure x))))
-       (make-pvs-closure-hash :hash ,hash
-			      :closure fclosure)))))
-
-(defmacro pvs-closure-hash-lookup (function argument)
-  `(let ((funval ,function)
-	 (argval ,argument))
-     (multiple-value-bind (val found)
-	 (gethash argval (pvs-closure-hash-hash funval))
-       (if found val
-	   (funcall (pvs-closure-hash-closure funval) argval)))))
-
-(defmacro pvs-function-update (function argument value)
-    `(let ((funval ,function)
-	   (argval ,argument)
-	   (val ,value))
-       (cond ((pvs-closure-hash-p funval)
-	      (setf (gethash argval (pvs-closure-hash-hash funval))
-		    val)
-	      funval)
-	     (t (let ((hash (make-hash-table :test 'pvs_equalp)))
-		  (setf (gethash argval hash) val)
-		  (mk-pvs-closure-hash hash funval))))))
-
-(defmacro mkcopy-pvs-closure-hash (function)
-  `(let ((funval ,function))
-     (if (pvs-closure-hash-p funval)
-	 (copy-pvs-closure-hash funval)
-       (let ((hash (make-hash-table :test 'pvs_equalp)))
-	 (mk-pvs-closure-hash hash funval)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defstruct pvs-array
-  contents diffs size)
-
-(defstruct pvs-outer-array
-  inner-array offset diffs size)
 
 (defun pvs-array-length (x)
   (assert (typep x '(or pvs-array pvs-outer-array)))
@@ -583,7 +612,7 @@
 	     (cdr lookup-diffs))
 	(aref (pvs-array-contents ,arr) ,ind))))))
 
-(defconstant *cant-translate* 'cant-translate)
+(defvar *cant-translate* 'cant-translate)
 
 (defmacro trap-undefined (expr)
   `(handler-case
@@ -624,21 +653,6 @@
 ;;used for enumeration and destructive updates.  The main type structures
 ;;we need are:  subrange, scalar, subtype, and tuple/record.
 
-(defstruct pvs-lisp-subrange  ;;represents [low, high)
-  low high)
-
-(defstruct pvs-lisp-scalar
-  constructors)
-
-(defstruct pvs-lisp-subtype
-  supertype predicate)
-
-(defstruct pvs-lisp-tuple
-  elemtypes)
-
-(defstruct pvs-lisp-array
-  bound offset rangetype)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defvar *pvs-lisp-types-alist*)
 (defun pvs-lisp-types-alist ()
@@ -657,7 +671,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod pvs-lisp-type ((type type-name) bindings)
   (if (tc-eq type *number*)
-      'number
+      'cl:number
       (when (formal-type-decl? (declaration type)) ;;must be in bindings
 	(cdr (assoc (declaration type) bindings :key #'declaration)))))
 
@@ -736,15 +750,15 @@
 					   bindings)))
       (if subrange
 	  (make-pvs-lisp-array
-	   :size `(- ,(pvs-lisp-subrange-high subrange)
-		     ,(pvs-lisp-subrange-low subrange))
+	   :bound `(- ,(pvs-lisp-subrange-high subrange)
+		      ,(pvs-lisp-subrange-low subrange))
 	   :offset (pvs-lisp-subrange-low subrange)
-	   :range (if (binding? domain)
-		      (pvs-lisp-type range (acons domain
-						  (pvs2cl-newid (id domain)
-								bindings)
-						  bindings))
-		      (pvs-lisp-type range bindings)))
+	   :rangetype (if (binding? domain)
+			  (pvs-lisp-type range (acons domain
+						      (pvs2cl-newid (id domain)
+								    bindings)
+						      bindings))
+			  (pvs-lisp-type range bindings)))
 	  nil))))
 
 (defmethod pvs-lisp-type ((type t) bindings)
@@ -775,5 +789,3 @@
                (setf (delay-expr ,delay) val
        	             (delay-evaluated? ,delay) t)
                val))))
-            
-
