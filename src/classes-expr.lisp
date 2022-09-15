@@ -30,9 +30,15 @@
 (in-package :pvs)
 
 
-(export '(assignments boolean-equation conjunction disequation disjunction
-	  equation iff iff-or-boolean-equation implication index negation
-	  propositional-application))
+;; (export '(assignments boolean-equation conjunction disequation disjunction
+;; 	  equation iff iff-or-boolean-equation implication index negation
+;; 	  propositional-application))
+
+;; (defgeneric from-macro (x))
+;; (defgeneric (setf from-macro) (x y))
+;; (defgeneric theory (x))
+;; (defgeneric decl-formals (x))
+;; (defgeneric formals (x))
 
 ;; SBCL changed things so this no longer works - pvs.system
 ;; simply unlocks the :common-lisp package
@@ -71,16 +77,16 @@
 
 ;; A name of the form 'lib@th[x]{{a:=b}}:->th.id'
 (defcl name (syntax)
-  (mod-id :parse t :restore-as nil :type symbol)
-  (library :parse t :restore-as nil :type symbol)
-  (actuals :parse t :type list)
-  (dactuals :parse t :type list)
-  (acts-there? :parse t :type boolean)
-  (dacts-there? :parse t :type boolean)
-  (id :parse t :restore-as nil :type symbol)
-  (mappings :parse t :type list)
+  (mod-id :parse t :restore-as nil #| :type symbol |#)
+  (library :parse t :restore-as nil #| :type symbol |#)
+  (actuals :parse t #| :type list |#)
+  (dactuals :parse t #| :type list |#)
+  (acts-there? :parse t #| :type boolean |#)
+  (dacts-there? :parse t #| :type boolean |#)
+  (id :parse t :restore-as nil #| :type symbol |#)
+  (mappings :parse t #| :type list |#)
   (target :parse t)
-  (resolutions :type list))
+  (resolutions #| :type list |#))
 
 (defcl formula-name (name)
   (mod-id :parse t :restore-as nil))
@@ -131,7 +137,7 @@
 (defcl field-conversion (fieldappl))
 
 (defcl projection-expr (name-expr)
-  (index :type fixnum :parse t :restore-as nil))
+  (index #| :type (or null fixnum) |# :parse t :restore-as nil))
 
 ;; For stand-alone projections, e.g., `2[T]
 (defcl projex (projection-expr))
@@ -140,7 +146,7 @@
   (id :restore-as nil)
   actuals
   dactuals
-  (index :type fixnum :restore-as nil)
+  (index #| :type (or null fixnum) |# :restore-as nil)
   argument)
 
 (defcl projappl (projection-application))
@@ -149,19 +155,19 @@
 (defcl projection-conversion (projappl))
 
 (defcl injection-expr (constructor-name-expr)
-  (index :type fixnum :parse t :restore-as nil))
+  (index #| :type (or null fixnum) |# :parse t :restore-as nil))
 
 (defcl injection?-expr (recognizer-name-expr)
-  (index :type fixnum :parse t :restore-as nil))
+  (index #| :type (or null fixnum) |# :parse t :restore-as nil))
 
 (defcl extraction-expr (accessor-name-expr)
-  (index :type fixnum :parse t :restore-as nil))
+  (index #| :type (or null fixnum) |# :parse t :restore-as nil))
 
 (defcl injection-application (expr)
   (id :restore-as nil)
   actuals
   dactuals
-  (index :type fixnum :restore-as nil)
+  (index #| :type (or null fixnum) |# :restore-as nil)
   argument)
 
 ;; When an injection-expr is used as a conversion
@@ -171,14 +177,14 @@
   (id :restore-as nil)
   actuals
   dactuals
-  (index :type fixnum :restore-as nil)
+  (index #| :type (or null fixnum) |# :restore-as nil)
   argument)
 
 (defcl extraction-application (expr)
   (id :restore-as nil)
   actuals
   dactuals
-  (index :type fixnum :restore-as nil)
+  (index #| :type (or null fixnum) |# :restore-as nil)
   argument)
 
 ;; When an extraction-expr is used as a conversion
@@ -186,26 +192,29 @@
 
 ;; For rational numbers
 (defcl rational-expr (expr)
-  (number :type rational))
+  (number #| :type rational |#))
 
 ;; Read in and prints as a float
 (defcl floatp-expr (rational-expr)
   )
+
+(defcl int-expr (rational-expr)
+  )
   
 (defcl number-expr (rational-expr)
-  (number :type integer :parse t :restore-as nil))
+  (number #| :type integer |# :parse t :restore-as nil))
 
 (defcl number-expr-with-radix (number-expr)
   radix)
 
 (defcl name-expr-from-number (name-expr)
-  (number :type integer))
+  (number #| :type integer |# ))
 
 ;; This is for integers of the form xxx.000, where the fractional part is
 ;; all zeros.  We keep it as a number expr, but store the number of zeros so
 ;; the printer can restore it.
 (defcl decimal-integer (number-expr)
-  (fractional-length :type fixnum :restore-as nil))
+  (fractional-length #| :type fixnum |# :restore-as nil))
 
 ;(defcl function-expr (expr)
 ;  assignments)
@@ -226,18 +235,18 @@
 
 (defcl cases-expr (expr)
   (expression :parse t)
-  (selections :type list :parse t)
+  (selections #| :type list |# :parse t)
   (else-part :parse t))
 
 (defcl selection (syntax)
   (constructor :parse t)
-  (args :type list :parse t)
+  (args #| :type list |# :parse t)
   (expression :parse t))
 
 (defcl unpack-expr (cases-expr))
 
 (defcl in-selection (selection)
-  (index :type fixnum :restore-as nil))
+  (index #| :type (or null fixnum) |# :restore-as nil))
 
 (defcl application (expr)
   (operator :parse t)
@@ -255,6 +264,9 @@
 
 (defcl string-expr (application)
   (string-value :restore-as nil))
+
+(defcl char-expr (application)
+  code)
 
 (defcl bracket-expr (application)
   ;;"Used for bracketing (outfix) expressions - the operator tells which one"
@@ -410,6 +422,9 @@
 (defcl set-list-expr (set-expr)
   exprs)
 
+(defcl array-expr (lambda-expr)
+  exprs)
+
 (defcl let-lambda-expr (lambda-expr))
 
 ;; After typechecking, a fieldex is converted to a fieldex-lambda-expr, to
@@ -533,8 +548,7 @@
   type-value)
 
 (defcl mapping (syntax)
-  (lhs ;; :type (or name mapping-lhs)
-       :parse t)
+  (lhs #| :type (or name mapping-lhs) |# :parse t)
   (rhs :parse t)
   (kind :parse t :restore-as nil)
   (declared-type :parse t)
@@ -555,9 +569,9 @@
 (defcl mapping-rename-with-formals (mapping-with-formals mapping-rename))
 
 (defcl mapping-lhs (name)
-  (decl-formals :parse t :type list)
-  (module :type datatype-or-module)
-  (refers-to :type list)
+  (decl-formals :parse t #| :type list |#)
+  (module #| :type (or null datatype-or-module) |#)
+  (refers-to #| :type list |#)
   type
   declared-type
   generated-by
