@@ -4,7 +4,9 @@
 ;; - then call the top-level yices function
 ;;============================================
 
-#-mk-defsystem ; This is set in PVS/pvs.system (by defsystem)
+(in-package :pvs)
+
+#-(or asdf mk-defsystem) ; This is set in PVS/pvs.system (by defsystem)
 (eval-when (compile eval load)
   (require :foreign)
   (require :defftype))
@@ -22,7 +24,7 @@
 ;;    but remove lisp if the current directory is of the form /../lisp
 ;;--------------------------------------------------------------------------
 
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (defun filter-current-dir ()
    (let* ((l1 (reverse (pathname-directory (excl:current-directory))))
  	 (l2 (if (string-equal (car l1) "lisp") (cdr l1) l1)))
@@ -30,7 +32,7 @@
  	(make-pathname :directory (reverse (cdr l2)) :name (car l2))
        (make-pathname :directory l2))))
 
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (defun guess-nlyices-dir ()
   (or (sys:getenv "NLYICES_DIR") (filter-current-dir)))
 
@@ -39,37 +41,37 @@
 ;; Base nlyices path + load macros
 ;;----------------------------------
 
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (defparameter *nlyices-path* (guess-nlyices-dir))
 
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (defmacro cfile-nl (filenm)
   `(compile-file (format nil "~a/lisp/~a" *nlyices-path* ,filenm) :load-after-compile t))
 
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (defmacro load-nl (filenm)
   `(load (format nil "~a/lisp/~a" *nlyices-path* ,filenm)))
 
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (cfile-nl "polyrep-totdeglex")
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (cfile-nl "vts")
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (cfile-nl "decide3_2a")
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (cfile-nl "nlsolver")
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (cfile-nl "named-callbacks")
-#-mk-defsystem
+#-(or asdf mk-defsystem)
 (cfile-nl "fcpo")
 
-#+(and (not mk-defsystem) macosx)
+#+(and (not (or asdf mk-defsystem)) macosx)
 (load-nl "libyices.dylib")
 
-#+(and (not mk-defsystem) linux x86-64)
+#+(and (not (or asdf mk-defsystem)) linux x86-64)
 (load-nl "libyices64.so")
 
-#+(and (not mk-defsystem) linux (not x86-64))
+#+(and (not (or asdf mk-defsystem)) linux (not x86-64))
 (load-nl "libyices32.so")
 
 
@@ -323,7 +325,7 @@
 ;; Make sure we call this first 
 ;;-------------------------------
 
-#-mk-defsystem ;; Done in pvs-init
+#-(or asdf mk-defsystem) ;; Done in pvs-init
 (nlyices-init)
 
 ;; get some trace
