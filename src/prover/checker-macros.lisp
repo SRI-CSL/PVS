@@ -29,10 +29,6 @@
 
 (in-package :pvs)
 
-(export '(*in-checker* *in-evaluator* *ps* *top-proofstate* restore commentary
-	  *proofstate-hooks* *finish-proofstate-hooks* *success-proofstate-hooks* *rewrite-msg-off*
-	  *in-apply*))
-
 ;
 ; *prover-keywords* is an alist of the form
 ; (command has-rest? arg1 arg2 ...) 
@@ -163,6 +159,7 @@
 (defvar *subgoalnum*)
 (defvar *+*)
 (defvar *-*)
+(defvar *par-ps*)
 (defvar *par-label*)
 (defvar *par-goal*)
 ;;(defvar *current-context*)
@@ -188,6 +185,7 @@
 (defvar *quant-simp?* nil)
 (defvar *implicit-typepreds?* nil)
 (defvar *assert-eval?* nil)
+(defvar *query-input* nil)
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)
@@ -297,6 +295,7 @@
 (defvar *auto-rewrites-off* nil)
 (defvar *new-fmla-nums* nil)
 (defvar *rewrite-msg-off* nil)
+(defvar *prover-commentary* nil)
 
 (defmacro format-list-of-items (list)
   `(format nil "~{~#[none~;~s~;~s and ~s~:;~@{~#[~;and ~]~s~^, ~}~]~:}"
@@ -310,13 +309,21 @@
 	   (format t "~a" com)))))
 
 (defmacro error-format-if (string &rest args)
-  `(cond (*suppress-printing*
-	  (set-strategy-errors (format nil ,string ,@args)))
-	 ;; ((session-error ,string ,@args)) ; won't return if in a session, else nil
-	 (t (let ((com ;; M3 Add 'Error' prefix to commentary [Sept 2020]
-		   (format nil "Error: ~a"
-		     (string-trim '(#\Space #\Tab #\Newline) (format nil ,string ,@args)))))
-	      (commentary com)))))
+  (let ((err (gentemp))
+	(com (gentemp))
+	)
+    `(cond (*suppress-printing*
+	    (set-strategy-errors (format nil ,string ,@args)))
+	   ((current-session)
+	    (let ((,err (make-condition 'simple-error
+		   			:format-control ,string
+		   			:format-arguments (list ,@args))))
+	      (session-output ,err)))
+	   (t (let ((,com ;; M3 Add 'Error' prefix to commentary [Sept 2020]
+		     (format nil "Error: ~a"
+		       (string-trim '(#\Space #\Tab #\Newline) (format nil ,string ,@args)))))
+		(commentary ,com)))
+	   )))
 
 (defmacro format-nif (string &rest args)
   ;; Like format-if, but not in commentary
@@ -679,3 +686,35 @@
 ;;  `(unless *assert-connectives?*) ;;NSH(11.24.98)not going 
                                    ;;to worry about asserting connectives
      `(connective-occurs? ,fmla))
+
+(defvar *prover-input-hooks* nil)
+
+(defun run-prover-input-hooks (&optional (hooks *prover-input-hooks*))
+  (when hooks
+    (or (funcall (car hooks))
+	(run-prover-input-hooks (cdr hooks)))))
+
+(defun find-hook-fn (hook-fn)
+  (if (symbolp hook-fn)
+      (fboundp hook-fn)
+      (or (and (functionp hook-fn) hook-fn)
+	  (and (listp hook-fn)
+	       (memq (car hook-fn) '(lambda function))
+	       (let ((efn (eval hook-fn)))
+		 (and (functionp efn) efn))))))
+
+(defun add-prover-input-hook (hook-fn)
+  (let ((fn (find-hook-fn hook-fn)))
+    (assert (functionp fn) () "Illegal hook-fn, must be a function")
+    (pushnew hook-fn *prover-input-hooks*)))
+
+(defun remove-prover-input-hook (hook-fn)
+  (let ((fn (find-hook-fn hook-fn)))
+    (assert (functionp fn) () "Illegal hook-fn, must be a function")
+    (setq *prover-input-hooks* (delete fn *prover-input-hooks*))))
+
+(defmacro with-prover-input-hook (hook-fn &body body)
+  (let ((fn (gentemp)))
+    `(let* ((,fn (find-hook-fn ,hook-fn))
+	    (*prover-input-hooks* (cons ,fn *prover-input-hooks*)))
+       ,@body)))
