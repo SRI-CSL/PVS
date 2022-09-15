@@ -28,9 +28,10 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(cl:eval-when (:execute :compile-toplevel :load-toplevel)
-  (cl:unless (cl:find-package :pvs)
-    (cl:defpackage :pvs
+;; To make this standalone
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (unless (find-package :pvs)
+    (defpackage :pvs
       (:use :cl-user :lisp)
       (:export :copy :defcl :lcopy :memq :write-deferred-methods-to-file)
       )))
@@ -45,8 +46,8 @@
 (export '(defcl copy write-deferred-methods))
 
 #+(or cmu sbcl)
-(defmethod slot-exists-p-using-class (c o s)
-  (declare (ignore c o s))
+(defmethod slot-exists-p-using-class (c o ss)
+  (declare (ignore c o ss))
   nil)
 
 #+gcl
@@ -150,10 +151,10 @@ In addition to the usual, slots may have the following attributes:
 	  list))))
 
 (defun write-deferred-methods-to-file (&optional force?)
-  (let ((mfile (format nil "~a/src/pvs-methods.lisp" *pvs-path*))
-	(cefile (format nil "~a/src/classes-expr.lisp" *pvs-path*))
-	(cdfile (format nil "~a/src/classes-decl.lisp" *pvs-path*))
-	(csfile (format nil "~a/src/prover/estructures.lisp" *pvs-path*)))
+  (let ((mfile (format nil "~a/src/pvs-methods.lisp" (or *pvs-path* ".")))
+	(cefile (format nil "~a/src/classes-expr.lisp" (or *pvs-path* ".")))
+	(cdfile (format nil "~a/src/classes-decl.lisp" (or *pvs-path* ".")))
+	(csfile (format nil "~a/src/prover/estructures.lisp" (or *pvs-path* "."))))
     (unless (and (not force?)
 		 (probe-file mfile)
 		 (file-older cefile mfile)
@@ -172,98 +173,105 @@ In addition to the usual, slots may have the following attributes:
 
 (defun write-deferred-methods (name out)
   (let* ((slots (get-all-slots-of (list name)))
-	 (unignored-slots (mapcar #'car (unignored-slots% slots)))
-	 (saved-slots (saved-slots% slots))
-	 (stored-slots (stored-slots% slots))
-	 (fetched-slots (fetched-slots% slots))
-	 (restored-slots (restored-slots% saved-slots)))
-    (format out "~2%")
-    (write `(defmethod copy ((obj ,name) &rest initargs)
-	      (with-slots ,unignored-slots obj
-		(make-instance ',name
-		  ,@(mapcan #'(lambda (sl)
-				(let ((ksl (intern (string (car sl)) :keyword)))
-				  `(,ksl
-				    (let* ((get1 (getf initargs ',(car sl)
-						       '%nogetf))
-					   (getfv (if (eq get1 '%nogetf)
-						      (getf initargs ,ksl
-							    '%nogetf)
-						      get1)))
-				      (if (eq getfv '%nogetf)
-					  ,(if (ignored-slot% sl)
-					       (getf (cdr sl) :initform)
-					       (car sl))
-					  getfv)))))
-			    slots))))
-	   :stream out :level nil :length nil :pretty t)
-    (format out "~2%")
-    (write `(defmethod store-object* ((obj ,name))
-	      (with-slots ,(mapcar #'car (append saved-slots stored-slots)) obj
-		  (reserve-space ,(+ (length saved-slots) (length stored-slots) 1)
-		    (push-word (store-obj ',name))
-		    ,@(mapcar #'(lambda (a)
-				  `(push-word (store-obj ,(car a))))
-			saved-slots)
-		    ,@(mapcar #'(lambda (a)
-				  `(push-word
-				    (store-obj
-				     (,(getf (cdr a) :store-as) obj))))
-			stored-slots))))
-	   :stream out :level nil :length nil :pretty t)
-    (format out "~2%")
-    (write `(defmethod update-fetched ((obj ,name))
-	      (with-slots (,@(mapcar #'car saved-slots)
-			     ,@(mapcar #'car stored-slots)
-			     ,@(mapcar #'car fetched-slots)) obj
-		,@(let ((arg-setters nil))
-		    (dotimes (i (length saved-slots))
-		      (let ((a (nth i saved-slots)))
-			(push `(setf ,(car a)
-				     (fetch-obj (stored-word ,(1+ i))))
-			      arg-setters)))
-		    (dotimes (i (length stored-slots))
-		      (let ((a (nth i stored-slots)))
-			(push `(setf ,(car a)
-				     (fetch-obj (stored-word
-						 ,(+ (length saved-slots)
-						     i 1))))
-			      arg-setters)))
-		    (dolist (a fetched-slots)
-		      (push `(setf ,(car a)
-				   ,(getf (cdr a) :fetch-as))
-			    arg-setters))
-		    (nreverse arg-setters))))
-	   :stream out :level nil :length nil :pretty t)
-    (format out "~2%")
-    (write `(defmethod restore-object* ((obj ,name))
-	      (with-slots ,(mapcar #'car restored-slots) obj
-		(let ((*restore-object-parent* obj))
-		  ,@(mapcar #'(lambda (a)
-				`(when ,(car a)
-				   (let ((*restore-object-parent-slot*
-					  ',(car a)))
-				     (restore-object* ,(car a)))))
-		      restored-slots)
-		  obj)))
-	   :stream out :level nil :length nil :pretty t)
-;;     (format out "~2%")
-;;     (write `(defmethod count-instances* ((obj ,name))
-;; 	      (with-slots (,@(mapcar #'car slots)) obj
-;; 		(let ((entry (assq ',name *instance-count*)))
-;; 		  (if entry
-;; 		      (incf (cdr entry))
-;; 		      (push (cons ',name 1) *instance-count*)))
-;; 		(dolist (ss ',(mapcar #'car slots))
-;; 		  (count-instances* (slot-value obj ss)))))
-;; 	   :stream out :level nil :length nil :pretty t)
-;;     (format out "~2%")
-;;     (write `(defmethod collect-common-objects* ((obj ,name))
-;; 	      (with-slots (,@(mapcar #'car slots)) obj
-;; 		(dolist (ss ',(mapcar #'car slots))
-;; 		  (collect-common-objects* (slot-value obj ss)))))
-;; 	   :stream out :level nil :length nil :pretty t)
-    ))
+	 (unignored-slots (mapcar #'car (unignored-slots% slots))) ; slot names only
+	 (fetched-slots (fetched-slots% slots)) ; Those with fetch-as
+	 (saved-slots (saved-slots% slots)) ; Those without :fetch-as
+	 (stored-slots (stored-slots% slots)) ; Those with :store-as
+	 (restored-slots (restored-slots% saved-slots)) ; Without :restore-as,
+					; print-type moved to end
+	 (copy-slots (mapcar #'(lambda (x) (if (eq x 'var) '(cvar var) x))
+		       unignored-slots)) ; var is special in SBCL
+	 (stobj-slots (let ((slts (mapcar #'car
+				    (remove-duplicates
+					(append saved-slots stored-slots)))))
+			(mapcar #'(lambda (x) (if (eq x 'var) '(cvar var) x)) slts)))
+	 (updf-slots (append stobj-slots
+			     (mapcan #'(lambda (slt)
+					 (unless (memq (car slt) stobj-slots)
+					   (if (eq (car slt) 'var)
+					       '((cvar var)) (list (car slt)))))
+			       fetched-slots)))
+	 (restr-slots (mapcar #'(lambda (sl) (if (eq (car sl) 'var) '(cvar var) (car sl)))
+			restored-slots))
+	 (copy-mthd (copy-method name slots copy-slots))
+	 (strobj-mthd (store-object-method name stobj-slots stored-slots))
+	 (updf-mthd (update-fetched-method name updf-slots fetched-slots))
+	 (restr-mthd (restore-object-method name restr-slots restored-slots))
+	 ;;(strobj-pushes (mapcar #'cadadr (cdddr (cadddr (fourth strobj-mthd)))))
+	 ;;(updf-setfs (mapcar #'cadr (cdddr (fourth updf-mthd))))
+	 )
+    ;; store-object and update-fetched must correspond:
+    (when unignored-slots
+      (format out "~2%")
+      (write copy-mthd :stream out :level nil :length nil :pretty t)
+      (format out "~2%")
+      (write strobj-mthd :stream out :level nil :length nil :pretty t)
+      (format out "~2%")
+      (write updf-mthd :stream out :level nil :length nil :pretty t)
+      (format out "~2%")
+      (write restr-mthd :stream out :level nil :length nil :pretty t))))
+
+(defun copy-method (name slots copy-slots)
+  `(defmethod copy ((obj ,name) &rest initargs)
+     (with-slots ,copy-slots obj
+       (make-instance ',name
+	 ,@(mapcan #'(lambda (sl)
+		       (let ((ksl (intern (string (car sl)) :keyword)))
+			 `(,ksl
+			   (let* ((get1 (getf initargs ',(car sl)
+					      '%nogetf))
+				  (getfv (if (eq get1 '%nogetf)
+					     (getf initargs ,ksl
+						   '%nogetf)
+					     get1)))
+			     (if (eq getfv '%nogetf)
+				 ,(if (ignored-slot% sl)
+				      (getf (cdr sl) :initform)
+				      (if (eq (car sl) 'var) 'cvar (car sl)))
+				 getfv)))))
+	     slots)))))
+
+(defun store-object-method (name stobj-slots stored-slots)
+  ;; Note that this must match fetch-object
+  `(defmethod store-object* ((obj ,name))
+     (with-slots ,stobj-slots obj
+       (reserve-space ,(1+ (length stobj-slots))
+	 (push-word (store-obj ',name))
+	 ,@(mapcar #'(lambda (a)
+		       (let* ((sslot (assoc a stored-slots))
+			      (store-as (when sslot (cadr (memq :store-as (cdr sslot))))))
+			 (if store-as
+			     `(push-word (store-obj (,store-as obj)))
+			     `(push-word (store-obj ,(if (equal a '(cvar var)) 'cvar a)))))
+		       ;;`(push-word (store-obj ,(if (eq (car a) 'var) 'cvar (car a))))
+		       )
+	     stobj-slots)))))
+
+(defun update-fetched-method (name updf-slots fetched-slots)
+  ""
+  (let ((i 0))
+    `(defmethod update-fetched ((obj ,name))
+       (with-slots ,updf-slots obj
+	 ,@(mapcar #'(lambda (a)
+		       (let* ((fslot (assoc a fetched-slots))
+			      (fetch-as (when fslot (getf (cdr fslot) :fetch-as)))
+			      (slot (if (equal a '(cvar var)) 'cvar a)))
+			 (if fslot
+			     `(setf ,slot ,fetch-as)
+			     `(setf ,slot (fetch-obj (stored-word ,(incf i)))))))
+	     updf-slots)))))
+
+(defun restore-object-method (name restr-slots restored-slots)
+  `(defmethod restore-object* ((obj ,name))
+     (with-slots ,restr-slots obj
+       (let ((*restore-object-parent* obj))
+	 ,@(mapcar #'(lambda (a)
+		       `(when ,(if (eq (car a) 'var) 'cvar (car a))
+			  (let ((*restore-object-parent-slot*
+				 ',(car a)))
+			    (restore-object* ,(if (eq (car a) 'var) 'cvar (car a))))))
+	     restored-slots)
+	 obj))))
 
 (defun get-all-slots-of (classes &optional slots)
   (if (null classes)
