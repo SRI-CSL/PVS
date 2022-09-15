@@ -95,23 +95,20 @@
 	   (print-lisp-defns theoryname (format nil "~a.lisp" basename) t)))))
 
 (defun evaluation-mode (theoryref)
-  (with-theory (thname) theoryref
-    (let ((theory (get-theory (or thname fname))))
-      (unwind-protect
-	   (if theory
-	       (let ((*generate-tccs* 'all)
-		     (*current-context* (or (saved-context theory)
-					    (context nil)))
-		     (*in-evaluator* t)
-		     (*pvs-eval-do-timing* t)
-		     (*destructive?* t)
-		     (*convert-back-to-pvs* t))
-		 (load-pvs-attachments)
-		 (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
-		 (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
-		 (evaluate))
-	       (pvs-message "Theory ~a is not typechecked" theoryref))
-	(pvs-emacs-eval "(pvs-evaluator-ready)")))))
+  (with-theory (theory) theoryref
+    (let ((*generate-tccs* 'all)
+	  (*current-context* (or (saved-context theory)
+				 (context nil)))
+	  (*in-evaluator* t)
+	  (*pvs-eval-do-timing* t)
+	  (*destructive?* t)
+	  (*convert-back-to-pvs* t))
+      (load-pvs-attachments)
+      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
+      (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
+      (when *noninteractive*
+	(pvs-emacs-eval "(pvs-evaluator-ready)"))
+      (evaluate))))
 
 (defun gqread ()
   (format t "~%<GndEval> ")
