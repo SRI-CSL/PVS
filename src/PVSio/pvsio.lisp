@@ -73,32 +73,30 @@ To change output prompt '~a':
 " *pvsio-promptin* *pvsio-promptout*))
 
 (defun evaluation-mode-pvsio (theoryref &optional input tccs? (banner? t))
-  (with-theory (thname) theoryref
-    (let ((theory (get-typechecked-theory thname)))
-      (when theory
-	(with-open-file 
-	    (*error-output*
-	     (merge-pathnames (format nil "~a.log" thname))
-	     :direction :output 
-	     :if-does-not-exist :create
-	     :if-exists (if *pvs-emacs-interface* :supersede :append))
-	  (let ((*pvstrace-wrappers* nil))
-	    (unwind-protect
-		 (let ((*generate-tccs* (if tccs? 'all 'none))
-		       (*current-context* (or (saved-context theory) (context nil)))
-		       (*suppress-msg* t)
-		       (*in-evaluator* t)
-		       (*destructive?* t)
-		       (*eval-verbose* nil)
-		       (*compile-verbose* nil)
-		       (*convert-back-to-pvs* t)
-		       (*disable-gc-printout* t)
-		       (*pvstrace-level* 0)
-		       (*eval-untranslatable* nil)
-		       (*pvs2cl-mappings* nil)
-		       (input-stream (when input (make-string-input-stream input))))
-		   (if banner?
-		       (format t "
+  (with-theory (theory) theoryref
+    (with-open-file 
+	(*error-output*
+	 (merge-pathnames (format nil "pvs-eval-~a.log" (id theory)))
+	 :direction :output
+	 :if-does-not-exist :create
+	 :if-exists (if *pvs-emacs-interface* :supersede :append))
+      (let ((*pvstrace-wrappers* nil))
+	(unwind-protect
+	     (let ((*generate-tccs* (if tccs? 'all 'none))
+		   (*current-context* (or (saved-context theory) (context nil)))
+		   (*suppress-msg* t)
+		   (*in-evaluator* t)
+		   (*destructive?* t)
+		   (*eval-verbose* nil)
+		   (*compile-verbose* nil)
+		   (*convert-back-to-pvs* t)
+		   (*disable-gc-printout* t)
+		   (*pvstrace-level* 0)
+		   (*eval-untranslatable* nil)
+		   (*pvs2cl-mappings* nil)
+		   (input-stream (when input (make-string-input-stream input))))
+	       (if banner?
+		   (format t "
 +---- 
 | PVSio ~a
 |
@@ -113,16 +111,16 @@ To change output prompt '~a':
 | stack, or worse. If you crash into Lisp, type (restore) to resume.
 |
 +----~%" *pvsio-version* *pvsio-promptin* *pvsio-promptin*)
-		       (format t "Starting pvsio script~%"))
-		   ;; establish a restart - (invoke-restart 'pvsio-quit) exits the loop.
-		   (restart-case
-		       (evaluate-pvsio input-stream)
-		     (pvsio-quit () (format t "~%Exiting PVSio~%") nil)))
-	      ;; unwind-protected forms
-	      (when *pvs-emacs-interface*
-		(pvs-emacs-eval "(pvs-evaluator-ready)"))
-	      #+allegro
-	      (delete-all-trace-wrappers))))))))
+		   (format t "Starting pvsio script~%"))
+	       ;; establish a restart - (invoke-restart 'pvsio-quit) exits the loop.
+	       (restart-case
+		   (evaluate-pvsio input-stream)
+		 (pvsio-quit () (format t "~%Exiting PVSio~%") nil)))
+	  ;; unwind-protected forms
+	  (when *pvs-emacs-interface*
+	    (pvs-emacs-eval "(pvs-evaluator-ready)"))
+	  #+allegro
+	  (delete-all-trace-wrappers))))))
 
 (defun read-expr (input-stream)
   (do ((have-real-char nil)
