@@ -1051,7 +1051,8 @@ if called."
 	 (id (id (car args1)))
 	 (fields (sort-fields (fields type)))
 	 (cl-expr-var (gentemp "E"))
-	 (rhs-var (gentemp "R")))
+	 ;;(rhs-var (gentemp "R"))
+	 )
     (if (tc-eq type *string-type*)
 	(if (eq id 'seq)
 	    (if (cdr args) ;;if the index i of the string is being updated
