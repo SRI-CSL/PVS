@@ -259,7 +259,9 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((strat strategy) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<STRATEGY: ~s>" (rule-input (topstep strat)))))
+      (if (strategy? (topstep strat))
+	  (print-object (topstep strat) stream)
+	  (format stream "#<STRATEGY: ~s>" (topstep strat)))))
 
 (defmethod print-object ((rule rule-instance) stream)
   (if *debugging-print-object*
