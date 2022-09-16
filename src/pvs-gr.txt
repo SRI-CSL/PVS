@@ -51,7 +51,7 @@ Operators
 	'<<' '>>' '::' '#' '@' '@@' '##' '|[' ']|' '!'
         '<<=' '>>=' '`' % '\''
         '..' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
-	 '§'
+	 '§' '[:' ':]'
         %% Bracketing operators 
 	'[|' '|]' '[||]' '(|' '|)' '(||)' '{|' '|}' '{||}'
         %% Unicode bracketing operators (TeX input method map shown)
@@ -66,10 +66,10 @@ Operators
 
         % '∣' '∥' don't work - start and end must be distinct
         %% Unicode prefix operators
-        '□' '◇' '¬' '◯' '√'
+        '□' '◇' '¬' '◯' '√' '∃' '∀'
 	%% Unicode infix operators
 	'∘' '∨' '∧' '⊕' '⊘' '⊗' '⊖' '⊙' '⊛' '⨁' '⨂' '⨀'
-	'⊢' '⊨' '±' '∓' '∔' '×' '÷' '⊞' '⊟' '⊠' '≁' '∼' '≃' '≅' '≇'
+	'⊢' '⊨' '±' '∓' '∔' '×' '÷' '⊞' '⊟' '⊠' '≁' '≠' '∼' '≃' '≅' '≇'
 	'≈' '≉' '≍' '≎' '≏' '≐' '≗' '≙' '≡' '⋈' '≤' '≥' '≦' '≧'
 	'≨' '≩' '≪' '≫' '≮' '≯' '≰' '≱' '≺' '≻' '◁' '▷'
 	'∈' '∉' '∋' '∩' '∪' '⊂' '⊃' '⊄' '⊅' '⊆' '⊇' '⊎' '⊊' '⊋'
@@ -77,7 +77,7 @@ Operators
 	'⇐' '⇒' '⇑' '⇓' '⇔' '∇' '⊣' '⊥' '⊩' '◯' '★' '✠'
 
 Lexical Terminals
-	id, number, string %, literal
+	id, number, string, keyword %, literal
 
 Precedence Information
   type-expr  'WITH' medial left
@@ -459,6 +459,7 @@ dep-type-expr ::= type-expr
 %% errors because the precedence can't easily be provided
 
 expr ::= string <string-expr(string)>
+       | keyword <char-expr(keyword)>
        | name-expr
        | bracket-expr
        | {'(#' {assignment ** ','} '#)'} <rec-expr(assignments(assignment*))>
@@ -650,10 +651,11 @@ name-expr ::= {name [':' type-expr]^t ['%VBAR' expr]^e}
 
 bracket-expr ::= tuple-expr
                | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
+               | {'[:' {expr ** ','} ':]'} <array-expr(expr*)>
                | {'[|' {expr ** ','} '|]'} <bracket-expr(\[\|\|\](), btup(expr*))>
                | {'(|' {expr ** ','} '|)'} <bracket-expr(\(\|\|\)(), btup(expr*))>
                | {'{|' {expr ** ','} '|}'} <bracket-expr(\{\|\|\}(), btup(expr*))>
-               | {'⟨' {expr ** ','} '⟩'} <bracket-expr(〈〉(), btup(expr*))>
+               | {'〈' {expr ** ','} '〉'} <bracket-expr(〈〉(), btup(expr*))>
  	       | {'⟦' {expr ** ','} '⟧'} <bracket-expr(⟦⟧(), btup(expr*))>
 	       | {'«' {expr ** ','} '»'} <bracket-expr(«»(), btup(expr*))>
 	       | {'⟪' {expr ** ','} '⟫'} <bracket-expr(⟪⟫(), btup(expr*))>
