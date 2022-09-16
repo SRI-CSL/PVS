@@ -63,7 +63,8 @@
   ;;stdout
   thread
   input-queue
-  output-queue)
+  output-queue
+  outputs)
 
 ;; Need to be able to return the following, note that only the commentary is
 ;; not derivable from the ps.
@@ -80,20 +81,33 @@
 (defvar *all-sessions* nil
   "list of sessions")
 
+(defvar *done-sessions* nil
+  "An alist of (id . status) pairs, status is quit, proved, or aborted")
+
 (defun make-session (id fun)
   (let ((sess
 	 (make-instance 'session
 	   :id id
 	   ;; :stdout (make-array 100 :element-type 'character :fill-pointer 0 :adjustable t)
 	   :input-queue (make-queue)
-	   :output-queue (make-queue))))
+	   :output-queue (make-queue)))
+	;; Make sure we're in the PVS package on this thread
+	(bt:*default-special-bindings* '((*package* . (find-package :pvs)))))
     ;; Make sure the session is available before starting the thread
     (push sess *all-sessions*)
     (setf (thread sess) (bt:make-thread fun :name (string id)))
     sess))
 
 (defun session-alive-p (&optional (sess (current-session)))
-  (bt:thread-alive-p (thread sess)))
+  (cond (sess
+	 ;;(format t "~%checking if session is alive")
+	 (bt:thread-alive-p (thread sess)))
+	(t (format t "~%no session?"))))
+
+(defun session-kill (sess)
+  (when (session-alive-p sess)
+    (bt:destroy-thread (thread sess)))
+  (setq *all-sessions* (remove sess *all-sessions*)))
 
 (defun get-session (obj)
   "Given a thread or id, will return the corresponding session"
@@ -101,6 +115,18 @@
       (find obj *all-sessions* :key #'thread)
       (find obj *all-sessions* :key #'id :test #'string-equal)))
 
+(defun quit-all-proof-sessions ()
+  "Attempts to quit all proof sessions in *all-sessions*
+Sends a quit, waits half a sec, then kills the thread, and moves the session to "
+  (dolist (sess *all-sessions*)
+    (if (session-alive-p sess)
+	(let ((id (id sess)))
+	  (prover-step id "(quit)")
+	  (sleep .5)
+	  (session-kill sess))
+	(session-kill sess))))
+
+;; Current-session returns the session associated with the current-thread
 (defun current-session ()
   (get-session (bt:current-thread)))
 
@@ -109,7 +135,10 @@
 otherwise returns nil."
   (let ((sess (current-session)))
     (when sess
-      (push output (outputs sess)))))
+      (let ((outp (if (stringp output)
+		      (string-trim '(#\Space #\Tab #\Newline) output)
+		      output)))
+	(push outp (outputs sess))))))
 
 (defun session-read ()
   "When in a session, push the outputs list to the output-queue, wait on
@@ -121,14 +150,22 @@ the input-queue, and return the lisp form of the string."
 	(push-queue (outputs sess) (output-queue sess))
 	(setf (outputs sess) nil))
       ;;(format t "~%session-read: waiting on input-queue")
-      (let ((input (pop-queue (input-queue sess))))
-	(format t "~%session-read: have input ~a" input)
-	(handler-case (read-from-string input)
-	  (error (c)
-	    (format t "~%session-read: pushing error to output-queue")
-	    (break "this sucks!!")
-	    (push-queue c (output-queue sess))
-	    (session-read)))))))
+      (session-read* sess))))
+
+(defun session-read* (sess)
+  (let ((input (pop-queue (input-queue sess))))
+    ;; (format t "~%session-read*: input = ~s" input)
+    (multiple-value-bind (inp err)
+	(ignore-errors (read-from-string input))
+      (if inp
+	  (if (in-the-debugger)
+	      (if (and (consp inp)
+		       (symbolp (car inp))
+		       (string-equal (car inp) "lisp"))
+		  inp
+		  (list '(restore) inp))
+	      (if (quit-command-p inp) '(quit) inp))
+	  err))))
 
 (defun session-finish ()
   "This should be called from the thread, to notify the output queue that
@@ -137,14 +174,14 @@ the session is finished after this."
     (when sess
       (push-queue (outputs sess) (output-queue sess))
       (loop until (queue-empty-p (output-queue sess))
-	    do (progn (format t "~%finish-proofstate: waiting for output-queue to empty")
-		      (sleep 1))))))
+	    do (progn ;;(format t "~%finish-proofstate: waiting for output-queue to empty")
+		      (sleep .1))))))
 
 (defun session-error (string &rest args)
   (let ((sess (current-session)))
     (when sess
       ;; Let the session error handler deal with this.
-      (push `(:error ,string ,@args) (outputs sess)))))
+      (push `("error" ,string ,@args) (outputs sess)))))
 
 ;;; Proof sessions
 
@@ -158,7 +195,7 @@ the session is finished after this."
 (defun all-proof-sessions ()
   (remove-if-not #'proof-session? *all-sessions*))
 
-(defun prover-status ()
+(defun all-proof-session-status ()
   "Checks the status of the proof sessions: active or inactive.
 Returns a list of the form ((id . status) (id . status) ...)"
   ;; Should we allow for the Lisp Listener here?
@@ -172,21 +209,11 @@ Returns a list of the form ((id . status) (id . status) ...)"
 (defun prove-formula-in-session (id fdecl rerun?)
   "This is the function run in a proof-session thread."
   ;; For some reason, a waiting thread in Allegro is difficult to delete,
-  (catch :top-level-reset ;; probably only allegro, but won't cause problems o.w.
-    (let ((sess (current-session)))
-      (handler-bind
-	  ((error
-	    #'(lambda (err)
-		(format t "~%prove-formula-in-session: pushing error ~a to output-queue" err)
-		(push-queue err (output-queue sess))
-		err)))
-	(let ((*multiple-proof-default-behavior* :noquestions)) ;; not working
-	  (session-output (format nil "~%~a started at ~a" id (iso8601-date)))
-	  ;; (let ((*standard-output* (stdout ses)))
-	  ;;   (with-output-to-string (*standard-output* (stdout ses))
-	  (prove-formula fdecl :rerun? rerun?)
-	  ;;))
-	  )))))
+  (let ((*multiple-proof-default-behavior* :noquestions)
+	(*pvs-emacs-interface* nil)
+	(*pvs-message-hook* (list #'session-output)))
+    (session-output (format nil "~%~a started at ~a" id (iso8601-date)))
+    (prove-formula fdecl :rerun? rerun?)))
 
 
 ;;; Both prover-init and prover-step return alists of the form
@@ -209,24 +236,25 @@ Returns a list of the form ((id . status) (id . status) ...)"
   (let* ((fdecl (get-formula-decl formref))
 	 (id (get-new-session-id (id fdecl)))
 	 (sess (make-session id #'(lambda () (prove-formula-in-session id fdecl rerun?)))))
-    (change-class sess 'proof-session
-      :formula-decl fdecl)
+    (change-class sess 'proof-session :formula-decl fdecl)
     ;; Wait for output-proofstate to produce a new proofstate
     ;;(format t "~%make-proof-session: waiting for output-queue")
     (let ((out (pop-queue (output-queue sess))))
-      ;;(format t "~%make-proof-session: have output ~a for ~a" out id)
-      (assert (proofstate? (car out)))
+      (assert (typep (car out) 'proofstate))
       (let* ((ps (car out))
-	     (log (reverse (cdr out)))
-	     (status (if (eq (status-flag ps) '!) :proved :init))) ;; prover-step adds
-	(when (eq status :proved)
+	     (commentary (reverse (cdr out)))
+	     (status (if (eq (status-flag ps) '!) "proved" "init"))) ;; prover-step adds
+	(when (string-equal status "proved")
+	  (push (cons (id sess) status) *done-sessions*)
 	  (loop while (session-alive-p sess)
-		do (progn (format t "~%Waiting for thread to die") (sleep 1)))
+		do (progn ;; (format t "~%Waiting for thread to die")
+			  (sleep .1)))
+	  ;;(format t "~%Thread is done")
 	  (setf *all-sessions* (remove sess *all-sessions*)))
-	`((:id . ,id)
-	  (:proofstate . ,ps)
-	  (:status . ,status)
-	  (:log . ,log))))))
+	`(("id" . ,(string id))
+	  ("proofstate" . ,ps)
+	  ("status" . ,(string-downcase status))
+	  ("commentary" . ,commentary))))))
 
 (defun prover-step (id cmd)
   "Takes a step for proof session id. Returns a proofstate, error, or finished message."
@@ -242,25 +270,37 @@ Returns a list of the form ((id . status) (id . status) ...)"
     (push-queue cmd (input-queue sess))
     ;; (format t "~%pr-step: pushed ~a to input-queue, waiting for output" cmd)
     (let ((outs (pop-queue (output-queue sess)))) ;; Waits on output-queue
-      (if (proofstate? (car outs))
+      ;;(format t "~%(car outs) = ~s: ~a" (car outs) (type-of (car outs)))
+      (if (typep (car outs) 'proofstate)
 	  (let* ((ps (car outs))
-		 (log (reverse (cdr outs)))
-		 (status (if (top-proofstate? ps)
+		 (commentary (reverse (cdr outs)))
+		 (status (if (typep ps 'top-proofstate)
 			     (case (status-flag ps)
 			       (! 'proved)
 			       (quit 'quit)
 			       (t 'waiting))
 			     (if (eq (status-flag ps) 'quit) ;; shouldn't happen
-				 'quit 'waiting))))
+				 'quit 'waiting)))
+		 (err (find-if #'(lambda (c) (typep c 'error)) commentary)))
+	    (when err (setq commentary (remove err commentary)))
 	    (unless (eq status 'waiting)
 	      (loop while (session-alive-p sess)
-		    do (progn (format t "~%Waiting for thread to die") (sleep 1)))
-	      (setf *all-sessions* (remove sess *all-sessions*)))
-	    `((:id . ,id)
-	      (:command . ,cmd)
-	      (:proofstate . ,ps)
-	      (:status . ,status)
-	      (:log . ,log)))
+		    do (progn ;;(format t "~%Waiting for thread to die")
+			      (sleep .1)))
+	      (setf *all-sessions* (remove sess *all-sessions*))
+	      (push (cons (id sess) status) *done-sessions*))
+	    (let* ((prf-result `(("id" . ,(string id))
+				 ("command" . ,cmd)
+				 ("proofstate" . ,ps)
+				 ("status" . ,(string-downcase status))
+				 ("commentary" . ,commentary)
+				 ,@(when err
+				     `(("error" . ,(format nil "~a" err))))
+				 ))
+		   ;;(prf-alist (pvs-jsonrpc::pvs2json-response prf-result))
+		   ;;(prf-json (json:encode-json-to-string prf-alist))
+		   )
+	      prf-result))
 	  (error "Caught an error: ~%~a" outs))
       ;; ((and (listp result)
       ;; 	    (eq (car result) :error))
@@ -281,12 +321,11 @@ Returns a list of the form ((id . status) (id . status) ...)"
 		       (eq (status-flag ps) '!)))
 	 ;;(done-str (if proved? "Q.E.D." "Unfinished"))
 	 )
+    ;;(format t "~%finish-proofstate: called")
     (when (and *pvs-emacs-interface*
 	       *pvs-emacs-output-proofstate-p*)
       (format nil ":pvs-prfst ~a :end-pvs-prfst"
 	(write-to-temp-file (if proved? "true" "false"))))
-    (dolist (hook *finish-proofstate-hooks*)
-      (funcall hook ps))
     (unless (eq (status-flag ps) '!)
       (setf (status-flag ps) 'quit))
     (session-output ps)
@@ -302,11 +341,41 @@ Returns a list of the form ((id . status) (id . status) ...)"
 		    (all-formulas th))))
 	(when prfs
 	  (with-open-file (out th-path :direction :output :if-exists :supersede)
-	    (json:encode-json-alist
-	      `((:theory . ,(id th))
-		(:proofs . ,(mapcar #'pvs-jsonrpc:pvs2json-response prfs)))
+	    (json:encode-json
+	     `(("theory" . ,(string (id th)))
+	       ("proofs" . ,(mapcar #'pvs-jsonrpc:pvs2json-response prfs)))
 	      out)))))))
-      
+
+(defun prover-status (&optional proof-id)
+  "Checks the status of the prover for the given proof-id, or all if none given.
+If proof-id is given, returns \"active\" or \"inactive\", otherwise returns a list
+of objects of the form {\"proofId\":id,\"status\":status}"
+  ;; (format t "~%pvs:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
+  ;;   (and top-ps t) (and last-proof t) (and ps t))
+  (if proof-id
+      (let ((sess (get-session proof-id)))
+	(if sess
+	    (list `(("proof-id" . ,(string proof-id))
+		    ("status" . ,(if sess
+				     (if (session-alive-p sess) "active" "inactive")
+				     "missing"))))
+	    (let ((done (assoc proof-id *done-sessions* :test #'string=)))
+	      (list `(("proof-id" . ,(string proof-id))
+		      ("status" . ,(if done
+				       (string-downcase (cdr done))
+				       "missing")))))))
+      (mapcar #'(lambda (sess)
+		  `(("proof-id" . ,(string (id sess)))
+		    ("status" . ,(if (session-alive-p sess) "active" "inactive"))))
+	*all-sessions*)))
+
+(defun proof-sessions-for-theory (theory-ref)
+  (with-theory (theory) theory-ref
+    (let ((results nil))
+      (dolist (fmla (provable-formulas theory))
+	(let ((result (prover-init fmla)))
+	  (push result results)))
+      results)))
 
 (defcl pvsio-session (session)
   context)
@@ -315,20 +384,18 @@ Returns a list of the form ((id . status) (id . status) ...)"
   (evaluation-mode-pvsio theoryref input tccs? banner?))
 
 (defun make-pvsio-session (theoryref &optional input tccs? banner?)
-  (with-theory (thname) theoryref
-    (let ((theory (get-typechecked-theory thname)))
-      (when theory
-	(let* ((id (get-new-session-id (id theory)))
-	       (sess (make-session id
-				   #'(lambda ()
-				       (pvsio-in-session theoryref input tccs? banner?)))))
-	  (change-class sess 'pvsio-session)
-	  (push sess *all-sessions*)
-	  ;; Wait for output-proofstate to produce a new proofstate
-	  ;; Releases the lock and waits on outvar
-	  (format t "~%PVS: waiting for outvar")
-	  ;;(bt:condition-wait (outcvar sess) nil)
-	  (let ((out nil ;;(q:qpop (output-queue sess))
-		  ))
-	    (format t "~%PVS: have output ~a for ~a" out id)
-	    (list id out)))))))
+  (with-theory (theory) theoryref
+    (let* ((id (get-new-session-id (id theory)))
+	   (sess (make-session id
+			       #'(lambda ()
+				   (pvsio-in-session theoryref input tccs? banner?)))))
+      (change-class sess 'pvsio-session)
+      (push sess *all-sessions*)
+      ;; Wait for output-proofstate to produce a new proofstate
+      ;; Releases the lock and waits on outvar
+      (format t "~%PVS: waiting for outvar")
+      ;;(bt:condition-wait (outcvar sess) nil)
+      (let ((out nil ;;(q:qpop (output-queue sess))
+	      ))
+	(format t "~%PVS: have output ~a for ~a" out id)
+	(list id out)))))
