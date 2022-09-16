@@ -742,23 +742,27 @@
 	      (vector (cdr (assq decl
 				 (application-judgements-alist
 				  (current-judgements))))))
-	 (when vector
-	   (let* ((currynum (argument-application-number ex))
-		  (entry (when (<= currynum (length vector))
-			   (aref vector (1- currynum)))))
-	     (when entry
-	       (multiple-value-bind (gtypes ijdecls)
-		   (compute-application-judgement-types
-		    ex (judgements-graph entry))
-		 #+pvsdebug (assert (length= gtypes ijdecls))
-		 (multiple-value-bind (jtypes jdecls)
-		     (generic-application-judgement-types
-		      ex (generic-judgements entry) gtypes ijdecls)
-		   #+pvsdebug (assert (length= jtypes jdecls))
-		   #+pvsdebug (assert (or (vectorp jtypes)
-					  (not (member (type ex) jtypes :test #'tc-eq))))
-		   #+pvsdebug (assert (every #'(lambda (jty) (compatible? jty (type ex))) jtypes))
-		   (values jtypes jdecls))))))))
+	 (multiple-value-bind (jtys jdcls)
+	     (when vector
+	       (let* ((currynum (argument-application-number ex))
+		      (entry (when (<= currynum (length vector))
+			       (aref vector (1- currynum)))))
+		 (when entry
+		   (multiple-value-bind (gtypes ijdecls)
+		       (compute-application-judgement-types
+			ex (judgements-graph entry))
+		     #+pvsdebug (assert (length= gtypes ijdecls))
+		     (multiple-value-bind (jtypes jdecls)
+			 (generic-application-judgement-types
+			  ex (generic-judgements entry) gtypes ijdecls)
+		       #+pvsdebug (assert (length= jtypes jdecls))
+		       #+pvsdebug (assert (or (vectorp jtypes)
+					      (not (member (type ex) jtypes :test #'tc-eq))))
+		       #+pvsdebug (assert (every #'(lambda (jty) (compatible? jty (type ex))) jtypes))
+		       (values jtypes jdecls))))))
+	   (if jtys
+	       (values jtys jdcls)
+	       (get-matching-application-judgement-types ex)))))
       (lambda-expr
        (multiple-value-bind (ljtypes ljdecls)
 	   ;; For lambda expressions, we get the judgement-types of the args,
@@ -786,6 +790,60 @@
 		  (arglist (argument* ex))
 		  (sljtypes (subst-judgement-types ljtypes bndlist arglist)))
 	     (remove-judgement-types-of-type (type ex) sljtypes ljdecls))))))))
+
+(defun get-matching-application-judgement-types (ex)
+  (let* ((op (operator* ex))
+	 (args (arguments* ex))
+	 (decl (declaration op))
+	 (th (module decl))
+	 (formals (when th (formals-sans-usings th))))
+    (when formals
+      (let* ((th (module decl))
+	     (thname (mk-modname (id th))))
+	(multiple-value-bind (bindings ftype)
+	    (get-matching-application-judgement-types*
+	     args (type decl) (mapcar #'list formals))
+	  (let ((thinsts (create-compatible-modinsts thname decl bindings nil)))
+	    (mapcan #'(lambda (thinst)
+			(when (and (or (eq th (current-theory))
+				       (null formals)
+				       (and (actuals thinst)
+					    (fully-instantiated? (actuals thinst))))
+				   (or (eq decl (current-declaration))
+				       (null (decl-formals decl))
+				       (and (dactuals thinst)
+					    (fully-instantiated? (dactuals thinst)))))
+			  (let ((stype (subst-mod-params ftype thinst th decl)))
+			    (unless (freevars stype)
+			      (list stype)))))
+	      thinsts)))))))
+
+;;; Similar to find-compatible-bindings, but using judgement types rather than possible types
+(defun get-matching-application-judgement-types* (args ftype bindings)
+  (assert (every #'(lambda (bd) (formal-decl? (car bd))) bindings))
+  (let ((sty (find-supertype ftype)))
+    (when (funtype? sty)
+      (let* ((jargstypes (mapcar #'judgement-types+ (car args)))
+	     (types-lists (cartesian-product jargstypes))
+	     (fdom (domain-types sty))
+	     (fran (range sty))
+	     (nbindings (find-compatible-bindings* types-lists fdom bindings nil)))
+	;; Note that nbindings is now a list of bindings, but we may need
+	(assert (every #'(lambda (bds)
+			   (every #'(lambda (bd) (formal-decl? (car bd))) bds))
+		       nbindings))
+	(if (null (cdr args))
+	    (values nbindings fran)
+	    (let* ((nfran nil)
+		   (nbdgs (mapcan #'(lambda (bds)
+				      (multiple-value-bind (nbds nty)
+					  (get-matching-application-judgement-types*
+					   (cdr args) fran bds)
+					(when nty (setq nfran nty))
+					nbds))
+			    nbindings)))
+	      (when nbdgs
+		(values nbdgs nfran))))))))
 
 (defun get-operator*-expression (ex)
   (if (and (application? ex)
@@ -960,10 +1018,10 @@
 		       (dotimes (i (length comp-types))
 			 (let ((pos (position (elt comp-types i)
 					      (if then-types ttypes etypes)
-					      :test #'tc-eq)))
-			   (when pos
-			     (setf (elt comp-jdecls i)
-				   (elt (if then-types then-jdecls else-jdecls) pos)))))
+					      :test #'tc-eq))
+			       (jdcls (if then-types then-jdecls else-jdecls)))
+			   (when (and pos jdcls)
+			     (setf (elt comp-jdecls i) (elt jdcls pos)))))
 		       (values comp-types comp-jdecls))))))))))
 
 ;; Want the least types and corresponding judgement decls that cover all
