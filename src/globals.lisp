@@ -67,6 +67,9 @@ in util.lisp")
 (defvar *pvs-emacs-interface* nil
   "Set to t by Emacs in pvs-load - affects how pvs-emacs functions work")
 
+(defvar *pvs-websocket-interface* nil
+  "Set to t by Websocket when a message is received")
+
 (defparameter *pvs-directories*
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
     "src/utils" "src/BDD" "src/interface" "src/ics-interface"
@@ -264,15 +267,6 @@ order is important")
 ;; Essentially allowed anywhere except user-introduced declarations.
 (defvar *xt-periods-allowed* nil)
 
-;;; An association list of operators and their places.  The problem is
-;;; that operators are thrown away, and later make-sb-term is called with
-;;; just an id.  We thus keep all possible places associated with an id,
-;;; and in make-sb-term set the place attribute if there is a unique one,
-;;; otherwise we set a places attribute, and wait for parse to determine
-;;; the right place from the argument places.
-
-(defvar *operator-places* nil)
-
 ;;; These variables are types, used for many built-in functions and constants.
 (defvar *boolean* nil)
 (defvar *true* nil)
@@ -388,8 +382,12 @@ generate unique accessors for these types")
 declarations.  Used by pvs-error to put the cursor on the datatype declaration
 rather than the generated declaration.")
 
+(defvar *ignore-exportings* nil)
+
+(defvar *typecheck-using* nil)
+
 (defun pprint-comment-strings (stream string)
-  (let ((lines (mk::split-string string :item #\newline))
+  (let ((lines (split string #\newline))
 	(ccol 1 ;(1+ (excl:stream-line-column stream))
 	      ))
     (when (and (cdr lines) (integerp ccol) (> ccol 0)
@@ -406,8 +404,9 @@ rather than the generated declaration.")
       (pprint-indent :block 0)
       (loop (pprint-exit-if-list-exhausted)
 	    (write (pprint-pop) :stream stream :escape nil :pretty nil
-		   :pprint-dispatch #-sbcl nil
-		   #+sbcl (sb-pretty::make-pprint-dispatch-table)
+		   :pprint-dispatch
+		   #-sbcl nil
+		   #+sbcl (sb-pretty::make-pprint-dispatch-table #() nil nil)
 		   )
 	    (pprint-exit-if-list-exhausted)
 	    (pprint-newline :mandatory stream)))))
@@ -418,8 +417,7 @@ rather than the generated declaration.")
     (set-pprint-dispatch '(cons string)
 			 #'(lambda (s list)
 			     (let ((*print-escape* t))
-			       (pprint-linear s list)
-			       (terpri s)))
+			       (pprint-linear s list)))
 			 1
 			 table)
     (set-pprint-dispatch 'string
@@ -671,80 +669,3 @@ Allowed values are:
   ;; "a = b = c" is "a = b AND b = c".  Remember adding parentheses
   ;; means no chaining.
   '(= /= ≠))
-
-
-(defun current-path ()
-  (path *workspace-session*))
-
-(defun current-pvs-files ()
-  (pvs-files *workspace-session*))
-
-(defun current-pvs-theories ()
-  (pvs-theories *workspace-session*))
-
-(defun current-prelude-libraries ()
-  (prelude-libs *workspace-session*))
-
-(defsetf current-prelude-libraries () (plibs)
-  `(setf (prelude-libs *workspace-session*) ,plibs))
-
-(defun current-subdir-alist ()
-  (when (eq (subdir-alist *workspace-session*) :unbound)
-    (let ((alist
-	   (mapcan #'(lambda (subdir)
-		       (let ((sname (car (last (pathname-directory subdir)))))
-			 (when (and (not (string= sname "pvsbin"))
-				    (valid-pvs-id* sname))
-			   (list (cons subdir (intern sname :pvs))))))
-	     (uiop:subdirectories (path *workspace-session*)))))
-      (setf (subdir-alist *workspace-session*) alist)))
-  (subdir-alist *workspace-session*))
-
-(defun current-pvs-context ()
-  (pvs-context *workspace-session*))
-
-(defsetf current-pvs-context () (pvsctx)
-  `(setf (pvs-context *workspace-session*) ,pvsctx))
-
-(defun current-pvs-context-changed ()
-  (pvs-context-changed *workspace-session*))
-
-(defsetf current-pvs-context-changed () (cc)
-  `(setf (pvs-context-changed *workspace-session*) ,cc))
-
-(defun current-context ()
-  *current-context*)
-
-(defun current-pvs-file ()
-  (when *current-context*
-    (filename (theory *current-context*))))
-
-(defun current-theory ()
-  (when *current-context*
-    (theory *current-context*)))
-
-(defsetf current-theory () (theory)
-  `(if *current-context*
-       (setf (theory *current-context*) ,theory)
-       (error "setf current-theory: *current-context* is nil")))
-
-(defun current-theory-name ()
-  (theory-name *current-context*))
-
-(defun current-theory-name-with-dactuals ()
-  (let ((tname (current-theory-name))
-	(dfmls (decl-formals (current-declaration))))
-    (if dfmls
-	(copy tname :dactuals (mk-dactuals dfmls))
-	tname)))
-
-(defsetf current-theory-name () (name)
-  `(setf (theory-name *current-context*) ,name))
-
-(defun current-theory-name-dacts ()
-  (let ((thname (current-theory-name)))
-    (if (and (current-declaration)
-	     (decl-formals (current-declaration)))
-	(let ((dactuals (mk-dactuals (decl-formals (current-declaration)))))
-	  (copy thname :dactuals dactuals))
-	thname)))
