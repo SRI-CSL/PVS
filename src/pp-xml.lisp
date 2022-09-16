@@ -1,15 +1,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; pp-xml.lisp -- 
+;; pp-xml.lisp -- generates XML representation of the PVS AST, but cannot read
+;;                it. We treat the .pvs file as the reference; don't want to
+;;                overwrite with the XML version if there is a difference.
+;;                In the future I intend to provide functions for reading an XML
+;;                file, but into a parallel context, for comparison, etc.
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 23:19:42 1998
 ;; Lxml Modified By: Sam Owre
 ;; Lxml Modified On: Tue Jan 26 18:34:54 1999
-;; Update Count    : 8
-;; Status          : Alpha test
+;; Status          : Beta test
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
+;;   Copyright (c) 2022 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
+
+;;; Entry points are print-xml-prelude, print-xml-pvs-file, and print-xml-theory
 
 (defmacro xpvs-elt (stream eltname attrs &rest args)
   (let ((strm (gentemp)))
@@ -36,6 +41,10 @@
 (defstruct xml-arg-formals list)
 
 (defstruct xml-assuming list)
+
+(defstruct xml-newline-comments list)
+
+(defstruct xml-newline-comment string place)
 
 (defstruct xml-constr-args list)
 
@@ -147,7 +156,7 @@
 (defun ensure-xml-subdirectory ()
   (let ((subdir (make-pathname
 		 :defaults *default-pathname-defaults*
-		 :name #+case-sensitive "pvsxml" #-case-sensitive "PVSXML")))
+		 :name "pvsxml")))
     (if (file-exists-p subdir)
 	(if (directory-p subdir)
 	    t
@@ -167,8 +176,7 @@
 (defmethod make-xmlpath ((name string))
   (make-pathname :defaults *default-pathname-defaults*
 		 :directory (append (pathname-directory *default-pathname-defaults*)
-				    (list #+case-sensitive "pvsxml"
-					  #-case-sensitive "PVSXML"))
+				    (list "pvsxml"))
 		 :name name
 		 :type "xml"))
 
@@ -264,7 +272,7 @@
 
 (defmethod pp-xml* (stream (mod module) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id formals exporting assuming theory) mod
+  (with-slots (id formals exporting assuming theory newline-comments) mod
     (write "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
 	   :stream stream :escape nil)
     (terpri stream)
@@ -282,6 +290,13 @@
 				    (judgement? (generated-by d))))
 		  theory)
 		exporting
+		(when newline-comments
+		  (make-xml-newline-comments
+		   :list (mapcar #'(lambda (elt)
+				     (make-xml-newline-comment
+				      :string (car elt)
+				      :place (cadr elt)))
+			   newline-comments)))
 		;; TBD generated-by
 		;; TBD messages (info warnings conversion-messages)
 		))))
@@ -396,7 +411,7 @@
 
 (defmethod xml-attributes ((constr simple-constructor))
   (with-slots (ordnum) constr
-    (nconc (list 'ordnum ordnum) (call-next-method))))
+    (nconc (list "ordnum" ordnum) (call-next-method))))
     
 
 (defmethod pp-xml* (stream (args xml-constr-args)
@@ -478,6 +493,18 @@
   (with-slots (id kind type) name
     (xpvs-elt stream export-name (xml-attributes name) id (or kind type))))
 
+(defmethod pp-xml* (stream (cmts xml-newline-comments) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xpvs-elt stream newline-comments nil (xml-newline-comments-list cmts)))
+
+(defmethod pp-xml* (stream (cmt xml-newline-comment) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xpvs-elt stream newline-comment (xml-attributes cmt)
+	    (xml-newline-comment-string cmt)))
+
+(defmethod xml-attributes ((cmt xml-newline-comment))
+  (list "place" (format nil "~{~a~^ ~}" (place-list (xml-newline-comment-place cmt)))))
+
 
 ;;; Declarations
 
@@ -493,8 +520,8 @@
 
 (defmethod xml-attributes ((imp importing))
   (with-slots (semi chain?) imp
-    (nconc (when semi (list 'semi-colon-p "true"))
-	   (when chain? (list 'chain-p "true"))
+    (nconc (when semi (list "semi-colon-p" "true"))
+	   (when chain? (list "chain-p" "true"))
 	   (call-next-method))))
 
 (defmethod pp-xml* :around (stream (decl declaration) &optional colon? atsign?)
@@ -507,8 +534,8 @@
 
 (defmethod xml-attributes :around ((d declaration))
   (let ((attrs (call-next-method)))
-    (nconc (when (chain? d) (list 'chain-p "true"))
-	   (when (semi d) (list 'semi-colon-p "true"))
+    (nconc (when (chain? d) (list "chain-p" "true"))
+	   (when (semi d) (list "semi-colon-p" "true"))
 	   attrs)))
 
 (defmethod pp-xml* (stream (decl type-decl) &optional colon? atsign?)
@@ -743,7 +770,7 @@
 	      id definition)))
 
 (defmethod xml-attributes ((decl formula-decl))
-  (nconc (list 'kind (string-downcase (spelling decl))) (call-next-method)))
+  (nconc (list "kind" (string-downcase (spelling decl))) (call-next-method)))
 
 (defmethod pp-xml* (stream (decl name-judgement) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -819,7 +846,7 @@
 (defmethod xml-attributes ((fml xml-varname))
   (let ((fm (xml-varname-arg fml)))
     (when (place fm)
-      (list 'place (format nil "~{~a~^ ~}" (place-list (place fm)))))))
+      (list "place" (format nil "~{~a~^ ~}" (place-list (place fm)))))))
 
 
 (defmethod pp-xml* (stream (decl conversion-decl) &optional colon? atsign?)
@@ -837,7 +864,7 @@
 	    (pp-xml* stream (xml-kind-kind kind) colon? atsign?)))
 
 (defmethod xml-attributes ((decl conversion-decl))
-  (nconc (list 'key (typecase decl
+  (nconc (list "key" (typecase decl
 		      (conversionplus-decl "CONVERSION+")
 		      (conversionminus-decl "CONVERSION-")
 		      (t "CONVERSION")))))
@@ -853,7 +880,7 @@
 	      rewrite-names)))
 
 (defmethod xml-attributes ((decl auto-rewrite-decl))
-  (nconc (list 'key (typecase decl
+  (nconc (list "key" (typecase decl
 		      (auto-rewrite-plus-decl "AUTO_REWRITE+")
 		      (auto-rewrite-minus-decl "AUTO_REWRITE-")
 		      (t "AUTO_REWRITE")))))
@@ -1035,10 +1062,10 @@
       (xpvs-elt stream function-type (xml-attributes te) domain range))))
 
 (defmethod xml-attributes ((te functiontype))
-  (nconc (list 'keyword "FUNCTION") (call-next-method)))
+  (nconc (list "keyword" "FUNCTION") (call-next-method)))
 
 (defmethod xml-attributes ((te arraytype))
-  (nconc (list 'keyword "ARRAY") (call-next-method)))
+  (nconc (list "keyword" "ARRAY") (call-next-method)))
 
 (defmethod pp-xml* (stream (te tupletype) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -1106,7 +1133,7 @@
 (defmethod xml-attributes :around ((ex expr))
   (if (and (integerp (parens ex))
 	   (> (parens ex) 0))
-      (nconc (list 'parens (parens ex)) (call-next-method))
+      (nconc (list "parens" (parens ex)) (call-next-method))
       (call-next-method)))
 
 (defmethod pp-xml* (stream (ex rational-expr) &optional colon? atsign?)
@@ -1583,8 +1610,8 @@
 
 (defmethod xml-attributes ((ex xml-proofstate))
   (with-slots (label comment status-flag) ex
-    (nconc (list 'label label 'status-flag (string status-flag))
-	   (when comment (list 'comment comment))
+    (nconc (list "label" label "status-flag" (string status-flag))
+	   (when comment (list "comment" comment))
 	   (call-next-method))))
 
 (defmethod pp-xml* (stream (ex xml-rule) &optional colon? atsign?)
@@ -1684,18 +1711,18 @@
 (defmethod xml-attributes :around ((ex syntax))
   (let ((attrs (call-next-method)))
     (if (place ex)
-	(nconc (list 'place (format nil "~{~a~^ ~}" (place-list (place ex))))
+	(nconc (list "place" (format nil "~{~a~^ ~}" (place-list (place ex))))
 	       attrs)
 	attrs)))
 
 (defmethod xml-attributes :around ((b bind-decl))
   (let ((attrs (call-next-method)))
     (if (chain? b)
-	(nconc (list 'chain-p "true") attrs)
+	(nconc (list "chain-p" "true") attrs)
 	attrs)))
 
 (defmethod xml-attributes :around ((ex infix-application))
-  (nconc (list 'infix "true") (call-next-method)))
+  (nconc (list "infix" "true") (call-next-method)))
 
 (defmethod xml-attributes :around ((ex xml-top-proofstate))
   (nconc (list '|xmlns:xlink| "http://www.w3.org/1999/xlink")
