@@ -2105,10 +2105,16 @@ then uses unpindent* to add the indent to each line"
 	  (pprint-logical-block (nil nil)
 	    (pprint-indent :block 1)
 	    (if (and (zerop (parens lhs))
-		     (not (chained-relation? lhs))
-		     (< (precedence lhs 'left)
-			(or (gethash oper (second *expr-prec-info*))
-			    180)))
+		     (or (and (not (chained-relation? lhs))
+			      (< (precedence lhs 'left)
+				 (or (gethash oper (second *expr-prec-info*))
+				     180)))
+			 ;; An unparenthesized binding-expr can capture the rhs
+			 ;; E.g., infix "∀ x: p(x) and q" should prettyprint as
+			 ;;            "(∀ x: p(x)) and q"
+			 (let ((rm-lhs (rightmost-term lhs)))
+			   (and (binding-expr? rm-lhs)
+				(zerop (parens rm-lhs))))))
 		(progn (write-char #\()
 		       (pp* lhs)
 		       (write-char #\)))
@@ -2128,6 +2134,19 @@ then uses unpindent* to add the indent to each line"
 		       (write-char #\)))
 		(pp* rhs))))
 	(call-next-method))))
+
+(defmethod rightmost-term ((ex infix-application))
+  (if (zerop (parens ex))
+      (rightmost-term (args2 ex))
+      ex))
+
+(defmethod rightmost-term ((ex unary-application))
+  (if (zerop (parens ex))
+      (rightmost-term (args1 ex))
+      ex))
+
+(defmethod rightmost-term (ex)
+  ex)
 
 (defmethod pp* ((ex chained-relation))
   (if (or *pp-print-parens*
@@ -3478,6 +3497,11 @@ then uses unpindent* to add the indent to each line"
 (defmethod pp* ((ex symbol))
   (write ex))
 
+;;;
+
+(defmethod pp* ((sform s-formula))
+  (pp* (formula sform)))
+
 ;;; Find the precedence of an expression.
 
 (defmethod precedence :around ((expr expr) ctx)
@@ -3499,8 +3523,8 @@ then uses unpindent* to add the indent to each line"
 (defmethod precedence ((expr rational-expr) ctx)
   ;; Same as division
   (case ctx
-    (left (gethash 'SBST::/ (third *expr-prec-info*)))
-    (right (gethash 'SBST::/ (second *expr-prec-info*)))))
+    (left (gethash 'sbst::/ (third *expr-prec-info*)))
+    (right (gethash 'sbst::/ (second *expr-prec-info*)))))
 
 (defmethod precedence ((expr unary-application) ctx)
   (if (and (typep (operator expr) 'name-expr)
