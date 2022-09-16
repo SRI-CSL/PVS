@@ -41,19 +41,6 @@
 ;;;	term-args   - returns the list of arguments of a term
 ;;;	ds-id       - returns the symbol of an id term
 
-(defun term-place (absyn)
-  (getf (term:term-attr absyn) :place))
-
-(defsetf term-place (absyn) (place)
-  `(setf (getf (term:term-attr ,absyn) :place) ,place))
-
-(defun term-comment (absyn)
-  (getf (term:term-attr absyn) :comment))
-
-(defsetf term-comment (absyn) (comment)
-  `(setf (getf (term:term-attr ,absyn) :comment) ,comment))
-
-
 ;;; Parsing
 
 (defun parse (&rest keys)
