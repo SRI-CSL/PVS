@@ -17,30 +17,30 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(in-package "PVS") ;; package for abstract syntax.
+(in-package :pvs)
 
-(in-package "PVS")  ;; package for generated code.  
-
-(use-package '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR"))
+(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 (lang:lang-define 
-:name "PVS2.3"
-:conc-name "pvs2.3"
-:working-dir (format nil "~a/src/" *pvs-path*)
-:code-package "PVS"
-:abs-syn-package "PVS"
-:use-packages '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR")
-:grammar-file (format nil "~a/src/pvs-gr.txt" *pvs-path*)
-:sub-languages '("LEXICAL-TERMINALS")
-:lexer-file (format nil "~a/src/new-pvs-lexer.lisp" *pvs-path*)
-:parser-file (format nil "~a/src/new-pvs-parser.lisp" *pvs-path*)
-:unparse-nts 'T
-:unparser-file (format nil "~a/src/new-pvs-unparser.lisp" *pvs-path*)
-:info-file (format nil "~a/src/new-pvs-info.lisp" *pvs-path*)
-:sorts-file (format nil "~a/src/new-pvs-sorts.lisp" *pvs-path*)
-:parse-routine-name 'PVS::PVS-PARSE
-:unparse-routine-name 'PVS::PVS-UNPARSE
-:win-unparse-routine-name 'PVS::PVS-WIN-UNPARSE
-:sort-table-name 'PVS::*PVS-SORT-TABLE*
-:opsig-table-name 'PVS::*PVS-OPSIG-TABLE*
+:name "pvs"
+:code-package (string :pvs) ; This works in both Allegro and SBCL
+:abs-syn-package (string :pvs)
+;; :conc-name "pvs7.2"
+:use-packages '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr)
+:working-dir (format nil "~asrc/" *pvs-path*)
+;; :mergeable-default
+;; :grammar-file (format nil "~a/src/pvs-gr.txt" *pvs-path*)
+;; :lexer-file (format nil "~a/src/pvs-lexer.lisp" *pvs-path*)
+;; :parser-file (format nil "~a/src/pvs-parser.lisp" *pvs-path*)
+;; :unparser-file (format nil "~a/src/new-pvs-unparser.lisp" *pvs-path*)
+:unparse-nts 't
+;; :info-file (format nil "~a/src/new-pvs-info.lisp" *pvs-path*)
+:package (string :pvs)
+;; :sorts-file (format nil "~a/src/new-pvs-sorts.lisp" *pvs-path*)
+;; :parse-routine-name 'pvs-parse
+;; :unparse-routine-name 'pvs-unparse
+;; :sort-table-name '*pvs-sort-table*	;
+;; :opsig-table-name '*pvs-opsig-table*
+;; :win-unparse-routine-name 'pvs-win-unparse
+:sub-languages '(:lexical-terminals)
 )
