@@ -246,7 +246,7 @@ After exiting, all of these are reverted to their previous values."
 	    (,lib-path (if (workspace-session? ,lref)
 			   (path ,lref)
 			   (get-library-path ,lref))))
-       (if (directory-p ,lib-path)
+       (if (uiop:directory-exists-p ,lib-path)
 	   (cond ((pathname-equal ,lib-path (current-context-path))
 		  ;; Already in workspace, just process forms
 		  (assert (pvs-context *workspace-session*))
@@ -290,22 +290,37 @@ After exiting, all of these are reverted to their previous values."
 	     (t (with-workspace ,dir
 		  ,@body))))))
 
+(defmacro with-current-theory (theory &rest body)
+  (let ((cth (gensym)))
+    `(let ((,cth (current-theory)))
+       (unwind-protect
+	    (progn (setf (current-theory) ,theory)
+		   ,@body)
+	 (setf (current-theory) ,cth)))))
+
 (defmacro with-theory (vars theory-ref &rest body)
-  "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
-  'lib@file.pvs', but the 'dir/', 'lib@', and '.pvs' are all optional.
-  'lib' should be found as a subdirectory of the current directory, or in
-  PVS_LIBRARY_PATH. full-name is a variable bound to the absolute pathname."
+  "Gets the specified theory, and executes body with specified var bound to the theory.
+
+theory-ref can be a theory, modname, string, symbol, or pathname.
+the string is of the form 'dir/file.pvs#th' or 'lib@file.pvs#th', but
+the 'dir/', 'lib@', 'file', '.pvs', and '#' are all optional. 'lib' should
+be found as a subdirectory of the current directory, or in
+PVS_LIBRARY_PATH. dir can be a relative or absolute pathname.
+
+Makes the theory the current context, with the last declaration as the
+current declaration."
   (unless (and (listp vars)
 	       (null (cdr vars))
+	       (not (null (car vars)))
 	       (symbolp (car vars)))
     (error "with-theory: wrong form for vars"))
-  (let ((dir (gentemp))
-	(file (gentemp))
-	(thname (car vars)))
-    `(multiple-value-bind (,dir ,file ,thname)
-	 (get-theory-ref ,theory-ref)
-       (declare (ignore ,file))
-       (with-workspace ,dir ,@body))))
+  (let ((thref (gentemp)))
+    `(let* ((,thref ,theory-ref)
+	    (,(car vars) (get-typechecked-theory ,thref)))
+       (unless ,(car vars)
+	 (error "Theory ~a not found" ,thref))
+       (with-context ,(car vars)
+	 ,@body))))
 
 (defmacro add-to-alist (key entry alist)
   (let ((vkey (gentemp))
@@ -592,14 +607,6 @@ obj may be of type:
 				     (t (context ,eobj))))
 	    (*generate-tccs* 'all))
        ,@body)))
-
-(defmacro with-current-theory (theory &rest body)
-  (let ((cth (gensym)))
-    `(let ((,cth (current-theory)))
-       (unwind-protect
-	    (progn (setf (current-theory) ,theory)
-		   ,@body)
-	 (setf (current-theory) ,cth)))))
 
 (defvar *current-declaration-stack* nil)
 
