@@ -113,6 +113,8 @@
 ;******
 
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
+  (setq *pvs-path* (initial-pvs-path path))
+  (setq *pvs-log-stream* nil)
   (start-load-watching)
   #+allegro (setq excl:*enclose-printer-errors* nil)
   ;; The uiop:*temporary-directory* can be set wrong on the Mac
@@ -124,54 +126,35 @@
 	(pvs-message "environment variable TMPDIR is not a writable directory:~%  ~a"
 	  tmpdir)
 	(pvs-message "Please fix this and try again")
-	(cl-user:bye 1))
+	(uiop:quit 1))
       (unless (char= (char tmpdir (1- (length tmpdir))) #\/)
 	(setq tmpdir (format nil "~a/" tmpdir)))
       (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a~%"
 	tmpdir)
       (setq uiop:*temporary-directory* tmpdir)))
   (setq *print-pretty* t)
-  ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  (setq *pvs-path*
-	(or (let ((evpath (environment-variable "PVSPATH")))
-	      (when evpath
-		(if (uiop:directory-exists-p evpath)
-		    (truename evpath)
-		    (pvs-warning "The environment variable PVSPATH is set to ~a, ~
-                                  which does not exist" evpath))))
-	    (let* ((dirp (truename (car (uiop:raw-command-line-arguments))))
-		   (dirs (pathname-directory dirp)))
-	      ;; We were started as, e.g., bin/ix86_64-Linux/runtime/pvs-allegro
-	      ;; assume the parent of bin is a valid PVS installed directory.
-	      (when dirs
-		(namestring (make-pathname :directory (butlast dirs 3)))))
-	    (if (and path (uiop:directory-exists-p path))
-		(truename path)
-		(when path
-		  (pvs-error "Init error"
-		    (format nil "~a does not exist: cannot find a pvs-path" path))))))
-   #+(or cmu sbcl)
-  (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
-    (pushnew exepath *pvs-directories*)
-    (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
-		      (format nil "~a/mu.~a" exepath
-			      #+darwin "dylib"
-			      #-darwin "so"))
-    (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
-		      (format nil "~a/ws1s.~a" exepath
-			      #+darwin "dylib"
-			      #-darwin "so"))
-    ;; Have no idea what is going on here, but if you leave this out,
-    ;; bdd-cmu gives a compile error.
-    #+cmu (fmakunbound 'bdd_cofactor_neg_)
-    #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
-    #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
-    (BDD_bdd_init)
-    #+allegro
-    (nlyices-init)
-    #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
+  #+(or cmu sbcl)
+  ;; (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
+  ;;   (pushnew exepath *pvs-directories*)
+  ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
+  ;; 		      (format nil "~a/mu.~a" exepath
+  ;; 			      #+darwin "dylib"
+  ;; 			      #-darwin "so"))
+  ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
+  ;; 		      (format nil "~a/ws1s.~a" exepath
+  ;; 			      #+darwin "dylib"
+  ;; 			      #-darwin "so"))
+  ;;   ;; Have no idea what is going on here, but if you leave this out,
+  ;;   ;; bdd-cmu gives a compile error.
+  ;;   #+cmu (fmakunbound 'bdd_cofactor_neg_)
+  ;;   #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
+  ;;   #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
+  ;;   (BDD_bdd_init)
+  ;;   #+allegro
+  ;;   (nlyices-init)
+  ;;   #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
@@ -208,6 +191,8 @@
   (unless *default-pathname-defaults*
     ;; Need to make sure this is set to something
     (setq *default-pathname-defaults* (truename (working-directory))))
+  (unless (current-context-path)
+    (change-workspace *default-pathname-defaults* t))
   ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
@@ -216,33 +201,65 @@
 	(declare (ignore ignore))
 	(when error
 	  (pvs-message "Error executing ~a:~% ~a" evalload error)))))
-  ;; Fix ASDF absolute pathnames - see src/asdf-patch.lisp for details
-  (let ((uname #+allegro (sys:user-name)
-	       #+sbcl (tools:user-name)))
-    (unless (string= uname "owre")
-      (lf "asdf-patch")))
-  ;; If port is set, start the XML-RPC server
+  ;; If port is set, start the Websocket server
   (let ((port (environment-variable "PVSPORT")))
     (when port
-      (pvs-ws:start-pvs-server :port (parse-integer port))
-      ;; SO - Moved the following to pvs-server
-      ;; M3: When running the server, signals automatically abort to top-level so they
-      ;; don't affect the server responsiveness [Sept 2020].
-      ;; (setf *debugger-hook* #'rpc-mode-debugger)
-      ;; M3: Install hook for sequent collection [Sept 2020].
-      ;; (pushnew 'update-ps-control-info-result *proofstate-hooks*)
-      ;; (pushnew 'finish-proofstate-rpc-hook *finish-proofstate-hooks*)
-      ;; (pushnew 'rpc-output-notify-proof-success *success-proofstate-hooks*)
-      ;; M3: Rewriting messages are disable by default when in server mode [Sept 2020].
-      ;;(setq *rewrite-msg-off* t)
-      ))
-  #+allegro
+      (pvs-ws:start-pvs-server :port (parse-integer port))))
+  (pushnew #'session-read *prover-input-hooks*)
   ;; Add a newline to the beginning of *prompt*.  The prompt actually has
   ;; ~&, which is supposed to add a newline unless it "knows" it's already
   ;; at the beginning of the line, but sometimes this fails.  Just replacing
   ;; this with the unconditional newline ~%.
+  #+allegro
   (when (string= (subseq top-level:*prompt* 0 2) "~&")
-    (setf (char top-level:*prompt* 1) #\%)))
+    ;; (setf (char top-level:*prompt* 1) #\%)  ; Causes store into purespace address error
+    (setq top-level:*prompt* (concatenate 'string "~%" (subseq top-level:*prompt* 2))))
+  ;; #+sbcl
+  ;; (when (find-package :sb-aclrepl)
+  ;;   (let ((*package* (find-package :sb-aclrepl)))
+  ;;     (when (and (boundp '*prompt*)
+  ;; 		 (not (string= (subseq *prompt* 0 2) "~%")))
+  ;; 	(setq *prompt* (concatenate 'string "~%" *prompt*)))))
+  #+sbcl
+  (terpri)
+  )
+
+(defun possible-pvs-path (dir)
+  "Simply checks if dir/pvs and dir/bin exist - obviously not fool-proof, but
+should be enough."
+  (let ((path (directory-p dir)))
+    (and path
+	 (file-exists-p (concatenate 'string (namestring path) "pvs"))
+	 (directory-p (concatenate 'string (namestring path) "bin"))
+	 path)))
+
+(defun find-pvs-path-from (dir)
+  (cond ((pathname-equal dir "/") nil)
+	((possible-pvs-path dir))
+	(t (let ((pdir (namestring
+			(asdf/pathname:pathname-parent-directory-pathname dir))))
+	     (find-pvs-path-from pdir)))))
+
+(defun initial-pvs-path (&optional path)
+  (cond (path
+	 (if (possible-pvs-path path)
+	     path
+	     (error "Bad PVS path: ~a" path)))
+	((let ((evpath (environment-variable "PVSPATH")))
+	   (and evpath
+		(cond ((directory-p evpath))
+		      (t (pvs-warning "The environment variable PVSPATH is set to ~a, ~
+                                  which does not exist" evpath)
+			 nil)))))
+	((let ((cdir (directory-p (car (uiop:raw-command-line-arguments)))))
+	   ;; We were started as, e.g., bin/ix86_64-Linux/runtime/pvs-allegro
+	   ;; assume the parent of bin is a valid PVS installed directory.
+	   (and cdir (find-pvs-path-from cdir))))
+	((let* ((pvs-sys (asdf:find-system :pvs))
+		(path (when pvs-sys (slot-value pvs-sys 'asdf/component:absolute-pathname))))
+	   path))
+	(t (pvs-error "Init error"
+	     (format nil "Cannot find a valid pvs-path in ~a" cdir)))))
 
 (defparameter *pvs-env-variables*
   '("PVSDEFAULTDP"
@@ -314,14 +331,20 @@
   (setq *exprs-generating-actual-tccs* nil)
   (setq *store-object-hash* nil))
 
-(defun clear-theories (&optional workspace
-		       &key delete-binfiles dont-load-prelude-libraries)
-  (clear-workspace workspace
+(defun clear-theories (&key workspace ;; nil => *workspace-session*
+			 empty-pvs-context delete-binfiles dont-load-prelude-libraries)
+  (clear-workspace :workspace workspace
+		   :empty-pvs-context empty-pvs-context
 		   :delete-binfiles delete-binfiles
 		   :dont-load-prelude-libraries dont-load-prelude-libraries))
 
-(defun clear-workspace (&optional workspace
-			&key delete-binfiles dont-load-prelude-libraries)
+(defun clear-all-workspaces (&key empty-pvs-context delete-binfiles)
+  (clear-workspace :workspace t
+		   :empty-pvs-context empty-pvs-context
+		   :delete-binfiles delete-binfiles))
+
+(defun clear-workspace (&key workspace empty-pvs-context delete-binfiles
+			  dont-load-prelude-libraries)
   "Clears the given workspace, or the current workspace if nil, and all
 workspaces if t or 'all.  Roughly speaking, it's in the state of a workspace
 at the start of a PVS session.
@@ -335,7 +358,7 @@ nil."
     (save-context))
   (reset-typecheck-caches)
   (setq *circular-file-dependencies* nil)
-  (let ((workspaces (cond ((memq workspace '(all :all t))
+  (let ((workspaces (cond ((member workspace '("all" "t") :test #'string-equal)
 			   *all-workspace-sessions*)
 			  ((typep workspace '(or string pathname))
 			   (list (get-workspace-session workspace)))
@@ -345,14 +368,15 @@ nil."
       (clrhash (pvs-files ws))
       (clrhash (pvs-theories ws))
       (clrhash (all-subst-mod-params-caches ws))
-      (when (and (not dont-load-prelude-libraries)
-		 (listp (pvs-context-libraries))
-		 (every #'stringp (pvs-context-libraries)))
-	;; May need to make sure a later ws isn't a prelude-library
-	(load-prelude-libraries (prelude-libs ws)))
-      ;;(setf (pvs-context ws) nil)
+      (if empty-pvs-context
+	  (setf (pvs-context ws) (make-pvs-context))
+	  (when (and (not dont-load-prelude-libraries)
+		     (listp (pvs-context-libraries))
+		     (every #'stringp (pvs-context-libraries)))
+	    ;; May need to make sure a later ws isn't a prelude-library
+	    (load-prelude-libraries (prelude-libs ws))))
       (when delete-binfiles
-	(let ((bindir (format nil "~a/~a" (path ws) *pvsbin-string*)))
+	(let ((bindir (format nil "~a~a/" (path ws) *pvsbin-string*)))
 	  (dolist (bf (uiop:directory-files bindir "*.bin"))
 	    (delete-file bf)))))
     t))
@@ -632,7 +656,7 @@ use binfiles."
 	     (unless no-message?
 	       (pvs-message "PVS file ~a is not in the current context" filename)))
 	    ((and (not forced?)
-		  (gethash filename (current-pvs-files))
+		  (gethash (pathname-name filename) (current-pvs-files))
 		  (parsed-file? file))
 	     (unless no-message?
 	       (pvs-message "~a is already parsed" filename))
@@ -674,11 +698,12 @@ use binfiles."
 		   ;;(format t "~%parse-file: ~a setting ce-object-date to nil" fe)
 		   (setf (ce-object-date fe) nil)))
 	       (multiple-value-bind (theories changed-theories)
-		   (parse-file* filename file theories forced?)
+		   (parse-file* filename file theories forced? typecheck?)
 		 (when (eq forced? 'all)
 		   (parse-importchain theories typecheck?))
 		 (dolist (th theories)
 		   (remove-associated-buffers (id th)))
+		 (assert (gethash (pvs-filename filename) (current-pvs-files)))
 		 (values theories nil changed-theories)))))))
 
 (defun parse-all-pvs-files (dir)
@@ -745,7 +770,7 @@ use binfiles."
 				  (<= spec-date bin-date))))
 		       th-entries))))))
 
-(defun parse-file* (filename file theories forced?)
+(defun parse-file* (filename file theories forced? typecheck?)
   ;;(save-context)
   (pvs-message "Parsing ~a" filename)
   (when (boundp '*parsing-files*)
@@ -753,7 +778,8 @@ use binfiles."
   (multiple-value-bind (new-theories time comments)
       (let ((*no-obligations-allowed* t))
 	(parse :file file))
-    (check-for-theory-clashes new-theories filename forced?)
+    (when typecheck?
+      (check-for-theory-clashes new-theories filename forced?))
     ;;(check-import-circularities new-theories)
     (add-comments-to-theories new-theories comments)
     (let ((changed
@@ -778,12 +804,59 @@ use binfiles."
 	    (setf (newline-comments (car theories)) th-cmts)
 	    (add-comments-to-theories (cdr theories) rest))))))
 
+(defun get-pvs-file-comments (fileref)
+  (with-pvs-file (filename) fileref
+    (mapcar #'(lambda (th) (cons (id th) (get-theory-comments th)))
+      (get-theories filename))))
+
 (defun get-theory-comments (thref)
   (let ((th (get-theory thref)))
     (if th
 	(mapcar #'(lambda (cmt) (list (car cmt) (coerce (cadr cmt) 'list)))
 	  (newline-comments th))
-	(error "Theory ~a not found"))))
+	(error "Theory ~a not found" thref))))
+
+(defvar *collected-comments* nil)
+
+(defun collect-all-newline-comments (dir &optional out-file)
+  "Writes a JSON file of the form
+[{\"pvs-file\": file, \"theories\": [{\"theory\": id, \"comments\": [ comment, ... ]
+where each comment has the form
+[comment-string, [start-row, start-col, end-row, end-col]]"
+  (let ((dirpath (uiop:directory-exists-p dir)))
+    (unless dirpath (error "~s is not a directory" dir))
+    (when (and out-file
+	       (not (directory-p (directory-namestring outfile))))
+      (error "Output file directory for ~s does not exist" out-file))
+    (let ((outf (or out-file
+		    (merge-pathnames "comments.json" dirpath))))
+      (collect-all-newline-comments* dirpath)
+      (with-open-file (stream outf :direction :output :if-exists :supersede)
+	(write (reverse (json:encode-json-to-string *collected-comments*)) :stream stream))
+      (format t "~%Wrote file ~a" outf))))
+
+(defun collect-all-newline-comments* (dir)
+  (let ((pvs-files (uiop:directory-files dir "*.pvs"))
+	(subdirs (uiop:subdirectories dir)))
+    (with-workspace dir
+      (dolist (path pvs-files)
+	(let* ((file (pathname-name path))
+	       (theories (or (get-theories file)
+			     (handler-case
+				 (parse-file file nil t)
+			       (error (c)
+				 (format t "~%ERROR in file ~a: ~a" path c) nil))))
+	       (th-alist (mapcar #'(lambda (th)
+				     `(("theory" . ,(string (id th)))
+				       ("comments" . ,(newline-comments th))))
+			   theories))
+	       (file-cmts
+		`(("pvs-file" . ,(namestring path))
+		  ("theories" . ,th-alist))))
+	  (push file-cmts *collected-comments*))))
+    (dolist (subdir subdirs)
+      (collect-all-newline-comments* subdir))))
+  
 
 (defun check-for-theory-clashes (new-theories filename forced?)
   "Parsing filename gives the new-theories, we check for problems here"
@@ -812,7 +885,7 @@ use binfiles."
 
 (defun check-for-context-theory-clashes (new-theories filename forced?)
   (unless *generating-adt*
-    (let ((clashes (collect-theory-clashes new-theories filename)))
+    (let ((clashes (collect-theory-clashes new-theories (pvs-filename filename))))
       (when clashes
 	;; clashes is an assoc list with (new-theory . oldfilename) entries
 	(unless forced?
@@ -827,6 +900,20 @@ use binfiles."
 	  (remhash clfname (current-pvs-files))
 	  (delete-file-from-workspace clfname))
 	(reset-typecheck-caches)))))
+
+(defmethod pvs-filename ((str string))
+  "Extracts the filename from the string, assuming it is a pvs-file
+reference; pathname-name doesn't work if the file is of the form
+'/home/user/foo.bar', where the '.pvs' extension was omitted."
+  (let ((fname (pathname-name str))
+	(ext (pathname-type str)))
+    (if (or (null ext)
+	    (string-equal ext "pvs"))
+	fname
+	(format nil "~a.~a" fname ext))))
+
+(defmethod pvs-filename ((path pathname))
+  (pvs-filename (namestring path)))
 
 (defun check-import-circularities (theories)
   (let ((*modules-visited* nil))
@@ -1073,7 +1160,7 @@ use binfiles."
     (reset-typecheck-caches))
   (multiple-value-bind (mth changed)
       (update-parsed-theories filename file theories new-theories forced?)
-    (setf (gethash filename (current-pvs-files))
+    (setf (gethash (pvs-filename filename) (current-pvs-files))
 	  (cons (file-write-date file) mth))
     (update-context filename)
     changed))
@@ -1284,7 +1371,7 @@ use binfiles."
 
 #+(or akcl cmu sbcl)
 (defmethod parse-file (filename &optional forced? no-message? typecheck?)
-  (assert (pathnamep pathname))
+  (assert (pathnamep filename))
   (parse-file (pathname-name filename) forced? no-message? typecheck?))
 
 (defmethod parse-file ((filename symbol) &optional forced? no-message? typecheck?)
@@ -1548,19 +1635,17 @@ use binfiles."
 	    (assuming theory)
 	    (theory theory))))
 
-(defun get-tccs (thref &optional theory-name)
-  (with-theory (thn) thref
-    (let* ((thname (or theory-name thn))
-	   (theory (get-typechecked-theory thname))
-	   (tccs (collect-tccs theory)))
-      (mapcar #'(lambda (tcc)
-		  `((id . ,(id tcc))
-		    (theory . ,(id (module tcc)))
-		    (comment . ,(newline-comment tcc))
-		    (from-decl . ,(get-unique-id (generated-by tcc)))
-		    (definition . ,(str (definition tcc)))
-		    (proved . ,(proved? tcc))))
-	tccs))))
+(defun get-tccs (thref)
+  (let* ((theory (get-typechecked-theory thref))
+	 (tccs (collect-tccs theory)))
+    (mapcar #'(lambda (tcc)
+		`(("id" . ,(id tcc))
+		  ("theory" . ,(id (module tcc)))
+		  ("comment" . ,(newline-comment tcc))
+		  ("from-decl" . ,(get-unique-id (generated-by tcc)))
+		  ("definition" . ,(str (definition tcc)))
+		  ("proved" . ,(proved? tcc))))
+      tccs)))
 
 (defmethod proved? ((fdecl formula-decl))
   (or (and (member (proof-status fdecl)
@@ -1897,7 +1982,7 @@ Note that even proved ones get overwritten"
 	(pvs-message "~a has not been typechecked" theoryname))))
 
 (defun sizeof-proofs-pvs-file (filename)
-  (let ((theories (cdr (gethash filename (current-pvs-files)))))
+  (let ((theories (cdr (gethash (pvs-filename filename) (current-pvs-files)))))
     (if theories
 	(pvs-buffer "Proof Sizes"
 	  (with-output-to-string (out)
@@ -1930,7 +2015,7 @@ Note that even proved ones get overwritten"
 
 (defun sizeof-proofs-proofchain-at (filename declname line
 					     &optional (origin "pvs"))
-  (if (or (gethash filename (current-pvs-files))
+  (if (or (gethash (pvs-filename filename) (current-pvs-files))
 	  (and (member origin '("ppe" "tccs") :test #'string=)
 	       (get-theory filename)))
       (let ((fdecl (formula-decl-to-prove filename declname line origin)))
@@ -2076,68 +2161,65 @@ Note that even proved ones get overwritten"
 ;;; View Theory
 
 (defun prettyprint-expanded (theoryref)
-  (with-theory (thname) theoryref
-    (let ((*no-comments* nil)
-	  (*unparse-expanded* t)
-	  (*xt-periods-allowed* t))
-      (pvs-buffer (format nil "~a.ppe" thname)
-	(let* ((theory (get-typechecked-theory thname))
-	       (thstring (unparse theory
-			   :string t
-			   :char-width *default-char-width*)))
-	  (unless (recursive-type? theory)
-	    (setf (ppe-form theory) (parse :string thstring)))
-	  thstring)
-      t t))))
+  (let ((theory (get-typechecked-theory theoryref))
+	(*no-comments* nil)
+	(*unparse-expanded* t)
+	(*xt-periods-allowed* t))
+    (pvs-buffer (format nil "~a.ppe" (id theory))
+      (let ((thstring (unparse theory
+			:string t
+			:char-width *default-char-width*)))
+	(unless (recursive-type? theory)
+	  (setf (ppe-form theory) (parse :string thstring)))
+	thstring)
+      t t)))
 
 (defun ppe (theory)
   (prettyprint-expanded theory))
 
 
 (defun show-tccs (theoryref &optional arg)
-  (with-theory (thname) theoryref
-    (let* ((theory (get-typechecked-theory thname))
-	   (unproved-only? (and arg (not (minusp arg))))
-	   (include-trivial? (and arg (minusp arg)))
-	   (*xt-periods-allowed* t)
-	   (*no-comments* nil))
-      (when theory
-	(let* ((*comment-on-proof-status* t)
-	       (*no-comments* t)
-	       (*unparse-expanded* t)
-	       (*pp-new-projection-forms* t)
-	       (unparsed-a-tcc? nil)
-	       (str (string-trim
-		     '(#\Space #\Tab #\Newline)
-		     (with-output-to-string (out)
-		       (dolist (decl (all-decls theory))
-			 (unless unproved-only?
-			   (dolist (cmt (cdr (assq decl (tcc-comments theory))))
-			     (when (or include-trivial?
-				       (not (memq (fourth cmt) '(trivial in-context))))
-			       (write (apply #'print-tcc-comment decl cmt)
-				      :stream out :escape nil)
-			       (terpri out) (terpri out))))
-			 (when (and (tcc? decl)
-				    (or (not unproved-only?)
-					(unproved? decl)))
-			   (unparse decl :stream out)
-			   (terpri out) (terpri out)
-			   (setq unparsed-a-tcc? t))))))
-	       ;; json form:
-	       ;; pvsfile := [ theory+ ]
-	       ;; theory := {id: Id, decls: [decl]}
-	       ;; decl := importing | typed-decl | formula-decl
-	       ;; importing := 
-	       (buffer (format nil "~a.tccs" (id theory))))
-	  (cond ((not (string= str ""))
-		 (let ((*valid-id-check* nil))
-		   (setf (tcc-form theory)
-			 (if unparsed-a-tcc?
-			     (parse :string str :nt 'theory-part)
-			     str)))
-		 (pvs-buffer buffer str t t))
-		(t (pvs-message "Theory ~a has no TCCs" theoryref))))))))
+  (let* ((theory (get-typechecked-theory theoryref))
+	 (unproved-only? (and arg (not (minusp arg))))
+	 (include-trivial? (and arg (minusp arg)))
+	 (*xt-periods-allowed* t)
+	 (*no-comments* nil)
+	 (*comment-on-proof-status* t)
+	 (*no-comments* t)
+	 (*unparse-expanded* t)
+	 (*pp-new-projection-forms* t)
+	 (unparsed-a-tcc? nil)
+	 (str (string-trim
+	       '(#\Space #\Tab #\Newline)
+	       (with-output-to-string (out)
+		 (dolist (decl (all-decls theory))
+		   (unless unproved-only?
+		     (dolist (cmt (cdr (assq decl (tcc-comments theory))))
+		       (when (or include-trivial?
+				 (not (memq (fourth cmt) '(trivial in-context))))
+			 (write (apply #'print-tcc-comment decl cmt)
+				:stream out :escape nil)
+			 (terpri out) (terpri out))))
+		   (when (and (tcc? decl)
+			      (or (not unproved-only?)
+				  (unproved? decl)))
+		     (unparse decl :stream out)
+		     (terpri out) (terpri out)
+		     (setq unparsed-a-tcc? t))))))
+	 ;; json form:
+	 ;; pvsfile := [ theory+ ]
+	 ;; theory := {id: Id, decls: [decl]}
+	 ;; decl := importing | typed-decl | formula-decl
+	 ;; importing := 
+	 (buffer (format nil "~a.tccs" (id theory))))
+    (cond ((not (string= str ""))
+	   (let ((*valid-id-check* nil))
+	     (setf (tcc-form theory)
+		   (if unparsed-a-tcc?
+		       (parse :string str :nt 'theory-part)
+		       str)))
+	   (pvs-buffer buffer str t t))
+	  (t (pvs-message "Theory ~a has no TCCs" theoryref)))))
 
 (defun show-declaration-tccs (bufname origin line &optional unproved-only?)
   (let* ((decl (get-decl-at-origin bufname origin line))
@@ -2205,9 +2287,7 @@ Note that even proved ones get overwritten"
     (format nil "IMPORTING-~d" (1+ pos))))
 
 (defun declname-to-decl (declname theory)
-  (let ((decl-and-pos
-	 #+allegro (excl:split-regexp "-" declname)
-	 #-allegro (make::split-string declname :item #\-)))
+  (let ((decl-and-pos (uiop:split-string declname :separator "-")))
     (if (string= (car decl-and-pos) "IMPORTING")
 	(let ((pos (parse-integer (cdr decl-and-pos)))
 	      (imps (remove-if (complement #'importing?) (all-decls theory))))
@@ -2257,7 +2337,8 @@ Note that even proved ones get overwritten"
 				     ;;(break "(parsed?* ~a) failed" gth)
 				     ))))
 			 (t (and (filename mod)
-				 (eql (car (gethash (filename mod) (current-pvs-files)))
+				 (eql (car (gethash (pvs-filename (filename mod))
+						    (current-pvs-files)))
 				      (file-write-date (make-specpath (filename mod)))))))))
 	(push mod *theories-seen*)
 	prsd?)))
@@ -2328,10 +2409,8 @@ Note that even proved ones get overwritten"
 		    importings)))))
 
 (defmethod typechecked? ((theoryref string))
-  (with-theory (thname) theoryref
-    (let ((theory (get-theory thname)))
-      (and theory
-	   (typechecked? theory)))))
+  (let ((theory (get-theory theoryref)))
+    (and theory (typechecked? theory))))
 
 (defmethod typechecked? ((imp importing))
   (saved-context imp))
@@ -2352,10 +2431,8 @@ Note that even proved ones get overwritten"
 	(and lib-path
 	     (let* ((ws (get-workspace-session lib-path)))
 	       (and ws
-		    (cdr (gethash filename (pvs-files ws)))))))
-      (let ((fn (if (pathnamep filename)
-		    (pathname-name filename)
-		    filename)))
+		    (cdr (gethash (pvs-filename filename) (pvs-files ws)))))))
+      (let ((fn (pvs-filename filename)))
 	(or (cdr (gethash fn (current-pvs-files)))
 	    (and (equal fn "prelude")
 		 *prelude-theories*)))))
@@ -2463,39 +2540,40 @@ Note that even proved ones get overwritten"
 
 (defun formula-decl-to-prove (fileref declname line origin &optional unproved?)
   (with-pvs-file (name) fileref
-    (if (and (member origin '("ppe" "tccs") :test #'string=)
+    (if (and (member origin '("ppe" "tccs") :test #'string-equal)
 	     (not (get-theory name)))
 	(pvs-message "~a is not typechecked" name)
-	(case (intern #+allegro (string-downcase origin)
-		      #-allegro (string-upcase origin)
-		      :pvs)
-	  (ppe (let* ((theories (ppe-form (get-theory name)))
-		      (typespec (formula-typespec unproved?))
-		      (decl (get-decl-at line typespec theories)))
-		 (when decl
-		   (values (find-if #'(lambda (d)
-					(and (formula-decl? d)
-					     (eq (id d) (id decl))))
-			     (all-decls (get-theory name)))
-			   (place decl)))))
-	  (tccs (let* ((theory (get-theory name))
-		       (decls
-			(if declname
-			    (tcc-form (declname-to-decl declname theory))
-			    (tcc-form theory)))
-		       (decl (find-if #'(lambda (d)
-					  (and (>= (line-end (place d)) line)
-					       (or (null unproved?)
-						   (unproved? d))))
-			       decls)))
-		  (when decl
-		    (values (find-if #'(lambda (d) (and (eq (module d) theory)
-							(formula-decl? d)
-							(eq (id d) (id decl))))
-			      (all-decls theory))
-			    (place decl)))))
-	  ((prelude pvsio_prelude)
+	(cond
+	  ((string-equal origin "ppe")
+	   (let* ((theories (ppe-form (get-theory name)))
+		  (typespec (formula-typespec unproved?))
+		  (decl (get-decl-at line typespec theories)))
+	     (when decl
+	       (values (find-if #'(lambda (d)
+				    (and (formula-decl? d)
+					 (eq (id d) (id decl))))
+			 (all-decls (get-theory name)))
+		       (place decl)))))
+	  ((string-equal origin "tccs")
 	   (let* ((theory (get-theory name))
+		  (decls
+		   (if declname
+		       (tcc-form (declname-to-decl declname theory))
+		       (tcc-form theory)))
+		  (decl (find-if #'(lambda (d)
+				     (and (numberp (line-end (place d)))
+					  (>= (line-end (place d)) line)
+					  (or (null unproved?)
+					      (unproved? d))))
+			  decls)))
+	     (when decl
+	       (values (find-if #'(lambda (d) (and (eq (module d) theory)
+						   (formula-decl? d)
+						   (eq (id d) (id decl))))
+			 (all-decls theory))
+		       (place decl)))))
+	  ((member origin '("prelude" "pvsio_prelude") :test #'string-equal)
+	   (let* ((theory (ignore-errors (get-theory name)))
 		  (theories (if (and theory (generated-by theory))
 				(list theory)
 				(remove-if #'generated-by
@@ -2515,7 +2593,7 @@ Note that even proved ones get overwritten"
 			      jtcc)
 			    decl-at)))
 	     (values decl (place decl))))
-	  (proof-status
+	  ((string-equal origin "proof-status")
 	   (let* ((theory (get-theory name))
 		  (fdecl (find-if #'(lambda (d)
 				      (and (formula-decl? d)
@@ -2601,7 +2679,7 @@ Note that even proved ones get overwritten"
 ;;    Like change-workspace; but only within body
 ;; (with-pvs-flle (file) pvs-file-ref &rest body)
 ;;    with-workspace + binds file
-;; (with-theory (theory) theory-ref &rest body)
+;; (with-theory theory-ref &rest body)
 ;;    with-workspace + binds theory
 ;; (with-decl (decl) decl-ref &rest body)
 
@@ -2614,64 +2692,60 @@ Note that even proved ones get overwritten"
   "Starts a proof with formula given by formref."
   (when *in-checker*
     (pvs-error "Prove-formula error" "Must exit the prover first"))
-  (let ((fdecls (collect-formula-decls formref)))
-    (cond ((null fdecls)
-	   (error "No declarations found matching ~a" formref))
-	  ((cdr fdecls)
-	   (error "~a has ~d matching declarations:~{~%  ~a~}"
-		  formref (length fdecls) (mapcar #'make-formref fdecls)))
-	  (t (let ((fdecl (car fdecls)))
-	       (with-workspace (context-path (module fdecl))
-		 (let* ((strat (when rerun? '(rerun))))
-		   (read-strategies-files)
-		   (setq *last-proof* (prove fdecl :strategy strat)))))))))
+  (let ((fdecl (get-formula-decl formref)))
+    (unless fdecl
+      (error "No declarations found matching ~a" formref))
+    (with-workspace (context-path (module fdecl))
+      (let* ((strat (when rerun? '(rerun))))
+	(read-strategies-files)
+	(setq *last-proof* (prove fdecl :strategy strat))))))
 
 (defun make-formref (fdecl)
   (let ((th (module fdecl)))
     (format nil "~a~a.pvs#~a#~a"
       (context-path th) (filename th) (id th) (id fdecl))))
 
-(defun collect-formula-decls (formref)
-  "Returns all formulas visible to the current context that satisfy formref.
-the idea being that you should be able to start the prover on any formula
-specifying as little as possible."
-  (if (formula-decl? formref)
-      (list formref)
-      (multiple-value-bind (pvsfile lib ext thname fmname)
-	  (parse-referent formref)
-	;; if only one of pvsfile thname fmname is set, it is the fmid If
-	;; two, thname is nil; hence if the file isn't found, it should be
-	;; treated as a theory name for matching purposes.
-	(let ((fmid (or fmname thname pvsfile))
-	      (thid (when fmname thname))
-	      (file (when (or fmname thname) pvsfile))
-	      (fdecls nil))
-	  (unless (or thname fmname (and (null lib) (null ext)))
-	    (error "formula name not specified: ~a" formref))
-	  (flet ((add-matching (th)
-		   (when (and (module? th)
-			      (or (null thid) (string= thid (id th))))
-		     (dolist (fmla (all-formulas th))
-		       ;; Could allow regexps here
-		       (when (string= fmid (id fmla))
-			 (push fmla fdecls))))))
-	    (if lib
-		(let* ((path (if (char= (uiop:last-char lib) #\@)
-				 (or (get-library-reference lib)
-				     (error "Library ~a not found" lib))
-				 lib))
-		       (ws (find path *all-workspace-sessions*
-				 :key #'path :test #'pathname-equal)))
-		  (unless (uiop:directory-exists-p path)
-		    (error "~a not found" path))
-		  (cond (ws
-			 (do-theories #'add-matching (pvs-theories ws)))
-			((pathname-equal (format nil "~a/lib/" *pvs-path*) lib)
-			 (do-theories #'add-matching *prelude*))
-			(t (let ((theories (typecheck-file (format nil "~a~a.pvs" path file))))
-			     (dolist (th theories) (add-matching th))))))
-		(do-all-theories #'add-matching))
-	    fdecls)))))
+;; (defun collect-formula-decls (formref)
+;;   "Returns all formulas visible to the current context that satisfy formref.
+;; the idea being that you should be able to start the prover on any formula
+;; specifying as little as possible."
+;;   (if (formula-decl? formref)
+;;       (list formref)
+;;       (multiple-value-bind (pvsfile lib ext thname fmname)
+;; 	  (parse-referent formref)
+;; 	;; if only one of pvsfile thname fmname is set, it is the fmid If
+;; 	;; two, thname is nil; hence if the file isn't found, it should be
+;; 	;; treated as a theory name for matching purposes.
+;; 	(let ((fmid (or fmname thname pvsfile))
+;; 	      (thid (when fmname thname))
+;; 	      (file (when (or fmname thname) pvsfile))
+;; 	      (fdecls nil))
+;; 	  (unless (or thname fmname (and (null lib) (null ext)))
+;; 	    (error "formula name not specified: ~a" formref))
+;; 	  (flet ((add-matching (th)
+;; 		   (when (and (module? th)
+;; 			      (or (null thid) (string= thid (id th))))
+;; 		     (dolist (fmla (all-formulas th))
+;; 		       ;; Could allow regexps here
+;; 		       (when (string= fmid (id fmla))
+;; 			 (push fmla fdecls))))))
+;; 	    (if lib
+;; 		(let* ((path (if (char= (uiop:last-char lib) #\@)
+;; 				 (or (get-library-reference lib)
+;; 				     (error "Library ~a not found" lib))
+;; 				 lib))
+;; 		       (ws (find path *all-workspace-sessions*
+;; 				 :key #'path :test #'pathname-equal)))
+;; 		  (unless (uiop:directory-exists-p path)
+;; 		    (error "~a not found" path))
+;; 		  (cond (ws
+;; 			 (do-theories #'add-matching (pvs-theories ws)))
+;; 			((pathname-equal (format nil "~a/lib/" *pvs-path*) lib)
+;; 			 (do-theories #'add-matching *prelude*))
+;; 			(t (let ((theories (typecheck-file (format nil "~a~a.pvs" path file))))
+;; 			     (dolist (th theories) (add-matching th))))))
+;; 		(do-all-theories #'add-matching))
+;; 	    fdecls)))))
 
 (defun get-proof-status (formref)
   (let ((fdecl (get-formula-decl formref)))
@@ -2779,13 +2853,15 @@ name, which will be returned as the fname. Examples:
   (prove-file-at name declname line rerun? origin buffer prelude-offset
 		 background? display? t))
 
-(defun get-proof-script (formref)
+(defun get-proof-script (formref &optional (string? t))
   "Gets the proof script for formula given by formref.  If formname is
 provided, it is the name of the formula, and formref should be a theoryname.
 If formname is nil, then formref should resolve to a unique formula name."
   (let ((fdecl (get-formula-decl formref)))
     (if (default-proof fdecl)
-	(get-proof-script-output-string fdecl)
+	(if string?
+	    (get-proof-script-output-string fdecl)
+	    (editable-justification (justification fdecl)))
 	(pvs-error "Proof script error"
 	  (format nil "~a does not have a proof" formref)))))
 
@@ -2854,19 +2930,14 @@ If formname is nil, then formref should resolve to a unique formula name."
   (prove-importchain theoryname retry? exclude use-default-dp?))
 
 (defun prove-importchain (theoryname retry? &optional exclude use-default-dp? save-proofs?)
-  (let ((theory (get-typechecked-theory theoryname))
-	(*use-default-dp?* use-default-dp?))
-    (when theory
-      (let ((*current-context* (context theory)))
-	(prove-theories theoryname
-			(remove-if #'(lambda (th)
-				       (or (from-prelude? th)
-					   (lib-datatype-or-theory? th)))
-			  (collect-theory-usings theoryname exclude))
-			retry?
-			use-default-dp?
-			save-proofs?)))
-    (status-proof-importchain theoryname)))
+  (with-theory (theory) theoryname
+    (let ((theories (remove-if-not #'(lambda (th)
+				       (file-equal (context-path th) (context-path theory)))
+		      (collect-theory-usings theory exclude)))
+	  (*use-default-dp?* use-default-dp?))
+      (when theories
+	(prove-theories theoryname theories retry? use-default-dp? save-proofs?))
+      (status-proof-importchain theoryname))))
 
 
 (defun prove-proofchain (filename declname line origin retry?
@@ -3009,23 +3080,23 @@ If formname is nil, then formref should resolve to a unique formula name."
 	(*use-default-dp?* use-default-dp?))
     (read-strategies-files)
     (dolist (theory theories)
-      ;; Added by C.Munoz
-      (pvs-message "Proving ~a" (id theory))
-      (let ((*justifications-changed?* nil))
-	(dolist (d (provable-formulas theory))
-	  (incf total)
-	  (pvs-prove-decl d retry?)
-	  (when (real-proof-time d)
-	    (incf realtime (real-proof-time d)))
-	  (when (run-proof-time d)
-	    (incf runtime (run-proof-time d)))
-	  (unless (unproved? d) (incf proved)))
-	(when (and save-proofs? (null retry?) *justifications-changed?*)
-	  (save-all-proofs (current-theory)))))
+      (with-theory (th) theory
+	;; Added by C.Munoz
+	(pvs-message "Proving ~a" (id theory))
+	(let ((*justifications-changed?* nil))
+	  (dolist (d (provable-formulas theory))
+	    (incf total)
+	    (pvs-prove-decl d retry?)
+	    (when (real-proof-time d)
+	      (incf realtime (real-proof-time d)))
+	    (when (run-proof-time d)
+	      (incf runtime (run-proof-time d)))
+	    (unless (unproved? d) (incf proved)))
+	  (when (and save-proofs? (null retry?) *justifications-changed?*)
+	    (save-all-proofs (current-theory))))))
     (pvs-message
 	"~a: ~d proofs attempted, ~d proved in ~,2,-3f real, ~,2,-3f cpu seconds"
       name total proved realtime runtime)))
-
 
 
 ;;; Editing proofs
@@ -3305,7 +3376,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 	  (when (typechecked? theory)
 	    (untypecheck-theory theory))
 	  (remhash tid (current-pvs-theories)))))
-    (remhash filename (current-pvs-files))
+    (remhash (pvs-filename filename) (current-pvs-files))
     (delete-file-from-workspace filename))
   (when delete-file?
     (delete-file (make-specpath filename)))
@@ -3319,8 +3390,9 @@ If formname is nil, then formref should resolve to a unique formula name."
       (copy-theory-proofs-to-orphan-file theoryref)
       (untypecheck-usedbys theory)
       (remhash (id theory) (current-pvs-theories))
-      (setf (gethash (filename theory) (current-pvs-files))
-	    (remove theory (gethash (filename theory) (current-pvs-files)))))))
+      (let ((fname (pvs-filename (filename theory))))
+	(setf (gethash fname (current-pvs-files))
+	      (remove theory (gethash fname (current-pvs-files))))))))
 
 
 ;;; List Theories
@@ -3365,7 +3437,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 
 (defun quit (&optional (status 0))
   (when (y-or-n-p "Do you really want to kill the PVS process? ")
-    (cl-user:bye status)))
+    (uiop:quit status)))
 
 (defun exit-pvs (&optional dont-ask)
   (multiple-value-bind (ignore condition)
@@ -3375,9 +3447,9 @@ If formname is nil, then formref should resolve to a unique formula name."
 	(progn
 	  (if (pvs-yes-or-no-p "Problem saving context - ~a~%Exit anyway? "
 			       condition)
-	      (cl-user:bye)
+	      (uiop:quit 1)
 	      (error "Exit aborted")))
-	(cl-user:bye))))
+	(uiop:quit 0))))
 
 ;;; PVS Version
 
@@ -3412,13 +3484,14 @@ and returns it if so.  Else tries to find a unique file containing a theory
 matching theoryref, parses it, and returns the contained theory.  If quiet?
 is nil then errors are signaled, otherwise errors are quietly ignored, and
 nil is returned in that case."
-  (let ((mod (get-theory theoryref)))
-    (when (and mod
-	       (filename mod)
-	       (gethash (filename mod) (current-pvs-files))
+  (let* ((mod (get-theory theoryref))
+	 (fname (when (and mod (filename mod))
+		  (pvs-filename (filename mod)))))
+    (when (and mod fname
+	       (gethash fname (current-pvs-files))
 	       (not (file-exists-p (make-specpath (filename mod)))))
       (pvs-message "File ~a.pvs has disappeared!" (filename mod))
-      (remhash (filename mod) (current-pvs-files))
+      (remhash fname (current-pvs-files))
       (remhash (id mod) (current-pvs-theories))
       (delete-file-from-workspace (filename mod))
       (setf (resolutions theoryref) nil)
@@ -3471,6 +3544,20 @@ nil is returned in that case."
 		     (unless quiet?
 		       (type-error theoryref
 			 "Can't find file for theory ~a" theoryref)))))))))
+
+
+(defun collect-library-files ()
+  (mapcan #'(lambda (elt)
+	      (mapcar #'(lambda (fpath)
+			  (format nil "~a@~a.pvs" (car elt) (pathname-name fpath)))
+		(uiop:directory-files (cdr elt) "*.pvs")))
+    (pvs-library-alist)))
+
+;; (defun collect-library-theories ()
+;;   (mapcan #'(lambda (elt)
+;; 	      (mapcar #'(lambda (fpath) (scan-for-theories fpath))
+;; 		(uiop:directory-files (cdr elt) "*.pvs")))
+;;     (pvs-library-alist)))
 
 (defun look-for-theory-in-directory-files (theoryref)
   (let* ((thname (ref-to-id theoryref))
@@ -3539,10 +3626,15 @@ nil is returned in that case."
 
 (defmethod get-typechecked-theory ((theoryref string) &optional theories quiet?)
   "Theoryref may be a URI of the form [pvsfile '#'] thname"
-  (with-theory (thname) theoryref
-    (if thname
-	(get-typechecked-theory (pc-parse thname 'modname) theories quiet?)
-	(get-typechecked-theory (pc-parse theoryref 'modname) theories quiet?))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (if dir
+	(with-workspace dir
+	  (get-typechecked-theory (pc-parse thname 'modname) theories quiet?))
+	(get-typechecked-theory (pc-parse thname 'modname) theories quiet?))))
 
 (defmethod get-typechecked-theory ((theoryref symbol) &optional theories quiet?)
   (get-typechecked-theory (mk-modname theoryref) theories quiet?))
@@ -3570,19 +3662,24 @@ nil is returned in that case."
 		    (let ((*generating-adt* nil)
 			  (*insert-add-decl* t))
 		      (typecheck-file (filename theory))))
-		  #+pvsdebug (assert (typechecked? theory))
+		  (let ((nth (get-theory thname)))
+		    (when (and nth (not (eq nth theory)))
+		      (setq theory nth)))
 		  (unless (or (from-prelude? theory)
 			      (check-binfiles (filename theory)))
 		    (setf (pvs-context-changed *workspace-session*) t)))
+		(assert (or (null theory) (typechecked? theory)))
+		(assert (or (null theory) (saved-context theory)))
 		theory)))))
 
 (defun parsed-date (filename)
-  (car (gethash (pathname-name filename) (current-pvs-files))))
+  (car (gethash (pvs-filename filename) (current-pvs-files))))
 
 (defun reset-parsed-date (filename)
-  (let ((path (make-specpath filename)))
-    (when (gethash filename (current-pvs-files))
-      (setf (car (gethash filename (current-pvs-files)))
+  (let* ((path (make-specpath filename))
+	 (fname (pvs-filename filename)))
+    (when (gethash fname (current-pvs-files))
+      (setf (car (gethash fname (current-pvs-files)))
 	    (file-write-time path)))
     nil))
 
@@ -3606,8 +3703,8 @@ nil is returned in that case."
 			      (and (typep d class)
 				   (place d)
 				   (>= (line-end (place d)) line)))
-			  (append (assuming theory)
-				  (theory theory)))))
+		   (append (assuming theory)
+			   (theory theory)))))
       (if decl
 	  (values decl theory)
 	  (get-decl-at line class (cdr theories))))))
@@ -4189,6 +4286,23 @@ nil is returned in that case."
 	       (funcall fn entry))
 	   *steps*))
 
+(defun collect-proof-commands ()
+  (let ((cmds nil)
+	(helpers nil))
+    (flet ((prf-push (id step)
+	     (if (defhelper-entry? step)
+		 (push id helpers)
+		 (push id cmds))))
+      (maphash #'prf-push *rulebase*)
+      (maphash #'prf-push *rules*))
+    (values (sort cmds #'string<) (sort helpers #'string<))))
+
+(defun make-proof-cmds-orgtbl ()
+  (let ((cmds nil))
+    (maphash #'(lambda (id step) (declare (ignore step)) (push id cmds)) *rulebase*)
+    (maphash #'(lambda (id step) (declare (ignore step)) (push id cmds)) *rules*)
+    (format t "~{~%| ~a | | | |~}" (sort cmds #'string<))))
+
 (defmethod formals ((rule rule-entry))
   (append (required-args rule)
 	  (when (optional-args rule)
@@ -4268,7 +4382,8 @@ types."
 (defun rename-in-pvs-file (old new file-ref)
   "Very crude way of renaming, basically does replaces old for new in the
 specified pvs-file, and its associated .prf file.  "
-  (let ((pvsfile (make-specpath file-ref))
+  (declare (ignore file-ref))
+  (let (;;(pvsfile (make-specpath file-ref))
 	;;(proofs (read-pvs-file-proofs file-ref))
 	;;(prffile (make-prf-pathname file-ref))
 	)
