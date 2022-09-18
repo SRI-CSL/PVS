@@ -539,7 +539,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		      conversions disabled-conversions
 		      auto-rewrites disabled-auto-rewrites)
       obj
-    (reserve-space 13
+    (reserve-space 12
       (push-word (store-obj 'context))
       (push-word (store-obj theory))
       (push-word (store-obj theory-name))
@@ -1117,7 +1117,7 @@ instances, e.g., other declarations within the theory, or self-references."
 	    (nconc (nbutlast (expr-judgements-alist judgements))
 		   (expr-judgements-alist pjudgements)))))))
 
-(defun prerestore-nunmer-judgements-alist (number-judgements pnumber-judgements
+(defun prerestore-number-judgements-alist (number-judgements pnumber-judgements
 					   &optional numjs)
   (cond ((null number-judgements)
 	 (nreverse numjs))
@@ -1357,6 +1357,7 @@ instances, e.g., other declarations within the theory, or self-references."
 
 (defmethod restore-object* :around ((obj resolution))
   (call-next-method)
+  ;;(break "restore-object* :around resolution")
   (unless (or (not (typed-declaration? (declaration obj)))
 	      (null (type (declaration obj)))
 	      (eq (type (declaration obj)) (type obj)))
@@ -1382,6 +1383,7 @@ instances, e.g., other declarations within the theory, or self-references."
   obj)
 
 (defun restore-type-value (obj)
+  ;;(break "restore-type-value ~a" (type-value obj))
   (when (consp (type-value obj))
     (let* ((tn (apply #'make-instance (or (car (type-value obj))
 					  'type-name)
@@ -1459,7 +1461,11 @@ instances, e.g., other declarations within the theory, or self-references."
 		     "Should have been restored already"))
 	   obj)
 	  (t (let* ((*restore-objects-seen* (cons obj *restore-objects-seen*))
-		    (nobj (call-next-method)))
+		    (nobj (if (store-print-type? obj)
+			      ;; For some reason, call-next-method stops working for
+			      ;; store-print-type, at least in Allegro
+			      (restore-store-print-type obj)
+			      (call-next-method))))
 	       (when (subtype? nobj)
 		 (assert (not (store-print-type? (supertype nobj))) ()
 			 "nobj: call-next-method should have restored supertype"))
@@ -1485,6 +1491,7 @@ instances, e.g., other declarations within the theory, or self-references."
 (defmethod restore-object* ((obj cons))
   (let ((*restore-object-parent* obj))
     (let ((*restore-object-parent-slot* 'car))
+      ;;(when (equal obj '(type-name)) (break "restore-object* cons"))
       (restore-object* (car obj)))
     (let ((*restore-object-parent-slot* 'cdr))
       (restore-object* (cdr obj))))
@@ -1558,6 +1565,9 @@ instances, e.g., other declarations within the theory, or self-references."
 ;;; Do not make this an :around method - causes problems I don't fully understand
 
 (defmethod restore-object* ((obj store-print-type))
+  (restore-store-print-type obj))
+
+(defun restore-store-print-type (obj)
   (or (type obj)
       (let ((pt (print-type obj))
 	    ;;(*pseudo-normalizing* t)
