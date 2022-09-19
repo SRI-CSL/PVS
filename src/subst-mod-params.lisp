@@ -32,6 +32,8 @@
 
 (export '(make-resolution))
 
+(declaim (inline actuals?))
+
 ;;; Substitutes the actuals for the formals in an expression or
 ;;; type-expr.  The result is an expr with all resolutions fully
 ;;; resolved (except possibly the current module).  If nothing changed,
@@ -742,7 +744,7 @@
 ;;; only cares about the argument type.
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
-  (declare (type hash-table *subst-mod-params-cache* *subst-mod-params-eq-cache*))
+  (declare (cl:type hash-table *subst-mod-params-cache* *subst-mod-params-eq-cache*))
   (let ((fixed-type (car (member obj (list *boolean* *number* *number_field*
                                            *real* *rational* *integer* *naturalnumber*)
                                  :test #'tc-eq))))
