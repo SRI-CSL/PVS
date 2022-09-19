@@ -487,8 +487,9 @@
 		 :ir-field-types field-types
 		 :ir-constructors constructors))
 
-(defun mk-ir-adt-constructor-recordtype (field-types adt-name)
+(defun mk-ir-adt-constructor-recordtype (constructor-id field-types adt-name)
   (make-instance 'ir-adt-constructor-recordtype
+		 :constructor-id constructor-id
 		 :ir-field-types field-types
 		 :ir-adt-name adt-name))
 
@@ -1387,7 +1388,7 @@
 	     (cbody-field-types (append (ir-field-types adt-recordtype);;add the index field
 					accessor-types))
 	     (cbody-recordtype (if args
-				   (mk-ir-adt-constructor-recordtype cbody-field-types adt-type-name)
+				   (mk-ir-adt-constructor-recordtype cid cbody-field-types adt-type-name)
 				 adt-recordtype));retain adt type for nullary constructors
 	     (ctypename (if args (mk-ir-typename cid  cbody-recordtype nil nil cdecl) adt-type-name));;need to add params
 	     (cvar (mk-ir-variable (new-irvar) ctypename))
@@ -4007,7 +4008,7 @@
 			      collect (get-ir-last-var ir-var)))
 	   (ir-arg-var-names (loop for ir-var in ir-arg-vars
 				   collect (ir-name ir-var)))
-	   (ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))))
+	   (ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))));;(break "ir2c-function-apply")
       (if (ir-primitive-function? ir-function)
 	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names)))
 					;(format t "~%~a" instrs)
@@ -4025,15 +4026,14 @@
 				      (format nil "~a->ftbl->fptr" (ir-name ir-funvar))
 				    (format nil "~a->ftbl->mptr" (ir-name ir-funvar))))
 		     (apply-instr
-		      (format nil "~a = (~a_t)~a(~a, ~a)"  return-var
-			      (mppointer-type c-return-type)
-			      ir-fun-name (ir-name ir-funvar) arg-string)
+		      (mk-c-assignment return-var c-return-type
+				       (format nil "~a(~a, ~a)" ir-fun-name (ir-name ir-funvar) arg-string)
+				       (add-c-type-definition (ir2c-type (get-range (ir-vtype ir-funvar))))))
 		      ;; (case c-return-type
 		      ;; 	    ((mpz mpq)
 		      ;; 	     (format nil "~a(~a, ~a, ~a)" ir-fun-name (ir-name ir-funvar) return-var arg-string))
 		      ;; 	    (t (format nil "~a = (~a_t)~a(~a, ~a)"  return-var  c-return-type
 		      ;; 		       ir-fun-name (ir-name ir-funvar) arg-string)))
-		      )
 		     (closure-release-instrs (when (ir-last? ir-function)
 					       (list (format nil "~a->ftbl->rptr(~a)"
 							     (ir-name ir-funvar)
@@ -5621,12 +5621,12 @@
 		     (elem-type (ir-range (get-ir-type-value (ir-vtype ir-array-var))))
 		     (c-elem-type  (add-c-type-definition (ir2c-type return-type)))
 		     (rhs (format nil "~a->elems[~a]" (ir-name ir-array-var)(ir-name ir-index-var)))
-		     (assign-instrs (case c-return-type
-				      ((mpq mpz)
+		     (assign-instrs (case c-return-type 
+				      ((mpq mpz)  ;;could've used mk-c-assignment here
 				       (list (format nil "~a = safe_malloc(sizeof(~a_t))"
 						     return-var c-return-type)
 					     (format nil "~a_init(~a)" c-return-type return-var)
-					     (mk-c-assignment return-var c-return-type
+					     (make-c-assignment return-var c-return-type
 								rhs c-elem-type)))
 				      (t (list (format nil "~a = (~a_t)~a"  return-var
 						       c-return-type rhs)))))
@@ -5654,11 +5654,12 @@
 				 (ir-array? (ir-vtype ir-func-var))))
 		     (ir-index-var (when hi-array (get-ir-last-var (car ir-args)))))
 	      (if hi-array;;if operator is an array
-		  (let* ((assign-instr (format nil "~a = (~a_t)~a->elems[~a]"
+		  (let* ((assign-instr (mk-c-assignment 
 					       return-var
 					       (add-c-type-definition (ir2c-type return-type))
-					       (ir-name ir-func-var)
-					       (ir-name ir-index-var)))
+					       (format nil "~a->elems[~a]"
+						       (ir-name ir-func-var)(ir-name ir-index-var))
+					       (add-c-type-definition (get-range (ir-vtype ir-func-var)))))
 			 (refcount-lookup-instr	;if lookup is a reference, first bump its count
 			  (when (ir-reference-type? (ir-range (get-ir-type-value (ir-vtype ir-func-var))))
 			    (list (format nil "~a->count++"  return-var))))
@@ -5863,10 +5864,11 @@
 	       ir-constructors)))
 
 (defmethod ir2c-type ((ir-typ ir-adt-constructor-recordtype))
-  (with-slots (ir-field-types ir-adt-name) ir-typ
-	      (mk-ir-adt-constructor-recordtype
-	       (ir2c-type-fields ir-field-types)
-	       ir-adt-name)))
+  (with-slots (constructor-id ir-field-types ir-adt-name) ir-typ
+    (mk-ir-adt-constructor-recordtype
+     constructor-id
+     (ir2c-type-fields ir-field-types)
+     ir-adt-name)))
 
 (defun ir2c-type-fields (ir-field-types)
   (cond ((consp ir-field-types)
@@ -6672,8 +6674,7 @@
 			   (c-param-type-string (format nil "~{, ~a_t~}" theory-c-types))
 			   ) ;(free-ir-formals ir2c-type))
 		      ;(break "add-c-type-definition ir-funtype")
-		      (if (ir-index? ir-domain);;NSH(8/15/2016): This should be unreachable since
-			  ;;the ir2c-type would be ir-arraytype in this case
+		      (if nil ;;(ir-index? ir-domain);;NSH(9/15/2022): remove this option
 			  (let* ((size (ir-index? ir-domain))
 				 (type-defn (format nil "struct ~a { uint32_t count;~% ~a_t elems[~a]; };~%typedef struct ~a * ~a;"
 						    struct-name (mppointer-type c-range-root) size struct-name type-name))
@@ -7567,6 +7568,12 @@
 	      (with-slots ((ir-ftypes2 ir-field-types)) texpr2
 			  (ir2c-tequal* ir-ftypes1 ir-ftypes2))))
 
+(defmethod ir2c-tequal* ((texpr1 ir-adt-constructor-recordtype)(texpr2 ir-adt-constructor-recordtype))
+  (with-slots ((constructor-id1 constructor-id)(ir-ftypes1 ir-field-types)) texpr1
+    (with-slots ((constructor-id2 constructor-id)(ir-ftypes2 ir-field-types)) texpr2
+      (and (equal constructor-id1 constructor-id2)
+	   (ir2c-tequal* ir-ftypes1 ir-ftypes2)))))
+
 (defmethod ir2c-tequal* ((texpr1 list)(texpr2 list))
   (cond ((consp texpr1)
 	 (and (consp texpr2)
@@ -8149,7 +8156,7 @@
 	 ;; 		      c-result-type
 	 ;; 		      c-body)))
 	 )
-    (unless *to-emacs*
+    (unless nil ;;*to-emacs*
       (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
       (format t "~%Generates C definition = ~%~a" c-defn))
    ;; (break "make-c-closure-defn")

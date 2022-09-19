@@ -161,7 +161,7 @@
   ir-constructors)
 
 (defcl ir-adt-constructor-recordtype (ir-recordtype)
-  ir-adt-name)
+  constructor-id ir-adt-name)
 
 (defcl ir-fieldtype (ir-type)
   ir-id ir-ftype)
