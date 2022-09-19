@@ -29,9 +29,6 @@
 
 (in-package :pvs)
 
-(export '(length= singleton? add-to-alist makesym get-declarations put-decl
-	  get-importings))
-
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*
      (if *to-emacs*
@@ -245,100 +242,85 @@ After exiting, all of these are reverted to their previous values."
 	(ws (gentemp))
 	(truedir (gentemp))
 	(orig-dir (gentemp)))
-    `(let* ((,lref ,lib-ref)
+    `(let* ((,lref (or ,lib-ref (current-context-path)))
 	    (,lib-path (if (workspace-session? ,lref)
 			   (path ,lref)
 			   (get-library-path ,lref))))
-       (if (directory-p ,lib-path)
-	   (if (pathname-equal ,lib-path (current-context-path))
-	       ;; Already in workspace, just process forms
-	       (progn (assert (pvs-context *workspace-session*))
-		      ,@forms)
-	       (let* ((,orig-dir (working-directory))
-		      (,truedir (truename ,lib-path))
-		      (*default-pathname-defaults* ,truedir)
-		      (*current-context* nil)
-		      (*workspace-session*
-		       (or (when (workspace-session? ,lref)
-			     ,lref)
-			   (get-workspace-session ,lib-path)
-			   (let ((,ws (make-instance 'workspace-session
-					:path ,lib-path)))
-			     (push ,ws *all-workspace-sessions*)
-			     ,ws))))
-		 (assert (pvs-context *workspace-session*))
-		 (unwind-protect 
-		      (prog1 (progn (set-working-directory ,truedir) ,@forms)
-			(when (pvs-context-changed *workspace-session*)
-			  (save-context)))
-		   (set-working-directory ,orig-dir))))
+       (if (uiop:directory-exists-p ,lib-path)
+	   (cond ((pathname-equal ,lib-path (current-context-path))
+		  ;; Already in workspace, just process forms
+		  (assert (pvs-context *workspace-session*))
+		  ,@forms)
+		 (t (let* ((,orig-dir (working-directory))
+			   (,truedir (truename ,lib-path))
+			   (*default-pathname-defaults* ,truedir)
+			   (*current-context* nil)
+			   (*workspace-session*
+			    (or (when (workspace-session? ,lref)
+				  ,lref)
+				(get-workspace-session ,lib-path)
+				(let ((,ws (make-instance 'workspace-session
+					     :path ,lib-path)))
+				  (push ,ws *all-workspace-sessions*)
+				  ,ws))))
+		      (assert (pvs-context *workspace-session*)
+			      () "Bad pvs-context")
+		      (unwind-protect 
+			   (prog1 (progn (set-working-directory ,truedir) ,@forms)
+			     (when (pvs-context-changed *workspace-session*)
+			       (save-context)))
+			(set-working-directory ,orig-dir)))))
 	   (error "Library ~a does not exist" (or ,lib-path ,lref))))))
 
-;; (defmacro with-directory (dirstr &rest forms)
-;;   "This has the effect of cd, by creating a context in which
-;; *default-pathname-defaults* and (working-directory) are set to dir, making
-;; it the default."
-;;   (let ((dir (gentemp))
-;; 	(shortdir (gentemp))
-;; 	(orig-dir (gentemp)))
-;;     `(let ((,dir (directory-p ,dirstr)))
-;;        (if ,dir
-;; 	   (let* ((,orig-dir (working-directory))
-;; 		  (,shortdir (shortpath ,dir))
-;; 		  (*default-pathname-defaults* ,shortdir))
-;; 	     (unwind-protect
-;; 		  (progn (set-working-directory ,shortdir)
-;; 			 ,@forms)
-;; 	       (set-working-directory ,orig-dir)))
-;; 	   (error "Directory ~a does not exist" ,dirstr)))))
-
-(defmacro with-pvs-file (vars context-ref &rest body)
-  "context-ref is generally a string with a filename reference followed by
-any number of args separated by #.  The idea is that the contex-ref is at
-least a pathname, but could include, e.g. a theoryname, or a place.  The
-vars are associated to the parts of this string.  Hence
-
-  (with-pvs-file (fname thname) \"~/pvs/Examples/sum.pvs#sum\"
-    (show-tccs fname thname))
-
-will pull out the directory, file, and theory, use with-workspace to
-temporarily change to that directory, and then execute body with fname bound
-to sum.pvs and thname bound to sum."
-  (let ((args (gentemp))
-	(path (gentemp))
-	(dir (gentemp))
-	(name (gentemp))
-	(ext (gentemp))
-	(msg (gentemp)))
-    `(let* ((,args (split ,context-ref #\#))
-	    (,path (car ,args))
-	    (,dir (uiop:pathname-directory-pathname ,path))
-	    (,name (pathname-name ,path))
-	    (,ext (pathname-type ,path))
-	    (,(car vars) ,name)
-	    ,@(let ((cnt 0))
-		(mapcar #'(lambda (v) (list v `(nth ,(incf cnt) ,args))) (cdr vars))))
-       (unless (or (pathname-equal ,dir #p"")
-		   (directory-p ,dir))
-	 (let ((,msg (format nil "with-pvs-file error: bad directory ~a" ,dir)))
-	   (pvs-error ,msg ,msg)))
-       (unless (or (null ,ext) (string-equal ,ext "pvs"))
-	 ;; The name could be, e.g., foo.bar, and is intended to refer to
-	 ;; foo.bar.pvs.  So rather than give an error, we just treat it as
-	 ;; the name, with nil type
-	 (setq ,name (uiop:strcat ,name "." ,ext))
-	 (setq ,ext nil)
-	 (setq ,(car vars) ,name))
-       ;; (let ((fpath (make-pathname :name ,name :type ,ext :defaults ,dir)))
-       ;; 	 (unless (file-exists-p fpath)
-       ;; 	   (let ((err (format nil "~a not found" fpath)))
-       ;; 	     (pvs-error "Typecheck error" err))))
-       (cond ((or (pathname-equal ,dir #p"")
-		  (pathname-equal ,dir (current-context-path)))
+(defmacro with-pvs-file (vars pvs-file-ref &rest body)
+  "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
+  'lib@file.pvs', but the 'dir/', 'lib@', and '.pvs' are all optional.
+  'lib' should be found as a subdirectory of the current directory, or in
+  PVS_LIBRARY_PATH. full-name is a variable bound to the absolute pathname."
+  (unless (and (listp vars)
+	       (< (length vars) 3)
+	       (every #'symbolp vars))
+    (error "Wrong form for vars"))
+  (let ((dir (gentemp))
+	(file (car vars)))
+    `(multiple-value-bind (,dir ,file)
+	 (get-pvs-file-ref ,pvs-file-ref)
+       (cond ((pathname-equal ,dir (current-context-path))
 	      ,@body)
 	     (t (with-workspace ,dir
 		  ,@body))))))
-	 
+
+(defmacro with-current-theory (theory &rest body)
+  (let ((cth (gensym)))
+    `(let ((,cth (current-theory)))
+       (unwind-protect
+	    (progn (setf (current-theory) ,theory)
+		   ,@body)
+	 (setf (current-theory) ,cth)))))
+
+(defmacro with-theory (vars theory-ref &rest body)
+  "Gets the specified theory, and executes body with specified var bound to the theory.
+
+theory-ref can be a theory, modname, string, symbol, or pathname.
+the string is of the form 'dir/file.pvs#th' or 'lib@file.pvs#th', but
+the 'dir/', 'lib@', 'file', '.pvs', and '#' are all optional. 'lib' should
+be found as a subdirectory of the current directory, or in
+PVS_LIBRARY_PATH. dir can be a relative or absolute pathname.
+
+Makes the theory the current context, with the last declaration as the
+current declaration."
+  (unless (and (listp vars)
+	       (null (cdr vars))
+	       (not (null (car vars)))
+	       (symbolp (car vars)))
+    (error "with-theory: wrong form for vars"))
+  (let ((thref (gentemp)))
+    `(let* ((,thref ,theory-ref)
+	    (,(car vars) (get-typechecked-theory ,thref)))
+       (unless ,(car vars)
+	 (error "Theory ~a not found" ,thref))
+       (with-context ,(car vars)
+	 ,@body))))
 
 (defmacro add-to-alist (key entry alist)
   (let ((vkey (gentemp))
@@ -625,14 +607,6 @@ obj may be of type:
 				     (t (context ,eobj))))
 	    (*generate-tccs* 'all))
        ,@body)))
-
-(defmacro with-current-theory (theory &rest body)
-  (let ((cth (gensym)))
-    `(let ((,cth (current-theory)))
-       (unwind-protect
-	    (progn (setf (current-theory) ,theory)
-		   ,@body)
-	 (setf (current-theory) ,cth)))))
 
 (defvar *current-declaration-stack* nil)
 

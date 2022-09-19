@@ -338,35 +338,35 @@ This will only work on Microsoft NT, not on a Win95 based OS."
       filename))
 
 ;;;
-(defun ilisp-eval (form package filename)
-  "Evaluate FORM in PACKAGE recording FILENAME as the source file."
-  (princ " ")
-  ;; Ivan's hack for getting away with dumb /ivan@bu-conx:/foo/bar/baz
-  ;; filenames...
-  (let* ((at-location (position #\@ filename))
-	 (colon-location (position #\: filename))
-	 (filename
-	  (if (and at-location colon-location)
-	      (subseq filename (1+ colon-location))
-	      filename))
-	 #+:cormanlisp
-	 (filename (ilisp-w32-fix-filename filename))
-	 (*package* (ilisp-find-package package))
-	 #+allegro (excl::*source-pathname* filename)
-	 #+allegro (excl::*redefinition-warnings* nil)
-	 #+lucid (lucid::*source-pathname*
-		  (if (probe-file filename)
-		      (truename filename)
-		      (merge-pathnames filename)))
-	 #+lucid (lucid::*redefinition-action* nil)
-	 #+lispworks (compiler::*input-pathname* (merge-pathnames filename))
-	 #+lispworks (compiler::*warn-on-non-top-level-defun* nil)
-	 ;; The LW entries are a mix of Rich Mallory and Jason
-	 ;; Trenouth suggestions
-	 ;; Marco Antoniotti: Jan 2 1995.
-	 )
-    filename
-    (eval (read-from-string form))))
+;; (defun ilisp-eval (form package filename)
+;;   "Evaluate FORM in PACKAGE recording FILENAME as the source file."
+;;   (princ " ")
+;;   ;; Ivan's hack for getting away with dumb /ivan@bu-conx:/foo/bar/baz
+;;   ;; filenames...
+;;   (let* ((at-location (position #\@ filename))
+;; 	 (colon-location (position #\: filename))
+;; 	 (filename
+;; 	  (if (and at-location colon-location)
+;; 	      (subseq filename (1+ colon-location))
+;; 	      filename))
+;; 	 #+:cormanlisp
+;; 	 (filename (ilisp-w32-fix-filename filename))
+;; 	 (*package* (ilisp-find-package package))
+;; 	 #+allegro (excl::*source-pathname* filename)
+;; 	 #+allegro (excl::*redefinition-warnings* nil)
+;; 	 #+lucid (lucid::*source-pathname*
+;; 		  (if (probe-file filename)
+;; 		      (truename filename)
+;; 		      (merge-pathnames filename)))
+;; 	 #+lucid (lucid::*redefinition-action* nil)
+;; 	 #+lispworks (compiler::*input-pathname* (merge-pathnames filename))
+;; 	 #+lispworks (compiler::*warn-on-non-top-level-defun* nil)
+;; 	 ;; The LW entries are a mix of Rich Mallory and Jason
+;; 	 ;; Trenouth suggestions
+;; 	 ;; Marco Antoniotti: Jan 2 1995.
+;; 	 )
+;;     filename
+;;     (eval (read-from-string form))))
 
 ;;;
 (defun ilisp-compile (form package filename)

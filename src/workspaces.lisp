@@ -41,6 +41,16 @@
     (assert (pvs-context ws))
     (setq *workspace-session* ws)))
 
+(defmethod get-workspace-ref ((wsref pathname))
+  (get-workspace-ref (namestring wsref)))
+
+(defmethod get-workspace-ref ((wsref string))
+  )
+
+(defun find-workspace (lib-path)
+  "Given a path, finds the workspace, if it exists. Does not create it."
+  (find lib-path *all-workspace-sessions* :key #'path :test #'file-equal))
+
 (defmethod get-workspace-session (libref)
   "get-workspace-session gets the absolute pathname associated with libref,
 and uses that as the key to find the ws in *all-workspace-sessions*,
@@ -48,8 +58,7 @@ creating a new one if needed.  Error if an existing directory could not be
 found for libref."
   (let ((lib-path (get-library-path libref)))
     (if lib-path
-	(or (let ((ws (find lib-path *all-workspace-sessions*
-			    :key #'path :test #'file-equal)))
+	(or (let ((ws (find-workspace lib-path)))
 	      (when ws
 		(assert (pvs-context ws))
 		ws))

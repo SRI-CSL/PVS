@@ -1047,6 +1047,20 @@ restored, the TCCs are checked")
 			       :documentation "see subst-mod-params.lisp"
 			       :fetch-as nil :ignore t))
 
+;;; A structure for collecting proof scripts from .prf files.
+;;; Don't want the overhead of defcl for these.
+
+(defstruct (proof-scripts (:conc-name pscripts-))
+  pvs-file
+  theory-scripts)
+
+(defstruct (theory-scripts (:conc-name tscripts-))
+  theory-id
+  formula-scripts)
+
+(defstruct (formula-script (:conc-name fscript-))
+  formula-id
+  formula-script)
 
 ;; (defcl context-info ()
 ;;   pvs-files-list

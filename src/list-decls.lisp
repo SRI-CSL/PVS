@@ -838,7 +838,11 @@ place set."
 	     (declared-type decl))
 	(if (and (slot-exists-p decl 'formals)
 		 (formals decl))
-	    (unparse (type decl) :string t)
+	    (if (type decl)
+		(unparse (type decl) :string t)
+		;; Want to make f(x:int)(y,z: nat): nat
+		;; into [x: int -> [(y, z: nat) -> nat]]
+		"function")
 	    (unparse (declared-type decl) :string t))
 	(typecase decl
 	  ((or const-decl def-decl)

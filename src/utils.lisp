@@ -84,13 +84,19 @@ is replaced with replacement."
 
 (defun prove-all-pvs-files-in-directory (&optional (dir *default-pathname-defaults*))
   (unless (uiop:directory-exists-p dir)
-    (error "~a is not a directory"))
+    (error "~a is not a directory" dir))
   (dolist (file (directory dir))
     (when (string-equal (pathname-type file) "pvs")
       (ignore-errors (prove-pvs-file file t))))
   (dolist (file (directory dir))
     (when (string-equal (pathname-type file) "pvs")
       (status-proof-pvs-file (pathname-name file) t))))
+
+(defun pvs-ls ()
+  (uiop:directory-files (path *workspace-session*) "*.pvs"))
+
+(defun current-path ()
+  (path *workspace-session*))
 
 (defun current-pvs-files ()
   (pvs-files *workspace-session*))
@@ -117,6 +123,8 @@ is replaced with replacement."
   (subdir-alist *workspace-session*))
 
 (defun current-pvs-context ()
+  (unless *workspace-session*
+    (setq *workspace-session* (get-workspace-session *default-pathname-defaults*)))
   (pvs-context *workspace-session*))
 
 (defsetf current-pvs-context () (pvsctx)
@@ -243,7 +251,7 @@ is replaced with replacement."
 	     ht)
     new-ht))
 
-#-(or allegro lucid)
+#-(or allegro sbcl lucid)
 (defmethod copy (obj &rest args)
   (if (typep obj 'hash-table)
       (let ((new-ht (make-hash-table :test (hash-table-test obj))))
@@ -254,6 +262,7 @@ is replaced with replacement."
       (error "copy called for unknown type: ~a" (type-of obj))))
 
 (defmethod copy ((ht hash-table) &rest args)
+  (declare (ignore args))
   (let* ((test (hash-table-test ht))
 	 (size (hash-table-count ht))
 	 (weak? #+allegro (excl:hash-table-weak-keys ht)
@@ -603,22 +612,25 @@ is replaced with replacement."
 
 (defmethod get-theory ((name modname))
   (with-slots (library id resolutions) name
-    (if (and (car resolutions)
-	     (module? (declaration (car resolutions)))
-	     ;; resolution for a datatype is the generated theory
-	     (same-id (declaration (car resolutions)) name))
-	(let* ((rth (declaration (car resolutions)))
-	       (ws (get-workspace-session (context-path rth)))
-	       (wth (gethash id (pvs-theories ws))))
-	  ;; Could have changed, in which case wth is correct
-	  (cond ((and rth wth)
-		 (if (eq rth wth)
-		     rth
-		     (setf (declaration (car resolutions)) wth)))
-		(t (let ((th (get-theory* id library)))
-		     (when th
-		       (setf (declaration (car resolutions)) th))))))
-	(get-theory* id library))))
+    (or (and (null library)
+	     (null resolutions)
+	     (get-theory id))
+	(if (and (car resolutions)
+		 (module? (declaration (car resolutions)))
+		 ;; resolution for a datatype is the generated theory
+		 (same-id (declaration (car resolutions)) name))
+	    (let* ((rth (declaration (car resolutions)))
+		   (ws (get-workspace-session (context-path rth)))
+		   (wth (gethash id (pvs-theories ws))))
+	      ;; Could have changed, in which case wth is correct
+	      (cond ((and rth wth)
+		     (if (eq rth wth)
+			 rth
+			 (setf (declaration (car resolutions)) wth)))
+		    (t (let ((th (get-theory* id library)))
+			 (when th
+			   (setf (declaration (car resolutions)) th))))))
+	    (get-theory* id library)))))
 
 (defmethod get-theory ((name name))
   (with-slots (mod-id library id) name
@@ -626,7 +638,13 @@ is replaced with replacement."
       (get-theory* id library))))
 
 (defmethod get-theory ((str string))
-  (get-theory (pc-parse str 'modname)))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref str)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" str))
+    (with-workspace dir
+      (get-theory (pc-parse thname 'modname)))))
 
 (defmethod get-theory ((id symbol))
   (get-theory* id nil))
@@ -908,8 +926,11 @@ is replaced with replacement."
       ;; Ends in, e.g., ".pvs", just return it as a path.
       (pathname name)
       (let* ((path (parse-namestring name))
+	     (dir (pathname-directory path))
 	     (pname (pathname-name path))
-	     (dir (pathname-directory path)))
+	     (pext (pathname-type path)))
+	(when (and pext (not (string= pext ext)))
+	  (setq pname (format nil "~a.~a" pname pext)))
 	(if dir
 	    (let* ((pdir (namestring (make-pathname :directory dir)))
 		   (lib-path (get-library-path pdir)))
@@ -1592,27 +1613,28 @@ prove itself from the mapped axioms."
     new-ht))
 
 (defun copy-context (context &optional theory decls current-decl)
-  (let ((*current-context*
-	 (make-instance 'context
-	   :theory (or theory (theory context))
-	   :theory-name (if theory
-			    (make-theoryname theory)
-			    (theory-name context))
-	   :declaration (or (car (last decls))
-			    current-decl
-			    (declaration context))
-	   :declarations-hash (copy (declarations-hash context))
-	   :using-hash (copy (using-hash context))
-	   :conversions (conversions context)
-	   :disabled-conversions (copy-list (disabled-conversions context))
-	   :known-subtypes (known-subtypes context)
-	   :auto-rewrites (copy-list (auto-rewrites context))
-	   :disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
-    (setf (judgements *current-context*)
-	  (if (from-prelude? (current-theory))
-	      (set-prelude-context-judgements (judgements context))
-	      (copy-judgements (judgements context))))
-    *current-context*))
+  (let* ((th (or theory (theory context)))
+	 (*current-context* context)
+	 (ctx-copy
+	   (make-instance 'context
+	     :theory th
+	     :theory-name (if theory
+			      (make-theoryname theory)
+			      (theory-name context))
+	     :declaration (or (car (last decls))
+			      current-decl
+			      (declaration context))
+	     :declarations-hash (copy (declarations-hash context))
+	     :using-hash (copy (using-hash context))
+	     :conversions (conversions context)
+	     :disabled-conversions (copy-list (disabled-conversions context))
+	     :known-subtypes (known-subtypes context)
+	     :judgements (if (from-prelude? th)
+			     (set-prelude-context-judgements (judgements context))
+			     (copy-judgements (judgements context)))
+	     :auto-rewrites (copy-list (auto-rewrites context))
+	     :disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
+    ctx-copy))
 
 (defun copy-prover-context (&optional (context *current-context*))
   (assert *in-checker*)
@@ -1766,12 +1788,12 @@ prove itself from the mapped axioms."
   nil)
 
 (defun pp-theory-element (thref eltid)
-  (with-pvs-file (fname thname) thref
-      (let ((th (get-theory (or thname fname))))
+  (with-theory (thname) thref
+      (let ((th (get-theory thname)))
 	(cond ((null th)
-	       (pvs-message "Typechecked theory ~a not found" (or thname fname)))
+	       (pvs-message "Typechecked theory ~a not found" thname))
 	      ((not (module th))
-	       (pvs-message "~a is a (co)datatype" (or thname fname)))
+	       (pvs-message "~a is a (co)datatype" thname))
 	      (t
 	       (let* ((adecls (all-decls th))
 		      (thelt (or (find-if #'(lambda (thelt)
@@ -1781,7 +1803,7 @@ prove itself from the mapped axioms."
 				 (find eltid adecls :test #'string= :key #'unique-id))))
 		 (if thelt
 		     (unparse thelt :string t)
-		     (pvs-message "~a not found in theory ~a" eltid (or thname fname)))))))))
+		     (pvs-message "~a not found in theory ~a" eltid thname))))))))
 
 
 ;;; create-formula - creates a formula for a given const-decl or def-decl.
@@ -2782,8 +2804,8 @@ prove itself from the mapped axioms."
       'id (id (resolution x))
       'mod-id (when (or (not (current-theory))
 			(integerp (id x))
-			(not (eq (id mi) (id (current-theory)))))
-		(id mi))
+			(not (eq modid (id (current-theory)))))
+		modid)
       'library (or (library x)
 		   (library mi)
 		   (when (and (declaration x)
@@ -3672,7 +3694,10 @@ space")
 		(let ((class (find-class type nil)))
 		  (when class
 		    (mapc #'(lambda (s) (tof (class-name s)))
-			  (class-direct-superclasses class)))))))
+			  #+allegro
+			  (aclmop:class-direct-superclasses class)
+			  #-allegro
+			  (direct-superclasses class)))))))
       (tof (type-of obj)))
     (nreverse types)))
 
@@ -3902,6 +3927,15 @@ space")
   (if (type expr) (list (type expr)) (types expr))
   ;;(or (types expr) (and (type expr) (list (type expr))))
   )
+
+#+allegro
+(defun bytestring-to-string (str)
+  (let ((octets (map '(vector (unsigned-byte 8)) #'char-code str)))
+    (excl:octets-to-string octets)))
+
+#+sbcl
+(defun bytestring-to-string (str)
+  str)
 
 (defun split-on (pred list)
   (split-on* pred list nil nil))
@@ -4586,6 +4620,17 @@ space")
 	(setf (default-proof fdecl) (car (proofs fdecl)))
 	(make-default-proof fdecl script id description))))
 
+(defun make-prf-info (fdecl script &optional id description)
+  (let* ((pid (or id (next-proof-id fdecl)))
+	 (prinfo (if (tcc-decl? fdecl)
+		     (make-tcc-proof-info (or script (tcc-strategy fdecl))
+					  pid description (origin fdecl))
+		     (make-proof-info (or script (tcc-strategy fdecl))
+				      pid description))))
+    (setf (decision-procedure-used prinfo) *default-decision-procedure*)
+    (push prinfo (proofs fdecl))
+    prinfo))
+
 (defun make-default-proof (fdecl script &optional id description)
   (let* ((pid (or id (next-proof-id fdecl)))
 	 (prinfo (if (tcc-decl? fdecl)
@@ -4723,11 +4768,13 @@ space")
 	ex)))
 
 (defmethod update-instance-for-different-class :after
-  ((prev syntax) (cur syntax) &rest initargs)
+    ((prev syntax) (cur syntax) &rest initargs)
+  (declare (ignore initargs))
   (setf (pvs-sxhash-value cur) nil))
 
 (defmethod update-instance-for-different-class :after
-  ((prev expr) (cur expr) &rest initargs)
+    ((prev expr) (cur expr) &rest initargs)
+  (declare (ignore initargs))
   (setf (free-variables cur) 'unbound)
   (setf (free-parameters cur) 'unbound))
 
@@ -4808,11 +4855,19 @@ space")
 		`(method ,funsym ,@q ,a)))
     (generic-function-methods (symbol-function funsym))))
 
+#+sbcl
+(defun generic-function-methods (fun)
+ (sb-mop:generic-function-methods fun))
+
+#+sbcl
+(defun method-specializers (m)
+  (sb-mop:method-specializers m))
+
 ;;; equals is like equalp, but is case-sensitive
 (defun equals (x y)
   (or (eq x y)
       (typecase x
-	(number (and (numberp y) (= x y)))
+	(cl:number (and (numberp y) (= x y)))
 	(character (and (characterp y) (char= x y)))
 	(string (if (stringp y)
 		    (#+allegro excl::simple-string= #-allegro string= x y)
@@ -4834,7 +4889,11 @@ space")
 			   (let ((name (slot-definition-name slot)))
 			     (equals (slot-value x name) (slot-value y name))))
 		       slots)))))))
-		     
+
+#+sbcl
+(defun slot-definition-name (slot)
+  (sb-mop:slot-definition-name slot))
+
 (defun equals-arrays (x y)
   (and (equal (array-dimensions x) (array-dimensions y))
        (let ((size (array-total-size x)))
@@ -4842,7 +4901,9 @@ space")
 	     (equals-arrays* x y (1- size))))))
 
 (defun equals-arrays* (x y i)
-  (declare (type (array *) x) (type (array *) y) (type fixnum i))
+  (declare (cl:type (array *) x))
+  (declare (cl:type (array *) y))
+  (declare (cl:type fixnum i))
   (and (equals (row-major-aref x i) (row-major-aref y i))
        (or (zerop i)
 	   (equals-arrays* x y (1- i)))))
@@ -4859,6 +4920,10 @@ space")
 			  (setf equals? nil))))
 		  x)
 	 equals?)))
+
+#+sbcl
+(defun class-slots (x)
+  (sb-mop:class-slots x))
 
 (defun equals-structs (x y)
   (let ((slots (class-slots (class-of x))))
@@ -4973,13 +5038,19 @@ space")
 ;; }
 
 (defun pvs-meta-info ()
-  `((:pvs-version . ,*pvs-version*)
-    (:pvs-path . ,*pvs-path*)
-    (:lisp-version . ,(lisp-implementation-version))
-    (:emacs-version . :unknown)
-    (:lisp-exec ,(get-lisp-exec-info))
-    (:lisp-patches ,(get-patches-info))
-    (:strategies-files ,(cdr (assq :strategies *files-loaded*)))))
+  (lcons :pvs-version *pvs-version*
+	 :pvs-path *pvs-path*
+	 :lisp-version (lisp-implementation-version)
+	 :emacs-version (pvs-emacs-eval "(emacs-version)")
+	 :pvs-executable (get-file-ref (car (uiop:raw-command-line-arguments)))
+	 :lisp-patches (get-patches-info)
+	 :strategies-files (mapcar #'get-file-ref
+			     (cdr (assq :strategies *files-loaded*)))
+	 :pvs-environment-variables (mapcan #'(lambda (var)
+						(let ((val (environment-variable var)))
+						  (when val
+						    (list (cons var val)))))
+				      *pvs-environment-variables*)))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
@@ -4994,6 +5065,262 @@ space")
     (if path
 	(list (namestring file) (get-file-git-sha1 path))
 	(list (namestring file) ""))))
+
+;;; References
+
+
+(defmethod get-pvs-file-ref ((file-ref pathname))
+  (let ((file (pathname-name file-ref)))
+    (unless file
+      (error "Pathname should have a file component: ~s" file-ref))
+    (values (uiop:pathname-directory-pathname file-ref)
+	    file)))
+
+(defmethod get-pvs-file-ref ((file-ref list))
+  ;; Assumed to be an alist with keys :directory and/or :file
+  (let ((dir (assoc :directory file-ref :test #'string-equal))
+	(file (assoc :file file-ref :test #'string-equal)))
+    (unless file
+      (error "List should have (:file . fname) entry:~%  ~s" file-ref))
+    (values dir file)))
+
+(defmethod get-pvs-file-ref ((file-ref string))
+  (let* ((fref (strim file-ref)))
+    (cond ((char= (char fref 0) #\{)
+	   (let* ((json:*json-identifier-name-to-lisp* 'identity)
+		  (file-alist (json:decode-json-from-string fref)))
+	     (get-pvs-file-ref file-alist)))
+	  ((char= (char fref 0) #\()
+	   ;; Assume it's an sexpr, and pass it on
+	   (get-pvs-file-ref (read-from-string fref)))
+	  ((find #\/ fref)
+	   (let* ((dir-pos (1+ (position #\/ fref :from-end t)))
+		  (dir (subseq fref 0 dir-pos))
+		  (file (subseq fref dir-pos)))
+	     (values dir file)))
+	  ((find #\@ fref)
+	   (let* ((at-pos (position #\@ fref))
+		  (lib (subseq fref 0 at-pos))
+		  (file (subseq fref (1+ at-pos)))
+		  (ldir (get-library-path lib)))
+	     (unless ldir (error "library ~a not found" lib))
+	     (values ldir file)))
+	  (t (values nil fref)))))
+
+(defun strim (string)
+  (string-trim '(#\Space #\Tab #\Newline) string))
+
+(defmethod get-theory-ref ((theoryref string))
+  (let ((th-pos (position #\# theoryref)))
+    (multiple-value-bind (dir file)
+	(get-pvs-file-ref (if th-pos
+			      (subseq theoryref 0 th-pos)
+			      theoryref))
+      (if th-pos
+	  (values dir file (subseq theoryref (1+ th-pos)))
+	  (values dir nil file)))))
+
+(defmethod get-theory-ref ((mod datatype-or-module))
+  (values (context-path mod) (filename mod) (mk-modname (id mod))))
+
+(defmethod get-formula-decl ((formula-ref formula-decl))
+  formula-ref)
+
+(defmethod get-formula-decl ((formula-ref list))
+  "formula-ref is an alist of the form
+  ((:formula fmla) (:directory dir) (:library lib) (:file file) (:theory thid))
+where only the :formula is required. If :file is provided, it is typechecked,
+If a :directory or :library is provided, it is made the current-workspace for this."
+  (let ((library (cdr (assoc :library formula-ref :test #'string-equal)))
+	(directory (cdr (assoc :directory formula-ref :test #'string-equal)))
+	(file (cdr (assoc :file formula-ref :test #'string-equal)))
+	(thid (cdr (assoc :theory formula-ref :test #'string-equal)))
+	(fmla (cdr (assoc :formula formula-ref :test #'string-equal))))
+    (unless fmla (error "Formula not provided in ~a" formula-ref))
+    (unless (stringp fmla) (error "Formula not a string ~a" formula-ref))
+    (when library
+      (let ((ldir (get-library-path library)))
+	(unless ldir (error "library ~a not found" library))
+	(if directory
+	    (unless (uiop:pathname-equal directory ldir)
+	      (error "library ~a directory ~a does not match given directory ~a"
+		     library ldir directory))
+	    (setq directory ldir))))
+    (when (and directory (not (uiop:directory-exists-p directory)))
+      (error "Directory ~a not found" directory))
+    ;; (when (and (null directory)
+    ;; 	       (or file thid))
+    ;;   (setq directory (current-context-path)))
+    (when file
+      (let* ((pvs-ext? (and (> (length file) 4)
+			    (string-equal (subseq file (- (length file) 4)) ".pvs")))
+	     (pvs-file (if pvs-ext? file (format nil "~a.pvs" file)))
+	     )
+	(cond ((file-exists-p (format nil "~a/~a" directory pvs-file))
+	       (setq file pvs-file))
+	      ((or pvs-ext? thid)
+	       (error "~a not found" pvs-file))
+	      (t (setq file nil)
+		 (setq thid file)))))
+    (if directory
+	(with-workspace directory
+	  ;; (when (and file (not (file-exists-p file)))
+	  ;;   (error "File ~a not found in directory ~a" file directory))
+	  (if file
+	      (let ((theories (typecheck-file file nil nil nil t))) ; quietly
+		(if thid
+		    (let ((th (find thid theories :key #'id :test #'string=)))
+		      (unless th
+			(pvs-error "Typecheck error"
+			  (format nil "Theory ~a not found in ~a~a" thid directory file)))
+		      (let ((fdecl (find fmla (all-formulas th) :key #'id :test #'string=)))
+			(or fdecl (error "Formula ~a not found" fmla))))
+		    (let ((fdecl nil))
+		      (dolist (th theories)
+			(unless fdecl
+			  (setq fdecl (find fmla (all-formulas th) :key #'id :test #'string=))))
+		      (or fdecl (error "Formula ~a not found" fmla)))))
+	      (if thid
+		  (let* ((th (get-typechecked-theory thid))
+			 (fdecl (find fmla (all-formulas th) :key #'id :test #'string=)))
+		    (or fdecl (error "Formula ~a not found" fmla)))
+		  (let ((fdecls nil))
+		    (do-theories
+			#'(lambda (th)
+			    (let ((fdecl (find fmla (all-formulas th)
+					       :key #'id :test #'string=)))
+			      (when fdecl
+				(push fdecl fdecls)))))
+		    (cond ((null fdecls) (error "Formula ~a not found" fmla))
+			  ((cdr fdecls) (error "Formula ~a not unique:~{~%  ~a~}" fmla fdecls))
+			  (t (car fdecls)))))))
+	(let ((fdecls nil))
+	  (do-all-theories
+	      #'(lambda (th)
+		  (let ((fdecl (find fmla (all-formulas th)
+				     :key #'id :test #'string=)))
+		    (when fdecl
+		      (push fdecl fdecls)))))
+	  (cond ((null fdecls) (error "Formula ~a not found" fmla))
+		((cdr fdecls) (error "Formula ~a not unique:~{~%  ~a~}" fmla fdecls))
+		(t (car fdecls)))))))
+
+(defmethod get-formula-decl ((formula-ref string))
+  "For strings, formula-ref can be a JSON object, lisp alist, or the compact formula-reference
+dir/file#thry#fmla (or lib@file#thry#fmla). Each of these is converted to an alist
+with keywords including \"formula\", \"directory\", \"library\", \"file\", and \"theory\".
+and the next method is called with this. Only \formula\" is required."
+  (let* ((fref (strim formula-ref)))
+    (cond ((char= (char fref 0) #\{)
+	   (let* ((json:*json-identifier-name-to-lisp* 'identity)
+		  (fmla-alist (json:decode-json-from-string fref)))
+	     (get-formula-decl fmla-alist)))
+	  ((char= (char fref 0) #\()
+	   ;; Assume it's an sexpr, and pass it on
+	   (get-formula-decl (read-from-string fref)))
+	  ((find #\/ fref)
+	   (let* ((dir-pos (1+ (position #\/ fref :from-end t)))
+		  (dir (subseq fref 0 dir-pos))
+		  (alist (get-formula-decl-alist fref dir-pos)))
+	     (get-formula-decl (acons "directory" dir alist))))
+	  ((find #\@ fref)
+	   (let* ((at-pos (position #\@ fref))
+		  (lib (subseq fref 0 at-pos))
+		  (alist (get-formula-decl-alist fref (1+ at-pos))))
+	     (get-formula-decl (acons "library" lib alist))))
+	  (t (let ((alist (get-formula-decl-alist fref 0)))
+	       (get-formula-decl alist))))))
+
+(defun get-formula-decl-alist (fref pos)
+  (let* ((rest (nreverse (uiop:split-string #\# (subseq fref pos))))
+	 ;; file#thry#fmla or file#fmla or fmla
+	 (fmla (car rest))
+	 (thry (when (cddr rest) (cadr rest)))
+	 (file (if (cddr rest)
+		   (unless (empty-string? (caddr rest))
+		     (caddr rest))
+		   (cadr rest)))
+	 (alist `(("formula" . ,fmla)
+		  ,@(when file `(("file" . ,file)))
+		  ,@(when thry `(("theory" . ,thry))))))
+    alist))
+
+(defmethod find-formula-decl ((formula-ref formula-decl))
+  formula-ref)
+
+(defmethod find-formula-decl ((formula-ref list))
+  "formula-ref is an alist of the form
+  ((:formula fmla) (:directory dir) (:library lib) (:file file) (:theory thid))
+where only the :formula is required. If :file is provided, it is typechecked,
+If a :directory or :library is provided, it is made the current-workspace for this."
+  (let ((library (cdr (assoc :library formula-ref :test #'string-equal)))
+	(directory (cdr (assoc :directory formula-ref :test #'string-equal)))
+	(file (cdr (assoc :file formula-ref :test #'string-equal)))
+	(thid (cdr (assoc :theory formula-ref :test #'string-equal)))
+	(fmla (cdr (assoc :formula formula-ref :test #'string-equal))))
+    (unless fmla (error "Formula not provided in ~a" formula-ref))
+    (unless (stringp fmla) (error "Formula not a string ~a" formula-ref))
+    (when library
+      (let ((ldir (get-library-path library)))
+	(unless ldir (error "library ~a not found" library))
+	(if directory
+	    (unless (uiop:pathname-equal directory ldir)
+	      (error "library ~a directory ~a does not match given directory ~a"
+		     library ldir directory))
+	    (setq directory ldir))))
+    (when (and directory (not (uiop:directory-exists-p directory)))
+      (error "Directory ~a not found" directory))
+    (when (find-workspace directory)
+      (with-workspace directory
+	(let* ((th (when thid (gethash (intern thid :pvs) (current-pvs-theories))))
+	       (file-noext (if (and (> (length file) 4)
+				    (string-equal (subseq file (- (length file) 4)) ".pvs"))
+			       (subseq file 0 (- (length file) 4))
+			       file))
+	       (theories (or (and th (list th))
+			     (when file-noext
+			       (cdr (gethash file-noext (current-pvs-files))))))
+	       (fdecl nil))
+	  (dolist (th theories)
+	    (unless fdecl
+	      (setq fdecl
+		    (find fmla (all-decls th)
+			  :test #'(lambda (x y) (and (formula-decl? y) (string-equal x (id y))))))))
+	  fdecl)))))
+
+(defmethod find-formula-decl ((formula-ref string))
+  "For strings, formula-ref can be a JSON object, lisp alist, or the compact formula-reference
+dir/file#thry#fmla (or lib@file#thry#fmla). Each of these is converted to an alist
+with keywords including \"formula\", \"directory\", \"library\", \"file\", and \"theory\".
+and the next method is called with this. Only \formula\" is required."
+  (let* ((fref (strim formula-ref)))
+    (cond ((char= (char fref 0) #\{)
+	   (let* ((json:*json-identifier-name-to-lisp* 'identity)
+		  (fmla-alist (json:decode-json-from-string fref)))
+	     (find-formula-decl fmla-alist)))
+	  ((char= (char fref 0) #\()
+	   ;; Assume it's an sexpr, and pass it on
+	   (find-formula-decl (read-from-string fref)))
+	  ((find #\/ fref)
+	   (let* ((dir-pos (1+ (position #\/ fref :from-end t)))
+		  (dir (subseq fref 0 dir-pos))
+		  (alist (get-formula-decl-alist fref dir-pos)))
+	     (find-formula-decl (acons "directory" dir alist))))
+	  ((find #\@ fref)
+	   (let* ((at-pos (position #\@ fref))
+		  (lib (subseq fref 0 at-pos))
+		  (alist (get-formula-decl-alist fref (1+ at-pos))))
+	     (find-formula-decl (acons "library" lib alist))))
+	  (t (let ((alist (get-formula-decl-alist fref 0)))
+	       (find-formula-decl alist))))))
+
+(defun lcons (&rest args)
+  (lcons* args nil))
+
+(defun lcons* (args alist)
+  (if (null args)
+      (nreverse alist)
+      (lcons* (cddr args) (acons (car args) (cadr args) alist))))
 
 (defun pvs-git-description ()
   "E.g., pvs7.0-647-g8c1572bb"
@@ -5107,10 +5434,13 @@ space")
 	  (fasl-line (read-line s))
 	  (src-line (read-line s))
 	  (vers-line (read-line s)))
+      (declare (ignore start-line fasl-line))
       (multiple-value-bind (match? all source)
 	  (match-regexp "compiled from \"(.*)\"" src-line)
+	(declare (ignore match? all))
 	(multiple-value-bind (match? all2 version)
 	    (match-regexp "using (.*)" vers-line)
+	  (declare (ignore match? all2))
 	  (values source version))))))
 
 (defvar *pvs-environment-variables*
@@ -5155,6 +5485,7 @@ space")
 	 (multiple-value-bind (d1 r1) (floor code #x40)
 	   (multiple-value-bind (d2 r2) (floor d1 #x40)
 	     (multiple-value-bind (d3 r3) (floor d2 #x8)
+	       (declare (ignore d3))
 	       (vector (logior #xf0 d2) (logior #x80 r3) (logior #x80 r2) (logior #x80 r1))))))
 	(t (error "code is too large"))))
 
@@ -5187,7 +5518,7 @@ space")
   #+sbcl (sb-concurrency:close-gate gate))
 
 (defun gate-name (gate)
-  #+allegro (get-hash gate *gate-names*)
+  #+allegro (gethash gate *gate-names*)
   #+sbcl (sb-concurrency:gate-name gate))
 
 (defun wait-on-gate (gate)
@@ -5229,8 +5560,8 @@ down subdirectories if :recursive-p is t. FN will be funcalled with arguments
     (if recursive-p
 	(uiop:collect-sub*directories
 	 dir
-	 #'(lambda (x) t) ;; collectp - do we collect in this directory
-	 #'(lambda (x) t) ;; recursep - obvious
+	 #'(lambda (x) (declare (ignore x)) t) ;; collectp - do we collect in this directory
+	 #'(lambda (x) (declare (ignore x)) t) ;; recursep - obvious
 	 #'(lambda (x) (push x dirs))) ;; collect
 	(setf dirs (list dir)))
     (dolist (d dirs)
@@ -5300,7 +5631,7 @@ down subdirectories if :recursive-p is t. FN will be funcalled with arguments
 	  ((listp (caar strats))
 	   (dolist (branch (car strats))
 	     (proof-ngram-list (cdr branch) n prefix)))
-	  (t (proof-ngram-list (break "proof-ngram-list"))))))
+	  (t (break "proof-ngram-list")))))
 
 (defun proofs-ngrams (n &optional (dir "."))
   "Given n, produces all ngrams of all proof-scripts found in DIR/**/*.prf files.
@@ -5308,6 +5639,7 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
   (let ((*n-grams* nil))
     (do-all-proof-file-scripts
 	#'(lambda (script fmla-id thry-id proof-file)
+	    (declare (ignore fmla-id thry-id proof-file))
 	    (proof-ngram script n))
       :dir dir :recursive-p t)
     *n-grams*))

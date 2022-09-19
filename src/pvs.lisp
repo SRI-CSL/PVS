@@ -690,7 +690,7 @@ use binfiles."
 		   ;;(format t "~%parse-file: ~a setting ce-object-date to nil" fe)
 		   (setf (ce-object-date fe) nil)))
 	       (multiple-value-bind (theories changed-theories)
-		   (parse-file* filename file theories forced?)
+		   (parse-file* filename file theories forced? typecheck?)
 		 (when (eq forced? 'all)
 		   (parse-importchain theories typecheck?))
 		 (dolist (th theories)
@@ -756,7 +756,7 @@ use binfiles."
 				  (<= spec-date bin-date))))
 		       th-entries))))))
 
-(defun parse-file* (filename file theories forced?)
+(defun parse-file* (filename file theories forced? typecheck?)
   ;;(save-context)
   (pvs-message "Parsing ~a" filename)
   (when (boundp '*parsing-files*)
@@ -764,7 +764,8 @@ use binfiles."
   (multiple-value-bind (new-theories time)
       (let ((*no-obligations-allowed* t))
 	(parse :file file))
-    (check-for-theory-clashes new-theories filename forced?)
+    (when typecheck?
+      (check-for-theory-clashes new-theories filename forced?))
     ;;(check-import-circularities new-theories)
     (let ((changed
 	   (update-parsed-file filename file theories new-theories forced?)))
@@ -1553,22 +1554,17 @@ reference; pathname-name doesn't work if the file is of the form
 	    (assuming theory)
 	    (theory theory))))
 
-(defun get-tccs (thref &optional thname)
-  (with-pvs-file (name thn) thref
-    (unless thname
-      (if thn
-	  (setq thname thn)
-	  (error "get-tccs: missing theory name?")))
-    (let* ((theory (get-typechecked-theory thname))
-	   (tccs (collect-tccs theory)))
-      (mapcar #'(lambda (tcc)
-		  `((id . ,(id tcc))
-		    (theory . ,(id (module tcc)))
-		    (comment . ,(newline-comment tcc))
-		    (from-decl . ,(get-unique-id (generated-by tcc)))
-		    (definition . ,(str (definition tcc)))
-		    (proved . ,(proved? tcc))))
-	tccs))))
+(defun get-tccs (thref)
+  (let* ((theory (get-typechecked-theory thref))
+	 (tccs (collect-tccs theory)))
+    (mapcar #'(lambda (tcc)
+		`(("id" . ,(id tcc))
+		  ("theory" . ,(id (module tcc)))
+		  ("comment" . ,(newline-comment tcc))
+		  ("from-decl" . ,(get-unique-id (generated-by tcc)))
+		  ("definition" . ,(str (definition tcc)))
+		  ("proved" . ,(proved? tcc))))
+      tccs)))
 
 (defmethod proved? ((fdecl formula-decl))
   (or (and (member (proof-status fdecl)
@@ -2084,68 +2080,65 @@ Note that even proved ones get overwritten"
 ;;; View Theory
 
 (defun prettyprint-expanded (theoryref)
-  (with-pvs-file (fname thname) theoryref
-    (let ((*no-comments* nil)
-	  (*unparse-expanded* t)
-	  (*xt-periods-allowed* t))
-      (pvs-buffer (format nil "~a.ppe" (or thname fname))
-	(let* ((theory (get-typechecked-theory (or thname fname)))
-	       (thstring (unparse theory
-			   :string t
-			   :char-width *default-char-width*)))
-	  (unless (recursive-type? theory)
-	    (setf (ppe-form theory) (parse :string thstring)))
-	  thstring)
-      t t))))
+  (let ((theory (get-typechecked-theory theoryref))
+	(*no-comments* nil)
+	(*unparse-expanded* t)
+	(*xt-periods-allowed* t))
+    (pvs-buffer (format nil "~a.ppe" (id theory))
+      (let ((thstring (unparse theory
+			:string t
+			:char-width *default-char-width*)))
+	(unless (recursive-type? theory)
+	  (setf (ppe-form theory) (parse :string thstring)))
+	thstring)
+      t t)))
 
 (defun ppe (theory)
   (prettyprint-expanded theory))
 
 
 (defun show-tccs (theoryref &optional arg)
-  (with-pvs-file (fname thname) theoryref
-    (let* ((theory (get-typechecked-theory (or thname fname)))
-	   (unproved-only? (and arg (not (minusp arg))))
-	   (include-trivial? (and arg (minusp arg)))
-	   (*xt-periods-allowed* t)
-	   (*no-comments* nil))
-      (when theory
-	(let* ((*comment-on-proof-status* t)
-	       (*no-comments* t)
-	       (*unparse-expanded* t)
-	       (*pp-new-projection-forms* t)
-	       (unparsed-a-tcc? nil)
-	       (str (string-trim
-		     '(#\Space #\Tab #\Newline)
-		     (with-output-to-string (out)
-		       (dolist (decl (all-decls theory))
-			 (unless unproved-only?
-			   (dolist (cmt (cdr (assq decl (tcc-comments theory))))
-			     (when (or include-trivial?
-				       (not (memq (fourth cmt) '(trivial in-context))))
-			       (write (apply #'print-tcc-comment decl cmt)
-				      :stream out :escape nil)
-			       (terpri out) (terpri out))))
-			 (when (and (tcc? decl)
-				    (or (not unproved-only?)
-					(unproved? decl)))
-			   (unparse decl :stream out)
-			   (terpri out) (terpri out)
-			   (setq unparsed-a-tcc? t))))))
-	       ;; json form:
-	       ;; pvsfile := [ theory+ ]
-	       ;; theory := {id: Id, decls: [decl]}
-	       ;; decl := importing | typed-decl | formula-decl
-	       ;; importing := 
-	       (buffer (format nil "~a.tccs" (id theory))))
-	  (cond ((not (string= str ""))
-		 (let ((*valid-id-check* nil))
-		   (setf (tcc-form theory)
-			 (if unparsed-a-tcc?
-			     (parse :string str :nt 'theory-part)
-			     str)))
-		 (pvs-buffer buffer str t t))
-		(t (pvs-message "Theory ~a has no TCCs" theoryref))))))))
+  (let* ((theory (get-typechecked-theory theoryref))
+	 (unproved-only? (and arg (not (minusp arg))))
+	 (include-trivial? (and arg (minusp arg)))
+	 (*xt-periods-allowed* t)
+	 (*no-comments* nil)
+	 (*comment-on-proof-status* t)
+	 (*no-comments* t)
+	 (*unparse-expanded* t)
+	 (*pp-new-projection-forms* t)
+	 (unparsed-a-tcc? nil)
+	 (str (string-trim
+	       '(#\Space #\Tab #\Newline)
+	       (with-output-to-string (out)
+		 (dolist (decl (all-decls theory))
+		   (unless unproved-only?
+		     (dolist (cmt (cdr (assq decl (tcc-comments theory))))
+		       (when (or include-trivial?
+				 (not (memq (fourth cmt) '(trivial in-context))))
+			 (write (apply #'print-tcc-comment decl cmt)
+				:stream out :escape nil)
+			 (terpri out) (terpri out))))
+		   (when (and (tcc? decl)
+			      (or (not unproved-only?)
+				  (unproved? decl)))
+		     (unparse decl :stream out)
+		     (terpri out) (terpri out)
+		     (setq unparsed-a-tcc? t))))))
+	 ;; json form:
+	 ;; pvsfile := [ theory+ ]
+	 ;; theory := {id: Id, decls: [decl]}
+	 ;; decl := importing | typed-decl | formula-decl
+	 ;; importing := 
+	 (buffer (format nil "~a.tccs" (id theory))))
+    (cond ((not (string= str ""))
+	   (let ((*valid-id-check* nil))
+	     (setf (tcc-form theory)
+		   (if unparsed-a-tcc?
+		       (parse :string str :nt 'theory-part)
+		       str)))
+	   (pvs-buffer buffer str t t))
+	  (t (pvs-message "Theory ~a has no TCCs" theoryref)))))
 
 (defun show-declaration-tccs (bufname origin line &optional unproved-only?)
   (let* ((decl (get-decl-at-origin bufname origin line))
@@ -2336,10 +2329,8 @@ Note that even proved ones get overwritten"
 		    importings)))))
 
 (defmethod typechecked? ((theoryref string))
-  (with-pvs-file (fname thname) theoryref
-    (let ((theory (get-theory (pc-parse (or thname fname) 'modname))))
-      (and theory
-	   (typechecked? theory)))))
+  (let ((theory (get-theory theoryref)))
+    (and theory (typechecked? theory))))
 
 (defmethod typechecked? ((imp importing))
   (saved-context imp))
@@ -2598,9 +2589,10 @@ Note that even proved ones get overwritten"
   "Starts a proof with formula given by formref.  If formname is provided,
 it is the name of the formula, and formref should be a theoryname.  If
 formname is nil, then formref should resolve to a unique name."
+  (declare (ignore formname))
   (when *in-checker*
     (pvs-error "Prove-formula error" "Must exit the prover first"))
-  (let ((fdecl (get-formula-decl formref formname)))
+  (let ((fdecl (get-formula-decl formref)))
     (with-workspace (context-path (module fdecl))
       (let* ((strat (when rerun? '(rerun)))
 	     (*please-interrupt* t))
@@ -2626,52 +2618,9 @@ formname is nil, then formref should resolve to a unique name."
 ;; 	    (setq *last-proof* (prove fdecl :strategy strat)))))))
 
 (defun get-proof-status (formref &optional formname)
-  (let ((fdecl (get-formula-decl formref formname)))
+  (declare (ignore formname))
+  (let ((fdecl (get-formula-decl formref)))
     (status (default-proof fdecl))))
-
-(defun get-formula-decl (formref &optional formname)
-  (if (formula-decl? formref)
-      formref
-      (with-pvs-file (name thname fname) formref
-	(assert (or formname fname thname name) ()
-		"get-formula-decl missing formula name?")
-	(if formname
-	    (unless thname
-	      (setf thname (or name fname)))
-	    (if fname
-		(setf formname fname
-		      thname (or thname name))
-		(setf formname thname
-		      thname name)))
-	(let ((fdecls (get-matching-prove-formulas name thname formname)))
-	  (cond ((cdr fdecls)
-		 (let ((locdecls (remove-if-not
-				     #'(lambda (fd)
-					 (pathname-equal
-					  (context-path (module fd))
-					  *default-pathname-defaults*))
-				   fdecls)))
-		   (cond ((cdr locdecls)
-			  ;; Only report errors on current context ambiguities
-			  (pvs-error "formula ambiguous error"
-			    (format nil "formula ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			      (or formname name)
-			      (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
-			 ((null locdecls)
-			  ;; Ambiguous - give error for now
-			  (pvs-error "formula ambiguous error"
-			    (format nil "formula ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			      (or formname name)
-			      (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-			 (t (car locdecls)))))
-		((null fdecls)
-		 (pvs-error "formula not found error"
-		   (format nil
-		       "Formula name ~a not found in any (typechecked) theories"
-		     (or formname name))))
-		(t (car fdecls)))))))
 
 (defun get-matching-prove-formulas (name thname formname)
   (let ((formulas nil))
@@ -2732,55 +2681,17 @@ formname is nil, then formref should resolve to a unique name."
   (prove-file-at name declname line rerun? origin buffer prelude-offset
 		 background? display? t))
 
-(defun get-proof-script (formref &optional formname)
+(defun get-proof-script (formref &optional (string? t))
   "Gets the proof script for formula given by formref.  If formname is
 provided, it is the name of the formula, and formref should be a theoryname.
 If formname is nil, then formref should resolve to a unique formula name."
-  (with-pvs-file (name thname fname) formref
-    (unless (or formname fname thname name)
-      (error "get-proof-script missing formula name?"))
-    ;; Check for no dir, or it's already the current context-path
-    (unless formname
-      (if fname
-	  (setf formname fname
-		thname (or thname name))
-	  (setf formname thname
-		thname name)))
-    (let ((fdecls (get-matching-prove-formulas name thname formname)))
-      (cond ((cdr fdecls)
-	     (let ((locdecls (remove-if-not
-				 #'(lambda (fd)
-				     (pathname-equal
-				      (context-path (module fd))
-				      *default-pathname-defaults*))
-			       fdecls)))
-	       (cond ((cdr locdecls)
-		      ;; Only report errors on current context ambiguities
-		      (pvs-error "get-proof-script error"
-			(format nil "get-proof-script ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) locdecls))))
-		     ((null locdecls)
-		      ;; Ambiguous - give error for now
-		      (pvs-error "get-proof-script error"
-			(format nil "get-proof-script ambiguous for name ~a, ~
-                          it appears in the following theories:~%~{~a~^~%~}"
-			  (or formname name)
-			  (mapcar #'(lambda (fd) (id (module fd))) fdecls))))
-		     (t (if (default-proof (car locdecls))
-			    (get-proof-script-output-string (car locdecls))
-			    (pvs-error "Proof script error"
-			      (format nil "~a does not have a proof" formref)))))))
-	    ((null fdecls)
-	     (pvs-error "get-proof-script error"
-	       (format nil
-		   "get-proof-script formula name ~a not found in any (typechecked) theories"
-		 (or formname name))))
-	    (t (if (default-proof (car fdecls))
-		   (get-proof-script-output-string (car fdecls))
-		   (pvs-error "Proof script error"
-		     (format nil "~a does not have a proof" formref))))))))
+  (let ((fdecl (get-formula-decl formref)))
+    (if (default-proof fdecl)
+	(if string?
+	    (get-proof-script-output-string fdecl)
+	    (editable-justification (justification fdecl)))
+	(pvs-error "Proof script error"
+	  (format nil "~a does not have a proof" formref)))))
 
 ;;; Non-interactive Proving
 
@@ -2811,19 +2722,14 @@ If formname is nil, then formref should resolve to a unique formula name."
   (prove-importchain theoryname retry? exclude use-default-dp?))
 
 (defun prove-importchain (theoryname retry? &optional exclude use-default-dp? save-proofs?)
-  (let ((theory (get-typechecked-theory theoryname))
-	(*use-default-dp?* use-default-dp?))
-    (when theory
-      (let ((*current-context* (context theory)))
-	(prove-theories theoryname
-			(remove-if #'(lambda (th)
-				       (or (from-prelude? th)
-					   (lib-datatype-or-theory? th)))
-			  (collect-theory-usings theoryname exclude))
-			retry?
-			use-default-dp?
-			save-proofs?)))
-    (status-proof-importchain theoryname)))
+  (with-theory (theory) theoryname
+    (let ((theories (remove-if-not #'(lambda (th)
+				       (file-equal (context-path th) (context-path theory)))
+		      (collect-theory-usings theory exclude)))
+	  (*use-default-dp?* use-default-dp?))
+      (when theories
+	(prove-theories theoryname theories retry? use-default-dp? save-proofs?))
+      (status-proof-importchain theoryname))))
 
 
 (defun prove-proofchain (filename declname line origin retry?
@@ -2966,19 +2872,20 @@ If formname is nil, then formref should resolve to a unique formula name."
 	(*use-default-dp?* use-default-dp?))
     (read-strategies-files)
     (dolist (theory theories)
-      ;; Added by C.Munoz
-      (pvs-message "Proving ~a" (id theory))
-      (let ((*justifications-changed?* nil))
-	(dolist (d (provable-formulas theory))
-	  (incf total)
-	  (pvs-prove-decl d retry?)
-	  (when (real-proof-time d)
-	    (incf realtime (real-proof-time d)))
-	  (when (run-proof-time d)
-	    (incf runtime (run-proof-time d)))
-	  (unless (unproved? d) (incf proved)))
-	(when (and save-proofs? (null retry?) *justifications-changed?*)
-	  (save-all-proofs (current-theory)))))
+      (with-theory (th) theory
+	;; Added by C.Munoz
+	(pvs-message "Proving ~a" (id theory))
+	(let ((*justifications-changed?* nil))
+	  (dolist (d (provable-formulas theory))
+	    (incf total)
+	    (pvs-prove-decl d retry?)
+	    (when (real-proof-time d)
+	      (incf realtime (real-proof-time d)))
+	    (when (run-proof-time d)
+	      (incf runtime (run-proof-time d)))
+	    (unless (unproved? d) (incf proved)))
+	  (when (and save-proofs? (null retry?) *justifications-changed?*)
+	    (save-all-proofs (current-theory))))))
     (pvs-message
 	"~a: ~d proofs attempted, ~d proved in ~,2,-3f real, ~,2,-3f cpu seconds"
       name total proved realtime runtime)))
@@ -3519,11 +3426,15 @@ nil is returned in that case."
 
 (defmethod get-typechecked-theory ((theoryref string) &optional theories quiet?)
   "Theoryref may be a URI of the form [pvsfile '#'] thname"
-  (with-pvs-file (fname thname) theoryref
-    (if thname
-	(let ((theories (typecheck-file fname)))
-	  (car (member thname theories :key #'id :test #'string=)))
-	(get-typechecked-theory (pc-parse theoryref 'modname) theories quiet?))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (if dir
+	(with-workspace dir
+	  (get-typechecked-theory (pc-parse thname 'modname) theories quiet?))
+	(get-typechecked-theory (pc-parse thname 'modname) theories quiet?))))
 
 (defmethod get-typechecked-theory ((theoryref symbol) &optional theories quiet?)
   (get-typechecked-theory (mk-modname theoryref) theories quiet?))
@@ -4353,12 +4264,15 @@ types."
 
 (defun rename-in-pvs-file (old new file-ref)
   "Very crude way of renaming, basically does replaces old for new in the
-specified pvs-file, and its associated .prf file.  "
-  (let ((pvsfile (make-specpath file-ref))
-	(proofs (read-pvs-file-proofs file-ref))
-	(prffile (make-prf-pathname file-ref)))
-    (uiop:run-program (list "sed" (format nil "'s/\\<~a\\>/~a/g'" old new) 
-			    ))))
+specified pvs-file, and its associated .prf file."
+  (declare (ignore old new file-ref))
+  ;; (let ((pvsfile (make-specpath file-ref))
+  ;; 	(proofs (read-pvs-file-proofs file-ref))
+  ;; 	(prffile (make-prf-pathname file-ref))
+  ;; 	)
+  ;;   (uiop:run-program (list "sed" (format nil "'s/\\<~a\\>/~a/g'" old new) 
+  ;; 			    )))
+  )
 
 (defun rename-in-prf-file (old new file-ref)
   (let ((prf-file (make-prf-pathname file-ref)))
