@@ -442,9 +442,6 @@ useful if more than one specification is to be included in one document")
 	    (t (let ((epos (position-if #'white-space line :start spos)))
 		 (values (subseq line spos epos) epos)))))))
 
-(defun white-space (c)
-  (member c '(#\Space #\Tab)))
-
 (defun parse-tex-line (line)
   (let ((id nil)
 	(type nil)
