@@ -4518,8 +4518,7 @@ type of the lhs."
 
 (defun set-assignment-arg-types-recordtype (fields args-list values ex expr expected)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
-  (mapc #'(lambda (a v) (unless a (set-type* v expected)))
-        args-list values)
+  (mapc #'(lambda (a v) (unless a (set-type* v expected))) args-list values)
   ;; This is wrong - if we're going to recurse we need to make all
   ;; arguments homogeneous, i.e., r WITH [`a`x := 3, `a := e] leads to e
   ;; being set-typed above, but then need to construct the args-list for
@@ -4549,21 +4548,19 @@ type of the lhs."
     (set-assignment-tup-arg-types cargs-list cvalues ex types 1 expr)))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr (expected funtype))
-  (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (with-slots (domain range) expected
+    (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
     (if (every #'null args-list)
         (call-next-method)
         (set-assignment-fun-arg-types args-list values ex expr expected))))
 
-(defmethod set-assignment-arg-types* (args-list values ex expr
-                                                (expected datatype-subtype))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected datatype-subtype))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (if (every #'null args-list)
       (set-type* (car values) expected)
       (set-assignment-update-arg-types args-list values ex expr expected)))
 
-(defmethod set-assignment-arg-types* (args-list values ex expr
-                                                (expected adt-type-name))
+(defmethod set-assignment-arg-types* (args-list values ex expr (expected adt-type-name))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (if (every #'null args-list)
       (call-next-method)
@@ -4654,6 +4651,18 @@ type of the lhs."
 ;;; args-list and values are expanded from the original update-expr,
 ;;; to include dependencies.
 
+(defun rec-arg-types-cdrs (cdargs cdvals nargs nvals)
+  (declare (ignore nargs nvals))
+  (let ((cdr-args (mapcar #'cdr cdargs))
+	(cdr-vals cdvals))
+    (values cdr-args cdr-vals)))
+
+;; (cond ((null cdargs) (values nargs nvals))
+;; 	(nil ;(null (cdr (car cdargs)))
+;; 	 (rec-arg-types-cdrs (cdr cdargs) (cdr cdvals) nargs nvals))
+;; 	(t (rec-arg-types-cdrs (cdr (car cdargs)) (cdr cdvals)
+;; 			       (cons (car cdargs) nargs) (cons (car cdvals) nvals)))))
+
 (defun set-assignment-rec-arg-types (args-list values ex fields orig-fields changed-fields expr
 				     &optional cargs cvalues)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
@@ -4667,78 +4676,76 @@ type of the lhs."
            (rem-values (if value
                            (remove value values :count 1 :start pos)
                            values))
-           (done-with-field? (not (member (car fields) rem-args
-                                          :test #'same-id :key #'caar)))
-           (cdr-args (when done-with-field?
-                       (mapcar #'cdr (nreverse (cons args cargs)))))
-	   (cdr-vals (when done-with-field?
-                       (nreverse (cons value cvalues)))))
-      (when args
-        (unless (field-assignment-arg? (caar args))
-          (if (id-assign? (caar args))
-              (change-class (caar args) 'field-assign)
-              (change-class (caar args) 'field-assignment-arg)))
-        (when done-with-field?
-	  (let* ((fappl (when (and ex (some (complement #'null) cdr-args))
-			  (make!-field-application (car fields) ex)))
-		 (fldtype (type (car fields)))
-		 (ftype (find-supertype fldtype)))
-	    (when fappl
-	      (set-extended-place fappl ex
-				  "creating field application from ~a and ~a"
-				  ex (car fields)))
-	    ;;; different in check-assignment-rec-arg-types:
-	    ;;; should it be (nreverse (cons value cvalues)) instead of cdr-vals?
-	    (set-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
-	    (when (and fappl
-		       (funtype? (find-supertype ftype)))
-	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
-		     (bd (make-bind-decl bid (domtype ftype)))
-		     (bvar (make-variable-expr bd))
-		     (deqn (if (cdr (caar cdr-args))
-			       ;; Should have a tuple domtype with matching length
-			       (let ((tup (make!-tuple-expr* (caar cdr-args))))
-				 (set-extended-place tup (caaar cdr-args)
-						     "creating tuple ~a for record type" tup)
-				 (make!-disequation bvar tup))
-			       (make!-disequation bvar (caaar cdr-args))))
-		     (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
-		     (app (make!-application fappl bvar))
-		     (expected (if (dep-binding? (domain ftype))
-				   (substit (range ftype)
-				     (acons (domain ftype) bvar nil))
-				   (range ftype))))
-		(set-extended-place bvar ex
-				    "creating variable ~a for recordtype"
-				    bvar)
-		(set-extended-place deqn (caaar cdr-args)
-				    "creating disequation ~a for recordtype"
-				    deqn)
-		(set-type* app expected))))))
-      (let ((nfields (if done-with-field?
-                         (if (some #'(lambda (fld)
-                                       (member (car fields) (freevars fld)
-                                               :key #'declaration))
-                                   fields)
-                             (if (and ex (some (complement #'null) cdr-args))
-                                 (let* ((fapp (make!-field-application (car fields) ex))
-                                        (ass (make-assignment (car cdr-args) (car cdr-vals)))
-                                        (val (make-update-expr fapp (list ass))))
-				   ;; (assert (place ex))
-				   ;; ;; (push (list fapp ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
-				   ;; ;; (push (list val ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
-				   ;; (break)
-                                   (subst-rec-dep-type val (car fields) (cdr fields)))
-                                 (subst-rec-dep-type value (car fields) (cdr fields)))
-                             (cdr fields))
-                         fields)))
-        (if nfields
-            (set-assignment-rec-arg-types rem-args rem-values ex nfields
-					  (if done-with-field? (cdr orig-fields) orig-fields)
-					  changed-fields expr
-                                          (unless done-with-field? (cons args cargs))
-                                          (unless done-with-field? (cons value cvalues)))
-            (set-assignment-rec-arg-maplet-types rem-args rem-values ex expr))))))
+           (done-with-field? (not (member (car fields) rem-args :test #'same-id :key #'caar))))
+      (multiple-value-bind (cdr-args cdr-vals)
+	  (when done-with-field?
+	    (rec-arg-types-cdrs (cons args cargs) (cons value cvalues) nil nil))
+	(when args
+          (unless (field-assignment-arg? (caar args))
+            (if (id-assign? (caar args))
+		(change-class (caar args) 'field-assign)
+		(change-class (caar args) 'field-assignment-arg)))
+          (when done-with-field?
+	    (let* ((mk-appl? (and ex (some (complement #'null) cdr-args)))
+		   (fappl (when mk-appl? (make!-field-application (car fields) ex)))
+		   (fldtype (type (car fields)))
+		   (ftype (find-supertype fldtype)))
+	      (when fappl
+		(set-extended-place fappl ex
+				    "creating field application from ~a and ~a"
+				    ex (car fields)))
+	      ;; different in check-assignment-rec-arg-types:
+	      ;; should it be (nreverse (cons value cvalues)) instead of cdr-vals?
+	      (set-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
+	      (when (and fappl
+			 (funtype? (find-supertype ftype)))
+		(let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
+		       (bd (make-bind-decl bid (domtype ftype)))
+		       (bvar (make-variable-expr bd))
+		       (deqn (if (cdr (caar cdr-args))
+				 ;; Should have a tuple domtype with matching length
+				 (let ((tup (make!-tuple-expr* (caar cdr-args))))
+				   (set-extended-place tup (caaar cdr-args)
+						       "creating tuple ~a for record type" tup)
+				   (make!-disequation bvar tup))
+				 (make!-disequation bvar (caaar cdr-args))))
+		       (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
+		       (app (make!-application fappl bvar))
+		       (expected (if (dep-binding? (domain ftype))
+				     (substit (range ftype)
+				       (acons (domain ftype) bvar nil))
+				     (range ftype))))
+		  (set-extended-place bvar ex
+				      "creating variable ~a for recordtype"
+				      bvar)
+		  (set-extended-place deqn (caaar cdr-args)
+				      "creating disequation ~a for recordtype"
+				      deqn)
+		  (set-type* app expected))))))
+	(let* ((needs-fapp (some #'(lambda (fld) (member (car fields) (freevars fld) :key #'declaration)) fields))
+	       (nfields (if done-with-field?
+                            (if needs-fapp
+				(if (and ex (some (complement #'null) cdr-args))
+                                    (let* ((fapp (make!-field-application (car fields) ex))
+                                           (ass (make-assignment (car cdr-args) (car cdr-vals)))
+                                           (val (make-update-expr fapp (list ass))))
+				      ;; (assert (place ex))
+				      ;; ;; (push (list fapp ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
+				      ;; ;; (push (list val ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
+				      ;; (break)
+				      (set-extended-place fapp ex "field-application created for ~a" ex)
+                                      (subst-rec-dep-type val (car fields) (cdr fields)))
+                                    (progn (set-type* value (type (car fields)))
+					   (subst-rec-dep-type value (car fields) (cdr fields))))
+				(cdr fields))
+                            fields)))
+          (if nfields
+              (set-assignment-rec-arg-types rem-args rem-values ex nfields
+					    (if done-with-field? (cdr orig-fields) orig-fields)
+					    changed-fields expr
+                                            (unless done-with-field? (cons args cargs))
+                                            (unless done-with-field? (cons value cvalues)))
+              (set-assignment-rec-arg-maplet-types rem-args rem-values ex expr)))))))
 
 (defun set-assignment-rec-arg-maplet-types (args-list values ex expr)
   (when args-list
@@ -4808,21 +4815,19 @@ type of the lhs."
             (if (length= domtypes (car arg))
                 (set-tup-types (car arg) domtypes)
                 (set-type* (caar arg) (domain funtype))))))
-      (let ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs)))))
-        (set-assignment-arg-types*
-         (mapcar #'cdr cargs)
-         cvalues
-         (when (and ex arg)
-           (let ((app (make!-application ex arg)))
-	     (set-extended-place app expr
-				 "making application ~a" app)
-	     app))
-	 expr
-         (if arg
-             (if (dep-binding? (domain funtype))
-                 (substit (range funtype) (acons (domain funtype) arg nil))
-                 (range funtype))
-             funtype)))
+      (let* ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs))))
+	     (cdrs (mapcar #'cdr cargs))
+	     (appl (when (and ex arg)
+		     (let ((app (make!-application ex arg)))
+		       (set-extended-place app expr
+					   "making application ~a" app)
+		       app)))
+	     (ftype (if arg
+			(if (dep-binding? (domain funtype))
+			    (substit (range funtype) (acons (domain funtype) arg nil))
+			    (range funtype))
+			funtype)))
+        (set-assignment-arg-types* cdrs cvalues appl expr ftype))
       (set-assignment-fun-arg-types rem-args rem-values ex expr funtype))))
 
 (defun collect-same-first-fun-assignment-args (args-list values
@@ -5143,7 +5148,7 @@ type of the lhs."
           (append (ldiff types (cdr rest)) srest)))))
 
 (defmethod complete-assignments (args-list values ex expr (rtype recordtype))
-  (assert (or  *in-checker* *in-evaluator* (null ex) (place ex)))
+  #+pvsdebug (assert (or  *in-checker* *in-evaluator* (null ex) (place ex)))
   ;; Used to check for dependent?, but we really need all assignments if
   ;; we're going to generate correct TCCs.
   ;; Since field-decls don't point to their associated recordtypes
@@ -5168,27 +5173,22 @@ type of the lhs."
     (complete-rec-assignments args-list values (fields rtype) ex expr nil nil)))
 
 (defun complete-rec-assignments (args-list values fields ex expr cargs cvalues)
-  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
+  #+pvsdebug (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (if (null fields)
       (values (append args-list (nreverse cargs))
               (append values (nreverse cvalues)))
-      (let* ((pos (position (car fields) args-list
-			    :test #'same-id :key #'caar))
+      (let* ((pos (position (car fields) args-list :test #'same-id :key #'caar))
 	     (args (if pos
 		       cargs
-		       (let ((fldass (make-instance 'field-assign
-				       :id (id (car fields)))))
-			 (set-extended-place fldass expr
-					     "completing field assignment for ~a"
+		       (let ((fldass (make-instance 'field-assign :id (id (car fields)))))
+			 (set-extended-place fldass expr "completing field assignment for ~a"
 					     (id (car fields)))
 			 (cons (list (list fldass)) cargs))))
 	     (vals (if pos
 		       cvalues
 		       (let ((fappl (make!-field-application (car fields) ex)))
-			 (assert (place ex))
-			 (set-extended-place fappl ex
-					     "completing field application for ~a"
-					     fappl)
+			 #+pvsdebug (assert (place ex))
+			 (set-extended-place fappl ex "completing field application for ~a" fappl)
 			 (cons fappl cvalues)))))
         (complete-rec-assignments args-list values (cdr fields) ex expr args vals))))
 
