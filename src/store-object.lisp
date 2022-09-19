@@ -667,7 +667,7 @@
   (describe *fetch-object-update-ptr*))
 
 (defun reverse-endian (i)
-  (declare (type (unsigned-byte 32) i))
+  ;;(declare (type (unsigned-byte 32) i))
   (+ (* 16777216 (ldb (byte 8 0) i))
      (* 65536 (ldb (byte 8 8) i))
      (* 256 (ldb (byte 8 16) i))
