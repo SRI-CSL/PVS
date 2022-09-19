@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(declaim (inline conversion-resolution?))
+
 ;;; Find-compatible-bindings takes a set of arguments (all of whose
 ;;; types slot is set to the possible types), a set of formal types
 ;;; to the given constant declaration, and a binding of the form
@@ -208,7 +210,7 @@
 ;;; the two terms, destructively updating the bindings accordingly.
 
 (defun tc-match (t1 t2 bindings &optional strict-matches)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     ;; This assertion is not true in general - conversion declarations may
     ;; have free params that do not belong to the theory in which it was
@@ -249,7 +251,7 @@ wrt the initial bindings."
   nil)
 
 (defmethod tc-match* ((args list) (fargs list) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (cond ((or (null bindings) (null args))
 	 bindings)
 	((and (singleton? args)
@@ -265,7 +267,7 @@ wrt the initial bindings."
 (defmethod tc-match* :around ((arg type-expr) (farg type-expr) bindings)
   (with-slots ((apt print-type)) arg
     (with-slots ((fpt print-type)) farg
-      (declare (type list bindings))
+      (declare (cl:type list bindings))
       (when bindings
 	(if (tc-eq arg farg)
 	    bindings
@@ -321,16 +323,17 @@ unless arg is not compatible? with *tc-match-fixed-bindings* entry."
 	   ;;(break "tc-match-set-binding ~a to ~a" (car binding) arg)
 	   (setf (cdr binding) arg)
 	   bindings)
-	  ((compatible? arg (cdr fb))
+	  ((and (type-expr? arg) (type-expr? (cdr fb))
+		(compatible? arg (cdr fb)))
 	   bindings)
 	  (t nil))))
   
 (defmethod tc-match* ((arg type-expr) (farg type-name) bindings)
   ;; More specialized methods for type-name and subtype have been called,
   ;; but decided to call-next-method
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (let ((binding (assq (declaration farg) bindings)))
-    (declare (type list binding))
+    (declare (cl:type list binding))
     (cond ((null binding) nil)
 	  ((null (cdr binding))
 	   (cond ((and (dependent-type? arg)
@@ -357,7 +360,7 @@ unless arg is not compatible? with *tc-match-fixed-bindings* entry."
 formal and cdr eq to barg.  Tries to match arg to barg, and update (cdr binding)
 accordingly.  Returns nil if there's no compatible instance available, otherwise
 returns the updated bindings."
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (if (tc-eq arg barg)
       bindings
       (when (compatible? arg barg)
@@ -486,7 +489,7 @@ returns the updated bindings."
 
 
 (defmethod tc-match* ((arg type-name) (farg type-name) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (unless (null bindings)
     (or (call-next-method)
 	(cond ((tc-eq arg farg)
@@ -499,7 +502,7 @@ returns the updated bindings."
 		      (d1 (dactuals m1))
 		      (d2 (dactuals m2)))
 		 (let ((abindings (tc-match-type-name-actuals a1 a2 arg farg bindings)))
-		   (declare (type list abindings))
+		   (declare (cl:type list abindings))
 		   (if (or d1 d2)
 		       (tc-match-type-name-dactuals
 			d1 d2 arg farg (or abindings bindings))
@@ -509,7 +512,7 @@ returns the updated bindings."
 		 binding))))))
 
 (defun tc-match-type-name-dactuals (d1 d2 arg farg bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (cond ((and d1 d2)
 	 (or (tc-match* d1 d2 bindings)
 	     bindings))
@@ -524,7 +527,7 @@ returns the updated bindings."
 	(t bindings)))
 
 (defun tc-match-type-name-actuals (a1 a2 arg farg bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (or (cond ((and a1 a2)
 	     (or (tc-match* a1 a2 bindings)
 		 ;;; Might be a better test
@@ -553,7 +556,7 @@ returns the updated bindings."
 	   bindings)))
 
 (defmethod tc-match* ((arg type-application) (farg type-application) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (unless (null bindings)
     (or (call-next-method)
 	(and (tc-eq (type arg) (type farg))
@@ -567,12 +570,12 @@ returns the updated bindings."
     (tc-match-acts1 acts formals bindings)))
 
 (defun tc-match-acts1 (acts formals bindings)
-  (declare (type list acts formals bindings))
+  (declare (cl:type list acts formals bindings))
   (when (length= acts formals)
     (tc-match-acts* acts formals bindings)))
 
 (defun tc-match-acts* (acts formals bindings)
-  (declare (type list acts formals bindings))
+  (declare (cl:type list acts formals bindings))
   (cond ((null bindings)
 	 nil)
 	((null acts)
@@ -581,12 +584,12 @@ returns the updated bindings."
 			   (tc-match-act (car acts) (car formals) bindings)))))
 
 (defun tc-match-act (act formal bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (typecase formal
     (formal-subtype-decl
      (when (type-value act)
        (let ((binding (assq formal bindings)))
-	 (declare (type list binding))
+	 (declare (cl:type list binding))
 	 (when binding
 	   (if (and *tc-match-exact* (cdr binding))
 	       (when (tc-eq (type-value act) (cdr binding)) bindings)
@@ -594,13 +597,13 @@ returns the updated bindings."
     (formal-type-decl
      (when (type-value act)
        (let ((binding (assq (declaration formal) bindings)))
-	 (declare (type list binding))
+	 (declare (cl:type list binding))
 	 (if (and *tc-match-exact* (cdr binding))
 	     (when (tc-eq (type-value act) (cdr binding)) bindings)
 	     (tc-match* (type-value act) (type-value formal) bindings)))))
     (formal-const-decl
      (let ((binding (assq (declaration formal) bindings)))
-       (declare (type list binding))
+       (declare (cl:type list binding))
        (cond ((null binding)
 	      nil)
 	     ((null (cdr binding))
@@ -619,7 +622,7 @@ returns the updated bindings."
     (formal-theory-decl
      (when (theory-name-expr? (expr act))
        (let ((binding (assq formal bindings)))
-	 (declare (type list binding))
+	 (declare (cl:type list binding))
 	 (cond ((null binding)
 		nil)
 	       ((null (cdr bindings))
@@ -632,30 +635,30 @@ returns the updated bindings."
     (t (break "Shouldn't get here"))))
 
 (defmethod tc-match* (arg (farg dep-binding) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* arg (type farg) bindings))
 
 (defmethod tc-match* ((arg dep-binding) farg bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* (type arg) farg bindings))
 
 (defmethod tc-match* ((arg subtype) farg bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (or (call-next-method)
 	(tc-match* (supertype arg) farg bindings))))
 
 (defmethod tc-match* ((arg datatype-subtype) (farg type-name) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (let ((binding (assq (declaration farg) bindings)))
     (if (cdr binding)
 	(set-tc-match-binding arg (cdr binding) binding bindings)
 	(call-next-method))))
 
 (defmethod tc-match* ((arg datatype-subtype) farg bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (let ((nbindings (tc-match* (declared-type arg) farg bindings)))
-    (declare (type list nbindings))
+    (declare (cl:type list nbindings))
     (when nbindings
       ;; Fix the declared-type to match
       (dolist (b nbindings)
@@ -674,14 +677,14 @@ returns the updated bindings."
 	  (call-next-method arg farg nbindings)))))
 
 (defmethod tc-match* (arg (farg subtype) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (let ((fsubtype-binding
 	   (assoc farg bindings
 		  :test #'(lambda (x y)
 			    (and (typep y 'formal-subtype-decl)
 				 (tc-eq x (type-value y)))))))
-      (declare (type list fsubtype-binding))
+      (declare (cl:type list fsubtype-binding))
       (cond ((null fsubtype-binding)
 	     (or (call-next-method)
 		 (when (print-type farg)
@@ -703,7 +706,7 @@ returns the updated bindings."
 
 (defmethod tc-match* ((arg subtype) (farg subtype) bindings)
   ;; This will only check for the predicates being tc-eq, not provably equal
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (unless (null bindings)
     (flet ((atest (x y)
 	     (and (typep y 'formal-subtype-decl)
@@ -784,10 +787,10 @@ returns the updated bindings."
   (tc-match* atype ftype bindings))
 
 (defmethod tc-match* ((arg expr-as-type) (farg type-name) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (let ((binding (assq (declaration farg) bindings)))
-      (declare (type list binding))
+      (declare (cl:type list binding))
       (if (and binding (cdr binding))
 	  (when (compatible? arg (cdr binding))
 	    bindings)
@@ -796,21 +799,21 @@ returns the updated bindings."
 	      (tc-match* (domain (type (expr arg))) farg bindings))))))
 
 (defmethod tc-match* ((arg expr-as-type) farg bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (if (supertype arg)
 	(call-next-method)
 	(tc-match* (domain (type (expr arg))) farg bindings))))
 
 (defmethod tc-match* (arg (farg expr-as-type) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (if (supertype farg)
 	(call-next-method)
 	(tc-match* arg (domain (type (expr farg))) bindings))))
 
 (defmethod tc-match* ((arg expr-as-type) (farg expr-as-type) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (if (supertype arg)
 	(if (supertype farg)
@@ -840,24 +843,24 @@ returns the updated bindings."
     nbind))
 
 (defmethod tc-match* ((arg funtype) (farg funtype) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (unless (null bindings)
     (let ((*tc-match-strictly* t))
       (tc-match* (range arg) (range farg)
 		 (tc-match* (domain arg) (domain farg) bindings)))))
 
 (defmethod tc-match* ((arg tupletype) (farg tupletype) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* (types arg) (types farg) bindings))
 
 (defmethod tc-match* ((arg tupletype) (farg struct-sub-tupletype) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (let ((fbinding (assoc farg bindings
 			   :test #'(lambda (x y)
 				     (and (typep y 'formal-struct-subtype-decl)
 					  (tc-eq x (type-value y)))))))
-      (declare (type list fbinding))
+      (declare (cl:type list fbinding))
       (cond ((null fbinding)
 	     (or (call-next-method)
 		 (break "tc-match* (tupletype struct-sub-tupletype)")))
@@ -871,13 +874,13 @@ returns the updated bindings."
 	     bindings)))))
 
 (defmethod tc-match* ((arg cotupletype) (farg cotupletype) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* (types arg) (types farg) bindings))
 
 (defmethod tc-match* ((arg recordtype) (farg recordtype) bindings)
   ;;; Make sure the fields are sorted before this
   ;;; Only should be needed if one is dependent and the other isn't
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (if (dependent? arg)
       (if (dependent? farg)
 	  (tc-match* (fields arg) (fields farg) bindings)
@@ -903,18 +906,18 @@ returns the updated bindings."
 		       bindings)))))
 
 (defmethod tc-match* ((fld field-decl) (ffld field-decl) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when (eq (id fld) (id ffld))
     (tc-match* (type fld) (type ffld) bindings)))
 
 (defmethod tc-match* ((arg recordtype) (farg struct-sub-recordtype) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (when bindings
     (let ((fbinding (assoc farg bindings
 			   :test #'(lambda (x y)
 				     (and (typep y 'formal-struct-subtype-decl)
 					  (tc-eq x (type-value y)))))))
-      (declare (type list fbinding))
+      (declare (cl:type list fbinding))
       (cond ((null fbinding)
 	     (or (call-next-method)
 		 (break "tc-match* (recordtype struct-sub-recordtype)")))
@@ -928,7 +931,7 @@ returns the updated bindings."
 	     bindings)))))
 
 (defmethod tc-match-names ((n1 name) (n2 name) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (if (tc-eq n1 n2)
       bindings
       (when (same-id n1 n2)
@@ -948,7 +951,7 @@ returns the updated bindings."
 		  bindings)))))))
 
 (defmethod tc-match* ((a1 actual) (a2 actual) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (if (type-value a1)
       (and (type-value a2)
 	   (tc-match* (type-value a1) (type-value a2) bindings))
@@ -959,29 +962,29 @@ returns the updated bindings."
 ;;; Expressions
 
 (defmethod tc-match* ((arg number-expr) (farg number-expr) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (with-slots ((anum number)) arg
     (with-slots ((fnum number)) farg
       (when (= anum fnum)
 	bindings))))
 
 (defmethod tc-match* ((A coercion) (B expr) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* (args1 A) B bindings))
 
 (defmethod tc-match* ((A expr) (B coercion) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* A (args1 B) bindings))
 
 (defmethod tc-match* ((A name-expr) (B coercion) bindings)
-  (declare (type list bindings))
+  (declare (cl:type list bindings))
   (tc-match* A (args1 B) bindings))
 
 
 
 (defmethod tc-match* ((arg expr) (farg name-expr) bindings)
   (let ((binding (assq (declaration farg) bindings)))
-    (declare (type list binding))
+    (declare (cl:type list binding))
     (cond ((null binding)
 	   (if (and (typep arg 'name-expr)
 		    (eq (declaration arg) (declaration farg))
