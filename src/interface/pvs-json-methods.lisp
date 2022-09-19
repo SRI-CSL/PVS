@@ -106,10 +106,10 @@
   nil)
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:inline-recursive-type))
-  `((:id . ,(id decl))
+  `((:id . ,(pvs:id decl))
     (:kind . ,(pvs:kind-of decl))
     (:constructors . ,(mapcar #'xmlrpc-theory-decl*
-			(constructors decl)))
+			(pvs:constructors decl)))
     (:place . ,(pvs:place-list decl))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:adt-constructor))
@@ -152,7 +152,7 @@
     (format nil "~a_~d" kind num)))
 
 (defun gen-id-number (kind)
-  (let ((entry (assq kind *idgensymctr*)))
+  (let ((entry (assoc kind *idgensymctr*)))
     (cond (entry
 	   (incf (cdr entry)))
 	  (t (push (cons kind 0) *idgensymctr*)
@@ -161,7 +161,7 @@
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
   (let* ((proved? (not (null (pvs:proved? decl))))
 	 (complete? (and proved?
-			 (string= (pvs:pc-complete decl)
+			 (string= (pvs::pc-complete decl)
 				  "complete")))
 	 (has-proofscript? (not (null (pvs:justification decl)))))
     `((:id . ,(pvs:id decl))
@@ -193,15 +193,15 @@
 #+allegro
 (defrequest interrupt ()
   "Interrupts PVS."
-  (when *pvs-lisp-process*
+  (when pvs:*pvs-lisp-process*
     (mp:process-interrupt
-     *pvs-lisp-process*
+     pvs:*pvs-lisp-process*
      #'(lambda ()
 	 (cond (pvs:*in-checker*
 		(if pvs::*in-apply*
 		    (progn
 		      (setf *interrupted-rpc* t)
-		      (restore))
+		      (pvs:restore))
 		  (continue))) 
 	       (t (break "Interrupted by client")))))))
 
@@ -237,46 +237,45 @@
 #+allegro
 (defun request-prover-read ()
   "Called from prover qread function, which is how the "
-  (cond (*ps-control-info*
-	 ;; bad idea: (format t "~%prover-read: about to wait")
-	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
-	   (close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-	   (wait-on-gate  (pvs:psinfo-res-gate pvs:*ps-control-info*)))
-	 (wait-on-gate (psinfo-cmd-gate *ps-control-info*))
-	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
-	 (if (and *ps-control-info*
-		  (gate-open-p (psinfo-cmd-gate *ps-control-info*)))
-	     (unwind-protect
-		  (multiple-value-bind (input err)
-		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
-		    (when err
-		      (format t "~%~a" err))
-		    input)
-	       (close-gate (psinfo-cmd-gate *ps-control-info*))
-	       (setf (psinfo-command *ps-control-info*) nil))
-	     (call-next-method)))
-	(t (call-next-method))))
+  (when pvs:*ps-control-info*
+    ;; bad idea: (format t "~%prover-read: about to wait")
+    (when (pvs:psinfo-json-result pvs:*ps-control-info*)
+      (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+      (pvs::wait-on-gate  (pvs:psinfo-res-gate pvs:*ps-control-info*)))
+    (pvs::wait-on-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
+    ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
+    (when (and pvs:*ps-control-info*
+	       (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*)))
+      (unwind-protect
+	   (multiple-value-bind (input err)
+	       (ignore-errors (read-from-string (pvs:psinfo-command pvs:*ps-control-info*)))
+	     (when err
+	       (format t "~%~a" err))
+	     input)
+	(mp:close-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
+	(setf (pvs:psinfo-command pvs:*ps-control-info*) nil))
+      )))
 
 #+sbcl
 (defun request-prover-read ()
   "Called from prover qread function, which is how the "
-  (cond (*ps-control-info*
+  (cond (pvs:*ps-control-info*
 	 ;; bad idea: (format t "~%prover-read: about to wait")
 	 (when (pvs:psinfo-json-result pvs:*ps-control-info*)
 	   (sb-concurrency:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
 	   (sb-concurrency:wait-on-gate (pvs:psinfo-res-gate pvs:*ps-control-info*)))
-	 (sb-concurrency:wait-on-gate (psinfo-cmd-gate *ps-control-info*))
+	 (sb-concurrency:wait-on-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
 	 ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
-	 (if (and *ps-control-info*
-		  (sb-concurrency:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	 (if (and pvs:*ps-control-info*
+		  (sb-concurrency:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*)))
 	     (unwind-protect
 		  (multiple-value-bind (input err)
-		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
+		      (ignore-errors (read-from-string (pvs:psinfo-command pvs:*ps-control-info*)))
 		    (when err
 		      (format t "~%~a" err))
 		    input)
-	       (sb-concurrency:close-gate (psinfo-cmd-gate *ps-control-info*))
-	       (setf (psinfo-command *ps-control-info*) nil))
+	       (sb-concurrency:close-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
+	       (setf (pvs:psinfo-command pvs:*ps-control-info*) nil))
 	     (call-next-method)))
 	(t (call-next-method))))
 
@@ -293,20 +292,20 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   ;; We do this in this thread, as error messages are easier to deal with.
   ;; Thus we make sure we're not in the checker, that the theory typechecks,
   ;; and that the formula exists in that theory.
-  (when (and *pvs-lisp-process*
+  (when (and pvs:*pvs-lisp-process*
 	     #+allegro
-	     (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*)
+	     (mp:symeval-in-process 'pvs:*in-checker* pvs:*pvs-lisp-process*)
 	     #+sbcl
-	     (sb-thread:symbol-value-in-thread 'pvs:*in-checker* *pvs-lisp-process*))
-    (pvs-error "Prove-formula error" "Must exit the prover first"))
-  (pvs:get-formula-decl theory formula)
+	     (sb-thread:symbol-value-in-thread 'pvs:*in-checker* pvs:*pvs-lisp-process*))
+    (pvs:pvs-error "Prove-formula error" "Must exit the prover first"))
+  (pvs:get-formula-decl (format nil "~a#~a" theory formula))
   ;;(format t "~%prove-formula: after get-formula-decl")
   ;;   ;; FIXME - may want to save the proof, or ask what to do
   ;;   (format t "~%About to quit prover~%")
   ;;   (throw 'pvs:quit nil)
   ;;   (format t "~%After quitting prover~%"))
-  (let ((res-gate (make-gate nil)) ;; initially closed
-	(cmd-gate (make-gate nil)) ;;   "
+  (let ((res-gate (mp:make-gate nil)) ;; initially closed
+	(cmd-gate (mp:make-gate nil)) ;;   "
 	(lock #+allegro (mp:make-process-lock))
 	(proc #+allegro (mp:process-name-to-process "Initial Lisp Listener")))
     (setq pvs:*multiple-proof-default-behavior* :noquestions)
@@ -316,7 +315,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	   :lock lock
 	   :res-gate res-gate
 	   :cmd-gate cmd-gate))
-    (add-prover-input-hook #'request-prover-read)
+    (pvs::add-prover-input-hook #'request-prover-read)
     ;;(format t "~%prove-formula: Waiting...~%")
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     ;; process-interrupt interrupts the main pvs process proc, and invokes
@@ -348,9 +347,9 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 (defrequest proof-command (form)
   "Sends a command to the prover"
   #+pvsdebug (format t "~%[proof-command] form ~a~%" form) ;;debug
-  (unless (and *pvs-lisp-process*
-	       (mp:symeval-in-process 'pvs:*in-checker* *pvs-lisp-process*))
-    (pvs-error "Proof-command error" "Prover is not running: start it with prove-formula"))
+  (unless (and pvs:*pvs-lisp-process*
+	       (mp:symeval-in-process 'pvs:*in-checker* pvs:*pvs-lisp-process*))
+    (pvs:pvs-error "Proof-command error" "Prover is not running: start it with prove-formula"))
   (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))) () "one")
   (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
   (assert (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))
@@ -366,7 +365,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 			(if (typep err 'end-of-file)
 			    "eof encountered, probably mismatched parens, quotes, etc."
 			    err)))
-		 (ps (mp:symeval-in-process 'pvs:*ps* *pvs-lisp-process*))
+		 (ps (mp:symeval-in-process 'pvs:*ps* pvs:*pvs-lisp-process*))
 		 (json:*lisp-identifier-name-to-json* #'identity))
 	     (setq pvs:*prover-commentary* (list com))
 	     (unwind-protect
@@ -376,7 +375,7 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 		;; check-arguments sets *prover-commentary*
 		(not (pvs:check-arguments input)))
 	   (unwind-protect
-		(let* ((ps (mp:symeval-in-process 'pvs:*ps* *pvs-lisp-process*))
+		(let* ((ps (mp:symeval-in-process 'pvs:*ps* pvs:*pvs-lisp-process*))
 		       (json:*lisp-identifier-name-to-json* #'identity))
 		  (pvs:pvs2json ps))
 	     (setq pvs:*prover-commentary* nil)))
@@ -397,9 +396,9 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 #+allegro
 (defrequest prover-status ()
   "Checks the status of the prover: active or inactive."
-  (format nil "~a" (if *pvs-lisp-process*
-      (let ((top-ps (mp:symeval-in-process '*top-proofstate* *pvs-lisp-process*))
-	    (ps (mp:symeval-in-process '*ps* *pvs-lisp-process*)))
+  (format nil "~a" (if pvs:*pvs-lisp-process*
+      (let ((top-ps (mp:symeval-in-process '*top-proofstate* pvs:*pvs-lisp-process*))
+	    (ps (mp:symeval-in-process '*ps* pvs:*pvs-lisp-process*)))
 	(pvs:prover-status ps top-ps))
       :inactive)))
 
@@ -451,13 +450,13 @@ or unproved."
   (typecase thref
     (cons ;; should be assoc list with cars
      ;; :fileName, :fileExtension, :theoryName, :contextFolder
-     (unless (assq :fileName thref)
+     (unless (assoc :fileName thref)
        (error "bad thref: ~a" thref))
      (format nil "~a/~a~a#~a"
-       (cdr (assq :contextFolder thref))
-       (cdr (assq :fileName thref))
-       (cdr (assq :fileExtension thref))
-       (cdr (assq :theoryName thref))))
+       (cdr (assoc :contextFolder thref))
+       (cdr (assoc :fileName thref))
+       (cdr (assoc :fileExtension thref))
+       (cdr (assoc :theoryName thref))))
     (pathname (namestring thref))
     (string thref)))
 
@@ -491,15 +490,15 @@ to the associated declaration."
   "Stores the declaration proofs into the corresponding PRF file"
   (let ((theory (pvs:get-typechecked-theory theoryref)))
     (unless theory
-      (pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
+      (pvs:pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
     (pvs:save-all-proofs theory)))
 
 ;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
 (defrequest store-last-attempted-proof (formula theory &optional overwrite? new-script-id new-script-desc)
   "Store the last attempted proof script in the provided formula, only if the script was produced for it."
   (unless pvs:*last-attempted-proof*
-    (pvs-error "store-last-attempted-proof error" "There is no attempted proof script to be saved."))
-  (let ((dst-decl (pvs:get-formula-decl theory formula)))
+    (pvs:pvs-error "store-last-attempted-proof error" "There is no attempted proof script to be saved."))
+  (let ((dst-decl (pvs:get-formula-decl (format nil "~a#~a" theory formula))))
     (if (equal dst-decl (car pvs:*last-attempted-proof*))
 	(let ((script (cdr pvs:*last-attempted-proof*)))
 	  (if overwrite?
@@ -508,7 +507,7 @@ to the associated declaration."
 		  (description (or new-script-desc "")))
 	      (setf (pvs:default-proof dst-decl)
 		    (pvs:make-default-proof dst-decl (car script) id description)))))
-      (pvs-error "store-last-attempted-proof error"
+      (pvs:pvs-error "store-last-attempted-proof error"
 		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
 			 (car pvs:*last-attempted-proof*) dst-decl)))))
 
@@ -522,26 +521,26 @@ to the associated declaration."
 
 (defmethod json-term* ((term pvs:module))
   `((:kind . :theory)
-    (:id . ,(id term))
-    (:place . ,(place-list (place term)))))
+    (:id . ,(pvs:id term))
+    (:place . ,(pvs:place-list (place term)))))
 
 (defmethod json-term* ((term pvs:recursive-type))
   `((:kind . :recursive-type)
-    (:id . ,(id term))
-    (:place . ,(place-list (place term)))))
+    (:id . ,(pvs:id term))
+    (:place . ,(pvs:place-list (place term)))))
 
 (defmethod json-term* ((term pvs:declaration))
-  (pvs:json-decl-list term (pvs:ptype-of term) (module term)))
+  (pvs:json-decl-list term (pvs:ptype-of term) (pvs:module term)))
 
 (defmethod json-term* ((term pvs:type-expr))
   `((:kind . :type)
-    (:string . ,(str term))
-    (:place . ,(place-list (place term)))))
+    (:string . ,(pvs:str term))
+    (:place . ,(pvs:place-list (place term)))))
 
 (defmethod json-term* ((term pvs:expr))
   `((:kind . :expr)
-    (:string . ,(str term))
-    (:place . ,(place-list (place term)))))
+    (:string . ,(pvs:str term))
+    (:place . ,(pvs:place-list (place term)))))
 
 (defmethod json:encode-json (any &optional (stream json:*json-output*))
   ;; Just return nil in this case, there's a problem on some Macs that this deals with.

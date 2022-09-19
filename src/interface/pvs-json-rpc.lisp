@@ -182,7 +182,7 @@
 		    ((string= msg "Init error") 5)
 		    (t 0)))
 	(plist (pvs:place-list place)))
-    (cond (*in-checker*
+    (cond (pvs:*in-checker*
 	   ;; Add the error to the commentary string, as calling error does
 	   ;; not work correctly while in the prover.
 	   (pvs:commentary (format nil "Error: ~a" errstring)) ; M3 Add 'Error' prefix to commentary [Sept 2020]
@@ -197,7 +197,7 @@
 (defun json-pvs-error (id c)
   (with-slots (code kind error-string file-name place) c
     (assert (or (null file-name)
-		(file-exists-p file-name)))
+		(pvs:file-exists-p file-name)))
     (let* ((err-object `((:code . ,code)
 			 (:message . ,kind)
 			 (:data . ((:error_string . ,error-string)
@@ -331,8 +331,8 @@
 	   (ps-json (pvs:pvs2json ps)))
       (pvs:xmlrpc-output-proofstate (list ps-json)))
     (when *interrupted-rpc*
-      (open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-      (wait-on-gate (pvs:psinfo-res-gate pvs:*ps-control-info*)))))
+      (pvs::open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+      (pvs::wait-on-gate (pvs:psinfo-res-gate pvs:*ps-control-info*)))))
 
 ;; M3: hook for finishing proofstates [Sept 2020].
 (defun finish-proofstate-rpc-hook (ps)
@@ -340,17 +340,18 @@
   (when pvs:*ps-control-info*
     (let* ((commentary (cons (format nil "~:[Proof attempt aborted~;Q.E.D.~]"
 			       (and (typep ps 'pvs:top-proofstate)
-				    (eq (pvs:status-flag ps) '!))) *prover-commentary*))
+				    (eq (pvs:status-flag ps) '!)))
+			     pvs:*prover-commentary*))
 	   (ps-json
 	    `((("label" . ,(pvs:label ps))
-	       ("commentary" . ,pvs:commentary)))))
-      (add-psinfo pvs:*ps-control-info* ps-json))
+	       ("commentary" . ,commentary)))))
+      (pvs:add-psinfo pvs:*ps-control-info* ps-json))
     ;; M3 save script as last attempted [Sept 2020]
     (let ((script (pvs:extract-justification-sexp
 		   (pvs:collect-justification pvs:*top-proofstate*)))
 	  (decl (pvs:declaration ps)))
       (setf pvs:*last-attempted-proof* (list decl script)))
-    (open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
+    (pvs::open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))))
 
 ;; M3: hook for successfully closed branches.
 (defun rpc-output-notify-proof-success (proofstate)
