@@ -151,8 +151,8 @@
 (defparameter *ignored-special-variables*
   '(*integer* *real* *posint* *naturalnumber* *number_field* *even_int*
     *number* *odd_int* *boolean* *false* *true* *pvs-directories*
-    *rational-pred* *boolops* *integer-pred* *pvs-operators*
-    *infix-operators* *infixlist* pr-outfile *strat-file-dates*
+    *rational-pred* +boolops+ *integer-pred* *pvs-operators*
+    *infix-operators* pr-outfile *strat-file-dates*
     *fast-make-instance-makers* PVS-ALL-OPERATORS-LIST
     *slot-info* *last-end-value*
     *expr-prec-info* PVS-KEYWORD-LIST
