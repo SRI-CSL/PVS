@@ -39,7 +39,7 @@
 
 (defun load-prelude ()
   (assert *pvs-path*)
-  (let* ((pvs-lib (format nil "~a/lib" *pvs-path*))
+  (let* ((pvs-lib (format nil "~alib" *pvs-path*))
 	 (pvs-ctx (format nil "~a/.pvscontext" pvs-lib))
 	 (*loading-prelude* t)
 	 (lib-ws (get-workspace-session pvs-lib)))
@@ -61,6 +61,7 @@
 		  (some #'compare *prelude-theories* theories))))
       (format t "~%Prelude has changed - invalidating current binfiles")
       (incf *binfile-version*))
+    (add-comments-to-theories theories comments)
     (setq sbrt::*disable-caching* t)
     (setq *prelude-theories* nil
 	  *boolean* nil
@@ -83,7 +84,7 @@
 	  *negint* nil)
     (makunbound '*manip-supported-types*)
     (when *pvs-initialized*
-      (clear-theories t))
+      (clear-theories :workspace :all))
     (let ((*all-workspace-sessions* nil)
 	  (*generate-tccs* 'all))
       (reset-typecheck-caches)
@@ -132,33 +133,35 @@
   (assert *prelude-core-context*)
   (setq sbrt::*disable-caching* t)
   (when *pvs-initialized*
-    (clear-theories t))
-  (let ((*generate-tccs* 'all)
-	(theories (parse :file *pvsio-filename*)))
-    (reset-typecheck-caches)
-    (dolist (th theories)
-      (let ((*current-context* (context th)))
-	(format t "~%Typechecking ~a" (id th))
-	(setf (status th) '(parsed))
-	(setf (gethash (id th) *prelude*) th)
-	(typecheck th)
-	(multiple-value-bind (tot prv unprv sub simp)
-	    (numbers-of-tccs th)
-	  (if (zerop tot)
-	      (format t "~%~a typechecked: No TCCs generated" (id th))
-	      (format t "~%~a typechecked: ~d TCC~:p, ~
+    (clear-theories :workspace :all))
+  (let ((*generate-tccs* 'all))
+    (multiple-value-bind (theories time comments)
+	(parse :file *pvsio-filename*)
+      (add-comments-to-theories theories comments)
+      (reset-typecheck-caches)
+      (dolist (th theories)
+	(let ((*current-context* (context th)))
+	  (format t "~%Typechecking ~a" (id th))
+	  (setf (status th) '(parsed))
+	  (setf (gethash (id th) *prelude*) th)
+	  (typecheck th)
+	  (multiple-value-bind (tot prv unprv sub simp)
+	      (numbers-of-tccs th)
+	    (if (zerop tot)
+		(format t "~%~a typechecked: No TCCs generated" (id th))
+		(format t "~%~a typechecked: ~d TCC~:p, ~
                                ~d proved, ~d subsumed, ~d unproved, ~d trivial~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		(id th) tot prv sub unprv simp
-		(length (warnings th)) (length (info th)))))
-	;; No need to have saved-context set for prelude contexts
-	(assert (typep th '(or datatype module)))
-	(setq *prelude-theories*
-	      (nconc *prelude-theories* (cons th nil)))
-	(setq *prelude-context* (update-prelude-context th))))
-    (format t "~%Done typechecking the prelude")
-    (restore-pvsio-proofs)
-    (initialize-prelude-attachments)))
+		  (id th) tot prv sub unprv simp
+		  (length (warnings th)) (length (info th)))))
+	  ;; No need to have saved-context set for prelude contexts
+	  (assert (typep th '(or datatype module)))
+	  (setq *prelude-theories*
+		(nconc *prelude-theories* (cons th nil)))
+	  (setq *prelude-context* (update-prelude-context th))))
+      (format t "~%Done typechecking the prelude")
+      (restore-pvsio-proofs)
+      (initialize-prelude-attachments))))
 
 (defun update-prelude-context (th)
   (let* ((thy (if (typep th 'datatype)
@@ -214,7 +217,7 @@
     (format t "~%Restoring the prelude proofs from ~a" prfile)
     (let ((proofs (read-pvs-file-proofs prfile)))
       (dolist (theory (core-prelude-theories))
-	(format t "restoring for ~a" (id theory))
+	(format t "~%Restoring proofs for ~a" (id theory))
 	(restore-proofs prfile theory proofs)
 	(mapc #'(lambda (decl)
 		  (if (justification decl)
@@ -264,7 +267,7 @@
       (cond (theory
 	     (restore-theory-proofs theory proofs)
 	     (format t "~%Theory ~a proofs restored" newthid))
-	    (t (format t "~%Theory ~a not in prelude, ignoring" theoryid))))))
+	    (t (format t "~%Theory ~a not in prelude, ignoring" newthid))))))
 
 (defun save-prelude-core-proofs ()
   (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
@@ -908,30 +911,35 @@ not a dir: if a valid id
 
 (defmethod get-library-path (libref)
   (assert (typep libref '(or pathname symbol string)))
-  (let* ((pstr (typecase libref
-		 (symbol (string libref))
-		 (pathname (namestring libref))
-		 (t libref)))
-	 (estr (ignore-errors (uiop:native-namestring pstr)))
-	 (dirp (when (and estr (directory-p estr)) (truename estr)))
-	 (lib-path (when dirp (merge-pathnames dirp))))
-    ;; dirp works for both absolute and relative pathnames Note that a
-    ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
-    ;; same name.
-    (or lib-path
-	(let* ((nstr (when (stringp pstr)
-		       (if (char= (char pstr (1- (length pstr))) #\/)
-			   (subseq pstr 0 (1- (length pstr)))
-			   pstr)))
-	       (lpos (when nstr (position #\/ nstr :from-end t)))
-	       (lstr (if lpos
-			 (subseq nstr (1+ lpos))
-			 nstr)))
-	  (when (and (stringp lstr)
-		     (valid-pvs-id* lstr))
-	    (let ((lib-id (intern lstr :pvs)))
-	      (or (visible-lib-decl-pathname lib-id)
-		  (cdr (assq lib-id (pvs-library-alist))))))))))
+  (if (or (null libref) (equal libref "") (equal libref "."))
+      (current-context-path)
+      (let* ((pstr (typecase libref
+		     (symbol (string libref))
+		     (pathname (namestring libref))
+		     (t libref)))
+	     (dstr (when (stringp pstr)
+		     (if (char= (char pstr (1- (length pstr))) #\/)
+			 pstr (format nil "~a/" pstr))))
+	     (estr (when (stringp dstr) (ignore-errors (uiop:native-namestring dstr))))
+	     (dirp (when (and estr (directory-p estr)) (truename estr)))
+	     (lib-path (when dirp (merge-pathnames dirp))))
+	;; dirp works for both absolute and relative pathnames Note that a
+	;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
+	;; same name.
+	(or lib-path
+	    (let* ((nstr (when (stringp pstr)
+			   (if (char= (char pstr (1- (length pstr))) #\/)
+			       (subseq pstr 0 (1- (length pstr)))
+			       pstr)))
+		   (lpos (when nstr (position #\/ nstr :from-end t)))
+		   (lstr (if lpos
+			     (subseq nstr (1+ lpos))
+			     nstr)))
+	      (when (and (stringp lstr)
+			 (valid-pvs-id* lstr))
+		(let ((lib-id (intern lstr :pvs)))
+		  (or (visible-lib-decl-pathname lib-id)
+		      (cdr (assq lib-id (pvs-library-alist)))))))))))
 
 (defmethod get-library-id ((mod datatype-or-module))
   (get-library-id (context-path mod)))
