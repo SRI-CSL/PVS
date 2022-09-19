@@ -48,8 +48,7 @@
 ;;; Status Theory - called from Emacs
 
 (defun status-theory (theoryref)
-  (with-theory (thname) theoryref
-    (pvs-message (theory-status-string thname))))
+  (pvs-message (theory-status-string theoryref)))
 
 
 ;;; Status PVS File - called from Emacs
@@ -112,16 +111,21 @@
 ;;; Using Status
 
 (defun show-importchain (theoryref)
-  (with-theory (theoryname) theoryref
-    (let ((te (get-context-theory-entry theoryname)))
-      (if te
-	  (let ((*modules-visited* nil)
-		(*disable-gc-printout* t))
-	    (pvs-buffer "PVS Status"
-	      (with-output-to-string (*standard-output*)
-		(show-importchain* (id te)))
-	      t))
-	  (pvs-message "~a is not in the current context" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((te (get-context-theory-entry thname)))
+	(if te
+	    (let ((*modules-visited* nil)
+		  (*disable-gc-printout* t))
+	      (pvs-buffer "PVS Status"
+		(with-output-to-string (*standard-output*)
+		  (show-importchain* (id te)))
+		t))
+	    (pvs-message "~a not found" theoryref))))))
 
 (defun show-importchain* (tid &optional (indent 0))
   (let* ((th (get-theory tid)))
@@ -139,18 +143,23 @@
 
 ;;; Called from Emacs
 (defun status-importchain (theoryref &optional brief?)
-  (with-theory (thname) theoryref
-    (let ((te (get-context-theory-entry thname)))
-      (if te
-	  (let ((*modules-visited* nil)
-		(*disable-gc-printout* t))
-	    (pvs-buffer "PVS Status"
-	      (with-output-to-string (*standard-output*)
-		(if brief?
-		    (brief-status-importchain (id te))
-		    (status-importchain* (id te))))
-	      t))
-	  (pvs-message "~a is not in the current context" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((te (get-context-theory-entry thname)))
+	(if te
+	    (let ((*modules-visited* nil)
+		  (*disable-gc-printout* t))
+	      (pvs-buffer "PVS Status"
+		(with-output-to-string (*standard-output*)
+		  (if brief?
+		      (brief-status-importchain (id te))
+		      (status-importchain* (id te))))
+		t))
+	    (pvs-message "~a is not in the current context" theoryref))))))
 
 (defun brief-status-importchain (tname &optional (indent 0))
   (let* ((th (get-theory tname)))
@@ -182,18 +191,23 @@
 ;;; Usedby Status
 ;;; Called from Emacs
 (defun status-importbychain (theoryref &optional brief?)
-  (with-theory (thname) theoryref
-    (let ((te (get-context-theory-entry thname)))
-      (if te
-	  (let ((*modules-visited* nil)
-		(*disable-gc-printout* t))
-	    (pvs-buffer "PVS Status"
-	      (with-output-to-string (*standard-output*)
-		(if brief?
-		    (brief-status-importbychain (id te))
-		    (status-importbychain* (ref-to-id thname))))
-	      t))
-	  (pvs-message "~a is not in the current context" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((te (get-context-theory-entry thname)))
+	(if te
+	    (let ((*modules-visited* nil)
+		  (*disable-gc-printout* t))
+	      (pvs-buffer "PVS Status"
+		(with-output-to-string (*standard-output*)
+		  (if brief?
+		      (brief-status-importbychain (id te))
+		      (status-importbychain* (ref-to-id thname))))
+		t))
+	    (pvs-message "~a is not in the current context" theoryref))))))
 
 (defun brief-status-importbychain (tname &optional (indent 0))
   (let* ((th (get-theory tname)))
@@ -234,16 +248,21 @@
 ;;; Status Proof Theory
 ;;; Called from Emacs
 (defun status-proof-theory (theoryref &optional unproved?)
-  (with-theory (theoryname) theoryref
-    (let* ((theory (or (get-theory theoryname)
-		       (get-context-theory-entry theoryname)))
-	   (*disable-gc-printout* t))
-      (if theory
-	  (pvs-buffer "PVS Status"
-	    (with-output-to-string (*standard-output*)
-	      (proof-summary (id theory) unproved?))
-	    t)
-	  (pvs-message "Theory ~a is not found" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((theory (or (get-theory thname)
+			 (get-context-theory-entry thname)))
+	     (*disable-gc-printout* t))
+	(if theory
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(proof-summary (id theory) unproved?))
+	      t)
+	    (pvs-message "Theory ~a is not found" theoryref))))))
 
 
 ;;; Status Proof PVS File
@@ -271,15 +290,20 @@
 ;;; Status Proof Importchain
 ;;; Called from Emacs
 (defun status-proof-importchain (theoryref &optional unproved?)
-  (with-theory (thname) theoryref
-    (let ((theories (context-usingchain thname))
-	  (*disable-gc-printout* t))
-      (if theories
-	  (pvs-buffer "PVS Status"
-	    (with-output-to-string (*standard-output*)
-	      (proof-summaries theories nil unproved?))
-	    t)
-	  (pvs-message "Theory ~a is not found" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((theories (context-usingchain thname))
+	    (*disable-gc-printout* t))
+	(if theories
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(proof-summaries theories nil unproved?))
+	      t)
+	    (pvs-message "Theory ~a is not found" theoryref))))))
 
 
 (defun proof-summaries (theory-ids &optional filename unproved?)
@@ -417,6 +441,13 @@
   (declare (ignore obj))
   nil)
 
+(defun proofchain-status (formula-ref)
+  (let* ((fdecl (get-formula-decl formula-ref))
+	 (*current-context* (context (module fdecl)))
+	 (*disable-gc-printout* t))
+    (with-output-to-string (*standard-output*)
+      (pc-analyze fdecl))))
+
 ;;; ProofChain Status, Module ProofChain Status, Formula Status and
 ;;; Module Formula Status
 ;;; Called from Emacs - FIXME: need better API
@@ -438,15 +469,20 @@
 
 ;;; Called from emacs
 (defun status-proofchain-theory (theoryref)
-  (with-theory (thname) theoryref
-    (let ((theory (get-theory thname))
-	  (*disable-gc-printout* t))
-      (if theory
-	  (pvs-buffer "PVS Status"
-	    (with-output-to-string (*standard-output*)
-	      (pc-analyze theory))
-	    t)
-	  (pvs-message "~a has not been typechecked" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((theory (get-theory thname))
+	    (*disable-gc-printout* t))
+	(if theory
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(pc-analyze theory))
+	      t)
+	    (pvs-message "~a has not been typechecked" theoryref))))))
 
 ;;; Called from Emacs
 (defun status-proofchain-pvs-file (filename)
@@ -462,19 +498,20 @@
 
 ;;; Called from Emacs
 (defun status-proofchain-importchain (theoryref)
-  (with-theory (thname) theoryref
-    (let ((th (get-theory thname)))
-      (if th
-	  (let* ((*current-context* (saved-context th))
-		 (theories (collect-theory-usings thname))
-		 (*disable-gc-printout* t))
-	    (if theories
-		(pvs-buffer "PVS Status"
-		  (with-output-to-string (*standard-output*)
-		    (mapc #'pc-analyze theories))
-		  t)
-		(pvs-message "Theory ~a not found" theoryref)))
-	  (pvs-message "~a has not been typechecked" theoryref)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((theories (collect-theory-usings thname))
+	     (*disable-gc-printout* t))
+	(if theories
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(mapc #'pc-analyze theories))
+	      t)
+	    (pvs-message "Theory ~a not found" theoryref))))))
 
 
 (defun full-status-theory (theoryname)
@@ -636,46 +673,54 @@
 	     (ce-theories ce))))))
 
 (defun show-proofs-theory (theoryref)
-  (with-theory (thname) theoryref
-    (let* ((th (get-theory thname))
-	   (proofs (if th
-		       (collect-theories-proofs (list th))
-		       (when file (read-pvs-file-proofs file)))))
-      (cond (proofs
-	     (setq *displayed-proofs* proofs)
-	     (pvs-buffer "Show Proofs"
-	       (with-output-to-string (outstr)
-		 (format outstr "Proof scripts for theory ~a:" thname)
-		 (let ((valid? (or th
-				   (let ((ce (context-entry-of thname)))
-				     (and ce (valid-proofs-file ce)))))
-		       (thproofs (assq (intern thname :pvs) proofs)))
-		   (show-all-proofs-theory thname (cdr thproofs) outstr valid?)))
-	       'popto t)
-	     t)
-	    (file (pvs-message "No proofs found in this theory"))
-	    (t (pvs-message "Theory not found in context; may need to retypecheck."))))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((th (get-theory thname))
+	     (proofs (if th
+			 (collect-theories-proofs (list th))
+			 (when file (read-pvs-file-proofs file)))))
+	(cond (proofs
+	       (setq *displayed-proofs* proofs)
+	       (pvs-buffer "Show Proofs"
+		 (with-output-to-string (outstr)
+		   (format outstr "Proof scripts for theory ~a:" thname)
+		   (let ((valid? (or th
+				     (let ((ce (context-entry-of thname)))
+				       (and ce (valid-proofs-file ce)))))
+			 (thproofs (assq (intern thname :pvs) proofs)))
+		     (show-all-proofs-theory thname (cdr thproofs) outstr valid?)))
+		 'popto t)
+	       t)
+	      (t (pvs-message "Theory not found in context; may need to retypecheck.")))))))
 
 (defun show-proofs-importchain (theoryref)
-  (with-theory (theoryname) theoryref
-    (let* ((imports (context-usingchain theoryname))
-	   (files (delete-duplicates (mapcar #'context-file-of imports)
-				     :test #'string=))
-	   (valid? (every #'(lambda (ff)
-			      (let ((ce (context-entry-of ff)))
-				(and ce (valid-proofs-file ce))))
-			  files))
-	   (proofs (get-importchain-proofs theoryname imports files)))
-      (cond (proofs
-	     (setq *displayed-proofs* proofs)
-	     (pvs-buffer "Show Proofs"
-	       (with-output-to-string (outstr)
-		 (format outstr "Proof scripts for importchain of theory ~a:"
-		   theoryname)
-		 (show-all-proofs-file proofs outstr valid?))
-	       'popto t)
-	     t)
-	    (t (pvs-message "No proofs found in this file"))))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((imports (context-usingchain thname))
+	     (files (delete-duplicates (mapcar #'context-file-of imports)
+				       :test #'string=))
+	     (valid? (every #'(lambda (ff)
+				(let ((ce (context-entry-of ff)))
+				  (and ce (valid-proofs-file ce))))
+			    files))
+	     (proofs (get-importchain-proofs thname imports files)))
+	(cond (proofs
+	       (setq *displayed-proofs* proofs)
+	       (pvs-buffer "Show Proofs"
+		 (with-output-to-string (outstr)
+		   (format outstr "Proof scripts for importchain of theory ~a:"
+		     thname)
+		   (show-all-proofs-file proofs outstr valid?))
+		 'popto t)
+	       t)
+	      (t (pvs-message "No proofs found in this file")))))))
 
 (defun get-importchain-proofs (theoryname imports files)
   (declare (ignore theoryname))
@@ -700,16 +745,21 @@
     (show-all-proofs-file (cdr proofs) outstr valid?)))
 
 (defun show-all-proofs-theory (theoryref proofs outstr valid?)
-  (with-theory (thname) theoryref
-    (let* ((te (get-context-theory-entry thname))
-	   (finfo (when te (te-formula-info te)))
-	   (th (get-theory thname)))
-      (cond (th
-	     (show-all-proofs-theory* outstr proofs (all-decls th) th))
-	    (finfo
-	     (show-all-proofs-theory-ctx outstr proofs finfo thname valid?))
-	    (t
-	     (show-all-proofs-nostatus outstr thname proofs))))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((te (get-context-theory-entry thname))
+	     (finfo (when te (te-formula-info te)))
+	     (th (get-theory thname)))
+	(cond (th
+	       (show-all-proofs-theory* outstr proofs (all-decls th) th))
+	      (finfo
+	       (show-all-proofs-theory-ctx outstr proofs finfo thname valid?))
+	      (t
+	       (show-all-proofs-nostatus outstr thname proofs)))))))
 
 ;; (defun show-all-proofs-nostatus (outstr theoryid proofs)
 ;;   (dolist (prf proofs)
@@ -1606,12 +1656,12 @@
     (json:as-object-member (:pvs-file stream)
       (json:encode-json (pscripts-pvs-file ps) stream))
     (json:as-object-member (:theory-scripts stream)
-      (json:encode-json (pscripts-theory-scripts ts) stream))))
+      (json:encode-json (pscripts-theory-scripts ps) stream))))
 
 (defmethod json:encode-json ((ts theory-scripts) &optional (stream json:*json-output*))
   (json:with-object (stream)
     (json:as-object-member (:theory-id stream)
-      (json:encode-json (tscripts-id ps) stream))
+      (json:encode-json (tscripts-theory-id ts) stream))
     (json:as-object-member (:formula-scripts stream)
       (json:encode-json (tscripts-formula-scripts ts) stream))))
 
@@ -1620,7 +1670,7 @@
     (json:as-object-member (:formula-id stream)
       (json:encode-json (fscript-formula-id fs) stream))
     (json:as-object-member (:formula-script stream)
-      (json:encode-json (fscript-formula-script ts) stream))))
+      (json:encode-json (fscript-formula-script fs) stream))))
 
 (defun get-all-library-stats ()
   (mapcar #'(lambda (ws) (cons ws (hash-table-count (pvs-theories ws))))
@@ -1637,6 +1687,7 @@
 	(typecheck-file "top")
 	(let ((libstats #(0 0 0 0 0)))
 	  (maphash #'(lambda (id th)
+		       (declare (ignore id))
 		       (let ((thstats (get-theory-stats th)))
 			 (setq libstats (map 'vector '+ libstats thstats))))
 		   (current-pvs-theories))
