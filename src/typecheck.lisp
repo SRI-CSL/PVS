@@ -328,10 +328,6 @@
       (not (null new-ctx))
       (not (eq old-ctx new-ctx))))
 
-(defvar *ignore-exportings* nil)
-
-(defvar *typecheck-using* nil)
-
 (defmethod typecheck-using* (obj inst)
   (declare (ignore obj))
   (type-error inst "Theory ~a not found" (id inst)))
