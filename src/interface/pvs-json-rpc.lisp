@@ -259,7 +259,7 @@
 (defun json-y-or-n (msg full? timeout? url)
   (unless (no-url? url)
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+	   (id (pvs::makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
 	   (jmsg (json:encode-json-alist-to-string
 		  `((:method . "yes_no")
 		    (:params . ,(list msg full? timeout?))
