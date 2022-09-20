@@ -18,58 +18,30 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(in-package :pvs)
-(eval-when (:compile-toplevel)
-  (require :foreign))
-(export '(file-exists-p directory-p read-permission? write-permission?
-			file-write-time get-file-info))
+(in-package :file-utils)
 
-(eval-when (:execute :compile-toplevel :load-toplevel)
-(ff:def-foreign-call fileutils___file_exists_p
-    ((filename (* :char) simple-string))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :arg-checking nil
-  :call-direct nil
-  :returning :int)
+(define-foreign-library fileutils
+    (t (:default "fileutils")))
 
-(ff:def-foreign-call fileutils___directory_p
-    ((filename (* :char) simple-string))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :arg-checking nil
-  :call-direct nil
-  :returning :int)
+(defcfun ("file_exists_p" fileutils___file_exists_p) :int
+  (filename :string))
 
-(ff:def-foreign-call fileutils___read_permission_p
-    ((filename (* :char) simple-string))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :arg-checking nil
-  :call-direct nil
-  :returning :int)
+(defcfun ("directory_p" fileutils___directory_p) :int
+  (filename :string))
 
-(ff:def-foreign-call fileutils___write_permission_p
-    ((filename (* :char) simple-string))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :arg-checking nil
-  :call-direct nil
-  :returning :int)
+(defcfun ("read_permission_p" fileutils___read_permission_p) :int
+  (filename :string))
 
-(ff:def-foreign-call fileutils___file_write_time
-    ((filename (* :char) simple-string))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :arg-checking nil
-  :call-direct nil
-  :returning :int)
+(defcfun ("write_permission_p" fileutils___write_permission_p) :int
+  (filename :string))
 
-(ff:def-foreign-call fileutils___getfileinfo
-    ((filename (* :char) simple-string)
-     (stat (* :int) (simple-array (signed-byte 32) (2))))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :arg-checking nil
-  :call-direct nil
-  :returning :int)
-)
+(defcfun ("file_write_time" fileutils___file_write_time) :long
+  (filename :string))
 
-;;;
+#-sbcl
+(defcfun ("getfileinfo" fileutils___getfileinfo) :int
+  (filename :string)
+  (i :pointer int))
 
 (defmacro expanded-tilde-namestring (filename)
   `(ignore-errors (uiop:native-namestring ,filename)))
@@ -104,6 +76,7 @@
       (+ date u1970))))
 
 ;;; #(dev inode mtime isdir mode)
+#-sbcl
 (let ((fstat-array
        (make-array 2 :initial-element 0 :element-type '(unsigned-byte 32))))
   (defun get-file-info (filename)
@@ -111,3 +84,12 @@
 		  (expanded-tilde-namestring filename) fstat-array))
       (list (aref fstat-array 0)
 	    (aref fstat-array 1)))))
+
+#+sbcl
+(defun get-file-info (file)
+  (let ((pfile (uiop:probe-file* file :truename t)))
+    (and pfile
+	 (handler-case
+	     (let ((stat (sb-posix:stat pfile)))
+	       (list (sb-posix:stat-dev stat) (sb-posix:stat-ino stat)))
+	   (sb-posix:syscall-error () nil)))))
