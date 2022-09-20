@@ -72,19 +72,21 @@
 ;;        (describe 'sxhash) ==> (UNSIGNED-BYTE 60) in 64-bit Lisp
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defconstant-if-unbound pvs-sxhash-bits
+  (defconstant pvs-sxhash-bits
     #+(and allegro (not 64bit)) 24
     #+(and allegro 64bit) 32
     #+cmu 29
-    #+sbcl sb-vm:n-positive-fixnum-bits))
+    #+sbcl sb-vm:n-positive-fixnum-bits)
 
-(defconstant-if-unbound pvs-sxhash-byte
-  (byte pvs-sxhash-bits 0))
+  (deftype positive-fixnum ()
+    `(integer 0 ,(1- (expt 2 pvs-sxhash-bits))))
+  )
+
+(alexandria:define-constant pvs-sxhash-byte
+    (byte pvs-sxhash-bits 0)
+  :test #'equal)
 
 (defconstant pvs-max-hashnum (1- (expt 2 pvs-sxhash-bits)))
-
-(deftype positive-fixnum ()
-  `(integer 0 ,(1- (expt 2 pvs-sxhash-bits))))
 
 (defmacro pvs-sxhash-+ (i j)
   `(ldb pvs-sxhash-byte (+ (the positive-fixnum ,i) (the positive-fixnum ,j))))
@@ -119,7 +121,7 @@
   (declare (ignore bindings))
   (the positive-fixnum (sxhash x)))
 
-(defconstant-if-unbound nil-sxhash (sxhash nil))
+(defconstant nil-sxhash (sxhash nil))
 
 (defmethod pvs-sxhash* ((x null) bindings)
   (declare (ignore bindings))
@@ -158,7 +160,7 @@
 ;			    bindings)))))
 
 (defun pvs-sxhash-lists-a (l1 bindings hnum)
-  (declare (type positive-fixnum hnum))
+  (declare (positive-fixnum hnum))
   (if (null l1)
       hnum
       (if (listp l1)
@@ -178,7 +180,7 @@
 			  (pvs-sxhash* l1 bindings))))))
 
 (defun pvs-sxhash-lists-b (l1 bindings num hnum)
-  (declare (type positive-fixnum num hnum))
+  (declare (positive-fixnum num hnum))
   (if (null l1)
       hnum
       (if (listp l1)
@@ -690,7 +692,7 @@
   (if (and (name-expr? (operator e1))
 	   (eq (id (operator e1)) '-)
 	   (eq (id (module (declaration (operator e1)))) '|number_fields|)
-	   (number-expr? (argument e1)))
+	   (funcall #'number-expr? (argument e1)))
       (sxhash (- (number (argument e1))))
       (call-next-method)))
 
