@@ -15,9 +15,11 @@ pvs-patches/patch*
 autom4te.cache
 bin/*
 lib/why/*
+pvs*.tgz
 
 emacs/emacs23
 emacs/emacs24
+emacs/pvs-prelude-files-and-regions.el
 src/pvs-info.lisp
 src/pvs-lexer.lisp
 src/pvs-methods.lisp
@@ -31,6 +33,7 @@ src/utils/ix86-MacOSX/b64
 src/cl-json/_darcs
 orphaned-proofs.prf
 pvsbin
+PVSBIN
 
 *.log
 *.status
