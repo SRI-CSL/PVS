@@ -3,7 +3,7 @@ FA_Language: THEORY
   BEGIN
   
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Especificaci髇 Ag.                                                            %
+    % Especificaci贸n Ag.                                                            %
     % Ag specification.                                                             %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %                                                                               %
@@ -18,30 +18,30 @@ FA_Language: THEORY
     %                                Dom(Cache(DirtyCache(cs)) <= Dom(Memory(cs))}  %
     %                                                                               %
 
-    % Declaraci髇 de los s韒bolos que denotan constantes.
+    % Declaraci贸n de los s铆mbolos que denotan constantes.
     % Declaration of the constants symbols.
     Constant: TYPE = {%% Constantes de la fork algebra. %% Obligatorio.
                       %% Fork algebra constants. %% Mandatory.
                       zero, one, one_prime, C_0, C_1, inl, inr, 
                       Pi_1, Pi_2, one_prime_C_0, one_prime_C_1,
-                      %% Identidades parciales. %% Dependientes de la especificaci髇.
+                      %% Identidades parciales. %% Dependientes de la especificaci贸n.
                       %% Partial identities. %% Specification dependent.   
                       one_prime_Addr, one_prime_Data}
 
-    %% Declaraci髇 de los s韒bolos que denotan metavariables.
+    %% Declaraci贸n de los s铆mbolos que denotan metavariables.
     %% Declaration of the metavariables symbols.
     Metavariable: TYPE = {cs0}
 
-    %% Declaraci髇 de los s韒bolos que denotan variables.
+    %% Declaraci贸n de los s铆mbolos que denotan variables.
     %% Declaration of the variables symbols.
     Variable: TYPE = {cs, addr, data}
 
-    %% Declaraci髇 de los s韒bolos de denotan predicados.
+    %% Declaraci贸n de los s铆mbolos de denotan predicados.
     %% Declaration of the predicate symbols.
     Predicate: TYPE = {%% Predicados de la fork algebra. %% Obligatorio. 
                        %% Fork algebra predicates. %% Mandatory.
                        Leq, Functional, OneToOne, Pair}
-    %% Definici髇 de la funci髇 que retorna la aridad de los predicados.
+    %% Definici贸n de la funci贸n que retorna la aridad de los predicados.
     %% Definition of the function that yields the arity of the predicates.
     sigPredicate: [Predicate -> nat] =
             LAMBDA (P: Predicate): CASES P 
@@ -51,18 +51,18 @@ FA_Language: THEORY
                                         Pair: 1
                                       ENDCASES
 
-    %% Declaraci髇 de los s韒bolos de denotan funciones.
+    %% Declaraci贸n de los s铆mbolos de denotan funciones.
     %% Declaration of the function symbols.
     Function_: TYPE = {%% Funciones de la fork algebra. %% Obligatorio. 
                        %% Fork algebra functions. %% Mandatory.
                        sum, product, complement, composition, converse, fork,
                        Dom, FunctionUpdate, FunctionUndef, Neg,
-                       %% Funciones de la especificaci髇.
-                         %% Dependientes de la especificaci髇.
+                       %% Funciones de la especificaci贸n.
+                         %% Dependientes de la especificaci贸n.
                        %% Specification functions.
                          %% Specification dependent.   
                        Memory, DirtyCache, Cache, Dirty}
-    %% Definici髇 de la funci髇 que retorna la aridad de las functiones.
+    %% Definici贸n de la funci贸n que retorna la aridad de las functiones.
     %% Definition of the function that yields the arity of the functions.
     sigFunction_: [Function_ -> nat] =
             LAMBDA (F: Function_): CASES F 

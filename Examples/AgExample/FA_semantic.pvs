@@ -5,7 +5,7 @@ FA_semantic: THEORY
     IMPORTING FA_Language
   
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Especificaci髇 Ag.                                                            %
+    % Especificaci贸n Ag.                                                            %
     % Ag specification.                                                             %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %                                                                               %
@@ -20,15 +20,15 @@ FA_semantic: THEORY
     %                                Dom(Cache(DirtyCache(cs)) <= Dom(Memory(cs))}  %
     %                                                                               %
 
-    TypePred: TYPE = {%% Predicados caracter韘ticos de los tipos de la especificaci髇.
-                        %% Dependientes de la especificaci髇.
+    TypePred: TYPE = {%% Predicados caracter铆sticos de los tipos de la especificaci贸n.
+                        %% Dependientes de la especificaci贸n.
                       %% Predicates that characterices the specification types.
                         %% Specification dependent.   
                       Carrier, Addr, Data, Memory, 
                       Cache, Dirty, DirtyCache,
                       DirtyCacheSystem}
 
-    %% Construcci髇 del dominio de la fork algebra.
+    %% Construcci贸n del dominio de la fork algebra.
     %% Fork algebra domain construction.
     Element: TYPE+
     c_0: Element
@@ -51,7 +51,7 @@ FA_semantic: THEORY
 
     IMPORTING FA_Element_adt[Element]
 
-    %% Predicados caracter韘ticos de los objetos de los tipos primitivos.
+    %% Predicados caracter铆sticos de los objetos de los tipos primitivos.
     %% Characteristic predicates of the objects of the primitive types.
     Addr: PRED[FA_Element] = LAMBDA (w: FA_Element):
                                EXISTS (e: Element): 
@@ -75,7 +75,7 @@ FA_semantic: THEORY
           Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): TRUE)
        carrier_one_prime: AXIOM
           Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): wp`1 = wp`2)
-       %% M醩 axiomas sobre Carrier (operaciones)
+       %% M谩s axiomas sobre Carrier (operaciones)
        %% More axioms about Carrier (operations)
        carrier_sum: AXIOM
           FORALL (c0, c1: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): 
@@ -96,13 +96,13 @@ FA_semantic: THEORY
           FORALL (c0, c1: Carrier): Carrier_pred(LAMBDA (wp: [FA_Element, (pair?)]): 
                                                    c0((wp`1, el0(wp`2))) AND c1((wp`1, el1(wp`2))))
 
-    %% Definici髇 de las constantes declaradas (fork algebra).
+    %% Definici贸n de las constantes declaradas (fork algebra).
     %% Definition of the declared constants (fork algebra).
     zero: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): FALSE
     one: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): TRUE
     one_prime: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): wp`1 = wp`2
 
-    %% Definici髇 de las funciones declaradas (fork algebra).
+    %% Definici贸n de las funciones declaradas (fork algebra).
     %% Definition of the declared functions (fork algebra).
     sum(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): c0(wp) OR c1(wp)
     product(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, FA_Element]): c0(wp) AND c1(wp)
@@ -113,16 +113,16 @@ FA_semantic: THEORY
     fork(c0, c1: Carrier): Carrier = LAMBDA (wp: [FA_Element, (pair?)]): 
                                        c0((wp`1, el0(wp`2))) AND c1((wp`1, el1(wp`2)))
 
-    %% Definici髇 de los predicados declarados (fork algebra).
+    %% Definici贸n de los predicados declarados (fork algebra).
     %% Definition of the declared predicates (fork algebra).
     Leq(c0, c1: Carrier): bool = sum(c0, c1) = c1
     Functional(c: Carrier): bool = Leq(composition(converse(c), c), one_prime)
     OneToOne(c: Carrier): bool = Functional(converse(c))
     Pair(c: Carrier): bool = NOT (c = zero) AND Functional(c) AND OneToOne(c) AND
                              composition(composition(c, one), c) = c
-    %% M醩 constantes, predicados y funciones (fork algebra).
+    %% M谩s constantes, predicados y funciones (fork algebra).
     %% More constants, predicates and functiones (fork algebra).
-       %% M醩 axiomas sobre Carrier (m醩 constantes)
+       %% M谩s axiomas sobre Carrier (m谩s constantes)
        %% More axioms about Carrier (more constants)
        carrier_C_0: AXIOM
           Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): wp`2 = element(c_0))
@@ -143,7 +143,7 @@ FA_semantic: THEORY
     FunctionUpdate(c0, c1: Carrier): Carrier = sum(FunctionUndef(c0, c1), c1)
     Neg(c: Carrier): Carrier = product(complement(c), one_prime)
 
-       %% M醩 axiomas sobre Carrier (identidades parciales)
+       %% M谩s axiomas sobre Carrier (identidades parciales)
        %% More axioms about Carrier (parcial identities)
        carrier_one_prime_C_0: AXIOM
           Carrier_pred(LAMBDA (wp: [FA_Element, FA_Element]): one_prime(wp) AND wp`1 = element(c_0))
@@ -164,8 +164,8 @@ FA_semantic: THEORY
     one_prime_Data: Carrier = LAMBDA (wp: [FA_Element, FA_Element]): 
                                 one_prime(wp) AND Data(wp`1)
 
-    %% Predicados caracter韘ticos de los tipos de la especificaci髇.
-      %% Dependientes de la especificaci髇.
+    %% Predicados caracter铆sticos de los tipos de la especificaci贸n.
+      %% Dependientes de la especificaci贸n.
     %% Predicates that characterices the specification types.
       %% Specification dependent.   
     Carrier: PRED[Carrier] = LAMBDA (c: Carrier): TRUE
@@ -230,9 +230,9 @@ FA_semantic: THEORY
          mem = Memory(dcs) AND dca = DirtyCache(dcs)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    %% Definici髇 de la "meaning function" para los predicados caracter韘ticos 
-    %%     de los tipos de la especificaci髇.
-      %% Dependientes de la especificaci髇.
+    %% Definici贸n de la "meaning function" para los predicados caracter铆sticos 
+    %%     de los tipos de la especificaci贸n.
+      %% Dependientes de la especificaci贸n.
     %% Definition of the meaning function for predicates that characterices the
     %%     types of the specification.
       %% Specification dependant.
@@ -248,8 +248,8 @@ FA_semantic: THEORY
                                      DirtyCacheSystem: DirtyCacheSystem
                                   ENDCASES
 
-    %% Definici髇 de las funciones que asigna tipos a las metavariables y variables.
-      %% Dependientes de la especificaci髇.
+    %% Definici贸n de las funciones que asigna tipos a las metavariables y variables.
+      %% Dependientes de la especificaci贸n.
     %% Definition of the functions that assigns types to metavariables and variables.
       %% Specification dependant.
     TPMetavariable: [Metavariable -> TypePred] = 
@@ -263,9 +263,9 @@ FA_semantic: THEORY
                                      data: Data
                                   ENDCASES
 
-    %% Definici髇 de la "meaning function" para constantes, predicados y funciones.
+    %% Definici贸n de la "meaning function" para constantes, predicados y funciones.
     %% Definition of the meaning function for constants, predicates and functions.
-    %% Definici髇 de la "meaning function" para las constantes.
+    %% Definici贸n de la "meaning function" para las constantes.
     %% Definition of the meaning function for constants.
     mConstant: [Constant -> Carrier] = 
           LAMBDA (c: Constant): CASES c 
@@ -283,7 +283,7 @@ FA_semantic: THEORY
                                      one_prime_Addr: one_prime_Addr,
                                      one_prime_Data: one_prime_Data
                                   ENDCASES
-    %% Definici髇 de la "meaning function" para los predicados.
+    %% Definici贸n de la "meaning function" para los predicados.
     %% Definition of the meaning function for predicates.
     mPredicate: [P: Predicate -> [{l: list[Carrier] | sigPredicate(P) = length(l)} -> bool]] = 
           LAMBDA (P: Predicate): CASES P 
@@ -300,7 +300,7 @@ FA_semantic: THEORY
                                         LAMBDA (l: {lPrime: list[Carrier] | length(lPrime) = 1}): 
                                           Pair(nth(l, 0))
                                     ENDCASES
-    %% Definici髇 de la "meaning function" para las funciones.
+    %% Definici贸n de la "meaning function" para las funciones.
     %% Definition of the meaning function for functions.
     mFunction_: [F: Function_ -> [{l: list[Carrier] | sigFunction_(F) = length(l)} -> Carrier]] = 
           LAMBDA (F: Function_): CASES F 

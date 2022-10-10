@@ -9,7 +9,7 @@ SpecActions: THEORY
                                Predicate, sigPredicate,
                                Function_, sigFunction_]
 
-    %% Definición de las acciones atómicas de la especificación Ag.
+    %% DefiniciÃ³n de las acciones atÃ³micas de la especificaciÃ³n Ag.
     %% Definition of the atomic actions of the Ag specification.
     %                                                                               %
     % DirtyCacheWrite: Ag Action[cs: DirtyCacheSystem]                              %

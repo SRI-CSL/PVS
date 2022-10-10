@@ -2,11 +2,11 @@ FA_axioms: THEORY
 
   BEGIN
 
-    %% Construcción de la semántica de la fork algebra de la especificación Ag.
+    %% ConstrucciÃ³n de la semÃ¡ntica de la fork algebra de la especificaciÃ³n Ag.
     %% Construction of the fork algebra corresponding to the Ag specification.
     IMPORTING FA_semantic
 
-    %% Definición de los axiomas de la fork algebra como lemmas.
+    %% DefiniciÃ³n de los axiomas de la fork algebra como lemmas.
     %% Definition of the fork algebra axioms as lemmas.
     BA_1: LEMMA 
         FORALL (x: Carrier): sum(x, x) = x
