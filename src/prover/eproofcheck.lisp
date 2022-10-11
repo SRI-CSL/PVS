@@ -35,12 +35,6 @@
 
 (defvar *subgoals* nil)
 
-(defvar *multiple-proof-default-behavior* :ask
-  "Defines how to handle when a proof finishes:
- :ask = asks whether to save the proof, and if yes, whether to overwrite, etc.
- :noquestions = no questions, automatically overwrites if the proof is different
- :overwrite = same as :noquestions, but sys that it is overwriting")
-
 (defvar *prover-log* nil)
 
 (defvar *default-proof-description* nil)
@@ -1528,7 +1522,9 @@
        (> (length x) 2)
        (eq (car x) 'let)
        (loop for y in (cadr x)
-	     always (and (not (null y))(typep (car y) 'symbol)))))
+	     always (and (not (null y))
+			 (or (typep y 'symbol)
+			     (typep (car y) 'symbol))))))
 
 (defun let-bindings (x) (when (let-form? x)(cadr x)))
 (defun let-body (x) (when (let-form? x)(caddr x)))
@@ -2813,7 +2809,7 @@
 				  (declared-type form))
 			     (type form)))
 			:string t)))
-	(t (unparse form :string t))))
+	(t (format nil "~a" form))))
 
 (defmethod extract-justification-sexp ((list list))
   (cond ((null list) nil)
