@@ -146,8 +146,8 @@ reparsing and retypechecking of the entire importchain."
   (cond ((or (get-pvs-file-buffer filename)
 	     (file-exists-p (pvs-file-name filename)))
 	 (pvs-bury-output)
-	 (if (and (boundp 'pvs-ws-connection)
-		  (websocket-openp pvs-ws-connection))
+	 (if nil ;;(and (boundp 'pvs-ws-connection)
+		  ;; (websocket-openp pvs-ws-connection))
 	     (let ((promise (pvs-send-request "typecheck"
 					      (list filename (and current-prefix-arg t)))))
 	       (promise-then promise
@@ -159,6 +159,14 @@ reparsing and retypechecking of the entire importchain."
 	     ;;(pvs-check-for-tooltips)
 	     ))
 	(t (message "PVS file %s does not exist" filename))))
+
+;; (defpvs set-typecheck-mark typecheck (filename)
+;;   "Sets a mark in the PVS file.  When next typechecked, The file is parsed,
+;; then typechecked only upto the current mark.  There can be multiple marks,
+;; but only one per theory.  The mark should be between two declarations"
+;;   (interactive (list (current-pvs-file)))
+;;   )
+
 
 ;;; Prettyprinting
 
@@ -216,16 +224,11 @@ C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
   (pvs-bury-output)
   (save-some-pvs-buffers t)
-  (let* ((parts (split-string theoryref "#"))
-	 (theoryname (or (cadr parts) (car parts)))
-	 (file (cdr (assoc theoryname (pvs-collect-theories)))))
-    (unless file
-      (error "File for theoryname %s not found" theoryname))
-    (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
-			   theoryname (format "\"%s\"" file))
-		       "Prettyprinting"
-		       (pvs-get-abbreviation 'prettyprint-theory)
-		       'dont-care))
+  (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
+			 theoryname (format "\"%s\"" file))
+		     "Prettyprinting"
+		     (pvs-get-abbreviation 'prettyprint-theory)
+		     'dont-care)
   (if (buffer-modified-p)
       (message
        "prettyprinted theory - use C-x u to undo changes.")
@@ -1908,11 +1911,13 @@ The pvs-remove-bin-files command removes all the .bin files of the current
 context."
   (interactive)
   (let ((files (append (directory-files pvs-current-directory t "\\.bin$")
-		       (when (file-directory-p
-			      (format "%s/pvsbin/" pvs-current-directory))
-			 (directory-files
-			  (format "%s/pvsbin/" pvs-current-directory)
-			  t "\\.bin$")))))
+		       (when (file-directory-p (format "%s/pvsbin/" pvs-current-directory))
+			 (directory-files (format "%s/pvsbin/" pvs-current-directory)
+					  t "\\.bin$"))
+		       ;; (when (file-directory-p (format "%s/PVSBIN/" pvs-current-directory))
+		       ;; 	 (directory-files (format "%s/PVSBIN/" pvs-current-directory)
+		       ;; 			  t "\\.bin$"))
+		       )))
     (when noninteractive
       (princ "Removing all .bin files\n")
       (princ "Removing all .bin files\n" 'external-debugging-output))
@@ -1932,7 +1937,11 @@ context."
   (let ((files (append (directory-files dir t "\\.bin$")
 		       (when (file-directory-p (format "%s/pvsbin/" dir))
 			 (directory-files (format "%s/pvsbin/" dir)
-					  t "\\.bin$")))))
+					  t "\\.bin$"))
+		       ;; (when (file-directory-p (format "%s/PVSBIN/" dir))
+		       ;; 	 (directory-files (format "%s/PVSBIN/" dir)
+		       ;; 			  t "\\.bin$"))
+		       )))
     (when noninteractive
       (princ "Removing all .bin files\n")
       (princ "Removing all .bin files\n" 'external-debugging-output))
