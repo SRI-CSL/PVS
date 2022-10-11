@@ -65,8 +65,8 @@
   (interactive)
   (run-ilisp))
 
-(ilisp-set-doc 'ilisp-mode ilisp-documentation)
-(ilisp-set-doc 'lisp-mode ilisp-documentation)
+;;(ilisp-set-doc 'ilisp-mode ilisp-documentation)
+;;(ilisp-set-doc 'lisp-mode ilisp-documentation)
 
 ;;;%%ILISP
 (defun lisp-command-args (command-line)
