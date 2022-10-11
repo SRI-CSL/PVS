@@ -638,8 +638,7 @@ are reduced.  Example reduction steps are:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
-	  rewrite-flag flush? ;; linear?
-	  cases-rewrite? (type-constraints? t)
+	  rewrite-flag flush? #| linear? |# cases-rewrite? (type-constraints? t)
 	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?
 	  ignore-typepreds?)
   (invoke-simplification fnums record? rewrite?
