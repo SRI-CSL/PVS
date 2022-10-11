@@ -431,6 +431,9 @@
 
 ;;; Formal theory parameter declarations
 
+;;; A bit confusing, formal-decls are for theory parameters, while decl-formals
+;;; are the same, but with an associated-declaration slot
+
 (defcl formal-decl (declaration)
   (dependent? :restore-as nil))
 
@@ -737,7 +740,18 @@ restored, the TCCs are checked")
 (defcl macro-fnum-rewrite (fnum-rewrite macro-rewrite))
 
 
-;;; Type Expressions
+;;; Type Expressions - these are the primary classes
+;;;   type-name
+;;;   type-application
+;;;   expr-as-type
+;;;   subtype
+;;;   funtype - dep-binding
+;;;   tupletype - dep-binding
+;;;   recordtype - fields
+;;;   cotupletype
+;;;   struct-sub-tupletype -dep-binding
+;;;   struct-sub-recordtype - fields
+;;;   type-extension
 
 (defcl type-expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
@@ -747,6 +761,35 @@ restored, the TCCs are checked")
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
   (nonempty? :restore-as nil))
+
+(defcl print-type-expr (type-expr))
+
+(defcl print-type-name (print-type-expr type-name))
+
+(defcl print-type-application (print-type-expr type-application))
+
+(defcl print-expr-as-type (print-type-expr expr-as-type))
+
+#+pvsdebug
+(defmethod initialize-instance :around ((te type-expr) &rest ia)
+  (call-next-method)
+  (unless (or (null (print-type te))
+	      (print-type-expr? (print-type te)))
+    (break "init print-type to non-print-type")))
+
+#+pvsdebug
+(defmethod initialize-instance :around ((te print-type-name) &rest ia)
+  (call-next-method)
+  (unless (and (resolution te)
+	       (or (null (actuals te))
+		   (eq (actuals te) (actuals (module-instance te)))))
+    (break "Bad print-type-name")))
+
+#+pvsdebug
+(defmethod initialize-instance :around ((te print-expr-as-type) &rest ia)
+  (call-next-method) (when (and (name-expr? (expr te))
+				(null (resolutions (expr te))))
+		       (break "Bad print-expr-as-type instance?")))
 
 ;;(defcl type-variable (type-expr))
 
@@ -884,6 +927,7 @@ restored, the TCCs are checked")
   (range :parse t))
 
 (defcl struct-subtype (type-expr)
+  ;; Mixin
   generated-by)
 
 (defcl functiontype (funtype))
