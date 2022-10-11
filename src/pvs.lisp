@@ -438,6 +438,22 @@ nil."
 		(list pathstr)
 		(nreverse (cons (subseq pathstr spos) paths)))))))
 
+(defparameter *pvs-patch-url*
+  ;; "http://www.csl.sri.com/users/owre/drop/pvs-patches" ; for testing
+  "http://pvs.csl.sri.com/pvs-patches")
+
+(defun download-pvs-patches ()
+  ;; -nv - no-verbose
+  ;; -r  - recurse down directories
+  ;; -l1 - recursion depth
+  ;; -np - don't go up to parent
+  ;; -nd - no directories
+  ;; -A  - suffixes to accept
+  (uiop:run-program
+      (format nil "(cd ~a/pvs-patches; wget -nv -r -l1 -np -nd -A lisp,el ~a)"
+	*pvs-path* *pvs-patch-url*))
+  )
+
 (defvar *pvs-patches-loaded* nil)
 
 (defun load-pvs-patches ()
@@ -4206,6 +4222,111 @@ nil is returned in that case."
   (let ((file (ignore-errors (get-source-file (name strat) 'strategy))))
     (when file
       (format out "~2%Defined in file: ~s" (namestring file)))))
+
+(defvar *rules-used*)
+
+(defun collect-rules-used (name)
+  (let ((rule (gethash name *rules*)))
+    (if rule
+	(let ((*rules-used* nil))
+	  (collect-rules-used* (defn rule))
+	  *rules-used*)
+	(let ((step (gethash name *steps*)))
+	  (if step
+	      (break "step")
+	      (let ((prule (gethash name *rulebase*))) ;; primitive rules
+		(if prule
+		    (break "primitive-rule"))))))))
+
+(defun find-proof-rule (name)
+  (or (gethash name *rulebase*)
+      (gethash name *steps*)
+      (gethash name *rules*)))
+
+(defun all-proof-commands-json ()
+  (let* ((rule-deps (collect-rule-dependencies))
+	 (prf-cmds (mapcar #'(lambda (rdep)
+			       `(("tag" . "proof-command")
+				 ("id" . ,(car rdep))
+				 ("depends-on" . ,(cdr rdep))
+				 ("ignore" . :unknown)
+				 ("conditional" . :unknown)
+				 ("equiv-to" . :unknown)))
+		     rule-deps))
+	 (json:*lisp-identifier-name-to-json* #'identity))
+    (json:encode-json prf-cmds)))
+
+(defun collect-rule-dependencies ()
+  (let ((rule-deps nil))
+    (maphash #'(lambda (id rule)
+		 (let ((*rules-used* nil))
+		   (collect-rules-used* (defn rule) nil)
+		   (push (cons id *rules-used*) rule-deps)))
+	     *rules*)
+    rule-deps))
+
+(defun collect-rules-used* (sexp &optional bindings)
+  (cond ((null sexp) nil)
+	((symbolp sexp)
+	 (collect-rules-used-for-symbol sexp nil bindings))
+	((stringp sexp) nil)
+	((numberp sexp) nil)
+	((not (consp sexp))
+	 (break "sexp = ~s" sexp))
+	((if-form? sexp)
+	 (collect-rules-used* (caddr sexp) bindings)
+	 (collect-rules-used* (cadddr sexp) bindings))
+	((let-form? sexp)
+	 ;; The following are lisp functions that create steps
+	 ;;   inst*-steps
+	 ;;   make-implicit-typepreds-cmd
+	 ;;   gen-manip-response
+	 ;;   let-name-replace-step
+	 (collect-rules-used* (caddr sexp)
+			      (append (mapcar #'(lambda (b)
+						  (if (listp b) b (list b)))
+					(cadr sexp))
+				      bindings)))
+	((try-form? sexp)
+	 (collect-rules-used* (cdr sexp) bindings))
+	((backquoted? sexp)
+	 (collect-rules-used* (cdr sexp) bindings))
+	((unbackquoted? sexp)
+	 (break "unbackquoted?")
+	 (cons (car sexp) (collect-rules-used* (cdr sexp) bindings)))
+	((symbolp (car sexp))
+	 (collect-rules-used-for-symbol (car sexp) (cdr sexp) bindings))
+	((stringp (car sexp))
+	 (collect-rules-used* (cdr sexp) bindings))
+	((numberp (car sexp))
+	 (collect-rules-used* (cdr sexp) bindings))
+	((listp (car sexp))
+	 (collect-rules-used* (car sexp) bindings)
+	 (collect-rules-used* (cdr sexp) bindings))
+	(t (break "fallthrough"))))
+
+(defun collect-rules-used-for-symbol (symbol sexp bindings)
+  (if (find-proof-rule symbol)
+      (case symbol
+	((then then@)
+	 (mapc #'(lambda (ex) (collect-rules-used* ex bindings)) sexp))
+	(mapstep (collect-rules-used* (car sexp) bindings))
+	(branch (collect-rules-used* sexp bindings))
+	((repeat repeat*) (collect-rules-used* (car sexp) bindings))
+	(with-fresh-labels (collect-rules-used* (cdr sexp) bindings))
+	(when (collect-rules-used* (cdr sexp) bindings))
+	(t (pushnew symbol *rules-used*)
+	   (collect-rules-used* sexp bindings)))
+      (case symbol
+	(function (collect-rules-used* (car sexp) bindings))
+	(lambda (collect-rules-used* (cadr sexp) bindings))
+	#+allegro
+	(excl::bq-comma (collect-rules-used* (cadr sexp) bindings))
+	(t
+	 (let ((bnd (assq symbol bindings)))
+	   (if bnd
+	       (collect-rules-used* (cdr bnd) (remove bnd bindings))
+	       (collect-rules-used* sexp bindings)))))))
 
 (defun prelude-stats ()
   (let ((consts 0) (defs 0) (recs 0) (inds 0) (coinds 0) (utdecls 0)
