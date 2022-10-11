@@ -86,6 +86,54 @@
 (def-c-attach-primitive "integertypes" "u64rem"
   "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x%y);}")
 
+(def-c-attach-primitive "integertypes" "u8max"
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u16max"
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u32max"
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u64max"
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i8max"
+  "int8" '(x y) '(int8 int8) "{return (int8_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i16max"
+  "int16" '(x y) '(int16 int16) "{return (int16_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i32max"
+  "int32" '(x y) '(int32 int32) "{return (int32_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "i64max"
+  "int64" '(x y) '(int64 int64) "{return (int64_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u8min"
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u16min"
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x< y ? y : x);}")
+
+(def-c-attach-primitive "integertypes" "u32min"
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "u64min"
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i8min"
+  "int8" '(x y) '(int8 int8) "{return (int8_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i16min"
+  "int16" '(x y) '(int16 int16) "{return (int16_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i32min"
+  "int32" '(x y) '(int32 int32) "{return (int32_t)(x< y ? x : y);}")
+
+(def-c-attach-primitive "integertypes" "i64min"
+  "int64" '(x y) '(int64 int64) "{return (int64_t)(x< y ? x : y);}")
+
 (def-c-attach-primitive "integertypes" "u8pow2"
   "uint8"  '(x) '(uint8) "{return (uint8_t)1<<x;}")
 
@@ -121,6 +169,102 @@
 
 (def-c-attach-primitive "integertypes" "u64rshift"
   "uint64" '(x n) '(uint64 uint64) "{return (uint64_t)x>>n;}")
+
+(def-c-attach-primitive "integertypes" "u8ceiling"
+  "uint8" '(x) '(mpq) "{return (uint8_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u16ceiling"
+  "uint16" '(x) '(mpq) "{return (uint16_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u32ceiling"
+  "uint32" '(x) '(mpq) "{return (uint32_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u64ceiling"
+  "uint64" '(x) '(mpq) "{return (uint64_t)pvsceiling_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "i8ceiling"
+  "int8" '(x) '(mpq) "{return (int8_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i16ceiling"
+  "int16" '(x) '(mpq) "{return (int16_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i32ceiling"
+  "int32" '(x) '(mpq) "{return (int32_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i64ceiling"
+  "int64" '(x) '(mpq) "{return (int64_t)pvsceiling_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "u8floor"
+  "uint8" '(x) '(mpq) "{return (uint8_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u16floor"
+  "uint16" '(x) '(mpq) "{return (uint16_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u32floor"
+  "uint32" '(x) '(mpq) "{return (uint32_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "u64floor"
+  "uint64" '(x) '(mpq) "{return (uint64_t)pvsfloor_q_u64(x);}")
+
+(def-c-attach-primitive "integertypes" "i8floor"
+  "int8" '(x) '(mpq) "{return (int8_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i16floor"
+  "int16" '(x) '(mpq) "{return (int16_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i32floor"
+  "int32" '(x) '(mpq) "{return (int32_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integertypes" "i64floor"
+  "int64" '(x) '(mpq) "{return (int64_t)pvsfloor_q_i64(x);}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8xor" "uint8"
+  '(x8 y8) '(uint8 uint8) "{return x8^y8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16xor" "uint16"
+  '(x16 y16) '(uint16 uint16) "{return x16^y16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32xor" "uint32"
+  '(x32 y32) '(uint32 uint32) "{return x32^y32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64xor" "uint64"
+  '(x64 y64) '(uint64 uint64) "{return x64 & y64;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8and" "uint8"
+  '(x8 y8) '(uint8 uint8) "{return x8 & y8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16and" "uint16"
+  '(x16 y16) '(uint16 uint16) "{return x16 & y16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32and" "uint32"
+  '(x32 y32) '(uint32 uint32) "{return x32 & y32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64and" "uint64"
+  '(x64 y64) '(uint64 uint64) "{return x64 & y64;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8or" "uint8"
+  '(x8 y8) '(uint8 uint8) "{return x8 | y8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16or" "uint16"
+  '(x16 y16) '(uint16 uint16) "{return x16 | y16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32or" "uint32"
+  '(x32 y32) '(uint32 uint32) "{return x32 | y32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64or" "uint64"
+  '(x64 y64) '(uint64 uint64) "{return x64 | y64;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u8not" "uint8"
+  '(x8) '(uint8 uint8) "{return ~x8;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u16not" "uint16"
+  '(x16) '(uint16 uint16) "{return ~x16;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u32not" "uint32"
+  '(x32) '(uint32 uint32) "{return ~x32;}")
+
+(def-c-attach-primitive "integer_bv_ops" "u64not" "uint64"
+  '(x64) '(uint64 uint64) "{return ~x64;}")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Floating point attachments using NASA's ieee754_double.pvs
@@ -224,80 +368,89 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Experimental native treatment of strings using a cstring.pvs theory
-(def-c-attach-primitive-type "string" "cchar" "char")
+;; (def-c-attach-primitive-type "bytestrings" "byte" "uint8")
 
-(def-c-attach-primitive-type "cstring" "cstring" "string_t")
+;; (def-c-attach-primitive-type "bytestrings" "Bytestring" "bytestring_t")
 
-(def-c-attach-primitive "cstring" "mk_cstring" "cstring" '(s) '(strings_string)
- (format nil "{~%~8Tuint16_t length = (uint16_t)mpz_get_ui(s->length);~
-~%~8T cstring_cstring_t result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + sizeof(length) + 1);~
-~%~8T result->count = 1; result->size = length + 1;~
-~%~8T uint16_t i;~
-~%~8T for (i = 0; i < length; i++){result->strval[i] = s->seq[i];};~
-~%~8T result->strval[i] = '\\0'; return result;}"))
+;; (def-c-attach-primitive "bytestrings" "bytestring_bound" "uint64_t" '() '() (expt 2 32))
 
-(def-c-attach-primitive "cstring" "code" "uint8" '(x) '(cstring_cchar)
-  "{return (uint8_t)x;}")
+;; (def-c-attach-primitive "bytestrings" "mk_bytestring" "string" '(s) '(bytestring_t)
+;;  (format nil "{~%~8Tuint16_t length = (uint16_t)mpz_get_ui(s->length);~
+;; ~%~8T bytestrings_bytestring_t result = (bytestrings_bytestring_t)safe_malloc(sizeof(string_s) + sizeof(length) + 1);~
+;; ~%~8T result->count = 1; result->size = length + 1;~
+;; ~%~8T uint32_t i;~
+;; ~%~8T for (i = 0; i < length; i++){result->strval[i] = s->seq[i];};~
+;; ~%~8T result->strval[i] = '\\0'; return result;}"))
 
-(def-c-attach-primitive "cstring" "empty" "cstring_cstring" '() '()
-  (format nil "{~%~8Tcstring_cstring_t result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + sizeof(char));~
- ~%~8T result->count = 1; result->size = 1; result->strval[0] = '\\0';~
-  ~%~8T return result;}"))
+;; (def-c-attach-primitive "bytestring" "empty" "bytestring_t" '() '()
+;;   (format nil "{~%~8Tbytestring_t result = (bytestring_t)safe_malloc(sizeof(string_s));~
+;;  ~%~8T result->count = 1; result->length = 0;~
+;;   ~%~8T return result;}"))
 
-(def-c-attach-primitive "cstring" "char" "cstring_cchar" '(s i) '(cstring_cstring uint16)
-  (format nil "{if (i < strlen(s)){char c = s->strval[i];~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
-~%~8T return c;}~
-~%~4T else return '\0';}"))
+;; (def-c-attach-primitive "bytestring" "unit" "bytestring_t" '(c) '(uint8_t)
+;;   (format nil "{~%~8Tbytestring_t result = (bytestring_t)safe_malloc(sizeof(string_s) + sizeof(char));~
+;;  ~%~8T result->count = 1; result->length = 1; result->strval[0] = c;~
+;;   ~%~8T return result;}"))
 
-(def-c-attach-primitive "cstring" "length" "uint16" '(s) '(cstring_cstring)
-  (format nil "{uint16_t length = (uint16_t)strlen(s->strval);~
-~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
-~%~8T return length;}"))
+;; (def-c-attach-primitive "bytestrings" "byte" "bytestrings_byte_t" '(s i) '(bytestring_byte_t)
+;;   (format nil "{bytestring_byte_t entry =  s->strval[i];~
+;; ~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
+;; ~%~8T return entry;}"))
 
-(def-c-attach-primitive "cstring" "+" "cstring_cstring" '(s1 s2) '(cstring_cstring cstring_cstring)
-  (format nil "{~%~8T uint16_t l1 = strlen(s1->strval);~
-~%~8T uint16_t l2 = strlen(s1->strval);~
-~%~8T if (l1  == 0){return s2;} else {if (l2 == 0) return s2;}
-~%~8T uint16_t length = l1 + l2;~
-~%~8T uint16_t size = length + 1;~
-~%~8T result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + size);~
-~%~8T result->count = 1;~
-~%~8T result->size = size;~
-~%~8T strcpy(result->strval, s1->strval);~
-~%~8T strcat(result->strval, s2->strval);~
-~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1)};~
-~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2)};~
-~%~8Treturn result;~%}"))
+;; (def-c-attach-primitive "bytestring" "length" "uint32_t" '(s) '(bytestrings_bytestring)
+;;   (format nil "{uint32_t length = (uint32_t)s->length;~
+;; ~%~8T if (s->count > 1){s->count--;} else {safe_free(s);}~
+;; ~%~8T return length;}"))
 
-(def-c-attach-primitive "cstring" "charcmp" "bool" '(c1 c2) '(cstring_cchar cstring_cchar)
-  "{return c1 < c2;}")
+;; (def-c-attach-primitive "bytestrings" "+" "bytestrings_bytestring" '(s1 s2) '(bytestrings_bytestring bytestrings_bytestring)
+;;   (format nil "{~%~8T uint16_t l1 = s1->length);~
+;; ~%~8T uint16_t l2 = s2->length;~
+;; ~%~8T if (l1  == 0){return s2;} else {if (l2 == 0) return s2;}
+;; ~%~8T uint32_t length = l1 + l2;~
+;; ~%~8T result = (bytestrings_bytestring_t)safe_malloc(sizeof(string_s) + length);~
+;; ~%~8T result->count = 1;~
+;; ~%~8T result->length = length;~
+;; ~%~8T memcpy(result->strval, s1->strval, l1);~
+;; ~%~8T memcpy(result->strval + l1, s2->strval, l2);~
+;; ~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1)};~
+;; ~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2)};~
+;; ~%~8Treturn result;~%}"))
 
-(def-c-attach-primitive "cstring" "strdiff" "uint16" '(s1 s2) '(cstring_cstring cstring_cstring)
-  (format nil "{uint16_t i = 0;~%~8Twhile ((i < strlen(s1->strval)) && (i < strlen(s2->strval)) && (s1->strval[i] == s2->strval[i])){i++;};~
-~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
-~%~8Tif (s2->count > 1){s1->count--;} else {safe_free(s2);}~
-~%~8T return i;}"))
+;; ;; (def-c-attach-primitive "cstring" "charcmp" "bool" '(c1 c2) '(cstring_cchar cstring_cchar)
+;; ;;   "{return c1 < c2;}")
+
+;; (def-c-attach-primitive "bytestrings" "strdiff" "uint32" '(s1 s2) '(bytestrings_bytestring bytestrings_bytestring)
+;;   (format nil "{uint32_t i = 0;~%~8Twhile ((i < s1->length) && (i < s2->length) && (s1->strval[i] == s2->strval[i])){i++;};~
+;; ~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
+;; ~%~8Tif (s2->count > 1){s1->count--;} else {safe_free(s2);}~
+;; ~%~8T return i;}"))
   
-(def-c-attach-primitive "cstring" "strcmp" "int8" '(s1 s2) '(cstring_cstring cstring_cstring)
-  (format nil "{~%~8T int8 cmp = strcmp(s1->strval, s2->strval);~
-~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
-~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2);}~
-~%~8Treturn (cmp < 0)? -1 : (cmp > 0) ?  1 : 0;~%}"))
+;; (def-c-attach-primitive "bytestrings" "strcmp" "int8" '(s1 s2) '(bytestrings_bytestring bytestrings_bytestring)
+;;   (format nil "{~%~8T int8 cmp = strcmp(s1->strval, s2->strval);~
+;; ~%~8Tif (s1->count > 1){s1->count--;} else {safe_free(s1);}~
+;; ~%~8Tif (s2->count > 1){s2->count--;} else {safe_free(s2);}~
+;; ~%~8Treturn (cmp < 0)? -1 : (cmp > 0) ?  1 : 0;~%}"))
 
-(def-c-attach-primitive "cstring" "substr" "cstring_cstring" '(s i j) '(cstring_cstring uint16 uint16)
-  (format nil "{uint16_t length = (i > j) ? i - j : j - i;~
-~%~8T uint16_t start = (i > j) ?  j :  i;~
-~%~8T cstring_cstring_t result = (cstring_cstring_t)safe_malloc(sizeof(string_s) + length);~
-~%~8T result->count = 1; result->size = length;~
-~%~8T memcpy(result->strval, (char *)(s + start), length);
-~%~8Tif (s->count > 1){s->count--;} else {safe_free(s);}~
-~%~8T return result; }"))
+;; (def-c-attach-primitive "bytestrings" "substr" "bytestrings_bytestring" '(s i j) '(bytestrings_bytestring uint32 uint32)
+;;   (format nil "{uint32_t length = (i > j) ? i - j : j - i;~
+;; ~%~8T uint32_t start = (i > j) ?  j :  i;~
+;; ~%~8T bytestrings_bytestring_t result = (bytestrings_bytestring_t)safe_malloc(sizeof(string_s) + length);~
+;; ~%~8T result->count = 1; result->size = length;~
+;; ~%~8T memcpy(result->strval, (char *)(s + start), length);
+;; ~%~8Tif (s->count > 1){s->count--;} else {safe_free(s);}~
+;; ~%~8T return result; }"))
+
+;; (def-c-attach-primitive "bytestrings" "prefix" "bytestrings_bytestring" '(s i) '(bytestrings_bytestring uint32)
+;;   (format nil "{return bytestrings_substr(s, 0, i);}"))
+
+;; (def-c-attach-primitive "bytestrings" "suffix" "bytestrings_bytestring" '(s i) '(bytestrings_bytestring uint32)
+;;   (format nil "{return bytestrings_substr(s, i, s->length);}"))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;C attachments for pvsio_prelude theories stdstr and stdio
 
-(def-c-attach-primitive "stdstr" "charcode" "string" '(x) '(uint8)
+(def-c-attach-primitive "stdstr" "charcode" "string" '(x) '(uint32)
   "{char c = (char) x;~%~8Tstring_t result = (string_t)safe_malloc(sizeof(string_s) + 2 * sizeof(char));~
  ~%~8T result->count = 1; result->size = 2; result->strval[0] = c; ~%~8T result->strval[1] = '\0';~
   ~%~8T return result;}")
@@ -410,20 +563,117 @@
 ~%~8Treturn result;~%}")
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;attachments for file operations
+;;(def-c-attach-primitive-type "file" "file_descriptor" "uint64_t")
+(def-c-attach-primitive-type "file" "void_action" "uint8_t")
+(def-c-attach-primitive-type "file" "file" "file_t")
+(def-c-attach-primitive "file" "null_action" "uint8" '() '() "{return 1;}" nil)
+
+(def-c-attach-primitive "file" "file_size" "uint32" '(f) '(file__file)
+  nil
+  "{uint32_t result = f->size;
+    release_file__file(f);
+    return result;}")
+
+(def-c-attach-primitive "file" "open?" "bool"
+  '(f)
+  '(file__file)
+  nil
+  "{struct stat s;
+    return (fstat(f->fd, &s) != -1);
+   }")
+    
+
+(def-c-attach-primitive "file" "open" "file__lifted_file_adt"
+  '(name)
+  '(bytestrings__bytestring)
+  nil
+  "{
+    char * filenamestring = byte2cstring(name->length, name->seq->elems);
+    uint64_t fd = open(filenamestring, O_RDWR, S_IRUSR | S_IWUSR);
+    release_bytestrings__bytestring(name); 
+    safe_free(filenamestring);
+    struct stat s;
+    if (fstat(fd, &s) == -1){
+       return file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
+       }
+    uint32_t size = s.st_size;
+    uint32_t capacity = 4096 * (size/4096 + 1);
+    char * contents = (char *) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    file_t ff = (file_t) safe_malloc(sizeof(file_s));
+    ff->count = 1;
+    ff->fd = fd;
+    ff->size = size;
+    ff->capacity = capacity;
+    ff->contents = contents;
+    ff->name = filenamestring;
+    return file__pass(ff);
+   }")
+
+(def-c-attach-primitive "file" "append" "file__lifted_file_adt" '(f b) '(file__file bytestrings__bytestring)
+  nil
+  "{uint64_t fd = f->fd;
+    uint32_t size = f->size;
+    uint32_t capacity = f->capacity;
+    char * contents = f->contents;
+    uint32_t len = b->length;
+    char * data = (char *)b->seq->elems;
+    ftruncate(fd, size + len);
+    if (size + len < capacity){
+    for (size_t i = 0; i < len; i++)
+      contents[i + size] = data[i];
+  } else {
+    munmap(contents, capacity);
+    uint32_t new_capacity = capacity + (10 * 4096);
+    char * new_contents = mmap(NULL, new_capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
+    for (size_t i = 0; i < len; i++)
+      new_contents[i + size] = data[i];
+    f->contents = new_contents;
+ };
+   f->size = size + len;
+   return file__pass(f);
+}")
+
+(def-c-attach-primitive "file" "getbyte" "uint8" '(f i) '(file__file uint32)
+  nil
+  "{uint8_t result = f->contents[i];
+    release_file__file(f);
+    return result;
+}")
+
+(def-c-attach-primitive "file" "getbytestring" "bytestrings__bytestring" '(f i size) '(file__file uint32 uint32)
+  nil
+  "{bytestrings_array_0_t newarray = new_bytestrings_array_0(size);
+    memcpy(newarray, (char *) f->contents + i, size);
+    bytestrings__bytestring_t newstring = new_bytestrings__bytestring();
+    newstring->length = size;
+    newstring->seq = newarray;
+    release_file__file(f);
+    return newstring;
+    }")
 
 
+;;(6-3-22): Need to add reference count to file type and treat it as a reference type in the IR
+(def-c-attach-primitive "file" "setbyte" "file__file" '(f i b) '(file__file uint32 uint8)
+  nil
+  "{if (f->count == 1){
+     f->contents[i] = b;
+     };
+    return f;
+}")
+
+(def-c-attach-primitive "file" "printc" "bytestrings__bytestring" '(b) '(bytestrings__bytestring) nil
+  "{printf(\"\\n\");
+    for (uint32_t i = 0; i < b->length; i++) printf(\"%c\", b->seq->elems[i]);
+    return b;
+   }
+")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+(def-c-attach-primitive "file" "printh" "bytestrings__bytestring" '(b) '(bytestrings__bytestring) nil
+  "{printf(\"\\n\");
+    for (uint32_t i = 0; i < b->length; i++) printf(\"%02X\", b->seq->elems[i]);
+    return b;
+   }
+")
