@@ -279,6 +279,7 @@
 	     (call-next-method)))
 	(t (call-next-method))))
 
+#+allegro
 (defrequest prove-formula (formula theory &optional rerun?)
   "Starts interactive proof of a formula from a given theory
 
@@ -306,8 +307,8 @@ Creates a ps-control-info struct to control the interaction.  It has slots
   ;;   (format t "~%After quitting prover~%"))
   (let ((res-gate (mp:make-gate nil)) ;; initially closed
 	(cmd-gate (mp:make-gate nil)) ;;   "
-	(lock #+allegro (mp:make-process-lock))
-	(proc #+allegro (mp:process-name-to-process "Initial Lisp Listener")))
+	(lock (mp:make-process-lock))
+	(proc (mp:process-name-to-process "Initial Lisp Listener")))
     (setq pvs:*multiple-proof-default-behavior* :noquestions)
     (setq pvs:*prover-commentary* nil)
     (setq pvs:*ps-control-info*
@@ -320,10 +321,9 @@ Creates a ps-control-info struct to control the interaction.  It has slots
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     ;; process-interrupt interrupts the main pvs process proc, and invokes
     ;; prove-formula
-    #+allegro (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
+    (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
     ;;(format t "~%prove-formula: after process-interrupt, about to wait")
-    #+allegro (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
-    #+allegro
+    (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
     (mp:with-process-lock (lock)
       (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))
 	;;(format t "~%prove-formula: returning json-result ~a~%" json-result)
