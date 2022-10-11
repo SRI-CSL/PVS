@@ -176,7 +176,7 @@
 		  (list (1+ a2) '+))
 		 ((and (numberp a2) (eq op '=))
 		  (list a2 a2))
-		 (t C-range nil))))))))
+		 (t (C-range nil)))))))))
 
 ;; ------------- Get the value of an expression -------------	  
 (defmethod get-value ((e name-expr))   (id e))
