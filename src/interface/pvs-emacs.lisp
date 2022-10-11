@@ -29,21 +29,6 @@
 
 (in-package :pvs)
 
-(defvar *pvs-message-hook* nil)
-(defvar *pvs-warning-hook* nil)
-(defvar *pvs-buffer-hook* nil)
-(defvar *pvs-y-or-n-hook* nil)
-(defvar *pvs-query-hook* nil)
-(defvar *pvs-dialog-hook* nil)
-
-(defun clear-pvs-hooks ()
-  (setq *pvs-message-hook* nil
-	*pvs-warning-hook* nil
-	*pvs-buffer-hook* nil
-	*pvs-y-or-n-hook* nil
-	*pvs-query-hook* nil
-	*pvs-dialog-hook* nil))
-
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")
 (defvar *prover-invoking-commands*
@@ -261,7 +246,7 @@
 	   (pvs-message "Theory ~a has no warning messages" theoryref))
 	  (t (pvs-buffer "PVS Warnings"
 	       (format nil "Warnings for theory ~a:~2%~{~a~^~2%~}"
-		 thname (mapcar #'cdr (warnings theory)))
+		 theoryref (mapcar #'cdr (warnings theory)))
 	       t t)))))
 
 (defun show-pvs-file-warnings (fileref)
@@ -621,13 +606,6 @@
     (or val
 	(format t "~%Not a valid choice - try again~%choice? ")
 	(read-choice query))))
-
-;;; The primary method (i.e., call-next-method) simply prints the proofstate in the
-;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
-;;; Websocket clients
-
-(defvar *pvs-emacs-output-proofstate-p* nil
-  "Set to t to try the Emacs frame interface - stiil in progress.")
 
 (defun emacs-output-proofstate (ps-string)
   (let* ((*output-to-emacs*
