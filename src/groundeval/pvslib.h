@@ -13,6 +13,13 @@
 
 #include<string.h>
 
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+
 //exit codes
 #define PVS2C_EXIT_OUT_OF_MEMORY   16
 #define PVS2C_EXIT_SYNTAX_ERROR    17
@@ -26,15 +33,16 @@
 
 
 typedef bool bool_t;
+typedef uint32_t char_t; //was char now uint32_t for expanded character code set
 typedef __int128_t int128_t;
 typedef  __uint128_t uint128_t;
 typedef mpz_ptr mpz_ptr_t;
 typedef mpq_ptr mpq_ptr_t;
 
-
+#define pvs2cerror(msg, code) printf("\n%s", msg); exit(code)
 
 /*
- * Print an error message then call exit(MCSAT_EXIT_OUT_OF_MEMORY)
+ * Print an error message then call exit(PVS2C_EXIT_OUT_OF_MEMORY)
  */
 extern void out_of_memory(void) __attribute__ ((noreturn));
 
@@ -95,6 +103,7 @@ extern int64_t rem_int64_uint64(int64_t x, uint64_t y);
 extern int64_t rem_int64_uint32(int64_t x, uint32_t y);
 extern uint128_t rem_uint128_uint128(int128_t x, uint128_t y); //deprecated
 extern int128_t rem_int128_uint128(int128_t x, uint128_t y); //deprecated
+extern uint32_t rem_mpz_uint32(mpz_t x, uint32_t y); 
 extern mpz_ptr_t pvsfloor_q_z(mpq_t x);
 extern mpq_ptr_t pvsfloor_q_q(mpq_t x);
 extern int64_t pvsfloor_q_i64(mpq_t x);
@@ -171,6 +180,10 @@ extern mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y);
 
 #define mpz_mk_fdiv_r(ret, x, y) z_init(ret, mpz_fdiv_r(ret, x, y));
 
+#define mpz_mk_fdiv_q_ui(ret, x, y) z_init(ret, mpz_fdiv_q_ui(ret, x, y));
+
+#define mpz_mk_fdiv_r_ui(ret, x, y) z_init(ret, mpz_fdiv_r_ui(ret, x, y));
+
 
 
 //--------------------------------------------------------------
@@ -231,36 +244,65 @@ extern mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y);
 #define HTBL_DEFAULT_SIZE 32
 #define HTBL_MAX_SIZE (UINT32_MAX/8)
 
-struct funtable_s {
-  void * (* copyptr)(void *);
-  void (* relptr)(void *);
-  bool_t (* eqptr)(void *, void *);
-};
-typedef struct funtable_s * funtable_t;
+/* struct funtable_s { */
+/*   void * (* copyptr)(void *); */
+/*   void (* relptr)(void *); */
+/*   bool_t (* eqptr)(void *, void *); */
+/* }; */
+/* typedef struct funtable_s * funtable_t; */
 
 typedef void * any_t;
 
-struct string_s {
+struct stringliteral_s {
   uint32_t count;
   uint32_t size;
-  char strval[];
-} string_s;
-typedef struct string_s * string_t;
+  uint32_t max;
+  uint32_t elems[];
+} stringliteral_s;
+typedef struct stringliteral_s * stringliteral_t;
 
-extern string_t mk_string(char * instring);
+uint32_t code(uint32_t x);
 
-enum mode_t {r, w, a};
+extern stringliteral_t mk_string(uint32_t length, uint32_t * instring);
+
+extern char * byte2cstring(uint32_t length, uint8_t * bstring);
+
+/* struct bytestring_s { */
+/*   uint32_t count; */
+/*   uint32_t length; */
+/*   uint8_t strval[]; */
+/* } bytestring_s; */
+/* typedef struct bytestring_s * bytestring_t; */
+
+/* extern bytestring_t mk_bytestring(char * instring); */
+
+//enum mode_t {r, w, a};
 
 struct stream_s {
   uint32_t count;
   FILE * strm;
 };
 
+struct file_s {
+  uint32_t count; //reference count
+  uint64_t fd; //file descriptor
+  uint32_t size;
+  uint32_t capacity;
+  char * name; 
+  char * contents; 
+} file_s;
+typedef struct file_s * file_t;
+
+extern void release_file__file(file_t file);
+
+extern bool_t equal_file__file(file_t file1, file_t file2);
+
 struct pointer_s {uint32_t count;};
 typedef struct pointer_s * pointer_t;
 typedef struct type_actual_s * type_actual_t;
 typedef bool_t (*equal_ptr_t)(pointer_t x, pointer_t y, type_actual_t T);
 typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
+typedef char * (*json_ptr_t)(pointer_t x, type_actual_t T);
 
 
 /* extern bool_t equal_uint64(pointer_t x, pointer_t y, ...); */
@@ -269,8 +311,33 @@ typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
 
  struct type_actual_s { 
    equal_ptr_t equal_ptr; 
-   release_ptr_t release_ptr; 
+   release_ptr_t release_ptr;
+   json_ptr_t json_ptr;
  };
+
+extern char * safe_strcat(char * s1, char * s2);
+extern char * json_char(uint32_t x);
+extern char * json_uint8(uint8_t x);
+extern char * json_uint16(uint16_t x);
+extern char * json_uint32(uint32_t x);
+extern char * json_uint64(uint64_t x);
+extern char * json_int8(int8_t x);
+extern char * json_int16(int16_t x);
+extern char * json_int32(int32_t x);
+extern char * json_int64(int64_t x);
+extern char * json_mpz(mpz_t x);
+extern char * json_mpq(mpq_t x);
+
+/* struct bytestring_s { */
+/*         uint32_t count;  */
+/*         uint32_t length; */
+/*         bytestrings_array_0_t seq;}; */
+/* typedef struct bytestrings__bytestring_s * bytestrings__bytestring_t; */
+
+/* extern char * json_bytestrings__bytestring(bytestrings__bytestring_t b); */
+
+extern char * json_list_with_sep(char ** input, uint32_t length, char open, char sep, char close);
+
 
  /* actual_uint64 = {(*equal_uint64), (*release_uint64)}; */
 
