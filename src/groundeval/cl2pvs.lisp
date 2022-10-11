@@ -119,17 +119,25 @@
   (cond ((string-type? type)
 	 (cl2pvs*-string sexpr))
 	((finseq-type? type)
-	 (let ((len (elt sexpr 0))
-	       (fn (elt sexpr 1))) ;; (format t "~%cl2pvs*(recordtype)")
-	   (mk-application (mk-name-expr '|list2finseq|)
-			   (cl2pvs*-list (loop for x from 0 to (- len 1) collect (pvs-funcall fn x))
-					 (finseq-type? type)
-					 context))))
+	 (let* ((len (elt sexpr 0))
+		(fn (elt sexpr 1))
+		(ne (mk-name-expr '|char?|))
+		(charcodelist (loop for x from 0 to (- len 1)
+				    collect
+				    (pvs-funcall fn x))))
+	   (make-instance 'string-expr
+			  'string-value (format nil "~{~a~}"
+						    (loop for chcode in charcodelist
+							  collect (code-char chcode)))
+			  'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
+			  'argument (cl2pvs*-string* charcodelist))))
+	   ;; (mk-application (mk-name-expr '|list2finseq|)
+	   ;; 		   chars)
 	(t ;;(format t "~%wrong branch")
 	 (mk-record-expr
 	  (loop for fld in (sorted-fields type)
 		as i from 0
-		collect	(mk-assignment 'uni
+		collect (mk-assignment 'uni
 				       (list (list (mk-name-expr (id fld))))
 				       (cl2pvs* (svref sexpr i) (type fld) context)))))))
 
