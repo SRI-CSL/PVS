@@ -578,6 +578,10 @@
 		       ;; if expr is a subclass of patt, might lack some slots:
 		       (patt-args (ignore-errors (funcall subexpr-fn patt))))
 		  (when (and expr-args patt-args)
+		    (when (and (null (cadr patt-args))
+			       (name-expr? expr)
+			       (actuals expr))
+		      (setf (cadr expr-args) nil))
 		    (submatches expr-args patt-args))))))
 
 	(t nil))))      ;; no case applies -> match fails
@@ -815,10 +819,20 @@
     (type_name type-name   ,#'name-type-elements)
     (expr_as_type expr-as-type   ;; (expr)
 		  ,#'(lambda (e) (list (list (expr e)))))
-    (subtype  subtype      ;; ((bindings expression) of predicate) 
-	      ,#'(lambda (e)
-		   (let ((p (predicate e)))
-		     (list (bindings p) (list (expression p))))))
+    (subtype subtype ;; ((bindings expression) of predicate) 
+	     ,#'(lambda (e)
+		  (let ((p (predicate e)))
+		    (typecase p
+		      (lambda-expr
+		       (list (bindings p) (list (expression p))))
+		      (application
+		       (list (list (operator p)) (arg-expr-objects p)))
+		      (name-expr
+		       (list (cons (id p)
+				   (nconc (and (mod-id p) (list (mod-id p)))
+					  (and (library p) (list (library p)))))
+			     (mapcar #'expr (actuals p))))
+		      (t (break "Missing predicate expr class"))))))
     (type_applic type-application   ;; (type parameters)
 		 ,#'(lambda (e) (list (list (type e)) (parameters e))))
     (funtype  funtype      ;; (domain range)
