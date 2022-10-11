@@ -6095,8 +6095,8 @@ END tostring
 file: THEORY
 BEGIN
 
-  void_action: TYPE+
-  null_action: void_action
+  % void_action: TYPE+
+  % null_action: void_action
   %file_descriptor : TYPE+ %uninterpreted
   file: TYPE+ %= [# name: bytestring, capacity: index, 
                %   fd : file_descriptor, contents : bytestring #]
@@ -6126,9 +6126,9 @@ BEGIN
 
   setbyte(f: file, (i : below(file_size(f))), (b: byte)): file
 
-  printc(b : bytestring): void_action %prints characters
+  printc(b : bytestring): bytestring %prints characters
 
-  printh(b : bytestring): void_action %prints bytes
+  printh(b : bytestring): bytestring %prints bytes
 
 END file
 

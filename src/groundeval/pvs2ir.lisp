@@ -1283,7 +1283,7 @@
 		 (theory-instance (or thclone (subst-mod-params theory thinst)))
 		 (dummy2 (when thclone (format t "~%Found thclone")))
 		 (instdecl (find  decl (theory theory-instance) :key #'generated-by))
-		 );(break "nonref-actuals")			;place information matches
+		 )(break "nonref-actuals")			;place information matches
 	    (cond (thclone (ir (eval-info instdecl)))
 		  (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
 		     (setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
@@ -1787,7 +1787,7 @@
 			    (loop for fml in ir-formals
 				  as formal in ref-formals
 				  collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal)))
-			  (loop for fml in formals collect (get-assoc fml bindings))))
+			(loop for fml in formals collect (get-assoc fml bindings))))
 		       (actual-types
 			(loop for actual in ref-actuals
 			      as formal in ref-formals
@@ -6151,7 +6151,7 @@
 
 (defun mk-closure-c-type-info (ir-texpr tname tdecl tdefn ftable-type-defn release-info copy-info
 					hash-entry-type-defn hash-type-defn
-					lookup-info dupdate-info update-info equal-info)
+					lookup-info dupdate-info update-info equal-info json-info)
     (when (ir-type? ir-texpr)(setf (unique-name ir-texpr) tname))
   (make-instance 'closure-c-type-info
 		   :ir-texpr ir-texpr
@@ -6166,9 +6166,10 @@
 		   :lookup-info lookup-info
 		   :dupdate-info dupdate-info
 		   :update-info update-info
-		   :equal-info equal-info))
+		   :equal-info equal-info
+		   :json-info json-info))
 
-(defun mk-c-type-info (ir-texpr tname tdefn act-defn new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info &optional upgrade-info)
+(defun mk-c-type-info (ir-texpr tname tdefn act-defn new-info release-info release-ptr-info copy-info equal-info equal-ptr-info json-info json-ptr-info update-info &optional upgrade-info)
   (when (ir-type? ir-texpr) (setf (unique-name ir-texpr) tname))
   (make-instance 'c-type-info
 		   :ir-texpr ir-texpr
@@ -6180,7 +6181,9 @@
 		   :release-ptr-info release-ptr-info
 		   :copy-info copy-info
 		   :equal-info equal-info
-		   :equal-ptr-info equal-ptr-info		   
+		   :equal-ptr-info equal-ptr-info
+		   :json-info json-info
+		   :json-ptr-info json-ptr-info		   
 		   :update-info update-info
 		   :upgrade-info upgrade-info))
 
@@ -6684,11 +6687,13 @@
 				 (copy-info (make-array-copy-info type-name-root size elemtype c-range-root c-param-decl-string))
 				 (equal-info (make-array-equal-info type-name-root size elemtype  c-range-root c-param-decl-string c-param-arg-string))
 				 (equal-ptr-info (make-array-equal-ptr-info type-name-root size elemtype  c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string))
+				 (json-info (make-array-json-info type-name-root size elemtype  c-range-root c-param-decl-string c-param-arg-string))
+				 (json-ptr-info (make-array-json-ptr-info type-name-root size elemtype  c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string))
 				 (update-info (list (make-array-update-info type-name-root elemtype c-range-root c-param-arg-string c-param-decl-string)))
 				 (actual-info (make-actual-info type-name-root theory-params c-param-decl-string))
 				 );(break "add-c-type-definition(ir-funtype)");(break "Shouldn't reach here")
 			    (push-type-info-to-decl
-			     (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info) ; deleted actual-info
+			     (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info json-info json-ptr-info update-info) ; deleted actual-info
 			     *pvs2c-current-decl*)
 			    type-name-root)
 			(let* ((hash-entry-type-defn
@@ -6725,13 +6730,14 @@
 				(lookup-info (when hashtype (make-function-lookup-info type-name-root c-domain-root hashtype)))
 				(dupdate-info (when hashtype (make-function-dupdate-info type-name-root c-domain-root hashtype c-range-root elemtype c-param-arg-string c-param-decl-string)))
 				(update-info (when hashtype (make-function-update-info type-name-root c-domain-root c-range-root c-param-arg-string c-param-decl-string)))
-				(equal-info (make-function-equal-info type-name-root c-param-decl-string)))
+				(equal-info (make-function-equal-info type-name-root c-param-decl-string))
+				(json-info (make-function-json-info type-name-root c-param-decl-string)))
 			  ;;equal is defined to return false on function types.
 			  (when (get-c-type-info ir2c-type) (break "add-c- ir-funtype"))
 			  (push-type-info-to-decl
 			   (mk-closure-c-type-info ir2c-type type-name-root type-decl type-defn ftable-type-defn
 						   release-info copy-info  hash-entry-type-defn hash-type-defn
-						   lookup-info dupdate-info update-info equal-info)
+						   lookup-info dupdate-info update-info equal-info json-info)
 			   *pvs2c-current-decl*)))
 		      type-name-root)))))
 
@@ -6743,6 +6749,15 @@
 	 (new-defn (format nil "bool_t equal_~a(~a_t x, ~a_t y~a){~%~8Treturn false;}"
 			   type-name-root type-name-root type-name-root c-param-decl-string)))
     (mk-c-defn-info new-name new-header new-defn (list type-name-root type-name-root) type-name-root )))
+
+(defun make-function-json-info (type-name-root c-param-decl-string)
+  (let* ((name (format nil "json_~a" type-name-root))
+	 (header (format nil "extern char* ~a(~a_t x~a)" name type-name-root c-param-decl-string))
+	 (type-name-root-string (string type-name-root))
+	 (defn (format nil "char* ~a(~a_t x~a){char * result = safe_malloc(~a); sprintf(result, \"%s\", \"\\\"~a\\\"\"); return result;}"
+		       name type-name-root c-param-decl-string
+		       (+ (length type-name-root-string) 10) type-name-root-string)))
+    (mk-c-defn-info name  (format nil "~a;" header) defn (list type-name-root) type-name-root)))
 
 (defun make-function-copy-info (type-name-root c-domain-root)
   (let* ((name (format nil "copy_~a" type-name-root))
@@ -6950,13 +6965,15 @@
 						c-range-root c-param-arg-string theory-c-params-variadic c-param-decl-string))
 	 (copy-info (make-array-copy-info type-name-root size elemtype c-range-root c-param-decl-string))
 	 (equal-info (make-array-equal-info type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string))
-	 (equal-ptr-info (make-array-equal-ptr-info type-name-root size elemtype c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string))	 
+	 (equal-ptr-info (make-array-equal-ptr-info type-name-root size elemtype c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string))
+	 (json-info (make-array-json-info type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string))
+	 (json-ptr-info (make-array-json-ptr-info type-name-root size elemtype c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string))
 	 (update-info (list (make-array-update-info type-name-root elemtype c-range-root c-param-arg-string c-param-decl-string)))
 	 (upgrade-info (list (make-array-upgrade-info type-name-root elemtype c-range-root c-param-arg-string c-param-decl-string)))
 	 (actual-info (make-actual-info type-name-root theory-params c-param-decl-string))
 	 )
     (push-type-info-to-decl
-     (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info upgrade-info)
+     (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info json-info json-ptr-info update-info upgrade-info)
      *pvs2c-current-decl*)
     type-name-root))
 
@@ -6983,13 +7000,14 @@
  ~%~8Tactual_~a_t new = (actual_~a_t)safe_malloc(sizeof(struct actual_~a_s));~
  ~%~8Tnew->equal_ptr = (equal_ptr_t)(*equal_~a_ptr);
  ~%~8Tnew->release_ptr = (release_ptr_t)(*release_~a_ptr);
+ ~%~8Tnew->json_ptr = (json_ptr_t)(*json_~a_ptr);
  ~%~{~%~8T~a~}
  ~%~8Treturn new;
  };"
  			     type-name-root type-name-root ;removed ~{type_actual_t ~a~^,~} type-param-ids
 			     (subseq c-param-decl-string 2);remove leading comma+space
  			     type-name-root type-name-root type-name-root
-			     type-name-root type-name-root
+			     type-name-root type-name-root type-name-root;;for equal/release/json_ptr
  			     (loop for param in theory-params collect
  			      	   (format nil "new->~a = ~a;" (ir-formal-id param) (ir-formal-id param))))))
   (mk-ir-actual-info actual-type-def actual-def-header actual-def)))
@@ -7145,6 +7163,60 @@
 	 (equal-defn (make-array-equal-defn equal-name type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)))
     (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
 
+(defun make-array-json-info (type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)
+  (let* ((json-name (intern (format nil "json_~a" type-name-root)))
+	 (json-header (make-array-json-header json-name type-name-root elemtype c-param-decl-string))
+	 (json-defn (make-array-json-defn json-name type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)))
+    (mk-c-defn-info json-name json-header json-defn (list type-name-root) "char *")))
+
+(defun make-array-json-header (json-name type-name-root elemtype c-param-decl-string)
+  (declare (ignore elemtype))
+  (format nil "extern char * ~a(~a_t x~a);" 
+	  json-name type-name-root  c-param-decl-string)
+  )
+
+(defun make-array-json-defn (json-name type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)
+  (declare (ignore size))
+  (let* ((json-expr (if (ir-formal-typename? elemtype)
+			(format nil "~a->json_ptr(x->elems[i], ~a)"
+				c-range-root c-range-root)
+		      (if (ir-reference-type? elemtype)
+			  (format nil "json_~a(x->elems[i]~a)"
+					;size
+				  c-range-root c-param-arg-string)
+			(format nil "json_~a(x->elems[i])"
+					;size
+				c-range-root))))
+	 (json-instr (format nil "for (uint32_t i = 0; i < x->size; i++){tmp[i] = ~a;}"
+					;size
+			      json-expr)))
+    (format nil "char * ~a(~a_t x~a){~%~8Tchar ** tmp = (char **)safe_malloc(sizeof(void *) * x->size);~%~8T~a;~%~8Tchar * result = json_list_with_sep(tmp, x->size, '[', ',', ']');~%~8Tfor (uint32_t i = 0; i < x->size; i++) free(tmp[i]);~%~8Tfree(tmp);~%~8Treturn result;}"   
+	    json-name type-name-root 
+	    c-param-decl-string
+	    json-instr)
+    ))
+
+(defun make-array-json-ptr-info (type-name-root size elemtype c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string)
+  (let* ((json-name (intern (format nil "json_~a" type-name-root)))
+	 (json-header (make-array-json-ptr-header json-name type-name-root elemtype c-param-decl-string))
+	 (json-defn (make-array-json-ptr-defn json-name type-name-root size elemtype c-range-root theory-c-params-variadic c-param-arg-string)))
+    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) 'bool)))
+
+(defun make-array-json-ptr-header (json-name type-name-root elemtype c-param-decl-string)
+  (declare (ignore type-name-root elemtype c-param-decl-string))
+  (format nil "extern char * ~a_ptr(pointer_t x, type_actual_t T);" 
+	  json-name)
+    )
+
+(defun make-array-json-ptr-defn (json-name type-name-root size elemtype c-range-root theory-c-params-variadic c-param-arg-string)
+  (declare (ignore size elemtype c-range-root))
+  (format nil "char * ~a_ptr(pointer_t x, type_actual_t T){~a~%~8Treturn ~a((~a_t)x~a);~%}" json-name
+	(if theory-c-params-variadic ;don't introduce actual if params is empty
+	    (format nil "~%~8Tactual_~a_t actual = (actual_~a_t)T;~{~%~8T~a;~}" type-name-root type-name-root theory-c-params-variadic)
+	  "")
+	json-name type-name-root  c-param-arg-string)
+)
+
 (defun make-array-equal-header (equal-name type-name-root elemtype c-param-decl-string)
   (declare (ignore elemtype))
 ;;  (if (or (ir-formal-typename? elemtype)(ir-reference-type? elemtype))
@@ -7152,16 +7224,16 @@
 	  equal-name type-name-root type-name-root c-param-decl-string)
     ;; (format nil "extern bool_t ~a(~a_t x, ~a_t y);" 
     ;; 	      equal-name type-name-root type-name-root)
-    )
+  )
 
 (defun make-array-equal-defn (equal-name type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)
   (declare (ignore size))
   (let ((equal-instr (if (ir-formal-typename? elemtype)
-			     (format nil "while (i < x->size && tmp){tmp = ~a->equal_ptr(x->elems[i], y->elems[i], ~a);}"
+			     (format nil "while (i < x->size && tmp){tmp = ~a->equal_ptr(x->elems[i], y->elems[i], ~a); i++;}"
 					;size
 				     c-range-root c-range-root)
 		       (if (ir-reference-type? elemtype)
-			   (format nil "while (i < x->size && tmp){tmp = equal_~a(x->elems[i], y->elems[i]~a);}"
+			   (format nil "while (i < x->size && tmp){tmp = equal_~a(x->elems[i], y->elems[i]~a); i++;}"
 					;size
 				   c-range-root c-param-arg-string)
 			 (if (eq elemtype 'mpz)
@@ -7181,6 +7253,7 @@
 	;;        ~%~8T~a;~%~8Treturn tmp;}"   
 	;; 	equal-name type-name-root type-name-root equal-instr)
 	))
+
 
 (defun make-array-equal-ptr-info (type-name-root size elemtype c-range-root theory-c-params-variadic c-param-decl-string c-param-arg-string)
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
@@ -7296,6 +7369,12 @@
 			     (equal-ptr-info (make-record-equal-ptr-info type-name-root 
 									theory-c-params-variadic 
 									c-param-arg-string))
+			     (json-info (make-record-json-info type-name-root ir-field-types c-field-types
+								 c-param-arg-string
+								 c-param-decl-string))
+			     (json-ptr-info (make-record-json-ptr-info type-name-root 
+									theory-c-params-variadic 
+									c-param-arg-string))
 			     (update-info (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (make-record-field-update-info type-name-root ft cft
@@ -7304,7 +7383,7 @@
 			     (actual-info (make-actual-info type-name-root theory-params c-param-decl-string)))
 			;(when (get-c-type-info ir2c-type) (break "add-c- ir-recordtype"))
 			(push-type-info-to-decl
-			 (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info)
+			 (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info json-info json-ptr-info update-info)
 			 *pvs2c-current-decl*)
 			    type-name-root))))))
 
@@ -7341,13 +7420,16 @@
 			     (equal-info (make-adt-record-equal-info type-name-root ir-field-types c-field-types ir-constructors
 								     c-param-arg-string c-param-decl-string))
 			     (equal-ptr-info (make-record-equal-ptr-info type-name-root theory-c-params-variadic c-param-arg-string));reusing the record-equal-ptr defn
+			     (json-info (make-adt-record-json-info type-name-root ir-field-types c-field-types ir-constructors
+								     c-param-arg-string c-param-decl-string))
+			     (json-ptr-info (make-record-json-ptr-info type-name-root theory-c-params-variadic c-param-arg-string));reusing the record-equal-ptr defn
 			     (update-info (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (make-record-field-update-info type-name-root ft cft
 										       c-param-arg-string
 										       c-param-decl-string)))
 			     (actual-info (make-actual-info type-name-root theory-params c-param-decl-string)))
-			(push-type-info-to-decl (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info update-info)
+			(push-type-info-to-decl (mk-c-type-info ir2c-type type-name-root type-defn actual-info new-info release-info release-ptr-info copy-info equal-info equal-ptr-info json-info json-ptr-info update-info)
 						    *pvs2c-current-decl*)
 			    type-name-root))))))
 
@@ -7455,6 +7537,15 @@
 						 c-field-types constructors c-param-arg-string  c-param-decl-string)))
     (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
 
+(defun make-adt-record-json-info (type-name-root ir-field-types c-field-types constructors
+						  c-param-arg-string  c-param-decl-string)
+  (let* ((json-name (intern (format nil "json_~a" type-name-root)))
+	 (json-header (format nil "extern char * ~a(~a_t x~a);" json-name
+			      type-name-root c-param-decl-string))
+	 (json-defn (make-adt-record-json-defn type-name-root ir-field-types
+						 c-field-types constructors c-param-arg-string  c-param-decl-string)))
+    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) 'bool)))
+
 (defun make-adt-record-equal-defn (type-name-root ir-field-types c-field-types constructors
 						  c-param-arg-string  c-param-decl-string)
   (declare (ignore ir-field-types c-field-types))
@@ -7469,15 +7560,38 @@
     (format nil "bool_t equal_~a(~a_t x, ~a_t y~a){~%~8Tbool_t tmp = x->~a_index == y->~a_index;~%~8Tswitch  (x->~a_index) {~{~%~16T~a;~}~%~8T}~%~8Treturn tmp;~%}" type-name-root type-name-root type-name-root c-param-decl-string
 	    type-name-root type-name-root type-name-root equal-constructor-instrs)))
 
+(defun make-adt-record-json-defn (type-name-root ir-field-types c-field-types constructors
+						  c-param-arg-string  c-param-decl-string)
+  (declare (ignore ir-field-types c-field-types))
+  (let ((json-constructor-instrs (loop for constructor in constructors
+					as index from 0
+					when (cdr constructor)
+					collect
+					(format nil "case ~a: tmp = safe_strcat(tmp, json_~a((~a_t) x~a)); break"
+						index (car constructor)(car constructor)
+						c-param-arg-string))))
+    (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp = safe_malloc(24); sprintf(tmp, \"{ constructor = %u\", x->~a_index);~%~8Tswitch  (x->~a_index) {~{~%~16T~a;~}~%~8T};~%~8Ttmp = safe_strcat(tmp, \" }\");~%~8Treturn tmp;~%}" type-name-root type-name-root c-param-decl-string
+	    type-name-root type-name-root json-constructor-instrs)))
+
 (defun make-record-equal-ptr-info (type-name-root theory-c-params-variadic c-param-arg-string)
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
 	 (equal-header (make-record-equal-ptr-header equal-name type-name-root))
 	 (equal-defn (make-record-equal-ptr-defn equal-name type-name-root theory-c-params-variadic c-param-arg-string)))
     (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
 
+(defun make-record-json-ptr-info (type-name-root theory-c-params-variadic c-param-arg-string)
+  (let* ((json-name (intern (format nil "json_~a" type-name-root)))
+	 (json-header (make-record-json-ptr-header json-name type-name-root))
+	 (json-defn (make-record-json-ptr-defn json-name type-name-root theory-c-params-variadic c-param-arg-string)))
+    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) "char *")))
+
 (defun make-record-equal-ptr-header (equal-name type-name-root)
   (format nil "extern bool_t ~a_ptr(pointer_t x, pointer_t y, actual_~a_t T);" 
 	  equal-name type-name-root))
+
+(defun make-record-json-ptr-header (json-name type-name-root)
+  (format nil "extern char * ~a_ptr(pointer_t x,  actual_~a_t T);" 
+	  json-name type-name-root))
 
 (defun make-record-equal-ptr-defn (equal-name type-name-root  theory-c-params-variadic c-param-arg-string)
   (format nil "bool_t ~a_ptr(pointer_t x, pointer_t y, actual_~a_t T){~a~%~8Treturn ~a((~a_t)x, (~a_t)y~a);~%}" equal-name type-name-root
@@ -7485,6 +7599,21 @@
 	      (format nil "~%~8Tactual_~a_t actual = (actual_~a_t)T;~{~%~8T~a;~}" type-name-root type-name-root theory-c-params-variadic)
 	    "")
 	  equal-name type-name-root type-name-root c-param-arg-string))
+
+(defun make-record-json-ptr-defn (json-name type-name-root  theory-c-params-variadic c-param-arg-string)
+  (format nil "char * ~a_ptr(pointer_t x, actual_~a_t T){~a~%~8Treturn ~a((~a_t)x~a);~%}" json-name type-name-root
+	  (if theory-c-params-variadic ;don't introduce actual if params is empty
+	      (format nil "~%~8Tactual_~a_t actual = (actual_~a_t)T;~{~%~8T~a;~}" type-name-root type-name-root theory-c-params-variadic)
+	    "")
+	  json-name type-name-root c-param-arg-string))
+
+(defun make-record-json-info (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
+    (let* ((json-name (intern (format nil "json_~a" type-name-root)))
+	   (json-header (format nil "extern char * ~a(~a_t x~a);" json-name
+				type-name-root  c-param-decl-string))
+	   (json-defn (make-record-json-defn type-name-root ir-field-types c-field-types c-param-arg-string
+					     c-param-decl-string)))
+      (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) "char *")))
 
 (defun make-record-equal-info (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
@@ -7498,7 +7627,7 @@
   (let ((equal-field-instrs
 	 (loop for ft in ir-field-types
 	       as cft in c-field-types
-	       collect (if (ir-formal-typename? ft)
+	       collect (if (ir-formal-typename? (ir-ftype ft))
 			   (format nil "~%~8Ttmp = tmp && ~a->equal_ptr(x->~a, y->~a, ~a)"
 				   cft
 				   (ir-id ft)
@@ -7513,7 +7642,38 @@
 			     (format nil "~%~8Ttmp = tmp && x->~a == y->~a"
 				     (ir-id ft)  (ir-id ft)))))))
     (format nil "bool_t equal_~a(~a_t x, ~a_t y~a){~%~8Tbool_t tmp = true;~{~a;~}~%~8Treturn tmp;}"
-	     type-name-root type-name-root type-name-root  c-param-decl-string equal-field-instrs)))
+	    type-name-root type-name-root type-name-root  c-param-decl-string equal-field-instrs)))
+
+(defun make-record-json-defn (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
+  (let ((len (length ir-field-types))
+	(json-field-instrs
+	 (loop for ft in ir-field-types
+	       as cft in c-field-types
+	       as index from 0
+	       collect (let* ((stringft (string (ir-id ft)))
+			      (lengthft (+ (length stringft) 12))
+			      (fldvar (format nil "fld~a" index))
+			      (stmt (format nil "~%~8Tchar * ~a = safe_malloc(~a);~%~8T sprintf(~a, \"\\\"~a\\\" : \")" fldvar lengthft fldvar stringft)))
+			 (if (ir-formal-typename? (ir-ftype ft))
+			     (format nil "~a;~%~8Ttmp[~a] = safe_strcat(~a, ~a->json_ptr(x->~a, ~a))"
+				     stmt
+				     index
+				     fldvar
+				   cft
+				   (ir-id ft)
+				   cft)
+			   (if (ir-reference-type? (ir-ftype ft))
+			       (format nil "~a;~%~8Ttmp[~a] = safe_strcat(~a, json_~a(x->~a~a))"
+				       stmt
+				       index
+				       fldvar
+				       cft
+				       (ir-id ft)
+				       c-param-arg-string)
+			     (format nil "~a;~%~8Ttmp[~a] = safe_strcat(~a, json_~a(x->~a))"
+				     stmt index fldvar cft (ir-id ft))))))))
+    (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp[~a]; ~{~a;~}~%~8T char * result = json_list_with_sep(tmp, ~a,  \'{\', \',\', \'}\');~%~8T for (uint32_t i = 0; i < ~a; i++) free(tmp[i]);~%~8Treturn result;}"
+	     type-name-root type-name-root c-param-decl-string len  json-field-instrs len len)))
 
 
 (defun make-record-field-update-info (type-name-root ir-field-type c-field-type
@@ -8315,7 +8475,7 @@
 
 (defmethod print-type-defn-headers ((type-info closure-c-type-info) output)
   (with-slots (tdecl tdefn ftable-type-defn release-info hash-entry-type-defn hash-type-defn
-		     copy-info lookup-info dupdate-info update-info equal-info)
+		     copy-info lookup-info dupdate-info update-info equal-info json-info)
 	      type-info
 	      (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
 		      tdecl ftable-type-defn hash-entry-type-defn hash-type-defn tdefn)
@@ -8325,18 +8485,21 @@
 	      (when dupdate-info (format output "~a~%~%" (op-header dupdate-info)))
 	      (when update-info (format output "~a~%~%" (op-header update-info)))
 	      (when equal-info (format output "~a~%~%" (op-header equal-info)))
+	      (when json-info (format output  "~a~%~%" (op-header json-info)))
 	      ))
 
 (defmethod print-type-defn-headers ((type-info c-type-info) output)
-  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~a~%~%~a~%~a~%~%~a~%~%"
+  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~a~%~%~a~%~a~%~%~a~%~%~a~%~%~a~%~%"
 	  (tdefn type-info)
 	  (op-header (new-info type-info))
 	  (op-header (release-info type-info))
 	  (op-header (copy-info type-info))
 	  (op-header (equal-info type-info))
+	  (if (json-info type-info)(op-header (json-info type-info))(format nil " "))
 	  (if (act-defn type-info)(ir-actual-type-defn (act-defn type-info))(format nil " "))
 	  (if (release-ptr-info type-info)(op-header (release-ptr-info type-info)) (format nil " "))
 	  (if (equal-ptr-info type-info)(op-header (equal-ptr-info type-info)) (format nil " "))
+	  (if (json-ptr-info type-info)(op-header (json-ptr-info type-info)) (format nil " "))	  
 	  (if (act-defn type-info)(ir-actual-fun-header (act-defn type-info)))(format nil " ")) 
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-header t-info)))
@@ -8366,23 +8529,26 @@
   nil); do nothing
 
 (defmethod print-type-defns ((type-info closure-c-type-info) output)
-  (with-slots (release-info copy-info lookup-info dupdate-info update-info equal-info) type-info
+  (with-slots (release-info copy-info lookup-info dupdate-info update-info equal-info json-info) type-info
 	      (format output "~%~%~a" (op-defn release-info))
 	      (format output "~%~%~a" (op-defn copy-info))
 	      (when lookup-info (format output "~%~%~a" (op-defn lookup-info)))
 	      (when dupdate-info (format output "~%~%~a" (op-defn dupdate-info)))
 	      (when update-info (format output "~%~%~a" (op-defn update-info)))
-	      (when equal-info (format output "~%~%~a" (op-defn equal-info)))))
+	      (when equal-info (format output "~%~%~a" (op-defn equal-info)))
+	      (when json-info (format output "~%~%~a" (op-defn json-info)))))
 
 
 (defmethod print-type-defns ((type-info c-type-info) output)
-  (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+  (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
 	  (op-defn (new-info type-info))
 	  (op-defn (release-info type-info))
 	  (if (release-ptr-info type-info)(op-defn (release-ptr-info type-info))(format nil " "))
 	  (op-defn (copy-info type-info))
 	  (op-defn (equal-info type-info))
+	  (if (json-info type-info)(op-defn (json-info type-info))(format nil " "))
 	  (if (equal-ptr-info type-info)(op-defn (equal-ptr-info type-info))(format nil " "))
+	  (if (json-ptr-info type-info)(op-defn (json-ptr-info type-info))(format nil " "))
 	  (if (equal-ptr-info type-info)(ir-actual-fun-defn (act-defn type-info))(format nil " ")))
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-defn t-info)))

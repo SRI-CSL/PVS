@@ -574,6 +574,14 @@
     release_file__file(f);
     return result;}")
 
+(def-c-attach-primitive "file" "open?" "bool"
+  '(f)
+  '(file__file)
+  nil
+  "{struct stat s;
+    return (fstat(f->fd, &s) != -1);
+   }")
+    
 
 (def-c-attach-primitive "file" "open" "file__lifted_file_adt"
   '(name)
@@ -653,16 +661,18 @@
     return f;
 }")
 
-(def-c-attach-primitive "file" "printc" "uint8" '(b) '(bytestrings__bytestring) nil
-  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%c\", b->seq->elems[i]);
-    return 0;
+(def-c-attach-primitive "file" "printc" "bytestrings__bytestring" '(b) '(bytestrings__bytestring) nil
+  "{printf(\"\\n\");
+    for (uint32_t i = 0; i < b->length; i++) printf(\"%c\", b->seq->elems[i]);
+    return b;
    }
 ")
 
 
-(def-c-attach-primitive "file" "printh" "uint8" '(b) '(bytestrings__bytestring) nil
-  "{for (uint32_t i = 0; i < b->length; i++) printf(\"%02X\", b->seq->elems[i]);
-    return 0;
+(def-c-attach-primitive "file" "printh" "bytestrings__bytestring" '(b) '(bytestrings__bytestring) nil
+  "{printf(\"\\n\");
+    for (uint32_t i = 0; i < b->length; i++) printf(\"%02X\", b->seq->elems[i]);
+    return b;
    }
 ")
 

@@ -471,7 +471,7 @@ uint32_t code(uint32_t x){
 stringliteral_t mk_string(uint32_t length, uint32_t * instring){ 
   stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(uint32_t)));
   //  printf("\nmk_string input =");
-  for (uint32_t i = 0; i < length; i++) printf(" %"PRIu32",", instring[i]); 
+  //for (uint32_t i = 0; i < length; i++) printf(" %"PRIu32",", instring[i]); 
 
    result->count = 1;
    result->size = length;
@@ -515,4 +515,105 @@ bool_t equal_file__file(file_t file1, file_t file2){
   release_file__file(file1);
   release_file__file(file2);
   return result;
+}
+//------------------------------------------------------------------
+//json printing routines for the various types
+
+//safe_strcat allocates enough memory to concat s1 and s2.  It possibly mutates/frees s1 and does not free s2. 
+char * safe_strcat(char * s1, char * s2){
+  size_t l1 = strlen(s1);
+  size_t l2 = strlen(s2);
+  size_t slack2 = (SIZE_MAX - l1)/2;
+  if (slack2 < l2) out_of_memory();//should this be a different error message
+  char * new_s1 = safe_realloc(s1, l1 + 2*l2);
+  strcat(new_s1, s2);
+  return new_s1;
+}
+
+//
+
+char * json_char(uint32_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu32"", x);
+  return out;
+}
+
+char * json_uint8(uint8_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu8"", x);
+  return out;
+}
+
+char * json_uint16(uint16_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu16"", x);
+  return out;
+}
+
+char * json_uint32(uint32_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu32"", x);
+  return out;
+}
+
+char * json_uint64(uint64_t x){
+  char * out = safe_malloc(16);
+  sprintf(out, "%"PRIu64"", x);
+  return out;
+}
+
+char * json_int8(int8_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRId8"", x);
+  return out;
+}
+
+char * json_int16(int16_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRId16"", x);
+  return out;
+}
+
+char * json_int32(int32_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRId32"", x);
+  return out;
+}
+
+char * json_int64(int64_t x){
+  char * out = safe_malloc(16);
+  sprintf(out, "%"PRId64"", x);
+  return out;
+}
+
+char * json_mpz(mpz_t x){
+  return mpz_get_str(NULL, 10, x);//base 10
+}
+
+char * json_mpq(mpq_t x){
+  return mpq_get_str(NULL, 10, x);//base 10
+}
+
+/* char * json_bytestrings__bytestring(bytestrings__bytestring_t b){ */
+/*   char * out = byte2cstring(b->length, b->seq); */
+/*   return out; */
+/* } */
+
+char * json_list_with_sep(char ** input, uint32_t length, char open, char sep, char close){
+  char * op = safe_malloc(8);
+  sprintf(op, "%c", open);
+  char * tmp = op;
+  if (length > 0){
+		  tmp = safe_strcat(tmp, input[0]);
+  };
+  char * sepstring = safe_malloc(8);
+  sprintf(sepstring, "%c ", sep);
+  for (uint32_t i = 1; i < length; i++){
+    tmp = safe_strcat(safe_strcat(tmp, sepstring), input[i]);
+  };
+  //does not free input, it has to be freed by the caller
+  char * closestring = safe_malloc(8);
+  sprintf(closestring, "%c", close);
+  tmp = safe_strcat(tmp, closestring);
+  return tmp;
 }

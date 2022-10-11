@@ -302,6 +302,7 @@ typedef struct pointer_s * pointer_t;
 typedef struct type_actual_s * type_actual_t;
 typedef bool_t (*equal_ptr_t)(pointer_t x, pointer_t y, type_actual_t T);
 typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
+typedef char * (*json_ptr_t)(pointer_t x, type_actual_t T);
 
 
 /* extern bool_t equal_uint64(pointer_t x, pointer_t y, ...); */
@@ -311,7 +312,31 @@ typedef void (*release_ptr_t)(pointer_t x, type_actual_t T);
  struct type_actual_s { 
    equal_ptr_t equal_ptr; 
    release_ptr_t release_ptr;
+   json_ptr_t json_ptr;
  };
+
+extern char * safe_strcat(char * s1, char * s2);
+extern char * json_char(uint32_t x);
+extern char * json_uint8(uint8_t x);
+extern char * json_uint16(uint16_t x);
+extern char * json_uint32(uint32_t x);
+extern char * json_uint64(uint64_t x);
+extern char * json_int8(int8_t x);
+extern char * json_int16(int16_t x);
+extern char * json_int32(int32_t x);
+extern char * json_int64(int64_t x);
+extern char * json_mpz(mpz_t x);
+extern char * json_mpq(mpq_t x);
+
+/* struct bytestring_s { */
+/*         uint32_t count;  */
+/*         uint32_t length; */
+/*         bytestrings_array_0_t seq;}; */
+/* typedef struct bytestrings__bytestring_s * bytestrings__bytestring_t; */
+
+/* extern char * json_bytestrings__bytestring(bytestrings__bytestring_t b); */
+
+extern char * json_list_with_sep(char ** input, uint32_t length, char open, char sep, char close);
 
 
  /* actual_uint64 = {(*equal_uint64), (*release_uint64)}; */

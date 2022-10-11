@@ -250,7 +250,8 @@
   lookup-info
   dupdate-info
   update-info
-  equal-info)
+  equal-info
+  json-info)
 
 
 (defcl c-type-info (simple-c-type-info)
@@ -261,7 +262,9 @@
   equal-info
   equal-ptr-info
   update-info
-  upgrade-info)
+  upgrade-info
+  json-info
+  json-ptr-info)
 
 
 (defcl c-closure-info ()
