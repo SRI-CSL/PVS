@@ -104,7 +104,7 @@
 (defmacro pvs-funcall (fun &rest args)
   (let ((funval (gentemp)))
     `(let ((,funval ,fun))
-       ;; (declare (type pvs-funcallable ,funval))
+       ;; (declare (cl:type pvs-funcallable ,funval))
        (if (arrayp ,funval)
 	   (aref ,funval ,@args)
 	   (if (pvs-array-closure-p ,funval)
@@ -117,6 +117,12 @@
 
 (deftype pvs-funcallable ()
   '(or array pvs-outer-array pvs-closure-hash function))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Defining Lisp representations for the types so that we can then
+;;pass type parameters in the Lisp code.  These type parameters are
+;;used for enumeration and destructive updates.  The main type structures
+;;we need are:  subrange, scalar, subtype, and tuple/record.
 
 (defstruct pvs-lisp-subrange  ;;represents [low, high)
   low high)
@@ -182,7 +188,7 @@
 	 (mk-pvs-closure-hash hash funval)))))
 
 
-;;unary primitives
+;; unary attachments
 (defun |pvs_=| (x) (pvs_equalp (svref x 0)(svref x 1)))
 (defun |pvs_/=| (x)(not (pvs_equalp (svref x 0)(svref x 1))))
 (defun |pvs_IMPLIES| (x) (or (not (svref x 0)) (svref x 1)))
@@ -197,6 +203,7 @@
 (defun |pvs_∧| (x)(and (svref x 0)(svref x 1)))
 (defun |pvs_OR| (x) (or (svref x 0)(svref x 1)))
 (defun |pvs_∨| (x) (or (svref x 0)(svref x 1)))
+(defun |pvs_XOR| (x) (not (eql (svref x 0)(svref x 1))))
 (defun |pvs_NOT| (x) (not x))
 (defun |pvs_¬| (x) (not x))
 (defun |pvs_+| (x) (+ (svref x 0)(svref x 1)))
@@ -248,6 +255,26 @@
 (defun |pvs_char| (x) (code-char x))
 (defun |pvs_char?| (x) (characterp x))
 (defun |pvs_code| (x) (char-code x))
+(defun |pvs_u8xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
+(defun |pvs_u16xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
+(defun |pvs_u32xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
+(defun |pvs_u64xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 64)(un2bv (svref x 1) 64)) 64))
+
+(defun |pvs_u8and| (x) (bv2un (bit-and (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
+(defun |pvs_u16and| (x) (bv2un (bit-and (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
+(defun |pvs_u32and| (x) (bv2un (bit-and (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
+(defun |pvs_u64and| (x) (bv2un (bit-and (un2bv (svref x 0) 64)(un2bv (svref x 1) 64)) 64))
+
+(defun |pvs_u8or| (x) (bv2un (bit-or (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
+(defun |pvs_u16or| (x) (bv2un (bit-or (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
+(defun |pvs_u32or| (x) (bv2un (bit-or (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
+(defun |pvs_u64or| (x) (bv2un (bit-or (un2bv (svref x 0) 64)(un2bv (svref x 1) 64)) 64))
+
+(defun |pvs_u8not| (x) (bv2un (bit-not (un2bv x 8)) 8))
+(defun |pvs_u16not| (x) (bv2un (bit-not (un2bv x 16)) 16))
+(defun |pvs_u32not| (x) (bv2un (bit-not (un2bv x 32)) 32))
+(defun |pvs_u64not| (x) (bv2un (bit-not (un2bv x 64)) 64))
+
 
 ;;multiary macro versions of primitives
 (defmacro |pvs__=| (x y)
@@ -268,6 +295,7 @@
 (defmacro |pvs__∧| (x y) `(and ,x ,y))
 (defmacro |pvs__OR| (x y)  `(or ,x ,y))
 (defmacro |pvs__∨| (x y)  `(or ,x ,y))
+(defmacro |pvs__XOR| (x y) `(not (eql ,x ,y)))
 (defmacro |pvs__+| (x y) `(+ ,x ,y))
 (defmacro |pvs__-| (x y) `(- ,x ,y))
 (defmacro |pvs__*| (x y) `(* ,x ,y))
@@ -302,15 +330,45 @@
 (defmacro |pvs__rational_pred| (x) `(rationalp ,x))
 (defmacro |pvs__integer_pred| (x) `(integerp ,x))
 
+(defun un2bv-rec (x n bv i);assuming i at most length of bv
+  (if (eql i n) bv
+    (multiple-value-bind (q r) (floor x 2)
+      (setf (bit bv i) r)
+      (un2bv-rec q n bv (1+ i)))))
+
+(defun un2bv (x n)
+  (let ((bv (make-array n :element-type 'bit)))
+    (un2bv-rec x n bv 0)))
+
+(defun bv2un (bv n); bv has length at least n
+  (do ((i  n (1- i))(x 0 (+ (bit bv (1- i)) (* x 2))))((= i 0) x)))
+  
+
+(defmacro |pvs__u8xor| (x y) `(bv2un (bit-xor (un2bv ,x 8)(un2bv ,y 8)) 8))
+(defmacro |pvs__u16xor| (x y) `(bv2un (bit-xor (un2bv ,x 16)(un2bv ,y 16)) 16))
+(defmacro |pvs__u32xor| (x y) `(bv2un (bit-xor (un2bv ,x 32)(un2bv ,y 32)) 32))
+(defmacro |pvs__u64xor| (x y) `(bv2un (bit-xor (un2bv ,x 64)(un2bv ,y 64)) 64))
+
+(defmacro |pvs__u8and| (x y) `(bv2un (bit-and (un2bv ,x 8)(un2bv ,y 8)) 8))
+(defmacro |pvs__u16and| (x y) `(bv2un (bit-and (un2bv ,x 16)(un2bv ,y 16)) 16))
+(defmacro |pvs__u32and| (x y) `(bv2un (bit-and (un2bv ,x 32)(un2bv ,y 32)) 32))
+(defmacro |pvs__u64and| (x y) `(bv2un (bit-and (un2bv ,x 64)(un2bv ,y 64)) 64))
+
+(defmacro |pvs__u8or| (x y) `(bv2un (bit-or (un2bv ,x 8)(un2bv ,y 8)) 8))
+(defmacro |pvs__u16or| (x y) `(bv2un (bit-or (un2bv ,x 16)(un2bv ,y 16)) 16))
+(defmacro |pvs__u32or| (x y) `(bv2un (bit-or (un2bv ,x 32)(un2bv ,y 32)) 32))
+(defmacro |pvs__u64or| (x y) `(bv2un (bit-or (un2bv ,x 64)(un2bv ,y 64)) 64))
+
+(defmacro |pvs__u8not| (x) `(bv2un (bit-not (un2bv ,x 8)) 8))
+(defmacro |pvs__u16not| (x) `(bv2un (bit-not (un2bv ,x 16)) 16))
+(defmacro |pvs__u32not| (x) `(bv2un (bit-not (un2bv ,x 32)) 32))
+(defmacro |pvs__u64not| (x) `(bv2un (bit-not (un2bv ,x 64)) 64))
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))
     `(let ((val (svref ,tuple ,ind)))
        (if (eq val 'undefined)(undefined nil) val)   ;; what can we do here?
 	 )))
-
-(defun myaref (x i)
-  (aref x i))
 
 (defun pvs_equalp (x y)
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"
@@ -365,7 +423,7 @@
 	       ((typep y '(or pvs-outer-array pvs-closure-hash function))
 		;; Can't test the length of a closure, but it should be OK
 		(dotimes (i (array-total-size x) t)
-		  (let ((x-el (myaref x i))
+		  (let ((x-el (aref x i))
                         (y-el (pvs-funcall y i)))
                     (unless (pvs_equalp x-el y-el)
 		      (return nil)))))
@@ -646,12 +704,6 @@
 
 (defmacro rec-tup-update (expr field-num newval)
   `(setf (svref ,expr ,field-num) ,newval))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;Defining Lisp representations for the types so that we can then
-;;pass type parameters in the Lisp code.  These type parameters are
-;;used for enumeration and destructive updates.  The main type structures
-;;we need are:  subrange, scalar, subtype, and tuple/record.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defvar *pvs-lisp-types-alist*)
