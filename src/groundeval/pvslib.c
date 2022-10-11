@@ -77,7 +77,7 @@ uint32_t mpz_hash(mpz_t x){
 }
 
 uint32_t uint64_hash(uint64_t x){
-  uint64_t y = x;
+  uint64_t y = x + 1;
   y = ((y >> 30) ^ y) * UINT64_C(0xbf58476d1ce4e5b9);
   y = ((y >> 27) ^ y) * UINT64_C(0x94d049bb133111eb);
   y = (y >> 31);
@@ -85,7 +85,7 @@ uint32_t uint64_hash(uint64_t x){
 }
 
 uint32_t uint32_hash(uint32_t x){
-  uint32_t y = x;
+  uint32_t y = x + 1;
   y = ((y >> 16) ^ y) * 0x45d9f3b;
   y = ((y >> 16) ^ y) * 0x45d9f3b;
   y = (y >> 16) ^ y;
@@ -255,6 +255,10 @@ int128_t rem_int128_uint128(int128_t x, uint128_t y){
   return x%y;
 }
 
+uint32_t rem_mpz_uint32(mpz_t x, uint32_t y){
+  return mpz_fdiv_ui(x, y);  
+}
+
 mpz_ptr_t pvsfloor_q_z(mpq_t x){
         mpz_ptr_t result;
         result = safe_malloc(sizeof(mpz_t));
@@ -299,6 +303,7 @@ mpz_ptr_t pvsceiling_q_z(mpq_t x){
   result = safe_malloc(sizeof(mpz_t));
   mpz_init(result);
   mpz_cdiv_q(result, mpq_numref(x), mpq_denref(x));
+  //  gmp_printf("\npvsceiling_q_z(%Qd) = %Zd", x, result);
   return result;
 }
 
@@ -455,17 +460,31 @@ mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y){
 //------------------------------------------------------------------
 
 
+uint32_t code(uint32_t x){
+  return x;
+};
 
+stringliteral_t mk_string(uint32_t length, uint32_t * instring){ 
+  stringliteral_t result = (stringliteral_t) safe_malloc(sizeof(struct stringliteral_s) + (length  * sizeof(uint32_t)));
+  //  printf("\nmk_string input =");
+  //for (uint32_t i = 0; i < length; i++) printf(" %"PRIu32",", instring[i]); 
 
+   result->count = 1;
+   result->size = length;
+   result->max = length;
+   memcpy(result->elems, (uint32_t *) instring, 4 * length);
+   //printf("\nmk_string output: count = %"PRIu32", size = %"PRIu32", max = %"PRIu32"\n",
+   //	  result->count, result->size, result->max);
+   //for (uint32_t j = 0; j < length; j++) printf(" %"PRIu32",", result->elems[j]);    
+   return result; 
+ };
 
-
-string_t mk_string(char * instring){
-  uint32_t length = strlen(instring);
-  string_t result = (string_t) safe_malloc((length + 1) * sizeof(char));
-  result->count = 1;
-  result->size = length + 1;
-  memcpy(result->strval, (char *) instring, length);
-  return result;
+char * byte2cstring(uint32_t length, uint8_t * bstring){
+  uint32_t slength = length++;
+  char * outstring = (char *) safe_malloc(slength++);
+  memcpy(outstring, bstring, length);
+  outstring[length] = '\0';
+  return outstring;
 };
 
 bool_t equal_uint64(pointer_t x, pointer_t y, ...){
@@ -476,3 +495,121 @@ bool_t equal_uint64(pointer_t x, pointer_t y, ...){
 
 void release_uint64(pointer_t x, ...){
 };
+
+void release_file__file(file_t file){
+  if (file->count <= 1){
+    munmap(file->contents, file->capacity);
+    safe_free(file);
+  } else
+    {
+      file->count--;
+    }
+}
+
+bool_t equal_file__file(file_t file1, file_t file2){
+  bool_t result =  (file1 == file2);
+  release_file__file(file1);
+  release_file__file(file2);
+  return result;
+}
+//------------------------------------------------------------------
+//json printing routines for the various types
+
+//safe_strcat allocates enough memory to concat s1 and s2.  It possibly mutates/frees s1 and does not free s2. 
+char * safe_strcat(char * s1, char * s2){
+  size_t l1 = strlen(s1);
+  size_t l2 = strlen(s2);
+  size_t slack2 = (SIZE_MAX - l1)/2;
+  if (slack2 < l2) out_of_memory();//should this be a different error message
+  char * new_s1 = safe_realloc(s1, l1 + 2*l2);
+  strcat(new_s1, s2);
+  return new_s1;
+}
+
+//
+
+char * json_char(uint32_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu32"", x);
+  return out;
+}
+
+char * json_uint8(uint8_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu8"", x);
+  return out;
+}
+
+char * json_uint16(uint16_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu16"", x);
+  return out;
+}
+
+char * json_uint32(uint32_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRIu32"", x);
+  return out;
+}
+
+char * json_uint64(uint64_t x){
+  char * out = safe_malloc(16);
+  sprintf(out, "%"PRIu64"", x);
+  return out;
+}
+
+char * json_int8(int8_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRId8"", x);
+  return out;
+}
+
+char * json_int16(int16_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRId16"", x);
+  return out;
+}
+
+char * json_int32(int32_t x){
+  char * out = safe_malloc(8);
+  sprintf(out, "%"PRId32"", x);
+  return out;
+}
+
+char * json_int64(int64_t x){
+  char * out = safe_malloc(16);
+  sprintf(out, "%"PRId64"", x);
+  return out;
+}
+
+char * json_mpz(mpz_t x){
+  return mpz_get_str(NULL, 10, x);//base 10
+}
+
+char * json_mpq(mpq_t x){
+  return mpq_get_str(NULL, 10, x);//base 10
+}
+
+/* char * json_bytestrings__bytestring(bytestrings__bytestring_t b){ */
+/*   char * out = byte2cstring(b->length, b->seq); */
+/*   return out; */
+/* } */
+
+char * json_list_with_sep(char ** input, uint32_t length, char open, char sep, char close){
+  char * op = safe_malloc(8);
+  sprintf(op, "%c", open);
+  char * tmp = op;
+  if (length > 0){
+		  tmp = safe_strcat(tmp, input[0]);
+  };
+  char * sepstring = safe_malloc(8);
+  sprintf(sepstring, "%c ", sep);
+  for (uint32_t i = 1; i < length; i++){
+    tmp = safe_strcat(safe_strcat(tmp, sepstring), input[i]);
+  };
+  //does not free input, it has to be freed by the caller
+  char * closestring = safe_malloc(8);
+  sprintf(closestring, "%c", close);
+  tmp = safe_strcat(tmp, closestring);
+  return tmp;
+}
