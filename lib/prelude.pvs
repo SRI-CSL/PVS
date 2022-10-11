@@ -4058,6 +4058,341 @@ nat_types[m: nat] : THEORY
   below:  TYPE = below(m)
  END nat_types
 
+exp2: THEORY
+BEGIN
+
+  n,m, x1, x2: VAR nat
+  
+  exp2(n: nat): RECURSIVE posnat = IF n = 0 THEN 1 ELSE 2 * exp2(n - 1) ENDIF
+    MEASURE n
+
+  JUDGEMENT exp2(n: nat) HAS_TYPE above(n)
+
+% === Properties of exp2 ===================================================
+
+  exp2_def	 : LEMMA exp2(n) = 2^n
+ 
+  exp2_pos	 : LEMMA exp2(n) > 0
+ 
+  exp2_n	 : LEMMA exp2(n+1) = 2*exp2(n)
+ 
+  exp2_sum	 : LEMMA exp2(n + m) = exp2(n) * exp2(m)
+ 
+  exp2_minus	 : LEMMA (FORALL n,(k:upto(n)): exp2(n-k)=exp2(n)/exp2(k))
+ 
+  exp2_strictpos : LEMMA n > 0 IMPLIES exp2(n) > 1
+ 
+  exp2_lt	 : LEMMA n < m IMPLIES exp2(n) < exp2(m)
+
+  exp_prop       : LEMMA x1 < exp2(n) AND  x2 < exp2(m) 
+                           IMPLIES x1 * exp2(m) + x2 < exp2(n + m)
+
+  log2(n: nat): RECURSIVE nat = IF n = 0 THEN 0 ELSE log2(ndiv(n, 2)) + 1 ENDIF
+  MEASURE n
+
+END exp2
+
+integertypes: THEORY
+%------------------------------------------------------------------------
+%      Author:  Natarajan Shankar 
+%
+%      Machine integer types and operations to support PVS2C code generation
+%------------------------------------------------------------------------
+ BEGIN
+
+
+     uint8: TYPE = below(exp2(8))
+     uint16: TYPE = upto(exp2(16) - 1) 
+     uint32: TYPE = upto(exp2(32) - 1) 
+     uint64: TYPE = upto(exp2(64) - 1)
+
+     max8:  uint8 = 255
+     max16: uint16 = 65535
+     max32: uint32 = 4294967295
+     max64: uint64 = (9223372036854775807 * 2) + 1
+                     % = 18446744073709551615, but C compiler won't accept this
+
+     int8: TYPE = subrange(-exp2(7), exp2(7) - 1)
+     int16: TYPE = subrange(-exp2(15), exp2(15) - 1)
+     int32: TYPE = subrange(-exp2(31), exp2(31) - 1)
+     int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
+
+     mini8: int8 = -exp2(7)
+     mini16: int16 = -exp2(15)
+     mini32: int32 = -exp2(31)
+     mini64: int64 = -exp2(63)
+     maxi8: int8 = exp2(7) - 1
+     maxi16: int16 = exp2(15) - 1
+     maxi32: int32 = exp2(31) - 1
+     maxi64: int64 = exp2(63) - 1
+
+     maxindex: MACRO uint32 = exp2(28) - 1 %max array index
+     index: TYPE = upto(maxindex) %array index supertype
+
+     ux8, uy8, uz8: VAR uint8
+     ux16, uy16, uz16: VAR uint16
+     ux32, uy32, uz32: VAR uint32
+     ux64, uy64, uz64: VAR uint64
+
+     x8, y8, z8: VAR int8
+     x16, y16, z16: VAR int16
+     x32, y32, z32: VAR int32
+     x64, y64, z64: VAR int64
+
+
+     subtype_u8_u16: JUDGEMENT uint8 SUBTYPE_OF uint16
+     subtype_u8_i16: JUDGEMENT uint8 SUBTYPE_OF int16     
+     subtype_u16_u32: JUDGEMENT uint16 SUBTYPE_OF uint32
+     subtype_u16_i32: JUDGEMENT uint16 SUBTYPE_OF int32     
+     subtype_u32_u64: JUDGEMENT uint32 SUBTYPE_OF uint64
+     subtype_u32_i64: JUDGEMENT uint32 SUBTYPE_OF int64          
+     
+     plus_u8_u8: JUDGEMENT +(ux8, uy8) HAS_TYPE uint16
+     plus_u16_u16: JUDGEMENT +(ux16, uy16) HAS_TYPE uint32
+     plus_u32_u32: JUDGEMENT +(ux32, uy32) HAS_TYPE uint64
+     plus_u8_i8: JUDGEMENT +(ux8, y8) HAS_TYPE int16
+     plus_i8_u8: JUDGEMENT +(x8, uy8) HAS_TYPE int16     
+     plus_u16_i16: JUDGEMENT +(ux16, y16) HAS_TYPE int32
+     plus_i16_u16: JUDGEMENT +(x16, uy16) HAS_TYPE int32     
+     plus_u32_i32: JUDGEMENT +(ux32, y32) HAS_TYPE int64
+     plus_i32_u32: JUDGEMENT +(x32, uy32) HAS_TYPE int64     
+
+     u8plus(ux8, uy8): uint8 =
+       LET gap:uint8 = max8 - ux8
+        IN IF uy8 <= gap THEN ux8 + uy8 ELSE uy8 - gap - 1 ENDIF
+
+     u16plus(ux16, uy16): uint16 =
+       LET gap:uint16 = max16 - ux16
+        IN IF uy16 <= gap THEN ux16 + uy16 ELSE uy16 - gap - 1 ENDIF
+
+     u32plus(ux32, uy32): uint32 =
+       LET gap:uint32 = max32 - ux32
+        IN IF uy32 <= gap THEN ux32 + uy32 ELSE uy32 - gap - 1 ENDIF
+
+     u64plus(ux64, uy64): uint64 =
+       LET gap:uint64 = max64 - ux64
+        IN IF uy64 <= gap THEN ux64 + uy64 ELSE uy64 - gap - 1 ENDIF
+
+     minus_u8_u8: JUDGEMENT -(ux8, uy8) HAS_TYPE int16
+     minus_u16_u16: JUDGEMENT -(ux16, uy16) HAS_TYPE int32
+     minus_u32_u32: JUDGEMENT -(ux32, uy32) HAS_TYPE int64
+     minus_u8_i8: JUDGEMENT -(ux8, y8) HAS_TYPE int16
+     minus_i8_u8: JUDGEMENT -(x8, uy8) HAS_TYPE int16     
+     minus_u16_i16: JUDGEMENT -(ux16, y16) HAS_TYPE int32
+     minus_i16_u16: JUDGEMENT -(x16, uy16) HAS_TYPE int32     
+     minus_u32_i32: JUDGEMENT -(ux32, y32) HAS_TYPE int64
+     minus_i32_u32: JUDGEMENT -(x32, uy32) HAS_TYPE int64     
+
+     u8minus(ux8, uy8): uint8 =
+       IF uy8 <= ux8 THEN ux8 - uy8 ELSE max8 - uy8 + ux8 + 1 ENDIF
+
+     u16minus(ux16, uy16): uint16 =
+       IF uy16 <= ux16 THEN ux16 - uy16 ELSE max16 - uy16 + ux16 + 1 ENDIF
+
+     u32minus(ux32, uy32): uint32 =
+       IF uy32 <= ux32 THEN ux32 - uy32 ELSE max32 - uy32 + ux32 + 1 ENDIF
+
+     u64minus(ux64, uy64): uint64 =
+       IF uy64 <= ux64 THEN ux64 - uy64 ELSE max64 - uy64 + ux64 + 1 ENDIF
+
+     u8pow2(n: below(8)): uint8 =
+       exp2(n)
+
+     u16pow2(n: below(16)): uint16 =
+       exp2(n)
+
+     u32pow2(n: below(32)): uint32 =
+       exp2(n)
+
+     u64pow2(n: below(64)): uint64 =
+       exp2(n)
+
+     u8lshift(ux8, (n: upto(8))): uint8 =
+       LET x: below(exp2(8 - n)) = nrem(ux8, exp2(8 - n))
+           IN x * exp2(n)
+
+     k : VAR nat
+
+     u8lshift_bound: JUDGEMENT
+        u8lshift(ux8, (n: upto(8))) HAS_TYPE upto(exp2(8) - exp2(n))
+
+     u16lshift(ux16, (n: upto(16))): uint16 =
+       LET x: below(exp2(16 - n)) = nrem(ux16, exp2(16 - n))
+           IN x * exp2(n)
+
+     % Counterexample: n = 0, ux16 = exp2(16) - 1
+     % u16lshift_bound: JUDGEMENT
+     %    u16lshift(ux16, (n: upto(8))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+
+     u32lshift(ux32, (n: upto(32))): uint32 =
+       LET x: below(exp2(32 - n)) = nrem(ux32, exp2(32 - n))
+           IN x * exp2(n)
+
+     % Counterexample: n = 0, ux32 = exp2(32) - 1
+     % u32lshift_bound: JUDGEMENT
+     %   u32lshift(ux32 , (n: upto(24))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+
+     u64lshift(ux64, (n: upto(64))): uint64 =
+       LET x: below(exp2(64-n)) = nrem(ux64, exp2(64-n))
+           IN x * exp2(n)
+
+     % Counterexample: n = 0, ux64 = exp2(64) - 1
+     % u64lshift_bound: JUDGEMENT
+     %    u64lshift(ux64, (n: upto(56))) HAS_TYPE upto(exp2(8 + n) - exp2(n))
+
+     u8rshift(ux8, (n: upto(8))): uint8 =
+       ndiv(ux8, exp2(n))
+
+     u8rshift_bound: JUDGEMENT
+              u8rshift(ux8, (n: upto(8))) HAS_TYPE below(exp2(8 - n))
+
+     u16rshift(ux16, (n: upto(16))): uint16 =
+       ndiv(ux16, exp2(n))
+
+     u16rshift_bound: JUDGEMENT
+              u16rshift(ux16, (n: upto(16))) HAS_TYPE below(exp2(16 - n))
+	      
+     u32rshift(ux32, (n: upto(32))): uint32 =
+       ndiv(ux32, exp2(n))
+
+     u32rshift_bound: JUDGEMENT
+              u32rshift(ux32, (n: upto(32))) HAS_TYPE below(exp2(32 - n))
+
+     u64rshift(ux64, (n: upto(64))): uint64 =
+       ndiv(ux64, exp2(n))
+
+     u64rshift_bound: JUDGEMENT
+              u64rshift(ux64, (n: upto(64))) HAS_TYPE below(exp2(64 - n))
+
+     times_u8_u8: JUDGEMENT *(ux8, uy8) HAS_TYPE uint16
+     times_u16_u16: JUDGEMENT *(ux16, uy16) HAS_TYPE uint32
+     times_u32_u32: JUDGEMENT *(ux32, uy32) HAS_TYPE uint64
+     times_u8_i8: JUDGEMENT *(ux8, y8) HAS_TYPE int16
+     times_i8_u8: JUDGEMENT *(x8, uy8) HAS_TYPE int16     
+     times_u16_i16: JUDGEMENT *(ux16, y16) HAS_TYPE int32
+     times_i16_u16: JUDGEMENT *(x16, uy16) HAS_TYPE int32     
+     times_u32_i32: JUDGEMENT *(ux32, y32) HAS_TYPE int64
+     times_i32_u32: JUDGEMENT *(x32, uy32) HAS_TYPE int64     
+
+     u8times(ux8, uy8): uint8 =
+       LET ux16 = ux8 * uy8 IN nrem(ux16, exp2(8))
+
+     u16times(ux16, uy16): uint16 =
+       LET ux32 = ux16 * uy16 IN nrem(ux32, exp2(16))
+
+     u32times(ux32, uy32): uint32 =
+       LET ux64 = ux32 * uy32 IN nrem(ux64, exp2(32))
+
+     u64times(ux64, uy64): uint64 =
+       nrem(ux64 * uy64, exp2(64))
+
+     nzu8: VAR {ux8 | ux8 /= 0}
+     nz8:  VAR {x8 | x8 /= 0}
+     nzu16: VAR {ux16 | ux16 /= 0}
+     nz16:  VAR {x16 | x16 /= 0}
+     nzu32: VAR {ux32 | ux32 /= 0}
+     nz32:  VAR {x32 | x32 /= 0}
+     nzu64: VAR {ux64 | ux64 /= 0}
+     nz64:  VAR {x64 | x64 /= 0}
+     
+
+     div_u8_u8: JUDGEMENT ndiv(ux8, nzu8) HAS_TYPE uint8
+     div_u16_u16: JUDGEMENT ndiv(ux16, nzu16) HAS_TYPE uint16
+     div_u32_u32: JUDGEMENT ndiv(ux32, nzu32) HAS_TYPE uint32
+     div_u64_u64: JUDGEMENT ndiv(ux64, nzu64) HAS_TYPE uint64     
+
+     u8div(ux8, (uy8 | uy8 /= 0)): uint8 =
+       ndiv(ux8, uy8)
+
+     u16div(ux16, (uy16 | uy16 /= 0)): uint16 =
+       ndiv(ux16, uy16)
+
+     u32div(ux32, (uy32 | uy32 /= 0)): uint32 =
+       ndiv(ux32, uy32)
+
+     u64div(ux64, (uy64 | uy64 /= 0)): uint64 =
+       ndiv(ux64, uy64)
+
+     u8rem(ux8, (uy8 | uy8 /= 0)): uint8 =
+       nrem(ux8, uy8)
+
+     u16rem(ux16, (uy16 | uy16 /= 0)): uint16 =
+       nrem(ux16, uy16)
+
+     u32rem(ux32, (uy32 | uy32 /= 0)): uint32 =
+       nrem(ux32, uy32)
+
+     u64rem(ux64, (uy64 | uy64 /= 0)): uint64 =
+       nrem(ux64, uy64)
+
+     u8max(ux8, uy8): uint8 = max(ux8, uy8)
+
+     u16max(ux16, uy16): uint16 = max(ux16, uy16)
+
+     u32max(ux32, uy32): uint32 = max(ux32, uy32)
+
+     u64max(ux64, uy64): uint64 = max(ux64, uy64)
+
+     i8max(x8, y8): int8 = max(x8, y8)
+
+     i16max(x16, y16): int16 = max(x16, y16)
+
+     i32max(x32, y32): int32 = max(x32, y32)
+
+     i64max(x64, y64): int64 = max(x64, y64)
+
+     u8min(ux8, uy8): uint8 = min(ux8, uy8)
+
+     u16min(ux16, uy16): uint16 = min(ux16, uy16)
+
+     u32min(ux32, uy32): uint32 = min(ux32, uy32)
+
+     u64min(ux64, uy64): uint64 = min(ux64, uy64)
+
+     i8min(x8, y8): int8 = min(x8, y8)
+
+     i16min(x16, y16): int16 = min(x16, y16)
+
+     i32min(x32, y32): int32 = min(x32, y32)
+
+     i64min(x64, y64): int64 = min(x64, y64)
+
+     x : VAR real
+
+     u8ceiling(x | 0 <= x AND x <= max8): uint8 = ceiling(x)
+
+     u16ceiling(x | 0 <= x AND x <= max16): uint16 = ceiling(x)
+
+     u32ceiling(x | 0 <= x AND x <= max32): uint32 = ceiling(x)
+
+     u64ceiling(x | 0 <= x AND x <= max64): uint64 = ceiling(x)
+
+     u8floor(x | 0 <= x AND x <= max8): uint8 = floor(x)
+
+     u16floor(x | 0 <= x AND x <= max16): uint16 = floor(x)
+
+     u32floor(x | 0 <= x AND x <= max32): uint32 = floor(x)
+
+     u64floor(x | 0 <= x AND x <= max64): uint64 = floor(x)
+
+     i8ceiling(x | mini8 <= x AND x <= maxi8): int8 = ceiling(x)
+
+     i16ceiling(x | mini16 <= x AND x <= maxi16): int16 = ceiling(x)
+
+     i32ceiling(x | mini32 <= x AND x <= maxi32): int32 = ceiling(x)
+
+     i64ceiling(x | mini64 <= x AND x <= maxi64): int64 = ceiling(x)
+
+     i8floor(x | mini8 <= x AND x <= maxi8): int8 = floor(x)
+
+     i16floor(x | mini16 <= x AND x <= maxi16): int16 = floor(x)
+
+     i32floor(x | mini32 <= x AND x <= maxi32): int32 = floor(x)
+
+     i64floor(x | mini64 <= x AND x <= maxi64): int64 = floor(x)
+
+
+END integertypes
 
 nat_fun_props : THEORY
 %------------------------------------------------------------------------
@@ -4990,6 +5325,7 @@ list2finseq[T: TYPE]: THEORY
   l, l1, l2: VAR list[T]
   fs: VAR finseq[T]
   n, i: VAR nat
+  a, b, c, c1, c2: VAR T
 
   list2finseq(l): finseq[T] =
     (# length := length(l),
@@ -5029,6 +5365,11 @@ list2finseq[T: TYPE]: THEORY
 
   finseq2list_list2finseq: LEMMA
     finseq2list(list2finseq(l)) = l
+
+  fseq_lem: LEMMA
+    (list2finseq(l1) = list2finseq(l2)) = (l1 = l2)
+
+  cons_lem: LEMMA (cons(c1,l1) = cons(c2,l2)) = (c1 = c2 & l1 = l2)
 
  END list2finseq
 
@@ -5144,7 +5485,603 @@ strings: THEORY
   cons_lem: LEMMA (cons(c1,l1) = cons(c2,l2)) = (c1 = c2 & l1 = l2)
 
   char_lem: LEMMA (c1 = c2) = (code(c1) = code(c2))
+
+  make_string(i:index, s : ARRAY[below(i)->char]): string
+    = (# length := i, seq := (LAMBDA (j:below(i)): s(j)) #)
  END strings
+
+gen_strings : THEORY
+ BEGIN
+
+    s, s1, s2: VAR string
+
+    c, c1, c2: VAR char
+
+    length(s): nat = s`length
+
+    get(s, (i: below(length(s)))): char = s`seq(i)
+
+    empty: string = (# length := 0, seq := (LAMBDA (i: below(0)): char(0)) #)
+
+    length_empty: lemma length(empty) = 0
+
+    unit(c): string = (# length := 1, seq := (LAMBDA (i: below(1)): c) #)
+
+    length_unit: LEMMA length(unit(c)) = 1
+
+    unit_ax: LEMMA get(unit(c), 0) = c
+
+    extensionality: LEMMA
+       s1 = s2 IFF (length(s1) = length(s2) AND ∀ (i:below(length(s1))): get(s1, i) = get(s2, i));
+
+    length_concat: LEMMA length(s1 o s2) = length(s1) + length(s2)
+
+    char_concat: LEMMA
+    (FORALL (i: below(length(s1) + length(s2))):
+     get(s1 o s2, i)  =
+      IF i < length(s1)
+       THEN get(s1, i)
+       ELSE get(s2, i - length(s1))
+      ENDIF)
+
+    strdiff_rec(s1, s2, (i : upto(min(length(s1), length(s2))))): RECURSIVE
+       upto(min(length(s1), length(s2)))
+       = (IF i = length(s1) OR i = length(s2) OR get(s1, i) /= get(s2, i)
+           THEN i
+           ELSE strdiff_rec(s1, s2, i + 1)
+	   ENDIF)
+      MEASURE min(length(s1), length(s2)) - i
+
+    strdiff(s1, s2): upto(min(length(s1), length(s2))) = strdiff_rec(s1, s2, 0)
+
+    strdiff_eq: LEMMA
+      FORALL (j: below(strdiff(s1, s2))): get(s1, j) = get(s2, j)
+
+    strdiff_neq: LEMMA
+     (LET i = strdiff(s1, s2) IN 
+       i < min(length(s1), length(s2)) => get(s1, i) /= get(s2, i))
+
+    strcmp(s1, s2): subrange(-1, 1) =
+      (LET i = strdiff(s1, s2)
+       IN IF i = min(length(s1), length(s2))
+           THEN IF length(s1) < length(s2) THEN -1 ELSIF length(s1) > length(s2) THEN 1 ELSE 0 ENDIF
+	   ELSIF code(get(s1, i)) < code(get(s2, i)) THEN -1 ELSE 1 ENDIF)
+	   
+
+    strcmp_eq: LEMMA
+      strcmp(s1, s2) = 0 => s1 = s2
+
+    strcmp_lt: LEMMA
+      strcmp(s1, s2) = -1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s2) AND (i < length(s1) => code(get(s1, i)) < code(get(s2, i))))
+
+    strcmp_gt: LEMMA
+      strcmp(s1, s2) = 1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s1) AND (i < length(s2) => code(get(s2, i)) < code(get(s1, i))))
+
+    prefix(s, (i: upto(length(s)))): string =
+    (IF i = length(s) THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(i)): get(s, j)) #) ENDIF)
+
+    length_prefix: LEMMA
+     (FORALL (i: upto(length(s))): 
+      length(prefix(s, i)) = i)
+
+    prefix_ax: LEMMA
+     FORALL (i: upto(length(s))), (j : below(i)): 
+      get(prefix(s, i), j) = get(s, j)
+
+    suffix(s, (i: upto(length(s)))): string =
+    (IF i = 0 THEN s ELSE (# length := length(s) - i, seq := (LAMBDA (j :  below(length(s) - i)): get(s, i + j)) #) ENDIF)
+     
+    length_suffix: LEMMA
+     (FORALL (i: upto(length(s))): 
+      length(suffix(s, i)) = length(s) - i)
+
+    suffix_ax: LEMMA
+     FORALL (i: upto(length(s))), (j : below(length(s) - i)): 
+      get(suffix(s, i), j) = get(s, i + j)
+
+    substr(s, (i: upto(length(s))), j: subrange(i, length(s))): {s1 | length(s1) = j - i}
+     = prefix(suffix(s, i), j - i)
+ END gen_strings
+
+charstrings: THEORY
+  BEGIN
+    charstring_bound: MACRO uint32 = exp2(28) %same as index, but only used in types
+    charstring: TYPE = [# length : index, %below(charstring_bound)
+                        seq : ARRAY[below(length) -> char] #]
+
+    c, c1, c2: VAR char
+
+    s, s1, s2: VAR charstring
+
+    length(s): index  = s`length %below(charstring_bound)
+
+    cget(s, (i: below(length(s)))): char = s`seq(i)
+
+    null: charstring = (# length := 0, seq := (LAMBDA (i: below(0)): char(0)) #)
+
+    length_null: LEMMA length(null) = 0
+
+    addchar(c, (s | length(s) + 1 < charstring_bound)): charstring =
+      (# length := s`length + 1,
+         seq := (LAMBDA (i:below(s`length + 1)): IF i = s`length THEN c ELSE get(s, i) ENDIF)
+	 #)
+
+    unit(c): charstring = (# length := 1, seq := (LAMBDA (i:below(1)): c) #)
+    CONVERSION+ charstrings.unit
+
+    length_unit: LEMMA length(unit(c)) = 1
+
+    unit_ax: LEMMA cget(unit(c), 0) = c
+
+    extensionality: LEMMA
+       s1 = s2 IFF (length(s1) = length(s2) AND ∀ (i:below(length(s1))): cget(s1, i) = cget(s2, i));
+
+    cstring: TYPE = {cs : string | cs`length < charstring_bound} 
+
+    mk_charstring(cs: cstring): charstring =
+      (# length := cs`length,
+         seq := (LAMBDA (i: below(cs`length::below(charstring_bound))): get(cs, i)) #);
+
+    ++(s1, (s2 | s2`length + s1`length < charstring_bound)): charstring =
+      IF s1`length = 0 THEN s2
+       ELSIF s2`length = 0 THEN s1
+       ELSE (LET n : below(charstring_bound) = s1`length + s2`length
+             IN (# length := n, 
+                   seq := (LAMBDA (i:below(n)): IF i < s1`length THEN cget(s1, i) ELSE cget(s2, i - s1`length) ENDIF)
+		   #))
+		   ENDIF
+
+    length_concat: LEMMA
+      FORALL (s1, (s2 | s2`length + s1`length < charstring_bound)):
+       length(s1 ++ s2) = length(s1) + length(s2)
+
+    char_concat: LEMMA
+    (FORALL s1, (s2 | s2`length + s1`length < charstring_bound), (i: below(length(s1) + length(s2))):
+     cget(s1 o s2, i)  =
+      IF i < length(s1)
+       THEN cget(s1, i)
+       ELSE cget(s2, i - length(s1))
+      ENDIF)
+
+    strdiff_rec(s1, s2, (i : upto(min(length(s1), length(s2))))): RECURSIVE
+       upto(min(length(s1), length(s2)))
+       = (IF i = length(s1) OR i = length(s2) OR cget(s1, i) /= cget(s2, i)
+           THEN i
+           ELSE strdiff_rec(s1, s2, i + 1)
+	   ENDIF)
+    MEASURE min(length(s1), length(s2)) - i
+
+    strdiff(s1, s2): upto(min(length(s1), length(s2)))  = strdiff_rec(s1, s2, 0)
+
+    strdiff_eq: LEMMA
+      FORALL (j: below(strdiff(s1, s2))): cget(s1, j) = cget(s2, j)
+
+    strdiff_neq: LEMMA
+     (LET i = strdiff(s1, s2) IN 
+       i < min(length(s1), length(s2)) => cget(s1, i) /= cget(s2, i))
+
+    strcmp(s1, s2): subrange(-1, 1) =
+      (LET i = strdiff(s1, s2)
+       IN IF i = min(length(s1), length(s2))
+           THEN IF length(s1) < length(s2) THEN -1 ELSIF length(s1) > length(s2) THEN 1 ELSE 0 ENDIF
+	   ELSIF code(cget(s1, i)) < code(cget(s2, i)) THEN -1 ELSE 1 ENDIF)
+	   
+
+    strcmp_eq: LEMMA
+      strcmp(s1, s2) = 0 => s1 = s2
+
+    strcmp_lt: LEMMA
+      strcmp(s1, s2) = -1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s2) AND (i < length(s1) => code(cget(s1, i)) < code(cget(s2, i))))
+
+    strcmp_gt: LEMMA
+      strcmp(s1, s2) = 1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s1) AND (i < length(s2) => code(cget(s2, i)) < code(cget(s1, i))))
+
+    prefix(s, (i: upto(length(s)))): charstring =
+    (IF i = length(s) THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(i)): cget(s, j)) #) ENDIF)
+
+    length_prefix: LEMMA
+     (FORALL (i: upto(length(s))): 
+      length(prefix(s, i)) = i)
+
+    prefix_ax: LEMMA
+     FORALL (i: upto(length(s))), (j : below(i)): 
+      cget(prefix(s, i), j) = cget(s, j)
+
+    suffix(s, (i: upto(length(s)))): charstring =
+      IF i = 0
+      THEN s
+      ELSE (# length := length(s) - i,
+              seq := (LAMBDA (j :  below(length(s) - i)): cget(s, i + j)) #)
+      ENDIF
+     
+    length_suffix: LEMMA
+     (FORALL (i: upto(length(s))): 
+      length(suffix(s, i)) = length(s) - i)
+
+    suffix_ax: LEMMA
+     FORALL (i: upto(length(s))), (j : below(length(s) - i)): 
+      cget(suffix(s, i), j) = cget(s, i + j)
+
+    substr(s, (i: upto(length(s))), j: subrange(i, length(s))): {s1 | length(s1) = j - i}
+     = prefix(suffix(s, i), j - i)
+
+    ascii_charstring?(s): bool = FORALL (i : below(length(s))): code(cget(s, i)) < 128
+
+    ascii_charstring: TYPE = (ascii_charstring?)
+
+END charstrings
+
+bytestrings: THEORY
+ BEGIN
+
+    byte : TYPE+ = uint8
+
+    bytestring_bound: MACRO uint32 = exp2(28) % 0x100000000 
+
+    b, b1, b2: VAR byte
+
+    bytestring: TYPE = [# length : index, %below(bytestring_bound),
+                          seq : ARRAY[below(length) -> byte] #]
+
+    s, s1, s2: VAR bytestring
+
+    length(s): index = s`length %below(bytestring_bound)
+
+    get(s, (i: below(length(s)))): byte = s`seq(i)
+
+    null: bytestring = (# length := 0, seq := (LAMBDA (i: below(0))->byte: 0) #)
+
+    length_null: LEMMA length(null) = 0
+
+    unit(b): bytestring = (# length := 1, seq := (LAMBDA (i : below(1))->byte: b) #)
+    CONVERSION+ bytestrings.unit
+
+    length_unit: LEMMA length(unit(b)) = 1
+
+    unit_ax: LEMMA get(unit(b), 0) = b
+
+    extensionality: LEMMA
+       s1 = s2 IFF (length(s1) = length(s2) AND ∀ (i:below(length(s1))): get(s1, i) = get(s2, i));
+
+    bstring: TYPE = {cs : string | cs`length < bytestring_bound AND (∀ (i : below(cs`length)): code(get(cs, i)) < 256)}
+
+    mk_bytestring(cs: bstring): bytestring =
+      (# length := cs`length,
+         seq := (LAMBDA (i: below(cs`length::below(bytestring_bound)))-> byte: code(get(cs, i))) #)
+
+    CONVERSION+ mk_bytestring;
+
+    ++(s1, (s2 | s2`length + s1`length < bytestring_bound)): bytestring =
+      IF s1`length = 0 THEN s2
+       ELSIF s2`length = 0 THEN s1
+       ELSE (LET n : below(bytestring_bound) = s1`length + s2`length
+             IN (# length := n, 
+                   seq := (LAMBDA (i:below(n))->byte: IF i < s1`length THEN get(s1, i) ELSE get(s2, i - s1`length) ENDIF)
+		   #))
+		   ENDIF
+
+    length_concat: LEMMA
+      FORALL (s2 | s2`length + s1`length < bytestring_bound):
+        length(s1 ++ s2) = length(s1) + length(s2)
+
+    char_concat: LEMMA
+    (FORALL s1, (s2 | s2`length + s1`length < bytestring_bound), (i: below(length(s1) + length(s2))):
+     get(s1 o s2, i)  =
+      IF i < length(s1)
+       THEN get(s1, i)
+       ELSE get(s2, i - length(s1))
+      ENDIF)
+
+    strdiff_rec(s1, s2, (i : upto(length(s1)) | i <= length(s2))): RECURSIVE
+       {i : upto(length(s1)) | i <= length(s2)}
+       = (IF i = length(s1) OR i = length(s2) OR get(s1, i) /= get(s2, i)
+           THEN i
+           ELSE strdiff_rec(s1, s2, i + 1)
+	   ENDIF)
+    MEASURE min(length(s1), length(s2)) - i
+
+    strdiff(s1, s2): {i : upto(length(s1)) | i <= length(s2)}  = strdiff_rec(s1, s2, 0)
+
+    strdiff_eq: LEMMA
+      FORALL (j: below(strdiff(s1, s2))): get(s1, j) = get(s2, j)
+
+    strdiff_neq: LEMMA
+     (LET i = strdiff(s1, s2) IN 
+       i < min(length(s1), length(s2)) => get(s1, i) /= get(s2, i))
+
+    strcmp(s1, s2): subrange(-1, 1) =
+      (LET i = strdiff(s1, s2)
+       IN IF (i = length(s1) OR i = length(s2))
+           THEN IF length(s1) < length(s2) THEN -1 ELSIF length(s1) > length(s2) THEN 1 ELSE 0 ENDIF
+	   ELSIF get(s1, i) < get(s2, i) THEN -1 ELSE 1 ENDIF)
+	   
+    strcmp_eq: LEMMA
+      strcmp(s1, s2) = 0 => s1 = s2
+
+    strcmp_lt: LEMMA
+      strcmp(s1, s2) = -1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s2) AND (i < length(s1) => get(s1, i) < get(s2, i)))
+
+    strcmp_gt: LEMMA
+      strcmp(s1, s2) = 1 =>
+      (LET i = strdiff(s1, s2) IN
+        i < length(s1) AND (i < length(s2) => get(s2, i) < get(s1, i)))
+
+    prefix(s, (i: upto(length(s)))): bytestring =
+    (IF i = length(s) THEN s ELSE (# length := i, seq := (LAMBDA (j :  below(i))->byte: get(s, j)) #) ENDIF)
+
+    length_prefix: LEMMA
+     (FORALL (i: upto(length(s))): 
+      length(prefix(s, i)) = i)
+
+    prefix_ax: LEMMA
+     FORALL (i: upto(length(s))), (j : below(i)): 
+      get(prefix(s, i), j) = get(s, j)
+
+    suffix(s, (i: upto(length(s)))): bytestring =
+      IF i = 0
+      THEN s
+      ELSE (# length := s`length - i,
+              seq := (LAMBDA (j: below(length(s) - i))->byte: get(s, i + j)) #)
+      ENDIF
+     
+    length_suffix: LEMMA
+     (FORALL (i: upto(length(s))): 
+      length(suffix(s, i)) = length(s) - i)
+
+    suffix_ax: LEMMA
+     FORALL (i: upto(length(s))), (j : below(length(s) - i)): 
+      get(suffix(s, i), j) = get(s, i + j)
+
+    substr(s, (i: upto(length(s))), j: subrange(i, length(s))): {s1 | length(s1) = j - i}
+     = prefix(suffix(s, i), j - i)
+
+    ascii_bytestring?(s): bool = FORALL (i : below(length(s))): get(s, i) < 128
+
+    ascii_bytestring: TYPE = (ascii_bytestring?)
+    
+ END bytestrings
+
+% utf8: THEORY
+%  BEGIN
+
+%    utf8_char : TYPE+ = below(0x110000) CONTAINING 0
+
+%    % Bounded by bytestring_bound/4, since up to 4 bytes needed for each utf8_char
+%    utf8_string_bound: MACRO nat = bytestring_bound / 4
+
+%    utf8_string: THEORY = gen_strings[utf8_char, <]{{gen_string ::= utf8_string}}
+
+%    % utf8_string: TYPE+ = {s: UTF8_string | length(s) < utf8_string_bound}
+%    %                      CONTAINING utf8_string.empty
+
+%    ascii_utf8_string?(s: utf8_string): bool = FORALL (i : below(length(s))): get(s, i) < 128
+
+%    ascii_utf8_string: TYPE+ = (ascii_utf8_string?) CONTAINING utf8_string.empty
+
+%    s, s1, s2: VAR bytestring
+%    b, b1, b2: VAR byte
+
+%    u, u1, u2: VAR utf8_string
+%    c, c1, c2: VAR utf8_char  % below(0x110000)
+
+% % Layout of UTF-8 byte sequences - "cp" = "code point"
+% % | # bytes | First cp | Last cp  |   Byte 1 |   Byte 2 |   Byte 3 |   Byte 4 |
+% % |       1 | U+0000   | U+007F   | 0xxxxxxx |          |          |          |
+% % |       2 | U+0080   | U+07FF   | 110xxxxx | 10xxxxxx |          |          |
+% % |       3 | U+0800   | U+FFFF   | 1110xxxx | 10xxxxxx | 10xxxxxx |          |
+% % |       4 | U+10000  | U+10FFFF | 11110xxx | 10xxxxxx | 10xxxxxx | 10xxxxxx |
+
+%    utf8_ascii_byte?(b): bool = b <= 0x7F
+%    utf8_two_first_byte?(b): bool = 0xC0 <= b <= 0xDF
+%    utf8_three_first_byte?(b): bool = 0xE0 <= b <= 0xEF
+%    utf8_four_first_byte?(b): bool = 0xF0 <= b <= 0xF7
+%    utf8_trailer_byte?(b): bool = 0x80 <= b <= 0xBF
+
+%    at_utf8_ascii_char?(s: bytestring, idx: below(length(s))): bool =
+%      length(s) > idx and utf8_ascii_byte?(get(s, idx))
+     
+%    at_utf8_two_byte_char?(s: bytestring, idx: below(length(s))): bool = length(s) > idx+1 and
+%      utf8_two_first_byte?(get(s, idx)) and utf8_trailer_byte?(get(s, idx+1))
+     
+%    at_utf8_three_byte_char?(s: bytestring, idx: below(length(s))): bool = length(s) > idx+2 and
+%      utf8_three_first_byte?(get(s, idx)) and
+%      utf8_trailer_byte?(get(s, idx+1)) and utf8_trailer_byte?(get(s, idx+2))
+     
+%    at_utf8_four_byte_char?(s: bytestring, idx: below(length(s))): bool = length(s) > idx+3 and
+%      utf8_four_first_byte?(get(s, idx)) and utf8_trailer_byte?(get(s, idx+1)) and
+%      utf8_trailer_byte?(get(s, idx+2)) and utf8_trailer_byte?(get(s, idx+3))
+
+%    next_code_point(bs: bytestring, idx: below(length(bs))):
+%        [utf8_char, {x: upto(4) | idx + x < length(bs)}] =
+%      if at_utf8_ascii_char?(bs, idx) then (get(bs, idx), 1)
+%      elsif at_utf8_two_byte_char?(bs, idx)
+%        then ((get(bs, idx) - 0xc0) * 0x40 + (get(bs, idx+1) - 0x80), 2)
+%      elsif at_utf8_three_byte_char?(bs, idx)
+%        then ((get(bs, idx) - 0xe0) * 0x1000 + (get(bs, idx+1) - 0x80) * 0x40  + (get(bs, idx+2) - 0x80), 3)
+%      elsif at_utf8_four_byte_char?(bs, idx)
+%        then let cp = (get(bs, idx) - 0xf0) * 0x40000 + (get(bs, idx+1) - 0x80) * 0x1000
+%                        + (get(bs, idx+2) - 0x80) * 0x40  + (get(bs, idx+3) - 0x80)
+%              % could be larger, but by RCF 3629 it matches limits of utf-16
+%              in if cp < 0x110000
+% 	        then (cp, 4)
+% 		else (0, 0)
+% 		endif
+%      else (0, 0)
+%      endif
+
+%    bytestring_to_utf8_string_rec(s: bytestring | length(s) < utf8_string_bound - 1,
+%                                  idx: upto(length(s)),
+%                                  u: utf8_string | length(u) <= idx):
+%        recursive utf8_string =
+%      if idx = length(s)
+%        then u
+%      else let (ch, len) = next_code_point(s, idx)
+%            in if len = 0 % not a valid UTF-8 bytestring at this point
+% 	      then utf8_string.empty
+% 	      else bytestring_to_utf8_string_rec(s, idx + len, u + utf8_string.unit(ch))
+% 	      endif
+%      endif
+%      measure length(s) - idx
+
+%    % Takes a random bytestring, returns a utf8_string if it's a valid utf8 bytestring
+%    % returns empty otherwise.
+%    bytestring_to_utf8_string(s: bytestring | length(s) < utf8_string_bound - 1): utf8_string =
+%       bytestring_to_utf8_string_rec(s, 0, utf8_string.empty)
+
+%    %%
+
+%  codepoint_to_bytestring(cp: below(0x110000)): {s: bytestring | 1 <= length(s) <= 4} =
+%        if cp < 0x80 then unit(cp)
+%        elsif cp < 0x800
+%          then let % 11 bits, 5 in first byte, 6 in second
+% 	          b1 = 0xC0 + ndiv(cp, 64),
+% 		  b2 = 0x80 + nrem(cp, 64)
+% 	       in unit(b1) + unit(b2)
+%        elsif cp < 0x10000
+%          then let % 16 bits, 4 in first byte, 6 in each of rest
+% 	          b1 = 0xE0 + ndiv(cp, 0x1000), %exp2(12)
+% 		  b12 = nrem(cp, 0x1000),
+% 		  b2 = 0x80 + ndiv(b12, 64),
+% 		  b3 = 0x80 + nrem(b12, 64)
+% 	       in unit(b1) + unit(b2) + unit(b3)
+%        else
+%               let % 21 bits, 3 in first byte, 6 in each of rest
+% 	          b1 = 0xF0 + ndiv(cp, 0x40000), % exp2(18)
+% 		  b18 = nrem(cp, 0x40000),
+% 		  b2 = 0x80 + ndiv(b18, 0x1000), % exp2(12)
+% 		  b12 = nrem(b18, 0x1000),
+% 		  b3 = 0x80 + ndiv(b12, 64),
+% 		  b4 = 0x80 + nrem(b12, 64)
+% 	       in unit(b1) + unit(b2) + unit(b3) + unit(b4)
+%        endif
+   
+%    utf8_string_to_bytestring_rec(u: utf8_string | 4*length(u) < 0x100000000 - 4,
+%                                  idx: upto(length(u)),
+% 				 s: bytestring | length(s) <= 4*idx):
+%        recursive bytestring =
+%      if idx = length(u)
+%      then s
+%      else utf8_string_to_bytestring_rec(u, idx + 1, s + codepoint_to_bytestring(get(u, idx)))
+%      endif
+%     measure length(u) - idx    
+
+%    utf8_string_to_bytestring(u: utf8_string | 4*length(u) < 0x100000000 - 4): bytestring =
+%       utf8_string_to_bytestring_rec(u, 0, empty)
+    
+%  END utf8
+
+% string_map: THEORY
+%  BEGIN
+%    s, s1, s2: VAR string
+%    c, c1, c2: VAR char
+
+
+%    string_to_utf8_string_rec(s: string | s`length < utf8_string_bound,
+%                              idx: upto(s`length),
+% 			     u: utf8_string | length(u) = idx)
+%                   : RECURSIVE {u1: utf8_string | length(u1) = s`length}
+%        = if idx = s`length
+%          then u
+% 	 else string_to_utf8_string_rec(s, idx + 1, u + unit(code(s`seq(idx))))
+% 	 endif
+%      measure s`length - idx	 
+
+%    string_to_utf8_string(s: string | s`length < utf8_string_bound)
+%                   : {u: utf8_string | length(u) = s`length}
+%        = string_to_utf8_string_rec(s, 0, empty)
+
+
+%    utf8_string_to_string_rec(u: utf8_string,
+%                              idx: upto(length(u)),
+% 			     s: string | s`length = idx)
+%                   : RECURSIVE {s1: string | s1`length = length(u)}
+%        = if idx = length(u)
+%          then s
+% 	 else utf8_string_to_string_rec(u, idx + 1, add(char(get(u, idx)), s))
+% 	 endif
+%      measure length(u) - idx	 
+
+%    utf8_string_to_string(u: utf8_string) : {s: string | length(u) = s`length}
+%        = utf8_string_to_string_rec(u, 0, empty_seq)
+
+%    get(s, (i: below(length(s)))): char = s`seq(i);
+
+%    <(c1, c2): bool = code(c1) < code(c2);
+%    <=(c1, c2): bool = code(c1) <= code(c2);
+%    >(c1, c2): bool = code(c1) > code(c2);
+%    >=(c1, c2): bool = code(c1) >= code(c2);
+
+%    strdiff_rec(s1, s2, (idx: upto(min(length(s1), length(s2))))):
+%       recursive subrange(idx, min(length(s1), length(s2))) =
+%      if idx < min(length(s1), length(s2))
+%      then if s1`seq(idx) = s2`seq(idx)
+%           then strdiff_rec(s1, s2, idx+1)
+% 	  else idx
+% 	  endif
+%      else idx
+%      endif
+%     measure min(length(s1), length(s2)) - idx
+
+%    strdiff_eq_rec: LEMMA
+%      FORALL (i: upto(min(length(s1), length(s2)))):
+%        i < strdiff_rec(s1, s2, i) => s1`seq(i) = s2`seq(i)
+
+%    strdiff_eq_rec2: LEMMA
+%      LET i = strdiff_rec(s1, s2, 0)
+%       IN FORALL (k: below(i)): strdiff_rec(s1, s2, k) = i
+
+%    strdiff_eq_rec2a: LEMMA
+%      FORALL (i: upto(min(length(s1), length(s2)))):
+%        i <= strdiff_rec(s1, s2, i)
+
+%    strdiff_eq_rec2b: LEMMA
+%      FORALL (i: upto(min(length(s1), length(s2)))):
+%        i = strdiff_rec(s1, s2, 0) =>
+%          i = strdiff_rec(s1, s2, i)     
+
+%    strdiff_eq_rec3: LEMMA
+%      LET i = strdiff_rec(s1, s2, 0)
+%       IN i < min(length(s1), length(s2)) => s1`seq(i) /= s2`seq(i)
+
+%    strdiff(s1, s2): upto(min(length(s1), length(s2))) =
+%      strdiff_rec(s1, s2, 0)
+
+%    strcmp(s1, s2): subrange(-1, 1) =
+%      IF s1 = s2 THEN 0
+%      ELSE LET i = strdiff(s1, s2),
+%               minl = min(length(s1), length(s2))
+%            IN IF i < minl
+%               THEN IF get(s1, i) < get(s2, i) THEN -1 ELSE 1 ENDIF
+%               ELSIF length(s1) < length(s2) THEN -1 ELSE 1 ENDIF
+% 	      ENDIF
+
+%    prefix(s, (i: upto(length(s)))): string = s^^(0, i)
+
+%    suffix(s, (i: upto(length(s)))): string = s^^(i, length(s))
+
+%    importing gen_strings[char, <]
+%      {{gen_string := string,
+%        length(s) := s`length,
+%        get := get,
+%        empty := "",
+%        unit(c) := add(c, ""),
+%        + := o,
+%        strdiff := strdiff,
+%        strcmp := strcmp,
+%        prefix := prefix,
+%        suffix := suffix}}
+   
+%  END string_map
 
 
 lift[T: TYPE]: DATATYPE
@@ -5159,6 +6096,56 @@ union[T1, T2: TYPE]: DATATYPE
   inl(left: T1): inl?
   inr(right: T2): inr?
  END union
+
+tostring[T: TYPE]: THEORY
+BEGIN
+%This theory and the tostring operation are just place-holders for semantic attachment.
+%If the result is too big to fit within the bytestring limit, then we assume that the
+%operation only retains a portion of the true string output.  There is no claim that this
+%operation is injective. 
+  tostring(x: T): bytestring
+
+END tostring
+
+file: THEORY
+BEGIN
+
+  % void_action: TYPE+
+  % null_action: void_action
+  % file_descriptor : TYPE+ %uninterpreted
+  file: TYPE+ %= [# name: bytestring, capacity: index, 
+               %   fd : file_descriptor, contents : bytestring #]
+
+  max_file_size: int32  %defined by semantic attachment in c-primitive-attachments
+
+  lifted_file: DATATYPE
+  BEGIN
+    fail: fail?
+    pass(contents: file): pass?
+  END lifted_file
+
+  f, f1, f2: VAR file
+
+  open?(f): bool % semantically attached predicate that checks if a file handle is open
+
+  open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
+% don't need to close the file.  This is handled by reference counting.
+
+  append(f: file, b : bytestring): lifted_file % adds to the end of a writable file by remapping if needed.
+
+  file_size(f: file): uint32
+
+  getbyte(f: file, (i : below(file_size(f)))): byte
+
+  getbytestring(f: file, (i : below(file_size(f))), size: below(file_size(f) - i)): bytestring
+
+  setbyte(f: file, (i : below(file_size(f))), (b: byte)): file
+
+  printc(b : bytestring): bytestring %prints characters
+
+  printh(b : bytestring): bytestring %prints bytes
+
+END file
 
 
 % Defines fixpoints for sets, needed to support the mucalculus model checker.
@@ -5401,39 +6388,6 @@ BEGIN
 
 END bv
 
-
-exp2: THEORY
-BEGIN
-
-  n,m, x1, x2: VAR nat
-  
-  exp2(n: nat): RECURSIVE posnat = IF n = 0 THEN 1 ELSE 2 * exp2(n - 1) ENDIF
-    MEASURE n
-
-  JUDGEMENT exp2(n: nat) HAS_TYPE above(n)
-
-% === Properties of exp2 ===================================================
-
-  exp2_def	 : LEMMA exp2(n) = 2^n
- 
-  exp2_pos	 : LEMMA exp2(n) > 0
- 
-  exp2_n	 : LEMMA exp2(n+1) = 2*exp2(n)
- 
-  exp2_sum	 : LEMMA exp2(n + m) = exp2(n) * exp2(m)
- 
-  exp2_minus	 : LEMMA (FORALL n,(k:upto(n)): exp2(n-k)=exp2(n)/exp2(k))
- 
-  exp2_strictpos : LEMMA n > 0 IMPLIES exp2(n) > 1
- 
-  exp2_lt	 : LEMMA n < m IMPLIES exp2(n) < exp2(m)
-
-  exp_prop       : LEMMA x1 < exp2(n) AND  x2 < exp2(m) 
-                           IMPLIES x1 * exp2(m) + x2 < exp2(n + m)
-
-END exp2
-
-
 % bv_cnv: THEORY
 
 % BEGIN
@@ -5660,6 +6614,49 @@ BEGIN
                                bv ^ (i, j) ^ k = bv^(j+k))
 
 END bv_caret 
+
+integer_bv_ops: THEORY
+BEGIN
+
+      x8, y8, z8: VAR uint8
+      x16, y16, z16: VAR uint16
+      x32, y32, z32: VAR uint32
+      x64, y64, z64: VAR uint64  
+
+      u8xor(x8, y8): uint8 = bv2nat[8](XOR(nat2bv(x8), nat2bv(y8)))
+
+      u16xor(x16, y16): uint16 = bv2nat[16](XOR(nat2bv(x16), nat2bv(y16)))
+
+      u32xor(x32, y32): uint32 = bv2nat[32](XOR(nat2bv(x32), nat2bv(y32)))
+
+      u64xor(x64, y64): uint64 = bv2nat[64](XOR(nat2bv(x64), nat2bv(y64)))
+
+      u8and(x8, y8): uint8 = bv2nat[8](AND(nat2bv(x8), nat2bv(y8)))
+
+      u16and(x16, y16): uint16 = bv2nat[16](AND(nat2bv(x16), nat2bv(y16)))
+
+      u32and(x32, y32): uint32 = bv2nat[32](AND(nat2bv(x32), nat2bv(y32)))
+
+      u64and(x64, y64): uint64 = bv2nat[64](AND(nat2bv(x64), nat2bv(y64)))
+
+      u8or(x8, y8): uint8 = bv2nat[8](OR(nat2bv(x8), nat2bv(y8)))
+
+      u16or(x16, y16): uint16 = bv2nat[16](OR(nat2bv(x16), nat2bv(y16)))
+
+      u32or(x32, y32): uint32 = bv2nat[32](OR(nat2bv(x32), nat2bv(y32)))
+
+      u64or(x64, y64): uint64 = bv2nat[64](OR(nat2bv(x64), nat2bv(y64)))
+
+      u8not(x8): uint8 =  bv2nat(NOT(nat2bv(x8)));
+
+      u16not(x16): uint16 = bv2nat(NOT nat2bv[16](x16));
+
+      u32not(x32): uint32 = bv2nat(NOT(nat2bv[32](x32)));
+
+      u64not(x64): uint64 = bv2nat(NOT(nat2bv[64](x64)));
+
+
+END integer_bv_ops
 
 
 mod: THEORY
@@ -6034,143 +7031,6 @@ BEGIN
   pad_right(k: above(N), b: bit)(bv): bvec[k] = bv o fill[k-N](b)
 
 END bv_extend_defs
-
-% Support for the C code generator
-
-integertypes: THEORY
- BEGIN
-     uint8: TYPE = below(exp2(8))
-     uint16: TYPE = upto(exp2(16) - 1) 
-     uint32: TYPE = upto(exp2(32) - 1) 
-     uint64: TYPE = upto(exp2(64) - 1) 
-
-     max8:  uint8 = 255
-     max16: uint16 = 65535
-     max32: uint32 = 4294967295
-     max64: uint64 = (9223372036854775807 * 2) + 1
-                     % = 18446744073709551615, but C compiler won't accept this
-
-     int8: TYPE = subrange(-exp2(7), exp2(7) - 1)
-     int16: TYPE = subrange(-exp2(15), exp2(15) - 1)
-     int32: TYPE = subrange(-exp2(31), exp2(31) - 1)
-     int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
-
-     ux8, uy8, uz8: VAR uint8
-     ux16, uy16, uz16: VAR uint16
-     ux32, uy32, uz32: VAR uint32
-     ux64, uy64, uz64: VAR uint64
-
-     x8, y8, z8: VAR int8
-     x16, y16, z16: VAR int16
-     x32, y32, z32: VAR int32
-     x64, y64, z64: VAR int64
-
-     u8plus(ux8, uy8): uint8 =
-       LET gap:uint8 = max8 - ux8
-        IN IF uy8 <= gap THEN ux8 + uy8 ELSE uy8 - gap - 1 ENDIF
-
-     u16plus(ux16, uy16): uint16 =
-       LET gap:uint16 = max16 - ux16
-        IN IF uy16 <= gap THEN ux16 + uy16 ELSE uy16 - gap - 1 ENDIF
-
-     u32plus(ux32, uy32): uint32 =
-       LET gap:uint32 = max32 - ux32
-        IN IF uy32 <= gap THEN ux32 + uy32 ELSE uy32 - gap - 1 ENDIF
-
-     u64plus(ux64, uy64): uint64 =
-       LET gap:uint64 = max64 - ux64
-        IN IF uy64 <= gap THEN ux64 + uy64 ELSE uy64 - gap - 1 ENDIF
-
-      u8minus(ux8, uy8): uint8 =
-       IF uy8 <= ux8 THEN ux8 - uy8 ELSE max8 - uy8 + ux8 + 1 ENDIF
-
-      u16minus(ux16, uy16): uint16 =
-       IF uy16 <= ux16 THEN ux16 - uy16 ELSE max16 - uy16 + ux16 + 1 ENDIF
-
-      u32minus(ux32, uy32): uint32 =
-       IF uy32 <= ux32 THEN ux32 - uy32 ELSE max32 - uy32 + ux32 + 1 ENDIF
-
-      u64minus(ux64, uy64): uint64 =
-       IF uy64 <= ux64 THEN ux64 - uy64 ELSE max64 - uy64 + ux64 + 1 ENDIF
-
-      u8pow2(n: below(8)): uint8 =
-       exp2(n)
-
-      u16pow2(n: below(16)): uint16 =
-       exp2(n)
-
-      u32pow2(n: below(32)): uint32 =
-       exp2(n)
-
-      u64pow2(n: below(64)): uint64 =
-       exp2(n)
-
-      u8lshift(ux8, (n: upto(8))): uint8 =
-       LET x: below(exp2(8-n)) = nrem(ux8, exp2(8-n))
-           IN x * exp2(n)
-
-      u16lshift(ux16, (n: upto(16))): uint16 =
-       LET x: below(exp2(16-n)) = nrem(ux16, exp2(16-n))
-           IN x * exp2(n)
-
-      u32lshift(ux32, (n: upto(32))): uint32 =
-       LET x: below(exp2(32-n)) = nrem(ux32, exp2(32-n))
-           IN x * exp2(n)
-
-      u64lshift(ux64, (n: upto(64))): uint64 =
-       LET x: below(exp2(64-n)) = nrem(ux64, exp2(64-n))
-           IN x * exp2(n)
-
-      u8rshift(ux8, (n: upto(8))): uint8 =
-       ndiv(ux8, exp2(n))
-
-      u16rshift(ux16, (n: upto(16))): uint16 =
-       ndiv(ux16, exp2(n))
-
-      u32rshift(ux32, (n: upto(32))): uint32 =
-       ndiv(ux32, exp2(n))
-
-      u64rshift(ux64, (n: upto(64))): uint64 =
-       ndiv(ux64, exp2(n))    
-
-      u8times(ux8, uy8): uint8 =
-       LET ux16 = ux8 * uy8 IN nrem(ux16, exp2(8))
-
-      u16times(ux16, uy16): uint16 =
-       LET ux32 = ux16 * uy16 IN nrem(ux32, exp2(16))
-
-      u32times(ux32, uy32): uint32 =
-       LET ux64 = ux32 * uy32 IN nrem(ux64, exp2(32))
-
-      u64times(ux64, uy64): uint64 =
-       nrem(ux64 * uy64, exp2(64))
-
-      u8div(ux8, (uy8 | uy8 /= 0)): uint8 =
-       ndiv(ux8, uy8)
-
-      u16div(ux16, (uy16 | uy16 /= 0)): uint16 =
-       ndiv(ux16, uy16)
-
-      u32div(ux32, (uy32 | uy32 /= 0)): uint32 =
-       ndiv(ux32, uy32)
-
-      u64div(ux64, (uy64 | uy64 /= 0)): uint64 =
-       ndiv(ux64, uy64)
-
-      u8rem(ux8, (uy8 | uy8 /= 0)): uint8 =
-       nrem(ux8, uy8)
-
-      u16rem(ux16, (uy16 | uy16 /= 0)): uint16 =
-       nrem(ux16, uy16)
-
-      u32rem(ux32, (uy32 | uy32 /= 0)): uint32 =
-       nrem(ux32, uy32)
-
-      u64rem(ux64, (uy64 | uy64 /= 0)): uint64 =
-       nrem(ux64, uy64)
-
-END integertypes
-
 
 %-------------------------------------------------------------------------
 %
