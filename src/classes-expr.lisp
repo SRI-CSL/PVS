@@ -29,11 +29,6 @@
 
 (in-package :pvs)
 
-
-;; (export '(assignments boolean-equation conjunction disequation disjunction
-;; 	  equation iff iff-or-boolean-equation implication index negation
-;; 	  propositional-application))
-
 ;; (defgeneric from-macro (x))
 ;; (defgeneric (setf from-macro) (x y))
 ;; (defgeneric theory (x))
@@ -201,6 +196,7 @@
 (defcl int-expr (rational-expr)
   )
   
+;; This would be better called nat-expr, but historically predated rational-expr
 (defcl number-expr (rational-expr)
   (number #| :type integer |# :parse t :restore-as nil))
 
@@ -487,6 +483,9 @@
 
 ;;; Misc
 
+;; (defcl decl (syntax)
+;;   (id :parse t :restore-as nil))
+
 ;(defcl bindings ()
 ;  declarations)
 
@@ -660,3 +659,62 @@
   ;;(argtype-hash :initform nil)
   (generic-judgements :initform nil)
   (judgements-graph :initform nil))
+
+;; Structures primarily for .pvscontext and used in context.lisp
+(defstruct (context-entry (:conc-name ce-)
+			  (:print-function
+			   (lambda (ce stream depth)
+			     (declare (ignore depth))
+			     (format stream "<CE ~a>"
+			       (ce-file ce)))))
+  file
+  write-date
+  proofs-date
+  object-date ;; is now a list of object-dates corresponding to the theories
+  dependencies
+  theories
+  extension
+  (md5sum 0))
+
+(defstruct (theory-entry (:conc-name te-)
+			 (:print-function
+			   (lambda (te stream depth)
+			     (declare (ignore depth))
+			     (format stream "<TE ~a>"
+			       (te-id te)))))
+  id
+  status
+  dependencies ;; An alist ((lib-ref theory-id ...) ... (nil theory-id ...))
+  formula-info)
+
+
+;;; The formula-entry keeps track of the proof status and the
+;;; references for the given formula id.  The status is one of the
+;;; values untried, unfinished, unchecked, proved-incomplete, or
+;;; proved-complete.  Note that it only reflects the default proof,
+;;; and is now used only for providing the proof summary if the
+;;; theories have not been parsed.
+
+(defstruct (formula-entry (:conc-name fe-)
+			  (:print-function
+			   (lambda (fe stream depth)
+			     (declare (ignore depth))
+			     (format stream "<FE ~a>"
+			       (fe-id fe)))))
+  id
+  status
+  proof-refers-to
+  decision-procedure-used
+  proof-time)
+
+(defstruct (declaration-entry (:conc-name de-)
+			      (:print-function
+			       (lambda (de stream depth)
+				 (declare (ignore depth))
+				 (format stream "<DE ~a.~a>"
+				   (de-theory-id de) (de-id de)))))
+  id
+  class
+  type
+  theory-id
+  (library nil))
