@@ -152,7 +152,7 @@
   '(*integer* *real* *posint* *naturalnumber* *number_field* *even_int*
     *number* *odd_int* *boolean* *false* *true* *pvs-directories*
     *rational-pred* +boolops+ *integer-pred* *pvs-operators*
-    *infix-operators* pr-outfile *strat-file-dates*
+    *infix-operators* *infixlist* pr-outfile *strat-file-dates*
     *fast-make-instance-makers* PVS-ALL-OPERATORS-LIST
     *slot-info* *last-end-value*
     *expr-prec-info* PVS-KEYWORD-LIST
@@ -214,6 +214,40 @@
 		    (a (mapcar #'class-name (method-specializers m))))
 		`(method ,funsym ,@q ,a)))
     (generic-function-methods (symbol-function funsym))))
+
+;; (let ((methods nil))
+;;   (dolist (m (generic-function-methods #'subst-mod-params*))
+;;     (when (subclass-of (car (method-specializers m)) (find-class 'declaration))
+;;       (push m methods)))
+;;   methods)
+
+
+(defun all-superclasses (cl)
+  (let ((cls (if (typep cl 'class) cl (find-class cl))))
+    (remove-duplicates (all-superclasses* cls nil))))
+
+(defun all-superclasses* (cl classes)
+  (cond ((or (null cl) (memq cl classes))
+	 classes)
+	(t (push cl classes)
+	   (dolist (dcl (class-direct-superclasses cl))
+	     (let ((nclasses (all-superclasses* dcl classes)))
+	       (setq classes (append nclasses classes))))
+	   classes)))
+
+(defun subclass-p (cl1 cl2)
+  (memq cl2 (all-superclasses cl1)))
+
+(defun all-subclasses (cl)
+  (let ((pvs-package (find-package :pvs))
+	(cls (if (typep cl 'class) cl (find-class cl)))
+	(subclasses nil))
+    (do-symbols (x pvs-package)
+      (when (eq (symbol-package x) pvs-package)
+	(let ((xcls (find-class x nil)))
+	  (when (and xcls (subclass-p xcls cls))
+	    (pushnew x subclasses)))))
+    subclasses))
 
 
 ;; (in-package :monitor)
