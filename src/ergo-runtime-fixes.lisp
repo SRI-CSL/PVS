@@ -65,16 +65,6 @@
 
 (defvar *newline-comments*)
 
-(defparameter *infix-operators*
-  '(O ∘ IFF <=> ⇔ IMPLIES => ⇒ WHEN OR ∨ \\/ AND /\\ ∧ & XOR ANDTHEN ORELSE
-	^ + - * / ++ ~ ** // ^^ \|- ⊢ \|= ⊨ <\| \|> = /= ≠ == < <= > >=
-	<< >> <<= >>= |#| @@ |##| ∘ ∨ ∧ ⊕ ⊘ ⊗ ⊖ ⊙ ⊛ ⨁ ⨂ ⨀
-	⊢ ⊨ ± ∓ ∔ × ÷ ⊞ ⊟ ⊠ ≁ ∼ ≃ ≅ ≇ ≈ ≉ ≍ ≎ ≏ ≐ ≗ ≙ ≡ ⋈ ≤ ≥ ≦ ≧
-	≨ ≩ ≪ ≫ ≮ ≯ ≰ ≱ ≺ ≻ ◁ ▷ ∈ ∉ ∋ ∩ ∪ ⊂ ⊃ ⊄ ⊅ ⊆ ⊇ ⊎ ⊊ ⊋
-	⊏ ⊐ ⊓ ⊔ ⋀ ⋁ ⋂ ⋃ • ← ↑ → ↓ ↝ ↦ ⇐ ⇒ ⇑ ⇓ ⇔ ∇ ⊣ ⊥ ⊩ ◯ ★ ✠ √))
-
-(defparameter *unary-operators* '(NOT ¬ + - ~ □ ◇ <> ◯ √))
-
 (defvar *elsif-places* nil)
 
 ;;; An association list of operators and their places.  The problem is
