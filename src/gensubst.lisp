@@ -39,7 +39,7 @@
 
 (defun gensubst (obj substfn testfn)
   "gensubst takes a pvs abstract term obj, and a subst and test fn.  It
-basically walks down the obj, and replacing those subterms that satisfy
+basically walks down the obj ast, replacing those subterms that satisfy
 testfn by invoking substfn.  Various global variables control the detailed
 behavior:
    *dont-expand-adt-subtypes*
@@ -63,6 +63,7 @@ behavior:
 	    nobj))))
 
 (defmethod gensubst* ((obj string) substfn testfn)
+  (declare (ignore substfn testfn))
   obj)
 
 (defmethod gensubst* ((obj module) substfn testfn)
@@ -135,6 +136,23 @@ behavior:
 	      (copy nte :print-type npt)
 	      (copy nte :print-type (print-type npt)))))))
 
+(defmethod gensubst* ((te print-type-name) substfn testfn)
+  (let ((mi (gensubst* (module-instance te) substfn testfn)))
+    (if (eq mi (module-instance te))
+	te
+	(copy te
+	  :actuals (when (actuals te) (actuals mi))
+	  :dactuals (when (dactuals te) (dactuals mi))
+	  :resolutions (list (mk-resolution (declaration te) mi nil))))))
+
+(defmethod gensubst* ((te print-type-application) substfn testfn)
+  (lcopy te
+    :type (gensubst* (type te) substfn testfn)
+    :parameters (gensubst* (parameters te) substfn testfn)))
+
+(defmethod gensubst* ((te print-expr-as-type) substfn testfn)
+  (lcopy te :expr (gensubst* (expr te) substfn testfn)))
+
 (defmethod gensubst* ((list list) substfn testfn)
   (let ((nlist (gensubst-list list substfn testfn nil)))
     (if (equal nlist list) list nlist)))
@@ -183,6 +201,11 @@ behavior:
     'type-value (gensubst* (type-value decl) substfn testfn)
     'type-expr  (gensubst* (type-expr decl) substfn testfn)))
 
+(defmethod gensubst* ((decl formal-const-decl) substfn testfn)
+  (lcopy decl
+    'declared-type (gensubst* (declared-type decl) substfn testfn)
+    'type (gensubst* (type decl) substfn testfn)))
+
 (defmethod gensubst* ((decl mod-decl) substfn testfn)
   (lcopy decl 'modname (gensubst* (modname decl) substfn testfn)))
 
@@ -215,12 +238,31 @@ behavior:
 
 (defmethod gensubst* ((te type-name) substfn testfn)
   (declare (ignore substfn testfn))
-  (let ((nte (call-next-method)))
-    (if (and (not *dont-expand-adt-subtypes*)
-	     (resolution te)
-	     (adt-expand-positive-subtypes? nte))
-	(adt-expand-positive-subtypes! nte)
-	nte)))
+  (cond ((and (resolution te)
+	      (type (resolution te))
+	      (tc-eq (type (resolution te)) te))
+	 (let ((nmi (gensubst* (module-instance te) substfn testfn)))
+	   (if (eq nmi (module-instance te))
+	       te
+	       (let* ((nres (mk-resolution (declaration te) nmi nil))
+		      (nte (copy te
+			     :actuals (actuals nmi)
+			     :dactuals (dactuals nmi)
+			     :mappings (mappings nmi)
+			     :resolutions (list nres)))
+		      (ente (if (and (not *dont-expand-adt-subtypes*)
+				     (resolution te)
+				     (adt-expand-positive-subtypes? nte))
+				(adt-expand-positive-subtypes! nte)
+				nte)))
+		 (setf (type nres) ente)
+		 ente))))
+	(t (let ((nte (call-next-method)))
+	     (if (and (not *dont-expand-adt-subtypes*)
+		      (resolution te)
+		      (adt-expand-positive-subtypes? nte))
+		 (adt-expand-positive-subtypes! nte)
+		 nte)))))
 
 (defmethod gensubst* ((te type-application) substfn testfn)
   (let ((ntype (gensubst* (type te) substfn testfn))
@@ -263,43 +305,51 @@ behavior:
 		     (pseudo-normalize pred)))))
 
 (defmethod gensubst* ((te setsubtype) substfn testfn)
+  ;; setsubtype adds formula and formals slots, from which the predicate is created
   (if (predicate te)
       (let ((nte (call-next-method)))
-	(unless (or (eq nte te)
-		    (null (predicate nte)))
-	  (setf (formula nte) (expression (predicate nte))))
-	(if (eq nte te)
-	    (lcopy nte 'formals (gensubst* (formals te) substfn testfn))
-	    (setf (formals nte) (gensubst* (formals te) substfn testfn)))
-	nte)
+	(multiple-value-bind (formals alist)
+	    (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
+			       (formals te))
+	  (let ((formula (substit (gensubst* (formula te) substfn testfn) alist)))
+	    (lcopy nte :formals formals :formula formula))))
       (let ((nform (gensubst* (formula te) substfn testfn)))
 	(lcopy te 'formula nform))))
 
 (defmethod gensubst* ((te funtype) substfn testfn)
-  (let* ((dom (gensubst* (domain te) substfn testfn))
-	 (ran (gensubst* (range te) substfn testfn)))
-    (assert (eq (dep-binding? (domain te)) (dep-binding? dom)))
-    (lcopy te
-      :domain dom
-      :range (if (and (not *parsing-or-unparsing*)
-		      (dep-binding? dom)
-		      (type dom)
-		      ;;(fully-typed? ran)
-		      )
-		 (substit ran (acons (domain te) dom nil))
-		 ran))))
+  (if *parsing-or-unparsing*
+      (let* ((types (list (domain te) (range te)))
+	     (ntypes (gensubst* types substfn testfn)))
+	(if (eq types ntypes)
+	    te
+	    (copy te 'domain (car ntypes) 'range (cadr ntypes))))
+      (let* ((dom (gensubst* (domain te) substfn testfn))
+	     (ran (gensubst* (range te) substfn testfn)))
+	(assert (eq (dep-binding? (domain te)) (dep-binding? dom)))
+	(lcopy te
+	  :domain dom
+	  :range (if (dep-binding? dom)
+		     (substit ran (acons (domain te) dom nil))
+		     ran)))))
 
 (defmethod gensubst* ((te tupletype) substfn testfn)
-  (let ((types (gensubst* (types te) substfn testfn)))
-    (lcopy te 'types types)))
+  (if *parsing-or-unparsing*
+      (let ((types (gensubst* (types te) substfn testfn)))
+	(lcopy te 'types types))
+      (let ((types (apply-to-bindings #'(lambda (ty) (gensubst* ty substfn testfn))
+				      (types te))))
+	(if (equal types (types te))
+	    te
+	    (lcopy te 'types types)))))
 
 (defmethod gensubst* ((te cotupletype) substfn testfn)
   (let ((types (gensubst* (types te) substfn testfn)))
     (lcopy te 'types types)))
 
 (defmethod gensubst* ((te recordtype) substfn testfn)
-  (let ((fields (gensubst* (fields te) substfn testfn)))
-    (if (eq fields (fields te))
+  (let ((fields (apply-to-bindings #'(lambda (fld) (gensubst* fld substfn testfn))
+				   (fields te))))
+    (if (equal fields (fields te))
 	te
 	(copy te
 	  'fields (if *parsing-or-unparsing*
@@ -401,7 +451,9 @@ behavior:
 		       *visible-only*)
 		   (type ex)
 		   (gensubst* (type ex) substfn testfn))))
-    (lcopy ex 'exprs exprs 'type ntype)))
+    (lcopy ex
+      :exprs (if (equal exprs (exprs ex)) (exprs ex) exprs)
+      :type ntype)))
 
 ;(defmethod gensubst* ((ex coercion) substfn testfn)
 ;  (let ((nexpr (gensubst* (expression ex) substfn testfn))
@@ -539,23 +591,26 @@ behavior:
 	  'table-entries (gensubst* (table-entries nex) substfn testfn)))))
 
 (defmethod gensubst* ((ex binding-expr) substfn testfn)
-  (let* ((nexpr (gensubst* (expression ex) substfn testfn))
-	 (nbindings (gensubst* (bindings ex) substfn testfn))
-	 (ntype (if (or *visible-only*
-			*parsing-or-unparsing*)
-		    (type ex)
-		    (gensubst* (type ex) substfn testfn))))
-    (if (and (eq (expression ex) nexpr)
-	     (eq (bindings ex) nbindings))
-	(lcopy ex 'type ntype)
-	(lcopy ex
-	  'bindings nbindings
-	  'expression (if (or *parsing-or-unparsing*
-			      (eq (bindings ex) nbindings)
-			      (not (declaration (car (bindings ex)))))
-			  nexpr
-			  (substit nexpr (pairlis (bindings ex) nbindings)))
-	  'type ntype))))
+  (multiple-value-bind (nbindings alist)
+      (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
+			 (bindings ex))
+    (let* ((gexpr (gensubst* (expression ex) substfn testfn))
+	   (nexpr (if (or *parsing-or-unparsing*
+			  (null alist) ; no changes to bindings
+			  (not (declaration (car (bindings ex)))))
+		      gexpr
+		      (substit gexpr alist)))
+	   (ntype (if (or *visible-only*
+			  *parsing-or-unparsing*)
+		      (type ex)
+		      (substit (gensubst* (type ex) substfn testfn) alist))))
+      (if (and (eq (expression ex) nexpr) (null alist))
+	  (lcopy ex 'type ntype)
+	  (let ((nex (copy ex :bindings nbindings :expression nexpr :type ntype)))
+	    ;; (assert (or *visible-only*
+	    ;; 		*parsing-or-unparsing*
+	    ;; 		(set-equal (freevars nex) (freevars ex) :test #'same-declaration)))
+	    nex)))))
 
 (defmethod gensubst* ((ex bind-decl) substfn testfn)
   (let ((ntype (if *visible-only*
@@ -640,21 +695,35 @@ behavior:
     'type (gensubst* (type map) substfn testfn)
     'lhs (gensubst* (lhs map) substfn testfn)
     'rhs (gensubst* (rhs map) substfn testfn)
-    'formals (gensubst* (formals map) substfn testfn)))
+    'formals (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
+				(formals map))))
 
 (defmethod gensubst* ((res resolution) substfn testfn)
-  (with-slots (declaration module-instance) res
+  (with-slots (declaration module-instance type) res
     (let* ((mi (theory-instance-with-lib res))
 	   (nmi (gensubst* mi substfn testfn)))
-      (if (eq nmi mi)
-	  (if (and *gensubst-subst-types*
-		   (funcall testfn declaration))
-	      (let ((ndecl (gensubst* declaration substfn testfn)))
-		(if (eq ndecl declaration)
-		    res
-		    (make-resolution ndecl nmi)))
-	      res)
-	(make-resolution declaration nmi)))))
+      (cond ((eq nmi mi)
+	     (if (and *gensubst-subst-types*
+		      (funcall testfn declaration))
+		 (let ((ndecl (gensubst* declaration substfn testfn)))
+		   (if (eq ndecl declaration)
+		       res
+		       (make-resolution ndecl nmi)))
+		 res))
+	    ((and (type-expr? type)
+		  (type-name? (print-type type))
+		  (eq (declaration (resolution (print-type type))) declaration))
+	     (let* ((ntype (gensubst* (copy type :print-type nil) substfn testfn))
+		    (nres (mk-resolution declaration nmi ntype)))
+	       (unless (print-type ntype)
+		 (let ((nprint-type (lcopy (print-type type)
+				      :actuals (actuals nmi)
+				      :dactuals (dactuals nmi)
+				      :mappings (mappings nmi))))
+		   (setf (print-type ntype) nprint-type)))
+	       nres))
+	    (t (let ((ntype (gensubst* type substfn testfn)))
+		 (mk-resolution declaration nmi ntype)))))))
 	       
 
 (defmethod gensubst* ((act actual) substfn testfn)
@@ -679,10 +748,13 @@ behavior:
 			gexpr
 			(pseudo-normalize gexpr))))
 	;; type-value shouldn't matter - but setting it to nil causes
-	;; problems for bugs/1999-01-29_EllenMunthe-Kass
-	(lcopy act 'expr nexpr
-	       ;; 'type-value nil
-	       ))))
+	;; problems for bugs/1999-01-29_EllenMunthe-Kass,
+	;; and leaving it alone means full-name doesn't work correctly
+	(if (eq nexpr (expr act))
+	    act
+	    (lcopy act
+	      'expr nexpr
+	      'type-value (gensubst* (type-value act) substfn testfn))))))
 
 (defmethod gensubst* ((name modname) substfn testfn)
   (let* ((gacts (gensubst* (actuals name) substfn testfn))
@@ -804,6 +876,7 @@ behavior:
   (call-next-method))
 
 (defmethod mapobject* :around (fn (obj tcc-decl))
+  (declare (ignore fn))
   (unless *parsing-or-unparsing*
     (call-next-method)))
 
@@ -1205,11 +1278,17 @@ behavior:
       'arguments (copy-untyped* arguments)
       'expression (copy-untyped* expression))))
 
-(defmethod copy-untyped* ((ex actual))
-  (with-slots (expr type-value) ex
-    (copy ex
-      'expr (copy-untyped* expr)
-      'type-value (unless expr (copy-untyped* type-value)))))
+(defmethod copy-untyped* ((act actual))
+  (with-slots (expr type-value) act
+    (let* ((nex (copy-untyped* expr))
+	   (cex (typecase expr
+		  (print-type-name (change-class nex 'type-name))
+		  (print-type-application (change-class nex 'type-application))
+		  (print-expr-as-type (change-class nex 'expr-as-type))
+		  (t nex))))
+      (copy act
+	'expr cex
+	'type-value (unless expr (copy-untyped* type-value))))))
 
 (defmethod copy-untyped* ((ex table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
@@ -1245,6 +1324,22 @@ behavior:
   (if (print-type ex)
       (copy-untyped* (print-type ex))
       (call-next-method)))
+
+(defmethod copy-untyped* ((te print-type-name))
+  (change-class (copy te) 'type-name
+    :actuals (copy-untyped* (actuals te))
+    :dactuals (copy-untyped* (dactuals te))
+    :resolutions nil))
+
+(defmethod copy-untyped* ((te print-type-application))
+  (change-class (copy te
+		  :type (copy-untyped* (type te))
+		  :parameters (copy-untyped* (parameters te)))
+      'type-application))
+
+(defmethod copy-untyped* ((te print-expr-as-type))
+  (change-class (copy te :expr (copy-untyped* (expr te)))
+      'expr-as-type))
 
 (defmethod copy-untyped* ((ex type-application))
   (with-slots (type parameters) ex
@@ -1284,6 +1379,9 @@ behavior:
       'print-type nil
       'from-conversion nil
       'nonempty? nil)))
+
+(defmethod copy-untyped* ((ex print-expr-as-type))
+  (copy-untyped* (change-class ex 'expr-as-type)))
 
 (defmethod copy-untyped* ((ex funtype))
   (with-slots (domain range) ex
