@@ -2696,18 +2696,92 @@ prove itself from the mapped axioms."
 (defun sbrt::assq (obj alist)
   (assoc obj alist :test #'eq))
 
+;;; get-print-type
+
+(defun get-print-type (type-expr)
+  "Builds the type-expr based on the print-types.
+For example, [nat -> int] internally has subtype domain and range,
+and get-print-type returns a funtype with type-name domain and range."
+  (get-print-type* type-expr))
+
+(defmethod get-print-type* :around ((te type-expr))
+  (or (print-type te)
+      (call-next-method)))
+
+(defmethod get-print-type* ((te type-name))
+  te)
+
+(defmethod get-print-type* ((te type-application))
+  (lcopy te :type (get-print-type* (type te))))
+
+(defmethod get-print-type* ((te expr-as-type))
+  te)
+
+(defmethod get-print-type* ((te subtype))
+  (lcopy te :supertype (get-print-type* (supertype te))))
+
+(defmethod get-print-type* ((te funtype))
+  (lcopy te :domain (get-print-type* (domain te)) :range (get-print-type* (range te))))
+
+(defmethod get-print-type* ((te tupletype))
+  (let ((ptypes (mapcar #'get-print-type* (types te))))
+    (if (equal ptypes (types te))
+	te
+	(copy te :types ptypes))))
+
+(defmethod get-print-type* ((te struct-sub-tupletype))
+  (let ((ptype (get-print-type* (type te)))
+	(ptypes (mapcar #'get-print-type* (types te))))
+    (if (and (eq ptype (type te))
+	     (equal ptypes (types te)))
+	te
+	(copy te :type ptype :types ptypes))))
+
+(defmethod get-print-type* ((te recordtype))
+  (let ((pfields (mapcar #'get-print-type* (fields te))))
+    (if (equal pfields (fields te))
+	te
+	(copy te :fields pfields))))
+
+(defmethod get-print-type* ((te struct-sub-recordtype))
+  (let ((ptype (get-print-type* (type te)))
+	(pfields (mapcar #'get-print-type* (fields te))))
+    (if (equal pfields (fields te))
+	te
+	(copy te :type ptype :fields pfields))))
+
+(defmethod get-print-type* ((te cotupletype))
+  (let ((ptypes (mapcar #'get-print-type* (types te))))
+    (if (equal ptypes (types te))
+	te
+	(copy te :types ptypes))))
+
+(defmethod get-print-type* ((te type-extension))
+  (lcopy te :type (get-print-type* (type te)) :extension (get-print-type* (extension te))))
+
+(defmethod get-print-type* ((te dep-binding))
+  (let ((ptype (get-print-type* (type te))))
+    (lcopy te :type ptype)))
+
+(defmethod get-print-type* ((te field-decl))
+  (let ((ptype (get-print-type* (type te))))
+    (lcopy te :type ptype)))
+
 ;;; Full-name
 
 (defvar *full-name-depth* nil)
 
 (defvar *exclude-prelude-names* nil)
 
-(defun full-name (obj &optional depth prelude?)
+(defvar *rename-variables* nil)
+
+(defun full-name (obj &optional depth prelude? (rename-variables? *rename-variables*))
   (if (or (not (typep obj '(or list syntax)))
 	  (and depth (zerop depth)))
       obj
       (let ((*full-name-depth* depth)
-	    (*exclude-prelude-names* (or prelude? *exclude-prelude-names*)))
+	    (*exclude-prelude-names* (or prelude? *exclude-prelude-names*))
+	    (*rename-variables* rename-variables?))
 	(gensubst obj #'full-name! #'full-name?))))
 
 (defmethod full-name? (obj)
@@ -2716,10 +2790,12 @@ prove itself from the mapped axioms."
 
 (defmethod full-name? ((x name))
   (and (resolution x)
-       (not (variable? x))
+       (or *rename-variables*
+	   (not (variable? x)))
        (not (skolem-constant? x))
        (module-instance (resolution x))
-       (or (not (current-theory))
+       (or *rename-variables*
+	   (not (current-theory))
 	   (not (eq (module (declaration (resolution x)))
 		    (current-theory)))
 	   (not (eq (id x) (id (resolution x))))
@@ -2765,25 +2841,41 @@ prove itself from the mapped axioms."
 (defmethod full-name! ((x name))
   (let* ((mi (module-instance (resolution x)))
 	 (modid (id mi)))
-    (copy x
-      'id (id (resolution x))
-      'mod-id (when (or (not (current-theory))
-			(integerp (id x))
-			(not (eq (id mi) (id (current-theory)))))
-		modid)
-      'library (or (library x)
-		   (library mi)
-		   (when (and (declaration x)
-			      (lib-datatype-or-theory?
-			       (module (declaration x))))
-		     (get-library-id (context-path (module (declaration x))))))
-      'actuals (full-name (actuals mi)
-			  (when *full-name-depth*
-			    (1- *full-name-depth*)))
-      'dactuals (full-name (dactuals mi)
-			   (when *full-name-depth*
-			     (1- *full-name-depth*)))
-      'mappings (mappings mi))))
+    (if (variable? x)
+	(let* ((cth (current-theory))
+	       (cdecl (current-declaration))
+	       (same-ids (remove-if-not #'(lambda (d)
+					    (and (declaration? d)
+						 (eq (id d) (id cdecl))))
+			   (all-decls cth)))
+	       (cpos (position cdecl same-ids))
+	       (vdecl (declaration x))
+	       (vpos (position vdecl *rename-variables*)))
+	  (assert cpos)
+	  (unless vpos
+	    (setq *rename-variables* (append *rename-variables* (list vdecl)))
+	    (setq vpos (position vdecl *rename-variables*)))
+	  (copy x :id (makesym "~a%~a%~d%~a%~d%a"
+			       (id cth) (id cdecl) cpos (id x) vpos (type-of (type x)))))
+	(copy x
+	  'id (id (resolution x))
+	  'mod-id (when (or (not (current-theory))
+			    (integerp (id x))
+			    (not (eq (id mi) (id (current-theory)))))
+		    modid)
+	  'library (or (library x)
+		       (library mi)
+		       (when (and (declaration x)
+				  (lib-datatype-or-theory?
+				   (module (declaration x))))
+			 (get-library-id (context-path (module (declaration x))))))
+	  'actuals (full-name (actuals mi)
+			      (when *full-name-depth*
+				(1- *full-name-depth*)))
+	  'dactuals (full-name (dactuals mi)
+			       (when *full-name-depth*
+				 (1- *full-name-depth*)))
+	  'mappings (mappings mi)))))
 
 (defmethod full-name! ((x adt-name-expr))
   (let* ((mi (module-instance (resolution (adt x))))
@@ -2819,7 +2911,8 @@ prove itself from the mapped axioms."
     (copy x
       'mod-id (when (and (or (not *exclude-prelude-names*)
 			     (not (gethash modid *prelude*)))
-			 (or (not (current-theory))
+			 (or *rename-variables*
+			     (not (current-theory))
 			     (not (eq modid (id (current-theory))))))
 		modid)
       'library (or (library x)
@@ -2951,6 +3044,7 @@ prove itself from the mapped axioms."
 		(and *raise-actuals-theory-ids*
 		     (id (module-instance (resolution x)))))))
 
+
 #+(or lucid allegro)
 (defmethod ppr (obj)
   (format t "~&")
@@ -3012,6 +3106,10 @@ prove itself from the mapped axioms."
 (defmethod ref-to-id ((ref expr-judgement))
   (or (id ref)
       '|expr_judgement|))
+
+(defmethod ref-to-id ((ref conversion-decl))
+  (or (id ref)
+      '|conversion_decl|))
 
 
 ;;; CASES v OF                      IF c1?(v) THEN e1
