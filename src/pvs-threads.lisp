@@ -54,8 +54,18 @@
 ;;;  (make-proof-session formula) returns an id and initial proofstate
 ;;;  (pr-step id cmd) returns the proofstate or error
 ;;;  (pr-interrupt id &optional (after :restore)) ; :quit :break
-;;;  
+;;;
 
+(declaim (ftype (function () t) in-the-debugger iso8601-date))
+(declaim (ftype (function (t) t)
+		all-formulas get-formula-decl provable-formulas quit-command-p
+		pvs-jsonrpc:pvs2json-response))
+(declaim (ftype (function (t t) t) unique-symbol*))
+(declaim (ftype (function (t &optional t) t) write-to-temp-file))
+;; (declaim (ftype (function (t &key (t t)) t) prove-formula))
+;; (declaim (ftype (function (t &optional t t) t) get-typechecked-theory))
+(defgeneric get-typechecked-theory (tref &optional theories quiet?))
+	  
 ;;;  proof-session: class
 
 (defcl session ()
@@ -83,6 +93,37 @@
 
 (defvar *done-sessions* nil
   "An alist of (id . status) pairs, status is quit, proved, or aborted")
+
+(defvar *multiple-proof-default-behavior* :ask
+  "Defines how to handle when a proof finishes:
+ :ask = asks whether to save the proof, and if yes, whether to overwrite, etc.
+ :noquestions = no questions, automatically overwrites if the proof is different
+ :overwrite = same as :noquestions, but sys that it is overwriting")
+
+(defvar *pvs-message-hook* nil)
+(defvar *pvs-warning-hook* nil)
+(defvar *pvs-buffer-hook* nil)
+(defvar *pvs-y-or-n-hook* nil)
+(defvar *pvs-query-hook* nil)
+(defvar *pvs-dialog-hook* nil)
+
+(defun clear-pvs-hooks ()
+  (setq *pvs-message-hook* nil
+	*pvs-warning-hook* nil
+	*pvs-buffer-hook* nil
+	*pvs-y-or-n-hook* nil
+	*pvs-query-hook* nil
+	*pvs-dialog-hook* nil))
+
+(defvar *pvs-emacs-interface* nil
+  "Set to t by Emacs in pvs-load - affects how pvs-emacs functions work")
+
+;;; The primary method (i.e., call-next-method) simply prints the proofstate in the
+;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
+;;; Websocket clients
+
+(defvar *pvs-emacs-output-proofstate-p* nil
+  "Set to t to try the Emacs frame interface - stiil in progress.")
 
 (defun make-session (id fun)
   (let ((sess
@@ -377,25 +418,25 @@ of objects of the form {\"proofId\":id,\"status\":status}"
 	  (push result results)))
       results)))
 
-(defcl pvsio-session (session)
-  context)
+;; (defcl pvsio-session (session)
+;;   context)
 
-(defun pvsio-in-session (theoryref input tccs? banner?)
-  (evaluation-mode-pvsio theoryref input tccs? banner?))
+;; (defun pvsio-in-session (theoryref input tccs? banner?)
+;;   (evaluation-mode-pvsio theoryref input tccs? banner?))
 
-(defun make-pvsio-session (theoryref &optional input tccs? banner?)
-  (with-theory (theory) theoryref
-    (let* ((id (get-new-session-id (id theory)))
-	   (sess (make-session id
-			       #'(lambda ()
-				   (pvsio-in-session theoryref input tccs? banner?)))))
-      (change-class sess 'pvsio-session)
-      (push sess *all-sessions*)
-      ;; Wait for output-proofstate to produce a new proofstate
-      ;; Releases the lock and waits on outvar
-      (format t "~%PVS: waiting for outvar")
-      ;;(bt:condition-wait (outcvar sess) nil)
-      (let ((out nil ;;(q:qpop (output-queue sess))
-	      ))
-	(format t "~%PVS: have output ~a for ~a" out id)
-	(list id out)))))
+;; (defun make-pvsio-session (theoryref &optional input tccs? banner?)
+;;   (with-theory (theory) theoryref
+;;     (let* ((id (get-new-session-id (id theory)))
+;; 	   (sess (make-session id
+;; 			       #'(lambda ()
+;; 				   (pvsio-in-session theoryref input tccs? banner?)))))
+;;       (change-class sess 'pvsio-session)
+;;       (push sess *all-sessions*)
+;;       ;; Wait for output-proofstate to produce a new proofstate
+;;       ;; Releases the lock and waits on outvar
+;;       (format t "~%PVS: waiting for outvar")
+;;       ;;(bt:condition-wait (outcvar sess) nil)
+;;       (let ((out nil ;;(q:qpop (output-queue sess))
+;; 	      ))
+;; 	(format t "~%PVS: have output ~a for ~a" out id)
+;; 	(list id out)))))
