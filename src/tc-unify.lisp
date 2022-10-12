@@ -167,7 +167,7 @@
     (let ((*tc-match-fixed-bindings*
 	   (delete-if #'(lambda (db)
 	   		  (or (null (cdr db))
-	   		      (and (type-name? (cdr db))
+	   		      (and (typep (cdr db) '(or type-name datatype-subtype))
 	   			   (not (fully-instantiated? (cdr db))))))
 	     dbindings)))
       (find-compatible-binding* types formals binding))))
@@ -322,10 +322,18 @@ unless arg is not compatible? with *tc-match-fixed-bindings* entry."
 	       (tc-eq arg (cdr fb)))
 	   ;;(break "tc-match-set-binding ~a to ~a" (car binding) arg)
 	   (setf (cdr binding) arg)
+	   (let ((nbinding (list binding)))
+	     (dolist (elt bindings)
+	       (let* ((*dont-expand-adt-subtypes* t)
+		      (scdr (subst-for-formals (cdr elt) nbinding)))
+		 (unless (eq scdr (cdr elt))
+		   ;;(break "tc-match-set-binding 2: ~a" scdr)
+		   (setf (cdr elt) scdr)))))
 	   bindings)
 	  ((and (type-expr? arg) (type-expr? (cdr fb))
 		(compatible? arg (cdr fb)))
-	   bindings)
+	   (or (tc-match* arg (cdr fb) bindings)
+	       bindings))
 	  (t nil))))
   
 (defmethod tc-match* ((arg type-expr) (farg type-name) bindings)
@@ -373,29 +381,32 @@ returns the updated bindings."
 		  (if (tc-eq arg (cdr fb))
 		      (tc-match-set-binding binding arg bindings)
 		      bindings)
-		  (let* ((ainst? (fully-instantiated? arg))
-			 (binst? (fully-instantiated? barg))
-			 (iarg (if (or ainst? (not binst?))
-				   arg
-				   (or (get-tc-match-instance barg arg)
-				       arg)))
-			 (ibarg (if (or binst? (not ainst?))
-				    barg
-				    (or (get-tc-match-instance arg barg)
-					barg)))
-			 (dtype (if (or (fully-instantiated? ibarg)
-					(not (fully-instantiated? iarg)))
-				    (compatible-type ibarg iarg)
-				    (compatible-type iarg ibarg))))
-		    (when dtype
-		      (if (or (tc-eq dtype barg)
-			      (and (member barg *tc-strict-matches* :test #'tc-eq)
-				   ;; This is suspicious - check
-				   (or (has-type-vars? arg)
-				       (not (has-type-vars? barg)))
-				   (or binst? (not ainst?))))
-			  bindings
-			  (tc-match-set-binding binding dtype bindings))))))))))
+		  (let ((ainst? (fully-instantiated? arg))
+			(binst? (fully-instantiated? barg)))
+		    (if (or ainst? binst?)
+			(let* ((iarg (if (or ainst? (not binst?))
+					 arg
+					 (or (get-tc-match-instance barg arg)
+					     arg)))
+			       (ibarg (if (or binst? (not ainst?))
+					  barg
+					  (or (get-tc-match-instance arg barg)
+					      barg)))
+			       (dtype (if (or (fully-instantiated? ibarg)
+					      (not (fully-instantiated? iarg)))
+					  (compatible-type ibarg iarg)
+					  (compatible-type iarg ibarg))))
+			  (when dtype
+			    (if (or (tc-eq dtype barg)
+				    (and (member barg *tc-strict-matches* :test #'tc-eq)
+					 ;; This is suspicious - check
+					 (or (has-type-vars? arg)
+					     (not (has-type-vars? barg)))
+					 (or binst? (not ainst?))))
+				bindings
+				(tc-match-set-binding binding dtype bindings))))
+			(let ((nbindings (tc-match* arg barg bindings)))
+			  (or nbindings bindings))))))))))
 
 ;;; Assuming either atype or etype is fully-instantiated,
 ;;; Instantiates the other, if necessary, and returns the compatible-type
@@ -507,6 +518,9 @@ returns the updated bindings."
 		       (tc-match-type-name-dactuals
 			d1 d2 arg farg (or abindings bindings))
 		       abindings))))
+	      ((let ((val (assq (declaration farg) bindings)))
+		 (and val
+		      (tc-match* arg (cdr val) bindings))))
 	      ((not *tc-match-strictly*)
 	       (let ((binding (call-next-method farg arg bindings)))
 		 binding))))))
@@ -1265,7 +1279,7 @@ returns the updated bindings."
   (collect-domain-types* (supertype arg) farg domain-pairs))
 
 (defmethod collect-domain-types* ((arg type-expr) (farg subtype) domain-pairs)
-  (collect-domain-types* arg (supertype farg) domain-pairs))
+  (collect-domain-types* arg (find-declared-adt-supertype farg) domain-pairs))
   
 (defmethod collect-domain-types* ((arg tuple-or-struct-subtype)
 				  (farg tuple-or-struct-subtype) domain-pairs)
