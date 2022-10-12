@@ -838,19 +838,17 @@ generated")
 	(typecheck-adt-decl sdecl)
 	(put-decl sdecl)
 	(typecheck* subtype nil nil nil))))
-  (let ((*generate-tccs* 'none))
-    ;; Now make sure the subtype field of each constructor is typechecked
-    (dolist (c (constructors adt))
-      (typecheck* (subtype c) nil nil nil))
-    ;; Finally set up judgements for subtypes with more than one constructor
-    (dolist (c (constructors adt))
-      (when (multiple-recognizer-subtypes? c (constructors adt))
-	(let ((jdecl (make-instance 'subtype-judgement
-		       :declared-subtype (mk-expr-as-type
-					  (mk-name-expr (recognizer c)))
-		       :declared-type (subtype c))))
-	  (typecheck-adt-decl jdecl)
-	  (put-decl jdecl))))))
+  (let* ((*generate-tccs* 'none)
+	 (stypes (mapcar #'(lambda (c) (typecheck* (subtype c) nil nil nil))
+		   (constructors adt))))
+    ;; Check that subtype-of? holds
+    (mapc #'(lambda (c stype)
+	      (when (multiple-recognizer-subtypes? c (constructors adt))
+		(let ((jstype (typecheck*
+			       (mk-expr-as-type (mk-name-expr (recognizer c)))
+			       nil nil nil)))
+		  (assert (subtype-of? jstype stype)))))
+      (constructors adt) stypes)))
 
 (defun multiple-recognizer-subtypes? (c constructors)
   (some #'(lambda (cc)
