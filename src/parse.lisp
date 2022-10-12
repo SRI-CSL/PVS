@@ -925,13 +925,19 @@
 		((not (name-expr? (operator* ex)))
 		 (parse-error jdecl "Recursive judgements are only for named applications"))
 		(t
-		 (let ((formals (create-formals-from-arguments (arguments* ex))))
-		   (make-instance 'rec-application-judgement
-		     :name (operator* ex)
-		     :formals formals
-		     :declared-type dtype
-		     :chain? t
-		     :place place))))))
+		 (let* ((invalid-arg (find-if #'(lambda (args) (find-if-not #'name? args))
+				       (arguments* ex)))
+			(formals (unless invalid-arg
+				   (create-formals-from-arguments (arguments* ex)))))
+		   (if invalid-arg
+		       (parse-error invalid-arg
+			 "Must use variables or bindings for recursive judgements")
+		       (make-instance 'rec-application-judgement
+			 :name (operator* ex)
+			 :formals formals
+			 :declared-type dtype
+			 :chain? t
+			 :place place)))))))
       (parse-error jdecl "Recursive judgements are not for types")))
 
 ;;; Conversions
@@ -1782,6 +1788,7 @@
     (NAME-BIND-EXPR (xt-name-bind-expr expr))
     (SET-EXPR (xt-set-expr expr))
     (SET-LIST-EXPR (xt-set-list-expr expr))
+    (ARRAY-EXPR (xt-array-expr expr))
     (LET-EXPR (xt-let-expr expr))
     (WHERE-EXPR (xt-where-expr expr))
     (UPDATE-EXPR (xt-update-expr expr))
@@ -1791,6 +1798,7 @@
     (TABLE-EXPR (xt-table-expr expr))
     (SKOVAR (xt-skovar expr))
     (BRACKET-EXPR (xt-bracket-expr expr))
+    (CHAR-EXPR (xt-char-expr expr))
     (t (error "xt-expr: unrecognized expr - ~a" expr))))
 
 (defun xt-number-expr (expr)
@@ -1834,6 +1842,13 @@
 		       :exprs (list scar scdr)
 		       :place aplace)
 	   :place aplace))))
+
+(defun mk-char-expr (code place)
+  (let ((ex (add-place
+	     (mk-application (add-place (mk-name-expr '|char|) place)
+	       (add-place (mk-number-expr code) place))
+	     place)))
+    (change-class ex 'char-expr :code code)))
 
 (defun xt-string-to-codes (string pos len place codes)
   (if (>= pos len)
@@ -1964,6 +1979,42 @@
 	(make-instance 'name-expr
 	  :id op
 	  :place (term-place expr)))))
+
+(defvar *escaped-chars*
+  '((#\0 . 0)
+    (#\a . 7)
+    (#\b . 8)
+    (#\t . 9)
+    (#\n . 10)
+    (#\v . 11)
+    (#\f . 12)
+    (#\r . 13)
+    (#\\ . 92)))
+
+(defun xt-char-expr (expr)
+  ;; keyword is any character between single quotes
+  ;; this is was unused before PVS 7.2, but is now used for char
+  (let ((char-str (ds-keyword (term-arg0 expr))))
+    (when (= (length char-str) 0)
+      (parse-error expr "Character not provided."))
+    (let ((char (char char-str 0))
+	  (place (term-place expr)))
+      (if (= (length char-str) 1)
+	  (mk-char-expr (char-code char) place)
+	  (let* ((char2 (char char-str 1))
+		 (ecode (cdr (assoc char2 *escaped-chars* :test #'char=))))
+	    (if ecode
+		(if (= (length char-str) 2)
+		    (mk-char-expr ecode place)
+		    (parse-error expr "Only one char allowed in char literal"))
+		(if (char= char2 #\u)
+		    (multiple-value-bind (code err)
+			(ignore-errors (parse-integer char-str :start 2 :radix 16))
+		      (cond ((null code)
+			     (parse-error expr "char literal error: ~a" err))
+			    ((> code #x10FFFF)
+			     (parse-error "char literal is too large, must be <= 10FFFF"))
+			    (t (mk-char-expr code place)))))))))))
 
 (defun xt-arg-expr (args)
   (if (cdr args)
@@ -2234,8 +2285,6 @@
       :operator opex
       :argument (xt-expr expr)
       :place (term-place uexpr))))
-
-(defvar *coercion-var-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 
 (defun xt-coercion (coercion)
   (let* ((expr (term-arg0 coercion))
@@ -2601,6 +2650,14 @@
 	 )
     (make-instance 'set-list-expr
       :exprs exprs)))
+
+(defun xt-array-expr (exs)
+  (let* ((exprs (mapcar #'xt-expr (term-args exs)))
+	 ;;(tvar (make-new-variable 'x exprs))
+	 )
+    (make-instance 'array-expr
+      :exprs exprs
+      :place (term-place exs))))
 
 ;; Note that xt-let-expr works as a lisp let* - this is so that later
 ;; bindings may refer to earlier ones.  Thus
