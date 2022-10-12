@@ -81,7 +81,18 @@
 	  *odd_negint* nil
 	  *negrat* nil
 	  *posrat* nil
-	  *negint* nil)
+	  *negint* nil
+	  *string-type* nil
+	  *character* nil
+	  *char* nil
+	  *uint8* nil
+	  *uint16* nil
+	  *uint32* nil
+	  *uint64* nil
+	  *int8* nil
+	  *int16* nil
+	  *int32* nil
+	  *int64* nil)
     (makunbound '*manip-supported-types*)
     (when *pvs-initialized*
       (clear-theories :workspace :all))
