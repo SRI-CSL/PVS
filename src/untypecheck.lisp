@@ -46,7 +46,7 @@
     (when (and fe
 	       (ce-object-date fe))
       (setf (ce-object-date fe) nil)
-      (setf (pvs-context-changed *workspace-session*) t)))
+      (setf (current-pvs-context-changed) t)))
   (untypecheck-theory (formals dorm))
   (setf (assuming dorm)
 	(remove-if #'(lambda (d) (and (declaration? d)
@@ -695,6 +695,11 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (bindings ex))
   (untypecheck-theory (expression ex)))
+
+(defmethod untypecheck-theory ((ex array-expr))
+  (setf (bindings ex) nil
+	(expression ex) nil)
+  (when (next-method-p) (call-next-method)))
 
 (defmethod untypecheck-theory ((ex update-expr))
   (when (next-method-p) (call-next-method))
