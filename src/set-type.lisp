@@ -339,7 +339,7 @@ required a context.")
       (if (and (null creses)
                (name-expr-from-number? ex)
                (compatible? expected *number_field*))
-          (change-class ex 'number-expr :type (or *real* *number_field*))
+          (change-class ex 'number-expr :type (get-expr-number-type (number ex)))
           (set-type-name-expr ex expected
                               (or sreses creses (resolutions ex)))))))
 
@@ -761,39 +761,32 @@ resolution with a macro matching the signature of the arguments."
       (or (bound-variable-resolution resolutions)
           (let* ((mreses (when expected
                            (find-tc-matching-resolutions resolutions expected)))
-                 (lreses (filter-local-resolutions (or mreses resolutions))))
-            (if (cdr lreses)
-                (let ((dreses (or (remove-if-not #'fully-instantiated? lreses)
-                                  lreses)))
-                  (if (cdr dreses)
-                      (let ((mreses (or (remove-if #'from-datatype-modname? dreses)
-                                        dreses)))
-                        (if (cdr mreses)
-                            (let ((freses (or (remove-if-not
-                                                  #'instantiated-importing?
-                                                mreses)
-                                              mreses)))
-                              (if (cdr freses)
-                                  (let ((maxreses (if expected
-                                                      (or (find-maximal-res-subtypes
-                                                           freses expected)
-                                                          freses)
-                                                      freses)))
-                                    (if (cdr maxreses)
-                                        (let ((ureses
-                                               (or (remove-if
-                                                       #'instantiated-importing?
-                                                     mreses)
-                                                   mreses)))
-                                          (cond ((cdr ureses)
-                                                 (setf (resolutions ex) maxreses)
-                                                 (type-ambiguity ex))
-                                                (t (car ureses))))
-                                        (car maxreses)))
-                                  (car freses)))
-                            (car mreses)))
-                      (car dreses)))
-                (car lreses))))
+                 (lreses (filter-local-resolutions (or mreses resolutions)))
+		 (dreses (or (and (cdr lreses)
+				  (remove-if-not #'fully-instantiated? lreses))
+			     lreses))
+                 (mreses (or (and (cdr dreses)
+				  (remove-if #'from-datatype-modname? dreses))
+			     dreses))
+		 (freses (or (and (cdr mreses)
+				  (remove-if-not #'instantiated-importing? mreses))
+			     mreses))
+		 (maxreses (or (and (cdr freses)
+				    expected
+				    (find-maximal-res-subtypes freses expected))
+			       freses))
+                 (ureses (or (and (cdr maxreses)
+				  (remove-if #'instantiated-importing? maxreses))
+			     maxreses))
+		 (unpreses (or (and (cdr ureses)
+				    (remove-if #'(lambda (res)
+						   (formals (module (declaration res))))
+				      ureses))
+			       ureses)))
+            (cond ((cdr unpreses)
+                   (setf (resolutions ex) unpreses)
+                   (type-ambiguity ex))
+                  (t (car unpreses)))))
       (car resolutions)))
 
 ;;; Find the resolutions that are maximals subtypes of the expected type
@@ -1060,19 +1053,15 @@ resolution with a macro matching the signature of the arguments."
 	     ;;(actuals (expr act))
 	     )
     (let ((reses (remove-if-not #'(lambda (res)
-				    (type-decl? (declaration res)))
+				    (typep (declaration res) '(or type-decl formal-type-decl)))
 		   (resolutions (expr act)))))
       (assert (null (cdr reses)))
       (setf (resolutions (expr act)) reses)
       (when (name-expr? (expr act))
 	(setf (type (expr act)) (type (car reses))))
-      (let ((*generate-tccs*
-	     (if (actuals (expr act))
-		 *generate-tccs*
-		 'none)))
-	(setf (module-instance (resolution (expr act)))
-	      (set-type-actuals-and-maps (expr act)
-					 (module (declaration (car reses)))))
+      (let* ((*generate-tccs* (if (actuals (expr act)) *generate-tccs* 'none))
+	     (thinst (set-type-actuals-and-maps (expr act) (module (declaration (car reses))))))
+	(setf (module-instance (resolution (expr act))) thinst)
 	(set-type* (type-value act) nil))
       #+pvsdebug (assert (fully-typed? (actuals (expr act))))))
   ;; Note that (expr act) now has its actuals and maps set,
@@ -1085,10 +1074,12 @@ resolution with a macro matching the signature of the arguments."
 
 (defmethod set-type-actual (act (formal formal-subtype-decl))
   (call-next-method)
+  ;;(assert (fully-typed? (type-value act)))
+  ;;(assert (fully-instantiated? (type-value act)))
   (let* ((tact (type-value act))
          (texp (type-value formal))
          (vid (make-new-variable '|x| act))
-         (vb (typecheck* (mk-bind-decl vid tact) nil nil nil))
+         (vb (mk-bind-decl vid tact tact))
          (*bound-variables* (cons vb *bound-variables*))
          (*tcc-conditions* (cons vb *tcc-conditions*))
          (svar (mk-name-expr vid nil nil
@@ -1262,10 +1253,11 @@ resolution with a macro matching the signature of the arguments."
       (type-error lhs "May not map ~a" lhs))
     (when (mapping-lhs? lhs)
       (setf (dactuals lhs) (mk-dactuals (decl-formals lhs)))
-      (let ((stype (subst-mod-params (type (resolution lhs))
-		       (copy thinst :dactuals (dactuals lhs))
-		     (module (declaration lhs)) lhs)))
-	(setf (type lhs) stype)))))
+      (with-current-decl lhs
+	(let ((stype (subst-mod-params (type (resolution lhs))
+			 (copy thinst :dactuals (dactuals lhs))
+		       (module (declaration lhs)) (declaration lhs))))
+	  (setf (type lhs) stype))))))
 
 (defun determine-best-mapping-lhs (lhs rhs type thinst)
   (unless (singleton? (resolutions lhs))
@@ -1398,7 +1390,7 @@ resolution with a macro matching the signature of the arguments."
     (let ((ldecl (declaration lhs))
           (rdecl (declaration (or (type-value rhs) (expr rhs)))))
       (assert rdecl)
-      (assert (eq (id rdecl) (id (expr rhs))))
+      (assert (name-eq (id rdecl) (id (expr rhs))))
       ;; For renames, the new declarations have already been set in the rhs,
       ;; but they are place holders - we still need to do the substitutions
       (typecase ldecl
@@ -1632,7 +1624,9 @@ type of the lhs."
 (defun make-mapping-alist (act formal)
   (let* ((mdecl (declaration (resolution (expr act))))
          (fmappings (mapcar #'(lambda (m)
-                                (cons (declaration (expr (cdr m))) (car m)))
+                                (if (actual? (cdr m))
+                                    (cons (declaration (expr (cdr m))) (car m))
+				    (cons (cdr m) (car m))))
                       (theory-mappings formal)))
          (tmappings (typecase mdecl
                       (theory-abbreviation-decl (mapping mdecl))
@@ -1769,7 +1763,7 @@ type of the lhs."
 (defmethod set-type* ((ex rational-expr) expected)
   (unless (compatible? expected *number*)
     (type-incompatible ex (ptypes ex) expected))
-  (setf (type ex) (or *real* *number_field*)))
+  (setf (type ex) (get-expr-number-type (number ex))))
 
 (defun check-for-subtype-tcc (ex expected)
   #+pvsdebug (assert (fully-instantiated? expected))
@@ -1933,11 +1927,10 @@ type of the lhs."
             (type-ambiguity (constructor sel))))
       (unless (injection-expr? (constructor sel))
         (change-class (constructor sel) 'constructor-name-expr)
-        (setf (constructor sel)
-              (subst-mod-params (constructor sel)
-                                (module-instance atype)
-                                (module (declaration atype))
-                                (declaration (constructor sel)))))
+	(setf (constructor sel)
+	      (subst-mod-params (constructor sel) (module-instance atype)
+		(module (declaration atype))
+		(declaration (constructor sel)))))
       (assert (fully-instantiated? (constructor sel)))
       (let* ((equality (make-selection-equality sel expr))
              (*bound-variables* (append (args sel) *bound-variables*))
@@ -2758,6 +2751,17 @@ type of the lhs."
                             (mapcar #'number (exprs argument))
                             (list (number argument))))))
              (change-expr-number-class ex num)))
+	  ((and (name-expr? operator)
+		(memq (id operator) '(+ -))
+		(resolution operator)
+		(eq (id (module-instance operator)) '|number_fields|)
+		(number-expr? argument))
+	   (let ((num (if (eq (id operator) '-)
+			  (- (number argument))
+			  (number argument))))
+	     (change-class ex 'int-expr
+	       :number num
+	       :type (get-expr-number-type num))))
           ((typep operator 'injection-expr)
            (change-class ex 'injection-application
                          :index (index operator)
@@ -2772,14 +2776,31 @@ type of the lhs."
     (assert class)
     (change-class ex class)
     (setf (number ex) num
-          (type ex) (or *real* *number_field*))))
+          (type ex) (get-expr-number-type num))))
+
+(defun get-expr-number-type (num)
+  (if (integerp num)
+      (if (null *int64*) ;; Must be loading the prelude
+	  (or *integer* *rational* *real* *number_field*)
+	  (if (minusp num)
+	      (cond ((>= num -128) *int8*)
+		    ((>= num -32768) *int16*)
+		    ((>= num -2147483648) *int32*)
+		    ((>= num -9223372036854775808) *int64*)
+		    (t *integer*))
+	      (cond ((< num 128) *uint8*)
+		    ((< num 32768) *uint16*)
+		    ((< num 2147483648) *uint32*)
+		    ((< num 9223372036854775808) *uint64*)
+		    (t *integer*))))
+      (or *rational* *real* *number_field*)))
 
 (defun get-expr-number-class (ex num)
   (if (integerp num)
       (if (decimal-integer? ex)
           'floatp
           (if (minusp num)
-              'rational-expr
+              'int-expr
               'number-expr))
       (if (decimal? ex)
           'floatp-expr
@@ -3710,10 +3731,11 @@ type of the lhs."
                                               bindings)))))
 
 (defun tc-match-domain* (arg dom-type bindings)
-  (tc-match-domain** (ptypes arg) dom-type bindings))
+  (tc-match-domain** (reverse (ptypes arg)) dom-type bindings))
 
 (defun tc-match-domain** (arg-types dom-type bindings)
-  (if (null arg-types)
+  (if (or (null arg-types)
+	  (every #'cdr bindings))
       bindings
       (tc-match-domain** (cdr arg-types) dom-type
                          (tc-match (car arg-types) dom-type bindings))))
@@ -3741,10 +3763,14 @@ type of the lhs."
       (nreverse result)
       (resolutions-of-current-theory*
        (cdr resolutions)
-       (if (same-id (module-instance (car resolutions))
-                    (current-theory-name))
+       (if (and (not (declaration? (generated-by (declaration (car resolutions)))))
+		(same-id (module-instance (car resolutions))
+			 (current-theory-name)))
            (cons (car resolutions) result)
            result))))
+
+(defmethod generated-by (obj)
+  nil)
 
 (defun resolutions-of-current-context* (resolutions result)
   (if (null resolutions)
@@ -4227,6 +4253,57 @@ type of the lhs."
                           (setf (type ex) (car ctypes))))))))))
     
 
+(defmethod set-type* ((ex array-expr) expected)
+  (let ((est (find-supertype expected)))
+    (cond ((null (exprs ex))
+	   ;; Need to check that expected is essentially below(0)
+           ;; (unless (and (funtype? est)
+           ;;              (tc-eq (domain est) below(0)))
+           ;;   (type-error ex "~a expected here" expected))
+           (let* ((id (make-new-variable '|x| ex))
+                  (bd (make-bind-decl id (domain est)))
+                  (var (make-variable-expr bd)))
+             (setf (bindings ex) (list bd))
+             (setf (expression ex) *false*)
+             (setf (type ex) est)))
+          (t (let ((ctypes (remove-if (complement
+                                       #'(lambda (ty) (compatible? ty est)))
+                             (ptypes ex))))
+               (cond ((null ctypes)
+                      (type-incompatible ex (ptypes ex) est))
+                     ((cdr ctypes)
+                      (setf (types ex) ctypes)
+                      (type-ambiguity ex))
+                     (t (dolist (e (exprs ex))
+                          (set-type* e (range est)))
+			;; Need to convert to a lambda-expr:
+			;; [: 13, 17, 19 :] => λ (x: below(3)): cases x of 0: 13, 
+                        (let* ((id (make-new-variable '|x| ex))
+                               (bd (make-bind-decl id (domain est)))
+                               (var (make-variable-expr bd))
+                               (if-expr (make-array-if-expr var (exprs ex))))
+                          (setf (bindings ex) (list bd))
+                          (setf (expression ex) if-expr)
+                          (setf (type ex) (car ctypes))
+			  (check-for-subtype-tcc ex expected)))))))))
+
+(defun make-array-if-expr (var exprs)
+  (cond ((null exprs)
+	 (break))
+	((null (cdr exprs))
+	 (car exprs))
+	(t (make-array-if-expr* var exprs (- (length exprs) 2) (car (last exprs))))))
+
+(defun make-array-if-expr* (var exprs index else-expr)
+  (if (< index 0)
+      else-expr
+      (let* ((cond-expr (make!-equation var (make!-number-expr index)))
+	     (then-expr (nth index exprs))
+	     (elsif-expr (if (zerop index)
+			     (make!-if-expr cond-expr then-expr else-expr)
+			     (make!-chained-if-expr cond-expr then-expr else-expr))))
+	(make-array-if-expr* var exprs (1- index) elsif-expr))))
+
 (defmethod set-type* ((ex bind-decl) expected)
   (declare (ignore expected))
   (when (declared-type ex)
@@ -4310,6 +4387,7 @@ type of the lhs."
 ;;; To do this, we need to compare with the expected type at the right time.
 
 (defmethod set-type* ((expr update-expr) (expected recordtype))
+  (assert (or *in-checker* *in-evaluator* (place expr)))
   (with-slots (expression assignments) expr
     (set-type-update-expr-recordtype expression assignments expr expected)))
 
@@ -4318,6 +4396,8 @@ type of the lhs."
     (set-type-update-expr-recordtype expression assignments expr expected)))
 
 (defun set-type-update-expr-recordtype (expression assignments expr expected)
+  (assert (or *in-checker* *in-evaluator* (place expression)))
+  (assert (or *in-checker* *in-evaluator* (null expr) (place expr)))
   (let ((etypes (collect-compatible-recordtypes (ptypes expr) expected)))
     (check-unique-type etypes expr expected)
     (let* ((stype (find-supertype (car etypes)))
@@ -4408,6 +4488,7 @@ type of the lhs."
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
+  (assert (place expr))
   (let ((stype (find-update-supertype expected)))
     ;; Find-update-supertype walks up subtypes, until a datatype-subtype or
     ;; non-subtype is reached, e.g., list[int] rather than list[number]
@@ -4465,6 +4546,7 @@ type of the lhs."
 (defun set-assignment-arg-types (args-list values ex expr expected)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (assert (type-expr? expected))
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (set-assignment-arg-types* args-list values ex expr expected))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr expected)
@@ -4499,6 +4581,7 @@ type of the lhs."
 
 (defmethod set-assignment-arg-types* (args-list values ex expr (expected recordtype))
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (with-slots (fields) expected
     (if (every #'null args-list)
         (call-next-method)
@@ -4518,6 +4601,7 @@ type of the lhs."
 
 (defun set-assignment-arg-types-recordtype (fields args-list values ex expr expected)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
+  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (mapc #'(lambda (a v) (unless a (set-type* v expected))) args-list values)
   ;; This is wrong - if we're going to recurse we need to make all
   ;; arguments homogeneous, i.e., r WITH [`a`x := 3, `a := e] leads to e
@@ -5148,7 +5232,7 @@ type of the lhs."
           (append (ldiff types (cdr rest)) srest)))))
 
 (defmethod complete-assignments (args-list values ex expr (rtype recordtype))
-  #+pvsdebug (assert (or  *in-checker* *in-evaluator* (null ex) (place ex)))
+  #+pvsdebug (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   ;; Used to check for dependent?, but we really need all assignments if
   ;; we're going to generate correct TCCs.
   ;; Since field-decls don't point to their associated recordtypes
@@ -5341,12 +5425,14 @@ type of the lhs."
 
 (defmethod set-type* :around ((te type-expr) expected)
   (declare (ignore expected))
+  (call-next-method)
   (when (print-type te)
     (unless (place (print-type te))
       (setf (place (print-type te)) (place te)))
     (let ((*generate-tccs* 'none))
       (set-type* (print-type te) nil)))
-  (call-next-method))
+  (assert (fully-typed? (print-type te)))
+  (assert (fully-instantiated? (print-type te))))
 
 (defmethod set-type* ((te type-name) expected)
   (declare (ignore expected))
