@@ -1460,7 +1460,7 @@ then uses unpindent* to add the indent to each line"
 
 (defmethod pp* ((te expr-as-type))
   (with-slots (expr) te
-    (let ((have-parens? (and (parens expr) (plusp (parens expr)))))
+    (let ((have-parens? (and expr (parens expr) (plusp (parens expr)))))
       (unless have-parens?
 	(write-char #\())
       (pp* expr)
@@ -1639,17 +1639,19 @@ then uses unpindent* to add the indent to each line"
 ;;; Expressions
 
 (defmethod pp* :around ((ex expr))
-  (if (and *ppmacros*
-	   (current-theory)
-	   (from-macro ex))
-      (pp* (from-macro ex))
-      (if (typep ex 'binding)
-	  (call-next-method)
-	  (progn (dotimes (p (parens ex))
-		   (write-char #\())
-		 (call-next-method)
-		 (dotimes (p (parens ex))
-		   (write-char #\)))))))
+  (cond ((and *ppmacros*
+	      (current-theory)
+	      (from-macro ex))
+	 (pp* (from-macro ex)))
+	((or (typep ex 'binding)
+	     (and (not *show-conversions*)
+		  (typep ex '(or argument-conversion implicit-conversion))))
+	 (call-next-method))
+	(t (dotimes (p (parens ex))
+	     (write-char #\())
+	   (call-next-method)
+	   (dotimes (p (parens ex))
+	     (write-char #\))))))
 
 (defmethod pp* :around ((ex infix-application))
   (cond ((and *pp-print-parens*
@@ -1731,6 +1733,9 @@ then uses unpindent* to add the indent to each line"
     (setf (string-value ex) (pp-string-expr (argument ex))))
   (write (string-value ex) :escape t))
 
+(defmethod pp* ((ex char-expr))
+  (format t "'~a'" (code-char (code ex))))
+
 (defun pp-string-expr (charlist &optional list)
   (if (typep charlist 'name-expr)
       (coerce (nreverse list) 'string)
@@ -1786,6 +1791,24 @@ then uses unpindent* to add the indent to each line"
 
 (defmethod pp* ((ex null-expr))
   (write "(: :)"))
+
+(defmethod pp* ((ex array-expr))
+  (if (valid-array-expr? ex)
+      (pprint-logical-block (nil (exprs ex) :prefix "[: " :suffix " :]")
+	(pprint-indent :current 0)
+	(loop (pp* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill)))
+      (call-next-method)))
+
+(defmethod valid-array-expr? ((ex array-expr))
+  (listp (exprs ex)))
+
+(defmethod valid-array-expr? ((ex expr))
+  nil)
+
 
 (defmethod pp* ((ex bracket-expr))
   (multiple-value-bind (lb rb)
@@ -2376,7 +2399,7 @@ then uses unpindent* to add the indent to each line"
 (defun sbst-symbol (sym)
   (or (get sym 'sbst-symbol)
       (setf (get sym 'sbst-symbol)
-	    (intern (symbol-name sym) 'sbst))))
+	    (intern (symbol-name sym) :sbst))))
 
 (defmethod pp* ((ex unary-application))
   (with-slots (operator argument) ex
@@ -3567,13 +3590,17 @@ then uses unpindent* to add the indent to each line"
 	   (typep (argument expr) 'tuple-expr)
 	   (= (length (exprs (argument expr))) 2))
       (case ctx
-	(left (min (gethash (sbst-symbol (id (operator expr)))
-			    (third *expr-prec-info*))
+	(left (min (or (gethash (sbst-symbol (id (operator expr)))
+				(third *expr-prec-info*))
+		       (gethash (id (operator expr))
+				(third *expr-prec-info*)))
 		   (if (not (zerop (parens (args2 expr))))
 		       most-positive-fixnum
 		       (precedence (second (arguments expr)) 'left))))
-	(right (gethash (sbst-symbol (id (operator expr)))
-			(second *expr-prec-info*))))
+	(right (or (gethash (sbst-symbol (id (operator expr)))
+			    (second *expr-prec-info*))
+		   (gethash (id (operator expr))
+			    (second *expr-prec-info*)))))
       (call-next-method)))
 
 (defmethod precedence ((expr name-expr) ctx)
