@@ -447,7 +447,8 @@ the possible types of name."
 		      (list (if (typep dom 'dep-binding) (type dom) dom)))
 		(setf (operator op) (copy (expr conv) :type nil))
 		(setf (types op) (list ctype))
-		(typecheck* op nil nil nil))
+		(let ((*no-conversions-allowed* t))
+		  (typecheck* op nil nil nil)))
 	      (type-mismatch-error expr))))))
 
 (defun find-operator-conversions (optypes args &optional conversions)
@@ -861,7 +862,8 @@ that are not the K_covnersion."
 	  (setf (type expr) nil (types expr) nil)
 	  (set-type-actuals-and-maps (operator expr)
 				     (module (declaration (operator expr))))
-	  (typecheck* expr expected nil nil)
+	  (let ((*no-conversions-allowed* t))
+	    (typecheck* expr expected nil nil))
 	  expr)))))
 
 ;(defun find-funtype-conversion (type expected expr)
@@ -1221,6 +1223,7 @@ that are not the K_covnersion."
 		   (*checking-conversions* t)
 		   (*generate-tccs* 'none)
 		   (*smp-include-actuals* t))
+	      (setf (resolutions nmi) (list (mk-resolution theory nmi nil)))
 	      (and (with-no-type-errors
 		    (let ((*current-context*
 			   (if (free-params type)
