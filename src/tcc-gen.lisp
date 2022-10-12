@@ -347,10 +347,8 @@ looking in bindings and substs."
 		       bd))
 	 (dtype (raise-actuals (declared-type typed-bd)))
 	 (prtype (when (print-type (type typed-bd))
-		   (if (tc-eq (print-type (type typed-bd))
-			      (declared-type typed-bd))
-		       dtype
-		       (raise-actuals (print-type (type typed-bd))))))
+		   (assert (print-type-expr? (print-type (type typed-bd))))
+		   (raise-actuals (print-type (type typed-bd)))))
 	 (ptype (when prtype (or (print-type prtype) prtype)))
 	 (ptyped-bd (cond ((and (eq dtype (declared-type typed-bd))
 				(or (null ptype)
@@ -427,13 +425,14 @@ looking in bindings and substs."
 
 
 (defun insert-tcc-decl (kind expr type ndecl)
-  (let ((origin (make-instance 'tcc-origin
-		 :root (tcc-root-name expr)
-		 :kind kind
-		 :expr (if (eq kind 'existence)
-			   ""
-			   (str (raise-actuals expr t :all) :char-width nil))
-		 :type (str (raise-actuals type t :all) :char-width nil))))
+  (let* ((root (tcc-root-name expr))
+	 (origin (make-instance 'tcc-origin
+		   :root (or root (break "No root?"))
+		   :kind kind
+		   :expr (if (eq kind 'existence)
+			     ""
+			     (str (raise-actuals expr t :all) :char-width nil))
+		   :type (str (raise-actuals type t :all) :char-width nil))))
     (if (or *in-checker* *in-evaluator* *collecting-tccs*)
 	(add-tcc-info kind expr type ndecl origin)
 	(insert-tcc-decl1 kind expr type ndecl origin))))
@@ -542,12 +541,14 @@ looking in bindings and substs."
 			(place* expr) (place type)
 			(place *set-type-expr*)
 			(place *set-type-subtype*)
+			(and *adt* (place *adt*))
 			))
 	     (plstr (when place
 		      (format nil "(at line ~d, column ~d) "
 			(starting-row place) (starting-col place))))
-	     (termstr (unpindent (or *set-type-actuals-name* expr type)
-				 4 :string t :comment? t))
+	     (termstr (protect-format-string
+		       (unpindent (or *set-type-actuals-name* expr type)
+				  4 :string t :comment? t)))
 	     (gen-by (when (> (length place) 4)
 		       (remove #\Newline (elt place 4))))
 	     (too-long (or (> (length place) 4)
@@ -1436,8 +1437,10 @@ which is the transitive closure of the immediate assuming instances."
 						     (eq ax (generating-axiom gtcc))))
 					    (generated rdecl))
 				(ensure-closed-definition ax)
-				(list (cons ax (subst-mod-params
-						   (closed-definition ax) thinst theory)))))
+				(list (cons ax
+					    (with-current-decl ax
+					      (subst-mod-params
+						  (closed-definition ax) thinst theory))))))
 		    lhs-axioms)
 		  axpairs))
 	  (module
@@ -1447,8 +1450,10 @@ which is the transitive closure of the immediate assuming instances."
 						     (eq ax (generating-axiom gtcc))))
 					    (all-decls rdecl))
 				(ensure-closed-definition ax)
-				(list (cons ax (subst-mod-params
-						   (closed-definition ax) thinst theory)))))
+				(list (cons ax
+					    (with-current-decl ax
+					      (subst-mod-params
+						  (closed-definition ax) thinst theory))))))
 		    lhs-axioms)
 		  axpairs)))))))
 
@@ -2304,7 +2309,7 @@ list of kind, etc."
 	 (kind (tccinfo-kind tccinfo))
 	 (expr (tccinfo-expr tccinfo))
 	 (type (tccinfo-type tccinfo))
-	 (reason (tccinfo-reason tccinfo))
+	 ;;(reason (tccinfo-reason tccinfo))
 	 (submsg (case kind
 		   (actuals nil)
 		   (assuming (format nil "generated from assumption ~a.~a"
