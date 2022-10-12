@@ -305,10 +305,11 @@
 (defmethod typecheck* ((decl formal-subtype-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (check-duplication decl)
-  (let* ((tn (mk-type-name (id decl)))
-	 (res (mk-resolution decl (current-theory-name) tn)))
+  (let* ((tn (mk-print-type-name (id decl)))
+	 (res (mk-resolution decl (current-theory-name) nil)))
     (setf (resolutions tn) (list res))
     (type-def-decl-value decl tn))
+  (assert (type-value decl))
   decl)
 
 (defmethod typecheck* ((decl formal-nonempty-subtype-decl) expected kind arguments)
@@ -322,7 +323,7 @@
 (defmethod typecheck* ((decl formal-struct-subtype-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (check-duplication decl)
-  (let* ((tn (mk-type-name (id decl)))
+  (let* ((tn (mk-print-type-name (id decl)))
 	 (res (mk-resolution decl (current-theory-name) tn)))
     (setf (resolutions tn) (list res))
     (type-def-decl-value decl tn))
@@ -371,6 +372,8 @@
 	  (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (assert (fully-instantiated? (type decl)))
+  (assert (or (null (print-type (type decl)))
+	      (tc-eq (print-type (type decl)) (declared-type decl))))
   (if (free-params (type decl))
       (set-nonempty-type (type decl) decl)
       ;; Don't check here
@@ -648,8 +651,10 @@
   )
 
 (defun typecheck-inlined-theory (thdecl)
-  (assert (typep thdecl '(or mod-decl formal-theory-decl)))
-  (let ((theory-name (theory-name thdecl)))
+  (assert (typep thdecl '(or mod-decl formal-theory-decl modname)))
+  (let ((theory-name (if (modname? thdecl)
+			 thdecl
+			 (theory-name thdecl))))
     (when (and (null (library (theory-name thdecl)))
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
       (type-error (theory-name thdecl)
@@ -771,29 +776,57 @@
     ;; Inline the generated decls, but with nested identifiers
     (make-inlined-theory theory theory-name decl)))
 
-(defun make-inlined-theory (theory theory-name decl)
-  ;; (assert (typep decl '(or mod-decl formal-theory-decl)))
-  (let ((stheory (subst-mod-params-inlined-theory theory theory-name decl)))
+(defun make-inlined-theory (theory theory-name thdecl)
+  (assert (typep thdecl '(or mod-decl formal-theory-decl)))
+  (multiple-value-bind (stheory bindings)
+      (subst-mod-params-inlined-theory theory theory-name thdecl)
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
-    ;; Might be better to subst-mod-params declarations separately, but then
-    ;; the substitution alist must be remade for each one.
-    ;; So we do the whole theory first, then just grab the decls from
-    ;; the theory part - the theory-name is fully-instantiated,
-    ;; so formals can be ignored.  Make sure assumings are handled somehow.
-    
-    ;; Make sure substituted decls are all new.
-    (multiple-value-bind (theory-part dalist owlist)
-	;; Continues the substitutions done by subst-mod-params
-	;; Note that this modifies the theory part
-	(subst-new-map-inline-theory-decls (theory stheory) decl)
-      (setf (theory stheory)
-	    (remove-if #'var-decl? theory-part))
-      (setf (theory-mappings decl) dalist)
-      (setf (other-mappings decl) owlist)
-      ;; Finishes the substitutions
-      (subst-new-map-decls (theory stheory) dalist owlist)
-      ;; This splices the new decls into the current theory
-      (make-inlined-theory-decls stheory decl))))
+    ;;(setf (theory-mappings thdecl) bindings)
+    (setf (theory-mappings thdecl)
+	  (mapcar #'(lambda (elt)
+	    (if (typep (cdr elt) '(or type-def-decl const-decl theory-reference))
+		(let* ((res (make-resolution (cdr elt) (current-theory-name)))
+		  (nm (mk-name-expr (id (cdr elt)) nil nil res))
+		  (act (make-instance 'actual :expr nm)))
+		  (cons (car elt) act))
+		elt))
+	    (theory-mappings stheory)))
+    (let ((fml-part (memq thdecl (formals (current-theory))))
+	  (ass-part (memq thdecl (assuming (current-theory))))
+	  (th-part (memq thdecl (theory (current-theory)))))
+      (assert (or fml-part ass-part th-part))
+      ;; Splice in the declarations in the right place
+      (cond (fml-part
+	     ;; Goes to the front of assuming or theory part
+	     (if (assuming (current-theory))
+		 (setf (assuming (current-theory))
+		       (append (all-decls stheory) (assuming (current-theory))))
+		 (setf (theory (current-theory))
+		       (append (all-decls stheory) (theory (current-theory))))))
+	    (ass-part
+	     (let* ((rest (cdr ass-part))
+		    (prev (ldiff (assuming (current-theory)) rest)))
+	       (setf (assuming (current-theory))
+		     (append prev (all-decls stheory) rest))))
+	    (th-part
+	     (let* ((rest (cdr th-part))
+		    (prev (ldiff (theory (current-theory)) rest)))
+	       (setf (theory (current-theory))
+		     (append prev (all-decls stheory) rest)))))
+      (dolist (decl (all-decls stheory))
+	;; overwrite stheory
+	(when (declaration? decl)
+	  (setf (module decl) (current-theory)))
+	(when (and fml-part (declaration? decl))
+	  (setf (visible? decl) nil))
+	(setf (generated-by decl) thdecl)
+	(push decl (generated thdecl))
+	;;(add-new-inlined-decl decl lastdecl part)
+	;;(make-inlined-theory-decl decl)
+	(when (declaration? decl)
+	  (put-decl decl)
+	  (assert (or (importing? decl)
+		      (memq decl (get-declarations (id decl))))))))))
 
 (defun subst-mod-params-inlined-theory (theory theory-name thdecl)
   "Does subst-mod-params for the whole theory, but with a fresh
@@ -809,479 +842,43 @@ all-subst-mod-params-caches.  It does this by resetting this in
       (setf (all-subst-mod-params-caches *workspace-session*)
   	    cur-all-subst-mod-params-caches))))
 
-(defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
-  ;;(break "subst-new-map-inline-theory-decls")
-  (if (null sdecls)
-      (values (nreverse ndecls) dalist owlist)
-      (multiple-value-bind (ndecl ndalist nowlist)
-	  (subst-new-map-inline-theory-decl (car sdecls) decl dalist owlist)
-	(subst-new-map-inline-theory-decls (cdr sdecls) decl
-					   (cons ndecl ndecls) ndalist nowlist))))
+(defun apply-to-bindings (fn bindings-form)
+  "Applies function fn to the elements of bindings that maintains the
+dependencies.  Returns the new bindings plus an alist that can
+be used for substit.  Every element of bindings is either a binding, or a
+list of bindings; this is to allow the general form of definition and lamda
+bindings."
+  (typecase bindings-form
+    (list (apply-to-bindings* fn bindings-form nil nil))
+    (binding
+     (let ((nb (funcall fn bindings-form)))
+       (values nb (unless (eq nb bindings-form) (acons bindings-form nb nil)))))
+    (t (funcall fn bindings-form))))
 
-;; sd is the decl after subst-mod-params, which cannot complete the
-;; substitution itself, as dependencies need to be resolved.  These
-;; are kept in dalist and owlist.
-
-(defun subst-new-map-inline-theory-decl (sd decl dalist owlist)
-  "Called on each decl, mostly builds up dalist and owlist for use in subst-new-map-decls.
-In addition, it resets the id, and calls subst-new-map-decl-type to reset the type for some decls."
-  (if (importing? sd)
-      (values (copy sd) dalist owlist)
-      (let* ((nid (makesym "~a.~a" (id decl) (id sd)))
-	     (d (or (generated-by sd)
-		    (break "No generated-by?"))))
-	(setf (id sd) nid)
-	(setf (module sd) (current-theory))
-	(typecase sd
-	  ((or type-def-decl const-decl theory-reference)
-	   (subst-new-map-decl-type sd dalist owlist)
-	   (let* ((res (make-resolution sd (current-theory-name)))
-		  (nm (mk-name-expr nid nil nil res))
-		  (act (make-instance 'actual :expr nm)))
-	     (typecase sd
-	       (type-decl
-		(setf (type-value act) (type-value sd)))
-	       (theory-abbreviation-decl
-		(let ((tadecl (declaration (theory-name sd))))
-		  (when (typep tadecl '(or mod-decl formal-theory-decl))
-		    (setq dalist (append (theory-mappings tadecl) dalist))))))
-	     (assert (with-current-decl sd (fully-instantiated? act)))
-	     (push (cons d act) dalist)))
-	  (type-decl
-	   ;; This one is tricky, because often
-	   ;; (eq d (declaration (type-value d)))
-	   ;; and we need to ensure this is true of sd
-	   ;;(subst-new-map-decl-type sd dalist owlist)
-	   (setf (type-value sd)
-		 (let ((tn (if (adt-type-name? (type-value d))
-			       (let ((sadt (cdr (assq (adt (type-value d))
-						      owlist))))
-				 (assert sadt)
-				 (mk-adt-type-name (id sd) nil nil nil sadt))
-			       (mk-type-name (id sd)))))
-		   (setf (resolutions tn)
-			 (list (mk-resolution sd
-				 (current-theory-name) tn)))
-		   tn))
-	   (let* ((type (type-value sd))
-		  (res (make-resolution sd
-			 (current-theory-name) type))
-		  (nm (mk-name-expr nid nil nil res))
-		  (act (make-instance 'actual :expr nm
-				      :type-value (type-value sd))))
-	     (push (cons d act) dalist)))
-	  (inline-recursive-type
-	   ;;(break "inline-recursive-type")
-	   (subst-new-map-decl-type sd dalist owlist)
-	   (push (cons d sd) owlist))
-	  (var-decl nil)
-	  (t (push (cons d sd) owlist)))
-	(values sd dalist owlist))))
-
-(defvar *subst-new-map-decls*)
-(defvar *subst-new-other-decls*)
-
-(defgeneric subst-new-map-decl-type (sd dalist owlist)
-  (:documentation
-   "Resets the types of sd, depending on the class:
-    type-decl: type-value
-    type-def-decl: type-value, type-expr, contains
-    const-decl: type
-    inline-recursive-type: adt-type-name, constructors, adt-theory"))
-
-(defmethod subst-new-map-decl-type ((sd theory-reference) dalist owlist)
-  (declare (ignore dalist owlist))
-  nil)
-
-(defmethod subst-new-map-decl-type ((sd type-decl) dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (setf (type-value sd)
-	  (subst-new-map-decls* (type-value sd)))))
-
-(defmethod subst-new-map-decl-type ((sd type-def-decl) dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (setf (type-value sd) (subst-new-map-decls* (type-value sd)))
-    (setf (type-expr sd) (subst-new-map-decls* (type-expr sd)))
-    (setf (contains sd) (subst-new-map-decls* (contains sd)))))
-
-(defmethod subst-new-map-decl-type ((sd const-decl) dalist owlist)
-  ;;(assert (or (null (definition sd)) (compatible? (type (definition sd)) (type sd))))
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (let ((ntype (subst-new-map-decls* (type sd)))
-	  (ndef (subst-new-map-decls* (definition sd))))
-      ;;(assert (or (null ndef) (compatible? ntype (type ndef))))
-      (setf (type sd) ntype)
-      (setf (definition sd) ndef))))
-
-(defmethod subst-new-map-decl-type ((adt inline-recursive-type) dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist)
-	(tdecl (find-if #'type-decl? (generated adt) :from-end t)))
-    (assert tdecl)
-    (setf (adt-type-name adt)
-	  (mk-adt-type-name (id adt) nil nil nil adt))
-    (setf (resolutions (adt-type-name adt))
-	  (list (mk-resolution tdecl (current-theory-name)
-			       (adt-type-name adt))))
-    (setf (constructors adt)
-	  (mapcar #'subst-new-map-decls* (constructors adt)))
-    (setf (adt-theory adt) (module adt))))
-
-(defun subst-new-map-decls (decls dalist owlist)
-  (let ((*subst-new-map-decls* dalist)
-	(*subst-new-other-decls* owlist))
-    (mapc #'subst-new-map-decl decls)))
-
-(defmethod subst-new-map-decl ((decl type-decl))
-  (setf (formals decl) (subst-new-map-decls* (formals decl)))
-  ;;(setf (generated-by decl) nil)
-  (setf (type-value decl) (subst-new-map-decls* (type-value decl))))
-
-(defmethod subst-new-map-decl ((decl const-decl))
-  (let* ((nfmls (subst-new-map-decls* (formals decl)))
-	 (odecl (car (rassoc decl *subst-new-map-decls*
-			     :test #'eq :key #'declaration)))
-	 (bindings (when nfmls
-		     (mapcar #'cons
-		       (apply #'append (formals odecl))
-		       (apply #'append nfmls))))
-	 (ntype (subst-new-map-decls* (substit (type decl) bindings)))
-	 (ndef (subst-new-map-decls* (substit (definition decl) bindings))))
-    #+pvsdebug
-    (assert (or (null ndef)
-		(compatible? ntype
-			     (make-formals-funtype nfmls (type ndef))))
-	    () "subst-new-map-decl: incompatible types")
-    (setf (formals decl) nfmls)
-    (setf (definition decl) ndef)
-    (setf (type decl) ntype)
-    (setf (declared-type decl)
-	  (subst-new-map-decls* (substit (declared-type decl) bindings)))
-    (when (definition decl)
-      (if (def-axiom decl)
-	  (setf (def-axiom decl)
-		(subst-new-map-decls* (substit (def-axiom decl) bindings)))
-	  (make-def-axiom decl)))
-    (setf (generated-by decl) nil)
-    (setf (eval-info decl) nil)
-    (when (def-decl? decl)
-      (setf (declared-measure decl)
-	    (subst-new-map-decls* (substit (declared-measure decl) bindings)))
-      (setf (measure decl) (subst-new-map-decls* (substit (measure decl) bindings)))
-      (setf (ordering decl) (subst-new-map-decls* (substit (ordering decl) bindings)))
-      (setf (recursive-signature decl)
-	    (subst-new-map-decls* (substit (recursive-signature decl) bindings))))))
-
-(defmethod subst-new-map-decl ((decl var-decl))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
-
-(defmethod subst-new-map-decl ((decl formula-decl))
-  (change-to-mapped-formula-decl decl)
-  (setf (place decl) nil)
-  (setf (kind decl) nil)
-  (assert (typep (from-formula decl) '(or null formula-decl)))
-  (unless (from-formula decl)
-    (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
-      (assert (formula-decl? fdecl))
-      (setf (from-formula decl) fdecl)))
-  (setf (definition decl) (subst-new-map-decls* (closed-definition decl)))
-  (setf (closed-definition decl) (definition decl))
-  (setf (default-proof decl) nil)
-  (setf (proofs decl) nil)
-  (setf (generated-by decl) nil))
-
-(defmethod change-to-mapped-formula-decl ((decl formula-decl))
-  (change-class decl 'mapped-formula-decl :spelling 'AXIOM))
-
-(defmethod change-to-mapped-assuming-decl ((decl formula-decl))
-  (change-class decl 'mapped-assuming-decl :spelling 'AXIOM))
-
-(defmethod change-to-mapped-tcc-decl ((decl formula-decl))
-  (change-class decl 'mapped-tcc-decl :spelling 'AXIOM))
-
-(defmethod subst-new-map-decl ((decl mod-decl))
-  (setf (modname decl) (subst-new-map-decls* (modname decl))))
-
-(defmethod subst-new-map-decl ((imp importing))
-  (let ((tn (subst-new-map-decls* (theory-name imp))))
-    (assert (modname? tn))
-    (setf (theory-name imp) tn)))
-
-(defmethod subst-new-map-decl ((constr simple-constructor))
-  ;;(break "subst-new-map-decl (simple-constructor)")
-  (copy constr
-    :arguments (mapcar #'subst-new-map-decls* (copy-all (arguments constr)))
-    :con-decl (subst-new-map-decls* (copy-all (con-decl constr)))
-    :rec-decl (subst-new-map-decls* (copy-all (con-decl constr)))
-    :acc-decls (mapcar #'subst-new-map-decls* (copy-all (acc-decls constr))))
-  )
-
-(defmethod subst-new-map-decl ((c adt-constructor-decl))
-  ;;(break "subst-new-map-decl (adt-constructor-decl)")
-  (copy c
-    :declared-type (subst-new-map-decls* (copy-all (declared-type c)))
-    :type (subst-new-map-decls* (copy-all (type c)))))
-
-(defmethod subst-new-map-decl ((a adt-accessor-decl))
-  ;;(break "subst-new-map-decl (adt-accessor-decl)")
-  (copy a
-    :refers-to nil
-    :module nil
-    :declared-type (subst-new-map-decls* (copy-all (declared-type a)))
-    :type (subst-new-map-decls* (copy-all (type a)))))
-    
-
-(defmethod subst-new-map-decl ((decl adtdecl))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
-  (setf (bind-decl decl) (subst-new-map-decls* (bind-decl decl))))
-
-(defmethod subst-new-map-decl ((decl subtype-judgement))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (declared-subtype decl) (subst-new-map-decls* (declared-subtype decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
-  (setf (subtype decl) (subst-new-map-decls* (subtype decl))))
-
-(defmethod subst-new-map-decl ((decl number-judgement))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
-
-(defmethod subst-new-map-decl ((decl name-judgement))
-  (setf (name decl) (subst-new-map-decls* (name decl)))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
-
-(defmethod subst-new-map-decl ((decl application-judgement))
-  (setf (name decl) (subst-new-map-decls* (name decl)))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
-  (setf (judgement-type decl) (subst-new-map-decls* (judgement-type decl)))
-  (setf (formals decl) (subst-new-map-decls* (formals decl))))
-
-(defmethod subst-new-map-decl ((decl auto-rewrite-decl))
-  (setf (formals decl) (subst-new-map-decls* (formals decl)))
-  (setf (rewrite-names decl) (subst-new-map-decls* (rewrite-names decl))))
-
-(defmethod subst-new-map-decl ((decl conversion-decl))
-  (setf (expr decl) (subst-new-map-decls* (expr decl))))
-
-(defmethod subst-new-map-decl ((adt inline-recursive-type))
-  ;;(break "subst-new-map-decl (inline-recursive-type)")
-  (setf (constructors adt) (subst-new-map-decls* (constructors adt)))
-  (setf (adt-type-name adt) (subst-new-map-decls* (adt-type-name adt)))
-  (setf (adt-theory adt) (module adt))
-  ;; (setf (generated adt)
-  ;; 	(mapcar #'(lambda (d)
-  ;; 		    (let ((nd (cdr (assq d *subst-new-map-decls*))))
-  ;; 		      (if nd
-  ;; 			  (declaration (expr nd))
-  ;; 			  (let ((od (assq d *subst-new-other-decls*)))
-  ;; 			    (assert od)
-  ;; 			    od))))
-  ;; 	  (generated adt)))
-  )
-
-(defmethod subst-new-map-decl ((decl theory-abbreviation-decl))
-  (let ((tn (subst-new-map-decls* (theory-name decl))))
-    (assert (modname? tn))
-    (setf (theory-name decl) tn)))
-
-(defmethod subst-new-map-decl ((decl declaration))
-  (break "Need more methods"))
-
-(defun subst-new-map-decls* (obj)
-  (let ((*pseudo-normalizing* t)
-	(*gensubst-subst-types* t))
-    (gensubst obj #'subst-new-map-decl* #'subst-new-map-decl-test)))
-
-;; (defmethod subst-new-map-decl-test ((obj declaration))
-;;   (when (assq obj *subst-new-map-decls*)
-;;     (break "decl?")))
-
-(defmethod subst-new-map-decl-test ((obj name))
-  (let ((decl (declaration obj)))
-    (and decl
-	 (or (assq decl *subst-new-map-decls*)
-	     (let ((refs (collect-references obj)))
-	       (memq decl refs))))))
-
-(defmethod subst-new-map-decl-test ((obj resolution))
-  (or (assq (declaration obj) *subst-new-map-decls*)
-      (let ((refs (collect-references (type obj))))
-	(some #'(lambda (r) (assq r *subst-new-map-decls*)) refs))))
-
-(defmethod subst-new-map-decl-test ((obj simple-constructor))
-  (assq (con-decl obj) *subst-new-map-decls*))
-
-(defmethod subst-new-map-decl-test (obj)
-  (declare (ignore obj))
-  nil)
-
-;; (defmethod subst-new-map-decl* ((obj declaration))
-;;   (break "Why decl?")
-;;   (cdr (assq obj *subst-new-map-decls*)))
-
-(defmethod subst-new-map-decl* ((obj list))
-  (mapcar #'subst-new-map-decl obj))
-
-(defmethod subst-new-map-decl* ((obj name))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolutions obj))))
-    (assert (or (null act) (actual? act)))
-    (copy obj
-      :id (if act (id (expr act)) (id obj))
-      :resolutions nres)))
-
-(defmethod subst-new-map-decl* ((obj name-expr))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
-    (assert (or (null act) (actual? act)))
-    (if act
-	(copy obj
-	  :id (id (expr act))
-	  :resolutions (resolutions (expr act))
-	  :type (type (expr act)))
-	(let ((nres (subst-new-map-decl* (resolution obj))))
-	  (if (eq nres (resolution obj))
-	      obj
-	      (lcopy obj
-		:resolutions (list nres)
-		:type (type nres)))))))
-
-(defmethod subst-new-map-decl* ((obj adt-name-expr))
-  (let ((nobj (call-next-method)))
-    (if (eq nobj obj)
-	obj
-	(let ((nadt (subst-new-map-decl* (adt obj))))
-	  (unless (eq (adt nadt) (adt (adt obj)))
-	    (setf (adt-type nobj) nadt))
-	  nobj))))
-
-(defmethod subst-new-map-decl* ((obj adt-type-name))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
-    (assert (or (null act) (actual? act)))
-    (if act
-	(type-value act)
-	(let* ((res (subst-new-map-decls* (resolutions obj)))
-	       (nobj (lcopy obj
-		       :id (if act (id (expr act)) (id obj))
-		       :resolutions res
-		       :adt (or (cdr (assq (adt obj) *subst-new-map-decls*))
-				(cdr (assq (adt obj) *subst-new-other-decls*))
-				(adt (type (car res)))
-				(break "What now?")))))
-	  ;; This is not right
-	  ;;(setf (type-value (declaration nobj)) nobj)
-	  (setf (type (resolution nobj)) nobj)
-	  nobj))))
-
-(defmethod subst-new-map-decl* ((obj constructor-name-expr))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolutions obj))))
-    (assert (or (null act) (actual? act)))
-    (copy obj
-      :id (if act (id (expr act)) (id obj))
-      :type (type (car nres))
-      :resolutions nres
-      :adt-type (subst-new-map-decls* (adt-type obj)))))
-
-(defmethod subst-new-map-decl* ((obj resolution))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(modinst (current-theory-name)))
-    (assert (or (null act) (actual? act)))
-    (if (actual? act)
-	(make-resolution (declaration (expr act)) modinst)
-	(let ((nmi (subst-new-map-decls* (module-instance obj)))
-	      (ntype (if (const-decl? (declaration obj))
-			 (subst-new-map-decls* (type obj))
-			 (type obj))))
-	  (lcopy obj :module-instance nmi :type ntype)))))
-
-(defmethod subst-new-map-decl* ((obj simple-constructor))
-  (let* ((cd (cdr (assq (con-decl obj) *subst-new-map-decls*)))
-	 (rd (cdr (assq (rec-decl obj) *subst-new-map-decls*)))
-	 (acc-decls (mapcar #'(lambda (ad)
-				(let ((nad (cdr (assq ad *subst-new-map-decls*))))
-				  (assert (actual? nad))
-				  (declaration (expr nad))))
-		      (acc-decls obj)))
-	 (nargs (subst-new-map-decls* (arguments obj))))
-    (mapc #'(lambda (arg accdecl) (setf (id arg) (id accdecl)))
-	  nargs acc-decls)
-    (copy obj
-      :id (id (expr cd))
-      :recognizer (id (expr rd))
-      :arguments nargs
-      :con-decl (declaration (expr cd))
-      :rec-decl (declaration (expr rd))
-      :acc-decls acc-decls)))
-
-(defun make-inlined-theory-decls (stheory thdecl)
-  (make-inlined-theory-decls*
-   (theory stheory) thdecl thdecl
-   (cond ((memq thdecl (formals (current-theory)))
-	  'formals)
-	 ((memq thdecl (assuming (current-theory)))
-	  'assuming)
-	 (t (assert (memq thdecl (theory (current-theory))))
-	    'theory))))
-
-(defun make-inlined-theory-decls* (decls thdecl lastdecl part)
-  (when decls
-    (let ((decl (car decls)))
-      ;; (when (declaration? decl)
-      ;; 	(format t "~%Adding decl ~a" (id decl)))
-      (setf (generated-by decl) thdecl)
-      (push decl (generated thdecl))
-      (add-new-inlined-decl decl lastdecl part)
-      (make-inlined-theory-decl decl)
-      (assert (or (importing? decl) (memq decl (get-declarations (id decl)))))
-      (make-inlined-theory-decls* (cdr decls) thdecl decl part))))
-
-(defun add-new-inlined-decl (decl lastdecl part)
-  (case part
-    (formals (when (declaration? decl)
-	       (setf (visible? decl) nil))
-	     (setf (theory-formal-decls (current-theory))
-		   (let* ((fml-part (theory-formal-decls (current-theory)))
-			  (rest (cdr (memq lastdecl fml-part))))
-		     (nconc (ldiff fml-part rest) (cons decl rest)))))
-    (assuming (setf (assuming (current-theory))
-		    (let* ((ass-part (assuming (current-theory)))
-			   (rest (cdr (memq lastdecl ass-part))))
-		      (nconc (ldiff ass-part rest) (cons decl rest)))))
-    (theory (setf (theory (current-theory))
-		  (let* ((theory-part (theory (current-theory)))
-			 (rest (cdr (memq lastdecl theory-part))))
-		    (nconc (ldiff theory-part rest) (cons decl rest)))))))
-
-(defmethod make-inlined-theory-decl ((imp importing))
-  (let* ((thname (theory-name imp))
-	 (th (if (resolution thname)
-		 (declaration thname)
-		 (get-theory thname))))
-    (typecheck-using* th thname)))
-
-(defmethod make-inlined-theory-decl ((decl declaration))
-  (setf (current-declaration) decl)
-  (regenerate-xref decl)
-  (setf (generated decl) nil)
-  (let ((dhash (current-declarations-hash)))
-    (dolist (id (id-suffixes (id decl)))
-      (pushnew decl (get-lhash id dhash) :test #'eq))))
-
-(defmethod make-inlined-theory-decl ((decl inline-recursive-type))
-  (declare (ignore lastdecl))
-  (setf (current-declaration) decl)
-  ;;(setf (generated decl) nil)
-  (let ((dhash (current-declarations-hash)))
-    (dolist (id (id-suffixes (id decl)))
-      (pushnew decl (get-lhash id dhash) :test #'eq))))
-  
-  
+(defun apply-to-bindings* (fn bindings-form nbindings-form alist)
+  (if (null bindings-form)
+      (values nbindings-form alist)
+      (typecase (car bindings-form)
+	(binding
+	 ;; Better to use fn, then substit, or the other way around?
+	 (let* ((fbinding (funcall fn (car bindings-form)))
+		(nbinding (substit fbinding alist)))
+	   (apply-to-bindings*
+	    fn (cdr bindings-form)
+	    (nconc nbindings-form (list nbinding))
+	    (if (eq nbinding (car bindings-form))
+		alist
+		(acons (car bindings-form) nbinding alist)))))
+	(list
+	 (multiple-value-bind (nnbindings-form nalist)
+	     (apply-to-bindings* fn (car bindings-form) nil alist)
+	   (apply-to-bindings*
+	    fn (cdr bindings-form)
+	    (nconc nbindings-form (list nnbindings-form))
+	    nalist)))
+	(t (let ((nex (substit (funcall fn (car bindings-form)) alist)))
+	     (apply-to-bindings*
+	      fn (cdr bindings-form) (nconc nbindings-form (list nex)) alist))))))
 
 (defmethod typecheck-inlined-theory* ((theory datatype) theory-name decl)
   ;; Need to inline the datatype as well
@@ -1374,36 +971,36 @@ In addition, it resets the id, and calls subst-new-map-decl-type to reset the ty
 
 (defmethod typecheck* ((decl type-def-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
+  ;; If there are formals, they become parameters in a type-application
   (check-type-application-formals decl)
   (check-duplication decl)
-  (let* ((tn (mk-type-name (id decl)))
-	 ;;(res (mk-resolution decl (current-theory-name) tn))
-	 )
-    ;;(setf (resolutions tn) (list res))
-    (let* ((*bound-variables* (apply #'append (formals decl)))
-	   (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
-	   (ptype (if (formals decl)
-		      (make-instance 'type-application
+  (let* ((tn (mk-print-type-name (id decl)))
+	 (prntype (if (formals decl)
+		      (make-instance 'print-type-application
 			:type tn
 			:parameters (mapcar #'mk-name-expr
 				      (car (formals decl))))
 		      tn))
-	   (tval (type-def-decl-value decl ptype)))
-      ;;(assert (fully-instantiated? tval))
-      (setf (type-value decl) tval)
-      (setf (resolutions tn) (list (mk-resolution decl (current-theory-name) tval)))
-      (typecase (type-expr decl)
-	(enumtype (typecheck* (type-expr decl) nil nil nil))
-	(subtype (when (typep (predicate (type-expr decl)) 'expr)
-		   (put-decl decl))))
-      (when (and (nonempty-type-def-decl? decl)
-		 (not (contains decl)))
-	(let ((*bound-variables* (apply #'append (formals decl))))
-	  (check-nonempty-type-of decl)))
-      (when (contains decl)
-	(typecheck* (contains decl) tval nil nil)
-	(set-nonempty-type (type-expr decl) decl)
-	(set-nonempty-type tval decl))))
+	 (*bound-variables* (apply #'append (formals decl)))
+	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
+	 (tval (type-def-decl-value decl prntype)))
+    (assert tval)
+    #+pvsdebug
+    (assert (fully-instantiated? tval))
+    (setf (type-value decl) tval)
+    (setf (resolutions tn) (list (mk-resolution decl (current-theory-name) nil)))
+    (typecase (type-expr decl)
+      (enumtype (typecheck* (type-expr decl) nil nil nil))
+      (subtype (when (typep (predicate (type-expr decl)) 'expr)
+		 (put-decl decl))))
+    (when (and (nonempty-type-def-decl? decl)
+	       (not (contains decl)))
+      (let ((*bound-variables* (apply #'append (formals decl))))
+	(check-nonempty-type-of decl)))
+    (when (contains decl)
+      (typecheck* (contains decl) tval nil nil)
+      (set-nonempty-type (type-expr decl) decl)
+      (set-nonempty-type tval decl)))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))
   decl)
@@ -1417,59 +1014,84 @@ In addition, it resets the id, and calls subst-new-map-decl-type to reset the ty
       (type-error (cdar (formals decl))
 	"Type applications may not be curried"))
     (typecheck* (formals decl) nil nil nil)
-    (set-formals-types (apply #'append (formals decl)))))
+    ;;(set-formals-types (apply #'append (formals decl)))
+    ))
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-def-decl))
+  (assert (type-value decl))
   (let ((ctype (copy (type-value decl) :print-type nil)))
     (check-nonempty-type ctype decl)
     (setf (nonempty? (type-value decl)) (nonempty? ctype))))
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-from-decl))
+  (assert (type-value decl))
   (check-nonempty-type (supertype (type-value decl)) decl)
   (set-nonempty-type (type-value decl) decl)
   (put-decl decl)
   (generate-existence-axiom decl))
 
-(defun type-def-decl-value (decl tn)
-  (cond ((type-from-decl? decl)
-	 (when (enumtype? (type-expr decl))
-	   (type-error decl
-	     "Enumtype must be declared at top level"))
-	 (check-type-application-formals decl)
-	 (let* ((*bound-variables* (apply #'append (formals decl)))
-		(stype (typecheck* (type-expr decl) nil nil nil))
-		(utype (generate-uninterpreted-subtype decl stype)))
-	   (set-type (type-expr decl) nil)
-	   (setf (supertype decl) stype)
-	   (setf (type-value decl) utype)
-	   (setf (print-type utype) tn)
-	   utype))
-	((struct-subtype-decl? decl)
-	 (when (enumtype? (type-expr decl))
-	   (type-error decl
-	     "Enumtype must be declared at top level"))
-	 (check-type-application-formals decl)
-	 (let* ((*bound-variables* (apply #'append (formals decl)))
-		(stype (typecheck* (type-expr decl) nil nil nil))
-		(utype (generate-uninterpreted-projtype decl stype)))
-	   (set-type (type-expr decl) nil)
-	   (setf (supertype decl) stype)
-	   (setf (type-value decl) utype)
-	   utype))
-	((enumtype? (type-expr decl))
+(defmethod type-def-decl-value (decl tn)
+  (assert (type-decl? decl))
+  (assert (typep tn '(or type-name type-application)))
+  (cond ((enumtype? (type-expr decl))
+	 ;; Note that the class of tn has changed, but still a type-name
 	 (change-class tn 'adt-type-name
 	   :adt (type-expr decl)
 	   :single-constructor? (singleton? (constructors (type-expr decl))))
 	 (set-nonempty-type tn decl)
 	 tn)
 	(t (let ((tval (typecheck* (type-expr decl) nil nil nil)))
+	     (assert tval)
+	     ;;(unless (print-type-expr? (type-expr decl)) ; could have been set above
 	     (set-type (type-expr decl) nil)
+	     ;;)
 	     (when (has-type-vars? (type-expr decl))
 	       (type-error (type-expr decl)
 		 "Cannot determine the type associated with ~a:~%  Please provide more ~
                   information, i.e., actual parameters or a coercion."
 		 (type-expr decl)))
 	     (copy tval :print-type tn)))))
+
+(defmethod type-def-decl-value ((decl type-from-decl) tn)
+  (assert (type-decl? decl))
+  (assert (typep tn '(or print-type-name print-type-application)))
+  (when (enumtype? (type-expr decl))
+    (type-error decl
+      "Enumtype must be declared at top level"))
+  (check-type-application-formals decl)
+  (let* ((*bound-variables* (apply #'append (formals decl)))
+	 (stype (typecheck* (type-expr decl) nil nil nil))
+	 (utype (generate-uninterpreted-subtype decl stype)))
+    (set-type (type-expr decl) nil)
+    #+pvsdebug
+    (assert (fully-instantiated? tn))
+    (setf (supertype decl) stype)
+    (setf (type-value decl) utype)
+    (setf (print-type utype) tn)
+    ;; (typecase tn
+    ;;   (print-type-expr nil)		; nothing to do
+    ;;   (type-name (change-class tn 'print-type-name
+    ;; 		   :resolutions (list (copy (resolution tn) :type nil))))
+    ;;   (expr-as-type (change-class tn 'print-expr-as-type))
+    ;;   (type-application (change-class tn 'print-type-application))
+    ;;   (t (break "huhh?")))
+    utype))
+
+(defmethod type-def-decl-value ((decl struct-subtype-decl) tn)
+  (assert (type-decl? decl))
+  (assert (typep tn '(or type-name type-application)))
+  (when (enumtype? (type-expr decl))
+    (type-error decl
+      "Enumtype must be declared at top level"))
+  (check-type-application-formals decl)
+  (let* ((*bound-variables* (apply #'append (formals decl)))
+	 (stype (typecheck* (type-expr decl) nil nil nil))
+	 (utype (generate-uninterpreted-projtype decl stype)))
+    (set-type (type-expr decl) nil)
+    (setf (supertype decl) stype)
+    (setf (type-value decl) utype)
+    utype))
+
 
 ;;; Units-decl
 
@@ -1563,8 +1185,11 @@ In addition, it resets the id, and calls subst-new-map-decl-type to reset the ty
   (declare (ignore expected kind arguments))
   (when (formals decl)
     (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
-  (let ((*generate-tccs* 'none))
-    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+  (let* ((*generate-tccs* 'none)
+	 (dtype (typecheck* (declared-type decl) nil nil nil)))
+    #+pvsdebug
+    (assert (fully-instantiated? dtype))
+    (setf (type decl) dtype))
   (set-type (declared-type decl) nil)
   (assert (null (freevars (type decl))))
   (unless (fully-instantiated? (type decl))
@@ -1582,13 +1207,17 @@ In addition, it resets the id, and calls subst-new-map-decl-type to reset the ty
   (declare (ignore expected kind arguments))
   (when (formals decl)
     (typecheck* (formals decl) nil nil nil)
-    (set-formals-types (apply #'append (formals decl))))
+    ;;(set-formals-types (apply #'append (formals decl)))
+    )
   (assert (fully-instantiated? (formals decl)))
   (assert (fully-typed? (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
+    #+badassert
+    (assert (or (null (print-type rtype))
+		(tc-eq (print-type rtype) (declared-type decl))))
     (assert (fully-instantiated? (declared-type decl)))
     (assert (fully-instantiated? rtype))
     (setf (type decl)
@@ -1962,13 +1591,15 @@ The dependent types are created only when needed."
 (defmethod typecheck* ((decl def-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck* (formals decl) nil nil nil)
-  (set-formals-types (apply #'append (formals decl)))
+  ;;(set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil)))
 	 (*recursive-subtype-term* nil))
     (set-type rtype nil);;NSH(12/17/19): was (defined-type decl)
-                        ;;same fix as const-decl
+    ;;same fix as const-decl
+    (assert (or (null (print-type rtype))
+		(tc-eq (print-type rtype) (declared-type decl))))
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
     (assert (fully-instantiated? (type decl)))
@@ -2489,12 +2120,14 @@ The dependent types are created only when needed."
 (defmethod typecheck* ((decl fixpoint-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck* (formals decl) nil nil nil)
-  (set-formals-types (apply #'append (formals decl)))
+  ;;(set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
+    (assert (or (null (print-type rtype))
+		(tc-eq (print-type rtype) (declared-type decl))))
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
     (check-duplication decl)
@@ -3199,6 +2832,7 @@ The dependent types are created only when needed."
 
 (defmethod typecheck* ((type type-name) expected kind arguments)
   (declare (ignore expected kind))
+  (assert (or (null (resolution type)) (type (resolution type))))
   (unless (and (resolution type)
 	       (null arguments))
     (call-next-method type nil 'type arguments)
@@ -3207,20 +2841,41 @@ The dependent types are created only when needed."
       (when (and (formals (declaration (resolution type)))
 		 (null arguments))
 	(type-error type "Type name must have arguments"))
-      (assert tval)
-      ;; (when (mod-id type)
-      ;; 	(cond ((null (print-type tval))
-      ;; 	       (setq tval (copy tval 'print-type (copy type))))
-      ;; 	      ((and (type-name? (print-type tval))
-      ;; 		    (not (mod-id (print-type tval))))
-      ;; 	       (setq tval (copy tval
-      ;; 			    'print-type (copy (print-type tval)
-      ;; 					  'mod-id (mod-id type)))))))
-      ;; (if (eq tval 'type)
-      ;; 	  type
-      ;; 	  tval)
-      ))
+      (assert tval)))
   (type (resolution type)))
+
+
+(defmethod typecheck* ((te print-type-expr) expected kind arguments)
+  (break "We shouldn't get here"))
+
+(defmethod typecheck* ((te print-type-name) expected kind arguments)
+  (assert (resolution te))
+  (resolution-type (resolution te)))
+
+(defun resolution-type (res)
+  (or (type res)
+      (resolution-type* (declaration res) (module-instance res))))
+
+(defun resolution-type* (decl mi)
+  (let ((theory (module decl)))
+    (typecase decl
+      ((or type-decl formal-type-decl)
+       ;;(let ((*free-bindings* (append (apply #'append (formals decl)) *free-bindings*)))
+	 (if (fully-instantiated? mi)
+	     (subst-mod-params (type-value decl) mi theory decl)
+	     (type-value decl)))
+       ;;)
+      ((or expname typed-declaration simple-decl)
+       (if (fully-instantiated? mi)
+	   (subst-mod-params (type decl) mi theory decl)
+	   (type decl))))))
+
+(defmethod typecheck* ((te print-expr-as-type) expected kind arguments)
+  (let* ((etype (type (expr te)))
+	 (stype (find-supertype etype))
+	 (tval (mk-subtype (domain stype) (expr te))))
+    (setf (print-type tval) te)
+    tval))
 
 (defmethod typecheck* ((type type-application) expected kind arguments)
   (declare (ignore expected kind arguments))
@@ -3266,17 +2921,12 @@ The dependent types are created only when needed."
 			      (declaration (type type))))))
 	     (set-type-for-application-parameters
 	      (parameters type) (car typeslist)))
-	   (let ((tval (substit te
-			 (pairlis (car (formals (declaration (type type))))
-				  (parameters type))))
-		 (pt (or (substit (print-type te)
-			   (pairlis (car (formals (declaration (type type))))
-				    (parameters type)))
-			 type)))
+	   (let ((tval (substit te (pairlis (car (formals
+						  (declaration (type type))))
+					    (parameters type)))))
 	     ;; tval now has the parameters
-	     (unless (and (type-application? pt)
-			  (occurs-in tval (module-instance (type pt))))
-	       (setf (print-type tval) pt))
+	     (unless (print-type tval)
+	       (setf (print-type tval) type))
 	     (when (or (nonempty-type-decl? (declaration (type type)))
 		       (nonempty? type))
 	       (setf (nonempty? tval) t)
@@ -3393,8 +3043,9 @@ The dependent types are created only when needed."
 		   (tc-eq (find-supertype (range ftype)) *boolean*))
 	(type-error (expr type) "Does not resolve to a predicate"))
       (set-type (expr type) ftype)
-      (let ((tval (mk-subtype (domain ftype)
-		    (expr type))))
+      (assert (fully-typed? (expr type)))
+      (let ((tval (mk-subtype (domain ftype) (expr type))))
+	(change-class type 'print-expr-as-type)
 	(setf (print-type tval) type)
 	(setf (subtype-conjuncts tval) (collect-subtype-conjuncts tval))
 	tval))))
@@ -3900,6 +3551,8 @@ The dependent types are created only when needed."
   (let ((type (let ((*generate-tccs* 'none))
 		(typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
+    (assert (or (null (print-type type))
+		(tc-eq (print-type type) (declared-type decl))))
     (setf (type decl) type))
   decl)
 
@@ -3909,7 +3562,9 @@ The dependent types are created only when needed."
   (unless (type db)
     (let ((*generate-tccs* 'none))
       (setf (type db) (typecheck* (declared-type db) nil nil nil)))
-    (set-type (declared-type db) nil))
+    (set-type (declared-type db) nil)
+    (assert (or (null (print-type (type db)))
+		(tc-eq (print-type (type db)) (declared-type db)))))
   db)
 
 (defmethod typecheck* ((te type-extension) expected kind arguments)
@@ -3993,10 +3648,11 @@ The dependent types are created only when needed."
 (defmethod typecheck* ((decl subtype-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
   (setf (subtype decl) (typecheck* (declared-subtype decl) nil nil nil))
-  (set-type (declared-subtype decl) nil)
-  (when (print-type (subtype decl))
-    (setf (print-type (subtype decl))
-	  (copy-judgement-subtype-without-types (declared-subtype decl))))
+  ;; Note that the declared-subtype is now a print-type
+  (set-type (subtype decl) nil)
+  ;; (when (print-type (subtype decl))
+  ;;   (setf (print-type (subtype decl))
+  ;; 	  (copy-judgement-subtype-without-types (declared-subtype decl))))
   (let ((*bound-variables*
 	 (if (typep (declared-subtype decl) 'type-application)
 	     (append (mapcan #'(lambda (p)
@@ -4006,8 +3662,10 @@ The dependent types are created only when needed."
 		     *bound-variables*)
 	     *bound-variables*))
 	(*generate-tccs* 'none))
-    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
-  (set-type (declared-type decl) nil)
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+    (set-type (type decl) nil)
+    (assert (or (null (print-type (type decl)))
+		(tc-eq (print-type (type decl)) (declared-type decl)))))
   (let ((*checking-conversions* t)) ;; Disable optimization using subtype-conjuncts
     (if (subtype-of? (subtype decl) (type decl))
 	(pvs-warning
@@ -4051,6 +3709,8 @@ The dependent types are created only when needed."
   (let ((*generate-tccs* 'none))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
+  (assert (or (null (print-type (type decl)))
+	      (tc-eq (print-type (type decl)) (declared-type decl))))
   (let ((*compatible-pred-reason*
 	 (acons (number-expr decl) "judgement" *compatible-pred-reason*)))
     (typecheck* (number-expr decl) (type decl) 'expr nil))
@@ -4067,6 +3727,8 @@ The dependent types are created only when needed."
                   ~%See language document for details."
       (starting-row (place decl))))
   (set-type (declared-type decl) nil)
+  (assert (or (null (print-type (type decl)))
+	      (tc-eq (print-type (type decl)) (declared-type decl))))
   (let ((*no-conversions-allowed* t)
 	(*compatible-pred-reason*
 	 (acons (name decl) "judgement" *compatible-pred-reason*)))
@@ -4083,11 +3745,14 @@ The dependent types are created only when needed."
       (when dup
 	(type-error dup
 	  "May not use duplicate arguments in judgements")))
-    (set-formals-types fmlist))
+    ;;(set-formals-types fmlist)
+    )
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
     (let ((*generate-tccs* 'none))
       (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
-    (set-type (declared-type decl) nil)
+    (set-type (type decl) nil)
+    (assert (or (null (print-type (type decl)))
+		(tc-eq (print-type (type decl)) (declared-type decl))))
     (let* ((*no-conversions-allowed* t)
 	   (expr (mk-application-for-formals (name decl) (formals decl)))
 	   (*compatible-pred-reason*
@@ -4132,52 +3797,61 @@ The dependent types are created only when needed."
     ;; to treat as appl-judgement, with name and formals, in the special
     ;; case of application form, e.g., f(x, y)(z), where all the arguments
     ;; are distinct variables.
-    (cond ((and (typep mexpr '(and application (not infix-application)))
-		(let ((args-lists (arguments* mexpr)))
-		  (and (every #'(lambda (args) (every #'variable? args))
-			      args-lists)
-		       (not (duplicates? (apply #'append args-lists)
-					 :test #'same-declaration)))))
-	   (change-expr-judgement-to-application-judgement decl))
-	  (t (let ((*generate-tccs* 'none))
-	       (cond ((forall-expr? (expr decl))
-		      ;; Note that it is not really a forall expr, as it is not boolean
-		      (typecheck* (bindings (expr decl)) nil nil nil)
-		      (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
-			(setf (type decl) (typecheck* (declared-type decl) nil nil nil))
-			(typecheck* (expression (expr decl)) (type decl) nil nil)))
-		     (t (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
-			(typecheck* (expr decl) (type decl) nil nil))))
-	     ;; Not an application-judgement, but has freevars
-	     ;; Get the freevars list, and create untyped-bind-decls
-	     ;; Append to the beginning of bindings if expr is a forall-expr
-	     ;; Set (formals decl) to this list
-	     ;; Then retypecheck expr under the new bindings
-	     (let* ((*no-expected* t)
-		    ;; uform is not a valid forall expr, but this gets the
-		    ;; expr and type under the same bindings
-		    (lform (if (forall-expr? (expr decl))
-			       (copy (expr decl)
-				 :expression (list (expression (expr decl)) (type decl)))
-			       (list (expr decl) (type decl))))
-		    (uform (universal-closure lform))
-		    (*no-conversions-allowed* t)
-		    (*compatible-pred-reason*
-		     (acons (car (expression uform)) "judgement" *compatible-pred-reason*))
-		    (*bound-variables* (when (forall-expr? uform) (bindings uform))))
-	       (if (forall-expr? uform)
-		   (let* ((*bound-variables* (bindings uform)))
-		     (assert (listp (expression uform)))
-		     (set-type (car (expression uform)) (cadr (expression uform))))
-		   (set-type (car uform) (cadr uform)))
-	       (setf (closed-form decl) uform)
-	       (cond ((and (expr-judgement? decl)
-			   (expr-judgement-useless? (closed-form decl)))
-		      (useless-judgement-warning decl))
-		     (t (when (formals-sans-usings (current-theory))
-			  (generic-judgement-warning decl))
-			;;(break "Before add-judgement-decl after change: ~a" (id decl))
-			(add-judgement-decl decl))))))))
+    (if (and (typep mexpr '(and application (not infix-application)))
+	     (let ((args-lists (arguments* mexpr)))
+	       (and (every #'(lambda (args) (every #'variable? args))
+			   args-lists)
+		    (not (duplicates? (apply #'append args-lists)
+				      :test #'same-declaration)))))
+	(change-expr-judgement-to-application-judgement decl)
+	(typecheck-expr-judgement decl))))
+
+(defun typecheck-expr-judgement (decl)
+  "Typechecks the expr-judgement decl, determined not to be an application-judgement.
+Note that if it is a forall-expr, it is treated specially; e.g.,
+  FORALL (x: real | x > 1): x * x HAS_TYPE {y : real | y > x}
+in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
+  (let ((*generate-tccs* 'none))
+    (cond ((forall-expr? (expr decl))
+	   ;; Note that it is not really a forall expr, as it is not boolean
+	   (typecheck* (bindings (expr decl)) nil nil nil)
+	   (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
+	     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+	     (typecheck* (expression (expr decl)) (type decl) nil nil)))
+	  (t (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+	     (typecheck* (expr decl) (type decl) nil nil))))
+  ;; Not an application-judgement, but has freevars
+  ;; Get the freevars list, and create untyped-bind-decls
+  ;; Append to the beginning of bindings if expr is a forall-expr
+  ;; Set (formals decl) to this list
+  ;; Then retypecheck expr under the new bindings
+  (let* ((*no-expected* t)
+	 ;; uform is not a valid forall expr, but this gets the
+	 ;; expr and type under the same bindings
+	 (lform (if (forall-expr? (expr decl))
+		    (copy (expr decl)
+		      :expression (list (expression (expr decl)) (type decl)))
+		    (list (expr decl) (type decl))))
+	 (uform (universal-closure lform))
+	 (*no-conversions-allowed* t)
+	 (*compatible-pred-reason*
+	  (acons (if (forall-expr? uform)
+		     (car (expression uform))
+		     (car uform))
+		 "judgement" *compatible-pred-reason*))
+	 (*bound-variables* (when (forall-expr? uform) (bindings uform))))
+    (if (forall-expr? uform)
+	(let* ((*bound-variables* (bindings uform)))
+	  (assert (listp (expression uform)))
+	  (set-type (car (expression uform)) (cadr (expression uform))))
+	(set-type (car uform) (cadr uform)))
+    (setf (closed-form decl) uform)
+    (cond ((and (expr-judgement? decl)
+		(expr-judgement-useless? (closed-form decl)))
+	   (useless-judgement-warning decl))
+	  (t (when (formals-sans-usings (current-theory))
+	       (generic-judgement-warning decl))
+	     (add-judgement-decl decl)))))
 
 (defun expr-judgement-useless? (form)
   (if (forall-expr? form)
@@ -4232,11 +3906,14 @@ The dependent types are created only when needed."
       (when dup
 	(type-error dup
 	  "May not use duplicate arguments in judgements")))
-    (set-formals-types fmlist))
+    ;;(set-formals-types fmlist)
+    )
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
     (let ((*generate-tccs* 'none))
       (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
     (set-type (declared-type decl) nil)
+    (assert (or (null (print-type (type decl)))
+		(tc-eq (print-type (type decl)) (declared-type decl))))
     (let* ((*no-conversions-allowed* t)
 	   (expr (mk-application-for-formals (name decl) (formals decl))))
       (unless (place expr)
@@ -4491,6 +4168,16 @@ The dependent types are created only when needed."
 	 (mk-application* expr names)
 	 (cdr formals)))))
 
+(defun make!-application-for-formals (expr formals)
+  (if (null formals)
+      expr
+      (let ((names (mapcar #'mk-name-expr (car formals))))
+	(mapc #'(lambda (nm fm)
+		  (setf (place nm) (place fm)))
+	      names (car formals))
+	(make!-application-for-formals
+	 (make!-application* expr names)
+	 (cdr formals)))))
 
 ;;; Conversions
 
@@ -4498,35 +4185,48 @@ The dependent types are created only when needed."
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (mapobject #'(lambda (ex)
-		   (when (and (expr? ex)
-			      (not (type ex)))
-		     (if (singleton? (types ex))
-			 (setf (type ex) (car (types ex)))
-			 (let ((inst-types
-				(remove-if (complement #'fully-instantiated?)
-				  (types ex))))
-			   (cond ((singleton? inst-types)
-				  (setf (type ex) (car inst-types))
-				  (when (name-expr? ex)
-				    (setf (resolutions ex)
-					  (remove-if
-					      (complement
-					       #'(lambda (r)
-						   (tc-eq (type r)
-							  (car inst-types))))
-					    (resolutions ex)))))
-				 (t (type-ambiguity ex)))))
-		     nil))
-	       (expr decl))
-    (when (has-type-vars? (type (expr decl)))
-      (type-error (expr decl)
-	"Cannot determine the type associated with ~a:~%  Please provide more ~
-         information, i.e., actual parameters or a coercion." (expr decl))))
+    (resolve-conversion-expr (expr decl)))
+  ;;(set-type (expr decl) (type (expr decl)))
   (check-conversion-applicability decl)
   (setf (k-combinator? decl) (k-combinator? (expr decl)))
   (push decl (conversions *current-context*))
   decl)
+
+(defmethod resolve-conversion-expr ((ex name-expr))
+  ;; ex has been typechecked, but may have ambiguities
+  (let* ((reses (resolutions ex))
+	 (valid-reses (remove-if #'has-type-vars? reses :key #'type)))
+    (unless valid-reses
+      (type-error ex
+	"Cannot determine the type associated with ~a:~%  Please provide more ~
+           information, i.e., actual parameters or a coercion." ex))
+    (if (singleton? valid-reses)
+	(setf (resolutions ex) valid-reses
+	      (type ex) (type (car valid-reses)))
+	(let ((gres (find-if-not #'fully-instantiated? valid-reses)))
+	  ;; No need to keep any but the generic form
+	  (when gres
+	    (setf (resolutions ex) (list gres)
+		  (type ex) (type gres)))))))
+
+(defmethod resolve-conversion-expr ((ex expr))
+  ;; ex has been typechecked, but may have ambiguities
+  (when (and (expr? ex)
+	     (not (type ex)))
+    (let ((valid-types (remove-if #'has-type-vars? (ptypes ex))))
+      (unless valid-types
+	(type-error ex
+	  "Cannot determine the type associated with ~a:~%  Please provide more ~
+           information, i.e., actual parameters or a coercion." ex))
+      (if (singleton? valid-types)
+	  (if (and (fully-instantiated? (car valid-types))
+		   (fully-typed? (car valid-types)))
+	      (set-type ex (car valid-types))
+	      (progn ;; (break "Check resolve-conversion-expr")
+		     (setf (type ex) (car valid-types))))
+	  (let ((gtype (find-if-not #'fully-instantiated? valid-types)))
+	    (when gtype
+	      (setf (type ex) gtype)))))))
 
 (defun check-conversion-applicability (decl)
   (let* ((ctype (type (expr decl)))
@@ -4573,31 +4273,7 @@ The dependent types are created only when needed."
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (mapobject #'(lambda (ex)
-		   (when (and (expr? ex)
-			      (not (type ex)))
-		     (if (singleton? (types ex))
-			 (setf (type ex) (car (types ex)))
-			 (let ((inst-types
-				(remove-if #'fully-instantiated?
-				  (types ex))))
-			   (cond ((singleton? inst-types)
-				  (setf (type ex) (car inst-types))
-				  (when (name-expr? ex)
-				    (setf (resolutions ex)
-					  (remove-if
-					      (complement
-					       #'(lambda (r)
-						   (tc-eq (type r)
-							  (car inst-types))))
-					    (resolutions ex)))))
-				 (t (type-ambiguity ex)))))
-		     nil))
-	       (expr decl))
-    (when (has-type-vars? (type (expr decl)))
-      (type-error (expr decl)
-	"Cannot determine the type associated with ~a:~%  Please provide more ~
-         information, i.e., actual parameters or a coercion." (expr decl))))
+    (resolve-conversion-expr (expr decl)))
   (disable-conversion decl)
   decl)
 
@@ -4815,7 +4491,17 @@ The dependent types are created only when needed."
     (|odd_negint| (setq *odd_negint* type))
     (|ordinal| (setq *ordinal* type))
     (|string| (setq *string-type* type))
-    (|character| (setq *character* type))))
+    (|character| (setq *character* type)
+		 (setq *char* (tc-type "below[0x110000]")))
+    (|uint8| (setq *uint8* type))
+    (|uint16| (setq *uint16* type))
+    (|uint32| (setq *uint32* type))
+    (|uint64| (setq *uint64* type))
+    (|int8| (setq *int8* type))
+    (|int16| (setq *int16* type))
+    (|int32| (setq *int32* type))
+    (|int64| (setq *int64* type))
+    ))
 
 ;; (defun subst-new-map-decls* (obj)
 ;;   (subst-new-map-decl* obj))
