@@ -129,6 +129,7 @@
 
 (defmethod copy-lex* :around ((old datatype-or-module) (new datatype-or-module))
   (call-next-method)
+  (setf (newline-comments old) (newline-comments new))
   (copy-lex-decls (formals old) (formals new))
   (copy-lex-decls (assuming old) (assuming new)))
 
