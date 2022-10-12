@@ -64,9 +64,6 @@ in util.lisp")
 (defvar *pvs-library-path* nil
   "Set from the PVS_LIBRARY_PATH environment variable + *pvs-path*")
 
-(defvar *pvs-emacs-interface* nil
-  "Set to t by Emacs in pvs-load - affects how pvs-emacs functions work")
-
 (defvar *pvs-websocket-interface* nil
   "Set to t by Websocket when a message is received")
 
@@ -102,9 +99,10 @@ in util.lisp")
 
 (defparameter *binfile-version* 38)
 
-(defvar *pvsbin-string*
-  #+case-sensitive "pvsbin"
-  #-case-sensitive "PVSBIN")
+(defvar *pvsbin-string* "pvsbin"
+  ;; #+case-sensitive "pvsbin"
+  ;; #-case-sensitive "PVSBIN"
+  )
 
 (defvar *pvs-build-time* (get-universal-time))
 
@@ -250,6 +248,8 @@ order is important")
 (defvar *parse-error-catch* nil
   "Set to a value to throw to when trying to control parsing.")
 
+(defvar *coercion-var-counter* (let ((x 0)) #'(lambda ()  (incf x))))
+
 (defvar *type-error-catch* nil
   "Set to a value to throw to when trying to control typechecking.")
 
@@ -266,6 +266,25 @@ order is important")
 ;; Controls when periods are allowed in declaration ids
 ;; Essentially allowed anywhere except user-introduced declarations.
 (defvar *xt-periods-allowed* nil)
+
+;;; An association list of operators and their places.  The problem is
+;;; that operators are thrown away, and later make-sb-term is called with
+;;; just an id.  We thus keep all possible places associated with an id,
+;;; and in make-sb-term set the place attribute if there is a unique one,
+;;; otherwise we set a places attribute, and wait for parse to determine
+;;; the right place from the argument places.
+
+(defvar *operator-places* nil)
+
+(defparameter *infix-operators*
+  '(O ∘ IFF <=> ⇔ IMPLIES => ⇒ WHEN OR ∨ \\/ AND /\\ ∧ & XOR ANDTHEN ORELSE
+	^ + - * / ++ ~ ** // ^^ \|- ⊢ \|= ⊨ <\| \|> = /= ≠ == < <= > >=
+	<< >> <<= >>= |#| @@ |##| ∘ ∨ ∧ ⊕ ⊘ ⊗ ⊖ ⊙ ⊛ ⨁ ⨂ ⨀
+	⊢ ⊨ ± ∓ ∔ × ÷ ⊞ ⊟ ⊠ ≁ ∼ ≃ ≅ ≇ ≈ ≉ ≍ ≎ ≏ ≐ ≗ ≙ ≡ ⋈ ≤ ≥ ≦ ≧
+	≨ ≩ ≪ ≫ ≮ ≯ ≰ ≱ ≺ ≻ ◁ ▷ ∈ ∉ ∋ ∩ ∪ ⊂ ⊃ ⊄ ⊅ ⊆ ⊇ ⊎ ⊊ ⊋
+	⊏ ⊐ ⊓ ⊔ ⋀ ⋁ ⋂ ⋃ • ← ↑ → ↓ ↝ ↦ ⇐ ⇒ ⇑ ⇓ ⇔ ∇ ⊣ ⊥ ⊩ ◯ ★ ✠ √))
+
+(defparameter *unary-operators* '(NOT ¬ + - ~ □ ◇ <> ◯ √))
 
 ;;; These variables are types, used for many built-in functions and constants.
 (defvar *boolean* nil)
