@@ -194,10 +194,14 @@
 		   theory-formal-decls)
 	  (pp-tex-theory-formal-decls theory-formal-decls))
 	(pp-tex-assuming (if *unparse-expanded*
-			     assuming
+			     (remove-if #'(lambda (d) (and (generated-by d)
+							   (typep d '(or conversion-decl))))
+			       assuming)
 			     (remove-if #'generated-by assuming)))
 	(pp-tex-theory (if *unparse-expanded*
-			   theory
+			   (remove-if #'(lambda (d) (and (generated-by d)
+							 (typep d '(or conversion-decl))))
+			     theory)
 			   (remove-if #'generated-by theory)))
 	(pprint-indent :block 1)
 	(pprint-newline :mandatory)
@@ -530,7 +534,8 @@
   (with-slots (id decl-formals module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
-	      (not (generated-by decl)))
+	      (not (generated-by decl))
+	      (typep decl 'adtdecl))
       (when (@decl? semi)
 	(pp-tex-keyword '@DECL))
       (cond ((theory-abbreviation-decl? decl)
@@ -1282,17 +1287,19 @@
 ;;; Expressions
 
 (defmethod pp-tex* :around ((ex expr))
-  (if (and *ppmacros*
-	   (current-theory)
-	   (from-macro ex))
-      (pp-tex* (from-macro ex))
-      (if (typep ex 'binding)
-	  (call-next-method)
-	  (progn (dotimes (p (parens ex))
-		   (pp-tex-id '\())
-		 (call-next-method)
-		 (dotimes (p (parens ex))
-		   (pp-tex-id '\)))))))
+  (cond ((and *ppmacros*
+	      (current-theory)
+	      (from-macro ex))
+	 (pp-tex* (from-macro ex)))
+	((or (typep ex 'binding)
+	     (and (not *show-conversions*)
+		  (typep ex '(or argument-conversion implicit-conversion))))
+	 (call-next-method))
+	(t (dotimes (p (parens ex))
+	     (pp-tex-id '\())
+	   (call-next-method)
+	   (dotimes (p (parens ex))
+	     (pp-tex-id '\))))))
 
 (defmethod pp-tex* :around ((ex infix-application))
   (cond ((and *pp-print-parens*
@@ -1356,6 +1363,9 @@
     (setf (string-value ex) (pp-string-expr (argument ex))))
   (write (string-value ex) :escape t))
 
+(defmethod pp-tex* ((ex char-expr))
+  (format t "'~c'" (code-char (code ex))))
+
 (defmethod pp-tex* ((ex list-expr))
   (if (valid-list-expr? ex)
       (pprint-logical-block
@@ -1373,6 +1383,20 @@
 (defmethod pp-tex* ((ex null-expr))
   (pp-tex-keyword '|(:|)
   (pp-tex-keyword '|:)|))
+
+(defmethod pp-tex* ((ex array-expr))
+  (if (valid-array-expr? ex)
+      (pprint-logical-block
+	  (nil (list-arguments ex)
+	       :prefix (get-pp-tex-id '\[\:)
+	       :suffix (get-pp-tex-id '\:\]))
+	(pprint-indent :current 0)
+	(loop (pp-tex* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill)))
+      (call-next-method)))
 
 (defmethod pp-tex* ((ex bracket-expr))
   (multiple-value-bind (lb rb)
@@ -1625,8 +1649,17 @@
 	  (pprint-logical-block (nil nil)
 	    (pprint-indent :block 1)
 	    (if (and (zerop (parens lhs))
-		     (< (precedence lhs 'left)
-			(gethash oper (second *expr-prec-info*))))
+		     (not (chained-relation? lhs))
+		     (or (and (not (chained-relation? lhs))
+			      (< (precedence lhs 'left)
+				 (or (gethash oper (second *expr-prec-info*))
+				     180)))
+			 ;; An unparenthesized binding-expr can capture the rhs
+			 ;; E.g., infix "∀ x: p(x) and q" should prettyprint as
+			 ;;            "(∀ x: p(x)) and q"
+			 (let ((rm-lhs (rightmost-term lhs)))
+			   (and (binding-expr? rm-lhs)
+				(zerop (parens rm-lhs))))))
 		(progn (pp-tex-id '\()
 		       (pp-tex* lhs)
 		       (pp-tex-id '\)))
@@ -1641,8 +1674,10 @@
 	    (unless *in-tex-math-mode*
 	      (pprint-newline :fill))
 	    (if (and (zerop (parens rhs))
+		     (not (chained-relation? rhs))
 		     (< (precedence rhs 'right)
-			(gethash oper (third *expr-prec-info*))))
+			(or (gethash oper (third *expr-prec-info*))
+			    180)))
 		(progn (pp-tex-id '\()
 		       (pp-tex* rhs)
 		       (pp-tex-id '\)))
