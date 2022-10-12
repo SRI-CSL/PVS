@@ -641,7 +641,7 @@
 	  (typecheck-coselections expr stype arguments expected))))
   (setf (types expr)
 	(compatible-types
-	 (nconc (mapcar #'(lambda (s) (ptypes (expression s)))
+	 (nconc (mapcar #'(lambda (s) (reverse (ptypes (expression s))))
 		  (selections expr))
 		(when (else-part expr) (list (ptypes (else-part expr)))))))
   (unless (types expr)
@@ -823,6 +823,21 @@
 	       (string= "IN_" strid :end2 3)
 	       (every #'digit-char-p (subseq strid 3)))
       (parse-integer strid :start 3))))
+
+(defun typecheck-nat-selections (expr stype arguments expected)
+  (typecheck-nat-selections* (selections expr) expr stype arguments expected))
+
+(defun typecheck-nat-selections* (sels expr stype arguments expected)
+  ;; sel has slots constructor, args, and expression
+  (let* ((sel (car sels))
+	 (num-expr (constructor sel))
+	 (num-str (string (id num-expr)))
+	 (num (when (valid-number? num-str) (parse-number num-str))))
+    (unless num
+      (type-error sel "CASES exprs over nat only work for number literals"))
+    (when (args sel)
+      (type-error sel "CASES selection args unexpected here"))
+    (change-class num-expr 'number-expr :number num :type *naturalnumber*)))
 
 ;;; expr is a cases-expr, adt is recursive-type, type is the type instance,
 ;;; and args are the arguments to the expr
@@ -1516,7 +1531,8 @@ field-decls, etc."
 
 (defmethod find-supertype-without-freevars* ((type tupletype) boundvars)
   (if (unbound-freevars? type boundvars)
-      (find-supertype-without-freevars* (types type) boundvars)
+      (let ((stypes (find-supertype-without-freevars* (types type) boundvars)))
+	(mk-tupletype stypes))
       type))
 
 (defmethod find-supertype-without-freevars* ((type cotupletype) boundvars)
@@ -1752,23 +1768,25 @@ field-decls, etc."
 (defun get-let-binding-type-from-arg (bindings arg anum)
   (if (or (cdr bindings)
 	  (> anum 0))
-      (let ((atypes (remove-duplicates
-			(mapcar #'(lambda (aty)
-				    (nth anum (types (find-supertype aty))))
-			  (types arg))
-		      :test #'tc-eq)))
+      (let ((atypes (remove-if-not #'fully-instantiated?
+		      (remove-duplicates
+			  (mapcar #'(lambda (aty)
+				      (nth anum (types (find-supertype aty))))
+			    (types arg))
+			:test #'tc-eq))))
 	(if (cdr atypes)
 	    (if (typep arg 'tuple-expr)
 		(type-ambiguity (nth anum (exprs arg)))
 		(type-ambiguity arg))
 	    (car atypes)))
-      (if (cdr (types arg))
-	  (type-ambiguity arg)
-	  (if (fully-instantiated? (car (types arg)))
-	      (let ((carg (typecheck* (copy-untyped arg)
-				      (car (types arg)) nil nil)))
-		(car (judgement-types+ carg)))
-	      (car (types arg))))))
+      (let ((atypes (remove-if-not #'fully-instantiated? (types arg))))
+	(if (cdr atypes)
+	    (type-ambiguity arg)
+	    (if (fully-instantiated? (car atypes))
+		(let ((carg (typecheck* (copy-untyped arg)
+					(car (types arg)) nil nil)))
+		  (car (judgement-types+ carg)))
+		(car (types arg)))))))
 
 (defun set-dep-projections (projections types)
   (when projections
@@ -1881,6 +1899,21 @@ field-decls, etc."
 	       "Could not find a compatible type for ~a" expr))
 	   (setf (types expr)
 		 (mapcar #'(lambda (ty) (mk-funtype ty *boolean*)) types))))
+	(t (let ((tvar (make-instance 'type-variable
+			 :id (make-new-variable 'T expr))))
+	     (setf (types expr) (list tvar))))))
+
+(defmethod typecheck* ((expr array-expr) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (cond ((exprs expr)
+	 (typecheck* (exprs expr) nil nil nil)
+	 (let ((types (get-possible-set-list-types (exprs expr))))
+	   (unless types
+	     (type-error expr
+	       "Could not find a compatible type for ~a" expr))
+	   (let ((domtype (tc-type (format nil "below(~d)" (length (exprs expr))))))
+	     (setf (types expr)
+		   (mapcar #'(lambda (ty) (mk-funtype domtype ty)) types)))))
 	(t (let ((tvar (make-instance 'type-variable
 			 :id (make-new-variable 'T expr))))
 	     (setf (types expr) (list tvar))))))
@@ -2707,10 +2740,14 @@ with dependencies lifted up to the update expr depth."
 	(set-type (declared-type decl) nil)
 	#+pvsdebug (assert (fully-instantiated? (declared-type decl)))
 	(setf (type decl) type))
-      (let ((vdecls (remove-if-not #'(lambda (d)
-				       (and (var-decl? d)
-					    (eq (module d) (current-theory))))
-		      (get-declarations (id decl)))))
+      (let* ((all-vdecls (remove-if-not #'(lambda (d)
+					    (and (var-decl? d)
+						 (eq (module d) (current-theory))))
+			   (get-declarations (id decl))))
+	     (vdecls (if (cdr all-vdecls)
+			 (or (remove-if #'generated-by all-vdecls)
+			     all-vdecls)
+			 all-vdecls)))
 	(cond ((null vdecls) 
 	       (type-error decl
 		 "Variable ~a not previously declared" (id decl)))
