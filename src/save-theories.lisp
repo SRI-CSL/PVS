@@ -123,11 +123,6 @@ instances, e.g., other declarations within the theory, or self-references."
     theory-list))
 
 
-;; While we're saving a particular theory, we don't want to save any
-;; other modules it might refer to, or any declarations that belong to
-;; other modules.  *saving-theory* is bound to the theory being saved.
-(defvar *saving-theory* nil)
-
 (defvar *saving-declaration* nil)
 
 (defmethod store-object* :around ((obj datatype-or-module))
