@@ -90,9 +90,9 @@
 (def-pvs-term string-type "string" "strings" :nt type-expr)
 
 
-(let ((*one-constant* nil))
+(let ((one-constant nil))
   (defun one-constant ()
-    (or *one-constant*
+    (or one-constant
 	(make!-number-expr 1))))
   
 ;;; This file provides make-class for the useful classes in classes.
@@ -432,6 +432,13 @@
 	     :resolutions (when resolution (list resolution))
 	     :adt adt
 	     :single-constructor? (singleton? (constructors adt))))))
+
+(defun mk-print-type-name (id &optional (decl (current-declaration))
+				(thinst (current-theory-name)))
+  (assert (eq id (id decl)))
+  (make-instance 'print-type-name
+    :id id
+    :resolutions (list (mk-resolution decl thinst nil))))
 
 (defun mk-dep-binding (id &optional type dtype)
   (assert (or dtype type))
@@ -1978,17 +1985,17 @@
 		   :operator if-name
 		   :argument if-args))))))
 
-(defun make!-cases-expr (ex selections &optional else)
-  (assert (type ex))
-  (let ((cex (mk-cases-expr ex selections else))
-	(seltype (reduce #'compatible-type
-			 (mapcar #'(lambda (s) (type (expression s)))
-			   selections))))
-    (setf (type cex)
-	  (if else
-	      (compatible-type seltype (type else))
-	      seltype))
-    cex))
+;; (defun make!-cases-expr (ex selections &optional else)
+;;   (assert (type ex))
+;;   (let ((cex (mk-cases-expr ex selections else))
+;; 	(seltype (reduce #'compatible-type
+;; 			 (mapcar #'(lambda (s) (type (expression s)))
+;; 			   selections))))
+;;     (setf (type cex)
+;; 	  (if else
+;; 	      (compatible-type seltype (type else))
+;; 	      seltype))
+;;     cex))
 
 (defun make!-in-selection (index type args ex)
   (assert (cotupletype? type))
@@ -2170,11 +2177,16 @@
 			 :key #'(lambda (a) (id (caar (arguments a)))))))
 	  (assert ass)
 	  (expression ass))
-	(let ((ftype (make!-field-application-type fid (type arg) arg)))
-	  (make-instance 'fieldappl
-	    :id fid
-	    :argument arg
-	    :type ftype)))))
+	(let* ((ftype (make!-field-application-type fid (type arg) arg))
+	       (fappl (make-instance 'fieldappl
+			:id fid
+			:argument arg
+			:type ftype)))
+	  (when (place arg)
+	    (set-extended-place fappl arg
+				"creating field application from ~a and ~a"
+				arg field-name))
+	  fappl))))
 
 ;;; We provide an optional type, in case we need to make sure the list
 ;;; of field applications matches the order of fields in that type
@@ -2210,13 +2222,18 @@
 
 (defun make!-update-expr (expression assignments)
   (assert (type expression))
-  (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
-	     assignments)
-      (make-instance 'update-expr
-	:expression expression
-	:assignments assignments
-	:type (find-supertype (type expression)))
-      (make-update-expr expression assignments)))
+  (let ((uexpr (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
+			  assignments)
+		   (make-instance 'update-expr
+		     :expression expression
+		     :assignments assignments
+		     :type (find-supertype (type expression)))
+		   (make-update-expr expression assignments))))
+    (when (place expression)
+      (set-extended-place uexpr assignments
+			  "creating update expr from ~a and ~a"
+			  expression assignments))
+    uexpr))
 
 (defun make!-recognizer-name-expr (rec-id adt-type-name)
   (let* ((adt (adt adt-type-name))
@@ -2482,6 +2499,22 @@
 
 (defmethod make!-bind-decl (id (type dep-binding))
   (make!-bind-decl id (type type)))
+
+(defun make!-cases-expr (expr selections &optional else-part)
+  (assert (fully-typed? expr))
+  (assert (every #'fully-typed? selections))
+  (assert (or (null else-part) (fully-typed? else-part)))
+  (let* ((ctype (compatible-types
+		 (compatible-types
+		  (nconc (mapcar #'(lambda (s) (type (expression s))) selections)
+			 (when (else-part expr) (list (type else-part)))))))
+	 (cex (make-instance 'cases-expr
+		:expression expr
+		:selections selections
+		:else-part else-part
+		:type ctype)))
+    (assert ctype)
+    cex))
 
 (defun make!-floor (ex)
   (assert (type ex))
