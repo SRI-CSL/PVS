@@ -235,9 +235,11 @@
       (if (everywhere-true? p1)
 	  (if (everywhere-true? p2)
 	      (tc-eq* st1 st2 bindings)
-	      (tc-eq* st1 t2 bindings))
+	      (unless *strong-tc-eq-flag*
+		(tc-eq* st1 t2 bindings)))
 	  (if (everywhere-true? p2)
-	      (tc-eq* t1 st2 bindings)
+	      (unless *strong-tc-eq-flag*
+		(tc-eq* t1 st2 bindings))
 	      (and (tc-eq* st1 st2 bindings)
 		   (tc-eq-ops p1 p2 bindings)))))))
 
@@ -322,13 +324,17 @@
 						      bindings))))))
 
 (defmethod tc-eq-bindings ((b1 dep-binding) (b2 dep-binding) bindings)
-  (tc-eq* (type b1) (type b2) bindings))
+  (and (or (not *strong-tc-eq-flag*)
+	   (tc-eq* (declared-type b1) (declared-type b2) bindings))
+       (tc-eq* (type b1) (type b2) bindings)))
 
 (defmethod tc-eq-bindings ((b1 dep-binding) b2 bindings)
-  (tc-eq* (type b1) b2 bindings))
+  (unless *strong-tc-eq-flag*
+    (tc-eq* (type b1) b2 bindings)))
 
 (defmethod tc-eq-bindings (b1 (b2 dep-binding) bindings)
-  (tc-eq* b1 (type b2) bindings))
+  (unless *strong-tc-eq-flag*
+    (tc-eq* b1 (type b2) bindings)))
 
 (defmethod tc-eq-bindings ((b1 field-decl) (b2 field-decl) bindings)
   (and (eq (id b1) (id b2))
@@ -665,10 +671,12 @@
   nil)
 
 (defmethod tc-eq* ((e1 equation) (e2 equation) bindings)
-  (or (eq e1 e2)
-      (with-slots ((arg1 argument)) e1
-	(with-slots ((arg2 argument)) e2
-	  (tc-eq* arg1 arg2 bindings)))))
+  (with-slots ((arg1 argument)) e1
+    (with-slots ((arg2 argument)) e2
+      (or (eq e1 e2)
+	  (and (or (not *strong-tc-eq-flag*)
+		   (tc-eq* (operator e1) (operator e2) bindings))
+	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 equation) (e2 expr) bindings)
   (declare (ignore bindings))
@@ -790,7 +798,7 @@
   (tc-eq* op1 op2 bindings))
 
 (defun tc-eq-adt-ops (op1 op2 bindings)
-  (and (eq (id op1) (id op2))
+  (and (name-eq (id op1) (id op2))
        (let ((adt1 (adt op1))
 	     (adt2 (adt op2)))
 	 (and (eq (adt adt1) (adt adt2))
@@ -817,7 +825,7 @@
 (defun tc-eq-adt-actuals (acts1 acts2 bindings formals postypes)
   (or (null acts1)
       (flet ((lkey (x) (or (print-type x) x)))
-	(and (if (member (car formals) postypes :test #'same-id :key #'lkey)
+	(and (if (member (car formals) postypes :test #'name-eq :key #'lkey)
 		 (compatible? (type-value (car acts1)) (type-value (car acts2)))
 		 (tc-eq* (car acts1) (car acts2) bindings))
 	     (tc-eq-adt-actuals (cdr acts1) (cdr acts2) bindings
@@ -1054,7 +1062,7 @@
 			       (typep decl2 '(or binding var-decl)))
 			      ((skolem-const-decl? decl2)
 			       (typep decl1 '(or binding var-decl)))
-			      (t (and (eq (id decl1) (id decl2))
+			      (t (and (name-eq (id decl1) (id decl2))
 				      (typep decl1 '(or binding var-decl))
 				      (typep decl2 '(or binding var-decl)))))
 			(tc-eq* type1 type2 bindings)))
@@ -1064,15 +1072,18 @@
 			 (or (null (library mi1))
 			     (null (library mi2))
 			     (eq (library mi1) (library mi2)))
-			 (let ((act1 (unless (eq (module decl1) (current-theory)) (actuals mi1)))
-			       (act2 (unless (eq (module decl2) (current-theory)) (actuals mi2))))
+			 (let ((act1 ;(unless (eq (module decl1) (current-theory)) (actuals mi1))
+				(actuals mi1))
+			       (act2 ;(unless (eq (module decl2) (current-theory)) (actuals mi2))
+				(actuals mi2)))
 			   (tc-eq* act1 act2 bindings))
 			 (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
 			 (tc-eq* (mappings mi1) (mappings mi2) bindings))
 		    (null mi2))
 		(or *in-tc-eq-resolution*
 		    (null *strong-tc-eq-flag*)
-		    (let ((*in-tc-eq-resolution* t))
+		    (let ((*in-tc-eq-resolution* t)
+			  (*strong-tc-eq-flag* nil))
 		      (tc-eq* (type res1) (type res2) bindings)))
 		;; (progn (let ((*strong-tc-eq-flag* nil))
 		;; 	 (assert (tc-eq* (type res1) (type res2) bindings)))
@@ -1244,7 +1255,7 @@
 (defmethod compatible?* ((atype out-type-variable) (etype type-expr))
   t)
 
-(defmethod compatible?* :around ((etype type-expr) (atype out-type-variable))
+(defmethod compatible?* :around ((atype type-expr) (etype out-type-variable))
   t)
 
 ;; Need to deal with subtypes
@@ -2515,6 +2526,7 @@
 
 (defmethod subtype-of*? :around (t1 t2)
   (or (tc-eq t1 t2)
+      (simple-subtype-of? t1 t2)
       (if (and *subtype-of-hash*
 	       (not *checking-conversions*))
 	  (let ((pair (cons t1 t2)))
