@@ -113,6 +113,11 @@
 (defvar *restore-object-parent*)
 (defvar *restore-object-parent-slot*)
 
+;; While we're saving a particular theory, we don't want to save any
+;; other modules it might refer to, or any declarations that belong to
+;; other modules.  *saving-theory* is bound to the theory being saved.
+(defvar *saving-theory* nil)
+
 ;; The following macro is used to help avoid consing.  If a
 ;; non-reentrant function needs a temporary vector of a given size,
 ;; and the function is called often enough that you don't want to cons
