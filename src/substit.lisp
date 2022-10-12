@@ -842,6 +842,16 @@ that elt."
 		       (substit* (type (resolution texpr)) alist)))))
 	  nte))))
 
+(defmethod substit* ((te print-type-name) alist)
+  (assert (resolution te))
+  (let ((mi (substit* (module-instance te) alist)))
+    (if (eq mi (module-instance te))
+	te
+	(copy te
+	  :actuals (when (actuals te) (actuals mi))
+	  :dactuals (when (dactuals te) (dactuals mi))
+	  :resolutions (list (mk-resolution (declaration te) mi nil))))))
+
 (defmethod substit* ((texpr subtype) alist)
   (with-slots (supertype predicate print-type) texpr
     (let ((npred (substit* predicate alist)))
@@ -855,7 +865,14 @@ that elt."
 		 (ptype (when (typep cand-ptype
 				     '(or null type-name expr-as-type
 				       type-application))
-			  cand-ptype))
+			  (if (or (null cand-ptype)
+				  (print-type-expr? cand-ptype))
+			      cand-ptype
+			      (change-class cand-ptype
+				  (typecase cand-ptype
+				    (type-name 'print-type-name)
+				    (type-application 'print-type-application)
+				    (expr-as-type 'print-expr-as-type))))))
 		 (ntexpr (lcopy texpr
 			   'supertype stype
 			   'predicate spred
