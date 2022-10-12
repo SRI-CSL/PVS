@@ -202,7 +202,10 @@
 ;;(type-error name "May not provide actuals for entities defined locally")
 ;;(type-error name "Free variables not allowed here")
 
-(defun get-resolutions (name kind args)
+(defun get-resolutions (name &optional kind args)
+  (when (symbolp name)
+    ;; Create a "name" instance; empty except for id
+    (setq name (mk-name name)))
   (let* ((adecls (get-declarations (id name)))
 	 (ldecls (if (library name)
 		     (let ((libpath (get-library-reference (library name))))
@@ -226,9 +229,18 @@
 		      ldecls)
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
-	 (dreses (get-decls-resolutions decls (actuals name) (dactuals name)
+	 (dacts (or (dactuals name)
+		    (and (mapping-lhs? name)
+			 (mk-dactuals (decl-formals name)))))
+	 (dreses (if (and (mapping-lhs? name)
+			  (decl-formals name))
+		     (with-current-decl name
+		       (get-decls-resolutions decls (actuals name) dacts
 					(mod-id name) (mappings name)
-					kind args)))
+					kind args))
+		     (get-decls-resolutions decls (actuals name) dacts
+					    (mod-id name) (mappings name)
+					    kind args))))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
@@ -344,8 +356,7 @@
 	  (if args
 	      (let ((thinst (current-theory-name)))
 		(mapcan #'(lambda (bd)
-			    (when (compatible-arguments? bd thinst args
-							 (current-theory))
+			    (when (compatible-arguments? bd thinst args (current-theory))
 			      (list (mk-resolution bd thinst (type bd)))))
 		  bdecls))
 	      (mapcar #'(lambda (bd)
@@ -483,6 +494,7 @@
 
 (defun get-decl-resolutions (decl acts dacts mappings thid kind args)
   (let ((dth (module decl)))
+    (when (null kind) (setf kind (kind-of decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))
 		   (eq kind 'module)
@@ -674,7 +686,12 @@ dacts."
 		  (and (null tdacts) nacts))
 	  (let* ((thinsts (resolve-theory-actuals decl nacts ndacts dth args mappings))
 		 (dreses (mapcar #'(lambda (thinst)
-				     (make-resolution decl thinst))
+				     (let ((pthinst
+					    (lcopy thinst
+					      :actuals (when nacts (actuals thinst))
+					      :dactuals (when ndacts (dactuals thinst))
+					      :mappings (when mappings (mappings thinst)))))
+				       (make-resolution decl thinst)))
 			   thinsts)))
 	    dreses))))))
 
@@ -943,12 +960,13 @@ decl, args, and mappings."
       (let ((cathinsts (compatible-arguments? decl (car mthinsts) args (current-theory))))
 	(assert (or (null cathinsts)
 		    (not (fully-instantiated? (car mthinsts)))
-		    (and (decl-formals decl) (null (formals-sans-usings (module decl))))
+		    ;;(and (decl-formals decl) (null (formals-sans-usings (module decl))))
 		    (every #'(lambda (cath)
 			       (or (tc-eq cath (car mthinsts))
 				   (fully-instantiated? cath)))
 			   cathinsts)))
-	(if (fully-instantiated? (car mthinsts))
+	(if (and (fully-instantiated? (car mthinsts))
+		 (null (dactuals (car cathinsts))))
 	    (when cathinsts
 	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
 	    (dolist (thinst cathinsts)
@@ -1143,10 +1161,8 @@ decl, args, and mappings."
 				 (tc-eq (find-supertype (range sty))
 					*boolean*))))
 		      (ptypes app)))
-	   (setf (type-value act)
-		 (typecheck* (make-instance 'expr-as-type
-			       :expr app)
-			     nil nil nil))))
+	   (let* ((tval (typecheck* (make-instance 'expr-as-type :expr app) nil nil nil)))
+	     (setf (type-value act) tval))))
     (unless (or (ptypes app)
 		(type-value act))
       (type-error (or obj app) error))))
@@ -1278,7 +1294,8 @@ decl, args, and mappings."
 		 (if (typep nfml 'formal-type-decl)
 		     (compatible-parameters?*
 		      (cdr actuals) (cdr formals)
-		      (let ((nact (copy-all (car actuals))))
+		      (let ((nact ;;(copy-all (car actuals))
+			     (copy (car actuals))))
 			(setf (place nact) (place (car actuals)))
 			(setf (place (expr nact)) (place (car actuals)))
 			(cons nact nacts))
@@ -1849,8 +1866,7 @@ decl, args, and mappings."
 		 (let* ((*generate-tccs* 'none)
 			(*smp-include-actuals* t)
 			(*smp-dont-cache* t)
-			(domtypes (subst-mod-params
-				   dtypes modinst (module decl) decl)))
+			(domtypes (subst-mod-params dtypes modinst (module decl) decl)))
 		   (assert (fully-instantiated? domtypes))
 		   ;;(set-type-actuals-and-maps modinst)
 		   (when (compatible-args? decl args domtypes)
@@ -2155,26 +2171,53 @@ decl, args, and mappings."
   (declare (ignore name))
   (if (cdr reses)
       (let* ((dreses (remove-duplicates reses :test #'tc-eq))
-	     (mreses (filter-mapped-resolutions dreses))
+	     (greses (remove-if #'(lambda (r)
+				    (some #'(lambda (r2)
+					      (and (declaration? (declaration r2))
+						   (eq (declaration r)
+						       (generated-by (declaration r2)))))
+					  dreses))
+		       dreses))
+	     (mreses (filter-mapped-resolutions greses))
 	     (res (or (remove-if
 			  #'(lambda (r)
 			      (typep (module-instance r) 'datatype-modname))
 			mreses)
 		      mreses)))
-	(most-refined-mapping-resolutions
-	 (if (eq kind 'expr)
-	     (if (cdr res)
-		 (filter-constructor-subtypes
-		  (filter-equality-resolutions
-		   (filter-nonlocal-module-instances
-		    (filter-local-expr-resolutions
-		     (filter-bindings res args))))
-		  args nil)
-		 res)
-	     (remove-outsiders
-	      (if *get-all-resolutions*
-		  (move-generics-to-end res)
-		  (remove-generics res))))))
+	(prefer-theory-decl-resolutions
+	 (most-refined-mapping-resolutions
+	  (if (eq kind 'expr)
+	      (if (cdr res)
+		  (filter-constructor-subtypes
+		   (filter-equality-resolutions
+		    (filter-nonlocal-module-instances
+		     (filter-local-expr-resolutions
+		      (filter-bindings res args))))
+		   args nil)
+		  res)
+	      (remove-outsiders
+	       (if *get-all-resolutions*
+		   (move-generics-to-end res)
+		   (remove-generics res)))))))
+      reses))
+
+(defun prefer-theory-decl-resolutions (reses)
+  (if (cdr reses)
+      (if (cdr reses)
+	  (multiple-value-bind (gen-reses other-reses)
+	      (split-on #'(lambda (r)
+			    (let ((decl (declaration r)))
+			      (and (declaration? decl)
+				   (mod-decl? (generated-by decl)))))
+			reses)
+	    (append gen-reses
+		    (remove-if #'(lambda (ores)
+				   (some #'(lambda (gres)
+					     (tc-eq (module-instance ores)
+						    (modname (generated-by (declaration gres)))))
+					 gen-reses))
+		      other-reses)))
+	  reses)
       reses))
 
 (defun filter-constructor-subtypes (reses args result)
@@ -2270,9 +2313,12 @@ This forms a lattice, and we return the top ones."
 	 (if finst? gen-reses (cons (car reses) gen-reses))))))
 
 (defun more-refined-mapping? (res1 res2)
-  (let ((maps1 (mappings (module-instance res1)))
+  (let ((th1 (module (declaration res1)))
+	(th2 (module (declaration res2)))
+	(maps1 (mappings (module-instance res1)))
 	(maps2 (mappings (module-instance res2))))
-    (and (> (length maps1) (length maps2))
+    (and (eq th1 th2)
+	 (> (length maps1) (length maps2))
 	 (every #'(lambda (map)
 		    (member map maps1
 			    :test #'(lambda (m1 m2)
@@ -2333,9 +2379,36 @@ This forms a lattice, and we return the top ones."
 				   ;;(free-params (type r))
 				   ))
 	     reses))
-      (and args
-	   (filter-res-exact-matches reses args))
+      (let ((ereses (or (and args
+			     (filter-res-exact-matches reses args))
+			reses)))
+	(or (filter-res-field-apps ereses args)
+	    ereses))
       reses))
+
+(defun filter-res-field-apps (reses args)
+  (when (and (singleton? args)
+	     (singleton? (ptypes (car args))))
+    (let ((atype (find-supertype (car (ptypes (car args))))))
+      (when (recordtype? atype)
+	(filter-res-field-apps* reses atype)))))
+
+(defun filter-res-field-apps* (reses atype &optional freses nreses)
+  (if (null reses)
+      (append freses
+	      (remove-if #'(lambda (nr)
+			     (some #'(lambda (fr)
+				       (compatible? (range (find-supertype (type fr)))
+						    (range (find-supertype (type nr)))))
+				   freses))
+		nreses))
+      (let* ((rdecl (declaration (car reses)))
+	     (field-res? (and (field-decl? rdecl)
+			      (memq rdecl (fields atype)))))
+	(filter-res-field-apps*
+	 (cdr reses) atype
+	 (if field-res? (cons (car reses) freses) freses)
+	 (if field-res? nreses (cons (car reses) nreses))))))
 
 ;; This tries to keep things besides bindings and var-decls, but breaks
 ;; nasalib/analysis/continuous_functions_props
