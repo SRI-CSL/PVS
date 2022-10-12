@@ -201,13 +201,22 @@ intervenes."
   (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s --no-userinit" (pvs-program)))
   (setq ilisp-reset ":abort")
-  (setq comint-prompt-regexp
-	"^\\([0-9]+\\]+\\|[0-9]+\\[[0-9]+\\]\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter\\|Defining.*\\* ")
+  (let* ((prompt-pre "\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\|\\[ldb.*\\] \\)?")
+	 (old-prompt "\\(<?[-A-Za-z]* ?[0-9]*>\\)") ;  'yices >', '<PVSio>', etc
+	 (new-prompt "\\([-A-Za-z0-9]+([0-9]+):\\)")
+	 (pvs-added "Rule\\?\\|.*(Y or N)\\|.*(Yes or No)\\|.*process\\?\\|Please enter.*:"))
+    (setq comint-prompt-regexp
+	  (format "^\\(%s\\(%s\\|%s\\|%s\\)\\)+:? "
+	      prompt-pre old-prompt new-prompt pvs-added))
+    (setq pvs-top-regexp
+	  (format "^\\(%s\\(%s\\|%s\\) \\)+" prompt-pre old-prompt new-prompt)))
+  ;; (setq comint-prompt-regexp
+  ;; 	"^\\([0-9]+\\]+\\|[0-9]+\\[[0-9]+\\]\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter\\|Defining.*\\* ")
+  ;; (setq pvs-top-regexp
+  ;; 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
   (setq comint-interrupt-regexp  "^  Interactive interrupt at")
   (setq comint-continue ":continue")
   (setq ilisp-error-regexp "^[ \t]restarts (invokable by number or by possibly-abbreviated name):$")
-  (setq pvs-top-regexp
-	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
 (defun pvs-allegro-binary-extension ()
@@ -319,6 +328,9 @@ intervenes."
   (sit-for 1))
 
 (defun pvs-send* (string &optional message status and-go)
+  (when pvs-in-evaluator
+    (switch-to-lisp t)
+    (error "Must exit the ground evaluator first"))
   (with-current-buffer (ilisp-buffer)
     (setq buffer-read-only nil))
   (let (*pvs-output-pos*)
