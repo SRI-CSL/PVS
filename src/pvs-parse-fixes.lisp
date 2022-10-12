@@ -45,55 +45,49 @@
 ;; Would be better to use fwrapper or advise, but SBCL doesn't have that
 ;; So we use this alternative hack
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (fboundp '!judgement-orig!)
-    (setf (symbol-function '!judgement-orig!) #'!judgement!))
-  (unless (fboundp '!name-expr-orig!)
-    (setf (symbol-function '!name-expr-orig!) #'!name-expr!))
-  (unless (fboundp '!tuple-expr-orig!)
-    (setf (symbol-function '!tuple-expr-orig!) #'!tuple-expr!))
-  (unless (fboundp '!fun-arguments-orig!)
-    (setf (symbol-function '!fun-arguments-orig!) #'!fun-arguments!))
-  ;; The following need to not change '|' to '%VBAR'
-  (unless (fboundp '!type-expr-sans-name-orig!)
-    (setf (symbol-function '!type-expr-sans-name-orig!) #'!type-expr-sans-name!))
-  (unless (fboundp '!set-expr-orig!)
-    (setf (symbol-function '!set-expr-orig!) #'!set-expr!))
-  (unless (fboundp '!table-expr-orig!)
-    (setf (symbol-function '!table-expr-orig!) #'!table-expr!))
-  (unless (fboundp '!adformal-orig!)
-    (setf (symbol-function '!adformal-orig!) #'!adformal!)))
+  (defparameter *judgement-parse-functions*
+    '(!judgement! !name-expr! !tuple-expr! !fun-arguments! !type-expr-sans-name! !set-expr!
+      !table-expr! !adformal!))
+
+  (defun set-judgement-parse-functions ()
+    (dolist (nt *judgement-parse-functions*)
+      (let ((nt-orig (intern (format nil #+allegro "~a-orig" #-allegro "~a-ORIG" nt) :pvs)))
+	(unless (fboundp nt-orig) 
+	  (setf (symbol-function nt-orig) (symbol-function nt))))))
+
+  (set-judgement-parse-functions))
 
 (defun !judgement! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-parse* t))
-    (!judgement-orig! rbp bracket-list)))
+    (!judgement!-orig rbp bracket-list)))
 
 (defun !name-expr! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* *in-judgement-parse*))
-    (!name-expr-orig! rbp bracket-list)))
+    (!name-expr!-orig rbp bracket-list)))
 
 (defun !tuple-expr! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* *in-judgement-parse*))
-    (!tuple-expr-orig! rbp bracket-list)))
+    (!tuple-expr!-orig rbp bracket-list)))
 
 (defun !fun-arguments! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* *in-judgement-parse*))
-    (!fun-arguments-orig! rbp bracket-list)))
+    (!fun-arguments!-orig rbp bracket-list)))
 
 (defun !type-expr-sans-name! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* nil))
-    (!type-expr-sans-name-orig! rbp bracket-list)))
+    (!type-expr-sans-name!-orig rbp bracket-list)))
 
 (defun !set-expr! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* nil))
-    (!set-expr-orig! rbp bracket-list)))
+    (!set-expr!-orig rbp bracket-list)))
 
 (defun !table-expr! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* nil))
-    (!table-expr-orig! rbp bracket-list)))
+    (!table-expr!-orig rbp bracket-list)))
 
 (defun !adformal! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* nil))
-    (!adformal-orig! rbp bracket-list)))
+    (!adformal!-orig rbp bracket-list)))
 
 (defun LEX-\|
        (stream symbol)
@@ -164,6 +158,7 @@
                  (t (lexical-unread-char stream) 'sbst::|::|)))
           ((eql holdchar #\)) 'sbst::|:)|)
           ((eql holdchar #\}) 'sbst::|:}|)
+          ((eql holdchar #\]) 'sbst::|:]|)
           ((eql holdchar #\-)
            (setf holdchar (lexical-read-char stream :eof))
            (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
