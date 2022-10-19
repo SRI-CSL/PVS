@@ -516,6 +516,14 @@ bool_t equal_file__file(file_t file1, file_t file2){
   release_file__file(file2);
   return result;
 }
+
+char * json_file__file(file_t file){
+  char * name = file->name;
+  char * out = safe_malloc(strlen(name) + 2);
+  sprintf(out, "\"%s\"", name);
+  return out;
+}
+
 //------------------------------------------------------------------
 //json printing routines for the various types
 

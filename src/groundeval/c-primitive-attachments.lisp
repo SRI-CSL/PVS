@@ -581,7 +581,22 @@
   "{struct stat s;
     return (fstat(f->fd, &s) != -1);
    }")
-    
+
+(def-c-attach-primitive "file" "name" "bytestrings__bytestring"
+  '(f)
+  '(file__file)
+  nil
+  "{
+   char * name = f->name;
+   uint32_t size = strlen(name);
+    bytestrings_array_0_t newarray = new_bytestrings_array_0(size);
+    memcpy(newarray, (char *) name, size);
+    bytestrings__bytestring_t newstring = new_bytestrings__bytestring();
+    newstring->length = size;
+    newstring->seq = newarray;
+    return newstring;
+   }")
+
 
 (def-c-attach-primitive "file" "open" "file__lifted_file_adt"
   '(name)

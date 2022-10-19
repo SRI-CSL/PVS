@@ -6113,6 +6113,8 @@ BEGIN
 
   open?(f): bool % semantically attached predicate that checks if a file handle is open
 
+  name(f): bytestring
+
   open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
 % don't need to close the file.  This is handled by reference counting.
 

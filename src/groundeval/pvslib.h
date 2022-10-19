@@ -297,6 +297,8 @@ extern void release_file__file(file_t file);
 
 extern bool_t equal_file__file(file_t file1, file_t file2);
 
+extern char *  json_file__file(file_t file); 
+
 struct pointer_s {uint32_t count;};
 typedef struct pointer_s * pointer_t;
 typedef struct type_actual_s * type_actual_t;
