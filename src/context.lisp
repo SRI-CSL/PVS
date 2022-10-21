@@ -602,14 +602,17 @@ its dependencies."
     (when (file-exists-p specpath)
       (let* ((filename (pvs-filename specpath))
 	     (file-entry (get-context-file-entry filename))
-	     (theories (or (gethash filename (current-pvs-files))
-			   (and file-entry (ce-theories file-entry))))
+	     (theories (gethash filename (current-pvs-files)))
+	     (ce-theories (cond (theories
+				 (mapcar #'(lambda (th)
+					     (create-theory-entry th file-entry))
+				   (cdr theories)))
+				(file-entry (ce-theories file-entry))))
 	     (prf-file (make-prf-pathname filename))
 	     (proofs-write-date (file-write-time prf-file))
 	     (fdeps (file-dependencies filename))
 	     (objdate (when file-entry (ce-object-date file-entry)))
 	     (md5sum (md5-file (make-specpath filename))))
-	(assert (cdr theories))
 	(assert (plusp md5sum))
 	;;(format t "~%create-context-entry: ~a objdate = ~a" filename objdate)
 	(make-context-entry
@@ -619,12 +622,7 @@ its dependencies."
 	 :extension nil
 	 :proofs-date proofs-write-date
 	 :dependencies fdeps
-	 :theories (let ((theories (gethash filename (current-pvs-files))))
-		     (if theories
-			 (mapcar #'(lambda (th)
-				     (create-theory-entry th file-entry))
-			   (cdr theories))
-			 (ce-theories file-entry)))
+	 :theories ce-theories
 	 :md5sum md5sum)))))
 
 #+allegro
