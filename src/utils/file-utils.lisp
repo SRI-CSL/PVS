@@ -38,13 +38,12 @@
 (defcfun ("file_write_time" fileutils___file_write_time) :long
   (filename :string))
 
-#-sbcl
 (defcfun ("getfileinfo" fileutils___getfileinfo) :int
   (filename :string)
-  (i :pointer int))
+  (i :pointer))
 
 (defmacro expanded-tilde-namestring (filename)
-  `(ignore-errors (uiop:native-namestring ,filename)))
+  `(ignore-errors (uiop:native-namestring (pathname ,filename))))
 
 (defun file-exists-p (filename)
   (let ((exp-file (expanded-tilde-namestring filename)))
@@ -75,21 +74,16 @@
     (unless (zerop date)
       (+ date u1970))))
 
-;;; #(dev inode mtime isdir mode)
-#-sbcl
-(let ((fstat-array
-       (make-array 2 :initial-element 0 :element-type '(unsigned-byte 32))))
-  (defun get-file-info (filename)
-    (when (zerop (fileutils___getfileinfo
-		  (expanded-tilde-namestring filename) fstat-array))
-      (list (aref fstat-array 0)
-	    (aref fstat-array 1)))))
-
-#+sbcl
-(defun get-file-info (file)
-  (let ((pfile (uiop:probe-file* file :truename t)))
+(defun get-file-info (filename)
+  (let ((pfile (expanded-tilde-namestring filename)))
     (and pfile
-	 (handler-case
+	 (zerop (fileutils___file_exists_p pfile))
+	 #+allegro
+	 (let ((stat (excl.osi:stat pfile)))
+	   (list (excl.osi:stat-dev stat) (excl.osi:stat-ino stat)))
+	 #+sbcl
+	 (handler-case 
 	     (let ((stat (sb-posix:stat pfile)))
 	       (list (sb-posix:stat-dev stat) (sb-posix:stat-ino stat)))
-	   (sb-posix:syscall-error () nil)))))
+	   (error (err)
+	     (get-file-info pfile))))))
