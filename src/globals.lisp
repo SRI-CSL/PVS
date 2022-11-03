@@ -99,6 +99,8 @@ in util.lisp")
 
 (defparameter *binfile-version* 38)
 
+(defvar *ignore-binfile-errors* t)
+
 (defvar *pvsbin-string* "pvsbin"
   ;; #+case-sensitive "pvsbin"
   ;; #-case-sensitive "PVSBIN"
