@@ -178,7 +178,7 @@
 (defmethod free-params* ((texpr print-type-name) frees)
   (assert (resolution texpr))
   (assert (or (null (actuals texpr))
-	      (eq (actuals texpr) (actuals (module-instance texpr)))))
+	      (tc-eq (actuals texpr) (actuals (module-instance texpr)))))
   (let ((nfrees (free-params* (module-instance texpr) nil)))
     (setf (free-parameters texpr) nfrees)
     (union nfrees frees :test #'eq)))
