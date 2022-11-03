@@ -971,6 +971,12 @@ resolution with a macro matching the signature of the arguments."
                              (set-type* (expr ea) (type (expr ma))))))
 		(dactuals expr) dacts)))
       (let ((nthinst (simplify-modinst thinst)))
+	(unless (eq nthinst thinst)
+	  (when (print-type-name? expr)
+	    (when (actuals expr) (setf (actuals expr) (actuals nthinst)))
+	    (when (dactuals expr) (setf (dactuals expr) (dactuals nthinst))))
+	  (let ((nres (copy (resolution expr) :module-instance nthinst)))
+	    (setf (resolutions expr) (list nres))))
 	(unless (eq *generate-tccs* 'none)
           (generate-assuming-tccs nthinst expr theory)
           ;; Compare the given actuals with those determined by the typechecker
@@ -1060,7 +1066,8 @@ resolution with a macro matching the signature of the arguments."
       (when (name-expr? (expr act))
 	(setf (type (expr act)) (type (car reses))))
       (let* ((*generate-tccs* (if (actuals (expr act)) *generate-tccs* 'none))
-	     (thinst (set-type-actuals-and-maps (expr act) (module (declaration (car reses))))))
+	     (rth (module (declaration (car reses))))
+	     (thinst (set-type-actuals-and-maps (expr act) rth)))
 	(setf (module-instance (resolution (expr act))) thinst)
 	(set-type* (type-value act) nil))
       #+pvsdebug (assert (fully-typed? (actuals (expr act))))))
@@ -1575,7 +1582,11 @@ type of the lhs."
         (if (and (equal nactuals (actuals modinst))
                  (equal dactuals (dactuals modinst)))
             modinst
-            (copy modinst :actuals nactuals :dactuals dactuals)))
+	    (let* ((nmodinst (copy modinst :actuals nactuals :dactuals dactuals))
+		   (nres (when (resolution modinst)
+			   (copy (resolution modinst) :module-instance nmodinst))))
+	      (setf (resolutions nmodinst) (list nres))
+	      nmodinst)))
       modinst))
 
 (defun simplify-actuals (actuals &optional result)
@@ -3770,6 +3781,7 @@ type of the lhs."
            result))))
 
 (defmethod generated-by (obj)
+  (declare (ignore obj))
   nil)
 
 (defun resolutions-of-current-context* (resolutions result)
@@ -5671,7 +5683,9 @@ type of the lhs."
        (assq (declaration (print-type ex)) alist)))
 
 (defmethod subst-for-formals? ((ex modname) alist)
-  (let ((mod (or (get-theory ex)
+  (let ((mod (or (and (resolution ex)
+		      (declaration ex))
+		 (get-theory ex)
 		 ;; Try again, but allow libraries to be searched
 		 (let ((*current-context* nil))
 		   (get-theory ex)))))
