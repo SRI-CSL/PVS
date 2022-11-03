@@ -691,7 +691,7 @@ dacts."
 					      :actuals (when nacts (actuals thinst))
 					      :dactuals (when ndacts (dactuals thinst))
 					      :mappings (when mappings (mappings thinst)))))
-				       (make-resolution decl thinst)))
+				       (make-resolution decl pthinst)))
 			   thinsts)))
 	    dreses))))))
 
