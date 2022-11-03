@@ -268,6 +268,8 @@ wrt the initial bindings."
   (with-slots ((apt print-type)) arg
     (with-slots ((fpt print-type)) farg
       (declare (cl:type list bindings))
+      (assert (or (null apt) (print-type-expr? apt)))
+      (assert (or (null fpt) (print-type-expr? fpt)))
       (when bindings
 	(if (tc-eq arg farg)
 	    bindings
@@ -285,6 +287,7 @@ wrt the initial bindings."
 
 (defmethod tc-match-print-type ((ptype name) farg nbindings)
   (assert (resolution ptype))
+  (assert (print-type-expr? ptype))
   (let* ((res (resolution ptype))
 	 (thinst (module-instance res))
 	 (acts (actuals thinst))
@@ -301,6 +304,7 @@ wrt the initial bindings."
 	nbindings)))
 
 (defmethod tc-match-print-type ((ptype type-application) farg nbindings)
+  (assert (print-type-expr? ptype))
   (or (tc-match* ptype
 		 (or (when (type-expr? farg)
 		       (print-type farg))
@@ -309,7 +313,8 @@ wrt the initial bindings."
       nbindings))
 
 (defmethod tc-match-print-type (ptype farg nbindings)
-  (declare (ignore ptype farg))
+  (declare (ignore farg))
+  (assert (print-type-expr? ptype))
   nbindings)
 
 (defun tc-match-set-binding (binding arg bindings)
@@ -702,6 +707,7 @@ returns the updated bindings."
       (cond ((null fsubtype-binding)
 	     (or (call-next-method)
 		 (when (print-type farg)
+		   (assert (print-type-expr? (print-type farg)))
 		   (tc-match* arg (print-type farg) bindings))
 		 (tc-match* arg (supertype farg) bindings)))
 	    ((null (cdr fsubtype-binding))
