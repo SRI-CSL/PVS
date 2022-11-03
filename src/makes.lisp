@@ -438,6 +438,8 @@
   (assert (eq id (id decl)))
   (make-instance 'print-type-name
     :id id
+    :actuals (actuals thinst)
+    :dactuals (dactuals thinst)
     :resolutions (list (mk-resolution decl thinst nil))))
 
 (defun mk-dep-binding (id &optional type dtype)
@@ -991,8 +993,13 @@
     :resolutions (list resolution)))
 
 (defmethod mk-actual ((arg type-expr))
-  (let ((expr (or (print-type arg) arg))
-	(type-value (lcopy arg :from-conversion nil)))
+  (let* ((pt (print-type arg))
+	 (expr (typecase pt
+		 (print-type-name (change-class (copy pt) 'type-name))
+		 (print-expr-as-type (change-class (copy pt) 'expr-as-type))
+		 (print-type-application (change-class (copy pt) 'type-application))
+		 (t arg)))
+	 (type-value (lcopy arg :from-conversion nil)))
     (make-instance 'actual :expr expr :type-value type-value)))
 
 (defmethod mk-actual ((arg type-name))
