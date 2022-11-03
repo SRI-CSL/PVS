@@ -971,7 +971,7 @@
 	       (sptype (subst-mod-params* ptype modinst bindings)))
 	  (assert (typep ptype '(or null print-type-expr)))
 	  (assert (typep sptype '(or null print-type-expr)))
-	  (assert (or (null sptype) (fully-instantiated? sptype)))
+	  ;;(assert (or (null sptype) (fully-instantiated? sptype)))
 	  sptype)
 	(let ((nptype (subst-mod-params* ptype modinst bindings)))
 	  (unless (print-type-name? nptype)
