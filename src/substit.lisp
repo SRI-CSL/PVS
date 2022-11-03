@@ -868,11 +868,18 @@ that elt."
 			  (if (or (null cand-ptype)
 				  (print-type-expr? cand-ptype))
 			      cand-ptype
-			      (change-class cand-ptype
-				  (typecase cand-ptype
-				    (type-name 'print-type-name)
-				    (type-application 'print-type-application)
-				    (expr-as-type 'print-expr-as-type))))))
+			      (typecase cand-ptype
+				(type-name
+				 (let ((decl (declaration cand-ptype))
+				       (mi (module-instance cand-ptype)))
+				   (change-class (copy cand-ptype) 'print-type-name
+				     :actuals (when (actuals cand-ptype) (actuals mi))
+				     :dactuals (when (dactuals cand-ptype) (dactuals mi))
+				     :resolutions (list (mk-resolution decl mi nil)))))
+				(type-application (change-class (copy cand-ptype)
+						      'print-type-application))
+				(expr-as-type (change-class (copy cand-ptype)
+						  'print-expr-as-type))))))
 		 (ntexpr (lcopy texpr
 			   'supertype stype
 			   'predicate spred
