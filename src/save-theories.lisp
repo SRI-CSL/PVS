@@ -97,7 +97,9 @@ instances, e.g., other declarations within the theory, or self-references."
 		     "Restored theory from ~a in ~,2,-3fs ~
                       (load part took ~,2,-3fs)"
 		   file (realtime-since start-time)
-		   (floor (- load-time start-time) millisecond-factor))
+		   (max (floor (/ (- load-time start-time)
+				  internal-time-units-per-second))
+			0))
 		 theory))
 	      (fetch-error
 	       ;;(break "Error in fetching ~a - ~a" filename fetch-error)
@@ -417,7 +419,7 @@ instances, e.g., other declarations within the theory, or self-references."
 
 (defun store-declref (obj)
   (let ((module (module obj)))
-    #+pvsdebug
+    ;;#+pvsdebug
     (assert (or (not *saving-theory*)
 		(from-prelude? module)
 		(memq module (all-imported-theories *saving-theory*))
@@ -499,28 +501,31 @@ instances, e.g., other declarations within the theory, or self-references."
 ;; 				type-value))))))
 
 (defun ignore-self-reference-type-values (type-decl)
-  (if (and (type-value type-decl)
-	   (or (and (type-name? (type-value type-decl))
-		    (eq (declaration (type-value type-decl)) type-decl))
-	       (and (subtype? (type-value type-decl))
-		    (type-name? (print-type (type-value type-decl)))
-		    (eq (declaration
-			 (resolution (print-type (type-value type-decl))))
-			type-decl))
-	       (and (type-expr? (type-value type-decl))
-		    (type-application? (print-type (type-value type-decl)))
-		    (eq (declaration
-			 (type (print-type (type-value type-decl))))
-			type-decl))))
-      (cons (if (type-name? (type-value type-decl))
-		(class-name (class-of (type-value type-decl)))
-		'type-name)
-	    (typecase (type-value type-decl)
-	      (adt-type-name
-	       (list 'adt (id (adt (type-value type-decl)))
-		     'single-constructor? (single-constructor?
-					   (type-value type-decl))))))
-      (type-value type-decl)))
+  "Some type values point to themselves, this breaks the self-reference,
+which is restored in restore-type-value. This is used as the :store-as for
+type-decls in classes-decl.lisp."
+  (let ((tval (type-value type-decl)))
+    (cond ((and (type-name? tval) ;; Direct self-reference
+		(eq (declaration tval) type-decl))
+	   (let ((res (copy (resolution tval) :declaration 'self-ref)))
+	     (unless (memq (class-name (class-of tval)) '(adt-type-name type-name))
+	       (break "ignore-self-reference-type-values type-name"))
+	     (copy tval :resolutions (list res))))
+	  ((and (subtype? tval) ;; Print-type self-reference
+		(type-name? (print-type tval))
+		(eq (declaration (resolution (print-type tval))) type-decl))
+	   (let* ((ptype (print-type tval))
+		  (res (copy (resolution ptype) :declaration 'self-ref)))
+	     (copy tval :print-type (copy ptype :resolutions (list res)))))
+	  ((and (type-expr? tval) ;; type application self-reference
+		(type-application? (print-type tval))
+		(eq (declaration (type (print-type tval))) type-decl))
+	   (let* ((ptype (print-type tval))
+		  (res (copy (resolution (type ptype)) :declaration 'self-ref))
+		  (ctype (copy (type ptype) :resolutions (list res))))
+	     (assert (print-type-application? ptype))
+	     (copy tval :print-type (copy ptype :type ctype))))
+	  (t tval))))
   
 (defmethod all-usings ((obj recursive-type))
   (when (adt-theory obj)
@@ -765,21 +770,23 @@ instances, e.g., other declarations within the theory, or self-references."
 ;; pointing back to the current declaration, the store-print-type replaces
 ;; the full type, optimizing on space and time.
 (defmethod store-object* :around ((obj type-expr))
-   (if (and (print-type obj)
-	    (not (and (type-name? (print-type obj))
-		      (eq (declaration (print-type obj))
-			  *saving-declaration*))))
-       (let* ((spt (make-instance 'store-print-type
-		     :print-type (print-type obj)))
-	      (sop *store-object-ptr*))
-	 #+pvsdebug (assert (type-expr? (print-type obj)))
-	 #+pvsdebug (assert (print-type-correct? obj))
-	 (let ((val (store-obj spt)))
-	   #+pvsdebug (assert (gethash spt *store-object-hash*))
-	   (setf (gethash sop *store-object-substs*)
-		 (gethash spt *store-object-hash*))
-	   val))
-       (call-next-method)))
+  (call-next-method))
+
+;; (if (and (print-type obj)
+;; 	    (not (and (type-name? (print-type obj))
+;; 		      (eq (declaration (print-type obj))
+;; 			  *saving-declaration*))))
+;;        (let* ((spt (make-instance 'store-print-type
+;; 		     :print-type (print-type obj)))
+;; 	      (sop *store-object-ptr*))
+;; 	 #+pvsdebug (assert (type-expr? (print-type obj)))
+;; 	 #+pvsdebug (assert (print-type-correct? obj))
+;; 	 (let ((val (store-obj spt)))
+;; 	   #+pvsdebug (assert (gethash spt *store-object-hash*))
+;; 	   (setf (gethash sop *store-object-substs*)
+;; 		 (gethash spt *store-object-hash*))
+;; 	   val))
+;;        (call-next-method)))
 
 ;;; Note that at this point all we have is the framework, the slots of
 ;;; the store-print-type have not yet been filled in.
@@ -1372,43 +1379,29 @@ instances, e.g., other declarations within the theory, or self-references."
 (defmethod restore-object* :around ((obj type-decl))
   (call-next-method)
   (assert (not (store-print-type? (type-value obj))))
-;;   (assert (or (not (subtype? (type-value obj)))
+  ;;   (assert (or (not (subtype? (type-value obj)))
   ;; 	      (not (store-print-type? (supertype (type-value obj))))))
   (restore-type-value obj)
   obj)
 
-(defun restore-type-value (obj)
-  ;;(break "restore-type-value ~a" (type-value obj))
-  (when (consp (type-value obj))
-    (let* ((tn (apply #'make-instance (or (car (type-value obj))
-					  'type-name)
-		      :id (id obj) (cdr (type-value obj))))
-	   (res (mk-resolution obj (mk-modname (id (module obj))) tn)))
-      (setf (resolutions tn) (list res))
-      (let ((ptype (if (formals obj)
-		       (make-instance 'type-application
-			 :type tn
-			 :parameters (mapcar #'mk-name-expr
-				       (car (formals obj))))
-		       tn)))
-	(when (adt-type-name? tn)
-	  (let ((rec-type (when (symbolp (adt tn))
-			    (get-theory (adt tn)))))
-	    (if rec-type
-		(let ((atns (assq (adt tn) *adt-type-name-pending*)))
-		  (dolist (atn (cdr atns))
-		    (setf (adt atn) rec-type))
-		  (setf (adt tn) rec-type)
-		  (setf *adt-type-name-pending*
-			(delete atns *adt-type-name-pending*)))
-		(add-to-alist (adt tn) tn *adt-type-name-pending*))))
-	(if (type-def-decl? obj)
-	    (setf (type-value obj) (type-def-decl-saved-value obj ptype))
-	    (setf (type-value obj) tn))
-	#+pvsdebug (assert (true-type-expr? (type-value obj)))
-	)))
-  (type-value obj))
-
+(defun restore-type-value (type-decl)
+  "Restores type-values for the type-decl that were saved using
+ignore-self-reference-type-values.  This occurs for simple type-decls,
+subtypes with a print-type that is a self-reference type-name, and
+type-values with type-applications. Basically the self-reference inside is
+filled with the symbol 'self-ref, and restore-type-value replaces it with type-decl."
+  (let ((tval (type-value type-decl)))
+    (cond ((and (type-name? tval) ;; Direct self-reference
+		(eq (declaration tval) 'self-ref))
+	   (setf (declaration (resolution tval)) type-decl))
+	  ((and (subtype? tval) ;; Print-type self-reference
+		(type-name? (print-type tval))
+		(eq (declaration (resolution (print-type tval))) 'self-ref))
+	   (setf (declaration (resolution (print-type tval))) type-decl))
+	  ((and (type-expr? tval) ;; type application self-reference
+		(type-application? (print-type tval))
+		(eq (declaration (type (print-type tval))) 'self-ref))
+	   (setf (declaration (resolution (type (print-type tval)))) type-decl)))))
 
 (defmethod restore-object* :around ((obj conversionminus-decl))
   (call-next-method)
@@ -1418,7 +1411,7 @@ instances, e.g., other declarations within the theory, or self-references."
   (let* ((res (resolution obj))
 	 (type (when res
 		 (if (store-print-type? (type res))
-		     (print-type (type res))
+		     (progn (break) (print-type (type res)))
 		     (type res)))))
     (cond ((eq obj type)
 	   (let ((*restore-object-parent* obj)
@@ -1459,7 +1452,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		    (nobj (if (store-print-type? obj)
 			      ;; For some reason, call-next-method stops working for
 			      ;; store-print-type, at least in Allegro
-			      (restore-store-print-type obj)
+			      (progn (break) (restore-store-print-type obj))
 			      (call-next-method))))
 	       (when (subtype? nobj)
 		 (assert (not (store-print-type? (supertype nobj))) ()
@@ -1560,15 +1553,16 @@ instances, e.g., other declarations within the theory, or self-references."
 ;;; Do not make this an :around method - causes problems I don't fully understand
 
 (defmethod restore-object* ((obj store-print-type))
+  (break "restore-object* store-print-type")
   (restore-store-print-type obj))
 
 (defun restore-store-print-type (obj)
   (or (type obj)
-      (let ((pt (print-type obj))
-	    ;;(*pseudo-normalizing* t)
-	    )
+      (let ((pt (print-type obj)))
 	(cond ((and (type-name? pt)
+		    (not (eq (declaration pt) 'self-ref))
 		    (store-print-type? (type-value (declaration pt))))
+	       (break "restore-store-print-type type-name")
 	       ;;(assert (eq (type-value (declaration pt)) obj))
 	       (let* ((decl (declaration pt))
 		      (tn (mk-type-name (id decl)))
@@ -1580,6 +1574,7 @@ instances, e.g., other declarations within the theory, or self-references."
 						 (car (formals decl))))
 				 tn))
 		      (tval (type-def-decl-saved-value decl ptype)))
+		 (break "restore-store-print-type 1")
 		 (setf (resolutions tn) (list res))
 		 #+pvsdebug (assert (true-type-expr? tval) ()
 				    "Not a true type - type-name")
@@ -1621,6 +1616,7 @@ instances, e.g., other declarations within the theory, or self-references."
 		   (setf (type obj) texpr)))))))
 
 (defun type-def-decl-saved-value (decl tn)
+  (assert (typep tn '(or type-name type-application #| expr-as-type |#)))
   (with-current-decl decl
     (cond ((type-from-decl? decl)
 	   (let* ((*bound-variables* (apply #'append (formals decl)))
@@ -1648,6 +1644,10 @@ instances, e.g., other declarations within the theory, or self-references."
 		    (tval (typecheck* (type-expr decl) nil nil nil)))
 	       (assert (type-expr? tn))
 	       #+pvsdebug (assert (true-type-expr? tval))
+	       (unless (print-type-expr? tn)
+		 (typecase tn
+		   (type-name (change-class tn 'print-type-name))
+		   (t (break "tn"))))
 	       (copy tval 'print-type tn))))))
 
 (defmethod true-type-expr? (obj)
@@ -1693,18 +1693,21 @@ instances, e.g., other declarations within the theory, or self-references."
 ;; (defmethod restore-object-print-types* ((ex store-print-type))
 ;;   (restore-object ex))
 
-(defmethod type-expr-from-print-type ((te type-name))
+(defmethod type-expr-from-print-type ((te print-type-name))
+  (assert (print-type-name? te))
   (let* ((decl (declaration (resolution te)))
 	 (tval (if (consp (type-value decl))
 		   (restore-type-value decl)
 		   (type-value decl)))
 	 (thinst (module-instance (resolution te))))
-    (assert (eq (id (module decl)) (id thinst))
-	    () "Strange type-name resolution")
+    (assert (eq (id (module decl)) (id thinst)) () "Strange type-name resolution")
     (restore-object* tval)
     (restore-object* (actuals thinst))
     (restore-object* (dactuals thinst))
     (assert (not (store-print-type? tval)))
+    ;; (unless (and (print-type tval)
+    ;; 		 (fully-instantiated? (print-type tval)))
+    ;;   (setf (print-type tval) te))
     (let* ((type-expr (if (or (actuals thinst) (dactuals thinst))
 			  (let* ((*pseudo-normalizing* t) ;; disallow pseudo-normalize
 				 (nte (subst-mod-params tval thinst (module decl) decl)))
@@ -1715,12 +1718,18 @@ instances, e.g., other declarations within the theory, or self-references."
 			  (copy tval 'print-type te))))
       #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
       #+pvsdebug (assert (true-type-expr? type-expr))
+      (let ((pt (print-type type-expr)))
+	(assert (or (null pt) (print-type-expr? pt)))
+	(assert (or (not (print-type-name? pt))
+		    (and (resolution pt)
+			 (null (type (resolution pt)))))))
       type-expr)))
 
 (defmethod type-expr-from-print-type ((te expr-as-type))
   (let* ((suptype (find-supertype (type (expr te))))
 	 (subtype (mk-subtype (domain suptype) (expr te))))
     ;; Make sure to set the slot, not call any methods
+    (assert (print-expr-as-type? te))
     (with-slots (print-type) subtype
       (setf print-type te))
     subtype))
