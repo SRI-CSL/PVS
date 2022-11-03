@@ -2551,7 +2551,7 @@
   (assert (funtype? (find-supertype (type pred))))
   (assert (compatible? (range (find-supertype (type pred))) *boolean*))
   (make-instance 'subtype
-    :print-type (mk-expr-as-type pred)
+    :print-type (make-instance 'print-expr-as-type :expr pred)
     :supertype (domain (find-supertype (type pred)))
     :predicate pred))
 
