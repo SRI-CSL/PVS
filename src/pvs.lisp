@@ -1056,13 +1056,18 @@ reference; pathname-name doesn't work if the file is of the form
 			  (and lib (get-theory* (id ith) lib))))
 	     (iname (let* ((mi (copy ith 'library lib 'actuals nil 'mappings nil
 				    'resolutions nil))
-			   (res (mk-resolution theory mi nil)))
+			   (res (mk-resolution gtheory mi nil)))
 		      (setf (resolutions mi) (list res))
 		      mi)))
 	(when (and itheory
 		   (generated-by itheory))
-	  (setq iname (lcopy iname 'id (generated-by itheory)))
-	  (setq itheory (get-theory* (generated-by itheory) lib)))
+	  (let* ((gby-id (generated-by itheory))
+		 (gby-th (get-theory* (generated-by itheory) lib))
+		 (mn (mk-modname gby-id nil lib))
+		 (res (mk-resolution gby-th mn nil)))
+	    (setf (resolutions mn) (list res))
+	    (setq iname mn)
+	    (setq itheory gby-th)))
 	(when itheory
 	  (multiple-value-bind (i-theories i-names)
 	      (all-importings itheory)
