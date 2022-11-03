@@ -135,7 +135,7 @@
   (setq *print-pretty* t)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  #+(or cmu sbcl)
+  ;; #+(or cmu sbcl)
   ;; (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
   ;;   (pushnew exepath *pvs-directories*)
   ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
@@ -259,7 +259,7 @@ should be enough."
 		(path (when pvs-sys (slot-value pvs-sys 'asdf/component:absolute-pathname))))
 	   path))
 	(t (pvs-error "Init error"
-	     (format nil "Cannot find a valid pvs-path in ~a" cdir)))))
+	     (format nil "Cannot find a valid pvs-path")))))
 
 (defparameter *pvs-env-variables*
   '("PVSDEFAULTDP"
@@ -355,7 +355,7 @@ loads .pvscontext, and any prelude library extensions in the .pvscontext
  (see load-prelude-libraries), unless dont-load-prelude-libraries is not
 nil."
   (let ((*dont-write-object-files* t))
-    (save-context))
+    (save-context empty-pvs-context))
   (reset-typecheck-caches)
   (setq *circular-file-dependencies* nil)
   (let ((workspaces (cond ((member workspace '("all" "t") :test #'string-equal)
@@ -1054,7 +1054,11 @@ reference; pathname-name doesn't work if the file is of the form
 			   (get-library-id (context-path theory)))))
 	     (itheory (or gtheory
 			  (and lib (get-theory* (id ith) lib))))
-	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
+	     (iname (let* ((mi (copy ith 'library lib 'actuals nil 'mappings nil
+				    'resolutions nil))
+			   (res (mk-resolution theory mi nil)))
+		      (setf (resolutions mi) (list res))
+		      mi)))
 	(when (and itheory
 		   (generated-by itheory))
 	  (setq iname (lcopy iname 'id (generated-by itheory)))
@@ -4411,12 +4415,25 @@ nil is returned in that case."
   (let ((cmds nil)
 	(helpers nil))
     (flet ((prf-push (id step)
+	     (declare (ignore id))
 	     (if (defhelper-entry? step)
-		 (push id helpers)
-		 (push id cmds))))
+		 (push step helpers)
+		 (push step cmds))))
       (maphash #'prf-push *rulebase*)
       (maphash #'prf-push *rules*))
-    (values (sort cmds #'string<) (sort helpers #'string<))))
+    (values (sort cmds #'string< :key #'id) (sort helpers #'string< :key #'id))))
+
+;; (defun collect-proof-arguments ()
+;;   (let ((*print-pretty* nil))
+;;     (flet ((prf-args (id step)
+;; 	     (unless (defhelper-entry? step)
+;; 	       `(("tag" . "proof-command")
+;; 		 ("id" . ,id)
+;; 		 ("arguments" ,@(mapcar #'(lambda (("
+
+;; 	       (format t "~%(\"~a\": ~{~a ~}" id (formals step)))))
+;;       (maphash #'prf-args *rulebase*)
+;;       (maphash #'prf-args *rules*))))
 
 (defun make-proof-cmds-orgtbl ()
   (let ((cmds nil))
