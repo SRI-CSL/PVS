@@ -222,7 +222,7 @@ retypechecked."
 ;;; Save Context - called from Emacs and parse-file (pvs.lisp), saves any
 ;;; changes since the last time the context was saved.
 
-(defun save-context ()
+(defun save-context (&optional empty)
   #+pvsdebug
   (assert (file-equal *default-pathname-defaults* (working-directory))
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
@@ -247,7 +247,7 @@ retypechecked."
 	;; 			 (check-binfiles file))
 	;; 		     () "check-binfiles failed after write-object-files"))
 	;; 	 (current-pvs-files))
-	(write-context)
+	(write-context *workspace-session* empty)
 	;; (maphash #'(lambda (file theories)
 	;; 	     (assert (or (some #'(lambda (th)
 	;; 				   (not (typechecked? th)))
@@ -260,7 +260,7 @@ retypechecked."
   (save-context))
 
 
-(defun write-context (&optional (ws *workspace-session*))
+(defun write-context (&optional (ws *workspace-session*) empty)
   (unless ws (setq ws (initialize-workspaces)))
   (assert (pvs-context ws))
   (with-workspace ws
@@ -269,7 +269,7 @@ retypechecked."
 	      (and (pvs-context-entries)
 		   (not (file-exists-p (path ws)))))
       (if (write-permission? (path ws))
-	  (let ((context (make-pvs-context)))
+	  (let ((context (if empty (initial-context) (make-pvs-context))))
 	    (assert (every #'(lambda (ce)
 			       (file-exists-p (make-specpath (ce-file ce))))
 			   (cdddr context)))
@@ -1276,12 +1276,14 @@ are all the same."
 	(let ((cfile (make-pathname :defaults context :name ".pvscontext")))
 	  (when (file-exists-p cfile)
 	    (multiple-value-bind (context error)
-		(ignore-errors
-		  (if (with-open-file (in cfile)
-			(and (char= (read-char in) #\()
-			     (char= (read-char in) #\")))
-		      (with-open-file (in cfile) (read in))
-		      (fetch-object-from-file cfile)))
+		(if (with-open-file (in cfile)
+		      (and (char= (read-char in) #\()
+			   (char= (read-char in) #\")))
+		    (with-open-file (in cfile) (read in))
+		    (if *ignore-binfile-errors*
+			(ignore-errors
+			  (fetch-object-from-file cfile))
+			(fetch-object-from-file cfile)))
 	      (cond (error
 		     (pvs-message "Error reading context file ~a"
 		       (namestring cfile))
@@ -1951,7 +1953,7 @@ Note that the lists might not be the same length."
     (unless (memq cname *pvs-class-names*)
       (push cname *pvs-class-names*)
       (let ((subclasses #+sbcl (sb-mop:class-direct-subclasses class)
-			#-sbcl (class-direct-subclasses class)))
+			#-sbcl (mop:class-direct-subclasses class)))
 	(dolist (subclass subclasses)
 	  (all-subclasses subclass))))))
 
