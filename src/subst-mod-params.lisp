@@ -199,6 +199,7 @@
 		  (acons fml nact nalist))))))))
 
 (defmethod make-new-theory-inst-param ((fml formal-type-decl) theory nalist)
+  (declare (ignore theory))
   (let* ((ntypeval (subst-for-formals (type-value fml) nalist))
 	 (ntype (subst-for-formals (type fml) nalist))
 	 (nfml (copy fml
@@ -368,6 +369,7 @@
 	      ;; True even for strong-tc-eq.
 	      ;; (assert (or (mappings modinst)
 	      ;; 	       (subsetp (free-params nobj) (free-params modinst))))
+	      #+badassert
 	      (assert (or (mappings modinst)
 			  (every #'(lambda (fp) (or (memq fp (free-params modinst))
 						    (memq fp (free-params obj))))
@@ -892,8 +894,7 @@
 	     (let ((hobj (or (gethash obj *subst-mod-params-eq-cache*)
 			     (gethash obj *subst-mod-params-cache*))))
 	       (if hobj
-		   (progn (unless (fully-typed? hobj) (break "not fully-typed?"))
-			  (if (strong-tc-eq hobj obj) obj hobj))
+		   (if (strong-tc-eq hobj obj) obj hobj)
 		   (let ((nobj
 			  (if (and (null (mappings modinst))
 				   (not (typep obj '(or module declaration
@@ -1042,15 +1043,13 @@
     npt))
 
 (defmethod subst-mod-params-print-type* ((pt type-expr) modinst bindings)
+  (declare (ignore bindings modinst))
   (break "print-type is a type-expr"))
 
-(defmethod subst-mod-params-print-type* ((obj type-expr) modinst bindings)
-  (declare (ignore bindings modinst))
-  nobj)
-  
 (defmethod subst-mod-params-print-type* (obj modinst bindings)
-  (declare (ignore obj modinst bindings))
-  nobj)
+  (declare (ignore modinst bindings))
+  (break "What?")
+  obj)
 
 (defun no-matching-free-params (obj frees)
   (not (some #'(lambda (b) (memq b frees))
@@ -1311,7 +1310,7 @@
     ;; decl-formals
     (multiple-value-bind (nass abindings)
 	(subst-mod-params-decls (assuming nrectype) modinst bindings (module nrectype))
-      (multiple-value-bind (ngen tbindings)
+      (multiple-value-bind (ngen #| tbindings |#)
 	  (subst-mod-params-decls (generated nrectype) modinst abindings (module nrectype))
 	(let ((gen-theories (subst-mod-params-decls (generated nrectype) modinst bindings
 						    (module nrectype))))
@@ -1684,6 +1683,7 @@
 (defmethod subst-mod-params* ((ndecl application-judgement) modinst bindings)
   (with-slots (name declared-type type judgement-type formals) ndecl
     (if *subst-params-decl*
+	;; ndecl is the original in this case
 	(let ((nname (subst-mod-params* name modinst bindings)))
 	  (when (name? nname)
 	    (multiple-value-bind (nformals alist)
@@ -1697,18 +1697,21 @@
 			     (substit (subst-mod-params* (print-type type) modinst bindings) alist))
 			    (t (substit (subst-mod-params* declared-type modinst bindings) alist))))
 		     (jtype (substit (subst-mod-params* judgement-type modinst bindings) alist)))
-		(setf (declared-type ndecl) ndecl-type
-		      (type ndecl) ntype
-		      (judgement-type ndecl) jtype
-		      (name ndecl) nname
-		      (formals ndecl) nformals)
-		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
-					  (freevars (substit ndecl-type alist))))
-		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
-					  (freevars (substit ntype alist))))
-		#+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
-					  (freevars (subst-mod-params* judgement-type modinst bindings))))
-		(values ndecl alist)))))
+		(let ((cdecl (lcopy ndecl
+			       :declared-type ndecl-type
+			       :type ntype
+			       :judgement-type jtype
+			       :name nname
+			       :formals nformals)))
+		  #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+					    (freevars (substit ndecl-type alist))))
+		  #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+					    (freevars (substit ntype alist))))
+		  #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+					    (freevars (subst-mod-params*
+						       judgement-type modinst bindings))))
+		  (values cdecl alist))))))
+	;; ndecl is already a copy, should be destructively updated
 	(multiple-value-bind (nformals alist)
 	    (apply-to-bindings #'(lambda (bd) (subst-mod-params* bd modinst bindings))
 			       formals)
@@ -1737,10 +1740,9 @@
 (defmethod subst-mod-params* ((ndecl rec-application-judgement) modinst bindings)
   (multiple-value-bind (nndecl alist)
       (call-next-method)
-    (declare (ignore nndecl))
-    (setf (rewrite-formula ndecl)
+    (setf (rewrite-formula nndecl)
 	  (substit (subst-mod-params* (rewrite-formula ndecl) modinst bindings) alist))
-    ndecl))
+    nndecl))
 
 (defmethod subst-mod-params* ((decl expr-judgement) modinst bindings)
   (break "expr-judgement")
@@ -1969,7 +1971,9 @@
 			:predicate pred
 			:declared-type type)))
 	  ;;(setf (tcc-status pred) (list (cons (type pred) 'none)))
-	  (setf (print-type stype) type)
+	  (setf (print-type stype)
+		(change-class (copy type) 'print-type-name
+		  :resolutions (list (copy (resolution type) :type nil))))
 	  stype))))
 
 
@@ -2030,7 +2034,7 @@
 	(let ((stype (subst-mod-params* (supertype type) modinst bindings))
 	      (spred (beta-reduce (subst-mod-params* (predicate type) modinst bindings))))
 	  (if (everywhere-true? spred)
-	      stype
+	      (lcopy stype :print-type nil)
 	      (let* ((pred (if (eq spred (predicate type))
 			       spred
 			       (pseudo-normalize spred)))
@@ -2084,7 +2088,7 @@
   (let ((ntypes (subst-mod-params-type-list (types type) modinst bindings)))
     (if (equal ntypes (types type))
 	type
-	(copy type :types ntypes))))
+	(copy type :types ntypes :print-type nil))))
 
 (defmethod subst-mod-params* ((type struct-sub-tupletype) modinst bindings)
   (let ((act (cdr (assoc type bindings
@@ -2702,19 +2706,25 @@
 			      )
 			 (mk-res-actual (type nres) (module nact))))
 	    (t (break "More needed"))))
-	(let ((ntype (when type-value
-		       (subst-mod-params* type-value modinst bindings))))
+	(let* ((ntype (when type-value
+			(subst-mod-params* type-value modinst bindings)))
+	       (aexpr (if ntype
+			  (if (eq ntype type-value)
+			      expr
+			      (let ((pt (print-type ntype)))
+				(typecase pt
+				  (print-type-name (change-class (copy pt) 'type-name))
+				  (print-expr-as-type (change-class (copy pt) 'expr-as-type))
+				  (print-type-application
+				   (change-class (copy pt) 'type-application))
+				  (t (or (subst-mod-params* expr modinst bindings)
+					 ntype)))))
+			  (let ((nexpr (subst-mod-params* expr modinst bindings)))
+			    (if (eq nexpr expr)
+				expr
+				(pseudo-normalize nexpr))))))
 	  (lcopy act
-	    :expr (if ntype
-		      (if (eq ntype type-value)
-			  expr
-			  (or (print-type ntype)
-			      (subst-mod-params* expr modinst bindings)
-			      ntype))
-		      (let ((nexpr (subst-mod-params* expr modinst bindings)))
-			(if (eq nexpr expr)
-			    expr
-			    (pseudo-normalize nexpr))))
+	    :expr aexpr
 	    :type-value ntype)))))
 
 (defmethod subst-mod-params* ((map mapping) modinst bindings)
