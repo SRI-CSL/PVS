@@ -237,7 +237,6 @@ behavior:
 	(lcopy te :declared-type dtype))))
 
 (defmethod gensubst* ((te type-name) substfn testfn)
-  (declare (ignore substfn testfn))
   (cond ((and (resolution te)
 	      (type (resolution te))
 	      (tc-eq (type (resolution te)) te))
@@ -719,7 +718,8 @@ behavior:
 		 (let ((nprint-type (lcopy (print-type type)
 				      :actuals (actuals nmi)
 				      :dactuals (dactuals nmi)
-				      :mappings (mappings nmi))))
+				      :mappings (mappings nmi)
+				      :resolutions (list (copy nres :type nil)))))
 		   (setf (print-type ntype) nprint-type)))
 	       nres))
 	    (t (let ((ntype (gensubst* type substfn testfn)))
@@ -1379,9 +1379,6 @@ behavior:
       'print-type nil
       'from-conversion nil
       'nonempty? nil)))
-
-(defmethod copy-untyped* ((ex print-expr-as-type))
-  (copy-untyped* (change-class ex 'expr-as-type)))
 
 (defmethod copy-untyped* ((ex funtype))
   (with-slots (domain range) ex
