@@ -778,8 +778,7 @@
 
 (defun make-inlined-theory (theory theory-name thdecl)
   (assert (typep thdecl '(or mod-decl formal-theory-decl)))
-  (multiple-value-bind (stheory bindings)
-      (subst-mod-params-inlined-theory theory theory-name thdecl)
+  (let ((stheory (subst-mod-params-inlined-theory theory theory-name thdecl)))
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
     ;;(setf (theory-mappings thdecl) bindings)
     (setf (theory-mappings thdecl)
@@ -1033,6 +1032,7 @@ bindings."
 (defmethod type-def-decl-value (decl tn)
   (assert (type-decl? decl))
   (assert (typep tn '(or type-name type-application)))
+  (assert (print-type-expr? tn))
   (cond ((enumtype? (type-expr decl))
 	 ;; Note that the class of tn has changed, but still a type-name
 	 (change-class tn 'adt-type-name
@@ -2845,10 +2845,8 @@ The dependent types are created only when needed."
   (type (resolution type)))
 
 
-(defmethod typecheck* ((te print-type-expr) expected kind arguments)
-  (break "We shouldn't get here"))
-
 (defmethod typecheck* ((te print-type-name) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (assert (resolution te))
   (resolution-type (resolution te)))
 
@@ -2871,6 +2869,7 @@ The dependent types are created only when needed."
 	   (type decl))))))
 
 (defmethod typecheck* ((te print-expr-as-type) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (let* ((etype (type (expr te)))
 	 (stype (find-supertype etype))
 	 (tval (mk-subtype (domain stype) (expr te))))
@@ -3044,9 +3043,9 @@ The dependent types are created only when needed."
 	(type-error (expr type) "Does not resolve to a predicate"))
       (set-type (expr type) ftype)
       (assert (fully-typed? (expr type)))
-      (let ((tval (mk-subtype (domain ftype) (expr type))))
-	(change-class type 'print-expr-as-type)
-	(setf (print-type tval) type)
+      (let* ((tval (mk-subtype (domain ftype) (expr type)))
+	     (ptype (change-class (copy type) 'print-expr-as-type)))
+	(setf (print-type tval) ptype)
 	(setf (subtype-conjuncts tval) (collect-subtype-conjuncts tval))
 	tval))))
 
