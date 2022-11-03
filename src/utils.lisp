@@ -581,14 +581,16 @@ is replaced with replacement."
   (let ((thinst (module-instance res)))
     (if (library thinst)
 	thinst
-	(let ((th (module (declaration res))))
-	  (if (and th (lib-datatype-or-theory? th))
-	      (let ((lib-id (get-library-id (context-path th))))
-		(if lib-id
-		    (copy thinst :library lib-id)
-		    (pvs-error "Library reference error"
-		      (format nil "Could not find lib-id for ~a" (context-path th)))))
-	      thinst)))))
+	(let* ((decl (declaration res))
+	       (th (module decl)))
+	  (unless (binding? decl)
+	    (if (and th (lib-datatype-or-theory? th))
+		(let ((lib-id (get-library-id (context-path th))))
+		  (if lib-id
+		      (copy thinst :library lib-id)
+		      (pvs-error "Library reference error"
+			(format nil "Could not find lib-id for ~a" (context-path th)))))
+		thinst))))))
 
 ;;; Gets the theory that's at the bottom of a chain of
 ;;; mod-decls, abbreviations, etc.
@@ -2907,27 +2909,34 @@ and get-print-type returns a funtype with type-name domain and range."
 
 (defmethod full-name! ((x type-name))
   (let* ((mi (module-instance (resolution x)))
-	 (modid (id mi)))
-    (copy x
-      'mod-id (when (and (or (not *exclude-prelude-names*)
-			     (not (gethash modid *prelude*)))
-			 (or *rename-variables*
-			     (not (current-theory))
-			     (not (eq modid (id (current-theory))))))
-		modid)
-      'library (or (library x)
-		   (library (module-instance (resolution x)))
-		   (when (and (declaration x)
-			      (lib-datatype-or-theory?
-			       (module (declaration x))))
-		     (get-library-id (context-path (module (declaration x))))))
-      'actuals (full-name (actuals mi)
+	 (modid (when (and (or (not *exclude-prelude-names*)
+			       (not (gethash (id mi) *prelude*)))
+			   (or *rename-variables*
+			       (not (current-theory))
+			       (not (eq (id mi) (id (current-theory))))))
+		  (id mi)))
+	 (libid (or (library x)
+		    (library (module-instance (resolution x)))
+		    (when (and (declaration x)
+			       (lib-datatype-or-theory?
+				(module (declaration x))))
+		      (get-library-id (context-path (module (declaration x)))))))
+	 (acts (full-name (actuals mi)
 			  (when *full-name-depth*
-			    (1- *full-name-depth*)))
-      'dactuals (full-name (dactuals mi)
+			    (1- *full-name-depth*))))
+	 (dacts (full-name (dactuals mi)
 			   (when *full-name-depth*
-			     (1- *full-name-depth*)))
-      'mappings (mappings mi))))
+			     (1- *full-name-depth*))))
+	 (maps (mappings mi))
+	 (nmi (mk-modname (or modid (id mi)) acts libid maps dacts))
+	 (res (mk-resolution (declaration x) nmi nil)))
+    (copy x
+      'mod-id modid
+      'library libid
+      'actuals acts
+      'dactuals dacts
+      'mappings maps
+      'resolutions (list res))))
 
 (defmethod module ((map mapping))
   (module (declaration (lhs map))))
@@ -2996,9 +3005,6 @@ and get-print-type returns a funtype with type-name domain and range."
 		   (eq (id (module-instance x)) '|notequal|)))
     (raise-actuals-name? x)))
 
-(defmethod raise-actuals? ((a actual))
-  (not *raise-actuals-of-actuals*))
-
 (defun raise-actuals-name? (x)
   (and (resolution x)
        (module-instance (resolution x))
@@ -3012,6 +3018,9 @@ and get-print-type returns a funtype with type-name domain and range."
 		    (and (not (from-prelude? (module (declaration x))))
 			 (not (eq (id (module-instance x)) (id (current-theory))))))))))
 
+(defmethod raise-actuals? ((a actual))
+  (not *raise-actuals-of-actuals*))
+
 (defmethod raise-actuals? ((x type-expr))
   (or (call-next-method)
       (and (print-type x)
@@ -3019,14 +3028,16 @@ and get-print-type returns a funtype with type-name domain and range."
 	       (raise-actuals-name? (print-type x))
 	       (raise-actuals? (print-type x))))))
 
+(defmethod raise-actuals? ((x print-type-expr))
+  ;; This is handled by the type-expr method
+  nil)
+
 (defmethod raise-actuals! ((x type-expr))
   (let* ((pt (raise-actuals (print-type x)))
-	 (ppt (if (typep pt '(or null type-name
-			      expr-as-type type-application))
-		  pt (print-type pt))))
+	 (ppt (if (typep pt '(or null type-name expr-as-type type-application))
+		  pt
+		  (print-type pt))))
     (lcopy (call-next-method) 'print-type ppt)))
-
-(defmethod raise-actuals! (x) x)
 
 (defmethod raise-actuals! ((x name))
   (copy x
@@ -3043,6 +3054,8 @@ and get-print-type returns a funtype with type-name domain and range."
     'mod-id (or (mod-id x)
 		(and *raise-actuals-theory-ids*
 		     (id (module-instance (resolution x)))))))
+
+(defmethod raise-actuals! (x) x)
 
 
 #+(or lucid allegro)
@@ -5765,3 +5778,61 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 	   (dolist (branch (car strats))
 	     (flatten-proof-script-list (cdr branch))))
 	  (t (flatten-proof-script-list (break "flatten-proof-script-list"))))))
+
+(defmethod initialize-instance :around ((te type-name) &rest ia)
+  (declare (ignore ia))
+  (call-next-method)
+  (print-type-check te))
+
+(defmethod initialize-instance :around ((te print-type-name) &rest ia)
+  (declare (ignore ia))
+  (call-next-method)
+  (when (and (actuals te)
+	     (not (eq (actuals (module-instance te)) (actuals te))))
+    (break "bad print-type-name init")))
+
+(defmethod (setf print-type) :around (v (te type-name))
+  (declare (ignore v))
+  (prog1 (call-next-method)
+    (print-type-check te)))
+
+(defmethod print-type-check ((te type-name))
+  (let ((pte (print-type te)))
+    (unless (null pte)
+      (unless (print-type-expr? pte)
+	(break "print-type for a type-name not a print-type-expr?"))
+      (when (print-type-name? te)
+	(let ((mi (module-instance te))
+	      (pmi (module-instance pte)))
+	  (unless (eq (actuals pmi) (actuals mi))
+	    (break "print-type-name actuals difference"))
+	  (when (and (actuals pte) (not (eq (actuals pte) (actuals pmi))))
+	    (break "print-type-name actuals self difference")))))))
+
+(defmethod initialize-instance :around ((act actual) &rest ia)
+  (declare (ignore ia))
+  (call-next-method)
+  (when (print-type-expr? (expr act))
+    (break "init actual expr print-type-expr?")))
+
+(defmethod (setf expr) :around (v (act actual))
+  (when (print-type-expr? v)
+    (break "setf actual expr print-type-expr?"))
+  (call-next-method))
+
+(defmethod (setf resolutions) :around (v (te print-type-name))
+  (declare (ignore v))
+  (prog1 (call-next-method)
+    (when (and (actuals te)
+	       (not (eq (actuals (module-instance te)) (actuals te))))
+      (break "setf bad print-type-name"))))
+
+(defmethod initialize-instance :around ((te type-expr) &rest ia)
+  (call-next-method)
+  (unless (or (null (print-type te))
+	      (print-type-expr? (print-type te)))
+    (break "bad init")))
+
+(defmethod initialize-instance :around ((mn modname) &rest ia)
+  (call-next-method)
+  (when (null (id mn)) (break "modname init: null id")))
