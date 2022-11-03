@@ -770,6 +770,8 @@ restored, the TCCs are checked")
 
 (defcl print-expr-as-type (print-type-expr expr-as-type))
 
+(defcl print-type-extension (print-type-expr type-extension))
+
 #+pvsdebug
 (defmethod initialize-instance :around ((te type-expr) &rest ia)
   (call-next-method)
