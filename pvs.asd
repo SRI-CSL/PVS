@@ -31,6 +31,7 @@
 ;; (asdf:operate :program-op :pvs)
 
 ;; (declaim (optimize (compilation-speed 0) (space 1) (safety 1) (speed 3) (cl:debug 0)))
+;; (sb-ext:describe-compiler-policy)
 
 (in-package :cl-user)
 
