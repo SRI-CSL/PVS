@@ -1,5 +1,4 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ;; --------------------------------------------------------------------
 ;; PVS
 ;; Copyright (C) 2006, SRI International.  All Rights Reserved.
@@ -19,50 +18,87 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+;; This is loaded right after packages.lisp in pvs.asd, providing globals
+;; and functions needed for loading PVS and making an image
+
+;; Note that the pvs-parser should be built separately
+
+;; (asdf:oos :program-op :pvs)
+;; loads packages.lisp
+;; loads pvs-config.lisp
+;; loads "ess" module
+;; loads other modules; builds libraries for file_utils, mu, and ws1s
+;; calls make-pvs-program
+;;  #+allegro excl:generate-application
+;;     make-allegro-lisp.lisp
+;;       asdf:load-system :pvs
+;;  #+sbcl sb-ext::save-lisp-and-die
+
 (in-package :common-lisp)
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  ;; Allegro 8.2 does not allow 'the' readtable to be modified
-  (defvar *pvs-readtable* (copy-readtable nil))
-  (setq *readtable* *pvs-readtable*)
-  (setf (third (assoc '*readtable* excl:*cl-default-special-bindings*))
-	'*pvs-readtable*))
-
-;; (#-(or cmu sbcl excl) progn
-;;  #+cmu ext:without-package-locks
-;;  #+sbcl sb-ext:without-package-locks
-;;  #+excl excl:without-package-locks
-;;  (defmacro defconstant-if-unbound (name value &optional doc)
-;;    `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-;; 		       ,@(when doc (list doc))))
-;;  (export 'defconstant-if-unbound))
+(defmacro defconstant-if-unbound (name value &optional doc)
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
+(export 'defconstant-if-unbound)
 
 (in-package :cl-user)
 
-(export '(*pvs-path* *pvs-binary-type* *pvs-platform* bye))
+#+allegro
+(defun startup-pvs ()
+  (tpl:setq-default *package* (find-package :pvs))
+  (rplacd (assoc 'tpl::*saved-package*
+		 tpl:*default-lisp-listener-bindings*)
+	  'common-lisp:*package*)
+  ;; Can't directly reference pvs::pvs-init here
+  (apply (find-symbol (string :pvs-init) :pvs) nil))
 
-(defparameter *pvs-path*
+#+cmu
+(defun startup-pvs ()
+  (in-package :pvs)
+  ;; Can't directly reference pvs::pvs-init here
+  (apply (find-symbol (string :pvs-init) :pvs) nil)
+  (lisp::%top-level))
+
+#+sbcl
+(defun startup-pvs ()
+  (in-package :pvs)
+  ;; Turn off compiler warnings
+  (handler-bind ((sb-ext:compiler-note #'muffle-warning))
+    ;; Can't directly call (pvs::pvs-init)
+    (apply (find-symbol (string :pvs-init) :pvs) nil)
+    (sb-impl::toplevel-init)))
+
+#+allegro
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (or (find :case-sensitive common-lisp:*features*)
+	      (find :case-insensitive common-lisp:*features*))
+    (if (or (eq excl:*current-case-mode* :case-sensitive-lower)
+	    (eq excl:*current-case-mode* :case-sensitive-upper))
+	(push :case-sensitive common-lisp:*features*)
+      (push :case-insensitive common-lisp:*features*))))
+
+(in-package :pvs)
+
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (defvar *pvs-readtable* (copy-readtable nil))
+;;   (setq *readtable* *pvs-readtable*)
+;;   ;; See https://franz.com/support/documentation/current/doc/implementation.htm#readtable-2
+;;   ;; for this form
+;;   #+allegro
+;;   (setf (third (assoc '*readtable* excl:*cl-default-special-bindings*))
+;; 	'*pvs-readtable*))
+
+;;(in-package :cl-user)
+;;(in-package :pvs)
+
+;;(export '(*pvs-path* *pvs-binary-type* bye))
+
+(defvar *pvs-path*
   (or #+allegro (sys:getenv "PVSPATH")
       #+gcl (si:getenv "PVSPATH")
       #+cmu (cdr (assoc :PVSPATH extensions::*environment-list*))
       ;; Assume this is loaded while cd'd to the PVS directory 
       (namestring (truename *default-pathname-defaults*))))
-
-(eval-when (:execute :load-toplevel)
-  (defvar *pvs-platform*
-    (let ((cmd (format nil "~a/bin/pvs-platform" *pvs-path*)))
-      #+allegro (car (excl.osi:command-output cmd))
-      #+cmu (string-trim
-	     '(#\Newline)
-	     (with-output-to-string (str)
-	       (extensions:run-program
-		cmd nil :output str :pty nil :error nil)))
-      #+sbcl (string-trim
-	     '(#\Newline)
-	     (with-output-to-string (str)
-	       (sb-ext:run-program
-		cmd nil :output str :pty nil :error nil))))))
 
 ;;; The *pvs-binary-type* is used to be able to build PVS under several
 ;;; lisps/platforms without rerunning configure each time
@@ -94,11 +130,8 @@
   )
 
 #+allegro
-(eval-when (eval load)
-  (setq *ignore-package-name-case* t))
-
-#+allegro
-(eval-when (eval load)
+(eval-when (:load-toplevel :execute)
+  (setq *ignore-package-name-case* t)
   (setq excl:*fasl-default-type* *pvs-binary-type*)
   (setq system:*load-search-list*
 	(list #p"" (make-pathname :type *pvs-binary-type*)
@@ -119,6 +152,31 @@
 #+allegro
 (setq *cltl1-in-package-compatibility-p* t)
 
+#+allegro
+(defun startup-pvs ()
+  (tpl:setq-default *package* (find-package :pvs))
+  (rplacd (assoc 'tpl::*saved-package*
+		 tpl:*default-lisp-listener-bindings*)
+	  'common-lisp:*package*)
+  ;; Can't directly reference pvs::pvs-init here
+  (apply (find-symbol (string :pvs-init) :pvs) nil))
+
+#+cmu
+(defun startup-pvs ()
+  (in-package :pvs)
+  ;; Can't directly reference pvs::pvs-init here
+  (apply (find-symbol (string :pvs-init) :pvs) nil)
+  (lisp::%top-level))
+
+#+sbcl
+(defun startup-pvs ()
+  (in-package :pvs)
+  ;; Turn off compiler warnings
+  (handler-bind ((sb-ext:compiler-note #'muffle-warning))
+    ;; Can't directly call (pvs::pvs-init)
+    (apply (find-symbol (string :pvs-init) :pvs) nil)
+    (sb-impl::toplevel-init)))
+
 #+lucid
 (unless (fboundp 'bye)
   (defun bye (&optional (exit-status 0))
@@ -138,8 +196,200 @@
 
 #+sbcl
 (defun bye (&optional (exit-status 0))
-  (quit :unix-status exit-status))
+  (sb-ext:quit :unix-status exit-status))
 
 (defun pvs-version-and-quit ()
   (format t "PVS Version ~a" (eval (find-symbol (string :*pvs-version*) :pvs)))
   (bye))
+
+;;; Definitions to support :perform operations
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (declaim (optimize (compilation-speed 0) (space 1) (safety 1) (speed 3) (cl:debug 1)))
+  ;; Note that these do very little SBCL simply does not want to shut up
+  #+sbcl (declaim (sb-ext:muffle-conditions cl:warning))
+  #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
+  #+sbcl (declaim (sb-ext:muffle-conditions sb-ext:compiler-note)))
+
+(defun file-time (file)
+  #+allegro (excl.osi:stat-mtime (excl.osi:stat file))
+  #+sbcl (sb-posix:stat-mtime (sb-posix:stat file)))
+
+(defun file-time-lt (file1 file2)
+  (< (file-time file1) (file-time file2)))
+
+(defun compile-file-and-load (file)
+  (let ((src (format nil "~a.lisp" file))
+	(fasl (format nil "~a.~a" file *pvs-binary-type*)))
+    (when (file-time-lt fasl src)
+      (compile-file src))
+    (load file)))
+
+(defun make-pvs-parser ()
+  (uiop:with-current-directory ("src/")
+    ;; pvs-parser.lisp, pvs-lexer.lisp, and pvs-sorts.lisp are generated together
+    ;; Using pvs-lexer.lisp as a proxy for these
+    (unless (and nil
+		 (file-time-lt "pvs-gr.txt" "pvs-lexer.lisp") ;; Grammar file unchanged
+		 (file-time-lt "ergo-gen-fixes.lisp" "pvs-lexer.lisp")
+		 (file-time-lt "pvs-lang-def.lisp" "pvs-lexer.lisp"))
+      (compile-file-and-load "ergo-gen-fixes")
+      (compile-file-and-load "pvs-lang-def")
+      (sb:sb-make :language "pvs" :directory "." :unparser? nil))))
+
+(defun pvs-platform ()
+  (uiop:run-program
+      (format nil "~a/bin/pvs-platform"
+	(or (and (boundp '*pvs-path*) *pvs-path*) "."))
+    :output '(:string :stripped t)
+    :ignore-error-status t))
+
+(defun make-in-platform (dir lib)
+  "Runs make in the direcory corresponding to the pvs-platform, creating
+lib.so and loading it."
+  (let* ((mdir (format nil "~a/~a" dir (pvs-platform)))
+	 (foreign-ext #+linux "so" #+macosx "dylib")
+	 (make-cmd (format nil "make -C ~a" mdir))
+	 (lib-file (format nil "~a/~a.~a" mdir lib foreign-ext)))
+    (multiple-value-bind (out-str err-str err-code)
+	(uiop:run-program make-cmd
+	  :output '(:string :stripped t)
+	  :error-output '(:string :stripped t)
+	  :ignore-error-status t)
+      (format t "~%***** make-in-platform ~a ~a ~a" dir lib err-code)
+      (unless (zerop err-code)
+	(error "Failure in ~a:~%output:~%~a~%error output:~%~a"
+	       make-cmd out-str err-str))
+      (format t "~% make-in-platform loading ~a" lib-file)
+      (cffi:load-foreign-library lib-file)
+      )))
+
+(defun finally-do ()
+  (format t "~%In finally-do")
+  (setq *pvs-log-stream* nil)
+  (funcall (intern (string :clear-pvs-hooks) :pvs))
+  #-(or cmu sbcl)
+  (funcall (intern (string :BDD_bdd_init) :pvs))
+  ;;(when *pvs-has-libyices*
+  ;;(pvs::nlyices-init))
+  (when t ;;*load-pvs-prelude*
+    (let ((*package* (find-package :pvs)))
+      (funcall (intern (string :load-prelude) :pvs))
+      ;;(load (format nil "~a/src/PVSio/prelude-attachments" *pvs-path*))
+      ;;(pvs::initialize-prelude-attachments)
+      ;;(pvs::register-manip-type pvs::*number_field* 'pvs::pvs-type-real)
+      ))
+  #+allegro
+  (let ((optfile (format nil "~a/src/closopt"
+		   ;;(symbol-value (intern (string :*pvs-path*) :pvs))
+		   (asdf:system-relative-pathname :pvs "."))))
+    (compile-file optfile)
+    (load optfile))
+  (funcall (intern (string :remove-typecheck-caches) :pvs))
+  (assert (every #'fboundp (symbol-value (intern (string :*untypecheck-hook*) :pvs))))
+  ;;(asdf:clear-configuration)
+  (setq *pvs-build-time* (get-universal-time))
+  (setq *pvs-git-describe* (funcall (intern (string :pvs-git-description) :pvs)))
+  (funcall (intern (string :write-pvs-version-file) :pvs))
+  )
+
+#+allegro
+(defun make-pvs-program ()
+  (make-pvs-program* nil)
+  (make-pvs-program* t))
+
+#+allegro
+(defun make-pvs-program* (&optional runtime?)
+  (format t "~%Making Allegro ~a" (if runtime? "runtime" "devel"))
+  (let* ((*pvs-path* (or *pvs-path* (asdf:system-relative-pathname :pvs ".")))
+	 (tmpdir "/tmp/pvs-allegro-build/")
+	 (platform (pvs-platform))
+	 (builddir (format nil "~a/bin/~a/~a/"
+		     *pvs-path* platform (if runtime? "runtime" "devel"))))
+    (excl:delete-directory-and-files tmpdir :if-does-not-exist :ignore)
+    (format t "~%Calling generate-application for ~a" builddir)
+    (excl:generate-application
+     "pvs-allegro"
+     builddir
+     (list "src/make-allegro-pvs.lisp")
+     :additional-arguments nil
+     :additional-forms nil
+     :additional-plus-arguments nil
+     :allow-existing-directory t ; (not runtime?)
+     :autoload-warning t
+     :build-debug :interactive
+     ;;#-(or macosx x86-64) :aclmalloc-heap-start #-(or macosx x86-64) "2752512K"	;; (/ #xa8000000 1024)
+     :case-mode :case-sensitive-lower
+     :copy-shared-libraries t ; new
+     :discard-arglists nil
+     :discard-compiler nil
+     :discard-local-name-info nil
+     :discard-source-file-info runtime?
+     :discard-xref-info runtime?
+     :dst t
+     ;; :exit-after-image-build t
+     :generate-fonts nil
+     :image-only (not runtime?)
+     :include-clim nil
+     :include-compiler t
+     :include-composer nil
+     :include-debugger (not runtime?)
+     :include-devel-env (not runtime?)
+     :include-locales nil
+     :include-tpl t
+     :include-xcw nil
+     :internal-debug nil
+     #-x86-64 :lisp-heap-size #-x86-64 300000000
+     ;;#-(or macosx x86-64) :lisp-heap-start #-(or macosx x86-64) #x20000000
+     #+(or macosx x86-64) :aclmalloc-heap-start #+(or macosx x86-64) #xa0000000000
+     :load-local-names-info nil
+     :load-source-file-info (not runtime?)
+     :load-xref-info (not runtime?)
+;;     :newspace 4000000
+;;     :oldspace 512000
+     :opt-debug 1
+     :opt-safety 1
+     :opt-space 1
+     :opt-speed 3
+     :post-load-form (unless runtime?
+		       '(excl::translate-shlib-filenames t))
+     :pre-dump-form nil
+     :pre-load-form nil
+     :preserve-documentation-strings t
+     :presto nil
+     :presto-flush-to-code-file nil
+     :read-init-files nil
+     :record-source-file-info (not runtime?)
+     :record-xref-info (not runtime?)
+     :restart-app-function nil
+     :restart-init-function 'startup-pvs
+     :runtime (when runtime? :dynamic)
+     :runtime-bundle runtime?
+     :server-name nil
+     :temporary-directory "/tmp/"
+     :us-government nil
+     :verbose t)
+    (format t "~%After generate-application, copying files to ~a" builddir)
+    (let* ((libext #+linux "so" #+macosx "dylib")
+	   (utilslib (format nil "~a/file_utils.~a" platform libext))
+	   (mulib (format nil "~a/mu.~a" platform libext))
+	   (ws1slib (format nil "~a/ws1s.~a" platform libext))
+	   (libacl (format nil "libacli10196s.~a" libext)))
+      (uiop:copy-file (format nil "src/utils/~a" utilslib)
+		      (format nil "~a/~a" builddir utilslib))
+      (uiop:copy-file (format nil "src/BDD/~a" mulib)
+		      (format nil "~a/~a" builddir mulib))
+      (uiop:copy-file (format nil "src/WS1S/~a" ws1slib)
+		      (format nil "~a/~a" builddir ws1slib))
+      (uiop:copy-file "~/acl/files.bu" (format nil "~a/files.bu" builddir))
+      (uiop:copy-file (concatenate 'string "~/acl/" libacl)
+		      (format nil "~a/libacli10196s.so" builddir)))
+    (format t "~%After copying files to ~a" builddir)))
+
+#+sbcl
+(defun make-pvs-program ()
+  (let ((pvs-prog (format nil "~abin/~a/runtime/pvs-sbclisp" *pvs-path* (pvs-platform))))
+    (sb-ext::save-lisp-and-die pvs-prog
+			       :toplevel (function startup-pvs)
+			       :executable t
+			       :save-runtime-options t)))
