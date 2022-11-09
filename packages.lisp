@@ -152,7 +152,7 @@
 
 (defpackage :ergo-system 
   (:use :common-lisp :ergolisp)
-  (:export :ergo-disksave :def-disksave-hook :mover :ergo-ignore-if-unused))
+  (:export :ergo-disksave :def-disksave-hook :mover))
 
 (defpackage :ergo-types
   (:use :common-lisp :ergolisp)

@@ -408,7 +408,7 @@ rather than the generated declaration.")
 (defvar *typecheck-using* nil)
 
 (defun pprint-comment-strings (stream string)
-  (let ((lines (split string #\newline))
+  (let ((lines (uiop:split-string string :separator #\newline))
 	(ccol 1 ;(1+ (excl:stream-line-column stream))
 	      ))
     (when (and (cdr lines) (integerp ccol) (> ccol 0)

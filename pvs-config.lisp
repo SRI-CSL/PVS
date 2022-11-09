@@ -248,7 +248,7 @@
   "Runs make in the direcory corresponding to the pvs-platform, creating
 lib.so and loading it."
   (let* ((mdir (format nil "~a/~a" dir (pvs-platform)))
-	 (foreign-ext #+linux "so" #+macosx "dylib")
+	 (foreign-ext #+linux "so" #+(or macosx os-macosx) "dylib")
 	 (make-cmd (format nil "make -C ~a" mdir))
 	 (lib-file (format nil "~a/~a.~a" mdir lib foreign-ext)))
     (multiple-value-bind (out-str err-str err-code)
