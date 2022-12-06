@@ -666,8 +666,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		  pvs-current-directory
 		  pdir)))
     (if (and ext (member ext *pvs-file-extensions*))
-	(let ((filename (format "%s%s.%s" dir name ext)))
-	  (find-file-noselect filename noninteractive))
+	(or (get-buffer (format "%s.%s" name ext))
+	    (let ((filename (format "%s%s.%s" dir name ext)))
+	      (find-file-noselect filename noninteractive)))
 	(let ((files nil))
 	  (dolist (pext *pvs-file-extensions*)
 	    (let ((filename (if (and ext (not (equal ext "")))
