@@ -3463,9 +3463,10 @@ nil is returned in that case."
 			  (*insert-add-decl* t))
 		      (typecheck-file (filename theory))))
 		  #+pvsdebug (assert (typechecked? theory))
-		  (unless (or (from-prelude? theory)
-			      (check-binfiles (filename theory)))
-		    (setf (pvs-context-changed *workspace-session*) t)))
+		  (with-workspace (context-path theory)
+		    (unless (or (from-prelude? theory)
+				(check-binfiles (filename theory)))
+		      (setf (pvs-context-changed *workspace-session*) t))))
 		theory)))))
 
 (defun parsed-date (filename)
