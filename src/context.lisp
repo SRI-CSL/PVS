@@ -1370,20 +1370,19 @@ are all the same."
 
 (defun get-context-theory-entry* (theoryname file-entries)
   (when file-entries
-    (or (get-context-theory-entry theoryname (car file-entries))
+    (or (and (file-exists-p (make-specpath (ce-file (car file-entries))))
+	     (get-context-theory-entry theoryname (car file-entries)))
 	(get-context-theory-entry* theoryname (cdr file-entries)))))
 
 (defun get-context-formula-entry (fdecl &optional again?)
   (unless (from-prelude? fdecl)
     (let ((te (get-context-theory-entry (module fdecl))))
-      (cond (te
-	     (find-if #'(lambda (fe)
-			  (eq (id fdecl) (fe-id fe)))
-	       (te-formula-info te)))
-	    (again?
-	     (error "something's wrong with the context"))
-	    (t (update-pvs-context)
-	       (get-context-formula-entry fdecl t))))))
+      (unless te
+	(update-pvs-context)
+	(setq te (get-context-theory-entry (module fdecl))))
+      (when te
+	(find-if #'(lambda (fe) (eq (id fdecl) (fe-id fe)))
+	  (te-formula-info te))))))
 
 (defun context-file-of (theoryref)
   (let ((thid (ref-to-id theoryref)))
