@@ -939,14 +939,17 @@ if called."
 
 (defun array-bound (type)
   (and (funtype? type)
-       (let ((x (simple-below? (domain type))))
+       (domain-size (domain type))))
+
+(defun domain-size (type)
+       (let ((x (simple-below?  type)))
 	 (or x
-	     (let ((y (simple-upto? (domain type))))
+	     (let ((y (simple-upto? type)))
 	       (or (and y
 			(make!-succ y))
 		   (let ((stype (find-supertype type)))
 		     (and (enum-adt? stype)
-			  (1- (length (constructors stype)))))))))))
+			  (1- (length (constructors stype))))))))))
 
 (defun pvs2cl-update (expr assigns bindings livevars)
   (let* ((expr-type (find-supertype (type expr)))
@@ -1176,7 +1179,7 @@ if called."
 				  :adjustable t)))
 	     (loop for i from 0 to (1- size);;unless avoids evaluating expr on 
 		   unless (eql i update-index) do ;;newly expanded index
-		   (setf (aref arr i)(funcall expr i)))
+		   (setf (aref arr i)(pvs-funcall expr i)))
 	     arr))))
 
 (defun resize-newsize (arraysize newsize)
@@ -1387,8 +1390,8 @@ if called."
 				   bindings)
 			   nil))) ;;NSH(6-26-02) was livevars
     (if (eql (length bind-ids) 1)
-	(let ((size (array-bound (type (car bind-decls))))
-	      (fun `(function (lambda ,bind-ids ,cl-body))))
+	(let ((size (domain-size (type (car bind-decls))))
+	      (fun `(function (lambda ,bind-ids ,cl-body))));(break "pvs2cl-lambda")
 	  (if size
 	      `(mk-pvs-array-closure ,(pvs2cl_up* size bindings nil) ,fun)
 	    fun))

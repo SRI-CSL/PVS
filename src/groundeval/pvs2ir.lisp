@@ -19,6 +19,7 @@
 (defvar *c-primitive-type-attachments-hash* (make-hash-table :test #'eq))
 (defvar *c-primitive-attachments-hash* (make-hash-table :test #'eq))
 (defvar *c-scope-string* "~8T")
+(defvar *current-pvs2c-theory* nil)
 (defvar *theory-id* nil)
 (defvar *theory-formals* nil)
 (defvar *theory-type-formals* nil)
@@ -27,7 +28,8 @@
 (defvar *ir-theory-formals* nil)
 (defvar *ir-theory-tbindings* nil)
 (defvar *preceding-prelude-theories* nil)
-
+(defvar *preceding-mono-theories* nil)
+(defvar *suppress-output* nil)
 
 
   
@@ -363,6 +365,11 @@
   (make-instance 'ir-lambda
 		 :ir-vartypes vartypes
 		 :ir-rangetype rangetype
+		 :ir-body  body))
+
+(defun mk-ir-forall (vartype body);;ir-lastvars is nil
+  (make-instance 'ir-forall
+		 :ir-vartype vartype
 		 :ir-body  body))
 
 (defun mk-ir-lambda-with-lastvars (vartypes lastvars rangetype body)
@@ -986,14 +993,17 @@
 
 (defun make-ir-let (vartype expr body)
   (with-slots (ir-name ir-vtype) vartype
-    (if (and (ir-function? expr)
-	     (ir-funtype? ir-vtype))
-	(with-slots (ir-domain ir-range) ir-vtype
-	  (let* ((expr-arg-vars (new-irvartypes (ir-tuple-args ir-domain)))
-		 (eta-expr (mk-ir-lambda expr-arg-vars ir-range
-					    (mk-ir-apply expr expr-arg-vars nil ir-range))))
-	    (mk-ir-let vartype eta-expr body)))
-      (mk-ir-let vartype expr body))))
+     (let ((body-freevars (pvs2ir-freevars* body)))
+       (if (memq vartype body-freevars);;(10-26-22)discard let-binding when vartype is not free in body
+	  (if (and (ir-function? expr)
+		   (ir-funtype? ir-vtype))
+	      (with-slots (ir-domain ir-range) ir-vtype
+		(let* ((expr-arg-vars (new-irvartypes (ir-tuple-args ir-domain)))
+		       (eta-expr (mk-ir-lambda expr-arg-vars ir-range
+					       (mk-ir-apply expr expr-arg-vars nil ir-range))))
+		  (mk-ir-let vartype eta-expr body)))
+	    (mk-ir-let vartype expr body))
+	body))))
 
 (defun make-ir-let* (vartypes exprs body);;no need to add expr-types here
   (cond ((consp vartypes)
@@ -1178,15 +1188,16 @@
 	(t ir-defn)))
 
 (defun decl-defn (const-decl)
-  (let ((defns (def-axiom const-decl)))
-    (if defns (args2 (car (last defns)))
-					;special treatment for rem operation 
-      (when (and (eq (id const-decl) 'rem)
-		 (eq (id (module const-decl)) '|modulo_arithmetic|))
-	(let ((remnrem0-decls (get-decls "rem_nrem0")))
-	  (loop for dd in remnrem0-decls
-		when (eq (id (module dd)) '|modulo_arithmetic|)
-		return (args2 (definition dd))))))))
+  (let ((defns (def-axiom const-decl))
+	(definition (definition const-decl)))
+    (if definition
+	  (make!-lambda-exprs (formals const-decl) definition)
+	(when (and (eq (id const-decl) 'rem)
+		   (eq (id (module const-decl)) '|modulo_arithmetic|))
+	  (let ((remnrem0-decls (get-decls "rem_nrem0")))
+	    (loop for dd in remnrem0-decls
+		  when (eq (id (module dd)) '|modulo_arithmetic|)
+		  return (args2 (definition dd))))))))
 
 (defmethod pvs2ir-decl* ((decl const-decl))
   (let* ((einfo (eval-info decl))
@@ -1259,7 +1270,7 @@
 
 (defun pvs2ir-constant-ir (expr bindings decl)
   (if (adt-expr? expr)
-      (let ((adt (adt expr)))
+      (let ((adt (adt expr)));(break "pvs2ir-constant-ir(adt)")
 	(pvs2ir-adt adt)
 	(ir (eval-info decl)))
     (let* ((theory (module decl))
@@ -1275,21 +1286,32 @@
 					type-actuals))
 	   (intern-theory-id (intern new-theory-id))
 	   ) ;(when nonref-actuals (break "nonref-actuals"))
-      (if (and nonref-actuals (not (eq intern-theory-id *theory-id*)))
-	  (let* ((*theory-id* intern-theory-id)
-		 (monoclones (ht-instance-clone theory))
-		 (dummy (when (null monoclones)(format t "~% No monoclones")))
-		 (thclone (and monoclones (gethash  intern-theory-id monoclones)))
-		 (theory-instance (or thclone (subst-mod-params theory thinst)))
-		 (dummy2 (when thclone (format t "~%Found thclone")))
-		 (instdecl (find  decl (theory theory-instance) :key #'generated-by))
-		 )(break "nonref-actuals")			;place information matches
-	    (cond (thclone (ir (eval-info instdecl)))
-		  (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
-		     (setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
-		     (pvs2c-theory-body-step theory-instance t nil);;NSH(3/20/22): Need to clear inherited eval-info
-		     (ir (eval-info instdecl)))))
-	(ir (eval-info decl))))))
+      (cond ((and nonref-actuals (not (eq theory *current-pvs2c-theory*)))  ;; was (eq intern-theory-id *theory-id*)))
+	     (let* ((*theory-id* intern-theory-id)
+		    (monoclones (ht-instance-clone theory))
+		    (dummy (when (null monoclones)(format t "~% No monoclones")))
+		    (thclone (and monoclones (gethash  intern-theory-id monoclones)))
+		    (theory-instance (or thclone
+					 (let ((new-instance (subst-mod-params theory thinst)))
+					   (setf (id new-instance) *theory-id*)
+					   new-instance)))
+		    (dummy2 (when thclone (format t "~%Found thclone")))
+		    (instdecl (find  decl (theory theory-instance) :key #'generated-by))
+		    ) ;(break "nonref-actuals")			;place information matches
+	       (cond (thclone
+		      (format t "~%Pushing ~a" intern-theory-id)
+		      (pushnew theory-instance *preceding-mono-theories*)
+		      (ir (eval-info instdecl)))
+		     (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
+			(setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
+			(pvs2c-theory-body-step theory-instance t nil) ;;NSH(3/20/22): Need to clear inherited eval-info
+			(format t "~%Pushing ~a" intern-theory-id)
+			(pushnew theory-instance *preceding-mono-theories*)
+			;; (if (memq theory *preceding-prelude-theories*)
+			;; 	 (push theory-instance *preceding-prelude-theories*)
+			;;   (push theory-instance *preceding-theories*))
+			(ir (eval-info instdecl))))))
+	    (t (ir (eval-info decl)))))))
 
 (defun pvs2ir-adt (adt)
   (let* ((adt-decl (declaration adt)));(break "adt")
@@ -1816,8 +1838,8 @@
 					;op-range-type
 						  apply-return-var)))
 		       )  ;(when formals (break "pvs2ir-application"))
-		  (if formals
-		      (if actuals ;;then generating code outside theory
+		  (if ir-formals
+		      (if ir-actuals ;;then generating code outside theory
 			  (make-ir-lett* actvars actual-types ir-actuals
 					 op-arg-application-ir)
 			op-arg-application-ir);;generating code within theory
@@ -2169,6 +2191,26 @@
 		(pvs2ir-update assignments ir-expression
 			       (pvs2ir-type (type expression) bindings)
 			       bindings))))
+
+;; (defmethod pvs2ir* ((expr forall-expr) bindings expected)
+;;   (with-slots ((expr-bindings bindings) expression) expr
+;;     (let ((ir-bindings (pvs2ir-lambda-bindings expr-bindings bindings))
+;; 	  (ir-var-bindings (pairlis expr-bindings ir-bindings))
+;; 	  (in-bindings (append ir-var-bindings bindings))
+;; 	  (ir-expr (pvs2ir* expression in-bindings))
+;; 	  (pvs2ir-forall-expr ir-bindings ir-expr)))))
+
+;; (defun pvs2ir-forall-expr (bindings expr)
+;;   (cond (bindings
+;; 	 (let ((bnd1 (car bindings))
+;; 	       (index1 (
+;; 	       (rest (cdr bindings)))
+;; 	   (if (ir-subrange? (ir-vtype bnd1))
+;; 	   (mk-ir-forall bnd1 (pvs2ir-forall-expr rest expr))))
+;; 	expr))
+	   
+	   
+
 
 (defmethod pvs2ir* ((expr quant-expr) bindings expected)
   (declare (ignore bindings expected))
@@ -2823,7 +2865,7 @@
 			       when (eq (pvs2ir-unique-decl-id (car entry))
 					(ir-type-id ir-expr))
 			       return (cdr entry))))
-    (if (null ir-const-formal) (break "missing ir-formal-typename")
+    (if (null ir-const-formal) nil ;(break "missing ir-formal-typename")
       (list ir-const-formal))))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-last))
@@ -3954,6 +3996,15 @@
 			(list (release-last-var ir-record-var)))))
 		(append assign-instrs (append refcount-get-instr release-record-instr)))))
 
+(defmethod ir-subrange-index?  ((ir-typ ir-subrange))
+  (with-slots (ir-low ir-high ir-low-expr ir-high-expr) ir-typ
+    (or ir-high-expr
+	(and (integerp ir-low)
+	     (integerp ir-high)
+	     ;;(>= ir-high ir-low) ;;removing this since we have [0,-1] as an empty type.
+	     (< ir-high *max-PVS-array-size*)
+	     (1+ ir-high)))))
+
 (defmethod ir-index? ((ir-typ ir-subrange))
   (with-slots (ir-low ir-high ir-high-expr) ir-typ
     (or ir-high-expr
@@ -4673,7 +4724,7 @@
 			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg1)))
 		  (mpz (list (format nil "mpq_mk_set_z(~a, (int64_t)~a)" return-var arg2)
 			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg1)))
-		  (mpq (list (format nil "mpq_mk_set(~a ~a)" return-var arg1)
+		  (mpq (list (format nil "mpq_mk_set(~a, ~a)" return-var arg1)
 			     (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg2)))
 			       ))
 	   (t (break "Not implemented."))))
@@ -5685,7 +5736,7 @@
 		     ;; 					      (ir2c-type (ir-vtype (get-ir-last-var ir-var)))
 		     ;; 					      (ir-name (get-ir-last-var ir-var)))))
 		     )
-		  ;(format t "~%*mpvar-parameters* = ~{~a, ~}" (print-ir *mpvar-parameters*))
+		  (format t "~%*mpvar-parameters* = ~{~a, ~}" (print-ir *mpvar-parameters*))
 		;(break "ir-apply")
 		  (nconc release-instrs invoke-instrs) ;nconc invoke-instrs mp-release-instrs
 					       )))))
@@ -8250,7 +8301,7 @@
 	       ;; 		     (mppointer-type c-result-type)
 	       ;; 		     c-body)))
 	       )
-	  (unless *to-emacs* ;; causes problems
+	  (unless *suppress-output* ;*to-emacs* ;; causes problems
 	    (format t "~%Function ~a"  ir-function-name)
 	    ;(format t "~%MPvars ~{~a, ~}" (print-ir *mpvar-parameters*))
 	    (format t "~%Before  preprocessing = ~%~a" (print-ir pre-ir))	   
@@ -8316,7 +8367,7 @@
 	 ;; 		      c-result-type
 	 ;; 		      c-body)))
 	 )
-    (unless nil ;;*to-emacs*
+    (unless *suppress-output* ;;*to-emacs*
       (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
       (format t "~%Generates C definition = ~%~a" c-defn))
    ;; (break "make-c-closure-defn")
@@ -8406,8 +8457,8 @@
 ;;If the type has a PVS definition, the type-info is saved with this declaration.
 ;;Otherwise, the type information is generated for the type expression in the global.
 
-(defun print-header-file (theory)
-  (let* ((theory-id (id theory))
+(defun print-header-file (theory-id theory)
+  (let* (;(theory-id (id theory)) ;made this a parameter
 	 (file-string (format nil "~a_c.h" theory-id))
 	 (preceding-theories (pvs2c-preceding-theories theory))
 	 (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory)))
@@ -8434,6 +8485,8 @@
 			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
 		    (loop for thy in  preceding-theories
 			  when (not (same-id thy theory-id))
+			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
+		    (loop for thy in  *preceding-mono-theories*
 			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
 		    (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
 		    (format output " -I ~a/include" *pvs-path*)
@@ -8565,16 +8618,16 @@
 	  (op-defn (copy-info type-info))
 ))
 
-(defun print-body-file (theory)
+(defun print-body-file (theory-id theory)
   "Generates the .c file for the given theory, returning the C file name if
 successful."
-  (let* ((file-string (format nil "~a_c.c" (id theory)))
+  (let* ((file-string (format nil "~a_c.c"  theory-id))
 	 (file-path (format nil "~a" (working-directory))))
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
       (format output "//Code generated using pvs2ir2c")
-      (format output "~%#include \"~a_c.h\"" (id theory))
+      (format output "~%#include \"~a_c.h\""  theory-id)
       (print-type-info-defns-to-file output *c-type-info-table*)
       (loop for decl in (theory  theory)
 	 do (let ((einfo (and (const-decl? decl)(eval-info decl))))
@@ -8631,7 +8684,8 @@ successful."
 	     list_props
 	     map_props more_map_props ; filters
 	     list2finseq
-	     list2set character_adt
+	     list2set
+	     character_adt
 	     disjointness; file strings gen_strings charstrings bytestrings
 	     mucalculus ctlops fairctlops Fairctlops ; bit bv bv_concat_def
 	     bv_bitwise bv_nat ; empty_bv bv_caret integer_bv_ops
@@ -8644,12 +8698,13 @@ successful."
 	     ))
 
 (defun pvs2c-prelude ()
-  (dolist (theory *prelude-theories*)
-    (let ((*current-context* (current-pvs-context)))
-      (when (not (memq (id theory)
-		       *primitive-prelude-theories*))
-	(let ((main-theory (if (datatype? theory)(adt-theory theory) theory)))
-	  (pvs2c-theory* main-theory t))))))
+  (let ((*suppress-output* t))
+    (dolist (theory *prelude-theories*)
+      (let ((*current-context* (current-pvs-context)))
+	(when (not (memq (id theory)
+			 *primitive-prelude-theories*))
+	  (let ((main-theory (if (datatype? theory)(adt-theory theory) theory)))
+	    (pvs2c-theory* main-theory t)))))))
 
 
 ;; (defun used-prelude-theory-names (theory &optional prelude-theory-names)
@@ -8732,7 +8787,9 @@ successful."
     (pvs2c-theory-body-step theory force? indecl)))
 
 (defun pvs2c-theory-body-step (theory force? indecl)
-  (let* ((*theory-formals* (formals-sans-usings theory))
+  (let* ((*current-pvs2c-theory* theory)
+	 (*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
+	 (*theory-formals* (formals-sans-usings theory))
 	 (*ir-type-info-table* nil)
 	 (*c-type-info-table* nil)
 	 ;;(*closure-info-table* nil) ;;not currently used
@@ -8763,5 +8820,5 @@ successful."
 			 (type-eq-decl? decl)(type-decl? decl)(adt-type-decl? decl))
 		     (eq decl indecl))
 	    do (pvs2c-decl decl force?)))
-	(print-header-file theory)
-	(print-body-file theory)))
+	(print-header-file *theory-id* theory)
+	(print-body-file *theory-id* theory)))

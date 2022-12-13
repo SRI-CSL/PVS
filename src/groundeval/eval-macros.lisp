@@ -403,8 +403,12 @@
 	(cl (gentemp)))
     `(let ((,sz ,size)
 	   (,cl ,closure))
-       (make-pvs-array-closure :size ,sz
-			  :closure ,cl))))
+       (if (<= ,sz *eval-array-bound*)
+	   (mk-fun-array (make-pvs-array-closure :size ,sz
+						 :closure ,cl)
+			 ,sz)
+	 (make-pvs-array-closure :size ,sz
+				 :closure ,cl)))))
 
 (defmacro pvs-array-closure-lookup (array index)
   `(funcall (pvs-array-closure-closure ,array) ,index))

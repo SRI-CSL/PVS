@@ -624,9 +624,36 @@
     return file__pass(ff);
    }")
 
+(def-c-attach-primitive "file" "create" "file__lifted_file_adt"
+  '(name)
+  '(bytestrings__bytestring)
+  nil
+  "{
+    char * filenamestring = byte2cstring(name->length, name->seq->elems);
+    uint64_t fd = open(filenamestring, O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    release_bytestrings__bytestring(name); 
+    safe_free(filenamestring);
+    struct stat s;
+    if (fstat(fd, &s) == -1){
+       return file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
+       }
+    uint32_t size = s.st_size;
+    uint32_t capacity = 4096 * (size/4096 + 1);
+    char * contents = (char *) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    file_t ff = (file_t) safe_malloc(sizeof(file_s));
+    ff->count = 1;
+    ff->fd = fd;
+    ff->size = size;
+    ff->capacity = capacity;
+    ff->contents = contents;
+    ff->name = filenamestring;
+    return file__pass(ff);
+   }")
+
 (def-c-attach-primitive "file" "append" "file__lifted_file_adt" '(f b) '(file__file bytestrings__bytestring)
   nil
-  "{uint64_t fd = f->fd;
+  "{if (f->count > 1) return file__fail();
+    uint64_t fd = f->fd;
     uint32_t size = f->size;
     uint32_t capacity = f->capacity;
     char * contents = f->contents;
@@ -668,12 +695,13 @@
 
 
 ;;(6-3-22): Need to add reference count to file type and treat it as a reference type in the IR
-(def-c-attach-primitive "file" "setbyte" "file__file" '(f i b) '(file__file uint32 uint8)
+(def-c-attach-primitive "file" "setbyte" "file__lifted_file_adt" '(f i b) '(file__file uint32 uint8)
   nil
   "{if (f->count == 1){
      f->contents[i] = b;
+     return file__pass(f);
      };
-    return f;
+    return file__fail();
 }")
 
 (def-c-attach-primitive "file" "printc" "bytestrings__bytestring" '(b) '(bytestrings__bytestring) nil

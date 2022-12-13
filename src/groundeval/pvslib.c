@@ -541,7 +541,13 @@ char * safe_strcat(char * s1, char * s2){
 //
 
 char * json_char(uint32_t x){
-  char * out = safe_malloc(8);
+  char * out = safe_malloc(4);
+  sprintf(out, "%"PRIu32"", x);
+  return out;
+}
+
+char * json_bool(bool_t x){
+  char * out = safe_malloc(4);
   sprintf(out, "%"PRIu32"", x);
   return out;
 }

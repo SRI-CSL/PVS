@@ -71,6 +71,10 @@
   ir-rangetype
   ir-body)
 
+(defcl ir-forall (ir-expr)
+  ir-vartype
+  ir-body)
+
 (defcl ir-ift (ir-expr)
   ir-condition
   ir-then

@@ -319,6 +319,7 @@ typedef char * (*json_ptr_t)(pointer_t x, type_actual_t T);
 
 extern char * safe_strcat(char * s1, char * s2);
 extern char * json_char(uint32_t x);
+extern char * json_bool(bool_t x);
 extern char * json_uint8(uint8_t x);
 extern char * json_uint16(uint16_t x);
 extern char * json_uint32(uint32_t x);

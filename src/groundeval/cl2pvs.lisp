@@ -70,18 +70,21 @@
 
 (defmethod cl2pvs* (sexpr (type funtype) context)
   (declare (ignore context))
-  (let* ((ub (simple-below? (domtype type)))
-	 (ubnum (when (number-expr? ub) (number ub))))
-    (if (and ubnum
-	     (tc-eq (range type) *boolean*))
+  (let* ((ub (domain-size (domtype type))) ;using domain-size (from pvseval-update) instead of simple-below?
+	 (ub-cl (when ub (pvs2cl ub)))
+	 (ubval (when ub-cl
+		  (eval ub-cl))));;(when (number-expr? ub) (number ub))))(break "cl2pvs*(funtype)")
+    (if  ubval
+	(if (tc-eq (range type) *boolean*)
 	;; We have a bitvector - create a form like bv(0b11001010)
-	(let ((num 0))
-	  (dotimes (i (number ub))
-	    (when (pvs-funcall sexpr i)
-	      (incf num (expt 2 (- ubnum i 1)))))
-	  ;; No easy way to find out if this came from a bitvector-conversion
-	  ;; Use the bv form to be on the safe side.
-	  (tc-expr (format nil "bv[~d](0b~b)" ubnum num)))
+	    (let ((num 0))
+	      (dotimes (i (number ub))
+		(when (pvs-funcall sexpr i)
+		  (incf num (expt 2 (- ubnum i 1)))))
+	      ;; No easy way to find out if this came from a bitvector-conversion
+	      ;; Use the bv form to be on the safe side.
+	      (tc-expr (format nil "bv[~d](0b~b)" ubnum num)))
+	  (make-instance 'array-expr :exprs  (loop for i from 0 to (1- ubval) collect (cl2pvs* (pvs-funcall sexpr i) (range type) context))))
 	(let ((bnds (dom-subrange? sexpr type)))
 	  (if bnds
 	      (let* ((nvar (make-new-variable '|ii| type))

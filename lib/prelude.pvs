@@ -6115,18 +6115,24 @@ BEGIN
 
   name(f): bytestring
 
+  file_size(f: file): uint32
+
+%The operations open, setbyte, and append can fail if the file parameter is live beyond the operation
   open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
 % don't need to close the file.  This is handled by reference counting.
+%Same as open, but creates a new file or overwrites an existing one
+  create(name: bytestring): lifted_file  %uninterpreted with semantic attachment
+
+  setbyte(f: file, (i : below(file_size(f))), (b: byte)): lifted_file
 
   append(f: file, b : bytestring): lifted_file % adds to the end of a writable file by remapping if needed.
 
-  file_size(f: file): uint32
-
+%These file operations are benign and can appear anywhere. 
   getbyte(f: file, (i : below(file_size(f)))): byte
 
   getbytestring(f: file, (i : below(file_size(f))), size: below(file_size(f) - i)): bytestring
 
-  setbyte(f: file, (i : below(file_size(f))), (b: byte)): file
+  readline(f: file, (i : below(file_size(f)))): bytestring
 
   printc(b : bytestring): bytestring %prints characters
 
