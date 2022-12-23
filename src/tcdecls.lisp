@@ -324,7 +324,7 @@
   (declare (ignore expected kind arguments))
   (check-duplication decl)
   (let* ((tn (mk-print-type-name (id decl)))
-	 (res (mk-resolution decl (current-theory-name) tn)))
+	 (res (mk-resolution decl (current-theory-name) nil)))
     (setf (resolutions tn) (list res))
     (type-def-decl-value decl tn))
   decl)
@@ -1077,18 +1077,20 @@ bindings."
     ;;   (t (break "huhh?")))
     utype))
 
-(defmethod type-def-decl-value ((decl struct-subtype-decl) tn)
+(defmethod type-def-decl-value ((decl struct-subtype-decl) prtype)
   (assert (type-decl? decl))
-  (assert (typep tn '(or type-name type-application)))
+  (assert (print-type-expr? prtype))
+  (assert (null (type (resolution prtype))))
   (when (enumtype? (type-expr decl))
     (type-error decl
       "Enumtype must be declared at top level"))
   (check-type-application-formals decl)
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (stype (typecheck* (type-expr decl) nil nil nil))
-	 (utype (generate-uninterpreted-projtype decl stype)))
+	 (utype (generate-uninterpreted-projtype decl stype prtype)))
     (set-type (type-expr decl) nil)
     (setf (supertype decl) stype)
+    (setf (print-type utype) prtype)
     (setf (type-value decl) utype)
     utype))
 
@@ -1596,8 +1598,9 @@ The dependent types are created only when needed."
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil)))
 	 (*recursive-subtype-term* nil))
-    (set-type rtype nil);;NSH(12/17/19): was (defined-type decl)
+    (set-type rtype nil) ;;NSH(12/17/19): was (defined-type decl)
     ;;same fix as const-decl
+    #+badassert ;; print-type may have been pseudo-normalized
     (assert (or (null (print-type rtype))
 		(tc-eq (print-type rtype) (declared-type decl))))
     (setf (type decl)
@@ -3250,7 +3253,7 @@ The dependent types are created only when needed."
 
 ;;; Generates a new uninterpreted type and an uninterpreted projection
 ;;; function from that type to the given stype.
-(defun generate-uninterpreted-projtype (decl stype)
+(defun generate-uninterpreted-projtype (decl stype prtype)
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals decl)
     (declare (ignore dacts))
@@ -3260,8 +3263,7 @@ The dependent types are created only when needed."
 		      (with-current-decl pdecl
 			(subst-mod-params stype thinst (current-theory) decl))
 		      stype))
-	   (tname (make-self-resolved-type-name decl))
-	   (struct-subtype (generate-struct-subtype ptype tname))
+	   (struct-subtype (generate-struct-subtype ptype prtype))
 	   (surjname (mk-name-expr '|surjective?|
 		       (list (mk-actual struct-subtype) (mk-actual stype))))
 	   (surjtype (typecheck* (mk-expr-as-type surjname) nil nil nil))
@@ -3287,22 +3289,22 @@ The dependent types are created only when needed."
     (setf (resolutions tname) (list tres))
     tname))
 
-(defmethod generate-struct-subtype ((te recordtype) type)
+(defmethod generate-struct-subtype ((te recordtype) prtype)
   (make-instance 'struct-sub-recordtype
-    :type type
-    :print-type type
+    :type te
+    :print-type prtype
     :fields (fields te)
     :dependent? (dependent? te)))
 
-(defmethod generate-struct-subtype ((te tupletype) type)
+(defmethod generate-struct-subtype ((te tupletype) prtype)
   (make-instance 'struct-sub-tupletype
-    :type type
-    :print-type type
+    :type te
+    :print-type prtype
     :types (types te)
     :dependent? (dependent? te)))
 
-(defmethod generate-struct-subtype ((te struct-sub-recordtype) type)
-  (setf (print-type te) type)
+(defmethod generate-struct-subtype ((te struct-sub-recordtype) prtype)
+  (setf (print-type te) prtype)
   te)
 
 
@@ -3550,6 +3552,7 @@ The dependent types are created only when needed."
   (let ((type (let ((*generate-tccs* 'none))
 		(typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
+    #+badassert
     (assert (or (null (print-type type))
 		(tc-eq (print-type type) (declared-type decl))))
     (setf (type decl) type))
@@ -4203,11 +4206,24 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
     (if (singleton? valid-reses)
 	(setf (resolutions ex) valid-reses
 	      (type ex) (type (car valid-reses)))
-	(let ((gres (find-if-not #'fully-instantiated? valid-reses)))
-	  ;; No need to keep any but the generic form
-	  (when gres
-	    (setf (resolutions ex) (list gres)
-		  (type ex) (type gres)))))))
+	(let* ((same-id-convs (remove-if-not #'(lambda (conv)
+						 (and (name-expr? (expr conv))
+						      (eq (id (expr conv)) (id ex))))
+				(current-conversions)))
+	       (new-conv-reses (remove-if #'(lambda (res)
+					      (member res same-id-convs
+						      :key #'(lambda (conv)
+							       (resolution (expr conv)))
+						      :test #'tc-eq))
+				 valid-reses)))
+	  (when (null new-conv-reses)
+	    (pvs-warning "Conversion ~a ~a is already aavailable"
+	      ex (format nil "(at line ~d, column ~d) "
+		   (starting-row (place ex)) (starting-col (place ex)))))
+	  (cond ((cdr new-conv-reses)
+		 (type-ambiguity ex))
+		(t (setf (resolutions ex) new-conv-reses
+			 (type ex) (type (car new-conv-reses)))))))))
 
 (defmethod resolve-conversion-expr ((ex expr))
   ;; ex has been typechecked, but may have ambiguities
@@ -4238,7 +4254,8 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
       (type-error (expr decl)
 	"Cannot determine the conversion type for ~a:~%  Please provide more ~
          information, i.e., actual parameters or a coercion." (expr decl)))
-    (when (strict-compatible? (domain stype) (range stype))
+    (when (and (fully-instantiated? stype)
+	       (strict-compatible? (domain stype) (range stype)))
       (type-error (expr decl)
 	"The domain and range of this conversion are compatible;~%~
          the conversion will never be used:~%  ~a: ~a" (expr decl) ctype))
