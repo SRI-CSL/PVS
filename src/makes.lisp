@@ -2511,10 +2511,9 @@
   (assert (fully-typed? expr))
   (assert (every #'fully-typed? selections))
   (assert (or (null else-part) (fully-typed? else-part)))
-  (let* ((ctype (compatible-types
-		 (compatible-types
-		  (nconc (mapcar #'(lambda (s) (type (expression s))) selections)
-			 (when (else-part expr) (list (type else-part)))))))
+  (let* ((ctype (reduce #'compatible-type
+			(nconc (mapcar #'(lambda (s) (type (expression s))) selections)
+			       (when else-part (list (type else-part))))))
 	 (cex (make-instance 'cases-expr
 		:expression expr
 		:selections selections
