@@ -1379,7 +1379,8 @@ reference; pathname-name doesn't work if the file is of the form
 	 (cdr new-theories)
 	 filename
 	 (if (or (null cfile)
-		 (string= cfile filename))
+		 (string= cfile filename)
+		 (not (file-exists-p (make-specpath cfile))))
 	     result
 	     (cons (cons (car new-theories) cfile) result))))))
 
@@ -3690,9 +3691,10 @@ nil is returned in that case."
 		  (let ((nth (get-theory thname)))
 		    (when (and nth (not (eq nth theory)))
 		      (setq theory nth)))
-		  (unless (or (from-prelude? theory)
-			      (check-binfiles (filename theory)))
-		    (setf (pvs-context-changed *workspace-session*) t)))
+		  (with-workspace (context-path theory)
+		    (unless (or (from-prelude? theory)
+				(check-binfiles (filename theory)))
+		      (setf (pvs-context-changed *workspace-session*) t))))
 		(assert (or (null theory) (typechecked? theory)))
 		(assert (or (null theory) (saved-context theory)))
 		theory)))))
