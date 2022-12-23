@@ -101,10 +101,7 @@ in util.lisp")
 
 (defvar *ignore-binfile-errors* t)
 
-(defvar *pvsbin-string* "pvsbin"
-  ;; #+case-sensitive "pvsbin"
-  ;; #-case-sensitive "PVSBIN"
-  )
+(defvar *pvsbin-string* "pvsbin")
 
 (defvar *pvs-build-time* (get-universal-time))
 
@@ -259,6 +256,8 @@ order is important")
 
 (defvar *tc-match-exact* nil)
 
+(defvar *tc-match-type-names* nil)
+
 (defvar *term-print-strings* nil)
 
 (defvar *place-error-flag* nil)
@@ -408,7 +407,7 @@ rather than the generated declaration.")
 (defvar *typecheck-using* nil)
 
 (defun pprint-comment-strings (stream string)
-  (let ((lines (uiop:split-string string :separator #\newline))
+  (let ((lines (uiop:split-string string :separator "#\newline"))
 	(ccol 1 ;(1+ (excl:stream-line-column stream))
 	      ))
     (when (and (cdr lines) (integerp ccol) (> ccol 0)
@@ -433,7 +432,6 @@ rather than the generated declaration.")
 	    (pprint-newline :mandatory stream)))))
 
 (defvar *proof-script-pprint-dispatch*
-  #+allegro
   (let ((table (copy-pprint-dispatch)))
     (set-pprint-dispatch '(cons string)
 			 #'(lambda (s list)
@@ -441,12 +439,11 @@ rather than the generated declaration.")
 			       (pprint-linear s list)))
 			 1
 			 table)
-    (set-pprint-dispatch 'string
-			 #'pprint-comment-strings
-			 1
-			 table)
-    table)
-  #-allegro (copy-pprint-dispatch))
+    ;; (set-pprint-dispatch 'string
+    ;; 			 #'pprint-comment-strings
+    ;; 			 1
+    ;; 			 table)
+    table))
 
 (defvar *visible-only* nil)
 
