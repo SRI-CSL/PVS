@@ -354,3 +354,11 @@
     (write script
 	   :stream out :pretty t :escape t :level nil :length nil
 	   :pprint-dispatch *proof-script-pprint-dispatch*)))
+
+(defun pvs-encode-json-to-string (obj)
+  (json:encode-json-to-string obj))
+
+(defun pvs-decode-json-from-string (str)
+  (let ((json:*json-identifier-name-to-lisp* 'identity)
+	(json:*identifier-name-to-key* 'identity))
+    (json:decode-json-from-string str)))

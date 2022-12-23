@@ -1344,6 +1344,14 @@ very slow, really only good for error messages over small lists of names."
   (with-output-to-temp-file
     (write contents :escape escape :pretty nil :level nil :length nil)))
 
+(defun write-json-to-temp-file (contents)
+  (let ((jstr (if (stringp contents)
+		  contents
+		  (pvs-encode-json-to-string contents))))
+    (when (stringp contents)
+      (assert (pvs-decode-json-from-string contents)))
+    (write-to-temp-file jstr t)))
+
 (in-package :ilisp)
 (export '(ilisp-eval))
 (defun ilisp-eval (form package filename)
