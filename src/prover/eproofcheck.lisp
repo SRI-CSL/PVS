@@ -354,8 +354,10 @@
                    Do you want to use the default ~a instead? "
 		    (decision-procedure-used decl)
 		    *default-decision-procedure*)))
-	  (car (member *default-decision-procedure* *decision-procedures*))
-	  (car (member (decision-procedure-used decl) *decision-procedures*)))
+	  (car (member *default-decision-procedure* *decision-procedures*
+		       :test #'string-equal))
+	  (car (member (decision-procedure-used decl) *decision-procedures*
+		       :test #'string-equal)))
       (progn (format t
 		 "Can't find the ~a decision procedure, using shostak instead"
 	       (decision-procedure-used decl))
