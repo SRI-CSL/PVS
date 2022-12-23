@@ -944,6 +944,7 @@ restored, the TCCs are checked")
 (defcl tupletype (tuple-or-struct-subtype))
 
 (defcl struct-sub-tupletype (struct-subtype tuple-or-struct-subtype)
+  ;; The supertype; somewhat reduntant as the types appear in both
   type)
 
 (defcl cotupletype (type-expr)
@@ -972,6 +973,7 @@ restored, the TCCs are checked")
 (defcl recordtype (record-or-struct-subtype))
 
 (defcl struct-sub-recordtype (struct-subtype record-or-struct-subtype)
+  ;; This is the supertype; somewhat redundant as the fields appear in both
   type)
 
 (defcl type-extension (type-expr)
