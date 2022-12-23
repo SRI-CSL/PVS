@@ -438,7 +438,7 @@
 ;;; theory-decl could be built on a theory-decl.  We look for the first
 ;;; set of mappings with a matching LHS.
 (defun get-mapping-lhs-resolutions (name kind args)
-  (declare (ignore kind args))
+  (declare (ignore args))
   (when (mod-id name)
     (if (find (id name) (mappings name) :key #'(lambda (m) (id (lhs m))))
 	(let* ((theory (get-theory (mod-id name)))
@@ -462,7 +462,10 @@
 	   (mapcan #'(lambda (alias)
 		       (let ((mapping (find (id name) (mappings alias)
 					    :key #'id)))
-			 (when mapping
+			 (assert (or (null mapping)
+				     (mapped-decl mapping)))
+			 (when (and mapping
+				    (eq (kind-of (mapped-decl mapping)) kind))
 			   (list (make-instance 'mapping-resolution
 				   :declaration mapping
 				   :module-instance alias
@@ -2028,10 +2031,11 @@ decl, args, and mappings."
 					      bd))))
 			  (car bindings)))
 	     (thinst (create-compatible-modinst modinst decl fbindings)))
-	(create-compatible-modinsts
-	 modinst decl (cdr bindings) (if thinst
-					 (cons thinst result)
-					 result)))))
+	(create-compatible-modinsts modinst decl (cdr bindings)
+				    (if (and thinst
+					     (not (member thinst result :test #'tc-eq)))
+					(cons thinst result)
+					result)))))
 
 (defmethod name-from-decl ((decl formal-type-decl))
   (let* ((tn (mk-type-name (id decl)))
