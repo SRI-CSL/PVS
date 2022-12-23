@@ -268,7 +268,7 @@ After exiting, all of these are reverted to their previous values."
 		      (unwind-protect 
 			   (prog1 (progn (set-working-directory ,truedir) ,@forms)
 			     (when (pvs-context-changed *workspace-session*)
-			       (save-context)))
+			       (save-context nil t)))
 			(set-working-directory ,orig-dir)))))
 	   (error "Library ~a does not exist" (or ,lib-path ,lref))))))
 
