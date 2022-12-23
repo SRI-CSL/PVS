@@ -52,7 +52,7 @@ instead of KEY, unless FSF-KEY is a symbol, in which case do nothing."
     (ilisp-safe-define-key prefix-map key command fsf-key)))
 
 (defun defkey-ilisp (key command &optional inferior-only-p fsf-key)
-  "Define KEY as COMMAND in 'ilisp-mode-map' and 'lisp-mode-map'.
+  "Define KEY as COMMAND in ilisp-mode-map and lisp-mode-map.
 The change happens only if optional INFERIOR-ONLY-P is NIL.  If the maps
 do not exist they will be created.  This should only be called after
 ilisp-*prefix* is set to the desired prefix."
@@ -184,7 +184,7 @@ ilisp-*prefix* is set to the desired prefix."
   (ilisp-bind-ilisp-key-for-map keymap "*c" 'compile-changes-lisp "8c")
   (ilisp-bind-ilisp-key-for-map keymap "*0" 'clear-changes-lisp "80")
 
-  (ilisp-bind-ilisp-key-for-map keymap "b" 'switch-to-lisp "\M-b")
+  (ilisp-bind-ilisp-key-for-map keymap "b" 'ilisp-switch-to-lisp "\M-b")
   (ilisp-bind-ilisp-key-for-map keymap "y" 'call-defun-lisp "\C-y")
   (ilisp-bind-ilisp-key-for-map keymap "z" 'reset-ilisp "\C-z")
   (ilisp-bind-ilisp-key-for-map keymap "g" 'abort-commands-lisp "\C-g")
@@ -268,7 +268,7 @@ ilisp-*prefix* is set to the desired prefix."
   (ilisp-bind-ilisp-key-for-map global-map "\C-t"
                                 'trace-defun-lisp-break
                                 "\M-t")
-  (ilisp-bind-ilisp-key-for-map global-map "b" 'switch-to-lisp 'no-fsf-key)
+  (ilisp-bind-ilisp-key-for-map global-map "b" 'ilisp-switch-to-lisp 'no-fsf-key)
 
   ;; Globally defined output-control commands.
   (ilisp-bind-ilisp-key-for-map global-map "1" 'pvs-bury-output)

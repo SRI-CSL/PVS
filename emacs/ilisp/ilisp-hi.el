@@ -15,18 +15,18 @@
 
 (defun lisp-send-region (start end switch message status format
 			       &optional handler)
-  "Sends a region to the lisp buffer and execute a 'command' on it.
+  "Sends a region to the lisp buffer and execute a command on it.
 Given START, END, SWITCH, MESSAGE, STATUS, FORMAT and optional
 HANDLER send the region between START and END to the lisp buffer and
 execute the command defined by FORMAT on the region, its package and
 filename.  If called with a positive prefix, the results will be
 inserted at the end of the region.  If SWITCH is T, the command will
-be sent and the buffer switched to the inferior LISP buffer.  if
-SWITCH is 'call, a call will be inserted.  If SWITCH is 'result the
-result will be returned without being displayed.  Otherwise the
+be sent and the buffer switched to the inferior LISP buffer. if
+SWITCH is (quote call), a call will be inserted. If SWITCH is (quote result) the
+result will be returned without being displayed. Otherwise the
 results will be displayed in a popup window if lisp-wait-p is T and
-the current-prefix-arg is not '- or if lisp-wait-p is nil and the
-current-prefix-arg is '-.  If not displayed in a pop-up window then
+the current-prefix-arg is not (quote -) or if lisp-wait-p is nil and the
+current-prefix-arg is (quote -).  If not displayed in a pop-up window then
 comint-handler will display the results in a pop-up window if they are
 more than one line long, or they are from an error.  STATUS will be
 the process status when the command is actually executing.  MESSAGE is
@@ -110,6 +110,7 @@ a message to let the user know what is going on."
     ;; Display the returned value. -fmw
     ;; no we don't... dave_sc ...
     ;; (lisp-display-output result)
+    result
     ))
 
 
@@ -168,7 +169,7 @@ With prefix, insert a call as well."
           (and (fboundp 'zmacs-deactivate-region)
                (zmacs-deactivate-region)))
       ;; ... and go implicitly -> you see what's going on!
-      (switch-to-lisp t))))
+      (ilisp-switch-to-lisp t))))
 
 
 ;;; ilisp-eval-buffer --
@@ -358,7 +359,7 @@ the symbol will be prompted for."
 ;;;
 (defun documentation-lisp (symbol type)
   "Return the documentation of the previous symbol.
-It uses 'ilisp-documentation-command'.  If the symbol is at the start
+It uses ilisp-documentation-command.  If the symbol is at the start
 of a list, it is assumed to be a function, otherwise variable
 documentation is searched for.  With a minus prefix, prompt for the
 symbol and type. With a numeric prefix always return the current
@@ -579,7 +580,7 @@ current directory of the LISP."
         ;; Load binary if it is current
         (when (file-readable-p binary)
           (setq file-name binary))))
-    (switch-to-lisp t t)
+    (ilisp-switch-to-lisp t t)
     (let ((file-name (file-name-hack file-name)))
       (comint-sender
        (ilisp-process)

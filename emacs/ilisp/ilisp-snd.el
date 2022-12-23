@@ -26,15 +26,15 @@
 (defun ilisp-add-set-package-hook ()	; Was: add-set-package-hook
   (interactive)
   (add-hook 'lisp-mode-hook
-	    '(lambda ()
-	       ;; ilisp-buffer must exist and be ready
-	       (if (and (boundp 'ilisp-buffer)
-			(not (equal ilisp-buffer "*nil*"))
-			(not (ilisp-value 'ilisp-initializing t))
-			(ilisp-value 'ilisp-status) " :ready")
+	    #'(lambda ()
+		;; ilisp-buffer must exist and be ready
+		(if (and (boundp 'ilisp-buffer)
+			 (not (equal ilisp-buffer "*nil*"))
+			 (not (ilisp-value 'ilisp-initializing t))
+			 (ilisp-value 'ilisp-status) " :ready")
 
-		   ;; and check the Package when in ILISP
-		   (lisp-buffer-package)))))
+		    ;; and check the Package when in ILISP
+		    (lisp-buffer-package)))))
 
 ;;; ilisp-check-package-advanced --
 ;;; treat DEFPACKAGE before IN-PACKAGE.
@@ -535,7 +535,7 @@ the buffer."
 				  (lisp-symbol-package symbol) ":+\\)?")))
 	     (variablep (string-match "^\\*" name))
 	     (setfp (string-match "(setf \\([^\)]+\\)" name)))
-	(switch-to-lisp t t)
+	(ilisp-switch-to-lisp t t)
 	(cond (setfp 
 	       (setq name 
 		     (substring name (match-beginning 1) (match-end 1)))
@@ -560,7 +560,7 @@ the buffer."
 	   (save-excursion
 	     (buffer-substring (lisp-defun-begin) 
 			       (lisp-end-defun-text t)))))
-      (switch-to-lisp t t)
+      (ilisp-switch-to-lisp t t)
       (comint-kill-input)
       (insert form))))
 
@@ -590,7 +590,7 @@ it will be handled by HANDLER."
 	   (comint-send process string nil nil status message handler)
 	   (if (eq and-go 'call)
 	       (call-defun-lisp nil)
-	       (switch-to-lisp t t))
+	       (ilisp-switch-to-lisp t t))
 	   nil)
 	  (t
 	   (let* ((save (ilisp-value 'ilisp-save-command t))

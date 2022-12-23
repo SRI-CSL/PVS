@@ -157,7 +157,7 @@
     ("Misc"
      ;; [ "Reset Ilisp" reset-ilisp t ]
      [ "Select Ilisp" select-ilisp t ]
-     [ "Switch to lisp" switch-to-lisp t ]
+     [ "Switch to lisp" ilisp-switch-to-lisp t ]
      [ "Abort commands" abort-commands-lisp t ]
      [ "Status of Lisp" status-lisp t ]  
      "--"
@@ -224,11 +224,11 @@
   )
 
 (defun ilisp-redefine-menu ()
-  (easy-menu-remove ilisp-cl-easy-menu)
+  ;;(easy-menu-remove ilisp-cl-easy-menu)
   (easy-menu-define menubar-ilisp ilisp-mode-map 
 		    "Ilisp commands"
 		    ilisp-cl-easy-menu)
-  (easy-menu-add ilisp-cl-easy-menu 'ilisp-mode-map)
+  ;;(easy-menu-add ilisp-cl-easy-menu 'ilisp-mode-map)
   )
 
 (provide 'ilisp-cl-easy-menu)
@@ -248,7 +248,7 @@
 				ilisp-mode-map 
 				"Ilisp commands"
 				ilisp-cl-easy-menu) 
-	      (easy-menu-add ilisp-cl-easy-menu 'ilisp-mode-map)
+	      ;;(easy-menu-add ilisp-cl-easy-menu 'ilisp-mode-map)
 	      )))
 	 
 
@@ -259,9 +259,9 @@
 				lisp-mode-map 
 				"lisp commands"
 				ilisp-cl-easy-menu) 
-	      (when (boundp 'lisp-menu)
-		(easy-menu-remove lisp-menu))
-	      (easy-menu-add ilisp-cl-easy-menu 'lisp-mode-map)
+	      ;; (when (boundp 'lisp-menu)
+	      ;; 	(easy-menu-remove lisp-menu))
+	      ;;(easy-menu-add ilisp-cl-easy-menu 'lisp-mode-map)
 	      )))
 
 ;;; end of file-- ilisp-cl-easy-menu.el --

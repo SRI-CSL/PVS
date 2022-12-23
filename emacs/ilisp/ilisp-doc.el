@@ -65,7 +65,7 @@ There are also a few bindings found in global-map including:
   \\[ilisp-bury-output] `ilisp-bury-output'
   \\[ilisp-scroll-output] `ilisp-scroll-output'
   \\[previous-buffer-lisp] `previous-buffer-lisp'
-  \\[switch-to-lisp] `switch-to-lisp'
+  \\[ilisp-switch-to-lisp] `ilisp-switch-to-lisp'
 
 ILISP has a very flexible means for displaying output from the
 underlying lisp.  All output is funneled through the function bound to
@@ -178,7 +178,7 @@ which case it will pop one level in the break loop.
 `reset-ilisp', \(\\[reset-ilisp]) will reset the current inferior
 Lisp's top-level so that it will no longer be in a break loop.
 
-`switch-to-lisp' \(\\[switch-to-lisp]) will pop to the current ILISP
+`ilisp-switch-to-lisp' \(\\[ilisp-switch-to-lisp]) will pop to the current ILISP
 buffer or if already in an ILISP buffer, it will return to the buffer
 that last switched to an ILISP buffer.  With a prefix, it will also go
 to the end of the buffer.  If you do not want it to pop, set

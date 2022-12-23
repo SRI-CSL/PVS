@@ -157,8 +157,7 @@
 
 
 (defun ilisp-write-string-to-buffer (buffer string)
-  (save-excursion
-    (set-buffer buffer)
+  (with-current-buffer buffer
     ;; Maybe an option to keep the old output?
     (erase-buffer)
     ;; New: select mode for the output buffer.
@@ -182,8 +181,7 @@
 
 ;; A first guess at the height needed to display this buffer.
 (defun ilisp-needed-buffer-height (buffer)
-  (save-excursion
-    (set-buffer buffer)
+  (with-current-buffer buffer
     (let ((stdheight (1+ (count-screen-lines (point-min) (point-max)))))
       (if (featurep 'xemacs)
 	  (1+ stdheight)
@@ -193,8 +191,7 @@
 (defun ilisp-needed-window-height (window)
   (save-window-excursion
     (select-window window)
-    (save-excursion
-      (set-buffer (window-buffer))
+    (with-current-buffer (window-buffer)
       (save-excursion 
 	(goto-char (point-min))
 	;; Any upper bound on the height of an emacs window will do
@@ -353,7 +350,8 @@
   "Dispatch on the value of lisp-no-popper:
  lisp-no-popper = nil:  display output in a typeout window.
  lisp-no-popper = t:  display output in the ilisp buffer
- otherwise: display one-line output in the echo area, multiline output in the ilisp buffer."
+ otherwise: display one-line output in the echo area,
+            multiline output in the ilisp buffer."
   (cond ((null lisp-no-popper)
 	 (ilisp-display-output-in-typeout-window output))
 	((eq lisp-no-popper t)
@@ -413,10 +411,10 @@
 
 (defun ilisp-quote-%s (string)
   "Quote all the occurences of ?% in STRING in an ELisp fashion."
-  (mapconcat '(lambda (char)
-		(if (char-equal char ?%)
-		    "%%"
-		  (char-to-string char)))
+  (mapconcat #'(lambda (char)
+		 (if (char-equal char ?%)
+		     "%%"
+		     (char-to-string char)))
 	     string ""))
 
 
@@ -464,8 +462,7 @@
 	       ;; or the current screen otherwise.
 	       (epoch::select-screen
 		;; allowed-screens in epoch 3.2, was called screens before that
-		(or (car (save-excursion
-			   (set-buffer buffer)
+		(or (car (with-current-buffer buffer
 			   (symbol-value 'allowed-screens)))
 		    (epoch::current-screen))))
 
@@ -511,7 +508,7 @@
 
 
 ;;;
-(defun switch-to-lisp (eob-p &optional ilisp-only)
+(defun ilisp-switch-to-lisp (eob-p &optional ilisp-only)
   "If in an ILISP buffer, switch to the buffer that last switched to
 an ILISP otherwise, switch to the current ILISP buffer.  With
 argument, positions cursor at end of buffer.  If you don't want to
