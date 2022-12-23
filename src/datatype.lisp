@@ -152,6 +152,7 @@ generated")
 	(*last-adt-decl* (current-declaration)))
     (generate-inline-adt adt))
   (put-decl adt)
+  (setf (module adt) (current-theory))
   (setf (typechecked? adt) t))
 
 (defun generate-inline-adt (adt)
