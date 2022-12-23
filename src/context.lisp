@@ -222,7 +222,7 @@ retypechecked."
 ;;; Save Context - called from Emacs and parse-file (pvs.lisp), saves any
 ;;; changes since the last time the context was saved.
 
-(defun save-context (&optional empty)
+(defun save-context (&optional empty quiet?)
   #+pvsdebug
   (assert (file-equal *default-pathname-defaults* (working-directory))
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
@@ -247,7 +247,7 @@ retypechecked."
 	;; 			 (check-binfiles file))
 	;; 		     () "check-binfiles failed after write-object-files"))
 	;; 	 (current-pvs-files))
-	(write-context *workspace-session* empty)
+	(write-context *workspace-session* empty quiet?)
 	;; (maphash #'(lambda (file theories)
 	;; 	     (assert (or (some #'(lambda (th)
 	;; 				   (not (typechecked? th)))
@@ -260,7 +260,7 @@ retypechecked."
   (save-context))
 
 
-(defun write-context (&optional (ws *workspace-session*) empty)
+(defun write-context (&optional (ws *workspace-session*) empty quiet?)
   (unless ws (setq ws (initialize-workspaces)))
   (assert (pvs-context ws))
   (with-workspace ws
@@ -281,8 +281,9 @@ retypechecked."
 		     (pvs-message "~a" condition))
 		    (t (setf (pvs-context ws) context)
 		       (setf (pvs-context-changed ws) nil)
-		       (pvs-message "Context file ~a written~%"
-			 (namestring (context-pathname)))))))
+		       (unless quiet?
+			 (pvs-message "Context file ~a written~%"
+			   (namestring (context-pathname))))))))
 	  (pvs-log "Context file ~a not written, do not have write permission"
 		   (namestring (context-pathname)))))))
 
@@ -1321,20 +1322,19 @@ are all the same."
 
 (defun get-context-theory-entry* (theoryname file-entries)
   (when file-entries
-    (or (get-context-theory-entry theoryname (car file-entries))
+    (or (and (file-exists-p (make-specpath (ce-file (car file-entries))))
+	     (get-context-theory-entry theoryname (car file-entries)))
 	(get-context-theory-entry* theoryname (cdr file-entries)))))
 
 (defun get-context-formula-entry (fdecl &optional again?)
   (unless (from-prelude? fdecl)
     (let ((te (get-context-theory-entry (module fdecl))))
-      (cond (te
-	     (find-if #'(lambda (fe)
-			  (eq (id fdecl) (fe-id fe)))
-	       (te-formula-info te)))
-	    (again?
-	     (error "something's wrong with the context"))
-	    (t (update-pvs-context)
-	       (get-context-formula-entry fdecl t))))))
+      (unless te
+	(update-pvs-context)
+	(setq te (get-context-theory-entry (module fdecl))))
+      (when te
+	(find-if #'(lambda (fe) (eq (id fdecl) (fe-id fe)))
+	  (te-formula-info te))))))
 
 (defun context-file-of (theoryref)
   (let ((thid (ref-to-id theoryref)))
@@ -2346,10 +2346,10 @@ Note that the lists might not be the same length."
 		     (cddr formula-proof)
 		     (cdr formula-proof)))
 	     (prinfo (make-proof-info
-		      #+case-sensitive
-		      (convert-proof-form-to-lowercase script)
-		      #-case-sensitive
-		      script
+		      (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+			  #-allegro nil
+			  (convert-proof-form-to-lowercase script)
+			  script)
 		      (makesym "~a-1" (car formula-proof)))))
 	(cons (car formula-proof)
 	      (cons 0 (list (sexp prinfo)))))))
@@ -2368,44 +2368,40 @@ Note that the lists might not be the same length."
 	  (values-list mprf)
 	(convert-proof-form id description create-date script refers-to decision-procedure-used origin))))
 
-(defun convert-proof-form (id description create-date script refers-to decision-procedure-used
-			   &optional origin)
+(defun convert-proof-form (id description create-date script refers-to
+			   decision-procedure-used &optional origin)
   (assert (or (stringp description) (memq description '(|nil| NIL))))
   (assert (or (listp script) (memq script '(|nil| NIL))))
   (assert (or (listp refers-to) (memq refers-to '(|nil| NIL))))
   (assert (symbolp decision-procedure-used))
-  #+case-sensitive
-  ;; Allegro in case-sensitive mode
-  ;; May need to convert a proof done in case-insensitive mode
-  (let* ((check (check-if-case-change-needed script))
-	 (desc (unless (eq description 'NIL) description))
-	 (scr (if check
-		  (convert-proof-form-to-lowercase script)
-		  script))
-	 ;; refers-to should be fixed for Allegro/SBCL
-	 (ref (if check
-		  (unless (eq refers-to 'NIL)
-		    (convert-refersto-to-lowercase refers-to))
-		  refers-to))
-	 (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
-    (if origin
-	(list id desc create-date scr ref dec origin)
-	(list id desc create-date scr ref dec)))
-  #-case-sensitive ;; Others
-  (let ((ncreate-date (upcase-t-and-nil create-date))
-	(nscript (upcase-symbols script))
-	(nrefers-to (upcase-t-and-nil refers-to))
-	(ndp-used (upcase-symbols decision-procedure-used))
-	(norigin (when (upcase-t-and-nil origin)
-		   (list (list (car origin) (upcase-symbols (cadr origin))
-			       (caddr origin) (cadddr origin))))))
-    `(,id ,description ,ncreate-date ,nscript ,nrefers-to ,ndp-used
-	  ,@norigin)))
-
-#+case-sensitive
-(defun check-if-case-change-needed (script)
-  (let ((sym (find-first-symbol script)))
-    (every #'upper-or-not-alpha-p (string sym))))
+  (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+      #-allegro nil
+      ;; Allegro in case-sensitive mode
+      ;; May need to convert a proof done in case-insensitive mode
+      (let* ((check (check-if-case-change-needed script))
+	     (desc (unless (eq description 'NIL) description))
+	     (scr (if check
+		      (convert-proof-form-to-lowercase script)
+		      script))
+	     ;; refers-to should be fixed for Allegro/SBCL
+	     (ref (if check
+		      (unless (eq refers-to 'NIL)
+			(convert-refersto-to-lowercase refers-to))
+		      refers-to))
+	     (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
+	(if origin
+	    (list id desc create-date scr ref dec origin)
+	    (list id desc create-date scr ref dec)))
+      ;; Others
+      (let ((ncreate-date (upcase-t-and-nil create-date))
+	    (nscript (upcase-symbols script))
+	    (nrefers-to (upcase-t-and-nil refers-to))
+	    (ndp-used (upcase-symbols decision-procedure-used))
+	    (norigin (when (upcase-t-and-nil origin)
+		       (list (list (car origin) (upcase-symbols (cadr origin))
+				   (caddr origin) (cadddr origin))))))
+	`(,id ,description ,ncreate-date ,nscript ,nrefers-to ,ndp-used
+	      ,@norigin))))
 
 (defun upper-or-not-alpha-p (char)
   (or (not (alpha-char-p char))
@@ -2419,11 +2415,16 @@ Note that the lists might not be the same length."
     (cons (or (find-first-symbol (car obj))
 	      (find-first-symbol (cdr obj))))))
 
-#-case-sensitive
+#+allegro
+(defun check-if-case-change-needed (script)
+  (when (eq excl:*current-case-mode* :case-sensitive-lower)
+    (let ((sym (find-first-symbol script)))
+      (every #'upper-or-not-alpha-p (string sym)))))
+
+#-allegro
 (defun check-if-case-change-needed (script)
   (declare (ignore script))
   nil)
-       
 
 (defun transfer-orphaned-proofs (from-theory to-theory)
   (let* ((th (get-typechecked-theory to-theory))
@@ -2576,8 +2577,9 @@ Note that the lists might not be the same length."
 (defvar *library-strategy-file-dates* nil)
 
 (defun load-library-strategy-files ()
-  (dolist (lib (current-library-pathnames))
-    (load-library-strategy-file lib)))
+  (dolist (lib-path ;;(current-library-pathnames)
+	    (get-pvs-library-alist))
+    (load-library-strategy-file (cdr lib-path))))
 
 (defun load-library-strategy-file (lib)
   (let* (#+allegro
