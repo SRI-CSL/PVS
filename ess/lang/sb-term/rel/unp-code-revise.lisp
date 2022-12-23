@@ -86,10 +86,16 @@
 	  
 (defun make-routine-name (routine-name i)
   (sb::sb-intern-ncase
-   (string-upcase (concatenate 'string
-		    (symbol-name routine-name)
-		    "-ALT-"
-		    (princ-to-string i)))))
+   (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+       #-allegro nil
+       (string-downcase (concatenate 'string
+			(symbol-name routine-name)
+			"-alt-"
+			(princ-to-string i)))
+       (string-upcase (concatenate 'string
+			(symbol-name routine-name)
+			"-ALT-"
+			(princ-to-string i))))))
 	  
 
   

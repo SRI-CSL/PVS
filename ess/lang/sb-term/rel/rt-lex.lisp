@@ -136,8 +136,10 @@
   (declare (ignore stream))
   (intern (if *case-sensitive*
 	      (string op)
-	      #+(and allegro (version>= 6)) (string-downcase (string op))
-	      #-(and allegro (version>= 6)) (string-upcase (string op)))
+	      (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+		  #-allegro nil
+		  (string-downcase (string op))
+		  (string-upcase (string op))))
 	  *sbst-package*))
 
 (defun lex-newline-comment (stream open-comment)
@@ -359,12 +361,13 @@
 		      (let ((name (if (symbolp (cdr token))
 				      (if *case-sensitive*
 					  (symbol-name (cdr token))
-					  #+(and allegro (version>= 6))
-					  (string-downcase
-					   (symbol-name (cdr token)))
-					  #-(and allegro (version>= 6))
-					  (string-upcase
-					   (symbol-name (cdr token))))
+					  (if #+allegro (eq excl:*current-case-mode*
+							    :case-sensitive-lower)
+					      #-allegro nil
+					      (string-downcase
+					       (symbol-name (cdr token)))
+					      (string-upcase
+					       (symbol-name (cdr token)))))
 				      (cdr token))))
 			(intern name *abs-syn-package*))
 		      place))
@@ -392,10 +395,11 @@
 	  (t (values 'sbst::!id!
 		     (intern (if *case-sensitive*
 				 (symbol-name token)
-				 #+(and allegro (version>= 6))
-				 (string-downcase (symbol-name token))
-				 #-(and allegro (version>= 6))
-				 (string-upcase (symbol-name token)))
+				 (if #+allegro (eq excl:*current-case-mode*
+						   :case-sensitive-lower)
+				     #-allegro nil
+				     (string-downcase (symbol-name token))
+				     (string-upcase (symbol-name token))))
 			     *abs-syn-package*)
 		     place)))))
 

@@ -211,37 +211,37 @@
 		(values abs-syntax *parser-error*))))))))
 
 (defun gen-var/const-names (conc-name)
-    (setq conc-name (string-upcase conc-name))
-    (macrolet ((save (place name-ending name-type)
-		   `(setf ,place
-			  (intern ,(if (eq name-type :special)
-				       `(concatenate 'string
-					  "*" conc-name
-					  ,name-ending "*")
-				       `(concatenate 'string
-					  conc-name
-					  ,name-ending))
-				  *sb-package*))))
-	(save *conc-keyword-list* "-KEYWORD-LIST" :constant)
-	(save *conc-single-char-op-list* "-SINGLE-CHAR-OP-LIST" :constant)
-	(save *conc-multi-char-op-list* "-MULTI-CHAR-OP-LIST" :constant)
-	(save *conc-all-operators-list* "-ALL-OPERATORS-LIST" :constant)
-	(save *conc-new-line-comment-char* "-NEW-LINE-COMMENT-CHAR"
-	      :constant)
-	(save *conc-open-comment-char* "-OPEN-COMMENT-CHAR" :constant)
-	(save *conc-close-comment-char* "-CLOSE-COMMENT-CHAR" :constant)
-	(save *conc-escape-char* "-ESCAPE-CHAR" :constant)
-	(save *conc-case-sensitive* "-CASE-SENSITIVE" :constant)
-	(save *conc-lexical-readtable* "-LEXICAL-READTABLE" :special)
-	(save *conc-keyword-table* "-KEYWORD-TABLE" :special)
-	(save *conc-abs-syn-package* "-ABS-SYN-PACKAGE" :constant)
-	(save *conc-lexer-init-p*  "-LEXER-INIT-P" :special)
-	(save *conc-restricted-chars*  "-RESTRICTED-CHARS" :constant)
+  (macrolet ((save (place name-ending name-type)
+	       (let ((vcname (gentemp)))
+		 `(let ((,vcname ,(if (eq name-type :special)
+				      `(concatenate 'string "*" conc-name ,name-ending "*")
+				      `(concatenate 'string conc-name ,name-ending))))
+		    (setf ,place
+			  (intern ,(if #+allegro (eq excl:*current-case-mode*
+						     :case-sensitive-lower)
+				       #-allegro nil
+				       `(string-downcase ,vcname)
+				       `(string-upcase ,vcname))
+				  *sb-package*))))))
+    (save *conc-keyword-list* "-keyword-list" :constant)
+    (save *conc-single-char-op-list* "-single-char-op-list" :constant)
+    (save *conc-multi-char-op-list* "-multi-char-op-list" :constant) ;
+    (save *conc-all-operators-list* "-all-operators-list" :constant)
+    (save *conc-new-line-comment-char* "-new-line-comment-char" :constant)
+    (save *conc-open-comment-char* "-open-comment-char" :constant)
+    (save *conc-close-comment-char* "-close-comment-char" :constant)
+    (save *conc-escape-char* "-escape-char" :constant)
+    (save *conc-case-sensitive* "-case-sensitive" :constant)
+    (save *conc-lexical-readtable* "-lexical-readtable" :special)
+    (save *conc-keyword-table* "-keyword-table" :special)
+    (save *conc-abs-syn-package* "-abs-syn-package" :constant)
+    (save *conc-lexer-init-p*  "-lexer-init-p" :special)
+    (save *conc-restricted-chars*  "-restricted-chars" :constant)
 
-	(save *conc-string-char* "-STRING-CHAR" :constant)
-	(save *conc-literal-char* "-LITERAL-CHAR" :constant)
-	(save *conc-keyword-char* "-KEYWORD-CHAR" :constant)
-	))	
+    (save *conc-string-char* "-string-char" :constant)
+    (save *conc-literal-char* "-literal-char" :constant)
+    (save *conc-keyword-char* "-keyword-char" :constant)
+    ))
 
 ; Cleanup after parser generation.
 
@@ -276,20 +276,21 @@
   (setf *ext-operators* nil)
   (when (and (lang:lang-sub-languages lang)
 	     (not (equal (lang:lang-sub-languages lang)
-			 '("LEXICAL-TERMINALS"))))
+			 '("lexical-terminals"))))
     (format t "   Fetching external grammar information ...~%")
     (mapc #'(lambda (x)
-	      (if (not (string= x "LEXICAL-TERMINALS"))
+	      (if (not (string= x "lexical-terminals"))
 		  (get-external-grammars-info-aux x)))
 	  (lang:lang-sub-languages lang))))
 
 (defun get-external-grammars-info-aux (lang-name)
   (let ((info-file-name (lang:get-lang-info-file lang-name))
 	(lang-name (if (stringp lang-name)
-		       (intern #+(and allegro (version>= 6))
-			       (string-downcase lang-name)
-			       #-(and allegro (version>= 6))
-			       (string-upcase lang-name)
+		       (intern (if #+allegro (eq excl:*current-case-mode*
+						 :case-sensitive-lower)
+				   #-allegro nil
+				   (string-downcase lang-name)
+				   (string-upcase lang-name))
 			       *sb-package*)
 		       lang-name)))
     (with-open-file (s info-file-name :if-does-not-exist nil)

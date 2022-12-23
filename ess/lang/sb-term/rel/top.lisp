@@ -245,7 +245,6 @@ and SUFFIX (without the file type)."
                    to nil (no function)."
 
     (format t "~&ERGO Project -- Syntactic Box Generator ~A~%" sb-version)
-
     (setq lang
 	  (or lang-struct
 	      (let ()			;does defaulting.
@@ -491,7 +490,10 @@ and SUFFIX (without the file type)."
 ;;; LISTIFY-USE-PACKAGES coerces the string of use-packages names to
 ;;; a list of strings whose names are uppercases of the names in the string.
 (defun listify-use-packages (use-packages)
-  (mapcar #'string-upcase (string-to-list use-packages)))
+  (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+      #-allegro nil
+      (mapcar #'string-downcase (string-to-list use-packages))
+      (mapcar #'string-upcase (string-to-list use-packages))))
 
 ;;; SELECT-NONTERMS-FROM-LIST looks up nonterminal names in the given
 ;;; alist of nonterminal information (nonterms) and returns a list of
@@ -499,7 +501,13 @@ and SUFFIX (without the file type)."
 (defun select-nonterms-from-list (nonterm-names grammar &aux nt)
   (mapcar #'(lambda (nt-name)
 	      (loop 
-	       (setf nt-name (intern (string-upcase nt-name) *sb-package*))
+	       (setf nt-name (intern
+			      (if #+allegro (eq excl:*current-case-mode*
+						:case-sensitive-lower)
+				  #-allegro nil
+				  (string-downcase nt-name)
+				  (string-upcase nt-name))
+			      *sb-package*))
 	       (do ((nt-runner (grammar-nonterminal-definitions grammar)
 			       (cdr nt-runner)))
 		   ((or (null nt-runner)

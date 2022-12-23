@@ -62,10 +62,10 @@
   (let* ((lg (or lg *language*))
 	 (conc-name (lang:lang-conc-name lg)))
     (sb-intern-nupcase
-     (string-upcase (concatenate 'string
-		      conc-name
-		      "-"
-		      string)))))
+     (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+	 #-allegro nil
+	 (string-downcase (concatenate 'string conc-name "-" string))
+	 (string-upcase (concatenate 'string conc-name "-" string))))))
 
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
@@ -628,23 +628,23 @@
 		       (symbol-name 
 			(mk-unparse-routine-name nt
 						 :lg-name lg-name))
-		       #+(and allegro (version>= 6))
-		       (string-downcase
-			(symbol-name 
-			 (mk-unparse-routine-name nt
-						  :lg-name lg-name)))
-		       #-(and allegro (version>= 6))
-		       (string-upcase
-			(symbol-name 
-			 (mk-unparse-routine-name nt
-						  :lg-name lg-name))))
+		       (if #+allegro (eq excl:*current-case-mode*
+					 :case-sensitive-lower)
+			   #-allegro nil
+			   (string-downcase
+			    (symbol-name 
+			     (mk-unparse-routine-name nt :lg-name lg-name)))
+			   (string-upcase
+			    (symbol-name 
+			     (mk-unparse-routine-name nt :lg-name lg-name)))))
 		   (lang:get-lang-code-package lg-name))
 	  ,(intern (if *grammar-case-sensitive?*
 		       (symbol-name nt)
-		       #+(and allegro (version>= 6))
-		       (string-downcase (symbol-name nt))
-		       #-(and allegro (version>= 6))
-		       (string-upcase (symbol-name nt)))
+		       (if #+allegro (eq excl:*current-case-mode*
+					 :case-sensitive-lower)
+			   #-allegro nil
+			   (string-downcase (symbol-name nt))
+			   (string-upcase (symbol-name nt))))
 		   (lang:get-lang-abs-syn-package lg-name))
 	  ,(var (get-pattern-slot pat))))))
     
