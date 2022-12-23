@@ -1059,9 +1059,10 @@ resolution with a macro matching the signature of the arguments."
 	     ;;(actuals (expr act))
 	     )
     (let ((reses (remove-if-not #'(lambda (res)
-				    (typep (declaration res) '(or type-decl formal-type-decl)))
+				    (typep (declaration res)
+					   '(or type-decl formal-type-decl mapping)))
 		   (resolutions (expr act)))))
-      (assert (null (cdr reses)))
+      (assert (singleton? reses))
       (setf (resolutions (expr act)) reses)
       (when (name-expr? (expr act))
 	(setf (type (expr act)) (type (car reses))))
@@ -1797,18 +1798,22 @@ type of the lhs."
 					(and (eq (car x) (car y))
 					     (tc-eq (cadr x) (cadr y))))))
 	    (push (list ex expected) *tccs-generated-for*)
-            (let* ((jtypes (let ((*generate-tccs* 'none))
-                             (judgement-types+ ex)))
-                   (incs (let ((*generate-tccs* 'none))
-                           (compatible-predicates jtypes expected ex))))
-              (when incs
-		(generate-subtype-tcc ex expected incs)
+	    (multiple-value-bind (jtypes jdecls)
+		(let ((*generate-tccs* 'none))
+                  (judgement-types+ ex))
+	      (multiple-value-bind (incs jdecl)
+		  (let ((*generate-tccs* 'none))
+                    (compatible-predicates jtypes expected ex))
+		;; (when (and jdecl
+		;; 	   (assuming (module jdecl)))
+		(when incs
+		  (generate-subtype-tcc ex expected incs)
 		  ;; A better warning is generated in judgements.lisp
                   ;; (when (assq ex *compatible-pred-reason*)
                   ;;   (pvs-warning "No TCC generated for judgement ~a~%~
                   ;;                 judgement is already known"
                   ;;     (ref-to-id (current-declaration))))
-		)))))))
+		  ))))))))
 
 ;;; Loop through the types (the judgement-types of the ex). Each of these is
 ;;; a minimal type, we want the one that leads to the most provable TCC.
@@ -4794,6 +4799,7 @@ type of the lhs."
 	      ;; should it be (nreverse (cons value cvalues)) instead of cdr-vals?
 	      (set-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
 	      (when (and fappl
+			 (caar cdr-args)
 			 (funtype? (find-supertype ftype)))
 		(let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
 		       (bd (make-bind-decl bid (domtype ftype)))
@@ -5671,9 +5677,12 @@ type of the lhs."
 ;    modinsts))
 
 (defun subst-for-formals (obj alist)
-  (gensubst obj
-    #'(lambda (ex) (subst-for-formals! ex alist))
-    #'(lambda (ex) (subst-for-formals? ex alist))))
+  (if (some #'(lambda (fp) (assq (declaration fp) alist))
+	    (free-params obj))
+      (gensubst obj
+	#'(lambda (ex) (subst-for-formals! ex alist))
+	#'(lambda (ex) (subst-for-formals? ex alist)))
+      obj))
 
 (defmethod subst-for-formals? ((ex name) alist)
   (assq (declaration ex) alist))

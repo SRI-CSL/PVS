@@ -437,16 +437,18 @@
 ;;; judgement-types
 
 (defmethod judgement-types+ (expr)
-  (let ((jtypes (judgement-types expr)))
+  (multiple-value-bind (jtypes jdecls thinsts)
+      (judgement-types expr)
     (if (consp jtypes)
 	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
 		  jtypes)
-	    jtypes
-	    (cons (type expr) jtypes))
+	    (values jtypes jdecls)
+	    (values (cons (type expr) jtypes) (cons nil jdecls)))
 	(list (type expr)))))
 
 (defmethod judgement-types+ ((expr lambda-expr-with-type))
-  (let ((jtypes (judgement-types expr)))
+  (multiple-value-bind (jtypes jdecls)
+      (judgement-types expr)
     (if (consp jtypes)
 	;; Have judgement types
 	(if (some #'(lambda (jty) (subtype-of? jty (type expr))) jtypes)
@@ -457,29 +459,30 @@
 				 (jrtype (substit (range jty) alist)))
 			    (subtype-of? jrtype (return-type expr))))
 		      jtypes)
-		jtypes
+		(values jtypes jdecls)
 		(let* ((alist (when (dep-binding? (domain (type expr)))
 				(mk-subst-alist (domain (type expr)) (bindings expr))))
 		       (lrtype (substit (return-type expr) alist))
 		       (ftype (mk-funtype (domain (type expr)) lrtype)))
 		  #+pvsdebug (assert (null (freevars ftype)))
-		  (cons ftype jtypes)))
+		  (values (cons ftype jtypes) (cons nil jdecls))))
 	    (let* ((alist (when (dep-binding? (domain (type expr)))
 			    (mk-subst-alist (bindings expr) (domain (type expr)))))
 		   (lrtype (substit (return-type expr) alist)))
 	      (if (subtype-of? lrtype (range (type expr)))
 		  (let ((ftype (mk-funtype (domain (type expr)) lrtype)))
 		    #+pvsdebug (assert (null (freevars ftype)))
-		    (cons ftype jtypes))
+		    (values (cons ftype jtypes) (cons nil jdecls)))
 		  (if (subtype-of? (range (type expr)) lrtype)
-		      (cons (type expr) jtypes)
+		      (values (cons (type expr) jtypes) (cons nil jdecls))
 		      (let ((ftype (mk-funtype (domain (type expr)) lrtype)))
 			#+pvsdebug (assert (null (freevars ftype)))
-			(cons ftype (cons (type expr) jtypes)))))))
+			(values (cons ftype (cons (type expr) jtypes))
+				(cons nil (cons nil jtypes))))))))
 	(list (type expr)))))
 
 (defmethod judgement-types ((ex expr))
-  (multiple-value-bind (jtypes jdecls)
+  (multiple-value-bind (jtypes jdecls thinsts)
       (judgement-types-expr ex)
     #+pvsdebug
     (assert (and (listp jtypes) (every #'type-expr? jtypes)))
@@ -533,7 +536,7 @@
 	  (when jtypes&jdecls
 	    (remove-judgement-types-of-type
 	     (type ex) (car jtypes&jdecls) (cadr jtypes&jdecls)))
-	  (multiple-value-bind (types jdecls)
+	  (multiple-value-bind (types jdecls thinsts)
 	      (judgement-types* ex)
 	    #+pvsdebug (assert (or (vectorp types)
 				   (every #'(lambda (ty)
@@ -541,7 +544,7 @@
 						  (compatible? ty (type ex))))
 					  types)))
 	    (setf (gethash ex jhash) (list types jdecls))
-	    (values types jdecls))))))
+	    (values types jdecls thinsts))))))
 
 (defmethod judgement-types ((ex tuple-expr))
   nil)
@@ -694,9 +697,8 @@
 	     (mtypes (mapcar #'type mjudgements)))
 	#+pvsdebug (assert (not (member (type ex) mtypes :test #'tc-eq)))
 	(if (generic-judgements entry)
-	    (multiple-value-bind (inst-types gjdecls)
-		(instantiate-generic-judgement-types
-		 ex (generic-judgements entry))
+	    (multiple-value-bind (inst-types gjdecls thinsts)
+		(instantiate-generic-judgement-types ex (generic-judgements entry))
 	      #+pvsdebug (assert (or (null inst-types) gjdecls))
 	      #+pvsdebug (assert (or (skolem-const-decl? (declaration ex))
 				     (vectorp inst-types)
@@ -707,18 +709,20 @@
 	    (values mtypes mjudgements))))))
 
 (defun instantiate-generic-judgement-types (name judgements
-						 &optional types jdecls)
+						 &optional types jdecls thinsts)
   (if (null judgements)
-      (values types jdecls)
-      (let* ((type (instantiate-generic-judgement-type name (car judgements)))
-	     (add? (and type (fully-instantiated? type)
-			(not (subtype-of? (type name) type))
-			(compatible? type (type name)))))
-	(instantiate-generic-judgement-types
-	 name
-	 (cdr judgements)
-	 (if add? (cons type types) types)
-	 (if add? (cons (car judgements) jdecls) jdecls)))))
+      (values types jdecls thinsts)
+      (multiple-value-bind (type thinst)
+	  (instantiate-generic-judgement-type name (car judgements))
+	(let ((add? (and type (fully-instantiated? type)
+			 (not (subtype-of? (type name) type))
+			 (compatible? type (type name)))))
+	  (instantiate-generic-judgement-types
+	   name
+	   (cdr judgements)
+	   (if add? (cons type types) types)
+	   (if add? (cons (car judgements) jdecls) jdecls)
+	   (if add? (cons thinst thinsts) thinsts))))))
 
 (defun instantiate-generic-judgement-type (name judgement)
   (let ((bindings (tc-match name (name judgement)
@@ -728,7 +732,8 @@
 	   (let ((jthinst (mk-modname (id (module judgement))
 			    (mapcar #'(lambda (a) (mk-actual (cdr a)))
 			      bindings))))
-	     (subst-mod-params (type judgement) jthinst (module judgement))))
+	     (values (subst-mod-params (type judgement) jthinst (module judgement))
+		     jthinst)))
 	  ((some #'cdr bindings)
 	   (let ((stype (subst-theory-params (type judgement) bindings)))
 	     (when (fully-instantiated? stype)
@@ -742,7 +747,7 @@
 	      (vector (cdr (assq decl
 				 (application-judgements-alist
 				  (current-judgements))))))
-	 (multiple-value-bind (jtys jdcls)
+	 (multiple-value-bind (jtys jdcls thinsts)
 	     (when vector
 	       (let* ((currynum (argument-application-number ex))
 		      (entry (when (<= currynum (length vector))
@@ -752,16 +757,16 @@
 		       (compute-application-judgement-types
 			ex (judgements-graph entry))
 		     #+pvsdebug (assert (length= gtypes ijdecls))
-		     (multiple-value-bind (jtypes jdecls)
+		     (multiple-value-bind (jtypes jdecls thinsts)
 			 (generic-application-judgement-types
 			  ex (generic-judgements entry) gtypes ijdecls)
 		       #+pvsdebug (assert (length= jtypes jdecls))
 		       #+pvsdebug (assert (or (vectorp jtypes)
 					      (not (member (type ex) jtypes :test #'tc-eq))))
 		       #+pvsdebug (assert (every #'(lambda (jty) (compatible? jty (type ex))) jtypes))
-		       (values jtypes jdecls))))))
+		       (values jtypes jdecls thinsts))))))
 	   (if jtys
-	       (values jtys jdcls)
+	       (values jtys jdcls thinsts)
 	       (get-matching-application-judgement-types ex)))))
       (lambda-expr
        (multiple-value-bind (ljtypes ljdecls)
