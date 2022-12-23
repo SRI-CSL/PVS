@@ -664,8 +664,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		  pvs-current-directory
 		  pdir)))
     (if (and ext (member ext *pvs-file-extensions*))
-	(let ((filename (format "%s%s.%s" dir name ext)))
-	  (find-file-noselect filename noninteractive))
+	(or (get-buffer (format "%s.%s" name ext))
+	    (let ((filename (format "%s%s.%s" dir name ext)))
+	      (find-file-noselect filename noninteractive)))
 	(let ((files nil))
 	  (dolist (pext *pvs-file-extensions*)
 	    (let ((filename (if (and ext (not (equal ext "")))
@@ -1699,8 +1700,10 @@ Point will be on the offending delimiter."
 		     (let ((foundit nil))
 		       (save-excursion
 			 (goto-char last-point)
+			 ;;(pvs-message "Before searching for \n%s" exp)
 			 (setq foundit
-			       (re-search-forward-lax-whitespace exp nil t))
+			       (let ((search-spaces-regexp "[ \t\n]+"))
+				 (re-search-forward exp nil t)))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
 			   (pvs-message "[32;1mFound expected output[0m")
@@ -1789,9 +1792,10 @@ Point will be on the offending delimiter."
 		(prove-importchain theory)
 		(prove-importchain filename)))
 	(if formula
-	    (progn (ilisp-send (format "(prove-formula \"%s\" \"%s\" t)"
-			    (or theory filename) formula)
-			nil 'pr t 'pvs-handler)
+	    (let ((prvform (format "(prove-formula \"%s#%s\" :rerun? t)"
+			       (or theory filename) formula)))
+	      ;;(pvs-message "Proving formula %s" prvform)
+	      (ilisp-send prvform nil 'pr t 'pvs-handler)
 		   (sleep-for 1)
 		   (pvs-wait-for-it)
 		   (pvs-validate-quit-prover)
@@ -1833,7 +1837,7 @@ Point will be on the offending delimiter."
 	     (or fname theory) fmlastr line rerun kind buf)
 	 nil 'pr))
     (unless pvs-error
-      (switch-to-lisp t t)
+      (ilisp-switch-to-lisp t t)
       (pvs-wait-for-it)
       (unless pvs-in-checker
 	(pvs-message "ERROR: proof wasn't started for some reason")))))

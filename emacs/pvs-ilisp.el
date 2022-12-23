@@ -290,7 +290,7 @@ intervenes."
     value))
 
 (defun pvs-send-and-wait-for-json (string &optional message status)
-  (let* ((fstring (format "(pvs:write-to-temp-file %s t)" string))
+  (let* ((fstring (format "(pvs:write-json-to-temp-file %s)" string))
 	 (file (pvs-send-and-wait fstring message status 'tmp-file)))
     (with-temp-buffer
       (insert-file-contents file)
@@ -330,7 +330,7 @@ intervenes."
 
 (defun pvs-send* (string &optional message status and-go)
   (when pvs-in-evaluator
-    (switch-to-lisp t)
+    (ilisp-switch-to-lisp t)
     (error "Must exit the ground evaluator first"))
   (with-current-buffer (ilisp-buffer)
     (setq buffer-read-only nil))
@@ -414,7 +414,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		(when (and (string-match "(Y or N):\\|(Yes or No)"
 					 pvs-process-output)
 			   (not (eq (current-buffer) (ilisp-buffer))))
-		  (switch-to-lisp t)
+		  (ilisp-switch-to-lisp t)
 		  (message "Please answer Yes or No"))
 		(comint-process-filter process pvs-process-output)
 		(set-ilisp-value 'pvs-partial-line "")

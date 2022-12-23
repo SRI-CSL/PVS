@@ -99,7 +99,7 @@ prover to overwrite it at the end of the proof session."
     (unless pvs-error
       (pvs-prove-formula fref rerun nil pvs-x-show-proofs)
       (unless pvs-error
-	(switch-to-lisp t t)))))
+	(ilisp-switch-to-lisp t t)))))
 
 (defpvs x-prove prove (&optional rerun)
   "Invokes the prover, with display, on the formula closest to the cursor
@@ -1357,7 +1357,7 @@ debugging."
 		    (or fname theory) fmlastr (+ line poff) 't
 		    kind buf poff nil)))
     (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
-    (switch-to-lisp t t)
+    (ilisp-switch-to-lisp t t)
     (insert input)))
 
 (defpvs step-proof prove ()
