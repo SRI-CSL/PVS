@@ -453,7 +453,7 @@
 ;;; Called from Emacs - FIXME: need better API
 (defun proofchain-status-at (fileref declname line &optional (origin "pvs"))
   (with-pvs-file (filename) fileref
-    (if (or (gethash filename (current-pvs-files))
+    (if (or (gethash (pathname-name filename) (current-pvs-files))
 	    (and (member origin '("ppe" "tccs") :test #'string=)
 		 (get-theory filename)))
 	(let ((fdecl (formula-decl-to-prove filename declname line origin))
