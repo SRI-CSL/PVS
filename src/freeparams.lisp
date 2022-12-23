@@ -168,6 +168,10 @@
     (setf (free-parameters texpr) nfrees)
     (union nfrees frees :test #'eq)))
 
+(defmethod free-params* ((texpr type-var) frees)
+  (setf (free-parameters texpr) nil)
+  frees)
+
 (defmethod free-params* ((texpr type-name) frees)
   (assert (resolution texpr))
   (let ((nfrees (call-next-method texpr nil)))
@@ -179,9 +183,14 @@
   (assert (resolution texpr))
   (assert (or (null (actuals texpr))
 	      (tc-eq (actuals texpr) (actuals (module-instance texpr)))))
-  (let ((nfrees (free-params* (module-instance texpr) nil)))
-    (setf (free-parameters texpr) nfrees)
-    (union nfrees frees :test #'eq)))
+  (let ((mi (module-instance texpr)))
+    (unless (resolution mi)
+      (let ((decl (declaration texpr)))
+	(assert (eq (id mi) (id (module decl))))
+	(setf (resolutions mi) (list (mk-resolution (module decl) mi nil)))))
+    (let ((nfrees (free-params* mi nil)))
+      (setf (free-parameters texpr) nfrees)
+      (union nfrees frees :test #'eq))))
 
 (defmethod free-params* ((texpr setsubtype) frees)
   (let ((tfrees (free-params* (formals texpr)
