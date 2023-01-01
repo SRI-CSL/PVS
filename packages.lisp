@@ -7,6 +7,8 @@
 #+:sbcl
 (require :sb-md5)
 #+:sbcl
+(require :sb-cltl2)
+#+:sbcl
 (require :sb-aclrepl)
 
 (eval-when (:execute :load-toplevel)
@@ -1364,7 +1366,7 @@
    #:write-deferred-methods-to-file
    #:write-permission?
    #:write-pvs-version-file
-   #:write-to-temp-file
+   #:write-json-to-temp-file
    #:write-to-temp-file
    #:xmlrpc-output-proofstate
    ;;sb-runtime:*abs-syn-package*
