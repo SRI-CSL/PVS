@@ -2336,6 +2336,6 @@ Sets the default description string for interactive proofs."
   (pvs-busy))
 
 (defun pvs-checker-ready ()
-  (popw)
+  ;;(popw)
   (setq pvs-in-checker nil)
   (pvs-ready))
