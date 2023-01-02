@@ -2642,32 +2642,36 @@ This forms a lattice, and we return the top ones."
 
 (defun formula-or-definition-resolutions (name)
   (let* ((*resolve-error-info* nil)
-	 (reses (append (resolve name 'formula nil)
+	 (pname (if (name? name)
+		    name
+		    (pc-parse name 'name)))
+	 (reses (append (resolve pname 'formula nil)
 			(remove-if #'(lambda (r)
 				       (and (const-decl? (declaration r))
 					    (null (definition (declaration r)))))
-			  (resolve name 'expr nil)))))
+			  (resolve pname 'expr nil)))))
     (or reses
-	(when (simple-name? name)
+	(when (simple-name? pname)
 	  ;; Try to find a case-insensitive match
 	  (map-lhash #'(lambda (id decls)
-			 (when (string-equal id (id name))
+			 (when (string-equal id (id pname))
 			   (dolist (decl decls)
 			     (when (visible? decl)
 			       (cond ((formula-decl? decl)
 				      (let ((*resolve-error-info* nil)) ;; shadow original
 					(setq reses
-					      (nconc (resolve (copy name 'id id)
+					      (nconc (resolve (copy pname 'id id)
 							      'formula nil)
 						     reses))))
 				     ((and (const-decl? decl)
 					   (definition decl))
 				      (let ((*resolve-error-info* nil)) ;; shadow original
 					(setq reses
-					      (nconc (resolve (copy name 'id id)
+					      (nconc (resolve (copy pname 'id id)
 							      'expr nil)
 						     reses)))))))))
-		     (current-declarations-hash)))
+		     (current-declarations-hash))
+	  reses)
 	(resolution-error name 'expr-or-formula nil nil))))
 
 (defun definition-resolutions (name)
