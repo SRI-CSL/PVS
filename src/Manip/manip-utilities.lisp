@@ -645,7 +645,14 @@ undoing proof attempt." just-rule)
   (loop for i from 0 below n collect i))
 
 (defun number-items (items &optional (start 1) (incr 1))
-  (loop for i from start by incr for e in items collect i))
+  ;; SO - SBCL doesn't like this loop when incr is negative; replaced with recursion
+  ;;  (loop for i from start by incr for e in items collect i)
+  (number-items* items start incr nil))
+
+(defun number-items* (items start incr accum)
+  (if (null items)
+      (nreverse accum)
+      (number-items* (cdr items) (+ start incr) incr (cons start accum))))
 
 (defun bag-intersection (a b)
   (cond ((null a) nil)
