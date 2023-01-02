@@ -481,7 +481,7 @@
 	       (pvs-abort))
 	     val)))
 	(t (let* ((prompt (concatenate 'string (protect-format-string msg)
-				       (if full? "(Yes or No) " "(Y or N) ")))
+				       #-sbcl (if full? "(Yes or No) " "(Y or N) ")))
 		  (answer (if full?
 			      (yes-or-no-p prompt)
 			      (y-or-n-p prompt))))
