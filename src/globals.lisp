@@ -32,18 +32,18 @@
 
 ;; shadow
 
-(export '(*pvs-path* *pvs-binary-type*
-	  *boolean* *bound-variables* *current-context* *even_int* *even_nat*
-	  *even_posnat* *even_negint* *false* *generate-all-adt-axioms*
-	  *generate-tccs* *integer* *naturalnumber* *number* *number_field*
-	  *odd_int* *odd_posnat* *odd_negint* *posint* *negint* *posrat*
-	  *negrat* *prelude* *pvs-directories* *pvs-tmp-file* *real*
-	  *show-conversions* *tcc-conditions* *true* *typechecking-module*
-	  *prelude-context* *last-proof* *pvs-lisp-process*))
+;; (export '(*pvs-path* *pvs-binary-type*
+;; 	  *boolean* *bound-variables* *current-context* *even_int* *even_nat*
+;; 	  *even_posnat* *even_negint* *false* *generate-all-adt-axioms*
+;; 	  *generate-tccs* *integer* *naturalnumber* *number* *number_field*
+;; 	  *odd_int* *odd_posnat* *odd_negint* *posint* *negint* *posrat*
+;; 	  *negrat* *prelude* *pvs-directories* *pvs-tmp-file* *real*
+;; 	  *show-conversions* *tcc-conditions* *true* *typechecking-module*
+;; 	  *prelude-context* *last-proof* *pvs-lisp-process*))
 
-(export '(all none))
+;; (export '(all none))
 
-(export '(*abs-syn-package*))
+;; (export '(*abs-syn-package*))
 
 ;; require
 
@@ -406,30 +406,30 @@ rather than the generated declaration.")
 
 (defvar *typecheck-using* nil)
 
-(defun pprint-comment-strings (stream string)
-  (let ((lines (uiop:split-string string :separator "#\newline"))
-	(ccol 1 ;(1+ (excl:stream-line-column stream))
-	      ))
-    (when (and (cdr lines) (integerp ccol) (> ccol 0)
-	       (every #'(lambda (line)
-			  (and (> (length line) ccol)
-			       (= (count #\space line :end ccol) ccol)))
-		      (cdr lines)))
-      (setq lines
-	    (cons (car lines)
-		  (mapcar #'(lambda (line)
-			      (subseq line ccol))
-		    (cdr lines)))))
-    (pprint-logical-block (stream lines :prefix "\"" :suffix "\"")
-      (pprint-indent :block 0)
-      (loop (pprint-exit-if-list-exhausted)
-	    (write (pprint-pop) :stream stream :escape nil :pretty nil
-		   :pprint-dispatch
-		   #-sbcl nil
-		   #+sbcl (sb-pretty::make-pprint-dispatch-table #() nil nil)
-		   )
-	    (pprint-exit-if-list-exhausted)
-	    (pprint-newline :mandatory stream)))))
+;; (defun pprint-comment-strings (stream string)
+;;   (let ((lines (uiop:split-string string :separator "#\newline"))
+;; 	(ccol 1 ;(1+ (excl:stream-line-column stream))
+;; 	      ))
+;;     (when (and (cdr lines) (integerp ccol) (> ccol 0)
+;; 	       (every #'(lambda (line)
+;; 			  (and (> (length line) ccol)
+;; 			       (= (count #\space line :end ccol) ccol)))
+;; 		      (cdr lines)))
+;;       (setq lines
+;; 	    (cons (car lines)
+;; 		  (mapcar #'(lambda (line)
+;; 			      (subseq line ccol))
+;; 		    (cdr lines)))))
+;;     (pprint-logical-block (stream lines :prefix "\"" :suffix "\"")
+;;       (pprint-indent :block 0)
+;;       (loop (pprint-exit-if-list-exhausted)
+;; 	    (write (pprint-pop) :stream stream :escape nil :pretty nil
+;; 		   :pprint-dispatch
+;; 		   #-sbcl nil
+;; 		   #+sbcl (sb-pretty::make-pprint-dispatch-table #() nil nil)
+;; 		   )
+;; 	    (pprint-exit-if-list-exhausted)
+;; 	    (pprint-newline :mandatory stream)))))
 
 (defvar *proof-script-pprint-dispatch*
   (let ((table (copy-pprint-dispatch)))
