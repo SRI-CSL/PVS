@@ -1735,35 +1735,18 @@ field-decls, etc."
 
 (defun get-let-binding-type (bd bindings arg anum)
   (if (declared-type bd)
-      (prog1 (typecheck* (declared-type bd) nil nil nil)
-	     (set-type (declared-type bd) nil))
-      (let ((vdecl (find-if #'(lambda (v)
-				(and (var-decl? v)
-				     (eq (module v) (current-theory))))
-		     (get-declarations (id bd)))))
-	(cond ((and vdecl
-		    (some #'(lambda (ty)
-			      (compatible? (type vdecl) ty))
-			  (types arg)))
-	       (pvs-info "LET/WHERE variable ~a~@[~a~] is given ~
-                          type~%  ~a from a preceding variable declaration."
-		 (id bd)
-		 (when (place bd)
-		   (format nil " at line ~d, col ~d"
-		     (starting-row (place bd)) (starting-col (place bd))))
-		 (type vdecl))
-	       (type vdecl))
-	      (t (let ((type (get-let-binding-type-from-arg
-			      bindings arg anum)))
-		   (pvs-info "LET/WHERE variable ~a~@[~a~] is ~
+      (let ((type (typecheck* (declared-type bd) nil nil nil)))
+	(set-type (declared-type bd) nil)
+	type)
+      (let ((type (get-let-binding-type-from-arg bindings arg anum)))
+	(pvs-info "LET/WHERE variable ~a~@[~a~] is ~
                               given type~%  ~a from its value expression."
-		     (id bd)
-		     (when (place bd)
-		       (format nil " at line ~d, col ~d"
-			 (starting-row (place bd)) (starting-col (place bd))))
-		     type)
-		   type))))))
-		    
+	  (id bd)
+	  (when (place bd)
+	    (format nil " at line ~d, col ~d"
+	      (starting-row (place bd)) (starting-col (place bd))))
+	  type)
+	type)))
 
 (defun get-let-binding-type-from-arg (bindings arg anum)
   (if (or (cdr bindings)
