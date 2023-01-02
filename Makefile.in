@@ -65,16 +65,13 @@ MKDIR = @MKDIR@
 MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
+SBCL = @SBCL@
 TAG = $(PACKAGE)$(VERSION)
 GIT_DESC := $(TAG)-0-g$(shell $(GIT) rev-parse --short HEAD)
 ifeq ($(shell $(GIT) tag -l $(TAG)),)
 SUBVERSION = 0
 else
 SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
-endif
-export QUICKLISP = ~/quicklisp/setup.lisp
-ifeq ("$(wildcard $(QUICKLISP))","")
-$(error "$(QUICKLISP) not found, please install from quicklisp.org, edit the QUICKLISP path in Makefile, or use, e.g., 'make QUICKLISP=~/projects/ql/setup.lisp'")
 endif
 DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)
 DIST_ARCHIVES = $(DISTDIR).tar.gz
@@ -83,7 +80,7 @@ ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_DEVEL_FILES) $(emacs-src) # 
 SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SBCLISP_FILES) $(emacs-src) # $(SOURCE_FILES)
 
 SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
-	pvs pvsio proveit provethem emacs/pvs.xpm emacs/pvslogo.gif \
+	pvs.asd pvs pvsio proveit provethem emacs/pvs.xpm emacs/pvslogo.gif \
 	pvs-tex.sub pvs.sty bin/pvs-platform \
 	$(bindir)/b64 bin/tar-b64-mail Examples \
 	$(wildcard lib/*.pvs lib/*.prf lib/*.help) \
@@ -147,6 +144,9 @@ PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
 export PLATFORM
 
 bindir = $(TARGETPATH)bin/$(PLATFORM)
+ifeq (,$(wildcard $(bindir)))
+$(shell $(MKDIR_P) $(bindir))
+endif
 
 SYSTEM ?= pvs
 
@@ -159,30 +159,12 @@ allegro-rt = $(bindir)/runtime/$(SYSTEM)-allegro
 endif
 endif
 
-ifneq ($(CMULISP_HOME),)
-# Check that CMULISP_HOME looks OK
-CMULISPEXE = $(CMULISP_HOME)/bin/lisp
-ifeq ($(shell if [ -x "$(CMULISPEXE)" ]; then echo OK; fi),OK)
-# CMUVERSION = $(shell $(CMULISP_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
-# $(warning "CMU Version $(CMUVERSION)")
-#cmulisp-devel = $(bindir)/devel/$(SYSTEM)-cmulisp
-cmulisp-rt = $(bindir)/runtime/$(SYSTEM)-cmulisp
-else
-$(error "$(CMULISPEXE) is not executable")
-endif
-endif
-
-ifneq ($(SBCLISP_HOME),)
-# Check that the given SBCLISP_HOME works
-SBCLISPEXE = $(SBCLISP_HOME)/run-sbcl.sh
-ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
-SBCLVERSION = $(shell $(SBCLISPEXE) --version)
+ifneq ($(SBCL),)
+# Check that the given SBCL works
+SBCLVERSION = $(shell $(SBCL) --version)
 # $(warning "$(SBCLVERSION)")
-# sbcl-devel += $(bindir)/devel/$(SYSTEM)-sbclisp
-sbcl-rt = $(bindir)/runtime/$(SYSTEM)-sbclisp
 else
-$(error "$(SBCLISPEXE) is not executable")
-endif
+$(warning "$(SBCL) is not available")
 endif
 
 LOAD-FOREIGN-EXTENSION=so
@@ -380,6 +362,7 @@ pvs-src = src/closopt.lisp \
 	  src/pp.lisp \
           src/pp-tex.lisp \
           src/pp-html.lisp \
+          src/pp-json-ml.lisp \
           src/pp-xml.lisp \
           src/print-object.lisp \
 	  src/equalities.lisp \
@@ -535,17 +518,30 @@ finitesetslib = $(PVSPATH)lib/finite_sets/pvsbin/top.bin
 dist-allegro-gzip = $(GIT_DESC)-$(PLATFORM)-allegro.tgz
 dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
+pvs-registry = ~/.config/common-lisp/source-registry.conf.d/20-pvs.conf
+ifeq (,$(wildcard $(pvs-registry)))
+$(info Creating $(pvs-registry) so ASDF can find pvs.asd)
+$(shell mkdir -p $(dir $(pvs-registry)))
+$(shell echo "(:tree \"$(CURDIR)\")" > $(pvs-registry))
+endif
 
 .PHONY : all devel runtime parser yices emacs prelude-files-and-regions etags
 
 ifneq ($(buildcmds),)
-ifeq ($(SBCLISP_HOME)$(CMULISP_HOME)$(ALLEGRO_HOME),)
-$(error "Must set SBCLISP_HOME, CMULISP_HOME, or ALLEGRO_HOME")
+ifeq ($(SBCL)$(ALLEGRO_HOME),)
+$(error "Must set SBCL, or ALLEGRO_HOME")
 endif
 endif
 
-all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags yices
+all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags
 	@echo $(shell $(GIT) rev-parse HEAD) > git-commit
+
+# This assumes quicklisp is installed in the default directory
+~/quicklisp : quicklisp.lisp
+	$(LISP) --load quicklisp.lisp \
+	     --eval "(quicklisp-quickstart:install)" \
+             --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+             --eval "(quit)"
 
 devel : $(allegro-devel) # $(sbcl-devel) $(cmulisp-devel)
 
@@ -574,74 +570,43 @@ image-deps = $(fileutils) $(bddlib) $(ws1slib) $(pvs-make-files) \
 
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
-$(PVSPATH)yices/$(PLATFORM) :
-	$(MKDIR) $@
-
 YICES1 = $(wildcard yices/$(PLATFORM)/yices-1.*)
 YICES2 = $(wildcard yices/$(PLATFORM)/yices-2.*)
+yices1_ln = $(PVSPATH)bin/$(PLATFORM)/yices1
+yices2_ln = $(PVSPATH)bin/$(PLATFORM)/yices2
 # We're not building yices, just checking if it is in the right place
-ifeq ("$(YICES1)","")
+ifeq ($(YICES1),)
 $(info yices1 is missing.  Download the binaries from http://yices.csl.sri.com/)
 $(info and install in yices/$(PLATFORM).)
 $(info It is not needed to build PVS, only needed for the yices proof rule.)
+else
+ifeq ($(yices1_ln),)
+$(info Linking $(YICES1)/bin/yices to $(PVSPATH)bin/$(PLATFORM)/yices1)
+$(shell ln -s $(YICES1)/bin/yices $(PVSPATH)bin/$(PLATFORM)/yices1)
 endif
-ifeq ("$(YICES2)","")
+endif
+
+ifeq ($(YICES2),)
 $(info yices2 is missing.  Download the binaries from http://yices.csl.sri.com/)
 $(info and install in yices/$(PLATFORM).)
 $(info It is not needed to build PVS, only needed for the yices2 proof rule.)
-endif
-
-ifneq ("$(YICES1)","")
-$(PVSPATH)bin/$(PLATFORM)/yices1 : $(YICES1)
-	(cd $(PVSPATH)bin/$(PLATFORM); \
-	 ln -s ../../$(YICES1)/bin/yices yices1)
-	touch $(YICES1)/bin/yices
-endif
-
-ifneq ("$(YICES2)","")
-$(PVSPATH)bin/$(PLATFORM)/yices2 : $(YICES2)
-	(cd $(PVSPATH)bin/$(PLATFORM); \
-	 ln -s ../../$(YICES2)/bin/yices yices2)
-	touch $(YICES2)/bin/yices
-endif
-
-ifneq ("$(YICES1)","")
-ifneq ("$(YICES2)","")
-yices : $(PVSPATH)bin/$(PLATFORM)/yices1 $(PVSPATH)bin/$(PLATFORM)/yices2
 else
-yices : $(PVSPATH)bin/$(PLATFORM)/yices1
-endif
-else
-ifneq ("$(YICES2)","")
-yices : $(PVSPATH)bin/$(PLATFORM)/yices2
-else
+ifeq ($(yices2_ln),)
+$(shell ln -s $(YICES2)/bin/yices $(PVSPATH)bin/$(PLATFORM)/yices2)
 endif
 endif
 
-# Here are the rules for building the PVS grammar, pvs-methods file, and
-# devel and runtime images.
+# Here are the rules for building PVS using pvs.asd, which does most of the work
 
-ifneq ($(SBCLISP_HOME),)
-
-ifeq ($(ALLEGRO_HOME),) # Build these only if Allegro is not available
-$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
-	@echo "******* Creating parser"
-	$(SBCLISPEXE) --load src/make-pvs-parser
-
-$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
-	$(PVSPATH)src/defcl.lisp \
-	$(PVSPATH)src/classes-expr.lisp \
-	$(PVSPATH)src/classes-decl.lisp
-	@echo "******* Creating pvs-methods.lisp"
-	$(SBCLISPEXE) --eval "(defvar *pvs-path* \"$(PVSPATH)\")" \
-		   --load src/make-pvs-methods.lisp
-endif
+ifneq ($(SBCL),)
+$(PVSPATH)bin/$(PLATFORM)/pvs-sbclisp : $(PVSPATH)/pvs.asd
+	$(SBCL) --eval "(asdf:operate :program-op :pvs)"
 
 # $(sbcl-devel)
 $(sbcl-rt) : $(image-deps) $(sbcllisp)
 	$(MKDIR) -p $(subst $(SYSTEM)-sbclisp,,$@)
 	@echo "******* Compiling PVS files in Steel Bank Common Lisp (SBCL)"
-	$(SBCLISPEXE) --control-stack-size 2000 \
+	$(SBCL) --control-stack-size 2000 \
 		      --dynamic-space-size 2000 \
 		      --eval "(load \"$(QUICKLISP)\")" \
 		      --eval '(load "pvs.system" :verbose t)' \
@@ -650,7 +615,7 @@ $(sbcl-rt) : $(image-deps) $(sbcllisp)
 		      --eval '(quit)'
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	@echo "******* Building PVS image $@"
-	$(SBCLISPEXE) --control-stack-size 4000 \
+	$(SBCL) --control-stack-size 4000 \
 		      --dynamic-space-size 8000 \
 		      --eval "(load \"$(QUICKLISP)\")" \
 		      --eval '(load "pvs.system" :verbose t)' \
@@ -661,7 +626,7 @@ $(sbcl-rt) : $(image-deps) $(sbcllisp)
 				    :executable t \
 				    :save-runtime-options t))"
 	-rm $(PVSPATH)src/BDD/$(PLATFORM)/bdd-sbcl.*
-	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(SBCL) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/BDD/bdd-sbcl.lisp $(PVSPATH)src/BDD/mu-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
@@ -730,22 +695,12 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
                        $(PVSPATH)src/classes-expr.lisp \
                        $(PVSPATH)src/classes-decl.lisp
 	@echo "******* Creating pvs-methods.lisp"
-	$(ALLEGROEXE) -e '(defvar *pvs-path* "@PVSPATH@")' \
+	$(ALLEGROEXE) -e "(load \"$(QUICKLISP)\")" \
 		-L $(PVSPATH)src/make-pvs-methods.lisp
 endif
 
 
-
-.PHONY: all makefileutils makebdd makews1s make-release-notes \
-        clean distclean tar
-
-$(fileutils) makefileutils :
-	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM) XCFLAGS="$(CFLAGS)"
-$(bddlib) makebdd :
-	$(MAKE) -C $(PVSPATH)src/BDD/$(PLATFORM) XCFLAGS="$(CFLAGS)"
-$(ws1slib) makews1s :
-	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
-	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM) XCFLAGS="$(CFLAGS)"
+.PHONY: all make-release-notes clean distclean tar
 
 make-release-notes :
 	$(MAKE) -C $(PVSPATH)doc/release-notes
@@ -845,6 +800,13 @@ distclean :
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
 	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
 	rm -rf autom4te.cache bin/{$(platforms)}
+
+define install-quicklisp
+	@echo Installing quicklisp
+	test -d ~/quicklisp || $(LISP) --load quicklisp.lisp \
+	                       --eval (quicklisp-quickstart:install) \
+                               --eval (ql-util:without-prompting (ql:add-to-init-file))
+endef
 
 define create-distdir
 	@echo Creating $@...

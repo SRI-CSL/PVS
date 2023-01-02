@@ -302,15 +302,22 @@ lib.so and loading it."
 (defun make-pvs-program* (&optional runtime?)
   (format t "~%Making Allegro ~a" (if runtime? "runtime" "devel"))
   (let* ((*pvs-path* (or *pvs-path* (asdf:system-relative-pathname :pvs ".")))
-	 (tmpdir "/tmp/pvs-allegro-build/")
+	 (tmp-dir "/tmp/pvs-allegro-build/")
 	 (platform (pvs-platform))
-	 (builddir (format nil "~a/bin/~a/~a/"
-		     *pvs-path* platform (if runtime? "runtime" "devel"))))
-    (excl:delete-directory-and-files tmpdir :if-does-not-exist :ignore)
-    (format t "~%Calling generate-application for ~a" builddir)
+	 (platform-dir (format nil "~a/bin/~a/" *pvs-path* platform))
+	 (build-dir (format nil "~a~a/"
+		     platform-dir (if runtime? "runtime" "devel"))))
+    ;;(excl:delete-directory-and-files tmp-dir :if-does-not-exist :ignore)
+    (unless (excl:file-directory-p tmp-dir)
+      (excl:make-directory tmp-dir))
+    (unless (excl:file-directory-p platform-dir)
+      (excl:make-directory platform-dir))
+    (unless (excl:file-directory-p build-dir)
+      (excl:make-directory build-dir))
+    (format t "~%Calling generate-application for ~a" tmp-dir)
     (excl:generate-application
      "pvs-allegro"
-     builddir
+     tmp-dir
      (list "src/make-allegro-pvs.lisp")
      :additional-arguments nil
      :additional-forms nil
@@ -369,26 +376,27 @@ lib.so and loading it."
      :temporary-directory "/tmp/"
      :us-government nil
      :verbose t)
-    (format t "~%After generate-application, copying files to ~a" builddir)
+    (format t "~%After generate-application, copying files to ~a" build-dir)
     (let* ((libext #+linux "so" #+macosx "dylib")
 	   (utilslib (format nil "~a/file_utils.~a" platform libext))
 	   (mulib (format nil "~a/mu.~a" platform libext))
 	   (ws1slib (format nil "~a/ws1s.~a" platform libext))
 	   (libacl (format nil "libacli10196s.~a" libext)))
       (uiop:copy-file (format nil "src/utils/~a" utilslib)
-		      (format nil "~a/~a" builddir utilslib))
+		      (format nil "~a/~a" build-dir utilslib))
       (uiop:copy-file (format nil "src/BDD/~a" mulib)
-		      (format nil "~a/~a" builddir mulib))
+		      (format nil "~a/~a" build-dir mulib))
       (uiop:copy-file (format nil "src/WS1S/~a" ws1slib)
-		      (format nil "~a/~a" builddir ws1slib))
-      (uiop:copy-file "~/acl/files.bu" (format nil "~a/files.bu" builddir))
+		      (format nil "~a/~a" build-dir ws1slib))
+      (uiop:copy-file "~/acl/files.bu" (format nil "~a/files.bu" build-dir))
       (uiop:copy-file (concatenate 'string "~/acl/" libacl)
-		      (format nil "~a/libacli10196s.so" builddir)))
-    (format t "~%After copying files to ~a" builddir)))
+		      (format nil "~a/libacli10196s.so" build-dir)))
+    (format t "~%After copying files to ~a" build-dir)))
 
 #+sbcl
 (defun make-pvs-program ()
   (let ((pvs-prog (format nil "~abin/~a/runtime/pvs-sbclisp" *pvs-path* (pvs-platform))))
+    (format t "~%Creating SBCL core image in ~a" pvs-prog)
     (sb-ext::save-lisp-and-die pvs-prog
 			       :toplevel (function startup-pvs)
 			       :executable t

@@ -31,7 +31,7 @@ if test "x$tem" = "x"; then
 fi
 
 dnl This file must exist for configure to run
-AC_CONFIG_SRCDIR([src/pvs.lisp])
+AC_CONFIG_SRCDIR([pvs.asd])
 	
 dnl This sets build, build_cpu, build_vendor, and build_os
 AC_CANONICAL_BUILD
@@ -123,6 +123,13 @@ AC_CHECK_PROG(RM,rm,rm,no)
 if test "$RM" = no ; then
 	AC_MSG_ERROR(Cannot find rm)
 fi
+
+AC_CHECK_PROG(SBCL,sbcl,sbcl,no)
+if test "$SBCL" = no ; then
+	AC_MSG_ERROR(Cannot find sbcl)
+fi
+
+dnl ~/.config/common-lisp/source-registry.conf.d/20-pvs.conf
 
 dnl Get the platform to determine relevant Makefiles to update
 
