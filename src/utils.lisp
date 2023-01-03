@@ -4953,21 +4953,29 @@ space")
 		`(method ,funsym ,@q ,a)))
     (generic-function-methods (symbol-function funsym))))
 
-#+allegro
-(defun generic-function-methods (fun)
-  (mop:generic-function-methods fun))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'generic-function-methods)
+    (defun generic-function-methods (fun)
+      #+allegro (mop:generic-function-methods fun)
+      #+sbcl (sb-mop:generic-function-methods fun))))
 
-#+allegro
-(defun method-specializers (m)
-  (mop:method-specializers m))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'method-specializers)
+    (defun method-specializers (m)
+      #+allegro (mop:method-specializers m)
+      #+sbcl (sb-mop:method-specializers m))))
 
-#+allegro
-(defun slot-definition-name (slot)
-  (mop:slot-definition-name slot))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'slot-definition-name)
+    (defun slot-definition-name (slot)
+      #+allegro (mop:slot-definition-name slot)
+      #+sbcl (sb-mop:slot-definition-name slot))))
 
-#+allegro
-(defun class-slots (x)
-  (mop:class-slots x))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'class-slots)
+    (defun class-slots (x)
+      #+allegro (mop:class-slots x)
+      #+sbcl (sb-mop:class-slots x))))
 
 ;;; equals is like equalp, but is case-sensitive
 (defun equals (x y)
