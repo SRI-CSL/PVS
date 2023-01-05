@@ -23,6 +23,20 @@
 ;; --------------------------------------------------------------------
 
 ;; The asdf file for PVS
+
+;; To find PVS locally, create the file
+;;     ~/.config/common-lisp/source-registry.conf.d/20-pvs.conf
+;; with contents
+;;   (:tree "PVS DIRECTORY")
+
+;; Install quicklisp; let it add the following to your ~/.sbclrc:
+;;  ;;; The following lines added by ql:add-to-init-file:
+;;  #-quicklisp
+;;  (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+;;                                         (user-homedir-pathname))))
+;;    (when (probe-file quicklisp-init)
+;;      (load quicklisp-init)))
+
 ;; Note that this relies on a source-registry, which must be cleared before
 ;; dumping an image using clear-configuration.
 
