@@ -36,6 +36,7 @@ case `uname -s` in
   Linux|FreeBSD) case `uname -m` in
 	   x86_64) arch=ix86_64;;
 	   *86*)   arch=ix86;;
+	   *)      arch=`uname -m`;;
 	 esac
 	 os=Linux;;
   AIX) arch=powerpc-ibm
