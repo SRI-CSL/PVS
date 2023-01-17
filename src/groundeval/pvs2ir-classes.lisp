@@ -167,8 +167,10 @@
 (defcl ir-adt-constructor-recordtype (ir-recordtype)
   constructor-id ir-adt-name)
 
-(defcl ir-fieldtype (ir-type)
-  ir-id ir-ftype)
+(defcl ir-fieldtype (ir-type ir-variable)
+  ir-id);the ir-id is just the field name, whereas the ir-name is the unique declaration name to avoid clashes
+; replace fields ir-id ir-ftype with ir-variable fields ir-name and ir-vtype so field-decls
+;can be used as bound variables.  
 
 (defcl ir-funtype (ir-type)  ;;NSH(4/3/22): Need to handle dependencies in range.
   ir-domain
@@ -241,7 +243,7 @@
   op-defn)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defcl simple-c-type-info ()
-  ir-texpr tname tdefn act-defn);act-defn is the type for the actual for this type.
+  ir-texpr tname tdefn act-defn comment-string);act-defn is the type for the actual for this type.
 
 
 (defcl closure-c-type-info  (simple-c-type-info)
