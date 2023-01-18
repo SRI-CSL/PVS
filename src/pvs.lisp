@@ -781,7 +781,7 @@ use binfiles."
   "Parsing filename gives the new-theories, we check for problems here"
   (check-for-duplicate-theories new-theories)
   (check-for-prelude-theory-clashes new-theories)
-  (check-for-context-theory-clashes new-theories filename forced?))
+  (check-for-context-theory-clashes new-theories (namestring filename) forced?))
 
 (defun check-for-duplicate-theories (new-theories)
   (when (cdr new-theories)
@@ -2352,9 +2352,7 @@ Note that even proved ones get overwritten"
 	     (let* ((ws (get-workspace-session lib-path)))
 	       (and ws
 		    (cdr (gethash filename (pvs-files ws)))))))
-      (let ((fn (if (pathnamep filename)
-		    (pathname-name filename)
-		    filename)))
+      (let ((fn (pathname-name filename)))
 	(or (cdr (gethash fn (current-pvs-files)))
 	    (and (equal fn "prelude")
 		 *prelude-theories*)))))
