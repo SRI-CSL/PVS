@@ -5232,7 +5232,7 @@ and the next method is called with this. Only \formula\" is required."
 	       (get-formula-decl alist))))))
 
 (defun get-formula-decl-alist (fref pos)
-  (let* ((rest (nreverse (uiop:split-string #\# (subseq fref pos))))
+  (let* ((rest (nreverse (uiop:split-string (subseq fref pos) :separator (list #\#))))
 	 ;; file#thry#fmla or file#fmla or fmla
 	 (fmla (car rest))
 	 (thry (when (cddr rest) (cadr rest)))
