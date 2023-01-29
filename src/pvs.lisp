@@ -2437,7 +2437,7 @@ Note that even proved ones get overwritten"
 					       (justification fdecl))))
 				  (not (eq (decision-procedure-used fdecl)
 					   decision-procedure)))
-			  (save-all-proofs (current-theory)))
+			  (save-all-proofs (module fdecl)))
 			;; If the proof status has changed, update the context.
 			(update-context-proof-status fdecl))
 		      (remove-auto-save-proof-file)

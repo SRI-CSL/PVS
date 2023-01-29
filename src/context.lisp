@@ -1565,8 +1565,9 @@ are all the same."
   (unless (or *loading-prelude*
 	      (and theory (from-prelude? theory)))
     (if theory
-	(save-proofs (make-prf-pathname (filename theory))
-		     (cdr (gethash (filename theory) (current-pvs-files))))
+	(with-context theory
+	  (save-proofs (make-prf-pathname (filename theory))
+		       (cdr (gethash (filename theory) (current-pvs-files)))))
 	(maphash #'(lambda (file mods)
 		     (when (some #'has-proof? (cdr mods))
 		       (save-proofs (make-prf-pathname file) (cdr mods))))
@@ -2006,7 +2007,7 @@ Note that the lists might not be the same length."
     (unless (memq cname *pvs-class-names*)
       (push cname *pvs-class-names*)
       (let ((subclasses #+sbcl (sb-mop:class-direct-subclasses class)
-			#-sbcl (class-direct-subclasses class)))
+			#-sbcl (mop:class-direct-subclasses class)))
 	(dolist (subclass subclasses)
 	  (all-subclasses subclass))))))
 
