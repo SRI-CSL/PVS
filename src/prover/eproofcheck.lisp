@@ -481,7 +481,6 @@
 	 (decl (declaration ps))
          (theory (current-theory))
          (file (format nil "~a-~a.sequents" (id theory) (id decl))))
-    (break "dump-sequents-to-file")
     (if (eq (status-flag *top-proofstate*) '!)
         (when (file-exists-p file)
           (delete-file file))
