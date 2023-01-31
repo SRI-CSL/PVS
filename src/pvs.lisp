@@ -224,7 +224,7 @@
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
-      (pvs-xml-rpc:pvs-server :port (parse-integer port))
+      (ignore-errors (pvs-xml-rpc:pvs-server :port (parse-integer port)))
       ;; SO - Moved the following to pvs-server
       ;; M3: When running the server, signals automatically abort to top-level so they
       ;; don't affect the server responsiveness [Sept 2020].
@@ -639,9 +639,10 @@ pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
   (unless *workspace-session* (initialize-workspaces))
-  (with-pvs-file (filename) fileref
+  (with-pvs-file (fname) fileref
     (assert (current-pvs-context))
-    (let* ((*current-file* filename)
+    (let* ((filename (pathname-name fname))
+	   (*current-file* filename)
 	   (file (make-specpath filename))
 	   (theories (get-theories file)))
       (cond ((not (file-exists-p file))
@@ -781,7 +782,7 @@ use binfiles."
   "Parsing filename gives the new-theories, we check for problems here"
   (check-for-duplicate-theories new-theories)
   (check-for-prelude-theory-clashes new-theories)
-  (check-for-context-theory-clashes new-theories (namestring filename) forced?))
+  (check-for-context-theory-clashes new-theories (pathname-name filename) forced?))
 
 (defun check-for-duplicate-theories (new-theories)
   (when (cdr new-theories)
