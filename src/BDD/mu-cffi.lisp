@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; mu-allegro.lisp -- Interface to the Mu-calculus model-checker
+;; mu-cffi.lisp -- Interface to the Mu-calculus model-checker
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PVS
@@ -36,13 +36,13 @@
   )
 ;;; Formula mu_mk_bool_var (char *name)
 (cffi:defcfun (mu_mk_bool_var "mu___mu_mk_bool_var") :pointer
-  )
-;;; Formula mu_check_bool_var
+  (name :string))
+;;; Formula mu___mu_check_mk_bool_var (char *name)
 (cffi:defcfun (mu_check_bool_var "mu___mu_check_bool_var") :pointer
-  (x :pointer))
-;;; Formula mu_check_mk_bool_var
+  (var :string))
+;;; Formula mu___mu_check_mk_bool_var (char *name)
 (cffi:defcfun (mu_check_mk_bool_var "mu___mu_check_mk_bool_var") :pointer
-    (x :pointer))
+    (name :string))
 ;;; Formula mu_mk_ite_formula (Formula cond, Formula then_part, Formula else_part)
 (cffi:defcfun (mu_mk_ite_formula "mu___mu_mk_ite_formula") :pointer
   (cond :pointer)
@@ -113,12 +113,12 @@
   (Next :pointer)
   (S0 :pointer)
   (Inv :pointer))
-;;; Term mu_mk_reach (Term Next, Term S0, Term Inv)
+;;; int mu_mk_rel_var_dcl (char *name)
 (cffi:defcfun (mu_mk_rel_var_dcl "mu___mu_mk_rel_var_dcl") :pointer
-  (name :pointer))
+  (name :string))
 ;;; Term mu_mk_rel_var_dcl (char *name) 
 (cffi:defcfun (mu_mk_rel_var_ "mu___mu_mk_rel_var_") :pointer
-  (name :pointer))
+  (name :string))
 ;;; Term  mu_mk_rel_var_ (char *name)
 (cffi:defcfun (mu_mk_true_term "mu___mu_mk_true_term") :pointer
   )
@@ -148,12 +148,14 @@
 (cffi:defcfun (mu_mk_xor_term "mu___mu_mk_xor_term") :pointer
   (fml1 :pointer)
   (fml2 :pointer))
-;; C source doesn't exist
-(cffi:defcfun (get_bdd_var_id "mu___get_bdd_var_id") :pointer
-  (var :pointer))
 
-(cffi:defcfun (get_mu_bool_var_name "mu___get_mu_bool_var_name") :pointer
-  (bdd_idx :pointer))
+;; C source doesn't exist
+;;(cffi:defcfun (get_bdd_var_id "mu___get_bdd_var_id") :pointer
+;;  (var :pointer))
+
+;; char* mu___get_mu_bool_var_name (bdd_idx)
+(cffi:defcfun (get_mu_bool_var_name "mu___get_mu_bool_var_name") :string
+  (bdd_idx :uint32))
 
 ;;;;;;;;;;;;;;;;;;;
 ;;;  Lists      ;;;
@@ -211,5 +213,5 @@
 (cffi:defcfun (mu_quit "mu___mu_quit") :void
   )
 
-(cffi:defcfun (modelcheck_formula "mu___modelcheck_formula") :unsigned-int
+(cffi:defcfun (modelcheck_formula "mu___modelcheck_formula") :pointer
   (fml :pointer))
