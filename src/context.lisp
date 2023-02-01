@@ -659,7 +659,7 @@ its dependencies."
 
 (defmethod lib-datatype-or-theory? ((mod datatype-or-module))
   (assert (context-path mod))
-  (and (not (equal (context-path mod) *default-pathname-defaults*))
+  (and (not (equalp (context-path mod) *default-pathname-defaults*))
        (not (from-prelude? mod))))
 
 (defmethod lib-datatype-or-theory? ((mod inline-recursive-type))
@@ -1514,11 +1514,13 @@ are all the same."
 ;;; Gives the same proofs
 
 (defun save-all-proofs (&optional theory)
+  (assert (or theory *current-context*))
   (unless (or *loading-prelude*
 	      (and theory (from-prelude? theory)))
     (if theory
-	(save-proofs (make-prf-pathname (filename theory))
-		     (cdr (gethash (filename theory) (current-pvs-files))))
+	(with-context theory
+	  (save-proofs (make-prf-pathname (filename theory))
+		       (cdr (gethash (filename theory) (current-pvs-files)))))
 	(maphash #'(lambda (file mods)
 		     (when (some #'has-proof? (cdr mods))
 		       (save-proofs (make-prf-pathname file) (cdr mods))))
@@ -2313,7 +2315,8 @@ Note that the lists might not be the same length."
 	 (let ((lcar (upcase-symbols (car val)))
 	       (lcdr (upcase-symbols (cdr val))))
 	   (cons lcar lcdr)))
-	((keywordp val) val)
+	((keywordp val)
+	 (intern (string-upcase val) :keyword))
 	((symbolp val)
 	 (read-from-string (string val)))
 	(t val)))
@@ -2593,7 +2596,7 @@ Note that the lists might not be the same length."
 	  (if entry
 	      (setf (cdr entry) fwd)
 	      (push (cons lib fwd) *library-strategy-file-dates*))
-	  (unless (ignore-lisp-errors (load file :verbose nil))
+	  (unless (load file :verbose nil)
 	    (with-open-file (str file :direction :input)
 	      (if *testing-restore*
 		  (load str :verbose t)
