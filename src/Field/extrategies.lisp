@@ -195,7 +195,7 @@
 		    (record-expr? expr))
 	       (let ((prexpr (member (car fons) (assignments expr)
 				     :test #'(lambda (f a)
-					       (string= (id (caar (arguments a))) f)))))
+					       (string-equal (id (caar (arguments a))) f)))))
 		 (when prexpr
 		   (get-expr-from-obj-rec (expression (car prexpr)) (cdr fons))))))
       expr)))
