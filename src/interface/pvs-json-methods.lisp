@@ -321,7 +321,8 @@ Creates a ps-control-info struct to control the interaction.  It has slots
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     ;; process-interrupt interrupts the main pvs process proc, and invokes
     ;; prove-formula
-    (mp:process-interrupt proc #'pvs:prove-formula theory formula rerun?)
+    (mp:process-interrupt
+     proc #'pvs:prove-formula (format nil "~a#~a" theory formula) nil rerun?)
     ;;(format t "~%prove-formula: after process-interrupt, about to wait")
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
     (mp:with-process-lock (lock)
