@@ -828,7 +828,7 @@ place set."
 
 (defmethod pvs-filename ((theory datatype-or-module))
   (namestring
-   (if (lib-datatype-or-theory? theory)
+   (if t ;;(lib-datatype-or-theory? theory)
        (format nil "~a~a" (context-path theory) (filename theory))
        (filename theory))))
 
