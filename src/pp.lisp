@@ -306,8 +306,10 @@ obj - roughly any Lisp entity that's printable, though this specializes to PVS i
 	     (pp obj)))))
 
 (defun str (obj &key char-width)
-  (let ((*unparse-expanded* t))
-    (unparse obj :string t :char-width char-width)))
+  (if (stringp obj)
+      obj
+      (let ((*unparse-expanded* t))
+	(unparse obj :string t :char-width char-width))))
 
 (defun str= (obj string)
   (string= (str obj) string))
