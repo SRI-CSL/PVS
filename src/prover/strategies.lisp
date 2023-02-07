@@ -31,85 +31,85 @@
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
 
-(defun check-formals (formals &optional vars section)
-  "Checks that formals are well-formed:
+  (defun check-formals (formals &optional vars section)
+    "Checks that formals are well-formed:
      {var}*
      [&optional {var | (var initform)}*]
      [&key {var | (var initform)}*]
      [&rest var]
      [&inherit {var | (var :except var+)}*]"
-  (cond ((null formals)
-	 t)
-	((eq (car formals) '&optional)
-	 (if (member '&optional (cdr formals))
-	     (format t "~%'&optional occurs twice")
-	     (check-formals (cdr formals) vars '&optional)))
-	((eq (car formals) '&key)
-	 (cond ((member '&optional (cdr formals))
-		(format t "~%'&optional occurs after '&key"))
-	       ((member '&key (cdr formals))
-		(format t "~%'&key occurs twice"))
-	       (t (check-formals (cdr formals) vars '&key))))
-	((eq (car formals) '&rest)
-	 (cond ((member '&optional (cdr formals))
-		(format t "~%'&optional occurs after '&rest"))
-	       ((member '&key (cdr formals))
-		(format t "~%'&key occurs after '&rest"))
-	       ((member '&rest (cdr formals))
-		(format t "~%'&rest occurs twice"))
-	       ((not (symbolp (cadr formals)))
-		(format t "~%'&rest argument should be a symbol."))
-	       ((member (cadr formals) vars)
-		(format t "~%Duplicate argument symbols"))
-	       (t (check-formals (cddr formals) nil '&rest))))
-	((eq (car formals) '&inherit)
-	 (cond ((member '&optional (cdr formals))
-		(format t "~%'&optional occurs after '&inherit"))
-	       ((member '&key (cdr formals))
-		(format t "~%'&key occurs after '&inherit"))
-	       ((member '&rest (cdr formals))
-		(format t "~%'&rest occurs after '&inherit"))
-	       ((member '&inherit (cdr formals))
-		(format t "~%'&inherit occurs twice."))
-	       (t (if (every #'(lambda (fm)
-				 (or (symbolp fm)
-				     (and (consp fm)
-					  (eq (cadr fm) :except)
-					  (cddr fm)
-					  (every #'symbolp (cddr fm)))))
-			     (cdr formals))
-		      (if (null (cdr formals))
-			  (format t "~%'&inherit has no formals.")
-			  (if (duplicates?
-			       (cdr formals)
-			       :key #'(lambda (fm)
-					(if (consp fm) (car fm) fm)))
-			      (format t "~%'&inherit args duplicated")
-			      t))
-		      (format t "~%'&inherit args must be symbols or of the form~%~
+    (cond ((null formals)
+	   t)
+	  ((eq (car formals) '&optional)
+	   (if (member '&optional (cdr formals))
+	       (format t "~%'&optional occurs twice")
+	       (check-formals (cdr formals) vars '&optional)))
+	  ((eq (car formals) '&key)
+	   (cond ((member '&optional (cdr formals))
+		  (format t "~%'&optional occurs after '&key"))
+		 ((member '&key (cdr formals))
+		  (format t "~%'&key occurs twice"))
+		 (t (check-formals (cdr formals) vars '&key))))
+	  ((eq (car formals) '&rest)
+	   (cond ((member '&optional (cdr formals))
+		  (format t "~%'&optional occurs after '&rest"))
+		 ((member '&key (cdr formals))
+		  (format t "~%'&key occurs after '&rest"))
+		 ((member '&rest (cdr formals))
+		  (format t "~%'&rest occurs twice"))
+		 ((not (symbolp (cadr formals)))
+		  (format t "~%'&rest argument should be a symbol."))
+		 ((member (cadr formals) vars)
+		  (format t "~%Duplicate argument symbols"))
+		 (t (check-formals (cddr formals) nil '&rest))))
+	  ((eq (car formals) '&inherit)
+	   (cond ((member '&optional (cdr formals))
+		  (format t "~%'&optional occurs after '&inherit"))
+		 ((member '&key (cdr formals))
+		  (format t "~%'&key occurs after '&inherit"))
+		 ((member '&rest (cdr formals))
+		  (format t "~%'&rest occurs after '&inherit"))
+		 ((member '&inherit (cdr formals))
+		  (format t "~%'&inherit occurs twice."))
+		 (t (if (every #'(lambda (fm)
+				   (or (symbolp fm)
+				       (and (consp fm)
+					    (eq (cadr fm) :except)
+					    (cddr fm)
+					    (every #'symbolp (cddr fm)))))
+			       (cdr formals))
+			(if (null (cdr formals))
+			    (format t "~%'&inherit has no formals.")
+			    (if (duplicates?
+				 (cdr formals)
+				 :key #'(lambda (fm)
+					  (if (consp fm) (car fm) fm)))
+				(format t "~%'&inherit args duplicated")
+				t))
+			(format t "~%'&inherit args must be symbols or of the form~%~
                                     (symbol :except symbol ...)")))))
-	(t (cond ((symbolp (car formals))
-		  (cond ((eq section '&rest)
-			 (format t "~%Only a single formal allowed after &rest"))
-			((and (memq (car formals) '(type !type))
-			      section)
-			 (format t "~%\"~a\" is not allowed as a variable: ~a"
-			   (car formals) section))
-			((member (car formals) vars)
-			 (format t "~%Duplicate argument symbols"))
-			(t
-			 (check-formals (cdr formals) (cons (car formals) vars)
-					section))))
-		 ((consp (car formals))
-		  (if (member section '(&optional &key))
-		      (if (symbolp (caar formals))
-			  (if (or (null (cdar formals))
-				  (cddar formals))
-			      (format t "~%Optional or key formal lists must be pairs")
-			      (check-formals (cdr formals) (cons (caar formals) vars)
-					     section))
-			  (format t "~%Formals must be symbols or pairs (when optional or keyword)"))
-		      (format t "~%Formals are pairs only when optional or keyword")))))))
+	  (t (cond ((symbolp (car formals))
+		    (cond ((eq section '&rest)
+			   (format t "~%Only a single formal allowed after &rest"))
+			  ((and (memq (car formals) '(type !type))
+				section)
+			   (format t "~%\"~a\" is not allowed as a variable: ~a"
+			     (car formals) section))
+			  ((member (car formals) vars)
+			   (format t "~%Duplicate argument symbols"))
+			  (t
+			   (check-formals (cdr formals) (cons (car formals) vars)
+					  section))))
+		   ((consp (car formals))
+		    (if (member section '(&optional &key))
+			(if (symbolp (caar formals))
+			    (if (or (null (cdar formals))
+				    (cddar formals))
+				(format t "~%Optional or key formal lists must be pairs")
+				(check-formals (cdr formals) (cons (caar formals) vars)
+					       section))
+			    (format t "~%Formals must be symbols or pairs (when optional or keyword)"))
+			(format t "~%Formals are pairs only when optional or keyword")))))))
   
   (defun check-prover-macro-args (name args body doc format)
     (cond ((not (symbolp name))
@@ -125,7 +125,7 @@
 	   (error "Format-string ~a is not a string (in double quotes)."
 		  format)))
     (check-prover-macro-arg-ambiguity name args body)
-    ;(check-prover-macro-inherit-args name args body)
+					;(check-prover-macro-inherit-args name args body)
     )
 
   (defun check-prover-macro-arg-ambiguity (name args body)
@@ -151,7 +151,7 @@
 	  ((and (consp body) (eq (car body) arg))
 	   (format t "~%Should probably rename arg ~a in ~a: ~
                       it appears in the body as a possible strategy~%"
-		  arg name))
+	     arg name))
 	  ((consp body)
 	   (dolist (e body) (check-prover-macro-arg-ambiguity* name arg e)))))
 
@@ -645,26 +645,46 @@
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	;; the defun |(DEFRULE) name| is only there for cross referencing
-	`(defrule* ',name ',args ',body
-		   (format nil "~s :~%    ~a"
-		     (cons ',(makesym "~a/$" name) ',args)
-		     ,doc)
-		   (format nil "~%~a," ,format))
-	`(defrule* ',name ',args
-	   ',body
-	   (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
-	   (format nil "~%~a," ,format)))))
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  ;; the defun |(DEFRULE) name| is only there for cross referencing
+	  `(progn (defun ,(makesym "(DEFRULE) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defrule* ',name ',args ',body
+			    (format nil "~s :~%    ~a"
+			      (cons ',(makesym "~a/$" name) ',args)
+			      ,doc)
+			    (format nil "~%~a," ,format))))
+	`(progn
+	   ;; (defun ,(makesym "(DEFRULE) ~a" name) ,largs
+	   ;;   ,@lbody
+	   ;;   (list ,@largs))
+	   (defrule* ',name ',args
+	     ',body
+	     (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
+	     (format nil "~%~a," ,format))))))
 
 (defmacro defstrat (name args body doc &optional format)
   (check-prover-macro-args name args body doc (or format ""))
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	`(defstrat* ',name ',args ',body
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args)))
+	      )
+	  `(progn #-(or cmu sbcl)
+		  (defun ,(makesym "(defstrat) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defstrat* ',name ',args ',body
 		    (format nil "~s :~%    ~a"
 		      (cons ',(makesym "~a/$" name) ',args)
 		      ,doc)
-		    (format nil "~%~a," ,format))
+		    (format nil "~%~a," ,format))))
 	`(defstrat* ',name ',args
 	   ',body
 	   (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
@@ -674,27 +694,41 @@
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &key &rest &inherit)))
+			 args))))
+	  `(progn (defun ,(makesym "(defstep) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defstep* ',name ',args ',body
+			    (format nil "~s :~%    ~a"
+			      (cons ',(makesym "~a/$" name) ',args)
+			      ,doc)
+			    (format nil "~%~a," ,format))))
 	`(defstep* ',name ',args ',body
 		   (format nil "~s :~%    ~a"
 		     (cons ',(makesym "~a/$" name) ',args)
 		     ,doc)
-		   (format nil "~%~a," ,format))
-	`(defstep* ',name ',args ',body
-	   (format nil "~s :~%    ~a"
-	     (cons ',(makesym "~a/$" name) ',args)
-	     ,doc)
-	   (format nil "~%~a," ,format)))))
+		   (format nil "~%~a," ,format)))))
 
 
 (defmacro defhelper (name args body doc format)
   (check-prover-macro-args name args body doc format)
   (let ((lbody (extract-lisp-exprs-from-strat-body body)))
     (if lbody
-	`(defhelper* ',name ',args ',body
-		     (format nil "~s :~%    ~a"
-		       (cons ',(makesym "~a/$" name) ',args)
-		       ,doc)
-		     (format nil "~%~a," ,format))
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  `(progn (defun ,(makesym "(DEFHELPER) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defhelper* ',name ',args ',body
+			      (format nil "~s :~%    ~a"
+				(cons ',(makesym "~a/$" name) ',args)
+				,doc)
+			      (format nil "~%~a," ,format))))
 	`(defhelper* ',name ',args
 	   ',body
 	   (format nil "~s :~%    ~a"
