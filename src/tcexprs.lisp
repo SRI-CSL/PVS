@@ -1673,7 +1673,7 @@ field-decls, etc."
     (loop while (list-expr? list-ex)
 	  do (let ((elt (args1 list-ex)))
 	       (typecheck* elt elt-type nil nil)
-	       (let ((*generate-tccs* 'all))
+	       (let ((*generate-tccs* 'none))
 		 (set-type elt elt-type))
 	       (cond (cons-ex
 		      ;; We don't typecheck, simply copy from the typechecked cons
@@ -1768,7 +1768,7 @@ field-decls, etc."
 	    (if (fully-instantiated? (car atypes))
 		(let ((carg (typecheck* (copy-untyped arg)
 					(car (types arg)) nil nil)))
-		  (car (judgement-types+ carg)))
+		  (best-judgement-type carg))
 		(car (types arg)))))))
 
 (defun set-dep-projections (projections types)
