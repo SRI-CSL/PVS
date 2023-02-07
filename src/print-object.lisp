@@ -127,7 +127,7 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (let ((*print-escape* nil))
-	(format stream "~@<#<context ~w~@[~w.pvs~]~@[#~w~]~@[.~w~]>~:>"
+	(format stream "~@<#<context ~w~@[~w.pvs~]~@[~_#~w~]~@[~_.~w~]>~:>"
 	  (if (theory ctx)
 	      (context-path (theory ctx))
 	      *default-pathname-defaults*)
@@ -176,7 +176,7 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((obj application-judgement) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<appl-jdgt~_ ~a:~_ ~a: ~a>"
+      (format stream "#<appl-jdgt ~a:~_ ~a: ~a>"
 	(or (id obj) "@") (name obj) (judgement-type obj))))
 
 (defmethod print-object ((obj rec-application-judgement) stream)
