@@ -506,6 +506,7 @@
 	       (pvs-abort))
 	     val)))
 	(t (format t "~?" prompt args)
+	   #+sbcl (terpri)
 	   (read-line))))
 
 ;;;        Returns t, nil, :auto, or aborts
