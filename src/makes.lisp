@@ -1824,30 +1824,14 @@
 
 (defun make!-number-expr (number)
   (assert (typep number 'rational))
-  (if *use-rationals*
-      (if (and (integerp number)
-	       (not (minusp number)))
-	  (make-instance 'number-expr
-	    :number number
-	    :type *real*)
-	  (make-instance 'rational-expr
-	    :number number
-	    :type *real*))
-      (let* ((num (if (minusp number) (- number) number))
-	     (nexpr (if (integerp num)
-			(make-instance 'number-expr
-			  :number num
-			  :type *real*)
-			(make!-application (divides-operator)
-			  (make-instance 'number-expr
-			    :number (numerator num)
-			    :type *real*)
-			  (make-instance 'number-expr
-			    :number (denominator num)
-			    :type *real*)))))
-	(if (minusp number)
-	    (make!-minus nexpr)
-	    nexpr))))
+  (if (and (integerp number)
+	   (not (minusp number)))
+      (make-instance 'number-expr
+	:number number
+	:type (get-expr-number-type number))
+      (make-instance 'rational-expr
+	:number number
+	:type (get-expr-number-type number))))
 
 (defun make!-name-expr (id actuals mod-id res
 			   &optional mappings library target dactuals)
@@ -2371,8 +2355,7 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
-  (if (and *use-rationals*
-	   (rational-expr? ex1)
+  (if (and (rational-expr? ex1)
 	   (rational-expr? ex2))
       (make!-number-expr (+ (number ex1) (number ex2)))
       (make-instance 'infix-application
@@ -2386,8 +2369,7 @@
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
   ;;(assert (eq *generate-tccs* 'none))
-  (if (and *use-rationals*
-	   (rational-expr? ex1)
+  (if (and (rational-expr? ex1)
 	   (rational-expr? ex2))
       (let ((num (- (number ex1) (number ex2))))
 	(make!-number-expr num))
@@ -2399,8 +2381,7 @@
 (defun make!-minus (ex)
   (assert (type ex))
   (assert (tc-eq (find-supertype (type ex)) *number*))
-  (if (and *use-rationals*
-	   (rational-expr? ex))
+  (if (rational-expr? ex)
       (make!-number-expr (- (number ex)))
       (make-instance 'unary-application
 	:operator (minus-operator)
@@ -2412,8 +2393,7 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
-  (if (and *use-rationals*
-	   (rational-expr? ex1)
+  (if (and (rational-expr? ex1)
 	   (rational-expr? ex2))
       (make!-number-expr (* (number ex1) (number ex2)))
       (make-instance 'infix-application
@@ -2426,8 +2406,7 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
-  (if (and *use-rationals*
-	   (rational-expr? ex1)
+  (if (and (rational-expr? ex1)
 	   (rational-expr? ex2)
 	   (not (zerop (number ex2))))
       (make!-number-expr (/ (number ex1) (number ex2)))
