@@ -216,7 +216,7 @@
 				 (list th))
 			       (remove-if-not
 				   #'(lambda (d)
-				       (and (lib-datatype-or-theory? (module d))
+				       (and ;;(lib-datatype-or-theory? (module d))
 					    (file-equal libpath (context-path (module d)))))
 				 adecls))
 			   (type-error name "~a is an unknown library"
