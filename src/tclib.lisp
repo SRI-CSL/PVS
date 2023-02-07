@@ -920,6 +920,9 @@ not a dir: if a valid id
       (let ((th (get-theory mn)))
 	(and th (get-library-path th)))))
 
+(defmethod get-library-path ((ctx context))
+  (get-library-path (theory ctx)))
+
 (defmethod get-library-path (libref)
   (assert (typep libref '(or pathname symbol string)))
   (if (or (null libref) (equal libref "") (equal libref "."))
