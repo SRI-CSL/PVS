@@ -40,7 +40,7 @@
   (format nil "~A~A__" str
 	  (if inc? (incf *manip-gensym-count*) *manip-gensym-count*)))
 
-(defun textify (form) (format nil "~A" form))
+(defun textify (form) (str form))
 
 
 ;;; ------------- Regular expression package functions -------------
