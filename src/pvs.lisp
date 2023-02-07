@@ -663,9 +663,10 @@ pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
   (unless *workspace-session* (initialize-workspaces))
-  (with-pvs-file (filename) fileref
+  (with-pvs-file (fname) fileref
     (assert (current-pvs-context))
-    (let* ((*current-file* filename)
+    (let* ((filename (pathname-name fname))
+	   (*current-file* filename)
 	   (file (make-specpath filename))
 	   (theories (get-theories file)))
       (cond ((not (file-exists-p file))
@@ -878,7 +879,7 @@ where each comment has the form
   "Parsing filename gives the new-theories, we check for problems here"
   (check-for-duplicate-theories new-theories)
   (check-for-prelude-theory-clashes new-theories)
-  (check-for-context-theory-clashes new-theories filename forced?))
+  (check-for-context-theory-clashes new-theories (pathname-name filename) forced?))
 
 (defun check-for-duplicate-theories (new-theories)
   (when (cdr new-theories)
@@ -2543,7 +2544,7 @@ Note that even proved ones get overwritten"
 					       (justification fdecl))))
 				  (not (eq (decision-procedure-used fdecl)
 					   decision-procedure)))
-			  (save-all-proofs (current-theory)))
+			  (save-all-proofs (module fdecl)))
 			;; If the proof status has changed, update the context.
 			(update-context-proof-status fdecl))
 		      (remove-auto-save-proof-file)
