@@ -61,7 +61,7 @@
       (if (subtype? (type obj))
 	  (supertype (type obj))
 	  (type obj))
-      (car (judgement-types+ obj))))
+      (best-judgement-type obj)))
 
 (defmethod lift-constructor-type (obj)
   (type obj))
