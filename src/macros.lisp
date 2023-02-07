@@ -600,13 +600,17 @@ obj may be of type:
   importing: same as a declaration
   :prelude uses the prelude context."
   (let ((eobj (gentemp)))
-    `(let* ((,eobj ,obj)
-	    (*current-context* (cond ((eq ,eobj :prelude)
-				      *prelude-context*)
-				     ((context? ,eobj) ,eobj)
-				     (t (context ,eobj))))
-	    (*generate-tccs* 'all))
-       ,@body)))
+    `(let ((,eobj ,obj))
+       (with-workspace ,eobj
+	 (let* ((*current-context* (cond ((eq ,eobj :prelude)
+					  *prelude-context*)
+					 ((context? ,eobj) ,eobj)
+					 (t (context ,eobj))))
+		(*default-pathname-defaults* (if (theory *current-context*)
+						 (context-path (theory *current-context*))
+						 *default-pathname-defaults*))
+		(*generate-tccs* 'all))
+       ,@body)))))
 
 (defvar *current-declaration-stack* nil)
 
