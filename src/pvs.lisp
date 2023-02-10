@@ -224,7 +224,12 @@
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
-      (ignore-errors (pvs-xml-rpc:pvs-server :port (parse-integer port)))
+      (handler-case (pvs-xml-rpc:pvs-server :port (parse-integer port))
+	(stream-error (err)
+	  (when (and (slot-exists-p err 'string)
+		     (string= (slot-value err 'string) "Address already in use"))
+	    (format t "Port ~a is in use, exiting" port)
+	    (quit! 98)))) ;; EADDRINUSE errno
       ;; SO - Moved the following to pvs-server
       ;; M3: When running the server, signals automatically abort to top-level so they
       ;; don't affect the server responsiveness [Sept 2020].
@@ -4424,3 +4429,9 @@ Returns
   (with-open-file (stream filename :direction :output)
     (loop for line in lines
 	  do (write-line line stream))))
+
+;; VScode-PVS invokes this with "Unbound Value"
+(defmethod all-declarations ((str string))
+  (format t "~%ALL-DECLARATIONS: ~a~%" str)
+  (all-declarations (current-theory)))
+
