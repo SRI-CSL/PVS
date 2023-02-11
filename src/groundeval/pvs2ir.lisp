@@ -785,7 +785,14 @@
 	 (bnd (assoc  decl bindings :key #'declaration)))
     (assert (not (and bnd (const-decl? decl))))
     (if bnd
-	(cdr bnd)
+	(let ((ir-expected-type (pvs2ir-type expected))
+	      (bnd-irvar (cdr bnd)))
+	  (if (ir2c-tequal ir-expected-type (ir-vtype (cdr bnd)))
+	      bnd-irvar
+	    (let ((expected-irvar (mk-ir-variable (new-irvar) ir-expected-type)))
+	      (mk-ir-let expected-irvar
+		       bnd-irvar
+		       expected-irvar))))
       (if (const-decl? decl)
 	  (let* ((formals (formals-sans-usings (module decl)))
 		 (actuals (actuals (module-instance expr)))
@@ -2030,7 +2037,8 @@
   (cond ((consp let-bindings)
 	 (let* ((var1 (car let-bindings))
 		(ir-var (new-irvar))
-		(ir-type (pvs2ir-type (type var1) bindings))
+		(type1 (type var1))
+		(ir-type (pvs2ir-type type1 bindings))
 		(ir-arg-type (pvs2ir-type (type (car args)) bindings))
 		(ir-vartype (mk-ir-variable ir-var ir-type (id var1)));;NSH(1/17/20)
 		(ir-bind-expr (pvs2ir* (car args) bindings nil))
@@ -7141,7 +7149,7 @@
 ;;but as the array grows, the max is double till it reaches the limit of 2^32.
 (defun make-array-new-defn (new-name type-name-root size ir-range)
   (declare (ignore size))
-  (let ((c-range-root  (add-c-type-definition ir-range)))
+  (let ((c-range-root  (add-c-type-definition (ir2c-type ir-range))))
     (if (ir-reference-type? ir-range)
 	(format nil "~a_t ~a(uint32_t size){~%~8T~a_t tmp = (~a_t) safe_malloc(sizeof(struct ~a_s) + (size * sizeof(~a_t)));~%~8Ttmp->count = 1;~%~8Ttmp->size = size;~%~8Ttmp->max = size;~%~8Treturn tmp;}"
 					;~%~8Tsize = ~d;~%~8Tmax = ~d;
@@ -8290,7 +8298,7 @@
     thname))
 
 
-(defun make-c-defn-info (ir pvs-return-type)
+(defun make-c-defn-info (ir pvs-return-type) ;(break "make-c-defn-info")
   (with-slots
 	(ir-function-name ir-return-type ir-args ir-defn) ir
     ;; (when (eq (id decl) 'coef)(break "coef"))
