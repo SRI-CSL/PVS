@@ -240,9 +240,17 @@
   (when pvs:*ps-control-info*
     ;; bad idea: (format t "~%prover-read: about to wait")
     (when (pvs:psinfo-json-result pvs:*ps-control-info*)
-      (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-      (pvs::wait-on-gate  (pvs:psinfo-res-gate pvs:*ps-control-info*)))
-    (pvs::wait-on-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
+      (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+      (mp:process-wait
+       "Waiting for next Proofstate"
+       #'(lambda () (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))))
+    (mp:process-wait
+     "Prover Waiting"
+     #'(lambda ()
+	 (or (and *ps-control-info*
+		  (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
+		  (pvs:psinfo-command pvs:*ps-control-info*))
+	     (excl:read-no-hang-p *terminal-io*))))
     ;;(format t "~%prover-read: done waiting, *ps-control-info* = ~a" *ps-control-info*)
     (when (and pvs:*ps-control-info*
 	       (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*)))
@@ -317,13 +325,11 @@ Creates a ps-control-info struct to control the interaction.  It has slots
 	   :res-gate res-gate
 	   :cmd-gate cmd-gate))
     (pvs::add-prover-input-hook #'request-prover-read)
-    ;;(format t "~%prove-formula: Waiting...~%")
     ;; (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
     ;; process-interrupt interrupts the main pvs process proc, and invokes
     ;; prove-formula
     (mp:process-interrupt
      proc #'pvs:prove-formula (format nil "~a#~a" theory formula) nil rerun?)
-    ;;(format t "~%prove-formula: after process-interrupt, about to wait")
     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
     (mp:with-process-lock (lock)
       (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))

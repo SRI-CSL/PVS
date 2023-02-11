@@ -2596,7 +2596,13 @@ formname is nil, then formref should resolve to a unique name."
   (declare (ignore formname))
   (when *in-checker*
     (pvs-error "Prove-formula error" "Must exit the prover first"))
-  (let ((fdecl (get-formula-decl formref)))
+  (let* ((th (when formname (get-typechecked-theory formname)))
+	 (fdecl (if th
+		    (let ((decl (find formref (all-decls th) :test #'string= :key #'id)))
+		      (if (formula-decl? decl)
+			  decl
+			  (pvs-error "~a not a formula in ~a" formref formname)))
+		    (get-formula-decl formref))))
     (with-workspace (context-path (module fdecl))
       (let* ((strat (when rerun? '(rerun)))
 	     (*please-interrupt* t))
@@ -4431,7 +4437,7 @@ Returns
 	  do (write-line line stream))))
 
 ;; VScode-PVS invokes this with "Unbound Value"
-(defmethod all-declarations ((str string))
-  (format t "~%ALL-DECLARATIONS: ~a~%" str)
+(defmethod all-declarations (x)
+  ;;(format t "~%ALL-DECLARATIONS: ~a~%" x)
   (all-declarations (current-theory)))
 

@@ -2235,6 +2235,13 @@ place set."
 (defmethod all-formulas ((th module))
   (remove-if-not #'formula-decl? (all-decls th)))
 
+(defmethod all-formulas ((adt recursive-type))
+  (append (all-formulas (adt-theory adt))
+	  (when (adt-map-theory adt)
+	    (all-formulas (adt-map-theory adt)))
+	  (when (adt-reduce-theory adt)
+	    (all-formulas (adt-reduce-theory adt)))))
+
 (defmethod formulas-referencing ((ref string))
   (formulas-referencing (intern ref :pvs)))
 

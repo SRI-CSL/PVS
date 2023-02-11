@@ -325,14 +325,18 @@
 
 ;; M3: this function adds the information about the current proofstate to the
 ;;     rpc result. [Sept 2020]
+#+allegro
 (defun update-ps-control-info-result (ps)
   (when (and pvs:*ps-control-info* (not pvs:*in-apply*))
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	   (ps-json (pvs:pvs2json ps)))
       (pvs:xmlrpc-output-proofstate (list ps-json)))
     (when *interrupted-rpc*
-      (pvs::open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
-      (pvs::wait-on-gate (pvs:psinfo-res-gate pvs:*ps-control-info*)))))
+      (mp:open-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+      (mp:process-wait "Waiting for next Proofstate"
+		       #'(lambda () (not (mp:gate-open-p
+					  (pvs:psinfo-res-gate
+					   pvs:*ps-control-info*))))))))
 
 ;; M3: hook for finishing proofstates [Sept 2020].
 (defun finish-proofstate-rpc-hook (ps)
