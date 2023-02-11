@@ -4432,6 +4432,6 @@ Returns
 
 ;; VScode-PVS invokes this with "Unbound Value"
 (defmethod all-declarations ((str string))
-  (format t "~%ALL-DECLARATIONS: ~a~%" str)
+;  (format t "~%ALL-DECLARATIONS: ~a~%" str)
   (all-declarations (current-theory)))
 
