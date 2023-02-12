@@ -659,8 +659,11 @@ its dependencies."
 
 (defmethod lib-datatype-or-theory? ((mod datatype-or-module))
   (assert (context-path mod))
-  (and (not (equalp (context-path mod) *default-pathname-defaults*))
-       (not (from-prelude? mod))))
+  (let ((cur-path (if (current-context)
+		      (context-path (current-theory))
+		      (current-context-path))))
+    (and (not (equalp (context-path mod) cur-path))
+	 (not (from-prelude? mod)))))
 
 (defmethod lib-datatype-or-theory? ((mod inline-recursive-type))
   (assert (adt-theory mod))
