@@ -2242,7 +2242,8 @@
 			 (ndacts (when (dactuals expr)
 				   (mapcar #'copy (dactuals (module-instance nres)))))
 			 #+pvsdebug
-			 (ntype (subst-mod-params* (type expr) modinst bindings)))
+			 (ntype (subst-mod-params* (type expr) modinst bindings))
+			 (infix-op? (memq (id expr) *infix-operators*)))
 		     #+pvsdebug
 		     (assert (or (tc-eq ntype (type nres))
 				 (and (eq (id (declaration nres)) '=)
@@ -2250,8 +2251,8 @@
 				      (tc-eq (find-supertype (car (types (domain ntype))))
 					     (car (types (domain (type nres))))))))
 		     (copy expr
-		       :actuals nacts
-		       :dactuals ndacts
+		       :actuals (unless infix-op? nacts)
+		       :dactuals (unless infix-op? ndacts)
 		       :resolutions (list nres)
 		       :type (type nres)))))))))
 
