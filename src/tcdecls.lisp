@@ -4216,19 +4216,23 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
 						      (eq (id (expr conv)) (id ex))))
 				(current-conversions)))
 	       (new-conv-reses (remove-if #'(lambda (res)
-					      (member res same-id-convs
-						      :key #'(lambda (conv)
-							       (resolution (expr conv)))
-						      :test #'tc-eq))
-				 valid-reses)))
-	  (when (null new-conv-reses)
+						  (member res same-id-convs
+							  :key #'(lambda (conv)
+								   (resolution (expr conv)))
+							  :test #'tc-eq))
+				     valid-reses))
+	       (finst-reses (if (cdr new-conv-reses)
+				(or (remove-if-not #'fully-instantiated? new-conv-reses)
+				    new-conv-reses)
+				new-conv-reses)))
+	  (when (null finst-reses)
 	    (pvs-warning "Conversion ~a ~a is already aavailable"
 	      ex (format nil "(at line ~d, column ~d) "
 		   (starting-row (place ex)) (starting-col (place ex)))))
-	  (cond ((cdr new-conv-reses)
+	  (cond ((cdr finst-reses)
 		 (type-ambiguity ex))
-		(t (setf (resolutions ex) new-conv-reses
-			 (type ex) (type (car new-conv-reses)))))))))
+		(t (setf (resolutions ex) finst-reses
+			 (type ex) (type (car finst-reses)))))))))
 
 (defmethod resolve-conversion-expr ((ex expr))
   ;; ex has been typechecked, but may have ambiguities
