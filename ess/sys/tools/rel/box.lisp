@@ -389,9 +389,10 @@ Dangerous if used unjudiciously, but a necessary backdoor.")
 (defun generate-legal-p (box)
   "Determines if it is legal for the current user to generate a file
 in the given box."
-  (or *system-administration-mode*
-      (member (user-name) (box-maintainers box) :test #'user-equal)
-      (member :all (box-maintainers box))))
+  ;; (or *system-administration-mode*
+  ;;     (member (user-name) (box-maintainers box) :test #'user-equal)
+  ;;     (member :all (box-maintainers box)))
+  )
 
 ;;;
 ;;; *efiletable* maintenance.
@@ -1049,6 +1050,7 @@ for the requested file (argument `output-efile')."
     ;; Here we should have the relevant directory!
     (when (null output-file)
       (setq output-file (efile-name output-efile)))
+    (assert (member ".cache" (pathname-directory output-file) :test #'string=))
     (if (not (generate-legal-p (efile-box output-efile)))
 	(boxwarn "File ~S of box ~S should be regenerated,
 but only ~S are maintainers of the box."
@@ -1178,13 +1180,8 @@ slot of the efile to the full filename.  If current directory and
 previous directory do not coincide, the load-time is reset to 0."
   (cond ((member (efile-name efile) relevant-files :test #'string=) ;; !!!
 	 ;; File exists in relevant directory.
-	 (let ((dir-file (namestring
-			  (merge-pathnames (efile-name efile)
-					   relevant-directory))))
-	   (when (not (string= dir-file (efile-dir-file efile)))
-	     (setf (efile-load-time efile) 0))
-	   (setf (efile-dir-file efile) dir-file)
-	   (efile-date-dir efile)))
+	 (get-efile-dir-file efile relevant-directory)
+	 (efile-date-dir efile))
 	((has-directory-component (efile-name efile))
 	 (box-cerror "Strip off directory."
 		 "Efile ~S has directory component."
@@ -1203,13 +1200,24 @@ previous directory do not coincide, the load-time is reset to 0."
 	|#
 	)
 	(t
-	 ;; File does not exist in relevant directory.	
-	 (setf (efile-dir-file efile)
-	       (namestring (merge-pathnames (efile-name efile)
-					    relevant-directory)))
-	 ;; Hopefully will be written later.
-	 (setf (efile-write-time efile) 0)
-	 0)))
+	 ;; File does not exist in relevant directory.
+	 (get-efile-dir-file efile relevant-directory)
+	 (efile-date-dir efile))))
+
+(defun get-efile-dir-file (efile relevant-directory)
+  (let* ((df (merge-pathnames (efile-name efile) relevant-directory))
+	 (dir-file (namestring
+		    (if (and (efile-suffix efile)
+			     (eq (suffix-key (efile-suffix efile)) :compiled-file))
+			(asdf:apply-output-translations df)
+			df))))
+    (ensure-directories-exist dir-file)
+    (if (null (efile-dir-file efile))
+	(setf (efile-dir-file efile) dir-file)
+	(assert (string= (efile-dir-file efile) dir-file)))
+    (setf (efile-write-time efile)
+	  (if (probe-file dir-file) (file-write-date dir-file) 0))
+    dir-file))
 
 (defun efile-update-dir (efile)
   "Called after a file has supposedly been written and returns the last
@@ -1255,8 +1263,7 @@ an error, if the file has not been written and is therfore suspect."
 			       relevant-files relevant-directory))
 	  (flag-date (efile-flag-time efile)) 
 	  ;; efile-date has side-effect of filling in full filename!
-	  (efile-date (efile-date efile
-				  relevant-files relevant-directory)))
+	  (efile-date (efile-date efile relevant-files relevant-directory)))
       (if compile-date
 	  ;; This means: we are compiling, and there are macro files.
 	  ;; Load macro files, if necessary
@@ -1337,9 +1344,9 @@ Uses function DIR-LIST from file sccs."
 	(when (null path)
 	  (box-cerror (format nil "Give explicit directory name or
  (push \"dir/\" (box-path ~S)) and (retry :search)." (efile-box efile))
-		  "Neither file ~S nor any of its governing files was found
+		      "Neither file ~S nor any of its governing files was found
 in the search path for box ~S with directories ~S."
-		  efile (efile-box efile) (box-path (efile-box efile)))
+		      efile (efile-box efile) (box-path (efile-box efile)))
 	  (format *query-io* "~&Directory (with quotes) : ")
 	  (setq path (list (read *query-io*))))
 	(setq true-dir (directorify (car path)))))))
@@ -1382,8 +1389,8 @@ in the search path for box ~S with directories ~S."
   ;; Also reload if flagged or looking in different directory.
   (if (or (> (efile-write-time efile)
 	     (efile-load-time efile))
-	  (not (string= relevant-directory
-			(directory-namestring (efile-dir-file efile))))
+	  ;; (not (string= relevant-directory
+	  ;; 		(directory-namestring (efile-dir-file efile))))
 	  (> (efile-flag-time efile) (efile-load-time efile)))
       (eload-do efile (efile-eload-opts efile))
       (boxdebug "Not loading efile ~S as file ~S."
@@ -1424,8 +1431,7 @@ in the search path for box ~S with directories ~S."
   (declare (ignore eload-opts))
   ;; Eload-opts are really already attached to the efile during the building
   ;; of the dependency-graph.  Therefore we can ignore them here.
-  (multiple-value-bind
-      (relevant-directory relevant-files)
+  (multiple-value-bind (relevant-directory relevant-files)
       (relevant-directory efile)
     ;; This should no longer be necessary.Thu Dec 29 22:54:45 1988, fp.
     ;;(while-connected-to relevant-directory
@@ -1535,8 +1541,9 @@ Return NIL if the efile was not found."
     (retry-catch :search
       (dolist (dir path)
 	(let ((existent-file (probe-file
-			      (merge-pathnames (efile-name efile)
-					       (directorify dir)))))
+			      (get-efile-dir-file
+			       efile
+			       (merge-pathnames (efile-name efile) (directorify dir))))))
 	  (when existent-file
 	    (if (or (> (file-write-date existent-file)
 		       (efile-load-time efile))
