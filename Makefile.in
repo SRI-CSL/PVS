@@ -66,6 +66,7 @@ MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
 SBCL = @SBCL@
+SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
 TAG = $(PACKAGE)$(VERSION)
 GIT_DESC := $(TAG)-0-g$(shell $(GIT) rev-parse --short HEAD)
 ifeq ($(shell $(GIT) tag -l $(TAG)),)
@@ -600,7 +601,7 @@ endif
 
 ifneq ($(SBCL),)
 $(PVSPATH)bin/$(PLATFORM)/pvs-sbclisp : $(PVSPATH)/pvs.asd
-	$(SBCL) --eval "(asdf:operate :program-op :pvs)"
+	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) --eval "(asdf:operate :program-op :pvs)"
 
 # $(sbcl-devel)
 $(sbcl-rt) : $(image-deps) $(sbcllisp)
