@@ -659,11 +659,11 @@ its dependencies."
 
 (defmethod lib-datatype-or-theory? ((mod datatype-or-module))
   (assert (context-path mod))
-  (let ((cur-path (if (current-context)
-		      (context-path (current-theory))
-		      (current-context-path))))
-    (and (not (equalp (context-path mod) cur-path))
-	 (not (from-prelude? mod)))))
+  (and (not (from-prelude? mod))
+       (let ((cur-path (if (current-context)
+			   (context-path (current-theory))
+			   (current-context-path))))
+	 (not (file-equal (context-path mod) cur-path)))))
 
 (defmethod lib-datatype-or-theory? ((mod inline-recursive-type))
   (assert (adt-theory mod))
@@ -1793,6 +1793,7 @@ are all the same."
 		       'unchecked)))
 	   (remove prf-entry proofs))
 	  (t ;; Decl has no associated proof in file
+	   ;;(pvs-warning "Declaration ~a.~a has no proof" (id (module decl) (id decl) ))
 	   proofs))))
 
 (defmethod make-proof-infos-from-sexp ((decl tcc-decl) prf-entry)
@@ -2309,7 +2310,8 @@ Note that the lists might not be the same length."
 (defun read-case-sensitive (stream &optional eof-value)
   (unless *case-sensitive-readtable*
     (setq *case-sensitive-readtable* (copy-readtable nil))
-    (setf (readtable-case *case-sensitive-readtable*) :preserve))
+    (setf (readtable-case *case-sensitive-readtable*) :preserve)
+    (setf (sb-ext:readtable-normalization *case-sensitive-readtable*) nil))
   (let ((*readtable* *case-sensitive-readtable*))
     (read stream nil eof-value)))
 
