@@ -1012,7 +1012,7 @@
       (nreverse pp-json-ml-args)
       (let* ((ml-arg (pp-json-ml (car args)))
 	     (pp-json-ml-arg (typecase ml-arg
-			 ((or list string symbol number) ml-arg)
+			 ((or list string symbol cl:number vector) ml-arg)
 			 (t (break "pp-json-ml-input-args*: ~s" ml-arg)))))
 	(pp-json-ml-input-args* (cdr args) rule (cons pp-json-ml-arg pp-json-ml-args)))))
 
@@ -1067,3 +1067,53 @@
   (let ((file "/home/owre/CoProver/demos/cmdpred/demo_state.json"))
     (uiop:run-program (format nil "curl --header \"Content-Type: application/json\" --request POST --data @~a http://localhost:7001/query" file)
       :output '(:string :stripped t))))
+
+(defvar *lemmaref-server-available* nil)
+
+(defun use-lemmaref-server ()
+  (push 'lemmaref-hook *proofstate-hooks*))
+
+(defun lemmaref-server-available ()
+  (let ((stat (uiop:run-program
+		  "curl -o /dev/null --silent -Iw '%{http_code}' http://localhost:7111"
+		:output '(:string :stripped t)
+		:ignore-error-status t)))
+    (string= stat "200")))
+
+(defvar *lemmaref-history* nil)
+(defvar *lemmaref-ctr* 0)
+
+(defun lemmaref-hook (ps)
+  (unless *lemmaref-server-available*
+    (setq *lemmaref-server-available* (lemmaref-server-available)))
+  (when (and *lemmaref-server-available*
+	     (not *in-apply*))
+    (if (top-proofstate? ps)
+	(setq *lemmaref-history* nil)
+	(when (parent-proofstate ps)
+	  (setq *lemmaref-history*
+		(nconc *lemmaref-history*
+		       (list (current-input (parent-proofstate ps)))))))
+    (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
+	   (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
+	   (json-ps (pp-json-ml* ps))
+	   (json-state `(("state" . ,json-ps)
+			 ("cmd_history" ,@(mapcar #'(lambda (c) (string (car c)))
+					    (last *lemmaref-history* 3)))))
+	   (js-file (format nil "~aproofstate~d.json"
+		      (namestring (truename (current-context-path)))
+		      (incf *lemmaref-ctr*))))
+      (with-open-file (psjs js-file :direction :output
+			    :if-exists :supersede :if-does-not-exist :create)
+	(json:encode-json-alist json-state psjs))
+      (let* ((curl-cmd (format nil "curl --header \"Content-Type: application/json\" --request POST --data @~a http://localhost:7111/query" js-file))
+	     (lemma-str (uiop:run-program curl-cmd :output '(:string :stripped t))))
+	;;(delete-file js-file)
+	(unless (string= lemma-str "<!doctype html>" :end1 (length "<!doctype html>"))
+	  (let* ((lemmas (json:decode-json-from-string lemma-str))
+		 (suggestions (remove-if-not #'(lambda (lem)
+						 (let ((decls (get-declarations (intern lem :pvs))))
+						   (and decls
+							(not (tcc? (car decls))))))
+				lemmas)))
+	  (format t "~%Suggested lemmas:~% ~a" suggestions)))))))
