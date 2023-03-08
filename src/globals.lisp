@@ -30,27 +30,6 @@
 
 (in-package :pvs)
 
-;; shadow
-
-;; (export '(*pvs-path* *pvs-binary-type*
-;; 	  *boolean* *bound-variables* *current-context* *even_int* *even_nat*
-;; 	  *even_posnat* *even_negint* *false* *generate-all-adt-axioms*
-;; 	  *generate-tccs* *integer* *naturalnumber* *number* *number_field*
-;; 	  *odd_int* *odd_posnat* *odd_negint* *posint* *negint* *posrat*
-;; 	  *negrat* *prelude* *pvs-directories* *pvs-tmp-file* *real*
-;; 	  *show-conversions* *tcc-conditions* *true* *typechecking-module*
-;; 	  *prelude-context* *last-proof* *pvs-lisp-process*))
-
-;; (export '(all none))
-
-;; (export '(*abs-syn-package*))
-
-;; require
-
-;; use-package
-
-;; import
-
 (defvar *files-loaded* nil
   "Keeps track of files that have been loaded using defwrapper/defadvice
 in util.lisp")
@@ -58,8 +37,6 @@ in util.lisp")
 (defvar *loading-files* :other)
 
 (defvar *pvs-path* nil "Set by make process")
-
-;;(defvar *pvs-binary-type* nil "Set by make process")
 
 (defvar *pvs-library-path* nil
   "Set from the PVS_LIBRARY_PATH environment variable + *pvs-path*")
