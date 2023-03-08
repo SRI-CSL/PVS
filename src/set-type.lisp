@@ -2648,6 +2648,7 @@ type of the lhs."
                (not (tc-eq (car res) opres))
 	       (if (fully-instantiated? res)
 		   (or (not (fully-instantiated? opres))
+		       (recursive-defn-conversion? argument)
 		       (strict-compatible? (type (car res)) (type opres)))
 		   (and (not (fully-instantiated? res))
 			(strict-compatible? (type (car res)) (type opres)))))
@@ -2679,12 +2680,16 @@ type of the lhs."
         (if (tuple-expr? arg)
             (mapc #'(lambda (bd a)
                       (unless (declared-type bd)
-                        (let ((btype (best-judgement-type a)))
+                        (let ((btype (if (rational-expr? a)
+					 *real*
+					 (best-judgement-type a))))
                           (unless (tc-eq btype (type bd))
                             (setf (type bd) btype)
                             (push bd reset)))))
                   bindings (exprs arg))
-            (let ((atype (best-judgement-type arg)))
+            (let ((atype (if (rational-expr? arg)
+			     *real*
+			     (best-judgement-type arg))))
               (unless (eq atype (type arg))
                 (mapc #'(lambda (bd aty)
                           (unless (or (declared-type bd)
@@ -2694,7 +2699,9 @@ type of the lhs."
                       bindings (types (find-supertype atype))))))
         (let ((bd (car bindings)))
           (unless (declared-type bd)
-            (let ((btype (best-judgement-type arg)))
+            (let ((btype (if (rational-expr? arg)
+			     *real*
+			     (best-judgement-type arg))))
               (unless (tc-eq (type bd) btype)
                 (setf (type bd) btype)
                 (push bd reset))))))
@@ -4394,7 +4401,9 @@ type of the lhs."
           (mk-recordtype
            (mapcar #'(lambda (a)
                        (let ((fld (caar (arguments a)))
-                             (ty (best-judgement-type (expression a))))
+                             (ty (if (rational-expr? (expression a))
+				     *real*
+				     (best-judgement-type (expression a)))))
                          (mk-field-decl (id fld) ty ty)))
                    ass)
            nil))))
