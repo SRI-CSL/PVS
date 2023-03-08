@@ -460,7 +460,7 @@ nil."
   (let ((*loading-files* :patches))
     (dolist (pfile (append (collect-pvs-patch-files)
 			   (collect-pvs-lisp-files)))
-      (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
+      (let* ((bfile (make-fasl-file-name pfile))
 	     (compile? (and (file-exists-p pfile)
 			    (or (not (file-exists-p bfile))
 				(compiled-file-older-than-source?
@@ -578,8 +578,7 @@ nil."
     (let* ((homedir (truename (user-homedir-pathname)))
 	   (home-lisp-file (make-pathname :defaults homedir
 					  :name ".pvs" :type "lisp"))
-	   (home-fasl-file (make-pathname :defaults homedir
-					  :name ".pvs" :type *pvs-binary-type*)))
+	   (home-fasl-file (make-fasl-file-name home-lisp-file)))
       (when (or (file-exists-p home-lisp-file)
 		(file-exists-p home-fasl-file))
 	home-lisp-file))))
@@ -592,7 +591,7 @@ nil."
 		 :name (format nil "patch~d~@[-~a~]~@[~a~]"
 			 (major-version) ext (pvs-image-suffix))
 		 :type "lisp"))
-	 (bfile (make-pathname :defaults pfile :type *pvs-binary-type*)))
+	 (bfile (make-fasl-file-name pfile)))
     (when (or (file-exists-p pfile)
 	      (file-exists-p bfile))
       (list pfile))))
@@ -2353,7 +2352,7 @@ Note that even proved ones get overwritten"
 (defmethod parsed?* ((mod datatype-or-module))
   (or (memq mod *theories-seen*)
       (let ((prsd? (cond ((from-prelude? mod))
-			 ((lib-datatype-or-theory? mod)
+			 ((not (file-equal (context-path mod) (path (current-workspace))))
 			  (with-workspace (context-path mod)
 			    (parsed?* mod)))
 			 ((generated-by mod)
@@ -2514,49 +2513,49 @@ Note that even proved ones get overwritten"
 		     (null (justification fdecl)))
 		(pvs-message "Formula ~a has no proof to rerun." (id fdecl))
 		(if fdecl
-		    (let ((*current-context* (context fdecl))
-			  (*current-system* (if (member origin '("tccs" "ppe"))
-						'pvs
-						(intern origin :pvs)))
-			  (*start-proof-display* display?)
-			  (ojust (extract-justification-sexp
-				  (justification fdecl)))
-			  (decision-procedure (decision-procedure-used fdecl))
-			  (*justifications-changed?* nil))
-		      (read-strategies-files)
-		      (let ((proof (cond (background?
-					  (pvs-prove-decl fdecl t))
-					 (t (auto-save-proof-setup fdecl)
-					    (prove fdecl
-						   :strategy
-						   (when rerun? '(rerun)))))))
-			(when (typep proof 'proofstate)
-			  (setq *last-proof* proof)))
-		      (unless (or background?
-				  (null (default-proof fdecl)))
-			(setf (interactive? (default-proof fdecl)) t))
+		    (with-context (context fdecl)
+		      (let ((*current-system* (if (member origin '("tccs" "ppe"))
+						  'pvs
+						  (intern origin :pvs)))
+			    (*start-proof-display* display?)
+			    (ojust (extract-justification-sexp
+				    (justification fdecl)))
+			    (decision-procedure (decision-procedure-used fdecl))
+			    (*justifications-changed?* nil))
+			(read-strategies-files)
+			(let ((proof (cond (background?
+					    (pvs-prove-decl fdecl t))
+					   (t (auto-save-proof-setup fdecl)
+					      (prove fdecl
+						     :strategy
+						     (when rerun? '(rerun)))))))
+			  (when (typep proof 'proofstate)
+			    (setq *last-proof* proof)))
+			(unless (or background?
+				    (null (default-proof fdecl)))
+			  (setf (interactive? (default-proof fdecl)) t))
 		      ;; Save the proof if it is different.
-		      (unless (or (equal origin "prelude")
-				  (from-prelude? fdecl))
-			(when (or *justifications-changed?*
-				  (not (equal ojust
-					      (extract-justification-sexp
-					       (justification fdecl))))
-				  (not (eq (decision-procedure-used fdecl)
-					   decision-procedure)))
-			  (save-all-proofs (module fdecl)))
-			;; If the proof status has changed, update the context.
-			(update-context-proof-status fdecl))
-		      (remove-auto-save-proof-file)
-		      (let ((*to-emacs* t))
-			(pvs-locate buffer fdecl
-				    (if (and prelude-offset
-					     (not (zerop prelude-offset)))
-					(vector (- (line-begin place) prelude-offset)
-						(col-begin place)
-						(- (line-end place) prelude-offset)
-						(col-end place))
-					place))))))))))
+			(unless (or (equal origin "prelude")
+				    (from-prelude? fdecl))
+			  (when (or *justifications-changed?*
+				    (not (equal ojust
+						(extract-justification-sexp
+						 (justification fdecl))))
+				    (not (eq (decision-procedure-used fdecl)
+					     decision-procedure)))
+			    (save-all-proofs (module fdecl)))
+			  ;; If the proof status has changed, update the context.
+			  (update-context-proof-status fdecl))
+			(remove-auto-save-proof-file)
+			(let ((*to-emacs* t))
+			  (pvs-locate buffer fdecl
+				      (if (and prelude-offset
+					       (not (zerop prelude-offset)))
+					  (vector (- (line-begin place) prelude-offset)
+						  (col-begin place)
+						  (- (line-end place) prelude-offset)
+						  (col-end place))
+					  place)))))))))))
   ;; This prints nothing - better than "nil"
   ;; Actually causes problems - will look into other solutions
   ;; (unless *noninteractive*
