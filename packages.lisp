@@ -936,7 +936,7 @@
    #:*proofstate-width*
    #:*prover-commentary*
    #:*ps*
-   #:*pvs-binary-type*
+   #:*pvs-fasl-type*
    #:*pvs-buffer-hook*
    #:*pvs-dialog-hook*
    #:*pvs-directories*

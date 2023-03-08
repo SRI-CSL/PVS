@@ -36,7 +36,7 @@
 (in-package :cl-user)
 
 (eval-when (:execute :load-toplevel)
-  ;; This sets *pvs-path* and sets *pvs-binary-type*
+  ;; This sets *pvs-path* and *pvs-fasl-type*
   (load "pvs-config.lisp"))
 
 (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))

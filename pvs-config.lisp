@@ -79,20 +79,6 @@
 
 (in-package :pvs)
 
-;; (eval-when (:execute :compile-toplevel :load-toplevel)
-;;   (defvar *pvs-readtable* (copy-readtable nil))
-;;   (setq *readtable* *pvs-readtable*)
-;;   ;; See https://franz.com/support/documentation/current/doc/implementation.htm#readtable-2
-;;   ;; for this form
-;;   #+allegro
-;;   (setf (third (assoc '*readtable* excl:*cl-default-special-bindings*))
-;; 	'*pvs-readtable*))
-
-;;(in-package :cl-user)
-;;(in-package :pvs)
-
-;;(export '(*pvs-path* *pvs-binary-type* bye))
-
 (defvar *pvs-path*
   (or #+allegro (sys:getenv "PVSPATH")
       #+gcl (si:getenv "PVSPATH")
@@ -100,54 +86,15 @@
       ;; Assume this is loaded while cd'd to the PVS directory 
       (namestring (truename *default-pathname-defaults*))))
 
-;;; The *pvs-binary-type* is used to be able to build PVS under several
-;;; lisps/platforms without rerunning configure each time
+;;; The *pvs-fasl-type* is the default type for fasls, typically "fasl"
 
-(defvar *pvs-binary-type*
-  #+(and allegro sparc) "fasl"		; Sun4
-  #+(and allegro rios) "rfasl"		; PowerPC/RS6000
-  #+(and allegro hpux) "hfasl"		; HP 9000
-  #+(and allegro linux x86) "lfasl"		; Intel x86
-  #+(and allegro linux x86-64) "l64fasl" ; Intel x86_64
-  #+(and allegro macosx powerpc) "mfasl" ; Mac OS X powerpc
-  #+(and allegro macosx x86) "nfasl"	; Mac OS X intel
-  #+(and allegro macosx x86-64) "n64fasl"	; Mac OS X intel x86_64
-  #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
-  #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
-  #+(and lucid rios) "rbin"		; PowerPC/RS6000
-  #+(and lucid mips) "mbin"		; DEC
-    ;;; These are experimental
-  #+gcl "o"
-  #+(and cmu linux) "x86f"
-  #+(and cmu darwin) "ppcf"
-  #+(and cmu solaris) "sparcf"
-  #+(and sbcl x86-64 linux) "fasl"
-  #+(and sbcl (not x86-64) linux) "x86s"
-  #+(and sbcl darwin) "ppcs"
-  #+(and sbcl sparc) "sparcs"
-  #+(and clisp pc386) "clfasl"
-  #+harlequin-common-lisp "wfasl"
-  )
+(defvar *pvs-fasl-type*
+  #+allegro excl:*fasl-default-type*
+  #+sbcl sb-fasl:*fasl-file-type*)
 
 #+allegro
 (eval-when (:load-toplevel :execute)
-  (setq *ignore-package-name-case* t)
-  (setq excl:*fasl-default-type* *pvs-binary-type*)
-  (setq system:*load-search-list*
-	(list #p"" (make-pathname :type *pvs-binary-type*)
-	      #p(:type "cl") #p(:type "lisp"))))
-
-#+cmu
-(eval-when (eval load)
-  (setq extensions:*load-object-types*
-	(remove "fasl" extensions:*load-object-types* :test #'string=))
-  (pushnew *pvs-binary-type* extensions:*load-object-types* :test #'string=)
-  ;;(pushnew *pvs-binary-type* lisp:*load-lp-object-types* :test #'string=)
-  )
-
-#+sbcl
-(eval-when (:execute :load-toplevel)
-  (setq sb-c::*fasl-file-type* *pvs-binary-type*))
+  (setq *ignore-package-name-case* t))
 
 #+allegro
 (setq *cltl1-in-package-compatibility-p* t)
@@ -219,8 +166,9 @@
   (< (file-time file1) (file-time file2)))
 
 (defun compile-file-and-load (file)
-  (let ((src (format nil "~a.lisp" file))
-	(fasl (format nil "~a.~a" file *pvs-binary-type*)))
+  (let* ((src (format nil "~a.lisp" file))
+	 (fasl (asdf/output-translations:apply-output-translations
+		(make-pathname :defaults src :type *pvs-fasl-type*))))
     (when (file-time-lt fasl src)
       (compile-file src))
     (load file)))

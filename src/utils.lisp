@@ -339,15 +339,12 @@ is replaced with replacement."
 
 (defun make-file (file &optional force)
   (let* ((source (make-file-name file))
-	 (bin (make-pathname :type *pvs-binary-type*
-			     :defaults source)))
-    (unless (file-exists-p source)
-      (error "~%File ~a does not exist~%" source))
+	 (fasl (make-fasl-file-name source)))
     (when (or (eq force t)
-	      (and (compiled-file-older-than-source? source bin)
+	      (and (compiled-file-older-than-source? source fasl)
 		   (not (eq force :source))))
-      (compile-file source :output-file bin)
-      (chmod "g+w" bin))
+      (compile-file source :output-file fasl)
+      (chmod "g+w" fasl))
     (if (eq force :source)
 	#+lucid
 	(load source
@@ -355,7 +352,7 @@ is replaced with replacement."
 	      :if-source-newer :load-source)
 	#-lucid
 	(load source)
-	(load bin))))
+	(load fasl))))
 
 (defun make-file-name (file)
   (let* ((dir (pathname-directory file))
@@ -376,6 +373,12 @@ is replaced with replacement."
 		   (return-from make-file-name path))))
 	     (error "File ~a.~a cannot be found in *pvs-directories*"
 		    name type)))))
+
+(defun make-fasl-file-name (file)
+  (unless (file-exists-p file)
+    (error "Source file not found: ~a" file))
+  (let ((path (make-pathname :defaults file :type *pvs-fasl-type*)))
+    (asdf:apply-output-translations path)))
 
 (defun compiled-file-older-than-source? (sourcefile binfile)
   (or (not (file-exists-p binfile))
@@ -5789,6 +5792,61 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 	   (dolist (branch (car strats))
 	     (flatten-proof-script-list (cdr branch))))
 	  (t (flatten-proof-script-list (break "flatten-proof-script-list"))))))
+
+#+sbcl
+(defun dbg ()
+  (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
+
+;; Called with, e.g.,
+;;   (library-proof-diffs "~/nasalib-6.0.9" "~/pvslib-7.1" "proof-diffs.json")
+
+(defun library-proof-diffs (libdir1 libdir2 diff-file)
+  (let ((subdirs1 (uiop:subdirectories libdir1))
+	(subdirs2 (uiop:subdirectories libdir2))
+	(diffs nil))
+    (dolist (sdir1 subdirs1)
+      (let* ((lib (car (last (pathname-directory sdir1))))
+	     (sdir2 (find lib subdirs2 :test #'string=
+			  :key #'(lambda (sd) (car (last (pathname-directory sd)))))))
+	(when sdir2
+	  (format t "~%~a" lib)
+	  (let ((prfiles1 (uiop:directory-files sdir1 "*.prf"))
+		(prfiles2 (uiop:directory-files sdir2 "*.prf")))
+	    (dolist (fprf1 prfiles1)
+	      (unless (string= (pathname-name fprf1) "orphaned-proofs")
+		(let ((fprf2 (find (pathname-name fprf1) prfiles2
+				   :test #'string=
+				   :key #'pathname-name))
+		      (proofs1 nil)
+		      (proofs2 nil))
+		  (when fprf2
+		    (with-open-file (input fprf1 :direction :input)
+		      (setq proofs1 (read-proof-file-stream input)))
+		    (with-open-file (input fprf2 :direction :input)
+		      (setq proofs2 (read-proof-file-stream input)))
+		    (dolist (tprfs1 proofs1)
+		      (let ((tprfs2 (assq (car tprfs1) proofs2)))
+			(when tprfs2
+			  (dolist (dprfs1 (cdr tprfs1))
+			    (let ((dprfs2 (assq (car dprfs1) (cdr tprfs2))))
+			      (when dprfs2
+				(let* ((prf1 (fourth (nth (cadr dprfs1) (cddr dprfs1))))
+				       (prf2 (fourth (nth (cadr dprfs2) (cddr dprfs2))))
+				       (eprf1 (editable-justification prf1))
+				       (eprf2 (editable-justification prf2)))
+				  (unless (equalp eprf1 eprf2)
+				    (let ((diff `(("tag" . "proof-difference")
+						  ("library1" . ,libdir1)
+						  ("library2" . ,libdir2)
+						  ("lib" . ,lib)
+						  ("theory" . ,(string (car tprfs1)))
+						  ("declaration" . ,(string (car dprfs1)))
+						  ("script1" . ,eprf1)
+						  ("script2" . ,eprf2))))
+				      (push diff diffs))))))))))))))))))
+    (with-open-file (df diff-file :direction :output :if-exists :supersede)
+      (json:encode-json diffs df))
+    (format t "~%Found ~a diffferences" (length diffs))))
 
 ;; (defmethod initialize-instance :around ((te type-name) &rest ia)
 ;;   (declare (ignore ia))
