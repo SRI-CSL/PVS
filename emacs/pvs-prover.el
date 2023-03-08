@@ -1367,7 +1367,7 @@ The step-proof command invokes the prover and sets up proof stepping
 through using the edit-proof command."
   (interactive)
   (confirm-not-in-checker)
-  (pushw)
+  ;;(pushw)
   (delete-other-windows)
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
@@ -1387,7 +1387,7 @@ through using the edit-proof command."
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
-	     (popw)
+	     ;;(popw)
 	     (error "%s is not typechecked" fname))))
     (unless pvs-error
       (when (get-buffer "Proof")
