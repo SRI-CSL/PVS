@@ -26,6 +26,9 @@
 (defconstant subst-symb-char     #\$ )
 (alexandria:define-constant all-but-symbols (list all-but-symb all-but-ante all-but-cons)
   :test #'equal)
+(alexandria:define-constant all-but-dict
+    (list (cons all-but-symb '*) (cons all-but-ante '-) (cons all-but-cons '+))
+  :test #'equal)
 (alexandria:define-constant loc-ref-flat-symb   '!  )
 (alexandria:define-constant loc-ref-full-symb   '!! )
 (alexandria:define-constant loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb)
