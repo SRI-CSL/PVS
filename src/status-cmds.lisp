@@ -672,7 +672,7 @@
 			     (mapcar #'fe-id (te-formula-info te))))
 	     (ce-theories ce))))))
 
-(defun show-proofs-theory (theoryref)
+(defun show-proofs-theory (theoryref &optional all?)
   (multiple-value-bind (dir file thname)
       (get-theory-ref theoryref)
     (unless thname
