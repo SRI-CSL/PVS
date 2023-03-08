@@ -423,7 +423,7 @@ lib-path, along with modification dates."
 	   (lfile "pvs-lib.lisp")
 	   (*suppress-printing* t))
       (if (file-exists-p lfile)
-	  (let ((bfile (format nil "pvs-lib.~a" *pvs-binary-type*)))
+	  (let ((bfile (make-fasl-file-name lfile)))
 	    (when (or (not (file-exists-p bfile))
 		      (compiled-file-older-than-source? lfile bfile))
 	      (handler-case
