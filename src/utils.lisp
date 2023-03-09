@@ -377,8 +377,10 @@ is replaced with replacement."
 (defun make-fasl-file-name (file)
   (unless (file-exists-p file)
     (error "Source file not found: ~a" file))
-  (let ((path (make-pathname :defaults file :type *pvs-fasl-type*)))
-    (asdf:apply-output-translations path)))
+  (let* ((path (make-pathname :defaults file :type *pvs-fasl-type*))
+	 (fpath (asdf:apply-output-translations path)))
+    (ensure-directories-exist fpath)
+    fpath))
 
 (defun compiled-file-older-than-source? (sourcefile binfile)
   (or (not (file-exists-p binfile))
@@ -5156,7 +5158,8 @@ space")
 	 :strategies-files (mapcar #'get-file-ref
 			     (cdr (assq :strategies *files-loaded*)))
 	 :pvs-environment-variables (mapcan #'(lambda (var)
-						(let ((val (environment-variable var)))
+						(let ((val (environment-variable
+							    (string var))))
 						  (when val
 						    (list (cons var val)))))
 				      *pvs-environment-variables*)))
