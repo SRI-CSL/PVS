@@ -412,13 +412,9 @@ if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowi
       fi;;
     *) \
       if [ $nobg ] ; then
-        ("$PVSEMACS" $flags -name pvs -xrm "pvs*title:PVS@$HOST
-                                          pvs*iconName:PVS@$HOST" \
-		   $PVSXINIT $pvsemacsinit)
+        ("$PVSEMACS" $flags -name pvs $PVSXINIT $pvsemacsinit)
       else
-        ("$PVSEMACS" $flags -name pvs -xrm "pvs*title:PVS@$HOST
-                                          pvs*iconName:PVS@$HOST" \
-		   $PVSXINIT $pvsemacsinit &)
+        ("$PVSEMACS" $flags -name pvs $PVSXINIT $pvsemacsinit &)
       fi;;
   esac
 elif [ $getversion ]
