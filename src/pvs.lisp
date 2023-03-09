@@ -570,7 +570,7 @@ nil."
 	(when (file-exists-p lfile)
 	  (push lfile lfiles))))
     (let ((ufile (user-pvs-lisp-file)))
-      (when ufile (push ufile lfiles)))
+      (when (file-exists-p ufile) (push ufile lfiles)))
     (nreverse lfiles)))
 
 (defun user-pvs-lisp-file ()
