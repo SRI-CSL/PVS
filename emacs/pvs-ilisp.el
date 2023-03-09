@@ -111,10 +111,12 @@ intervenes."
 ;;; defdialect is defined in ilisp.el
 
 (defvar pvs-initialized nil)
+(defvar pvs-lisp nil)
 
 (defun pvs-init ()
   (setq ilisp-prefix-match t)
-  (cl-case (intern (getenv "PVSLISP"))
+  (setq pvs-lisp (intern (getenv "PVSLISP")))
+  (cl-case pvs-lisp
     (allegro (pvsallegro "pvs" nil))
     (cmulisp (pvscmulisp "pvs" nil))
     (sbclisp (pvssbclisp "pvs" nil))
@@ -1374,6 +1376,8 @@ is emptied."
 	  (setq pvs-in-evaluator nil)
 	  (message "PVS has been reset"))
       (message "PVS is no longer running - exit and start again")))
+
+;;(defvar pvs-in-tcp nil)
   
 (defpvs pvs-interrupt-subjob environment ()
   "Interrupt PVS lisp."
@@ -1383,13 +1387,21 @@ is emptied."
   (unless *pvs-is-garbage*;; PDL nov94 to stop interrupt during gc
     (with-current-buffer (ilisp-buffer)
       (comint-interrupt-subjob)
-      (setq comint-send-queue 
+      ;; (if (and pvs-in-tcp
+      ;; 	       (yes-or-no-p "tcp interrupted: continue with next formula?"))
+      ;; 	  (comint-simple-send (ilisp-process) "(restore)")
+      ;; 	  ;; (cl-case pvs-lisp
+      ;; 	  ;;   (allegro (comint-simple-send (ilisp-process ":reset")))
+      ;; 	  ;;   (sbclisp (comint-simple-send (ilisp-process ":abort"))))
+      ;; 	  (setq pvs-in-tcp nil)
+      (setq comint-send-queue
 	    (list (list nil nil nil 'run "Top Level"
 			nil t nil 0 (cons nil nil)))
 	    comint-end-queue comint-send-queue)
       (set-marker (process-mark (ilisp-process)) (point-max))
       (lisp-pop-to-buffer (ilisp-buffer))
       (goto-char (point-max))))
+  ;;)
   t)
 
 (defun pvs-bury-output ()
