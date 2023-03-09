@@ -7137,7 +7137,7 @@ finite_sets_of_sets[T: TYPE]: THEORY
         powerset_natfun(A)(B1) = powerset_natfun(A)(B2) IMPLIES B1 = B2
 
   powerset_finite: JUDGEMENT
-    powerset(A: finite_set[T]) HAS_TYPE finite_set[set[T]]
+    powerset(A: finite_set[T]) HAS_TYPE finite_set[finite_set[T]]
 
   SS: VAR setofsets[T]
 
