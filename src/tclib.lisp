@@ -427,7 +427,7 @@ lib-path, along with modification dates."
 	    (when (or (not (file-exists-p bfile))
 		      (compiled-file-older-than-source? lfile bfile))
 	      (handler-case
-		  (progn (compile-file lfile)
+		  (progn (compile-file lfile :output-file bfile)
 			 (chmod "ug+w" (namestring bfile)))
 		(error (cnd)
 		  (pvs-message "Compilation error - ~a" cnd)

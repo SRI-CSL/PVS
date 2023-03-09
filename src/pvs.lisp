@@ -488,7 +488,7 @@ nil."
 	    (pathname-name pfile))
 	  (multiple-value-bind (ignore condition)
 	      (ignore-file-errors
-	       (values (compile-file pfile)))
+	       (values (compile-file pfile :output-file bfile)))
 	    (declare (ignore ignore))
 	    (cond (condition
 		   ;; Could be many reasons - permissions, source errors
