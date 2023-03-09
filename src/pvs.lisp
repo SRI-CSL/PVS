@@ -578,7 +578,8 @@ nil."
     (let* ((homedir (truename (user-homedir-pathname)))
 	   (home-lisp-file (make-pathname :defaults homedir
 					  :name ".pvs" :type "lisp"))
-	   (home-fasl-file (make-fasl-file-name home-lisp-file)))
+	   (home-fasl-file (when (file-exists-p home-lisp-file)
+			     (make-fasl-file-name home-lisp-file))))
       (when (or (file-exists-p home-lisp-file)
 		(file-exists-p home-fasl-file))
 	home-lisp-file))))
