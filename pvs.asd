@@ -84,7 +84,8 @@
 	       ;; (generate-ess 'ergolisp 'sb)
 	       (funcall (intern (string :generate-ess) :cl-user)
     			(intern (string :ergolisp) :cl-user)
-			(intern (string :sb) :cl-user))))
+			(intern (string :sb) :cl-user)))
+     )
    (:file "pvs-config" :depends-on ("packages"))
    (:module :pvs-parser
      ;; Makes the pvs-parser if needed; it's loaded in the :language module
@@ -93,14 +94,15 @@
      :components ((:file "ergo-gen-fixes")
 		  ;;(:file "pvs-lang-def")
 		  )
-     :perform (asdf:load-op :after (op c)
-			    ;;(funcall (intern (string :make-pvs-parser) :pvs))
-			    ;; (sb:sb-make :language "pvs" :working-dir "./src/" :unparser? nil)
-			    (funcall (intern (string :sb-make) :sb)
-				     :language "pvs"
-				     :working-dir "./src/"
-				     :unparser? nil)
-			    )
+     :perform (asdf:load-op
+	       :after (op c)
+	       ;;(funcall (intern (string :make-pvs-parser) :pvs))
+	       ;; (sb:sb-make :language "pvs" :working-dir "./src/" :unparser? nil)
+	       (funcall (intern (string :sb-make) :sb)
+			:language "pvs"
+			:working-dir "./src/"
+			:unparser? nil)
+	       )
      ;; :output-files (asdf:load-op (op c)
      ;; 			    (list "pvs-lexer.lisp"
      ;; 				  "pvs-parser.lisp"
@@ -135,7 +137,7 @@
 		  (:file "globals")
 		  (:file "groundeval/eval-macros")
 		  (:file "optimize")
-		  (:file "makes")))
+		  (:file "makes" :depends-on ("macros"))))
    (:module :utils
      :pathname "src/utils"
      :perform (asdf:load-op :before (op c)
@@ -164,7 +166,7 @@
 		  ;;(:file "ergo-tex-fixes")
 		  (:file "pvs-lang-def")
 		  (:file "pvs-lexer")
-		  (:file "pvs-parser")
+		  (:file "pvs-parser" :depends-on ("ergo-runtime-fixes"))
 		  ;;(:file "pvs-unparser")
 		  (:file "pvs-sorts")
 		  (:file "pvs-parse-fixes"))
