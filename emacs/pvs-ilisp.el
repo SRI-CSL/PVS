@@ -223,40 +223,13 @@ intervenes."
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
 (defun pvs-allegro-binary-extension ()
-  (let ((machine (getenv "PVSARCH")))
-    (cond ((string-equal machine "sun4") ; Sun/Solaris
-	   "fasl")
-	  ((string-equal machine "ix86") ; Intel/Linux
-	   "lfasl")
-	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "l64fasl")
-	  ((string-equal machine "powerpc") ; Mac
-	   "mfasl")
-	  (t (error "Machine architecture %s not recognized" machine)))))
+  "fasl")
 
 (defun pvs-cmulisp-binary-extension ()
-  (let ((machine (getenv "PVSARCH")))
-    (cond ((string-equal machine "sun4") ; Sun/Solaris
-	   "sparcf")
-	  ((string-equal machine "ix86") ; Intel/Linux
-	   "x86f")
-	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "x8664s")
-	  ((string-equal machine "powerpc") ; Mac
-	   "ppcf")
-	  (t (error "Machine architecture %s not recognized" machine)))))
+  "fasl")
 
 (defun pvs-sbclisp-binary-extension ()
-  (let ((machine (getenv "PVSARCH")))
-    (cond ((string-equal machine "sun4") ; Sun/Solaris
-	   "sparcs")
-	  ((string-equal machine "ix86") ; Intel/Linux
-	   "x86s")
-	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "x8664s")
-	  ((string-equal machine "powerpc") ; Mac
-	   "ppcs")
-	  (t (error "Machine architecture %s not recognized" machine)))))
+  "fasl")
 
 (defun pvs-comint-init ()
   (setq ilisp-motd nil)
