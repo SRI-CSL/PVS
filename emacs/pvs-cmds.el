@@ -160,6 +160,14 @@ reparsing and retypechecking of the entire importchain."
 	     ))
 	(t (message "PVS file %s does not exist" filename))))
 
+
+;; (defun pvs-in-tcp (fileref) ;; fileref may be useful with multi-threading
+;;   "Intecepts interrupts during TCC proofs in typecheck-prove (tcp)"
+;;   (define-key ilisp-mode-map "\C-c\C-c" 'pvs-interrupt-tcp))
+
+;; (defun pvs-done-with-tcp (fileref)
+;;   (define-key ilisp-mode-map "\C-c\C-c" 'pvs-interrupt-subjob))
+
 ;; (defpvs set-typecheck-mark typecheck (filename)
 ;;   "Sets a mark in the PVS file.  When next typechecked, The file is parsed,
 ;; then typechecked only upto the current mark.  There can be multiple marks,
