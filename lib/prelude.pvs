@@ -5742,7 +5742,7 @@ bytestrings: THEORY
     length_null: LEMMA length(null) = 0
 
     unit(b): bytestring = (# length := 1, seq := (LAMBDA (i : below(1))->byte: b) #)
-    CONVERSION+ bytestrings.unit
+    % CONVERSION+ bytestrings.unit
 
     length_unit: LEMMA length(unit(b)) = 1
 
