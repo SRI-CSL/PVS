@@ -32,12 +32,6 @@
 
 (in-package :pvs)
 
-(export '(exit-pvs parse-file typecheck-file show-tccs clear-theories
-	  formula-decl-to-prove prove-formula proved? get-proof-script
-	  get-formula-decl get-proof-status get-tccs prove-tccs
-	  write-pvs-version-file get-pvs-version-information
-	  get-typechecked-theory rpc-mode-debugger))
-
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
 ;;; batch mode.
@@ -135,26 +129,21 @@
   (setq *print-pretty* t)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  ;; #+(or cmu sbcl)
-  ;; (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
-  ;;   (pushnew exepath *pvs-directories*)
-  ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
-  ;; 		      (format nil "~a/mu.~a" exepath
-  ;; 			      #+darwin "dylib"
-  ;; 			      #-darwin "so"))
-  ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
-  ;; 		      (format nil "~a/ws1s.~a" exepath
-  ;; 			      #+darwin "dylib"
-  ;; 			      #-darwin "so"))
-  ;;   ;; Have no idea what is going on here, but if you leave this out,
-  ;;   ;; bdd-cmu gives a compile error.
-  ;;   #+cmu (fmakunbound 'bdd_cofactor_neg_)
-  ;;   #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
-  ;;   #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
-  ;;   (BDD_bdd_init)
-  ;;   #+allegro
-  ;;   (nlyices-init)
-  ;;   #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
+  #+(or cmu sbcl)
+  (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
+    (pushnew exepath *pvs-directories*)
+    (cffi:load-foreign-library (format nil "~a/file_utils.~a" exepath
+				       #+darwin "dylib"
+				       #-darwin "so"))
+    (cffi:load-foreign-library (format nil "~a/mu.~a" exepath
+				       #+darwin "dylib"
+				       #-darwin "so"))
+    (cffi:load-foreign-library (format nil "~a/ws1s.~a" exepath
+				       #+darwin "dylib"
+				       #-darwin "so"))
+    (BDD_bdd_init)
+    #+allegro
+    (nlyices-init))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
@@ -247,11 +236,11 @@ should be enough."
 	     (error "Bad PVS path: ~a" path)))
 	((let ((evpath (environment-variable "PVSPATH")))
 	   (and evpath
-		(cond ((directory-p evpath))
+		(cond ((uiop:directory-exists-p evpath))
 		      (t (pvs-warning "The environment variable PVSPATH is set to ~a, ~
                                   which does not exist" evpath)
 			 nil)))))
-	((let ((cdir (directory-p (car (uiop:raw-command-line-arguments)))))
+	((let ((cdir (uiop:directory-exists-p (car (uiop:raw-command-line-arguments)))))
 	   ;; We were started as, e.g., bin/ix86_64-Linux/runtime/pvs-allegro
 	   ;; assume the parent of bin is a valid PVS installed directory.
 	   (and cdir (find-pvs-path-from cdir))))
@@ -461,21 +450,21 @@ nil."
     (dolist (pfile (append (collect-pvs-patch-files)
 			   (collect-pvs-lisp-files)))
       (let* ((bfile (make-fasl-file-name pfile))
-	     (compile? (and (file-exists-p pfile)
-			    (or (not (file-exists-p bfile))
+	     (compile? (and (uiop:file-exists-p pfile)
+			    (or (not (uiop:file-exists-p bfile))
 				(compiled-file-older-than-source?
 				 pfile bfile))))
 	     (compilation-error? nil)
 	     (bfile-loaded? nil))
 	(when (and (not compile?)
-		   (file-exists-p bfile))
+		   (uiop:file-exists-p bfile))
 	  ;; Everything looks up-to-date, try loading
 	  (multiple-value-bind (ignore error)
 	      (ignore-errors (load bfile))
 	    (declare (ignore ignore))
 	    (cond (error
 		   ;; Likely due to a different lisp version
-		   (when (file-exists-p pfile)
+		   (when (uiop:file-exists-p pfile)
 		     (setq compile? t))
 		   (pvs-message "Error in loading ~a:~%  ~a"
 		     (shortname bfile) error))
@@ -504,7 +493,7 @@ nil."
 	(when (and (not bfile-loaded?)
 		   compile?
 		   (not compilation-error?)
-		   (file-exists-p bfile))
+		   (uiop:file-exists-p bfile))
 	  ;; Here when we have not loaded the fasl, needed to compile, and
 	  ;; didn't get a compilation error
 	  (pvs-message "Attempting to load compiled patch file ~a"
@@ -519,7 +508,7 @@ nil."
 		     (pushnew pfile *pvs-patches-loaded*
 			      :test #'equalp)))))
 	(unless (or bfile-loaded?
-		    (not (file-exists-p pfile)))
+		    (not (uiop:file-exists-p pfile)))
 	  ;; Haven't loaded the fasl, so we try to load the source
 	  (pvs-message "Loading file ~a interpreted" (shortname pfile))
 	  (multiple-value-bind (ignore error)
@@ -544,7 +533,7 @@ nil."
 
 (defun find-pvs-patch-files (dir)
   (let ((pdir (format nil "~apvs-patches/" dir)))
-    (when (directory-p pdir)
+    (when (uiop:directory-exists-p pdir)
       ;; First get the files
       (let ((pfiles (remove-if (complement #'valid-patch-filename)
 		      (directory (format nil "~a/*.lisp" pdir)))))
@@ -567,10 +556,10 @@ nil."
   (let ((lfiles nil))
     (dolist (dir *pvs-library-path*)
       (let ((lfile (make-pathname :defaults dir :name ".pvs" :type "lisp")))
-	(when (file-exists-p lfile)
+	(when (uiop:file-exists-p lfile)
 	  (push lfile lfiles))))
     (let ((ufile (user-pvs-lisp-file)))
-      (when (file-exists-p ufile) (push ufile lfiles)))
+      (when (uiop:file-exists-p ufile) (push ufile lfiles)))
     (nreverse lfiles)))
 
 (defun user-pvs-lisp-file ()
@@ -578,10 +567,10 @@ nil."
     (let* ((homedir (truename (user-homedir-pathname)))
 	   (home-lisp-file (make-pathname :defaults homedir
 					  :name ".pvs" :type "lisp"))
-	   (home-fasl-file (when (file-exists-p home-lisp-file)
+	   (home-fasl-file (when (uiop:file-exists-p home-lisp-file)
 			     (make-fasl-file-name home-lisp-file))))
-      (when (or (file-exists-p home-lisp-file)
-		(file-exists-p home-fasl-file))
+      (when (or (uiop:file-exists-p home-lisp-file)
+		(uiop:file-exists-p home-fasl-file))
 	home-lisp-file))))
 
 (defun pvs-patch-files-for (ext)
@@ -593,8 +582,8 @@ nil."
 			 (major-version) ext (pvs-image-suffix))
 		 :type "lisp"))
 	 (bfile (make-fasl-file-name pfile)))
-    (when (or (file-exists-p pfile)
-	      (file-exists-p bfile))
+    (when (or (uiop:file-exists-p pfile)
+	      (uiop:file-exists-p bfile))
       (list pfile))))
 
 (defun get-pvs-version-information ()
@@ -615,7 +604,7 @@ nil."
       *pvs-version*))
 
 (defun write-pvs-version-file ()
-  (when (file-exists-p (format nil "~a/.git" *pvs-path*))
+  (when (uiop:file-exists-p (format nil "~a/.git" *pvs-path*))
     (let ((verstr (format nil "~a.~d" *pvs-version* (pvs-git-count-since))))
       (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*)
 			    :direction :output :if-exists :supersede)

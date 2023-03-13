@@ -224,16 +224,16 @@ retypechecked."
 
 (defun save-context (&optional empty quiet?)
   #+pvsdebug
-  (assert (file-equal *default-pathname-defaults* (working-directory))
+  (assert (uiop:file-equal *default-pathname-defaults* (working-directory))
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
               and                      (working-directory) = ~a"
 	  *default-pathname-defaults* (working-directory))
   #+pvsdebug
-  (assert (file-equal *default-pathname-defaults* (current-context-path))
+  (assert (uiop:file-equal *default-pathname-defaults* (current-context-path))
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
               and                   (current-context-path) = ~a"
 	  *default-pathname-defaults* (current-context-path))
-  (if (not (file-exists-p (working-directory)))
+  (if (not (uiop:file-exists-p (working-directory)))
       (pvs-message "Directory ~a seems to have disappeared!"
 	(namestring *default-pathname-defaults*))
       (unless *loading-prelude*
@@ -542,13 +542,14 @@ its dependencies."
 
 (defun create-context-entry (pathname)
   (let ((specpath (make-specpath pathname)))
-    (when (file-exists-p specpath)
+    (when (uiop:file-exists-p specpath)
       (let* ((filename (pvs-filename specpath))
 	     (file-entry (get-context-file-entry filename))
 	     (theories (or (gethash filename (current-pvs-files))
 			   (and file-entry (ce-theories file-entry))))
 	     (prf-file (make-prf-pathname filename))
-	     (proofs-write-date (file-write-time prf-file))
+	     (proofs-write-date (when (uiop:file-exists-p prf-file)
+				  (file-write-date prf-file)))
 	     (fdeps (file-dependencies filename))
 	     (objdate (when file-entry (ce-object-date file-entry)))
 	     (md5sum (md5-file (make-specpath filename))))
@@ -941,7 +942,7 @@ are all the same."
   #+pvsdebug (consistent-workspace-paths)
   (assert ws)
   (let ((ctx-file (merge-pathnames *context-name*)))
-    (if (file-exists-p ctx-file)
+    (if (uiop:file-exists-p ctx-file)
 	(handler-case
 	    (unless (pvs-context ws)
 	      (let ((context (read-context-file ctx-file)))
@@ -1181,7 +1182,7 @@ are all the same."
   (let ((cpath (if *workspace-session*
 		   (path *workspace-session*)
 		   *default-pathname-defaults*)))
-    (if (file-exists-p cpath)
+    (if (uiop:file-exists-p cpath)
 	(shortname cpath)
 	cpath)))
 
@@ -1325,7 +1326,7 @@ are all the same."
 
 (defun get-context-theory-entry* (theoryname file-entries)
   (when file-entries
-    (or (and (file-exists-p (make-specpath (ce-file (car file-entries))))
+    (or (and (uiop:file-exists-p (make-specpath (ce-file (car file-entries))))
 	     (get-context-theory-entry theoryname (car file-entries)))
 	(get-context-theory-entry* theoryname (cdr file-entries)))))
 
@@ -2070,7 +2071,7 @@ Note that the lists might not be the same length."
 
 (defun read-pvs-file-proofs (filename &optional (dir *default-pathname-defaults*))
   (let ((prf-file (make-prf-pathname filename dir)))
-    (when (file-exists-p prf-file)
+    (when (uiop:file-exists-p prf-file)
       (if *proof-file-debug*
 	  (with-open-file (input prf-file :direction :input)
 	    (let ((proofs (read-proof-file-stream input)))
@@ -2454,7 +2455,7 @@ Note that the lists might not be the same length."
   (let ((orph-file (if *loading-prelude*
 		       (format nil "~a/lib/orphaned-proofs.prf" *pvs-path*)
 		       "orphaned-proofs.prf")))
-    (when (file-exists-p orph-file)
+    (when (uiop:file-exists-p orph-file)
       (ignore-file-errors
        (with-open-file (orph orph-file :direction :input)
 	 (let ((proofs nil)

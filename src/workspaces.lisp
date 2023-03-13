@@ -58,10 +58,11 @@ creating a new one if needed.  Error if an existing directory could not be
 found for libref."
   (let ((lib-path (get-library-path libref)))
     (if lib-path
-	(or (let ((ws (find-workspace lib-path)))
-	      (when ws
-		(assert (pvs-context ws))
-		ws))
+	(or (unless *loading-prelude* ; find-workspace causes problems when building SBCL
+	      (let ((ws (find-workspace lib-path)))
+		(when ws
+		  (assert (pvs-context ws))
+		  ws)))
 	    (let ((ws (make-instance 'workspace-session
 			:path lib-path)))
 	      (push ws *all-workspace-sessions*)

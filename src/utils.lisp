@@ -360,22 +360,22 @@ is replaced with replacement."
 	 (type (or (pathname-type file) "lisp")))
     (cond (dir
 	   (let ((path (make-pathname :directory dir :name name :type type)))
-	     (if (file-exists-p path)
+	     (if (uiop:file-exists-p path)
 		 path
 		 (error "File ~a cannot be found" path))))
 	  (t (dolist (dir *pvs-directories*)
-	       (let* ((defaults (or (probe-file (format nil "~a/~a/"
-						  *pvs-path* dir))
-				    (directory-p dir)))
+	       (let* ((defaults (or (uiop:file-exists-p (format nil "~a/~a/"
+							  *pvs-path* dir))
+				    (uiop:directory-exists-p dir)))
 		      (path (make-pathname :name name :type type
 					   :defaults defaults)))
-		 (when (file-exists-p path)
+		 (when (uiop:file-exists-p path)
 		   (return-from make-file-name path))))
 	     (error "File ~a.~a cannot be found in *pvs-directories*"
 		    name type)))))
 
 (defun make-fasl-file-name (file)
-  (unless (file-exists-p file)
+  (unless (uiop:file-exists-p file)
     (error "Source file not found: ~a" file))
   (let* ((path (make-pathname :defaults file :type *pvs-fasl-type*))
 	 (fpath (asdf:apply-output-translations path)))
@@ -383,7 +383,7 @@ is replaced with replacement."
     fpath))
 
 (defun compiled-file-older-than-source? (sourcefile binfile)
-  (or (not (file-exists-p binfile))
+  (or (not (uiop:file-exists-p binfile))
       (file-older binfile sourcefile)))
 
 (defun load-parser-source ()
@@ -485,6 +485,13 @@ is replaced with replacement."
   ;; Fails in comparing "~/foo" to "/home/user/foo" in SBCL
   ;; We don't use truename, as that assumes the paths exist
   (uiop:pathname-equal (uiop:native-namestring p1) (uiop:native-namestring p2)))
+
+#+sbcl
+(defun write-permission? (&optional (file *default-pathname-defaults*))
+  (let ((pfile (uiop:probe-file* file :truename t)))
+    (and pfile
+	 (handler-case (zerop (sb-posix:access pfile sb-posix:w-ok))
+	   (sb-posix:syscall-error () nil)))))
 
 (defun environment-variable (string)
   #+allegro
@@ -4183,6 +4190,15 @@ space")
   (let ((finfo1 (get-file-info file1)))
     (and finfo1
 	 (equal finfo1 (get-file-info file2)))))
+
+#+sbcl
+(defun get-file-info (file)
+  (let ((pfile (uiop:probe-file* file :truename t)))
+    (and pfile
+	 (handler-case
+	     (let ((stat (sb-posix:stat pfile)))
+	       (list (sb-posix:stat-dev stat) (sb-posix:stat-ino stat)))
+	   (sb-posix:syscall-error () nil)))))
 
 (defmethod resolution ((te datatype-subtype))
   (resolution (declared-type te)))

@@ -315,9 +315,8 @@
      :pathname "src/WS1S/lisp"
      :components (#+allegro
 		  (:file "dfa-foreign")
-		  ;; dfa-foreign-cmu not loaded here, as the
-		  ;; resulting image does not work.  See pvs-init.
-		  ;; #+cmu (:file "dfa-foreign-cmu")
+		  #+sbcl
+		  (:file "dfa-foreign-sbcl")
 		  (:file "dfa")
 		  (:file "pvs-utils")
 		  (:file "symtab")

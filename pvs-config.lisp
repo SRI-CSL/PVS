@@ -198,7 +198,9 @@ lib.so and loading it."
   (let* ((mdir (format nil "~a/~a" dir (pvs-platform)))
 	 (foreign-ext #+linux "so" #+(or macosx os-macosx) "dylib")
 	 (make-cmd (format nil "make -C ~a" mdir))
-	 (lib-file (format nil "~a/~a.~a" mdir lib foreign-ext)))
+	 (lib-file (format nil "~a/~a.~a" mdir lib foreign-ext))
+	 (pvsbin-file (format nil "~abin/~a/runtime/~a.~a"
+			*pvs-path* (pvs-platform) lib foreign-ext)))
     (multiple-value-bind (out-str err-str err-code)
 	(uiop:run-program make-cmd
 	  :output '(:string :stripped t)
@@ -208,8 +210,9 @@ lib.so and loading it."
       (unless (zerop err-code)
 	(error "Failure in ~a:~%output:~%~a~%error output:~%~a"
 	       make-cmd out-str err-str))
-      (format t "~% make-in-platform loading ~a" lib-file)
-      (cffi:load-foreign-library lib-file)
+      (uiop:copy-file lib-file pvsbin-file)
+      #+allegro (format t "~% make-in-platform loading ~a" pvsbin-file)
+      #+allegro (cffi:load-foreign-library pvsbin-file)
       )))
 
 (defun finally-do ()
@@ -243,8 +246,9 @@ lib.so and loading it."
 
 #+allegro
 (defun make-pvs-program ()
-  (make-pvs-program* nil)
-  (make-pvs-program* t))
+  ;;(make-pvs-program* nil)
+  (make-pvs-program* t)
+  )
 
 #+allegro
 (defun make-pvs-program* (&optional runtime?)
@@ -252,16 +256,16 @@ lib.so and loading it."
   (let* ((*pvs-path* (or *pvs-path* (asdf:system-relative-pathname :pvs ".")))
 	 (tmp-dir "/tmp/pvs-allegro-build/")
 	 (platform (pvs-platform))
-	 (platform-dir (format nil "~a/bin/~a/" *pvs-path* platform))
+	 (platform-dir (format nil "./bin/~a/" platform))
 	 (build-dir (format nil "~a~a/"
 		     platform-dir (if runtime? "runtime" "devel"))))
     ;;(excl:delete-directory-and-files tmp-dir :if-does-not-exist :ignore)
-    (unless (excl:file-directory-p tmp-dir)
-      (excl:make-directory tmp-dir))
-    (unless (excl:file-directory-p platform-dir)
-      (excl:make-directory platform-dir))
-    (unless (excl:file-directory-p build-dir)
-      (excl:make-directory build-dir))
+    ;; (unless (excl:file-directory-p tmp-dir)
+    ;;   (excl:make-directory tmp-dir))
+    ;; (unless (excl:file-directory-p platform-dir)
+    ;;   (excl:make-directory platform-dir))
+    ;; (unless (excl:file-directory-p build-dir)
+    ;;   (excl:make-directory build-dir))
     (format t "~%Calling generate-application for ~a" tmp-dir)
     (excl:generate-application
      "pvs-allegro"
@@ -270,9 +274,9 @@ lib.so and loading it."
      :additional-arguments nil
      :additional-forms nil
      :additional-plus-arguments nil
-     :allow-existing-directory t ; (not runtime?)
+     :allow-existing-directory (not runtime?)
      :autoload-warning t
-     :build-debug :interactive
+     :build-debug t ;;:interactive
      ;;#-(or macosx x86-64) :aclmalloc-heap-start #-(or macosx x86-64) "2752512K"	;; (/ #xa8000000 1024)
      :case-mode :case-sensitive-lower
      :copy-shared-libraries t ; new
@@ -282,7 +286,6 @@ lib.so and loading it."
      :discard-source-file-info runtime?
      :discard-xref-info runtime?
      :dst t
-     ;; :exit-after-image-build t
      :generate-fonts nil
      :image-only (not runtime?)
      :include-clim nil
@@ -325,27 +328,34 @@ lib.so and loading it."
      :us-government nil
      :verbose t)
     (format t "~%After generate-application, copying files to ~a" build-dir)
-    (let* ((libext #+linux "so" #+macosx "dylib")
-	   (utilslib (format nil "~a/file_utils.~a" platform libext))
-	   (mulib (format nil "~a/mu.~a" platform libext))
-	   (ws1slib (format nil "~a/ws1s.~a" platform libext))
-	   (libacl (format nil "libacli10196s.~a" libext)))
-      (uiop:copy-file (format nil "src/utils/~a" utilslib)
-		      (format nil "~a/~a" build-dir utilslib))
-      (uiop:copy-file (format nil "src/BDD/~a" mulib)
-		      (format nil "~a/~a" build-dir mulib))
-      (uiop:copy-file (format nil "src/WS1S/~a" ws1slib)
-		      (format nil "~a/~a" build-dir ws1slib))
-      (uiop:copy-file "~/acl/files.bu" (format nil "~a/files.bu" build-dir))
-      (uiop:copy-file (concatenate 'string "~/acl/" libacl)
-		      (format nil "~a/libacli10196s.so" build-dir)))
+    (dolist (file (directory (format nil "~a*" tmp-dir)))
+      (let ((dest (format nil "~a/~a" build-dir (file-namestring file))))
+	(format t "~%Copying ~a to ~a" file dest)
+	(ignore-errors (delete-file dest))
+	(sys:copy-file file dest :overwrite t)))
+    (ignore-errors (excl:shell (format nil "rm -f ~a/*" tmp-dir)))
+    ;; (let* ((libext #+linux "so" #+macosx "dylib")
+    ;; 	   (utilslib (format nil "~a/file_utils.~a" platform libext))
+    ;; 	   (mulib (format nil "~a/mu.~a" platform libext))
+    ;; 	   (ws1slib (format nil "~a/ws1s.~a" platform libext))
+    ;; 	   (libacl (format nil "libacli10196s.~a" libext)))
+    ;;   (uiop:copy-file (format nil "src/utils/~a" utilslib)
+    ;; 		      (format nil "~a/~a" build-dir utilslib))
+    ;;   (uiop:copy-file (format nil "src/BDD/~a" mulib)
+    ;; 		      (format nil "~a/~a" build-dir mulib))
+    ;;   (uiop:copy-file (format nil "src/WS1S/~a" ws1slib)
+    ;; 		      (format nil "~a/~a" build-dir ws1slib))
+    ;;   (uiop:copy-file "~/acl/files.bu" (format nil "~a/files.bu" build-dir))
+    ;;   (uiop:copy-file (concatenate 'string "~/acl/" libacl)
+    ;; 		      (format nil "~a/libacli10196s.so" build-dir)))
     (format t "~%After copying files to ~a" build-dir)))
 
 #+sbcl
 (defun make-pvs-program ()
   (let ((pvs-prog (format nil "~abin/~a/runtime/pvs-sbclisp" *pvs-path* (pvs-platform))))
     (format t "~%Creating SBCL core image in ~a" pvs-prog)
-    (sb-ext::save-lisp-and-die pvs-prog
-			       :toplevel (function startup-pvs)
-			       :executable t
-			       :save-runtime-options t)))
+    (sb-ext:save-lisp-and-die pvs-prog
+			      :toplevel (function startup-pvs)
+			      :executable t
+			      ;; :save-runtime-options t
+			      )))

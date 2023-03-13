@@ -43,7 +43,7 @@
 	 (pvs-ctx (format nil "~a/.pvscontext" pvs-lib))
 	 (*loading-prelude* t)
 	 (lib-ws (get-workspace-session pvs-lib)))
-    (when (file-exists-p pvs-ctx)
+    (when (uiop:file-exists-p pvs-ctx)
       (delete-file pvs-ctx))
     (setf (pvs-context lib-ws)
 	  (list *pvs-version* nil '(:default-decision-procedure shostak)))
@@ -224,7 +224,7 @@
 (defun restore-prelude-proofs ()
   (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
 				 "prelude.prf")))
-    (assert (file-exists-p prfile))
+    (assert (uiop:file-exists-p prfile))
     (format t "~%Restoring the prelude proofs from ~a" prfile)
     (let ((proofs (read-pvs-file-proofs prfile)))
       (dolist (theory (core-prelude-theories))
@@ -240,7 +240,7 @@
 (defun restore-pvsio-proofs ()
   (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
 				 "pvsio_prelude.prf")))
-    (assert (file-exists-p prfile))
+    (assert (uiop:file-exists-p prfile))
     (format t "~%Restoring the prelude proofs from ~a" prfile)
     (let ((proofs (read-pvs-file-proofs prfile)))
       (dolist (theory (pvsio-prelude-theories))
@@ -459,9 +459,9 @@ lib-path, along with modification dates."
 
 (defun list-pvs-libraries ()
   (dolist (path *pvs-library-path*)
-    (when (directory-p path)
+    (when (uiop:directory-exists-p path)
       (dolist (lib (directory path))
-	(when (directory-p lib)
+	(when (uiop:directory-exists-p lib)
 	  (format t "~%~a/ - ~a" (file-namestring lib) lib))))))
 
 ;;; id to abspath
@@ -475,7 +475,7 @@ lib-path, along with modification dates."
 (defun get-pvs-library-alist ()
   (let ((alist nil))
     (dolist (path *pvs-library-path*)
-      (if (directory-p path)
+      (if (uiop:directory-exists-p path)
 	  (dolist (sdir (uiop:subdirectories path))
 	    (let* ((subdir (truename sdir))
 		   (dname (or (pathname-name sdir)
@@ -833,8 +833,6 @@ point."
 
 ;;;   3. A libpath, which is an absolute pathname.
 
-(defvar *pvs-lib-path* (directory-p (format nil "~a/lib/" *pvs-path*)))
-
 (defun get-library-reference (libref)
   "Given a libref, attempts to return three values: an absolute lib-path, a
 lib-id, and the origin.  Returns nil if a lib-path cannot be determined.  A
@@ -876,7 +874,7 @@ not a dir: if a valid id
 			       libref))
 		   (t libref)))
 	 (ws (find libref *all-workspace-sessions* :key #'path :test #'equal))
-	 (dirp (if ws libref (directory-p libstr)))    ; directory exists
+	 (dirp (if ws libref (uiop:directory-exists-p libstr)))    ; directory exists
 	 (lib-path (when dirp (merge-pathnames dirp))) ; get the absolute path
 	 (nlibstr (if (char= (char libstr (1- (length libstr))) #\/)
 		      (subseq libstr 0 (1- (length libstr)))
@@ -885,7 +883,7 @@ not a dir: if a valid id
 	 (idstr (if pos (subseq nlibstr (1+ pos)) nlibstr)) ; possible id is after the last '/'
 	 (pid (when (valid-pvs-id* idstr) (intern idstr :pvs)))) ; is it a valid pvs id?
     (cond (dirp
-	   (cond ((equal lib-path *pvs-lib-path*)
+	   (cond ((equal lib-path (uiop:directory-exists-p (format nil "~a/lib/" *pvs-path*)))
 		  (values lib-path nil :prelude))
 		 ((equal lib-path (path *workspace-session*))
 		  (values lib-path nil :current-workspace))
@@ -935,7 +933,7 @@ not a dir: if a valid id
 		     (if (char= (char pstr (1- (length pstr))) #\/)
 			 pstr (format nil "~a/" pstr))))
 	     (estr (when (stringp dstr) (ignore-errors (uiop:native-namestring dstr))))
-	     (dirp (when (and estr (directory-p estr)) (truename estr)))
+	     (dirp (when (and estr (uiop:directory-exists-p estr)) (truename estr)))
 	     (lib-path (when dirp (merge-pathnames dirp))))
 	;; dirp works for both absolute and relative pathnames Note that a
 	;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
