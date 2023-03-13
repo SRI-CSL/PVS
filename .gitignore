@@ -25,7 +25,6 @@ src/pvs-lexer.lisp
 src/pvs-methods.lisp
 src/pvs-parser.lisp
 src/pvs-sorts.lisp
-src/WS1S/mona
 src/nlyices/ix86_64-Linux/
 src/nlyices/ix86-MacOSX/
 src/utils/ix86_64-Linux/b64
