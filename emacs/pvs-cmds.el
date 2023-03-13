@@ -1618,7 +1618,7 @@ underlying Lisp in the minibuffer."
   (string-to-number
    (if pvs-version-information
       (car (string-split ?. (car pvs-version-information)))
-      (car (string-split ?. (pvs-send-and-wait "*pvs-version*" nil nil))))))
+      (car (string-split ?. (pvs-send-and-wait "pvs:*pvs-version*" nil nil))))))
 
 ;;; Replay
 

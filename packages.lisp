@@ -947,6 +947,7 @@
    #:*pvs-path*
    #:*pvs-query-hook*
    #:*pvs-tmp-file*
+   #:*pvs-version*
    #:*pvs-warning-hook*
    #:*pvs-websocket-interface*
    #:*pvs-y-or-n-hook*
