@@ -115,7 +115,7 @@
   ;; Possible we want to use TMPDIR value regardless
   (let ((tmpdir (environment-variable "TMPDIR")))
     (when tmpdir
-      (unless (and (directory-p tmpdir)
+      (unless (and (uiop:directory-exists-p tmpdir)
 		   (write-permission? tmpdir))
 	(pvs-message "environment variable TMPDIR is not a writable directory:~%  ~a"
 	  tmpdir)
@@ -216,10 +216,10 @@
 (defun possible-pvs-path (dir)
   "Simply checks if dir/pvs and dir/bin exist - obviously not fool-proof, but
 should be enough."
-  (let ((path (directory-p dir)))
+  (let ((path (uiop:directory-exists-p dir)))
     (and path
-	 (file-exists-p (concatenate 'string (namestring path) "pvs"))
-	 (directory-p (concatenate 'string (namestring path) "bin"))
+	 (uiop:file-exists-p (concatenate 'string (namestring path) "pvs"))
+	 (uiop:directory-exists-p (concatenate 'string (namestring path) "bin"))
 	 path)))
 
 (defun find-pvs-path-from (dir)
@@ -406,7 +406,7 @@ nil."
 (defun add-library-path (dir)
   (when (string= dir "")
     (setq dir (merge-pathnames #p"lib/" *pvs-path*)))
-  (if (file-exists-p dir)
+  (if (uiop:file-exists-p dir)
       (let ((tdir (truename dir)))
 	(if (member tdir *pvs-library-path* :test #'file-equal)
 	    (pvs-warning "~a is already in your pvs library path")
@@ -598,7 +598,7 @@ nil."
 
 (defun get-pvs-version ()
   "Returns the major.minor.revision form (e.g., 7.0.1078)"
-  (if (file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
+  (if (uiop:file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
       (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*))
 	(read vers))
       *pvs-version*))
