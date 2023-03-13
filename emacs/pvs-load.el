@@ -241,11 +241,12 @@
 (defpvs load-pvs-emacs-patch-files environment ()
   (interactive)
   (let ((pdir (format "%s/pvs-patches" pvs-path)))
-    (dolist (file (directory-files pdir t emacs-lisp-file-regexp))
-      ;; With these args, will byte-compile if needed, and load after
-      ;; file force elc-flag load
-      ;;(pvs-log-log (format "loading %s" file))
-      (byte-recompile-file file nil 0 t))))
+    (when (file-directory-p pdir)
+      (dolist (file (directory-files pdir t emacs-lisp-file-regexp))
+	;; With these args, will byte-compile if needed, and load after
+	;; file force elc-flag load
+	;;(pvs-log-log (format "loading %s" file))
+	(byte-recompile-file file nil 0 t)))))
 
 (defpvs pvs environment ()
   "Starts the PVS process
