@@ -52,8 +52,11 @@
 
 (defun lang-intern (x)
   (intern (if (stringp x)
-	      #+(and allegro (version>= 6)) (string-downcase x)
-	      #-(and allegro (version>= 6)) (string-upcase x)
+	      (if #+allegro (eq excl:*current-case-mode*
+				:case-sensitive-lower)
+		  #-allegro nil
+		  (string-downcase x)
+		  (string-upcase x))
 	      (symbol-name x))
 	  (lang:lang-abs-syn-package *language*)))
 

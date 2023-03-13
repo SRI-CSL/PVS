@@ -907,11 +907,11 @@
       (unless (fully-instantiated? dtype)
 	(type-error (declared-type (car selargs))
 	    "Could not determine the full theory instance"))
-      (let ((type (if (typep dtype 'datatype-subtype)
-		      (pc-typecheck (copy-untyped (declared-type dtype)))
-		      (pc-typecheck (copy-untyped (raise-actuals dtype))))))
-	(setf (declared-type (car selargs)) (or (print-type type) type)
-	      (type (car selargs)) type))
+      (let ((ntype (if (typep dtype 'datatype-subtype)
+		       (pc-typecheck (copy-untyped (declared-type dtype)))
+		       (pc-typecheck (copy-untyped (raise-actuals dtype))))))
+	(setf (declared-type (car selargs)) (or (print-type ntype) ntype)
+	      (type (car selargs)) ntype))
       (assert (fully-instantiated? (declared-type (car selargs))))
       (assert (or (null (type (car selargs)))
 		  (fully-instantiated? (type (car selargs)))))
@@ -1673,7 +1673,7 @@ field-decls, etc."
     (loop while (list-expr? list-ex)
 	  do (let ((elt (args1 list-ex)))
 	       (typecheck* elt elt-type nil nil)
-	       (let ((*generate-tccs* 'all))
+	       (let ((*generate-tccs* 'none))
 		 (set-type elt elt-type))
 	       (cond (cons-ex
 		      ;; We don't typecheck, simply copy from the typechecked cons
@@ -1735,35 +1735,18 @@ field-decls, etc."
 
 (defun get-let-binding-type (bd bindings arg anum)
   (if (declared-type bd)
-      (prog1 (typecheck* (declared-type bd) nil nil nil)
-	     (set-type (declared-type bd) nil))
-      (let ((vdecl (find-if #'(lambda (v)
-				(and (var-decl? v)
-				     (eq (module v) (current-theory))))
-		     (get-declarations (id bd)))))
-	(cond ((and vdecl
-		    (some #'(lambda (ty)
-			      (compatible? (type vdecl) ty))
-			  (types arg)))
-	       (pvs-info "LET/WHERE variable ~a~@[~a~] is given ~
-                          type~%  ~a from a preceding variable declaration."
-		 (id bd)
-		 (when (place bd)
-		   (format nil " at line ~d, col ~d"
-		     (starting-row (place bd)) (starting-col (place bd))))
-		 (type vdecl))
-	       (type vdecl))
-	      (t (let ((type (get-let-binding-type-from-arg
-			      bindings arg anum)))
-		   (pvs-info "LET/WHERE variable ~a~@[~a~] is ~
+      (let ((type (typecheck* (declared-type bd) nil nil nil)))
+	(set-type (declared-type bd) nil)
+	type)
+      (let ((type (get-let-binding-type-from-arg bindings arg anum)))
+	(pvs-info "LET/WHERE variable ~a~@[~a~] is ~
                               given type~%  ~a from its value expression."
-		     (id bd)
-		     (when (place bd)
-		       (format nil " at line ~d, col ~d"
-			 (starting-row (place bd)) (starting-col (place bd))))
-		     type)
-		   type))))))
-		    
+	  (id bd)
+	  (when (place bd)
+	    (format nil " at line ~d, col ~d"
+	      (starting-row (place bd)) (starting-col (place bd))))
+	  type)
+	type)))
 
 (defun get-let-binding-type-from-arg (bindings arg anum)
   (if (or (cdr bindings)
@@ -1782,10 +1765,11 @@ field-decls, etc."
       (let ((atypes (remove-if-not #'fully-instantiated? (types arg))))
 	(if (cdr atypes)
 	    (type-ambiguity arg)
-	    (if (fully-instantiated? (car atypes))
+	    (if (and (fully-instantiated? (car atypes))
+		     (not (coercion? arg)))
 		(let ((carg (typecheck* (copy-untyped arg)
 					(car (types arg)) nil nil)))
-		  (car (judgement-types+ carg)))
+		  (best-judgement-type carg))
 		(car (types arg)))))))
 
 (defun set-dep-projections (projections types)

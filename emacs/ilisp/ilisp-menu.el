@@ -20,7 +20,7 @@
 	 "These ILISP commands are available on the menu:"
 	 '(
 	   ("Break        Interupt current lisp."  
-	    (progn (switch-to-lisp t)
+	    (progn (ilisp-switch-to-lisp t)
 		   (interrupt-subjob-ilisp)))
 	   ("Doc          Menu of commands to get help on variables, etc."
 	    documentation-lisp-command-menu)

@@ -31,10 +31,10 @@
 ; of large conversations with Franz Inc under SPR 23653.  As a non-exported
 ; symbol from excl, it's technically not supported.
 
-(defvar *runtime* nil)
+(defvar *runtime* t)
 
 (defun build-pvs (builddir runtime?)
-  (let ((tmpdir "/tmp/pvs-allegro-build/")
+  (let ((tmpdir "/tmp/pvs-allegro-build2/")
 	(pvspath (or (sys:getenv "PVSPATH") ".")))
     ;;(delete-directory-and-files tmpdir :if-does-not-exist :ignore)
     (setq *pvs-path* nil)
@@ -49,17 +49,15 @@
      :additional-plus-arguments nil
      :allow-existing-directory (not runtime?)
      :autoload-warning t
-     #+(version>= 6) :build-debug #+(version>= 6) t
+     :build-debug t
      ;;#-(or macosx x86-64) :aclmalloc-heap-start #-(or macosx x86-64) "2752512K"	;; (/ #xa8000000 1024)
-     #+(version>= 6) :case-mode #+(version>= 6) :case-sensitive-lower
-     #-(version>= 6) :debug-on-error #-(version>= 6) t
+     :case-mode :case-sensitive-lower
      :discard-arglists nil
      :discard-compiler nil
      :discard-local-name-info nil
      :discard-source-file-info runtime?
      :discard-xref-info runtime?
      :dst t
-     #-(version>= 6) :exit-after-image-build #-(version>= 6) t
      :generate-fonts nil
      :image-only (not runtime?)
      :include-clim nil

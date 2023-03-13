@@ -111,10 +111,12 @@ intervenes."
 ;;; defdialect is defined in ilisp.el
 
 (defvar pvs-initialized nil)
+(defvar pvs-lisp nil)
 
 (defun pvs-init ()
   (setq ilisp-prefix-match t)
-  (cl-case (intern (getenv "PVSLISP"))
+  (setq pvs-lisp (intern (getenv "PVSLISP")))
+  (cl-case pvs-lisp
     (allegro (pvsallegro "pvs" nil))
     (cmulisp (pvscmulisp "pvs" nil))
     (sbclisp (pvssbclisp "pvs" nil))
@@ -221,40 +223,13 @@ intervenes."
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
 (defun pvs-allegro-binary-extension ()
-  (let ((machine (getenv "PVSARCH")))
-    (cond ((string-equal machine "sun4") ; Sun/Solaris
-	   "fasl")
-	  ((string-equal machine "ix86") ; Intel/Linux
-	   "lfasl")
-	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "l64fasl")
-	  ((string-equal machine "powerpc") ; Mac
-	   "mfasl")
-	  (t (error "Machine architecture %s not recognized" machine)))))
+  "fasl")
 
 (defun pvs-cmulisp-binary-extension ()
-  (let ((machine (getenv "PVSARCH")))
-    (cond ((string-equal machine "sun4") ; Sun/Solaris
-	   "sparcf")
-	  ((string-equal machine "ix86") ; Intel/Linux
-	   "x86f")
-	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "x8664s")
-	  ((string-equal machine "powerpc") ; Mac
-	   "ppcf")
-	  (t (error "Machine architecture %s not recognized" machine)))))
+  "fasl")
 
 (defun pvs-sbclisp-binary-extension ()
-  (let ((machine (getenv "PVSARCH")))
-    (cond ((string-equal machine "sun4") ; Sun/Solaris
-	   "sparcs")
-	  ((string-equal machine "ix86") ; Intel/Linux
-	   "x86s")
-	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "x8664s")
-	  ((string-equal machine "powerpc") ; Mac
-	   "ppcs")
-	  (t (error "Machine architecture %s not recognized" machine)))))
+  "fasl")
 
 (defun pvs-comint-init ()
   (setq ilisp-motd nil)
@@ -290,7 +265,7 @@ intervenes."
     value))
 
 (defun pvs-send-and-wait-for-json (string &optional message status)
-  (let* ((fstring (format "(pvs:write-to-temp-file %s t)" string))
+  (let* ((fstring (format "(pvs:write-json-to-temp-file %s)" string))
 	 (file (pvs-send-and-wait fstring message status 'tmp-file)))
     (with-temp-buffer
       (insert-file-contents file)
@@ -330,7 +305,7 @@ intervenes."
 
 (defun pvs-send* (string &optional message status and-go)
   (when pvs-in-evaluator
-    (switch-to-lisp t)
+    (ilisp-switch-to-lisp t)
     (error "Must exit the ground evaluator first"))
   (with-current-buffer (ilisp-buffer)
     (setq buffer-read-only nil))
@@ -414,7 +389,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		(when (and (string-match "(Y or N):\\|(Yes or No)"
 					 pvs-process-output)
 			   (not (eq (current-buffer) (ilisp-buffer))))
-		  (switch-to-lisp t)
+		  (ilisp-switch-to-lisp t)
 		  (message "Please answer Yes or No"))
 		(comint-process-filter process pvs-process-output)
 		(set-ilisp-value 'pvs-partial-line "")
@@ -1374,6 +1349,8 @@ is emptied."
 	  (setq pvs-in-evaluator nil)
 	  (message "PVS has been reset"))
       (message "PVS is no longer running - exit and start again")))
+
+;;(defvar pvs-in-tcp nil)
   
 (defpvs pvs-interrupt-subjob environment ()
   "Interrupt PVS lisp."
@@ -1383,13 +1360,21 @@ is emptied."
   (unless *pvs-is-garbage*;; PDL nov94 to stop interrupt during gc
     (with-current-buffer (ilisp-buffer)
       (comint-interrupt-subjob)
-      (setq comint-send-queue 
+      ;; (if (and pvs-in-tcp
+      ;; 	       (yes-or-no-p "tcp interrupted: continue with next formula?"))
+      ;; 	  (comint-simple-send (ilisp-process) "(restore)")
+      ;; 	  ;; (cl-case pvs-lisp
+      ;; 	  ;;   (allegro (comint-simple-send (ilisp-process ":reset")))
+      ;; 	  ;;   (sbclisp (comint-simple-send (ilisp-process ":abort"))))
+      ;; 	  (setq pvs-in-tcp nil)
+      (setq comint-send-queue
 	    (list (list nil nil nil 'run "Top Level"
 			nil t nil 0 (cons nil nil)))
 	    comint-end-queue comint-send-queue)
       (set-marker (process-mark (ilisp-process)) (point-max))
       (lisp-pop-to-buffer (ilisp-buffer))
       (goto-char (point-max))))
+  ;;)
   t)
 
 (defun pvs-bury-output ()

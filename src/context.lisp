@@ -222,18 +222,18 @@ retypechecked."
 ;;; Save Context - called from Emacs and parse-file (pvs.lisp), saves any
 ;;; changes since the last time the context was saved.
 
-(defun save-context (&optional empty)
+(defun save-context (&optional empty quiet?)
   #+pvsdebug
-  (assert (file-equal *default-pathname-defaults* (working-directory))
+  (assert (uiop:file-equal *default-pathname-defaults* (working-directory))
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
               and                      (working-directory) = ~a"
 	  *default-pathname-defaults* (working-directory))
   #+pvsdebug
-  (assert (file-equal *default-pathname-defaults* (current-context-path))
+  (assert (uiop:file-equal *default-pathname-defaults* (current-context-path))
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
               and                   (current-context-path) = ~a"
 	  *default-pathname-defaults* (current-context-path))
-  (if (not (file-exists-p (working-directory)))
+  (if (not (uiop:file-exists-p (working-directory)))
       (pvs-message "Directory ~a seems to have disappeared!"
 	(namestring *default-pathname-defaults*))
       (unless *loading-prelude*
@@ -247,7 +247,7 @@ retypechecked."
 	;; 			 (check-binfiles file))
 	;; 		     () "check-binfiles failed after write-object-files"))
 	;; 	 (current-pvs-files))
-	(write-context *workspace-session* empty)
+	(write-context *workspace-session* empty quiet?)
 	;; (maphash #'(lambda (file theories)
 	;; 	     (assert (or (some #'(lambda (th)
 	;; 				   (not (typechecked? th)))
@@ -260,7 +260,7 @@ retypechecked."
   (save-context))
 
 
-(defun write-context (&optional (ws *workspace-session*) empty)
+(defun write-context (&optional (ws *workspace-session*) empty quiet?)
   (unless ws (setq ws (initialize-workspaces)))
   (assert (pvs-context ws))
   (with-workspace ws
@@ -281,8 +281,9 @@ retypechecked."
 		     (pvs-message "~a" condition))
 		    (t (setf (pvs-context ws) context)
 		       (setf (pvs-context-changed ws) nil)
-		       (pvs-message "Context file ~a written~%"
-			 (namestring (context-pathname)))))))
+		       (unless quiet?
+			 (pvs-message "Context file ~a written~%"
+			   (namestring (context-pathname))))))))
 	  (pvs-log "Context file ~a not written, do not have write permission"
 		   (namestring (context-pathname)))))))
 
@@ -541,13 +542,14 @@ its dependencies."
 
 (defun create-context-entry (pathname)
   (let ((specpath (make-specpath pathname)))
-    (when (file-exists-p specpath)
+    (when (uiop:file-exists-p specpath)
       (let* ((filename (pvs-filename specpath))
 	     (file-entry (get-context-file-entry filename))
 	     (theories (or (gethash filename (current-pvs-files))
 			   (and file-entry (ce-theories file-entry))))
 	     (prf-file (make-prf-pathname filename))
-	     (proofs-write-date (file-write-time prf-file))
+	     (proofs-write-date (when (uiop:file-exists-p prf-file)
+				  (file-write-date prf-file)))
 	     (fdeps (file-dependencies filename))
 	     (objdate (when file-entry (ce-object-date file-entry)))
 	     (md5sum (md5-file (make-specpath filename))))
@@ -658,8 +660,11 @@ its dependencies."
 
 (defmethod lib-datatype-or-theory? ((mod datatype-or-module))
   (assert (context-path mod))
-  (and (not (equal (context-path mod) *default-pathname-defaults*))
-       (not (from-prelude? mod))))
+  (and (not (from-prelude? mod))
+       (let ((cur-path (if (current-context)
+			   (context-path (current-theory))
+			   (current-context-path))))
+	 (not (file-equal (context-path mod) cur-path)))))
 
 (defmethod lib-datatype-or-theory? ((mod inline-recursive-type))
   (assert (adt-theory mod))
@@ -937,7 +942,7 @@ are all the same."
   #+pvsdebug (consistent-workspace-paths)
   (assert ws)
   (let ((ctx-file (merge-pathnames *context-name*)))
-    (if (file-exists-p ctx-file)
+    (if (uiop:file-exists-p ctx-file)
 	(handler-case
 	    (unless (pvs-context ws)
 	      (let ((context (read-context-file ctx-file)))
@@ -1177,7 +1182,7 @@ are all the same."
   (let ((cpath (if *workspace-session*
 		   (path *workspace-session*)
 		   *default-pathname-defaults*)))
-    (if (file-exists-p cpath)
+    (if (uiop:file-exists-p cpath)
 	(shortname cpath)
 	cpath)))
 
@@ -1321,20 +1326,19 @@ are all the same."
 
 (defun get-context-theory-entry* (theoryname file-entries)
   (when file-entries
-    (or (get-context-theory-entry theoryname (car file-entries))
+    (or (and (uiop:file-exists-p (make-specpath (ce-file (car file-entries))))
+	     (get-context-theory-entry theoryname (car file-entries)))
 	(get-context-theory-entry* theoryname (cdr file-entries)))))
 
 (defun get-context-formula-entry (fdecl &optional again?)
   (unless (from-prelude? fdecl)
     (let ((te (get-context-theory-entry (module fdecl))))
-      (cond (te
-	     (find-if #'(lambda (fe)
-			  (eq (id fdecl) (fe-id fe)))
-	       (te-formula-info te)))
-	    (again?
-	     (error "something's wrong with the context"))
-	    (t (update-pvs-context)
-	       (get-context-formula-entry fdecl t))))))
+      (unless te
+	(update-pvs-context)
+	(setq te (get-context-theory-entry (module fdecl))))
+      (when te
+	(find-if #'(lambda (fe) (eq (id fdecl) (fe-id fe)))
+	  (te-formula-info te))))))
 
 (defun context-file-of (theoryref)
   (let ((thid (ref-to-id theoryref)))
@@ -1514,11 +1518,13 @@ are all the same."
 ;;; Gives the same proofs
 
 (defun save-all-proofs (&optional theory)
+  (assert (or theory *current-context*))
   (unless (or *loading-prelude*
 	      (and theory (from-prelude? theory)))
     (if theory
-	(save-proofs (make-prf-pathname (filename theory))
-		     (cdr (gethash (filename theory) (current-pvs-files))))
+	(with-context theory
+	  (save-proofs (make-prf-pathname (filename theory))
+		       (cdr (gethash (filename theory) (current-pvs-files)))))
 	(maphash #'(lambda (file mods)
 		     (when (some #'has-proof? (cdr mods))
 		       (save-proofs (make-prf-pathname file) (cdr mods))))
@@ -1788,6 +1794,7 @@ are all the same."
 		       'unchecked)))
 	   (remove prf-entry proofs))
 	  (t ;; Decl has no associated proof in file
+	   ;;(pvs-warning "Declaration ~a.~a has no proof" (id (module decl) (id decl) ))
 	   proofs))))
 
 (defmethod make-proof-infos-from-sexp ((decl tcc-decl) prf-entry)
@@ -2064,7 +2071,7 @@ Note that the lists might not be the same length."
 
 (defun read-pvs-file-proofs (filename &optional (dir *default-pathname-defaults*))
   (let ((prf-file (make-prf-pathname filename dir)))
-    (when (file-exists-p prf-file)
+    (when (uiop:file-exists-p prf-file)
       (if *proof-file-debug*
 	  (with-open-file (input prf-file :direction :input)
 	    (let ((proofs (read-proof-file-stream input)))
@@ -2304,7 +2311,8 @@ Note that the lists might not be the same length."
 (defun read-case-sensitive (stream &optional eof-value)
   (unless *case-sensitive-readtable*
     (setq *case-sensitive-readtable* (copy-readtable nil))
-    (setf (readtable-case *case-sensitive-readtable*) :preserve))
+    (setf (readtable-case *case-sensitive-readtable*) :preserve)
+    (setf (sb-ext:readtable-normalization *case-sensitive-readtable*) nil))
   (let ((*readtable* *case-sensitive-readtable*))
     (read stream nil eof-value)))
 
@@ -2313,7 +2321,8 @@ Note that the lists might not be the same length."
 	 (let ((lcar (upcase-symbols (car val)))
 	       (lcdr (upcase-symbols (cdr val))))
 	   (cons lcar lcdr)))
-	((keywordp val) val)
+	((keywordp val)
+	 (intern (string-upcase val) :keyword))
 	((symbolp val)
 	 (read-from-string (string val)))
 	(t val)))
@@ -2346,10 +2355,10 @@ Note that the lists might not be the same length."
 		     (cddr formula-proof)
 		     (cdr formula-proof)))
 	     (prinfo (make-proof-info
-		      #+case-sensitive
-		      (convert-proof-form-to-lowercase script)
-		      #-case-sensitive
-		      script
+		      (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+			  #-allegro nil
+			  (convert-proof-form-to-lowercase script)
+			  script)
 		      (makesym "~a-1" (car formula-proof)))))
 	(cons (car formula-proof)
 	      (cons 0 (list (sexp prinfo)))))))
@@ -2368,44 +2377,40 @@ Note that the lists might not be the same length."
 	  (values-list mprf)
 	(convert-proof-form id description create-date script refers-to decision-procedure-used origin))))
 
-(defun convert-proof-form (id description create-date script refers-to decision-procedure-used
-			   &optional origin)
+(defun convert-proof-form (id description create-date script refers-to
+			   decision-procedure-used &optional origin)
   (assert (or (stringp description) (memq description '(|nil| NIL))))
   (assert (or (listp script) (memq script '(|nil| NIL))))
   (assert (or (listp refers-to) (memq refers-to '(|nil| NIL))))
   (assert (symbolp decision-procedure-used))
-  #+case-sensitive
-  ;; Allegro in case-sensitive mode
-  ;; May need to convert a proof done in case-insensitive mode
-  (let* ((check (check-if-case-change-needed script))
-	 (desc (unless (eq description 'NIL) description))
-	 (scr (if check
-		  (convert-proof-form-to-lowercase script)
-		  script))
-	 ;; refers-to should be fixed for Allegro/SBCL
-	 (ref (if check
-		  (unless (eq refers-to 'NIL)
-		    (convert-refersto-to-lowercase refers-to))
-		  refers-to))
-	 (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
-    (if origin
-	(list id desc create-date scr ref dec origin)
-	(list id desc create-date scr ref dec)))
-  #-case-sensitive ;; Others
-  (let ((ncreate-date (upcase-t-and-nil create-date))
-	(nscript (upcase-symbols script))
-	(nrefers-to (upcase-t-and-nil refers-to))
-	(ndp-used (upcase-symbols decision-procedure-used))
-	(norigin (when (upcase-t-and-nil origin)
-		   (list (list (car origin) (upcase-symbols (cadr origin))
-			       (caddr origin) (cadddr origin))))))
-    `(,id ,description ,ncreate-date ,nscript ,nrefers-to ,ndp-used
-	  ,@norigin)))
-
-#+case-sensitive
-(defun check-if-case-change-needed (script)
-  (let ((sym (find-first-symbol script)))
-    (every #'upper-or-not-alpha-p (string sym))))
+  (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
+      #-allegro nil
+      ;; Allegro in case-sensitive mode
+      ;; May need to convert a proof done in case-insensitive mode
+      (let* ((check (check-if-case-change-needed script))
+	     (desc (unless (eq description 'NIL) description))
+	     (scr (if check
+		      (convert-proof-form-to-lowercase script)
+		      script))
+	     ;; refers-to should be fixed for Allegro/SBCL
+	     (ref (if check
+		      (unless (eq refers-to 'NIL)
+			(convert-refersto-to-lowercase refers-to))
+		      refers-to))
+	     (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
+	(if origin
+	    (list id desc create-date scr ref dec origin)
+	    (list id desc create-date scr ref dec)))
+      ;; Others
+      (let ((ncreate-date (upcase-t-and-nil create-date))
+	    (nscript (upcase-symbols script))
+	    (nrefers-to (upcase-t-and-nil refers-to))
+	    (ndp-used (upcase-symbols decision-procedure-used))
+	    (norigin (when (upcase-t-and-nil origin)
+		       (list (list (car origin) (upcase-symbols (cadr origin))
+				   (caddr origin) (cadddr origin))))))
+	`(,id ,description ,ncreate-date ,nscript ,nrefers-to ,ndp-used
+	      ,@norigin))))
 
 (defun upper-or-not-alpha-p (char)
   (or (not (alpha-char-p char))
@@ -2419,11 +2424,16 @@ Note that the lists might not be the same length."
     (cons (or (find-first-symbol (car obj))
 	      (find-first-symbol (cdr obj))))))
 
-#-case-sensitive
+#+allegro
+(defun check-if-case-change-needed (script)
+  (when (eq excl:*current-case-mode* :case-sensitive-lower)
+    (let ((sym (find-first-symbol script)))
+      (every #'upper-or-not-alpha-p (string sym)))))
+
+#-allegro
 (defun check-if-case-change-needed (script)
   (declare (ignore script))
   nil)
-       
 
 (defun transfer-orphaned-proofs (from-theory to-theory)
   (let* ((th (get-typechecked-theory to-theory))
@@ -2445,7 +2455,7 @@ Note that the lists might not be the same length."
   (let ((orph-file (if *loading-prelude*
 		       (format nil "~a/lib/orphaned-proofs.prf" *pvs-path*)
 		       "orphaned-proofs.prf")))
-    (when (file-exists-p orph-file)
+    (when (uiop:file-exists-p orph-file)
       (ignore-file-errors
        (with-open-file (orph orph-file :direction :input)
 	 (let ((proofs nil)
@@ -2576,8 +2586,9 @@ Note that the lists might not be the same length."
 (defvar *library-strategy-file-dates* nil)
 
 (defun load-library-strategy-files ()
-  (dolist (lib (current-library-pathnames))
-    (load-library-strategy-file lib)))
+  (dolist (lib-path ;;(current-library-pathnames)
+	    (get-pvs-library-alist))
+    (load-library-strategy-file (cdr lib-path))))
 
 (defun load-library-strategy-file (lib)
   (let* (#+allegro
@@ -2591,7 +2602,7 @@ Note that the lists might not be the same length."
 	  (if entry
 	      (setf (cdr entry) fwd)
 	      (push (cons lib fwd) *library-strategy-file-dates*))
-	  (unless (ignore-lisp-errors (load file :verbose nil))
+	  (unless (load file :verbose nil)
 	    (with-open-file (str file :direction :input)
 	      (if *testing-restore*
 		  (load str :verbose t)

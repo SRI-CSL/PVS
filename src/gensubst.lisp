@@ -722,8 +722,10 @@ behavior:
 				      :resolutions (list (copy nres :type nil)))))
 		   (setf (print-type ntype) nprint-type)))
 	       nres))
-	    (t (let ((ntype (gensubst* type substfn testfn)))
-		 (mk-resolution declaration nmi ntype)))))))
+	    (*gensubst-subst-types*
+	     (let ((ntype (gensubst* type substfn testfn)))
+	       (mk-resolution declaration nmi ntype)))
+	    (t (make-resolution declaration nmi))))))
 	       
 
 (defmethod gensubst* ((act actual) substfn testfn)

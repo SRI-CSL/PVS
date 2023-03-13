@@ -30,27 +30,6 @@
 
 (in-package :pvs)
 
-;; shadow
-
-(export '(*pvs-path* *pvs-binary-type*
-	  *boolean* *bound-variables* *current-context* *even_int* *even_nat*
-	  *even_posnat* *even_negint* *false* *generate-all-adt-axioms*
-	  *generate-tccs* *integer* *naturalnumber* *number* *number_field*
-	  *odd_int* *odd_posnat* *odd_negint* *posint* *negint* *posrat*
-	  *negrat* *prelude* *pvs-directories* *pvs-tmp-file* *real*
-	  *show-conversions* *tcc-conditions* *true* *typechecking-module*
-	  *prelude-context* *last-proof* *pvs-lisp-process*))
-
-(export '(all none))
-
-(export '(*abs-syn-package*))
-
-;; require
-
-;; use-package
-
-;; import
-
 (defvar *files-loaded* nil
   "Keeps track of files that have been loaded using defwrapper/defadvice
 in util.lisp")
@@ -58,8 +37,6 @@ in util.lisp")
 (defvar *loading-files* :other)
 
 (defvar *pvs-path* nil "Set by make process")
-
-;;(defvar *pvs-binary-type* nil "Set by make process")
 
 (defvar *pvs-library-path* nil
   "Set from the PVS_LIBRARY_PATH environment variable + *pvs-path*")
@@ -86,12 +63,12 @@ in util.lisp")
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defparameter *pvs-version* "7.1")
+  (defparameter *pvs-version* "8.0")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
-  (pushnew :pvs7.1 *features*)
-  (pushnew :pvs7 *features*)
+  (pushnew :pvs8.0 *features*)
+  (pushnew :pvs8 *features*)
   (pushnew :pvs *features*)
   )
 
@@ -101,10 +78,7 @@ in util.lisp")
 
 (defvar *ignore-binfile-errors* t)
 
-(defvar *pvsbin-string* "pvsbin"
-  ;; #+case-sensitive "pvsbin"
-  ;; #-case-sensitive "PVSBIN"
-  )
+(defvar *pvsbin-string* "pvsbin")
 
 (defvar *pvs-build-time* (get-universal-time))
 
@@ -259,6 +233,8 @@ order is important")
 
 (defvar *tc-match-exact* nil)
 
+(defvar *tc-match-type-names* nil)
+
 (defvar *term-print-strings* nil)
 
 (defvar *place-error-flag* nil)
@@ -407,33 +383,32 @@ rather than the generated declaration.")
 
 (defvar *typecheck-using* nil)
 
-(defun pprint-comment-strings (stream string)
-  (let ((lines (uiop:split-string string :separator #\newline))
-	(ccol 1 ;(1+ (excl:stream-line-column stream))
-	      ))
-    (when (and (cdr lines) (integerp ccol) (> ccol 0)
-	       (every #'(lambda (line)
-			  (and (> (length line) ccol)
-			       (= (count #\space line :end ccol) ccol)))
-		      (cdr lines)))
-      (setq lines
-	    (cons (car lines)
-		  (mapcar #'(lambda (line)
-			      (subseq line ccol))
-		    (cdr lines)))))
-    (pprint-logical-block (stream lines :prefix "\"" :suffix "\"")
-      (pprint-indent :block 0)
-      (loop (pprint-exit-if-list-exhausted)
-	    (write (pprint-pop) :stream stream :escape nil :pretty nil
-		   :pprint-dispatch
-		   #-sbcl nil
-		   #+sbcl (sb-pretty::make-pprint-dispatch-table #() nil nil)
-		   )
-	    (pprint-exit-if-list-exhausted)
-	    (pprint-newline :mandatory stream)))))
+;; (defun pprint-comment-strings (stream string)
+;;   (let ((lines (uiop:split-string string :separator "#\newline"))
+;; 	(ccol 1 ;(1+ (excl:stream-line-column stream))
+;; 	      ))
+;;     (when (and (cdr lines) (integerp ccol) (> ccol 0)
+;; 	       (every #'(lambda (line)
+;; 			  (and (> (length line) ccol)
+;; 			       (= (count #\space line :end ccol) ccol)))
+;; 		      (cdr lines)))
+;;       (setq lines
+;; 	    (cons (car lines)
+;; 		  (mapcar #'(lambda (line)
+;; 			      (subseq line ccol))
+;; 		    (cdr lines)))))
+;;     (pprint-logical-block (stream lines :prefix "\"" :suffix "\"")
+;;       (pprint-indent :block 0)
+;;       (loop (pprint-exit-if-list-exhausted)
+;; 	    (write (pprint-pop) :stream stream :escape nil :pretty nil
+;; 		   :pprint-dispatch
+;; 		   #-sbcl nil
+;; 		   #+sbcl (sb-pretty::make-pprint-dispatch-table #() nil nil)
+;; 		   )
+;; 	    (pprint-exit-if-list-exhausted)
+;; 	    (pprint-newline :mandatory stream)))))
 
 (defvar *proof-script-pprint-dispatch*
-  #+allegro
   (let ((table (copy-pprint-dispatch)))
     (set-pprint-dispatch '(cons string)
 			 #'(lambda (s list)
@@ -441,12 +416,11 @@ rather than the generated declaration.")
 			       (pprint-linear s list)))
 			 1
 			 table)
-    (set-pprint-dispatch 'string
-			 #'pprint-comment-strings
-			 1
-			 table)
-    table)
-  #-allegro (copy-pprint-dispatch))
+    ;; (set-pprint-dispatch 'string
+    ;; 			 #'pprint-comment-strings
+    ;; 			 1
+    ;; 			 table)
+    table))
 
 (defvar *visible-only* nil)
 

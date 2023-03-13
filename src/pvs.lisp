@@ -32,12 +32,6 @@
 
 (in-package :pvs)
 
-(export '(exit-pvs parse-file typecheck-file show-tccs clear-theories
-	  formula-decl-to-prove prove-formula proved? get-proof-script
-	  get-formula-decl get-proof-status get-tccs prove-tccs
-	  write-pvs-version-file get-pvs-version-information
-	  get-typechecked-theory rpc-mode-debugger))
-
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
 ;;; batch mode.
@@ -135,26 +129,21 @@
   (setq *print-pretty* t)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  ;; #+(or cmu sbcl)
-  ;; (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
-  ;;   (pushnew exepath *pvs-directories*)
-  ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
-  ;; 		      (format nil "~a/mu.~a" exepath
-  ;; 			      #+darwin "dylib"
-  ;; 			      #-darwin "so"))
-  ;;   (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
-  ;; 		      (format nil "~a/ws1s.~a" exepath
-  ;; 			      #+darwin "dylib"
-  ;; 			      #-darwin "so"))
-  ;;   ;; Have no idea what is going on here, but if you leave this out,
-  ;;   ;; bdd-cmu gives a compile error.
-  ;;   #+cmu (fmakunbound 'bdd_cofactor_neg_)
-  ;;   #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
-  ;;   #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
-  ;;   (BDD_bdd_init)
-  ;;   #+allegro
-  ;;   (nlyices-init)
-  ;;   #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
+  #+(or cmu sbcl)
+  (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
+    (pushnew exepath *pvs-directories*)
+    (cffi:load-foreign-library (format nil "~a/file_utils.~a" exepath
+				       #+darwin "dylib"
+				       #-darwin "so"))
+    (cffi:load-foreign-library (format nil "~a/mu.~a" exepath
+				       #+darwin "dylib"
+				       #-darwin "so"))
+    (cffi:load-foreign-library (format nil "~a/ws1s.~a" exepath
+				       #+darwin "dylib"
+				       #-darwin "so"))
+    (BDD_bdd_init)
+    #+allegro
+    (nlyices-init))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
@@ -247,11 +236,11 @@ should be enough."
 	     (error "Bad PVS path: ~a" path)))
 	((let ((evpath (environment-variable "PVSPATH")))
 	   (and evpath
-		(cond ((directory-p evpath))
+		(cond ((uiop:directory-exists-p evpath))
 		      (t (pvs-warning "The environment variable PVSPATH is set to ~a, ~
                                   which does not exist" evpath)
 			 nil)))))
-	((let ((cdir (directory-p (car (uiop:raw-command-line-arguments)))))
+	((let ((cdir (uiop:directory-exists-p (car (uiop:raw-command-line-arguments)))))
 	   ;; We were started as, e.g., bin/ix86_64-Linux/runtime/pvs-allegro
 	   ;; assume the parent of bin is a valid PVS installed directory.
 	   (and cdir (find-pvs-path-from cdir))))
@@ -460,22 +449,22 @@ nil."
   (let ((*loading-files* :patches))
     (dolist (pfile (append (collect-pvs-patch-files)
 			   (collect-pvs-lisp-files)))
-      (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
-	     (compile? (and (file-exists-p pfile)
-			    (or (not (file-exists-p bfile))
+      (let* ((bfile (make-fasl-file-name pfile))
+	     (compile? (and (uiop:file-exists-p pfile)
+			    (or (not (uiop:file-exists-p bfile))
 				(compiled-file-older-than-source?
 				 pfile bfile))))
 	     (compilation-error? nil)
 	     (bfile-loaded? nil))
 	(when (and (not compile?)
-		   (file-exists-p bfile))
+		   (uiop:file-exists-p bfile))
 	  ;; Everything looks up-to-date, try loading
 	  (multiple-value-bind (ignore error)
 	      (ignore-errors (load bfile))
 	    (declare (ignore ignore))
 	    (cond (error
 		   ;; Likely due to a different lisp version
-		   (when (file-exists-p pfile)
+		   (when (uiop:file-exists-p pfile)
 		     (setq compile? t))
 		   (pvs-message "Error in loading ~a:~%  ~a"
 		     (shortname bfile) error))
@@ -488,7 +477,7 @@ nil."
 	    (pathname-name pfile))
 	  (multiple-value-bind (ignore condition)
 	      (ignore-file-errors
-	       (values (compile-file pfile)))
+	       (values (compile-file pfile :output-file bfile)))
 	    (declare (ignore ignore))
 	    (cond (condition
 		   ;; Could be many reasons - permissions, source errors
@@ -504,7 +493,7 @@ nil."
 	(when (and (not bfile-loaded?)
 		   compile?
 		   (not compilation-error?)
-		   (file-exists-p bfile))
+		   (uiop:file-exists-p bfile))
 	  ;; Here when we have not loaded the fasl, needed to compile, and
 	  ;; didn't get a compilation error
 	  (pvs-message "Attempting to load compiled patch file ~a"
@@ -519,7 +508,7 @@ nil."
 		     (pushnew pfile *pvs-patches-loaded*
 			      :test #'equalp)))))
 	(unless (or bfile-loaded?
-		    (not (file-exists-p pfile)))
+		    (not (uiop:file-exists-p pfile)))
 	  ;; Haven't loaded the fasl, so we try to load the source
 	  (pvs-message "Loading file ~a interpreted" (shortname pfile))
 	  (multiple-value-bind (ignore error)
@@ -544,7 +533,7 @@ nil."
 
 (defun find-pvs-patch-files (dir)
   (let ((pdir (format nil "~apvs-patches/" dir)))
-    (when (directory-p pdir)
+    (when (uiop:directory-exists-p pdir)
       ;; First get the files
       (let ((pfiles (remove-if (complement #'valid-patch-filename)
 		      (directory (format nil "~a/*.lisp" pdir)))))
@@ -567,10 +556,10 @@ nil."
   (let ((lfiles nil))
     (dolist (dir *pvs-library-path*)
       (let ((lfile (make-pathname :defaults dir :name ".pvs" :type "lisp")))
-	(when (file-exists-p lfile)
+	(when (uiop:file-exists-p lfile)
 	  (push lfile lfiles))))
     (let ((ufile (user-pvs-lisp-file)))
-      (when ufile (push ufile lfiles)))
+      (when (uiop:file-exists-p ufile) (push ufile lfiles)))
     (nreverse lfiles)))
 
 (defun user-pvs-lisp-file ()
@@ -578,10 +567,10 @@ nil."
     (let* ((homedir (truename (user-homedir-pathname)))
 	   (home-lisp-file (make-pathname :defaults homedir
 					  :name ".pvs" :type "lisp"))
-	   (home-fasl-file (make-pathname :defaults homedir
-					  :name ".pvs" :type *pvs-binary-type*)))
-      (when (or (file-exists-p home-lisp-file)
-		(file-exists-p home-fasl-file))
+	   (home-fasl-file (when (uiop:file-exists-p home-lisp-file)
+			     (make-fasl-file-name home-lisp-file))))
+      (when (or (uiop:file-exists-p home-lisp-file)
+		(uiop:file-exists-p home-fasl-file))
 	home-lisp-file))))
 
 (defun pvs-patch-files-for (ext)
@@ -592,9 +581,9 @@ nil."
 		 :name (format nil "patch~d~@[-~a~]~@[~a~]"
 			 (major-version) ext (pvs-image-suffix))
 		 :type "lisp"))
-	 (bfile (make-pathname :defaults pfile :type *pvs-binary-type*)))
-    (when (or (file-exists-p pfile)
-	      (file-exists-p bfile))
+	 (bfile (make-fasl-file-name pfile)))
+    (when (or (uiop:file-exists-p pfile)
+	      (uiop:file-exists-p bfile))
       (list pfile))))
 
 (defun get-pvs-version-information ()
@@ -615,7 +604,7 @@ nil."
       *pvs-version*))
 
 (defun write-pvs-version-file ()
-  (when (file-exists-p (format nil "~a/.git" *pvs-path*))
+  (when (uiop:file-exists-p (format nil "~a/.git" *pvs-path*))
     (let ((verstr (format nil "~a.~d" *pvs-version* (pvs-git-count-since))))
       (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*)
 			    :direction :output :if-exists :supersede)
@@ -663,9 +652,10 @@ pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
   (unless *workspace-session* (initialize-workspaces))
-  (with-pvs-file (filename) fileref
+  (with-pvs-file (fname) fileref
     (assert (current-pvs-context))
-    (let* ((*current-file* filename)
+    (let* ((filename (pathname-name fname))
+	   (*current-file* filename)
 	   (file (make-specpath filename))
 	   (theories (get-theories file)))
       (cond ((not (file-exists-p file))
@@ -878,7 +868,7 @@ where each comment has the form
   "Parsing filename gives the new-theories, we check for problems here"
   (check-for-duplicate-theories new-theories)
   (check-for-prelude-theory-clashes new-theories)
-  (check-for-context-theory-clashes new-theories filename forced?))
+  (check-for-context-theory-clashes new-theories (pathname-name filename) forced?))
 
 (defun check-for-duplicate-theories (new-theories)
   (when (cdr new-theories)
@@ -1379,7 +1369,8 @@ reference; pathname-name doesn't work if the file is of the form
 	 (cdr new-theories)
 	 filename
 	 (if (or (null cfile)
-		 (string= cfile filename))
+		 (string= cfile filename)
+		 (not (file-exists-p (make-specpath cfile))))
 	     result
 	     (cons (cons (car new-theories) cfile) result))))))
 
@@ -2351,7 +2342,7 @@ Note that even proved ones get overwritten"
 (defmethod parsed?* ((mod datatype-or-module))
   (or (memq mod *theories-seen*)
       (let ((prsd? (cond ((from-prelude? mod))
-			 ((lib-datatype-or-theory? mod)
+			 ((not (file-equal (context-path mod) (path (current-workspace))))
 			  (with-workspace (context-path mod)
 			    (parsed?* mod)))
 			 ((generated-by mod)
@@ -2512,49 +2503,49 @@ Note that even proved ones get overwritten"
 		     (null (justification fdecl)))
 		(pvs-message "Formula ~a has no proof to rerun." (id fdecl))
 		(if fdecl
-		    (let ((*current-context* (context fdecl))
-			  (*current-system* (if (member origin '("tccs" "ppe"))
-						'pvs
-						(intern origin :pvs)))
-			  (*start-proof-display* display?)
-			  (ojust (extract-justification-sexp
-				  (justification fdecl)))
-			  (decision-procedure (decision-procedure-used fdecl))
-			  (*justifications-changed?* nil))
-		      (read-strategies-files)
-		      (let ((proof (cond (background?
-					  (pvs-prove-decl fdecl t))
-					 (t (auto-save-proof-setup fdecl)
-					    (prove fdecl
-						   :strategy
-						   (when rerun? '(rerun)))))))
-			(when (typep proof 'proofstate)
-			  (setq *last-proof* proof)))
-		      (unless (or background?
-				  (null (default-proof fdecl)))
-			(setf (interactive? (default-proof fdecl)) t))
+		    (with-context (context fdecl)
+		      (let ((*current-system* (if (member origin '("tccs" "ppe"))
+						  'pvs
+						  (intern origin :pvs)))
+			    (*start-proof-display* display?)
+			    (ojust (extract-justification-sexp
+				    (justification fdecl)))
+			    (decision-procedure (decision-procedure-used fdecl))
+			    (*justifications-changed?* nil))
+			(read-strategies-files)
+			(let ((proof (cond (background?
+					    (pvs-prove-decl fdecl t))
+					   (t (auto-save-proof-setup fdecl)
+					      (prove fdecl
+						     :strategy
+						     (when rerun? '(rerun)))))))
+			  (when (typep proof 'proofstate)
+			    (setq *last-proof* proof)))
+			(unless (or background?
+				    (null (default-proof fdecl)))
+			  (setf (interactive? (default-proof fdecl)) t))
 		      ;; Save the proof if it is different.
-		      (unless (or (equal origin "prelude")
-				  (from-prelude? fdecl))
-			(when (or *justifications-changed?*
-				  (not (equal ojust
-					      (extract-justification-sexp
-					       (justification fdecl))))
-				  (not (eq (decision-procedure-used fdecl)
-					   decision-procedure)))
-			  (save-all-proofs (current-theory)))
-			;; If the proof status has changed, update the context.
-			(update-context-proof-status fdecl))
-		      (remove-auto-save-proof-file)
-		      (let ((*to-emacs* t))
-			(pvs-locate buffer fdecl
-				    (if (and prelude-offset
-					     (not (zerop prelude-offset)))
-					(vector (- (line-begin place) prelude-offset)
-						(col-begin place)
-						(- (line-end place) prelude-offset)
-						(col-end place))
-					place))))))))))
+			(unless (or (equal origin "prelude")
+				    (from-prelude? fdecl))
+			  (when (or *justifications-changed?*
+				    (not (equal ojust
+						(extract-justification-sexp
+						 (justification fdecl))))
+				    (not (eq (decision-procedure-used fdecl)
+					     decision-procedure)))
+			    (save-all-proofs (module fdecl)))
+			  ;; If the proof status has changed, update the context.
+			  (update-context-proof-status fdecl))
+			(remove-auto-save-proof-file)
+			(let ((*to-emacs* t))
+			  (pvs-locate buffer fdecl
+				      (if (and prelude-offset
+					       (not (zerop prelude-offset)))
+					  (vector (- (line-begin place) prelude-offset)
+						  (col-begin place)
+						  (- (line-end place) prelude-offset)
+						  (col-end place))
+					  place)))))))))))
   ;; This prints nothing - better than "nil"
   ;; Actually causes problems - will look into other solutions
   ;; (unless *noninteractive*
@@ -3690,9 +3681,10 @@ nil is returned in that case."
 		  (let ((nth (get-theory thname)))
 		    (when (and nth (not (eq nth theory)))
 		      (setq theory nth)))
-		  (unless (or (from-prelude? theory)
-			      (check-binfiles (filename theory)))
-		    (setf (pvs-context-changed *workspace-session*) t)))
+		  (with-workspace (context-path theory)
+		    (unless (or (from-prelude? theory)
+				(check-binfiles (filename theory)))
+		      (setf (pvs-context-changed *workspace-session*) t))))
 		(assert (or (null theory) (typechecked? theory)))
 		(assert (or (null theory) (saved-context theory)))
 		theory)))))

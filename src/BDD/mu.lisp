@@ -1369,22 +1369,18 @@ time).  Verbose? set to T provides more information."
 	    (mu-make-bool-var bvarname)))))
 
 (defun mu-mk-rel-var (bvarname)
-  (mu_mk_rel_var_ #+allegro (ff:string-to-char* bvarname)
-		  #-allegro bvarname))
+  (mu_mk_rel_var_ bvarname))
 
 (defun mu-mk-rel-var-dcl (bvarname)
-  (mu_mk_rel_var_dcl #+allegro (ff:string-to-char* bvarname)
-		     #-allegro bvarname))
+  (mu_mk_rel_var_dcl bvarname))
 
 (defun mu-check-bool-var (bvarname)
-  (mu_check_bool_var #+allegro (ff:string-to-char* bvarname)
-		     #-allegro bvarname))
+  (mu_check_bool_var bvarname))
 
 (defun mu-make-bool-var (bvarname)
   (if *build-mu-term*
       (mu-mk-rel-var bvarname)
-      (mu_check_mk_bool_var #+allegro (ff:string-to-char* bvarname)
-			    #-allegro bvarname)
+      (mu_check_mk_bool_var bvarname)
       ))
 
 ;;
@@ -1608,13 +1604,16 @@ time).  Verbose? set to T provides more information."
 ;;
 ;;
 
-#+sbcl
 (defun check-null (ptr)
-  (sb-alien:null-alien ptr))
+  (cffi:null-pointer-p ptr))
 
-#-sbcl
-(defun check-null (ptr)
-  (zerop ptr))
+;; #+sbcl
+;; (defun check-null (ptr)
+;;   (sb-alien:null-alien ptr))
+
+;; #-sbcl
+;; (defun check-null (ptr)
+;;   (zerop ptr))
 
 (defun mu-translate-from-bdd-list (bddlist)
   (let ((bdds (unless (check-null bddlist)
@@ -1654,10 +1653,7 @@ time).  Verbose? set to T provides more information."
 
 (defun mu_bdd_var_id  (bdd-id)
   (string-to-number  
-   (string-left-trim "b" 
-		     #+allegro (ff:char*-to-string 
-				(get_mu_bool_var_name bdd-id))
-		     #-allegro (get_mu_bool_var_name bdd-id))))
+   (string-left-trim "b" (get_mu_bool_var_name bdd-id))))
 
 
 (defun map-bdds-to-ids (bddlist)

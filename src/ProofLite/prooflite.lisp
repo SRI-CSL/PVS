@@ -383,7 +383,7 @@ is replaced with replacement."
 		(setq str (read-line file nil))
 		(setq formulas nil)
 		(setq script nil)))))
-     (when at-least-one-script-saved? (save-all-proofs)))))
+     (when at-least-one-script-saved? (with-context theory (save-all-proofs))))))
 
 (defun then-prooflite (script)
   (cond ((and

@@ -216,7 +216,7 @@
 				 (list th))
 			       (remove-if-not
 				   #'(lambda (d)
-				       (and (lib-datatype-or-theory? (module d))
+				       (and ;;(lib-datatype-or-theory? (module d))
 					    (file-equal libpath (context-path (module d)))))
 				 adecls))
 			   (type-error name "~a is an unknown library"
@@ -438,7 +438,7 @@
 ;;; theory-decl could be built on a theory-decl.  We look for the first
 ;;; set of mappings with a matching LHS.
 (defun get-mapping-lhs-resolutions (name kind args)
-  (declare (ignore kind args))
+  (declare (ignore args))
   (when (mod-id name)
     (if (find (id name) (mappings name) :key #'(lambda (m) (id (lhs m))))
 	(let* ((theory (get-theory (mod-id name)))
@@ -462,7 +462,10 @@
 	   (mapcan #'(lambda (alias)
 		       (let ((mapping (find (id name) (mappings alias)
 					    :key #'id)))
-			 (when mapping
+			 (assert (or (null mapping)
+				     (mapped-decl mapping)))
+			 (when (and mapping
+				    (eq (kind-of (mapped-decl mapping)) kind))
 			   (list (make-instance 'mapping-resolution
 				   :declaration mapping
 				   :module-instance alias
@@ -2028,10 +2031,11 @@ decl, args, and mappings."
 					      bd))))
 			  (car bindings)))
 	     (thinst (create-compatible-modinst modinst decl fbindings)))
-	(create-compatible-modinsts
-	 modinst decl (cdr bindings) (if thinst
-					 (cons thinst result)
-					 result)))))
+	(create-compatible-modinsts modinst decl (cdr bindings)
+				    (if (and thinst
+					     (not (member thinst result :test #'tc-eq)))
+					(cons thinst result)
+					result)))))
 
 (defmethod name-from-decl ((decl formal-type-decl))
   (let* ((tn (mk-type-name (id decl)))
@@ -2638,32 +2642,36 @@ This forms a lattice, and we return the top ones."
 
 (defun formula-or-definition-resolutions (name)
   (let* ((*resolve-error-info* nil)
-	 (reses (append (resolve name 'formula nil)
+	 (pname (if (name? name)
+		    name
+		    (pc-parse name 'name)))
+	 (reses (append (resolve pname 'formula nil)
 			(remove-if #'(lambda (r)
 				       (and (const-decl? (declaration r))
 					    (null (definition (declaration r)))))
-			  (resolve name 'expr nil)))))
+			  (resolve pname 'expr nil)))))
     (or reses
-	(when (simple-name? name)
+	(when (simple-name? pname)
 	  ;; Try to find a case-insensitive match
 	  (map-lhash #'(lambda (id decls)
-			 (when (string-equal id (id name))
+			 (when (string-equal id (id pname))
 			   (dolist (decl decls)
 			     (when (visible? decl)
 			       (cond ((formula-decl? decl)
 				      (let ((*resolve-error-info* nil)) ;; shadow original
 					(setq reses
-					      (nconc (resolve (copy name 'id id)
+					      (nconc (resolve (copy pname 'id id)
 							      'formula nil)
 						     reses))))
 				     ((and (const-decl? decl)
 					   (definition decl))
 				      (let ((*resolve-error-info* nil)) ;; shadow original
 					(setq reses
-					      (nconc (resolve (copy name 'id id)
+					      (nconc (resolve (copy pname 'id id)
 							      'expr nil)
 						     reses)))))))))
-		     (current-declarations-hash)))
+		     (current-declarations-hash))
+	  reses)
 	(resolution-error name 'expr-or-formula nil nil))))
 
 (defun definition-resolutions (name)

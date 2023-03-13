@@ -54,7 +54,7 @@
 
 (sb-alien:define-alien-routine ("ws1s___dfaMinus1" mona-minus1) ;  p_i = p_i - p_j
   (* (sb-alien:struct mona-dfa))
-  (i (integer 32)) (j (integer 32)))
+  (i (integer 32)) (j (integer 32)) (n (integer 32)))
 
 (sb-alien:define-alien-routine ("ws1s___dfaEq1" mona-eq1)       ; p_i = p_j
   (* (sb-alien:struct mona-dfa))

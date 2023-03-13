@@ -268,7 +268,7 @@ After exiting, all of these are reverted to their previous values."
 		      (unwind-protect 
 			   (prog1 (progn (set-working-directory ,truedir) ,@forms)
 			     (when (pvs-context-changed *workspace-session*)
-			       (save-context)))
+			       (save-context nil t)))
 			(set-working-directory ,orig-dir)))))
 	   (error "Library ~a does not exist" (or ,lib-path ,lref))))))
 
@@ -600,13 +600,17 @@ obj may be of type:
   importing: same as a declaration
   :prelude uses the prelude context."
   (let ((eobj (gentemp)))
-    `(let* ((,eobj ,obj)
-	    (*current-context* (cond ((eq ,eobj :prelude)
-				      *prelude-context*)
-				     ((context? ,eobj) ,eobj)
-				     (t (context ,eobj))))
-	    (*generate-tccs* 'all))
-       ,@body)))
+    `(let ((,eobj ,obj))
+       (with-workspace ,eobj
+	 (let* ((*current-context* (cond ((eq ,eobj :prelude)
+					  *prelude-context*)
+					 ((context? ,eobj) ,eobj)
+					 (t (context ,eobj))))
+		(*default-pathname-defaults* (if (theory *current-context*)
+						 (context-path (theory *current-context*))
+						 *default-pathname-defaults*))
+		(*generate-tccs* 'all))
+       ,@body)))))
 
 (defvar *current-declaration-stack* nil)
 

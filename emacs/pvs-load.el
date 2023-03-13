@@ -179,7 +179,7 @@
             |                                        |
             +----------------------------------------+")
           (insert "\n\n   Welcome to the PVS\n   Specification and Verification System")))
-    (insert "                            Version 7.1\n")
+    (insert "                            Version 8.0\n")
     (insert "\n   SRI International -- Computer Science Laboratory\n")
     (setq cpoint (point))
     (insert "\n   Type C-c h for a summary of the commands.")

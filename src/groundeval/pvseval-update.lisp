@@ -1037,6 +1037,9 @@ if called."
 	       (pvs-setf ,cl-expr-var ,lhsvar ,newrhs))
 	  `(let ((,cl-expr-var ,cl-expr))(pvs-function-update ,cl-expr-var ,lhsvar ,newrhs)))))
 
+#+sbcl
+(sb-ext:define-hash-table-test pvs_equalp sxhash)
+
 (defun make-closure-hash (expr)	;;NSH(9-19-12)
   (if (pvs-closure-hash-p expr)
       expr

@@ -352,13 +352,12 @@
 				    ;; if decl is a mapping-lhs, include its dactuals
 				    (all-dactuals decl modinst))
 			    (mappings modinst) nil)))
-	    (assert (every #'(lambda (fp)
-			       (or (not (decl-formal? fp))
-				   (memq fp (decl-formals (current-declaration)))
-				   (assq fp bindings)))
-			   (free-params obj)))
-	    (unless (subsetp *subst-mod-params-map-bindings* bindings :test #'equal)
-	      (break "subst-mod-params: check bindings"))
+	    (assert (or (theory-reference? (current-declaration))
+			(every #'(lambda (fp)
+				   (or (not (decl-formal? fp))
+				       (memq fp (decl-formals (current-declaration)))
+				       (assq fp bindings)))
+			       (free-params obj))))
 	    (multiple-value-bind (nobj nbindings)
 		(subst-mod-params* obj modinst bindings)
 	      (unless nbindings (setq nbindings bindings))
@@ -899,11 +898,11 @@
 			  (if (and (null (mappings modinst))
 				   (not (typep obj '(or module declaration
 						     inline-recursive-type list)))
-				   (not (some #'(lambda (b)
-						  (typep (car b)
-							 '(or formal-theory-decl
-							   decl-formal declaration)))
-					      bindings))
+				   ;; (not (some #'(lambda (b)
+				   ;; 		  (typep (car b)
+				   ;; 			 '(or formal-theory-decl
+				   ;; 			   decl-formal declaration)))
+				   ;; 	      bindings))
 				   (no-matching-free-params
 				    obj *subst-mod-free-params*))
 			      obj
@@ -914,6 +913,7 @@
 			 (assert (not (print-type-expr? obj)))
 			 ;; Note that obj and nobj could be eq, but the print-type
 			 ;; may still need substituting
+			 #+badassert
 			 (assert (or (eq nobj obj)
 				     (null (print-type nobj))))
 			 (let ((nnobj (subst-mod-params-print-type obj nobj
@@ -956,6 +956,8 @@
 	   (if (eq ptype (print-type obj))
 	       obj
 	       (copy obj :print-type ptype)))
+	  ((occurs-in nobj ptype)
+	   nobj)
 	  (t (setf (print-type nobj) ptype)
 	     nobj))))
 	
@@ -969,6 +971,9 @@
 	(let* ((atype (type-value bdg))
 	       (ptype (print-type atype))
 	       (sptype (subst-mod-params* ptype modinst bindings)))
+	  (unless (typep sptype '(or null print-type-expr))
+	    (setq sptype (print-type sptype))
+	    (assert (print-type-expr? sptype)))
 	  (assert (typep ptype '(or null print-type-expr)))
 	  (assert (typep sptype '(or null print-type-expr)))
 	  ;;(assert (or (null sptype) (fully-instantiated? sptype)))
@@ -1365,12 +1370,12 @@
   (with-slots (type-value contains) ndecl
     (assert (generated-by ndecl)) ;; Should be new
     (let ((tn (if (adt-type-name? type-value)
-		  (mk-adt-type-name (id ndecl))
 		  (progn (break "subst-mod-params* type-decl for adt-type-name")
 			 ;; (let ((sadt (cdr (assq (adt type-value) owlist))))
 			 ;;   (assert sadt)
 			 ;;   (mk-adt-type-name (id sd) nil nil nil sadt))
-			 (mk-type-name (id ndecl))))))
+			 (mk-adt-type-name (id ndecl)))
+		  (mk-type-name (id ndecl)))))
       (setf (resolutions tn)
 	    (list (mk-resolution ndecl (current-theory-name) tn)))
       (setf type-value tn))
@@ -1906,8 +1911,11 @@
 	 (decl (declaration res)))
     (if (decl-formal? decl)
 	(let ((ntype (resolve (id decl) 'type nil)))
-	  (assert (type-name? ntype))
-	  (if (strong-tc-eq ntype type) type ntype))
+	  (cond (ntype
+		 (assert (type-name? ntype))
+		 (if (strong-tc-eq ntype type) type ntype))
+		(t (assert (theory-reference? (current-declaration)))
+		   type)))
 	(let* (;;(dacts (dactuals (module-instance type)))
 	       ;;(bdg (cdr (assq decl bindings)))
 	       (thinst (if (or (decl-formals decl) (null (dactuals tn-thinst)))
@@ -1918,24 +1926,25 @@
 			:resolutions (list nres)
 			:actuals (actuals thinst)
 			:dactuals (dactuals thinst)
-			:print-type nil))
-	       (rtype (typecase decl
-			(type-def-decl
-			 (subst-mod-params (copy (type-value decl) :print-type nil)
-			     thinst (module decl) decl))
-			(type-decl ntype)
-			(mapping
-			 (assert (type-value (rhs decl)))
-			 (type-value (rhs decl)))
-			(t (error "bad type-decl")))))
+			:print-type nil)))
 	  (unless (print-type-expr? type)
-	    (setf (type nres) rtype))
+	    (let ((rtype (typecase decl
+			   (type-def-decl
+			    (subst-mod-params (copy (type-value decl) :print-type nil)
+				thinst (module decl) decl))
+			   (type-decl ntype)
+			   (mapping
+			    (assert (type-value (rhs decl)))
+			    (type-value (rhs decl)))
+			   (t (error "bad type-decl")))))
+	      (setf (type nres) rtype)))
 	  #+pvsdebug
 	  (assert (subsetp (free-params ntype) (cons decl (free-params thinst))))
 	  ;;(assert (or (not (fully-instantiated? thinst)) (fully-instantiated? ntype)))
 	  (if (strong-tc-eq type ntype)
 	      type
-	      (adt-expand-positive-subtypes ntype))))))
+	      (let ((etype (adt-expand-positive-subtypes ntype)))
+		etype))))))
 
 ;;; Given a type such as list[int], this creates the datatype-subtype
 ;;;  {x: list[number] | every(...)(x)}
@@ -2233,7 +2242,8 @@
 			 (ndacts (when (dactuals expr)
 				   (mapcar #'copy (dactuals (module-instance nres)))))
 			 #+pvsdebug
-			 (ntype (subst-mod-params* (type expr) modinst bindings)))
+			 (ntype (subst-mod-params* (type expr) modinst bindings))
+			 (infix-op? (memq (id expr) *infix-operators*)))
 		     #+pvsdebug
 		     (assert (or (tc-eq ntype (type nres))
 				 (and (eq (id (declaration nres)) '=)
@@ -2241,8 +2251,8 @@
 				      (tc-eq (find-supertype (car (types (domain ntype))))
 					     (car (types (domain (type nres))))))))
 		     (copy expr
-		       :actuals nacts
-		       :dactuals ndacts
+		       :actuals (unless infix-op? nacts)
+		       :dactuals (unless infix-op? ndacts)
 		       :resolutions (list nres)
 		       :type (type nres)))))))))
 

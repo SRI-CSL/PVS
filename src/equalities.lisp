@@ -717,8 +717,7 @@
 (defmethod tc-eq* ((e1 application) (e2 rational-expr) bindings)
   (declare (ignore bindings))
   (and (not *use-rationals*) ;; Don't match if trying to convert in assert
-       (name-expr? (operator e1))
-       (eq (id (operator e1)) '/)
+       (is-division? e1)
        (number-expr? (args1 e1))
        (number-expr? (args2 e1))
        (not (zerop (number (args2 e1))))
@@ -836,14 +835,16 @@
 ;;; FORALL (z:[t1,t2]): p(PROJ_1(z),PROJ_2(z))
 
 (defmethod tc-eq* ((e1 binding-expr) (e2 binding-expr) ibindings)
-  (with-slots ((b1 bindings) (ex1 expression)) e1
-    (with-slots ((b2 bindings) (ex2 expression)) e2
+  (with-slots ((b1 bindings) (ex1 expression) (ty1 type)) e1
+    (with-slots ((b2 bindings) (ex2 expression) (ty2 type)) e2
       (or (eq e1 e2)
 	  (and (same-binding-op? e1 e2)
 	       (multiple-value-bind (eq? abindings)
 		   (bindings-eq b1 b2 ibindings)
 		 (and eq?
-		      (tc-eq* ex1 ex2 abindings))))))))
+		      (tc-eq* ex1 ex2 abindings)
+		      (or (not *strong-tc-eq-flag*)
+			  (tc-eq ty1 ty2)))))))))
 
 (defun bindings-eq (b1 b2 bindings)
   (declare (list b1 b2))
@@ -1098,9 +1099,12 @@
       (or (eq n1 n2)
 	  (and (eq id1 id2)
 	       (or (eq lib1 lib2)
-		   (and (resolution n1)
-			(resolution n2)
-			(eq (declaration n1) (declaration n2))))
+		   (if (resolution n1)
+		       (if (resolution n2)
+			   (eq (declaration n1) (declaration n2))
+			   (eq (declaration n1) (get-theory n2)))
+		       (when (resolution n2)
+			 (eq (get-theory n1) (declaration n2)))))
 	       (tc-eq* act1 act2 bindings)
 	       (tc-eq* dacts1 dacts2 bindings)
 	       (tc-eq* map1 map2 bindings))))))

@@ -1124,12 +1124,17 @@ The following are not possible variables: ~{~a,~}" badnames)
 		      (check-with-subst resolutions
 					subalist
 					*current-context*))
-		     (possibilities
+		     (fpossibilities
 		      (or (remove-if-not #'(lambda (poss)
 					     (typep (declaration (cadr poss))
 						    'formula-decl))
 			    all-possibilities)
 			  all-possibilities))
+		     (possibilities
+		      (or (remove-if-not #'(lambda (poss)
+					     (memq (cadr poss) resolutions))
+			    fpossibilities)
+			  fpossibilities))
 		     (form (when (singleton? possibilities)
 			     (caar possibilities)))
 		     (res  (when (singleton? possibilities)
@@ -1707,7 +1712,7 @@ which should be fully instantiated. Please supply actual parameters.")
 		      (let ((decl (make-instance 'skolem-const-decl
 				    :definition tc-expr
 				    :id name
-				    :type (car (judgement-types+ tc-expr))
+				    :type (best-judgement-type tc-expr)
 				    :module (module context))))
 			(make-def-axiom decl)
 			(put-decl decl (declarations-hash context)))

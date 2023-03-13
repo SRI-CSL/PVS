@@ -90,7 +90,7 @@ BEGIN
 % operands. The left-hand operand is the dividend and the right-hand
 % operand is the divisor. Integer division rounds toward 0. That is, the
 % quotient produced for operands n and d that are integers after binary
-% numeric promotion (ง5.6.2) is an integer value q whose magnitude is as
+% numeric promotion (ยยง5.6.2) is an integer value q whose magnitude is as
 % large as possible while satisfying |d * q| <= |n|; moreover, q is
 % positive when and n and d have the same sign, but q is negative when
 % and n and d have opposite signs. There is one special case that does
@@ -110,7 +110,7 @@ BEGIN
 % operator accepts only integral operands, but in the Java programming
 % language, it also accepts floating-point operands. The remainder
 % operation for operands that are integers after binary numeric
-% promotion (ง5.6.2) produces a result value such that (a/b)*b+(a%b) is
+% promotion (ยยง5.6.2) produces a result value such that (a/b)*b+(a%b) is
 % equal to a. This identity holds even in the special case that the
 % dividend is the negative integer of largest possible magnitude for its
 % type and the divisor is -1 (the remainder is 0). It follows from this

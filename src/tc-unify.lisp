@@ -61,7 +61,7 @@
       (if (subtype? (type obj))
 	  (supertype (type obj))
 	  (type obj))
-      (car (judgement-types+ obj))))
+      (best-judgement-type obj)))
 
 (defmethod lift-constructor-type (obj)
   (type obj))
@@ -325,8 +325,11 @@ unless arg is not compatible? with *tc-match-fixed-bindings* entry."
   (let ((fb (assq (car binding) *tc-match-fixed-bindings*)))
     (cond ((or (null fb)
 	       (tc-eq arg (cdr fb)))
-	   ;;(break "tc-match-set-binding ~a to ~a" (car binding) arg)
-	   (setf (cdr binding) arg)
+	   (let ((parg (typecase arg
+			 (print-type-name (change-class (copy arg) 'type-name))
+			 (print-type-application (break "tc-match-set-binding print-type-expr"))
+			 (t arg))))
+	     (setf (cdr binding) parg))
 	   (let ((nbinding (list binding)))
 	     (dolist (elt bindings)
 	       (unless (memq (car elt) (free-params (cdr elt)))
@@ -352,6 +355,8 @@ unless arg is not compatible? with *tc-match-fixed-bindings* entry."
 	  ((null (cdr binding))
 	   (cond ((and (dependent-type? arg)
 		       (not (formal-type-appl-decl? (declaration farg))))
+		  bindings)
+		 ((typep arg '(and print-type-expr (not print-type-name)))
 		  bindings)
 		 (t (when *tc-match-strictly*
 		      (push arg *tc-strict-matches*))
@@ -527,9 +532,16 @@ returns the updated bindings."
 	      ((let ((val (assq (declaration farg) bindings)))
 		 (and val
 		      (tc-match* arg (cdr val) bindings))))
-	      ((not *tc-match-strictly*)
+	      (;;(not *tc-match-strictly*)
+	       (not (member arg *tc-strict-matches* :test #'tc-eq))
+	       ;;(null (cdr (assq (declaration farg) bindings)))
 	       (let ((binding (call-next-method farg arg bindings)))
-		 binding))))))
+		 binding))
+	      ;; (t ;;(break "tc-match* type-name type-name")
+	      ;;  bindings)
+	      ;; (t (when *tc-match-type-names*
+	      ;; 	   bindings))
+	      ))))
 
 (defun tc-match-type-name-dactuals (d1 d2 arg farg bindings)
   (declare (cl:type list bindings))
@@ -677,7 +689,7 @@ returns the updated bindings."
 
 (defmethod tc-match* ((arg datatype-subtype) farg bindings)
   (declare (cl:type list bindings))
-  (let ((nbindings (tc-match* (declared-type arg) farg bindings)))
+  (let* ((nbindings (tc-match* (declared-type arg) farg bindings)))
     (declare (cl:type list nbindings))
     (when nbindings
       ;; Fix the declared-type to match
@@ -687,14 +699,26 @@ returns the updated bindings."
       		      #'(lambda (ex) (eq ex (declared-type arg))))))
       	  ;; Replaced declared-type with arg
       	  (unless (tc-eq cdrb (cdr b))
-	    #+badassert
-      	    (assert (fully-instantiated? cdrb))
-	    (unless (tc-match-set-binding b cdrb nbindings)
-	      (break "Something wrong here")))))
-      (if (every #'(lambda (fp) (cdr (assq fp nbindings)))
-		 (free-params farg))
+	    (setf (cdr b) cdrb)
+	    ;; #+badassert
+      	    ;; (assert (fully-instantiated? cdrb))
+	    ;; (break "cdrb")
+	    ;; (unless (tc-match-set-binding b cdrb nbindings)
+	    ;;   (break "Something wrong here"))
+	    )))
+      ;;(assert (cdr farg-entry))
+      (if (or (not (equalp bindings nbindings))
+	      (every #'(lambda (fp) (cdr (assq fp nbindings)))
+		     (free-params farg)))
 	  nbindings
 	  (call-next-method arg farg nbindings)))))
+
+(defmethod formal-decl ((farg subtype))
+  (assert (type-name? (print-type farg)))
+  (declaration (print-type farg)))
+
+(defmethod formal-decl ((farg type-name))
+  (declaration farg))
 
 (defmethod tc-match* (arg (farg subtype) bindings)
   (declare (cl:type list bindings))

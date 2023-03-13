@@ -195,7 +195,7 @@
 		    (record-expr? expr))
 	       (let ((prexpr (member (car fons) (assignments expr)
 				     :test #'(lambda (f a)
-					       (string= (id (caar (arguments a))) f)))))
+					       (string-equal (id (caar (arguments a))) f)))))
 		 (when prexpr
 		   (get-expr-from-obj-rec (expression (car prexpr)) (cdr fons))))))
       expr)))
@@ -806,7 +806,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 	 (neg    (is-prefix-operator varexpr '-))
 	 (nrel   (if neg (not-relation rel) rel))
 	 (islb   (or (equal nrel '>=) (equal nrel '>))))
-    (if (and (is-function-expr varexpr 'abs)
+    (if (and (is-function-expr varexpr '|abs|)
 	     (not islb))
 	(get-var-range-from-abs (args1 varexpr) fmexpr closed)
       (let* ((expr (extra-get-expr fmexpr))
@@ -829,12 +829,12 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
       (when rel 
 	(cond ((or (is-variable-expr? (args1 fm) vars)
 		   (and (or (is-prefix-operator (args1 fm) '-)
-			    (is-function-expr (args1 fm) 'abs))  
+			    (is-function-expr (args1 fm) '|abs|))  
 			(is-variable-expr? (args1 (args1 fm)) vars)))
 	       (get-var-range-from-rel (args1 fm) (args2 fm) rel))
 	      ((or (is-variable-expr? (args2 fm) vars)
 		   (and (or (is-prefix-operator (args2 fm) '-) 
-			    (is-function-expr (args2 fm) 'abs))
+			    (is-function-expr (args2 fm) '|abs|))
 			(is-variable-expr? (args1 (args2 fm)) vars)))
 	       (get-var-range-from-rel (args2 fm) (args1 fm) (neg-relation rel))))))))
 
@@ -846,7 +846,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 ;; Return the list of variables.
 (defun extra-get-var-ranges (fms vars)
   (setq *extra-varranges* (make-hash-table :test #'equal)) 
-  (let ((uvars (remove-if #'listp vars)))
+  (let ((uvars  (remove-if #'listp vars)))
     (loop for fm in fms
 	  do (if (negation? fm)
 		 (get-var-range-from-formula (args1 fm) uvars t)
@@ -1047,7 +1047,7 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
 		(tccs-expression e :label labtcc :tcc-step tcc-step)
 		(branch (discriminate (name name e) (labl !nlx))
 			((then (when fnums (replace !nlx !nml))
-			       (let ((flagdir (equal dir 'rl)))
+			       (let ((flagdir (string-equal dir 'rl)))
 				 (when@ flagdir (swap-rel !nlx)))
 			       (when hide? (hide !nlx)))
 			 (then
@@ -1382,8 +1382,8 @@ specified as in WITH-FRESH-LABELS.")
 			  when (or e (and (cadr b) (listp (cadr b))))
 			  append
 			  (let* ((opt-tcc (enabled-option-flag ':tccs (cdr b) t))
-				 (va      (format nil "*~a-tccs*" (car b)))
-				 (la      (format nil "~a-tccs" (car b)))
+				 (va      (format nil "*~a-~a*" (car b) 'tccs))
+				 (la      (format nil "~a-~a" (car b) 'tccs))
 				 (stp     (if (listp opt-tcc) opt-tcc '(extra-tcc-step)))
 				 (tcc     (when opt-tcc
 					    (list stp (intern va :pvs) (list 'quote (freshlabel la))))))

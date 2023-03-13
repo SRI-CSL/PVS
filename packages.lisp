@@ -7,6 +7,8 @@
 #+:sbcl
 (require :sb-md5)
 #+:sbcl
+(require :sb-cltl2)
+#+:sbcl
 (require :sb-aclrepl)
 
 (eval-when (:execute :load-toplevel)
@@ -934,7 +936,7 @@
    #:*proofstate-width*
    #:*prover-commentary*
    #:*ps*
-   #:*pvs-binary-type*
+   #:*pvs-fasl-type*
    #:*pvs-buffer-hook*
    #:*pvs-dialog-hook*
    #:*pvs-directories*
@@ -945,6 +947,7 @@
    #:*pvs-path*
    #:*pvs-query-hook*
    #:*pvs-tmp-file*
+   #:*pvs-version*
    #:*pvs-warning-hook*
    #:*pvs-websocket-interface*
    #:*pvs-y-or-n-hook*
@@ -1364,7 +1367,7 @@
    #:write-deferred-methods-to-file
    #:write-permission?
    #:write-pvs-version-file
-   #:write-to-temp-file
+   #:write-json-to-temp-file
    #:write-to-temp-file
    #:xmlrpc-output-proofstate
    ;;sb-runtime:*abs-syn-package*

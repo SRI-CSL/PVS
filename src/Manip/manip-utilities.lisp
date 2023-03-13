@@ -26,6 +26,9 @@
 (defconstant subst-symb-char     #\$ )
 (alexandria:define-constant all-but-symbols (list all-but-symb all-but-ante all-but-cons)
   :test #'equal)
+(alexandria:define-constant all-but-dict
+    (list (cons all-but-symb '*) (cons all-but-ante '-) (cons all-but-cons '+))
+  :test #'equal)
 (alexandria:define-constant loc-ref-flat-symb   '!  )
 (alexandria:define-constant loc-ref-full-symb   '!! )
 (alexandria:define-constant loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb)
@@ -40,7 +43,7 @@
   (format nil "~A~A__" str
 	  (if inc? (incf *manip-gensym-count*) *manip-gensym-count*)))
 
-(defun textify (form) (format nil "~A" form))
+(defun textify (form) (str form))
 
 
 ;;; ------------- Regular expression package functions -------------
@@ -645,7 +648,14 @@ undoing proof attempt." just-rule)
   (loop for i from 0 below n collect i))
 
 (defun number-items (items &optional (start 1) (incr 1))
-  (loop for i from start by incr for e in items collect i))
+  ;; SO - SBCL doesn't like this loop when incr is negative; replaced with recursion
+  ;;  (loop for i from start by incr for e in items collect i)
+  (number-items* items start incr nil))
+
+(defun number-items* (items start incr accum)
+  (if (null items)
+      (nreverse accum)
+      (number-items* (cdr items) (+ start incr) incr (cons start accum))))
 
 (defun bag-intersection (a b)
   (cond ((null a) nil)

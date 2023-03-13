@@ -141,11 +141,13 @@
 
 
 (defun do-intern (string package-name)
-  (intern #+case-sensitive string
-	  #-case-sensitive (string-upcase string)
+  (intern (if #+allegro (eq excl:*current-case-mode*
+			    :case-sensitive-lower)
+	      #-allegro nil
+	      string
+	      (string-upcase string))
 	  (cond ((find-package package-name))
-		(t
-		 (make-package package-name)))))
+		(t (make-package package-name)))))
 
 
 
@@ -271,8 +273,11 @@
 				       (lang-code-package-name old-lang)
 				       (if (not-empty-str? package)
 					   package
-					   #+case-sensitive conc-name
-					   #-case-sensitive (string-upcase conc-name)))))
+					   (if #+allegro (eq excl:*current-case-mode*
+							     :case-sensitive-lower)
+					       #-allegro nil
+					       conc-name
+					       (string-upcase conc-name))))))
 	   :abs-syn-package (if (not-empty-str? abs-syn-package)
 				abs-syn-package
 				(if old-lang

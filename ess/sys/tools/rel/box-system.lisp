@@ -155,7 +155,7 @@ to coerce it into one.  This often means appending a /."
 ;;; lisp-load is used by the lisp-loader box.
 ;;; This definition used to be in box-defs.lisp.
 
-(defvar *load-messages* nil)
+(defvar *load-messages* t)
 
 (defun lisp-load (&key file (lisp-loader t)
 		       (messages *load-messages*)
@@ -180,48 +180,25 @@ to coerce it into one.  This often means appending a /."
 (defvar *compiler-messages* nil)
 
 (defun lisp-compile (&key source-file compiled-file ; should always be given
-			  (lisp-compiler t) ; to prevent compiling
-			  (messages *compiler-messages*)
-			  (boot nil)
-			  (readtable nil)
-			  &allow-other-keys)
+		       (lisp-compiler t)	    ; to prevent compiling
+		       (messages *compiler-messages*)
+		       (boot nil)
+		       (readtable nil)
+		       &allow-other-keys)
   ":BOOT may be specified as a local option in a box declaration.
 Other keys are allowed, but will be ignored."
   (when lisp-compiler
     (when boot
       (load source-file))
-    (let ((*readtable* (if readtable readtable *readtable*)))
-	(compile-file source-file :output-file compiled-file
-	     #+(or lucid allegro) :messages #+(or lucid allegro) messages
-	     #+(or sbcl cmu) :progress #+(or sbcl cmu) messages
-	     ))
+    (let ((*readtable* (if readtable readtable *readtable*))
+	  (cfile (asdf/output-translations:apply-output-translations compiled-file)))
+      (compile-file source-file :output-file cfile
+		    #+(or lucid allegro) :messages #+(or lucid allegro) messages
+		    #+(or sbcl cmu) :progress #+(or sbcl cmu) messages
+		    ))
     )
   ;;  #+kcl (rename-file (merge-pathnames ".o" source-file) compiled-file)
   nil)
-
-;;; Bug workaround for Lucid 2.1.
-;;; This redefines the previous function, but is OK.
-#+(and lucid (not lcl3.0))
-(defun lisp-compile (&key source-file compiled-file ; should always be given
-			  (lisp-compiler t) ; to prevent compiling
-			  (messages *compiler-messages*)
-			  (boot nil)
-			  (readtable nil)
-			  &allow-other-keys)
-  ":BOOT may be specified as a local option in a box declaration.
-Other keys are allowed, but will be ignored."
-  (when lisp-compiler
-    (when boot
-      (load source-file))
-    (let ((*print-case* :upcase))	; Case bug in Lucid 2.1
-      (if readtable
-	  (let ((*readtable* readtable))
-	    (compile-file source-file :output-file compiled-file
-			  :messages messages))
-	  (compile-file source-file :output-file compiled-file
-			:messages messages))))
-  nil)
-
 
 (defparameter *c-compiler-options* '("-O"))
 
@@ -390,32 +367,8 @@ Currently only #'get-universal-time is supported.")
 
 (alexandria:define-constant lisp-source-extension "lisp" :test #'string=)
 (alexandria:define-constant lisp-compiled-extension
-  #+(and allegro sparc) "fasl"		; Sun4
-  #+(and allegro rios) "rfasl"		; PowerPC/RS6000
-  #+(and allegro hpux) "hfasl"		; HP 9000
-  #+(and allegro macosx powerpc) "mfasl" ; Mac OS X powerpc
-  #+(and allegro macosx x86) "nfasl"	; Mac OS X intel
-  #+(and allegro macosx x86-64) "n64fasl"	; Mac OS X intel
-  #+(and allegro x86) "lfasl"		; Intel x86
-  #+(and allegro linux x86-64) "l64fasl" ; Intel x86_64
-  #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
-  #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
-  #+(and lucid rios) "rbin"		; PowerPC/RS6000
-  #+(and lucid mips) "mbin"		; DEC
-    ;;; These are experimental
-  #+gcl "o"
-  #+(and cmu linux) "x86f"
-  #+(and cmu darwin) "ppcf"
-  #+(and cmu solaris) "sparcf"
-  #+(and sbcl x86-64 linux) "x8664s"
-  #+(and sbcl (not x86-64) linux) "x86s"
-  #+(and sbcl darwin) "ppcs"
-  #+(and sbcl sparc) "sparcs"
-  #+(and clisp pc386) "clfasl"
-  #+harlequin-common-lisp "wfasl"
-  #+clisp "fas"
-  :test #'string=)
-
+  #+allegro excl:*fasl-default-type*
+  #+sbcl sb-fasl:*fasl-file-type*)
 
 #-(or lucid allegro cmu sbcl ibcl kcl harlequin-common-lisp)
 (warn "You may need to redefine the constant tools:lisp-compiled-extension

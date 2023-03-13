@@ -345,7 +345,7 @@
 (defun determine-decision-procedure (decl)
   (or (if (or *force-dp*
 	      *recursive-prove-decl-call*
-	      (eq *default-decision-procedure* (decision-procedure-used decl))
+	      (string-equal *default-decision-procedure* (decision-procedure-used decl))
 	      (and *proving-tcc* *use-default-dp?*)
 	      (and (not *proving-tcc*)
 		   (pvs-yes-or-no-p
@@ -354,8 +354,10 @@
                    Do you want to use the default ~a instead? "
 		    (decision-procedure-used decl)
 		    *default-decision-procedure*)))
-	  (car (member *default-decision-procedure* *decision-procedures*))
-	  (car (member (decision-procedure-used decl) *decision-procedures*)))
+	  (car (member *default-decision-procedure* *decision-procedures*
+		       :test #'string-equal))
+	  (car (member (decision-procedure-used decl) *decision-procedures*
+		       :test #'string-equal)))
       (progn (format t
 		 "Can't find the ~a decision procedure, using shostak instead"
 	       (decision-procedure-used decl))
@@ -379,8 +381,16 @@
 			       (auto-rewrites *current-context*)))
 	 (rewrites- (mapappend #'get-rewrite-names
 			       (disabled-auto-rewrites *current-context*)))
-	 (rewrites (set-difference rewrites+ rewrites- :test #'tc-eq)))
+	 (rewrites (remove-disabled-rewrites rewrites+ rewrites-)))
     rewrites))
+
+(defun remove-disabled-rewrites (rewrites+ rewrites- &optional remaining)
+  (if (null rewrites+)
+      remaining
+      (remove-disabled-rewrites (cdr rewrites+) rewrites-
+				(if (member (car rewrites+) rewrites- :test #'tc-eq)
+				    remaining
+				    (cons (car rewrites+) remaining)))))
 
 (defun initialize-auto-rewrites ()
   (let ((rewrites (current-auto-rewrite-names)))

@@ -305,10 +305,12 @@
 (defun make-example (p num indices &key kind)
   (let ((char* (mona-make-example (address p) kind num
 				  #+allegro indices
-				  #+cmu (sys:vector-sap indices))))
+				  #+sbcl (sb-sys:vector-sap indices)
+				  #+cmu (sys:vector-sap indices)
+				  )))
     (if #+allegro (= 0 char*)
-	#+cmu (or (not (stringp char*))
-		  (string= char* ""))
+	#+(or sbcl cmu) (or (not (stringp char*))
+			    (string= char* ""))
 	:null
 	(let* ((str #+allegro (ff:char*-to-string char*)
 		    #+cmu char*)

@@ -50,7 +50,19 @@
 	 (*newline-comments* nil))
     (init-parser)
     (multiple-value-bind (term error? place msg args)
-	(apply #'pvs-parse :return-errors t keys)
+	(handler-case 
+	    (apply #'pvs-parse :return-errors t keys)
+	  #+sbcl
+	  (sb-int:stream-decoding-error (err)
+	    (let ((msg
+		   (format nil
+		       "Error: ~a~%This error usually is due to a character that is not UTF-8~
+                       ~%Run 'file ~a', and if it is not ASCII or UTF-8,~
+                       ~%change it using something like~
+                       ~%  iconv -f latin1 -t UTF-8 < ~a > ~a.copy~
+                       ~%and move the .copy file after checking it with 'file'"
+		     err *current-file* *current-file* *current-file*)))
+	      (parse-error nil msg))))
       (when error?
 	(let ((pargs (mapcar #'(lambda (arg)
 				 (if (stringp arg)
@@ -2013,7 +2025,7 @@
 		      (cond ((null code)
 			     (parse-error expr "char literal error: ~a" err))
 			    ((> code #x10FFFF)
-			     (parse-error "char literal is too large, must be <= 10FFFF"))
+			     (parse-error expr "char literal is too large, must be <= 10FFFF"))
 			    (t (mk-char-expr code place)))))))))))
 
 (defun xt-arg-expr (args)

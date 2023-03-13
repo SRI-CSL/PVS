@@ -99,7 +99,7 @@ prover to overwrite it at the end of the proof session."
     (unless pvs-error
       (pvs-prove-formula fref rerun nil pvs-x-show-proofs)
       (unless pvs-error
-	(switch-to-lisp t t)))))
+	(ilisp-switch-to-lisp t t)))))
 
 (defpvs x-prove prove (&optional rerun)
   "Invokes the prover, with display, on the formula closest to the cursor
@@ -1357,7 +1357,7 @@ debugging."
 		    (or fname theory) fmlastr (+ line poff) 't
 		    kind buf poff nil)))
     (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
-    (switch-to-lisp t t)
+    (ilisp-switch-to-lisp t t)
     (insert input)))
 
 (defpvs step-proof prove ()
@@ -1367,7 +1367,7 @@ The step-proof command invokes the prover and sets up proof stepping
 through using the edit-proof command."
   (interactive)
   (confirm-not-in-checker)
-  (pushw)
+  ;;(pushw)
   (delete-other-windows)
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
@@ -1387,7 +1387,7 @@ through using the edit-proof command."
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
-	     (popw)
+	     ;;(popw)
 	     (error "%s is not typechecked" fname))))
     (unless pvs-error
       (when (get-buffer "Proof")
@@ -2336,6 +2336,6 @@ Sets the default description string for interactive proofs."
   (pvs-busy))
 
 (defun pvs-checker-ready ()
-  (popw)
+  ;;(popw)
   (setq pvs-in-checker nil)
   (pvs-ready))

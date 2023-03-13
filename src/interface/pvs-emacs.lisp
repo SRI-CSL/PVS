@@ -481,7 +481,7 @@
 	       (pvs-abort))
 	     val)))
 	(t (let* ((prompt (concatenate 'string (protect-format-string msg)
-				       (if full? "(Yes or No) " "(Y or N) ")))
+				       #-sbcl (if full? "(Yes or No) " "(Y or N) ")))
 		  (answer (if full?
 			      (yes-or-no-p prompt)
 			      (y-or-n-p prompt))))
@@ -506,6 +506,7 @@
 	       (pvs-abort))
 	     val)))
 	(t (format t "~?" prompt args)
+	   #+sbcl (terpri)
 	   (read-line))))
 
 ;;;        Returns t, nil, :auto, or aborts
@@ -1343,6 +1344,14 @@ very slow, really only good for error messages over small lists of names."
 (defun write-to-temp-file (contents &optional escape)
   (with-output-to-temp-file
     (write contents :escape escape :pretty nil :level nil :length nil)))
+
+(defun write-json-to-temp-file (contents)
+  (let ((jstr (if (stringp contents)
+		  contents
+		  (pvs-encode-json-to-string contents))))
+    (when (stringp contents)
+      (assert (pvs-decode-json-from-string contents)))
+    (write-to-temp-file jstr t)))
 
 (in-package :ilisp)
 (export '(ilisp-eval))

@@ -339,15 +339,12 @@ is replaced with replacement."
 
 (defun make-file (file &optional force)
   (let* ((source (make-file-name file))
-	 (bin (make-pathname :type *pvs-binary-type*
-			     :defaults source)))
-    (unless (file-exists-p source)
-      (error "~%File ~a does not exist~%" source))
+	 (fasl (make-fasl-file-name source)))
     (when (or (eq force t)
-	      (and (compiled-file-older-than-source? source bin)
+	      (and (compiled-file-older-than-source? source fasl)
 		   (not (eq force :source))))
-      (compile-file source :output-file bin)
-      (chmod "g+w" bin))
+      (compile-file source :output-file fasl)
+      (chmod "g+w" fasl))
     (if (eq force :source)
 	#+lucid
 	(load source
@@ -355,7 +352,7 @@ is replaced with replacement."
 	      :if-source-newer :load-source)
 	#-lucid
 	(load source)
-	(load bin))))
+	(load fasl))))
 
 (defun make-file-name (file)
   (let* ((dir (pathname-directory file))
@@ -363,22 +360,30 @@ is replaced with replacement."
 	 (type (or (pathname-type file) "lisp")))
     (cond (dir
 	   (let ((path (make-pathname :directory dir :name name :type type)))
-	     (if (file-exists-p path)
+	     (if (uiop:file-exists-p path)
 		 path
 		 (error "File ~a cannot be found" path))))
 	  (t (dolist (dir *pvs-directories*)
-	       (let* ((defaults (or (probe-file (format nil "~a/~a/"
-						  *pvs-path* dir))
-				    (directory-p dir)))
+	       (let* ((defaults (or (uiop:file-exists-p (format nil "~a/~a/"
+							  *pvs-path* dir))
+				    (uiop:directory-exists-p dir)))
 		      (path (make-pathname :name name :type type
 					   :defaults defaults)))
-		 (when (file-exists-p path)
+		 (when (uiop:file-exists-p path)
 		   (return-from make-file-name path))))
 	     (error "File ~a.~a cannot be found in *pvs-directories*"
 		    name type)))))
 
+(defun make-fasl-file-name (file)
+  (unless (uiop:file-exists-p file)
+    (error "Source file not found: ~a" file))
+  (let* ((path (make-pathname :defaults file :type *pvs-fasl-type*))
+	 (fpath (asdf:apply-output-translations path)))
+    (ensure-directories-exist fpath)
+    fpath))
+
 (defun compiled-file-older-than-source? (sourcefile binfile)
-  (or (not (file-exists-p binfile))
+  (or (not (uiop:file-exists-p binfile))
       (file-older binfile sourcefile)))
 
 (defun load-parser-source ()
@@ -396,16 +401,11 @@ is replaced with replacement."
   (lf "ergo-runtime-fixes"))
 
 (defun special-variable-p (obj)
+  ;; Note that this refers to obj being special, constant, lexical, or symbol-macro
   (and (symbolp obj)
-       #+allegro (eq (sys:variable-information obj) :special)
-       #+sbcl (if (fboundp 'sb-cltl2:variable-information)
-		  (eq (sb-cltl2:variable-information obj) :special)
-		  (sb-walker:var-globally-special-p obj))
-       #+lucid (system:proclaimed-special-p obj)
-       #+cmu (eq (extensions:info variable kind obj) :special)
-       #+kcl (system:specialp obj)
-       #+harlequin-common-lisp (system:declared-special-p obj)
-       #-(or lucid kcl allegro harlequin-common-lisp cmu sbcl)
+       #+allegro (sys:variable-information obj)
+       #+sbcl (sb-cltl2:variable-information obj)
+       #-(or allegro sbcl)
        (error "Need to handle special variables for this version of lisp")
        t))
 
@@ -485,6 +485,13 @@ is replaced with replacement."
   ;; Fails in comparing "~/foo" to "/home/user/foo" in SBCL
   ;; We don't use truename, as that assumes the paths exist
   (uiop:pathname-equal (uiop:native-namestring p1) (uiop:native-namestring p2)))
+
+#+sbcl
+(defun write-permission? (&optional (file *default-pathname-defaults*))
+  (let ((pfile (uiop:probe-file* file :truename t)))
+    (and pfile
+	 (handler-case (zerop (sb-posix:access pfile sb-posix:w-ok))
+	   (sb-posix:syscall-error () nil)))))
 
 (defun environment-variable (string)
   #+allegro
@@ -3830,6 +3837,14 @@ space")
   (values (not (type expr))
 	  expr))
 
+(defmethod untyped* ((expr injection?-expr))
+  (values (not (type expr))
+	  expr))
+
+(defmethod untyped* ((expr injection-expr))
+  (values (not (type expr))
+	  expr))
+
 (defmethod untyped* ((expr name-expr))
   (let ((res (resolution expr)))
     (values (not (and res (or (type expr) (type-decl? (declaration res)))))
@@ -4175,6 +4190,15 @@ space")
   (let ((finfo1 (get-file-info file1)))
     (and finfo1
 	 (equal finfo1 (get-file-info file2)))))
+
+#+sbcl
+(defun get-file-info (file)
+  (let ((pfile (uiop:probe-file* file :truename t)))
+    (and pfile
+	 (handler-case
+	     (let ((stat (sb-posix:stat pfile)))
+	       (list (sb-posix:stat-dev stat) (sb-posix:stat-ino stat)))
+	   (sb-posix:syscall-error () nil)))))
 
 (defmethod resolution ((te datatype-subtype))
   (resolution (declared-type te)))
@@ -4950,21 +4974,29 @@ space")
 		`(method ,funsym ,@q ,a)))
     (generic-function-methods (symbol-function funsym))))
 
-(defun generic-function-methods (fun)
-  #+sbcl (sb-mop:generic-function-methods fun)
-  #+allegro (mop:generic-function-methods fun))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'generic-function-methods)
+    (defun generic-function-methods (fun)
+      #+allegro (mop:generic-function-methods fun)
+      #+sbcl (sb-mop:generic-function-methods fun))))
 
-(defun method-specializers (m)
-  #+sbcl (sb-mop:method-specializers m)
-  #+allegro (mop:method-specializers m))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'method-specializers)
+    (defun method-specializers (m)
+      #+allegro (mop:method-specializers m)
+      #+sbcl (sb-mop:method-specializers m))))
 
-(defun slot-definition-name (slot)
-  #+sbcl (sb-mop:slot-definition-name slot)
-  #+allegro (mop:slot-definition-name slot))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'slot-definition-name)
+    (defun slot-definition-name (slot)
+      #+allegro (mop:slot-definition-name slot)
+      #+sbcl (sb-mop:slot-definition-name slot))))
 
-(defun class-slots (x)
-  #+sbcl (sb-mop:class-slots x)
-  #+allegro (mop:class-slots x))
+(eval-when (:load-toplevel :compile-toplevel)
+  (unless (fboundp 'class-slots)
+    (defun class-slots (x)
+      #+allegro (mop:class-slots x)
+      #+sbcl (sb-mop:class-slots x))))
 
 ;;; equals is like equalp, but is case-sensitive
 (defun equals (x y)
@@ -5142,7 +5174,8 @@ space")
 	 :strategies-files (mapcar #'get-file-ref
 			     (cdr (assq :strategies *files-loaded*)))
 	 :pvs-environment-variables (mapcan #'(lambda (var)
-						(let ((val (environment-variable var)))
+						(let ((val (environment-variable
+							    (string var))))
 						  (when val
 						    (list (cons var val)))))
 				      *pvs-environment-variables*)))
@@ -5779,60 +5812,120 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 	     (flatten-proof-script-list (cdr branch))))
 	  (t (flatten-proof-script-list (break "flatten-proof-script-list"))))))
 
-(defmethod initialize-instance :around ((te type-name) &rest ia)
-  (declare (ignore ia))
-  (call-next-method)
-  (print-type-check te))
+#+sbcl
+(defun dbg ()
+  (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
 
-(defmethod initialize-instance :around ((te print-type-name) &rest ia)
-  (declare (ignore ia))
-  (call-next-method)
-  (when (and (actuals te)
-	     (not (eq (actuals (module-instance te)) (actuals te))))
-    (break "bad print-type-name init")))
+;; Called with, e.g.,
+;;   (library-proof-diffs "~/nasalib-6.0.9" "~/pvslib-7.1" "proof-diffs.json")
 
-(defmethod (setf print-type) :around (v (te type-name))
-  (declare (ignore v))
-  (prog1 (call-next-method)
-    (print-type-check te)))
+(defun library-proof-diffs (libdir1 libdir2 diff-file)
+  (let ((subdirs1 (uiop:subdirectories libdir1))
+	(subdirs2 (uiop:subdirectories libdir2))
+	(diffs nil))
+    (dolist (sdir1 subdirs1)
+      (let* ((lib (car (last (pathname-directory sdir1))))
+	     (sdir2 (find lib subdirs2 :test #'string=
+			  :key #'(lambda (sd) (car (last (pathname-directory sd)))))))
+	(when sdir2
+	  (format t "~%~a" lib)
+	  (let ((prfiles1 (uiop:directory-files sdir1 "*.prf"))
+		(prfiles2 (uiop:directory-files sdir2 "*.prf")))
+	    (dolist (fprf1 prfiles1)
+	      (unless (string= (pathname-name fprf1) "orphaned-proofs")
+		(let ((fprf2 (find (pathname-name fprf1) prfiles2
+				   :test #'string=
+				   :key #'pathname-name))
+		      (proofs1 nil)
+		      (proofs2 nil))
+		  (when fprf2
+		    (with-open-file (input fprf1 :direction :input)
+		      (setq proofs1 (read-proof-file-stream input)))
+		    (with-open-file (input fprf2 :direction :input)
+		      (setq proofs2 (read-proof-file-stream input)))
+		    (dolist (tprfs1 proofs1)
+		      (let ((tprfs2 (assq (car tprfs1) proofs2)))
+			(when tprfs2
+			  (dolist (dprfs1 (cdr tprfs1))
+			    (let ((dprfs2 (assq (car dprfs1) (cdr tprfs2))))
+			      (when dprfs2
+				(let* ((prf1 (fourth (nth (cadr dprfs1) (cddr dprfs1))))
+				       (prf2 (fourth (nth (cadr dprfs2) (cddr dprfs2))))
+				       (eprf1 (editable-justification prf1))
+				       (eprf2 (editable-justification prf2)))
+				  (unless (equalp eprf1 eprf2)
+				    (let ((diff `(("tag" . "proof-difference")
+						  ("library1" . ,libdir1)
+						  ("library2" . ,libdir2)
+						  ("lib" . ,lib)
+						  ("theory" . ,(string (car tprfs1)))
+						  ("declaration" . ,(string (car dprfs1)))
+						  ("script1" . ,eprf1)
+						  ("script2" . ,eprf2))))
+				      (push diff diffs))))))))))))))))))
+    (with-open-file (df diff-file :direction :output :if-exists :supersede)
+      (json:encode-json diffs df))
+    (format t "~%Found ~a diffferences" (length diffs))))
 
-(defmethod print-type-check ((te type-name))
-  (let ((pte (print-type te)))
-    (unless (null pte)
-      (unless (print-type-expr? pte)
-	(break "print-type for a type-name not a print-type-expr?"))
-      (when (print-type-name? te)
-	(let ((mi (module-instance te))
-	      (pmi (module-instance pte)))
-	  (unless (eq (actuals pmi) (actuals mi))
-	    (break "print-type-name actuals difference"))
-	  (when (and (actuals pte) (not (eq (actuals pte) (actuals pmi))))
-	    (break "print-type-name actuals self difference")))))))
+;; (defmethod initialize-instance :around ((te type-name) &rest ia)
+;;   (declare (ignore ia))
+;;   (call-next-method)
+;;   (print-type-check te))
 
-(defmethod initialize-instance :around ((act actual) &rest ia)
-  (declare (ignore ia))
-  (call-next-method)
-  (when (print-type-expr? (expr act))
-    (break "init actual expr print-type-expr?")))
+;; (defmethod initialize-instance :around ((te print-type-name) &rest ia)
+;;   (declare (ignore ia))
+;;   (call-next-method)
+;;   (when (and (actuals te)
+;; 	     (not (eq (actuals (module-instance te)) (actuals te))))
+;;     (break "bad print-type-name init")))
 
-(defmethod (setf expr) :around (v (act actual))
-  (when (print-type-expr? v)
-    (break "setf actual expr print-type-expr?"))
-  (call-next-method))
+;; (defmethod (setf print-type) :around (v (te type-name))
+;;   (declare (ignore v))
+;;   (prog1 (call-next-method)
+;;     (print-type-check te)))
 
-(defmethod (setf resolutions) :around (v (te print-type-name))
-  (declare (ignore v))
-  (prog1 (call-next-method)
-    (when (and (actuals te)
-	       (not (eq (actuals (module-instance te)) (actuals te))))
-      (break "setf bad print-type-name"))))
+;; (defmethod print-type-check ((te type-name))
+;;   (let ((pte (print-type te)))
+;;     (unless (null pte)
+;;       (unless (print-type-expr? pte)
+;; 	(break "print-type for a type-name not a print-type-expr?"))
+;;       (when (print-type-name? te)
+;; 	(let ((mi (module-instance te))
+;; 	      (pmi (module-instance pte)))
+;; 	  (unless (eq (actuals pmi) (actuals mi))
+;; 	    (break "print-type-name actuals difference"))
+;; 	  (when (and (actuals pte) (not (eq (actuals pte) (actuals pmi))))
+;; 	    (break "print-type-name actuals self difference")))))))
 
-(defmethod initialize-instance :around ((te type-expr) &rest ia)
-  (call-next-method)
-  (unless (or (null (print-type te))
-	      (print-type-expr? (print-type te)))
-    (break "bad init")))
+;; (defmethod initialize-instance :around ((act actual) &rest ia)
+;;   (declare (ignore ia))
+;;   (call-next-method)
+;;   (when (print-type-expr? (expr act))
+;;     (break "init actual expr print-type-expr?")))
 
-(defmethod initialize-instance :around ((mn modname) &rest ia)
-  (call-next-method)
-  (when (null (id mn)) (break "modname init: null id")))
+;; (defmethod (setf expr) :around (v (act actual))
+;;   (when (print-type-expr? v)
+;;     (break "setf actual expr print-type-expr?"))
+;;   (call-next-method))
+
+;; (defmethod (setf resolutions) :around (v (te print-type-name))
+;;   (declare (ignore v))
+;;   (prog1 (call-next-method)
+;;     (when (and (actuals te)
+;; 	       (not (eq (actuals (module-instance te)) (actuals te))))
+;;       (break "setf bad print-type-name"))))
+
+;; (defmethod initialize-instance :around ((te type-expr) &rest ia)
+;;   (call-next-method)
+;;   (unless (or (null (print-type te))
+;; 	      (print-type-expr? (print-type te)))
+;;     (break "bad init")))
+
+;; (defmethod initialize-instance :around ((mn modname) &rest ia)
+;;   (call-next-method)
+;;   (when (null (id mn)) (break "modname init: null id")))
+
+;; (defmethod initialize-instance :around ((te type-name) &rest ia)
+;;   (call-next-method)
+;;   (when (print-type te)
+;;     (break "init type-expr: print-type for type-name?")))

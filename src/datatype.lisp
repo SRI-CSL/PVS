@@ -152,6 +152,7 @@ generated")
 	(*last-adt-decl* (current-declaration)))
     (generate-inline-adt adt))
   (put-decl adt)
+  (setf (module adt) (current-theory))
   (setf (typechecked? adt) t))
 
 (defun generate-inline-adt (adt)
@@ -207,8 +208,7 @@ generated")
   (let* ((adt-file (concatenate 'string (string (id adt))
 				(if (datatype? adt) "_adt" "_codt")))
 	 (adt-path (make-specpath adt-file))
-	 (file-exists? #+allegro (file-exists-p adt-path)
-		       #-allegro (probe-file adt-path))
+	 (file-exists? (uiop:file-exists-p adt-path))
 	 (adt-theories (adt-generated-theories adt))
 	 (mods (make-instance 'modules :modules adt-theories))
 	 (ce (unless *loading-prelude*
@@ -224,7 +224,7 @@ generated")
 		 ce
 		 checksum-ok?
 		 (equal (ce-write-date ce)
-			(file-write-time (make-specpath (filename adt)))))
+			(file-write-date (make-specpath (filename adt)))))
       (when file-exists?
 	(ignore-errors
 	  (chmod "a+w" (namestring adt-path)))
@@ -268,7 +268,7 @@ generated")
 	      (if (codatatype? adt) "CO" "")
 	      (id th) tot prv sub unprv simp
 	      (length (warnings th)) (length (info th))))))
-    (let ((fdate (file-write-time adt-path))
+    (let ((fdate (file-write-date adt-path))
 	  (ce2 (get-context-file-entry adt-file)))
       (setf (generated-file-date adt) fdate)
       (push 'typechecked (status adt))

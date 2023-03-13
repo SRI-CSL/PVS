@@ -1059,9 +1059,10 @@ resolution with a macro matching the signature of the arguments."
 	     ;;(actuals (expr act))
 	     )
     (let ((reses (remove-if-not #'(lambda (res)
-				    (typep (declaration res) '(or type-decl formal-type-decl)))
+				    (typep (declaration res)
+					   '(or type-decl formal-type-decl mapping)))
 		   (resolutions (expr act)))))
-      (assert (null (cdr reses)))
+      (assert (singleton? reses))
       (setf (resolutions (expr act)) reses)
       (when (name-expr? (expr act))
 	(setf (type (expr act)) (type (car reses))))
@@ -1797,18 +1798,22 @@ type of the lhs."
 					(and (eq (car x) (car y))
 					     (tc-eq (cadr x) (cadr y))))))
 	    (push (list ex expected) *tccs-generated-for*)
-            (let* ((jtypes (let ((*generate-tccs* 'none))
-                             (judgement-types+ ex)))
-                   (incs (let ((*generate-tccs* 'none))
-                           (compatible-predicates jtypes expected ex))))
-              (when incs
-		(generate-subtype-tcc ex expected incs)
+	    (multiple-value-bind (jtypes jdecls)
+		(let ((*generate-tccs* 'none))
+                  (judgement-types+ ex))
+	      (multiple-value-bind (incs jdecl)
+		  (let ((*generate-tccs* 'none))
+                    (compatible-predicates jtypes expected ex))
+		;; (when (and jdecl
+		;; 	   (assuming (module jdecl)))
+		(when incs
+		  (generate-subtype-tcc ex expected incs)
 		  ;; A better warning is generated in judgements.lisp
                   ;; (when (assq ex *compatible-pred-reason*)
                   ;;   (pvs-warning "No TCC generated for judgement ~a~%~
                   ;;                 judgement is already known"
                   ;;     (ref-to-id (current-declaration))))
-		)))))))
+		  ))))))))
 
 ;;; Loop through the types (the judgement-types of the ex). Each of these is
 ;;; a minimal type, we want the one that leads to the most provable TCC.
@@ -2633,16 +2638,20 @@ type of the lhs."
 (defun adjust-application-operator-from-arg-judgements (ex expected)
   (let* ((operator (operator ex))
          (argument (argument ex))
+	 (opres (resolution operator))
          (res (remove-if (complement
                           #'(lambda (r)
                               (compatible? (range (type r)) expected)))
                 (resolve (copy operator :resolutions nil :type nil)
                          'expr (arguments ex)))))
     (when (and (singleton? res)
-               (or (fully-instantiated? res)
-                   (not (fully-instantiated? (resolution operator))))
-               (not (tc-eq (car res)
-                           (resolution operator))))
+               (not (tc-eq (car res) opres))
+	       (if (fully-instantiated? res)
+		   (or (not (fully-instantiated? opres))
+		       (recursive-defn-conversion? argument)
+		       (strict-compatible? (type (car res)) (type opres)))
+		   (and (not (fully-instantiated? res))
+			(strict-compatible? (type (car res)) (type opres)))))
       ;; May need to rerun tc-match to get
       ;; proper actuals
       (setf (types operator)
@@ -2671,12 +2680,16 @@ type of the lhs."
         (if (tuple-expr? arg)
             (mapc #'(lambda (bd a)
                       (unless (declared-type bd)
-                        (let ((btype (car (judgement-types+ a))))
+                        (let ((btype (if (rational-expr? a)
+					 *real*
+					 (best-judgement-type a))))
                           (unless (tc-eq btype (type bd))
                             (setf (type bd) btype)
                             (push bd reset)))))
                   bindings (exprs arg))
-            (let ((atype (car (judgement-types+ arg))))
+            (let ((atype (if (rational-expr? arg)
+			     *real*
+			     (best-judgement-type arg))))
               (unless (eq atype (type arg))
                 (mapc #'(lambda (bd aty)
                           (unless (or (declared-type bd)
@@ -2686,7 +2699,9 @@ type of the lhs."
                       bindings (types (find-supertype atype))))))
         (let ((bd (car bindings)))
           (unless (declared-type bd)
-            (let ((btype (car (judgement-types+ arg))))
+            (let ((btype (if (rational-expr? arg)
+			     *real*
+			     (best-judgement-type arg))))
               (unless (tc-eq (type bd) btype)
                 (setf (type bd) btype)
                 (push bd reset))))))
@@ -4386,7 +4401,9 @@ type of the lhs."
           (mk-recordtype
            (mapcar #'(lambda (a)
                        (let ((fld (caar (arguments a)))
-                             (ty (car (judgement-types+ (expression a)))))
+                             (ty (if (rational-expr? (expression a))
+				     *real*
+				     (best-judgement-type (expression a)))))
                          (mk-field-decl (id fld) ty ty)))
                    ass)
            nil))))
@@ -4794,6 +4811,7 @@ type of the lhs."
 	      ;; should it be (nreverse (cons value cvalues)) instead of cdr-vals?
 	      (set-assignment-arg-types* cdr-args cdr-vals fappl expr fldtype)
 	      (when (and fappl
+			 (caar cdr-args)
 			 (funtype? (find-supertype ftype)))
 		(let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
 		       (bd (make-bind-decl bid (domtype ftype)))
@@ -5671,9 +5689,12 @@ type of the lhs."
 ;    modinsts))
 
 (defun subst-for-formals (obj alist)
-  (gensubst obj
-    #'(lambda (ex) (subst-for-formals! ex alist))
-    #'(lambda (ex) (subst-for-formals? ex alist))))
+  (if (some #'(lambda (fp) (assq (declaration fp) alist))
+	    (free-params obj))
+      (gensubst obj
+	#'(lambda (ex) (subst-for-formals! ex alist))
+	#'(lambda (ex) (subst-for-formals? ex alist)))
+      obj))
 
 (defmethod subst-for-formals? ((ex name) alist)
   (assq (declaration ex) alist))
@@ -5729,13 +5750,15 @@ type of the lhs."
 
 (defmethod subst-for-formals! ((res resolution) alist)
   (let* ((th (module (declaration res)))
+         (decl (declaration res))
          (thinst (if (and (null (library (module-instance res)))
                           (lib-datatype-or-theory? th))
                      (lcopy (module-instance res)
                        :library (get-library-id (context-path th)))
                      (module-instance res)))
-         (mi (subst-for-formals thinst alist))
-         (decl (declaration res))
+         (mi (if (binding? decl)
+		 thinst
+		 (subst-for-formals thinst alist)))
          (type (when (typep decl 'field-decl)
                  ;; Can't do this in general, or it loops - just let
                  ;; make-resolution take care of it

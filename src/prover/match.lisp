@@ -106,7 +106,6 @@
 			 'fail
 			 (match-remaining-actuals
 			  *remaining-actuals-matches* res))))
-	       ;;(break "match ~a to ~a : ~a" expr instance result)
 	       (when (and (null subst)
 			  (null *dont-cache-match?*)
 			  (null *no-bound-variables-in-match*))
@@ -570,7 +569,9 @@
 					  subst-term
 					  (copy-all subst-term))))
 		   (unless (type newsubst-term)
-		     (set-type newsubst-term (type instance)))
+		     (set-type newsubst-term (if (number-expr? instance)
+						 *number_field*
+						 (type instance))))
 		   (if (or (tc-eq newsubst-term instance)
 			   (and (null *no-match-assert-test*)
 				(assert-test-eq newsubst-term instance)));;NSH(2-20-10)
@@ -581,7 +582,9 @@
 					  newsubst-term
 					  (remove subst-entry subst))))
 			      (typesubst (match* (type lhs)
-						 (type instance)
+						 (if (number-expr? instance)
+						     *number_field*
+						     (type instance))
 						 bind-alist
 						 subst)))
 			 (setq *modsubst* newmodsubst)
@@ -589,7 +592,10 @@
 			     subst
 			     typesubst))
 		       'fail)))
-		(t (let ((typesubst (match* (type lhs)(type instance)
+		(t (let ((typesubst (match* (type lhs)
+					    (if (number-expr? instance)
+						*number_field*
+						(type instance))
 					    bind-alist subst)))
 		     (if (eq typesubst 'fail)
 			 'fail
@@ -604,18 +610,24 @@
 		   (null (intersection freevars *bound-variables*
 				       :test #'same-declaration)))))
 	(let* ((stype (substit (type lhs) subst))
-	       (newmodsubst (tc-eq-or-match stype (type instance)
+	       (newmodsubst (tc-eq-or-match stype (if (number-expr? instance)
+						      *number_field*
+						      (type instance))
 					    (copy-tree *modsubst*)))
 	       (newsubst (acons (declaration lhs) instance subst)))
 	  ;;(break "match:name-expr")
 	  (cond (newmodsubst
 		 (setq *modsubst* newmodsubst)
-		 (let ((typesubst (match* (type lhs)(type instance)
+		 (let ((typesubst (match* (type lhs) (if (number-expr? instance)
+							 *number_field*
+							 (type instance))
 					  bind-alist newsubst)))
 		   (if (eq typesubst 'fail)
 		       newsubst
 		       typesubst)))
-		(t (let ((typesubst (match* (type lhs)(type instance)
+		(t (let ((typesubst (match* (type lhs) (if (number-expr? instance)
+							   *number_field*
+							   (type instance))
 					    bind-alist newsubst)))
 		     (if (eq typesubst 'fail)
 			 ;; SO - this was just fail, but types are not
@@ -880,17 +892,23 @@
 				      bind-alist subst)
 			   'fail))
 		     'fail)
-		 (if (is-division? lhs)
-		     (if (and (typep instance 'rational-expr)
-			      (not (integerp (number instance))))
-			 (match* (arguments lhs)
-				 (list (make!-number-expr
-					(numerator (number instance)))
-				       (make!-number-expr
-					(denominator (number instance))))
-				 bind-alist subst)
+		 (if (is-unary-minus? lhs)
+		     (if (and (rational-expr? instance)
+			      (minusp (number instance)))
+			 (let ((num (make!-minus instance)))
+			   (match* (args1 lhs) num bind-alist subst))
 			 'fail)
-		     'fail))))
+		     (if (is-division? lhs)
+			 (if (and (typep instance 'rational-expr)
+				  (not (integerp (number instance))))
+			     (match* (arguments lhs)
+				     (list (make!-number-expr
+					    (numerator (number instance)))
+					   (make!-number-expr
+					    (denominator (number instance))))
+				     bind-alist subst)
+			     'fail)
+			 'fail)))))
 	(t 'fail)))
     
 (defmethod match* ((lhs branch)(instance branch) bind-alist subst)

@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; bdd-allegro.lisp -- Interface to the BDD package
+;; bdd-cffi.lisp -- Interface to the BDD package
 ;;   Provides the foreign functions for Allegro CL
 ;; Author          : Sree, Shankar and Saidi
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

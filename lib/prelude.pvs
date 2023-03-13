@@ -5742,7 +5742,7 @@ bytestrings: THEORY
     length_null: LEMMA length(null) = 0
 
     unit(b): bytestring = (# length := 1, seq := (LAMBDA (i : below(1))->byte: b) #)
-    CONVERSION+ bytestrings.unit
+    % CONVERSION+ bytestrings.unit
 
     length_unit: LEMMA length(unit(b)) = 1
 
@@ -7138,6 +7138,9 @@ finite_sets_of_sets[T: TYPE]: THEORY
 
   powerset_finite: JUDGEMENT
     powerset(A: finite_set[T]) HAS_TYPE finite_set[set[T]]
+
+  powerset_finite2: JUDGEMENT
+    powerset(A: finite_set[T]) HAS_TYPE finite_set[finite_set[T]]
 
   SS: VAR setofsets[T]
 

@@ -472,7 +472,8 @@
 					 (list (expression ex)))
 				 (nconc (mapcar #'type (bindings ex))
 					(list erange)))
-    (unless (tc-eq adomain edomain)
+    (unless (or (tc-eq adomain edomain)
+		(recursive-defn-conversion? ex))
       (let ((epreds (equality-predicates adomain edomain)))
 	(when epreds
 	  (generate-subtype-tcc ex expected (list epreds)))))

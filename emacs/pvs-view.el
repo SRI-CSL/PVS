@@ -32,7 +32,7 @@
 (defvar pvs-view-mode-map nil)
 (if pvs-view-mode-map
     nil
-    (setq pvs-view-mode-map (make-keymap))
+    (setq pvs-view-mode-map (copy-keymap pvs-mode-map))
     (suppress-keymap pvs-view-mode-map t)
     (define-key pvs-view-mode-map "q"
       '(lambda () (interactive) (remove-buffer (current-buffer))))

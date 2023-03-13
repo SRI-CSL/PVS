@@ -30,7 +30,7 @@
 (in-package :cl-user)
 
 (eval-when (:execute :load-toplevel)
-  ;; This sets *pvs-path* and sets *pvs-binary-type*
+  ;; This sets *pvs-path* and *pvs-fasl-type*
   (load "pvs-config.lisp"))
 
 (defpackage pvs (:use #+lucid :lucid-common-lisp #-sbcl :lisp #+sbcl :cl
