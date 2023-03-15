@@ -233,7 +233,7 @@ retypechecked."
 	  () "Mismatch between *default-pathname-defaults* = ~a~%~
               and                   (current-context-path) = ~a"
 	  *default-pathname-defaults* (current-context-path))
-  (if (not (uiop:file-exists-p (working-directory)))
+  (if (not (uiop:directory-exists-p (working-directory)))
       (pvs-message "Directory ~a seems to have disappeared!"
 	(namestring *default-pathname-defaults*))
       (unless *loading-prelude*
