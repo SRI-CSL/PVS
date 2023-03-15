@@ -1090,6 +1090,19 @@ is replaced with replacement."
 	    path
 	    (cons dir path)))))
 
+(defun escape-string-for-pvs (string)
+  "Escapes the \", and \\ characters, putting backslash in front, and wraps the whole string in quotes."
+  (assert (stringp string))
+  (with-output-to-string (str)
+    (write-char #\" str)
+    (loop for ch across string
+	  do (case ch
+	       ((#\" #\\)
+		(write-char #\\ str) (write-char ch str))
+	       (#\newline
+		(write-char #\\ str) (write-char #\n str))
+	       (t (write-char ch str))))
+    (write-char #\" str) ))
 
 (defun splice (new-elt after-elt list)
   (let ((tail (and after-elt (memq after-elt list))))
