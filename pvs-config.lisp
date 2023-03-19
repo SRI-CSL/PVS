@@ -192,27 +192,29 @@
     :output '(:string :stripped t)
     :ignore-error-status t))
 
-(defun make-in-platform (dir lib)
-  "Runs make in the direcory corresponding to the pvs-platform, creating
-lib.so and loading it."
-  (let* ((mdir (format nil "~a/~a" dir (pvs-platform)))
+(defun make-in-platform (dir lib &optional exe)
+  "Runs make in the directory corresponding to the pvs-platform, creating
+targets and copying them to the corresponding bin directory."
+  (let* ((make-dir (format nil "~a/~a" dir (pvs-platform)))
+	 (make-cmd (format nil "make -C ~a" make-dir))
 	 (foreign-ext #+linux "so" #+(or macosx os-macosx) "dylib")
-	 (make-cmd (format nil "make -C ~a" mdir))
-	 (lib-file (format nil "~a/~a.~a" mdir lib foreign-ext))
-	 (pvsbin-file (format nil "~abin/~a/runtime/~a.~a"
-			*pvs-path* (pvs-platform) lib foreign-ext)))
+	 (lib-file (format nil "~a/~a.~a" make-dir lib foreign-ext))
+	 (bin-dir (format nil "~abin/~a/runtime" *pvs-path* (pvs-platform)))
+	 (bin-libfile (format nil "~a/~a.~a" bin-dir lib foreign-ext)))
     (multiple-value-bind (out-str err-str err-code)
 	(uiop:run-program make-cmd
 	  :output '(:string :stripped t)
 	  :error-output '(:string :stripped t)
 	  :ignore-error-status t)
-      (format t "~%***** make-in-platform ~a ~a ~a" dir lib err-code)
       (unless (zerop err-code)
+	(format t "~%***** make-in-platform ~a ~a ~a" dir lib err-code)
 	(error "Failure in ~a:~%output:~%~a~%error output:~%~a"
 	       make-cmd out-str err-str))
-      (uiop:copy-file lib-file pvsbin-file)
-      #+allegro (format t "~% make-in-platform loading ~a" pvsbin-file)
-      #+allegro (cffi:load-foreign-library pvsbin-file)
+      (uiop:copy-file lib-file bin-libfile)
+      (when exe
+	(uiop:copy-file (format nil "~a/~a" make-dir exe) (format nil "~a/~a" bin-dir exe)))
+      ;; #+allegro (format t "~% make-in-platform loading ~a" pvsbin-file)
+      ;; #+allegro (cffi:load-foreign-library pvsbin-file)
       )))
 
 (defun finally-do ()
@@ -231,11 +233,12 @@ lib.so and loading it."
       ;;(pvs::register-manip-type pvs::*number_field* 'pvs::pvs-type-real)
       ))
   #+allegro
-  (let ((optfile (format nil "~a/src/closopt"
-		   ;;(symbol-value (intern (string :*pvs-path*) :pvs))
-		   (asdf:system-relative-pathname :pvs "."))))
-    (compile-file optfile)
-    (load optfile))
+  (let* ((optfile (format nil "~a/src/closopt.lisp"
+		    ;;(symbol-value (intern (string :*pvs-path*) :pvs))
+		    (asdf:system-relative-pathname :pvs ".")))
+	 (fasl-file (make-fasl-file-name optfile)))
+    (compile-file optfile :output-file fasl-file)
+    (load fasl-file))
   (funcall (intern (string :remove-typecheck-caches) :pvs))
   (assert (every #'fboundp (symbol-value (intern (string :*untypecheck-hook*) :pvs))))
   ;;(asdf:clear-configuration)

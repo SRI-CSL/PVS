@@ -62,7 +62,7 @@
   :license "GPL"
   :entry-point "pvs::startup-pvs"
   ;;:defsystem-depends-on (#:asdf-shared-library)
-  :depends-on (#:babel #| #:fast-websocket |# #:clack #:websocket-driver
+  :depends-on (#:babel #:clack #:websocket-driver
 		       #:hunchentoot #:anaphora #:lparallel #:cl-json #:cffi)
   :serial t
   :perform (asdf:load-op :after (op cmp)
@@ -143,7 +143,7 @@
      :perform (asdf:load-op :before (op c)
 			    (format t "~%Making and loading file_utils.so")
 			    (funcall (intern (string :make-in-platform) :pvs)
-				     (asdf:component-pathname c) "file_utils"))
+				     (asdf:component-pathname c) "file_utils" "b64"))
      :components ((:file "hashfn")
 		  (:file "file-utils")))
    (:module :pvs2c
