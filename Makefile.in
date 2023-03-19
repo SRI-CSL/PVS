@@ -214,7 +214,7 @@ LOAD-FOREIGN-EXTENSION=so
 endif
 endif
 
-pvs-make-files = pvs.asd src/closopt.lisp
+pvs-make-files = pvs.asd
 
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 

@@ -3,7 +3,6 @@
 /doc/user-guide/Makefile
 /doc/prover/Makefile
 /doc/language/Makefile
-/configure
 /proveit
 /provethem
 /pvs-get-patches
