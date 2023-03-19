@@ -32,6 +32,26 @@ fi
 
 dnl This sets build, build_cpu, build_vendor, and build_os
 AC_CANONICAL_BUILD
+	
+dnl Giving pvspath is optional
+AC_MSG_CHECKING(pvspath)
+AC_ARG_WITH(pvspath, AS_HELP_STRING([--with-pvspath=path],
+				    [path=current directory if automounted]))
+if test "x$with_pvspath" = "x"; then
+  PVSPATH="$(pwd)"
+else
+  PVSPATH="$with_pvspath"
+fi
+if test -d "$PVSPATH"; then
+   if test -f "$PVSPATH/pvs.in"; then
+     AC_MSG_RESULT(found "$PVSPATH/pvs.in")
+   else
+     AC_MSG_ERROR(Invalid pvspath: couldn't find "$PVSPATH/pvs.in")
+   fi
+else
+  AC_MSG_ERROR(Invalid pvspath directory: "$PVSPATH")
+fi
+AC_SUBST(PVSPATH)
 
 dnl Check for programs required to build PVS
 AC_PROG_CC    
