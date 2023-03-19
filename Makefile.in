@@ -44,8 +44,6 @@ ifneq (,)
 This makefile requires GNU Make.
 endif
 
-.SUFFIXES:
-.SUFFIXES: .c .o
 SHELL=/bin/sh
 
 # Should test for existence of platform dependent Makefiles
@@ -54,6 +52,7 @@ ifneq "${PVSPATH:-1}" "/"
 PVSPATH := ${PVSPATH}/
 endif
 endif
+ARCH=$(shell ./config.sub `./config.guess`)
 CFLAGS = @CFLAGS@
 GREP = @GREP@
 ETAGS = @ETAGS@
@@ -65,20 +64,85 @@ MKDIR = @MKDIR@
 MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
+
+# If SBCL_HOME is set, it is preferred over SBCL; useful when testing
+# PVS in different SBCL versions
 SBCL = @SBCL@
-SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
-TAG = $(PACKAGE)$(VERSION)
-GIT_DESC := $(TAG)-0-g$(shell $(GIT) rev-parse --short HEAD)
-ifeq ($(shell $(GIT) tag -l $(TAG)),)
-SUBVERSION = 0
-else
-SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
+ifneq ($(SBCL_HOME),)
+# The SBCL_HOME directory should have run-sbcl.sh in it; difficult to
+# run the executable directly from $(SBCL_HOME)/src/runtime/sbcl
+# as it gives a "Can't find sbcl.core" error.
+SBCL = $(SBCL_HOME)/run-sbcl.sh
+ifeq ($(wildcard $(SBCL)),)
+$(error "SBCL_HOME/run-sbcl.sh not found")
 endif
-DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)
-DIST_ARCHIVES = $(DISTDIR).tar.gz
-ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_FILES) $(emacs-src) # $(SOURCE_FILES)
-ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_DEVEL_FILES) $(emacs-src) # $(SOURCE_FILES) 
-SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SBCLISP_FILES) $(emacs-src) # $(SOURCE_FILES)
+SBCL_VERSION = $(shell $(SBCL) --version)
+else
+ifneq ($(SBCL),)
+SBCL_VERSION = $(shell $(SBCL) --version)
+else
+SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
+endif
+
+# Build with Allegro only if ALLEGRO_HOME is set
+ifneq ($(ALLEGRO_HOME),)
+ALLEGRO = $(ALLEGRO_HOME)/mlisp
+ifeq ($(wildcard $(ALLEGRO)),)
+$(error "ALLEGRO_HOME/mlisp not found")
+endif
+ALLEGRO_VERSION = \
+   $(shell $(ALLEGRO) -e '(format t "~a" (lisp-implementation-version))' --kill)
+$(info Will build with $(ALLEGRO_VERSION))
+# Only needed for building Allegro runtime images
+export LD_LIBRARY_PATH
+LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
+allegro-devel = $(bindir)/devel/$(PACKAGE)-allegro
+ifeq ($(shell if `grep -q dynamic-runtime $(ALLEGRO_HOME)/devel.lic`; then echo OK; fi),OK)
+allegro-rt = $(bindir)/runtime/$(PACKAGE)-allegro
+endif
+endif
+
+# Check that at least one of SBCL or Allegro CL is available
+ifeq ($(SBCL)$(ALLEGRO),)
+$(error "Must install SBCL, or set SBCL_HOME or ALLEGRO_HOME")
+endif
+
+PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
+export PLATFORM
+
+# Make sure the platform-dependent bin directory exists
+bindir = $(TARGETPATH)bin/$(PLATFORM)
+ifeq (,$(wildcard $(bindir)))
+$(shell $(MKDIR_P) $(bindir))
+endif
+
+# Check to see if we are doing something that requires Emacs and Lisp
+# If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
+# then buildcmds will be nonempty
+ifeq ($(MAKECMDGOALS),)
+buildcmds = all
+else
+buildcmds = $(filter-out clean tarfiles, $(MAKECMDGOALS))
+endif
+
+ifneq ($(buildcmds),)
+# Need an emacs to work with
+ifndef EMACS
+ifdef PVSEMACS
+EMACS = $(PVSEMACS)
+else
+EMACS = $(shell which emacs 2> /dev/null)
+endif
+endif
+ifeq ($(EMACS),)
+EMACS = $(shell which xemacs 2> /dev/null)
+endif
+ifeq ($(EMACS),)
+$(error "No Emacs or Xemacs found")
+endif
+endif # end of buildcmds check
+
+# Below this is only for dist; i.e., generating tar files
 
 SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	pvs.asd pvs pvsio proveit provethem emacs/pvs.xpm emacs/pvslogo.gif \
@@ -117,13 +181,24 @@ ALLEGRO_DEVEL_FILES = $(bindir)/devel/files.bu \
 	$(bindir)/devel/pvs-allegro.lic \
 	$(bindir)/devel/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
-SBCLISP_FILES = $(bindir)/runtime/*.lisp \
+SBCLISP_FILES = $(bindir)/runtime/pvs-sbclisp \
 	$(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
 	$(bindir)/runtime/mu.$(LOAD-FOREIGN-EXTENSION) \
-	$(bindir)/runtime/ws1s.$(LOAD-FOREIGN-EXTENSION) \
-	$(bindir)/runtime/pvs-sbclisp $(bindir)/runtime/run-sbcl.sh
+	$(bindir)/runtime/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
-# SOURCE_FILES = $(ess) $(lisp-files) $(emacs-src) $(pvs-make-files) $(allegro-make-files)
+ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_FILES) $(emacs-src) $(SOURCE_FILES)
+ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(ALLEGRO_DEVEL_FILES) $(emacs-src) $(SOURCE_FILES) 
+SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SBCLISP_FILES) $(emacs-src) # $(SOURCE_FILES)
+
+# SOURCE_FILES = $(ess-files) $(lisp-files) $(emacs-src) $(pvs-make-files) $(allegro-make-files)
+
+GIT_TAG = $(PACKAGE)$(VERSION)
+ifneq ($(wildcard .git),)
+GIT_DESC := $(GIT_TAG)-g$(shell $(GIT) rev-parse --short HEAD)
+else
+GIT_DESC := $(GIT_TAG)
+endif
+DISTDIR = $(PACKAGE)-$(VERSION)
 
 remove_distdir = \
   if test -d "$(DISTDIR)"; then \
@@ -132,97 +207,26 @@ remove_distdir = \
       || { sleep 5 && rm -rf "$(DISTDIR)"; }; \
   else :; fi
 
-# Check to see if we are doing something that requires Emacs and Lisp
-# If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
-# then buildcmds will be nonempty
-ifeq ($(MAKECMDGOALS),)
-buildcmds = all
+ifeq ($(findstring MacOSX,$(PLATFORM)),MacOSX)
+LOAD-FOREIGN-EXTENSION=dylib
 else
-buildcmds = $(filter-out clean tarfiles, $(MAKECMDGOALS))
-endif
-
-PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
-export PLATFORM
-
-bindir = $(TARGETPATH)bin/$(PLATFORM)
-ifeq (,$(wildcard $(bindir)))
-$(shell $(MKDIR_P) $(bindir))
-endif
-
-SYSTEM ?= pvs
-
-ifneq ($(ALLEGRO_HOME),)
-ALLEGROEXE = $(ALLEGRO_HOME)/mlisp
-LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
-allegro-devel = $(bindir)/devel/$(SYSTEM)-allegro
-ifeq ($(shell if `grep -q dynamic-runtime $(ALLEGRO_HOME)/devel.lic`; then echo OK; fi),OK)
-allegro-rt = $(bindir)/runtime/$(SYSTEM)-allegro
-endif
-endif
-
-ifneq ($(SBCL),)
-# Check that the given SBCL works
-SBCLVERSION = $(shell $(SBCL) --version)
-# $(warning "$(SBCLVERSION)")
-else
-$(warning "$(SBCL) is not available")
-endif
-
 LOAD-FOREIGN-EXTENSION=so
-export LD_LIBRARY_PATH
-ifeq ($(PLATFORM),powerpc-MacOSX)
-  LOAD-FOREIGN-EXTENSION=dylib
-else
-ifeq ($(PLATFORM),ix86-MacOSX)
-  LOAD-FOREIGN-EXTENSION=dylib
 endif
 endif
 
-ifneq ($(buildcmds),)
-
-# Need an emacs to work with
-ifndef EMACS
-ifdef PVSEMACS
-EMACS = $(PVSEMACS)
-else
-EMACS = $(shell which emacs 2> /dev/null)
-endif
-endif
-ifeq ($(EMACS),)
-EMACS = $(shell which xemacs 2> /dev/null)
-endif
-ifeq ($(EMACS),)
-$(error "No Emacs or Xemacs found")
-endif
-
-emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
-                            : '[^X]*\(X*Emacs [0-9][0-9]\)')
-
-EMACSSUBDIR = $(shell echo "$(emacsversion)" \
-                 | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-
-endif # end of buildcmds check
-
-
-pvs-make-files = pvs.system src/defsystem.lisp src/closopt.lisp
+pvs-make-files = pvs.asd src/closopt.lisp
 
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
 emacs-src = $(shell $(GIT) ls-files | $(GREP) -E ".*\.el$$" | $(GREP) -v "^\(doc\|src\|Examples\)")
 emacs-src += emacs/pvs-prelude-files-and-regions.el
 
-#emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(emacs-src)))
-
-emacs-elc = $(filter-out %go-pvs.elc %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
-                         %illuc19.elc %ilxemacs.elc %ilisp-menu.elc,\
-                         $(emacs-src:.el=.elc))
-
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/utils/$(PLATFORM)/b64 \
            src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
            src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
-ess = ess/dist-ess.lisp \
+ess-files = ess/dist-ess.lisp \
 	ess/init-load.lisp \
 	ess/sys/ergolisp/rel/ergolisp.lisp \
 	ess/sys/ergolisp/rel/ergolisp-exports.lisp \
@@ -400,15 +404,10 @@ pvs-src = src/closopt.lisp \
           src/raw-api.lisp \
           src/pvs-threads.lisp
 
-sbcllisp += src/utils/file-utils-sbcl.lisp
-cmulisp += src/utils/file-utils-cmu.lisp
-allegrolisp += src/utils/file-utils.lisp
-
 interface = src/interface/pvs-emacs.lisp \
 	    src/interface/emacs-calls.lisp \
 	    src/interface/cl-ilisp.lisp \
 	    src/interface/allegro.lisp \
-	    src/interface/cmulisp.lisp \
 	    src/interface/ilisp-pkg.lisp \
 	    src/interface/pvs-websocket.lisp \
 	    src/interface/pvs-json-rpc.lisp \
@@ -433,10 +432,7 @@ pvs-prover = src/prover/checker-macros.lisp \
 	 src/prover/translate-to-yices.lisp \
 	 src/prover/translate-to-yices2.lisp
 
-bddlisp = src/BDD/bdd.lisp src/BDD/mu.lisp
-allegrolisp += src/BDD/bdd-allegro.lisp src/BDD/mu-allegro.lisp
-sbcllisp += src/BDD/bdd-sbcl.lisp src/BDD/mu-sbcl.lisp
-cmulisp += src/BDD/bdd-cmu.lisp src/BDD/mu-cmu.lisp
+bddlisp = src/BDD/bdd.lisp src/BDD/mu.lisp src/BDD/bdd-cffi.lisp
 
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
             src/PVSio/pvsio.lisp
@@ -486,7 +482,7 @@ ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
 allegro-make-files := $(patsubst %,$(PVSPATH)%,$(allegro-make-files))
 ff-files := $(patsubst %,$(PVSPATH)%,$(ff-files))
-ess := $(patsubst %,$(PVSPATH)%,$(ess))
+ess := $(patsubst %,$(PVSPATH)%,$(ess-files))
 pvs-parser-in := $(patsubst %,$(PVSPATH)%,$(pvs-parser-in))
 pvs-parser-out := $(patsubst %,$(PVSPATH)%,$(pvs-parser-out))
 ground-prover := $(patsubst %,$(PVSPATH)%,$(ground-prover))
@@ -503,12 +499,9 @@ abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 rahd := $(patsubst %,$(PVSPATH)%,$(rahd))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
-allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
-sbcllisp := $(patsubst %,$(PVSPATH)%,$(sbcllisp))
-cmulisp := $(patsubst %,$(PVSPATH)%,$(cmulisp))
 endif
 
-all-lisp-files = $(ess) $(pvs-parser-in) $(lisp-files)
+all-lisp-files = $(ess-files) $(pvs-parser-in) $(lisp-files)
 
 PVSiolib = $(PVSPATH)lib/PVSio/pvsbin/top.bin
 
@@ -528,36 +521,34 @@ endif
 
 .PHONY : all devel runtime parser yices emacs prelude-files-and-regions etags
 
-ifneq ($(buildcmds),)
-ifeq ($(SBCL)$(ALLEGRO_HOME),)
-$(error "Must set SBCL, or ALLEGRO_HOME")
-endif
-endif
-
-all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags
+all : quicklisp yices runtime devel prelude-files-and-regions etags
 	@echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
-# This assumes quicklisp is installed in the default directory
-~/quicklisp : quicklisp.lisp
-	$(LISP) --load quicklisp.lisp \
-	     --eval "(quicklisp-quickstart:install)" \
-             --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
-             --eval "(quit)"
+# Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
+# This assumes quicklisp is installed in the default directory '~/quicklisp'
+# It will create that directory, and update the ~/.sbclrc init file to initialize
+# quicklisp automatically.
+quicklisp: ~/quicklisp
+~/quicklisp : src/quicklisp.lisp
+	$(SBCL) --load src/quicklisp.lisp \
+	        --eval "(quicklisp-quickstart:install)" \
+                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+		--eval "(ql:quickload '(:babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi))" \
+                --quit
 
-devel : $(allegro-devel) # $(sbcl-devel) $(cmulisp-devel)
+devel : $(allegro-devel) 
 
-runtime : $(allegro-rt) $(sbcl-rt) $(cmulisp-rt)
-
-parser : pvs-parser-out
+runtime : $(sbcl-image) # $(allegro-rt)
 
 prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
 
 etags : $(PVSPATH)TAGS
 
-$(PVSPATH)TAGS : $(lisp-files) $(allegrolisp) $(sbcllisp) $(cmulisp) $(emacs-src)
-	$(ETAGS) $(lisp-files) $(allegrolisp) $(sbcllisp) $(cmulisp) $(emacs-src)
+$(PVSPATH)TAGS : $(lisp-files) $(emacs-src)
+	$(ETAGS) $@
 
 fileutils = \
+   $(PVSPATH)src/utils/file-utils.lisp \
    $(PVSPATH)src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
    $(PVSPATH)src/utils/$(PLATFORM)/b64
 
@@ -566,142 +557,59 @@ bddlib = $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 image-deps = $(fileutils) $(bddlib) $(ws1slib) $(pvs-make-files) \
-             $(ess) $(ff-files) $(lisp-files) \
+             $(ess-files) $(ff-files) $(lisp-files) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 
-emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
-
-YICES1 = $(wildcard yices/$(PLATFORM)/yices-1.*)
-YICES2 = $(wildcard yices/$(PLATFORM)/yices-2.*)
-yices1_ln = $(PVSPATH)bin/$(PLATFORM)/yices1
-yices2_ln = $(PVSPATH)bin/$(PLATFORM)/yices2
-# We're not building yices, just checking if it is in the right place
-ifeq ($(YICES1),)
-$(info yices1 is missing.  Download the binaries from http://yices.csl.sri.com/)
-$(info and install in yices/$(PLATFORM).)
-$(info It is not needed to build PVS, only needed for the yices proof rule.)
+# Set the yices downlowd URLs
+yices1-version = 1.0.40
+yices2-version = 2.6.4
+yices1-url = https://yices.csl.sri.com/old/binaries
+yices2-url = https://yices.csl.sri.com/releases
+ifeq ($(PLATFORM),ix86_64-Linux)
+yices1-tar = $(yices1-url)/yices-$(yices1-version)-x86_64-unknown-linux-gnu-static-gmp.tar.gz
+yices2-tar = $(yices2-url)/$(yices2-version)/yices-$(yices2-version)-x86_64-pc-linux-gnu.tar.gz
 else
-ifeq ($(yices1_ln),)
-$(info Linking $(YICES1)/bin/yices to $(PVSPATH)bin/$(PLATFORM)/yices1)
-$(shell ln -s $(YICES1)/bin/yices $(PVSPATH)bin/$(PLATFORM)/yices1)
-endif
-endif
-
-ifeq ($(YICES2),)
-$(info yices2 is missing.  Download the binaries from http://yices.csl.sri.com/)
-$(info and install in yices/$(PLATFORM).)
-$(info It is not needed to build PVS, only needed for the yices2 proof rule.)
+ifeq ($(PLATFORM),ix86-MacOSX)
+yices1-tar = $(yices1-url)/yices-$(yices1-version)-x86_64-apple-darwin10.8.0-static-gmp.tar.gz
+yices2-tar = $(yices2-url)/$(yices2-version)/yices-$(yices2-version)-x86_64-apple-darwin20.6.0.tar.gz
 else
-ifeq ($(yices2_ln),)
-$(shell ln -s $(YICES2)/bin/yices $(PVSPATH)bin/$(PLATFORM)/yices2)
+ifeq ($(PLATFORM),arm-MacOSX)
+yices1-tar = $(yices1-url)/yices-$(yices1-version)-x86_64-apple-darwin10.8.0-static-gmp.tar.gz
+yices2-tar = $(yices2-url)/$(yices2-version)/yices-$(yices2-version)-x86_64-apple-darwin20.6.0.tar.gz
 endif
 endif
+endif
+yices1-tgt = yices/$(PLATFORM)/yices-$(yices1-version)
+yices2-tgt = yices/$(PLATFORM)/yices-$(yices2-version)
 
-# Here are the rules for building PVS using pvs.asd, which does most of the work
+yices : $(yices1-tgt) $(yices2-tgt)
+
+$(yices1-tgt) :
+	-$(MKDIR_P) yices/$(PLATFORM)
+	curl --output - $(yices1-tar) | tar xzf - -C ./yices/$(PLATFORM)
+	(cd yices; ln -s ../$@/bin/yices yices1)
+
+$(yices2-tgt) :
+	-$(MKDIR_P) yices/$(PLATFORM)
+	curl --output - $(yices2-tar) | tar xzf - -C ./yices/$(PLATFORM)
+	(cd yices; ln -s ../$@/bin/yices yices2)
+
+# Here are the rules for building PVS using pvs.asd, which does most of the
+# work. It not only builds the image, it creates all the libraries
+# (file_utils, mu, ws1s) and copies them to the bin directory
 
 ifneq ($(SBCL),)
-$(PVSPATH)bin/$(PLATFORM)/pvs-sbclisp : $(PVSPATH)/pvs.asd
-	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) --eval "(asdf:operate :program-op :pvs)"
-
-# $(sbcl-devel)
-$(sbcl-rt) : $(image-deps) $(sbcllisp)
-	$(MKDIR) -p $(subst $(SYSTEM)-sbclisp,,$@)
-	@echo "******* Compiling PVS files in Steel Bank Common Lisp (SBCL)"
-	$(SBCL) --control-stack-size 2000 \
-		      --dynamic-space-size 2000 \
-		      --eval "(load \"$(QUICKLISP)\")" \
-		      --eval '(load "pvs.system" :verbose t)' \
-		      --eval "(let ((*load-pvs-prelude* nil)) \
-				(mk:operate-on-system :pvs :compile))" \
-		      --eval '(quit)'
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	@echo "******* Building PVS image $@"
-	$(SBCL) --control-stack-size 4000 \
-		      --dynamic-space-size 8000 \
-		      --eval "(load \"$(QUICKLISP)\")" \
-		      --eval '(load "pvs.system" :verbose t)' \
-		      --eval "(unwind-protect \
-				  (mk:operate-on-system :pvs :compile) \
-				(save-lisp-and-die \"$@\" \
-				    :toplevel (function startup-pvs) \
-				    :executable t \
-				    :save-runtime-options t))"
-	-rm $(PVSPATH)src/BDD/$(PLATFORM)/bdd-sbcl.*
-	cp $(SBCL) $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)src/BDD/bdd-sbcl.lisp $(PVSPATH)src/BDD/mu-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-endif
-
-ifneq ($(CMULISP_HOME),)
-
-ifeq ($(ALLEGRO_HOME),) # Build these only if Allegro is not available
-$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
-	@echo "******* Creating parser"
-	$(CMULISPEXE) -load src/make-pvs-parser
-
-$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
-                       $(PVSPATH)src/defcl.lisp \
-                       $(PVSPATH)src/classes-expr.lisp \
-                       $(PVSPATH)src/classes-decl.lisp
-	@echo "******* Creating pvs-methods.lisp"
-	$(CMULISPEXE) -eval '(defvar *pvs-path* "/homes/owre/tmp/pvs4.0")' \
-		   -load src/make-pvs-methods.lisp
-endif
-
-# $(cmulisp-devel)
-$(cmulisp-rt) : $(image-deps) $(cmulisp)
-	@echo "******* Compiling PVS files in CMU Lisp"
-	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
-	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) (let ((*load-pvs-prelude* nil)) (mk:operate-on-system :pvs :compile)) (quit)'
-	@echo "******* Building PVS image $@"
-	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) (unwind-protect (mk:operate-on-system :pvs :compile) (save-lisp "$@" :executable t :init-function (function startup-pvs)))'
-	-rm $(PVSPATH)src/BDD/$(PLATFORM)/bdd-cmu.*
-	cp $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
-	cp $(PVSPATH)src/BDD/bdd-cmu.lisp $(PVSPATH)src/BDD/mu-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
-	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
-	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
+$(PVSPATH)bin/$(PLATFORM)/pvs-sbclisp : $(PVSPATH)/pvs.asd $(image-deps)
+	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) \
+	        --eval "(asdf:operate :program-op :pvs)"
 endif
 
 ifneq ($(ALLEGRO_HOME),)
 $(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
-	$(MKDIR) -p $(subst $(SYSTEM)-allegro,,$@)
-	rm -rf /tmp/pvs-allegro-build
-	@echo "******* Compiling PVS files in Allegro Lisp"
-	$(ALLEGROEXE) -e '(progn (load "$(QUICKLISP)") (load "$(PVSPATH)pvs.system"))' \
-		-e "(let ((code 1) \
-                          (*load-pvs-prelude* nil)) \
-                      (unwind-protect \
-                          (multiple-value-bind (v err) \
-                            (ignore-errors (mk:operate-on-system :pvs :compile)) \
-                               (if err \
-                                   (let ((*print-readably* nil)) \
-                                     (format t \"~a\" err)) \
-                                   (setq code 0)))) \
-                        (excl:exit code)))"
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	@echo "******* Building PVS image $@"
-	$(ALLEGROEXE) -e '(progn (defvar *runtime* $(if $(findstring runtime,$@),t,nil)) (load "$(PVSPATH)src/make-pvs.lisp"))'
-	touch $@
-
-$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
-	@echo "******* Creating parser"
-	$(ALLEGROEXE) -L $(PVSPATH)src/make-pvs-parser
-
-$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
-                       $(PVSPATH)src/defcl.lisp \
-                       $(PVSPATH)src/classes-expr.lisp \
-                       $(PVSPATH)src/classes-decl.lisp
-	@echo "******* Creating pvs-methods.lisp"
-	$(ALLEGROEXE) -e "(load \"$(QUICKLISP)\")" \
-		-L $(PVSPATH)src/make-pvs-methods.lisp
+	$(ALLEGROEXE) -e "(asdf:operate :program-op :pvs)"
 endif
 
-
-.PHONY: all make-release-notes clean distclean tar
+.PHONY: all doc clean distclean tar
 
 make-release-notes :
 	$(MAKE) -C $(PVSPATH)doc/release-notes
@@ -729,14 +637,6 @@ $(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
 	-./pvs -batch -l emacs/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
-$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/%.el
-	$(MKDIR) -p emacs/$(EMACSSUBDIR)
-	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../$(@F) .)
-
-$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/ilisp/%.el
-	$(MKDIR) -p emacs/$(EMACSSUBDIR)
-	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../ilisp/$(@F) .)
-
 # We need to create the elc files, but this does not work well with make, as
 # we can't simply byte-compile each file separately.  So we create a dummy
 # .readme file.  It will be newer than all of the subdir source files, and
@@ -748,18 +648,10 @@ $(PVSPATH)emacs/.readme : $(emacs-src)
 $(emacs-elc) : $(PVSPATH)emacs/.readme
 	(cd emacs; $(EMACS) -batch -l pvs-byte-compile.el)
 
-# Doesn't work - too many dependencies in ilisp
-# $(emacs-elc): %.elc: %.el
-# 	$(EMACS) --batch -Q -L emacs -L emacs/ilisp -f batch-byte-compile $<
-
 install:
 	@echo "target install is not used for PVS - see INSTALL"
 
-faslexts = fasl,rfasl,hfasl,lfasl,l64fasl,mfasl,nfasl,n64fasl,\
-           sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,\
-           sparcs,clfasl,wfasl,err
-
-platforms = ix86-Linux,ix86_64-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,sun4-SunOS5
+platforms = ix86_64-Linux,ix86-MacOSX,arm-MacOSX
 # HT: Need to put a comma in a variable, because a literal 
 # comma cannot appear in a makefile function argument.
 comma:= ,

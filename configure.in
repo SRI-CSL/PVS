@@ -22,7 +22,7 @@ dnl --------------------------------------------------------------------
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.59)
-AC_INIT([pvs],[7.1],[pvs-bugs@csl.sri.com])
+AC_INIT([pvs],[8.0],[pvs-bugs@csl.sri.com])
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
@@ -30,34 +30,8 @@ if test "x$tem" = "x"; then
   AC_MSG_WARN([You need to use GNU Make when compiling])
 fi
 
-dnl This file must exist for configure to run
-AC_CONFIG_SRCDIR([pvs.asd])
-	
 dnl This sets build, build_cpu, build_vendor, and build_os
 AC_CANONICAL_BUILD
-
-dnl No longer look for lisp within configure, as it is possible to
-dnl build with several lisps.  Checks have been moved into the Makefile
-	
-dnl Giving pvspath is optional
-AC_MSG_CHECKING(pvspath)
-AC_ARG_WITH(pvspath, AS_HELP_STRING([--with-pvspath=path],
-				    [path=current directory if automounted]))
-if test "x$with_pvspath" = "x"; then
-  PVSPATH="$(pwd)"
-else
-  PVSPATH="$with_pvspath"
-fi
-if test -d "$PVSPATH"; then
-   if test -f "$PVSPATH/pvs.in"; then
-     AC_MSG_RESULT(found "$PVSPATH/pvs.in")
-   else
-     AC_MSG_ERROR(Invalid pvspath: couldn't find "$PVSPATH/pvs.in")
-   fi
-else
-  AC_MSG_ERROR(Invalid pvspath directory: "$PVSPATH")
-fi
-AC_SUBST(PVSPATH)
 
 dnl Check for programs required to build PVS
 AC_PROG_CC    
@@ -97,11 +71,6 @@ if test "$GREP" = no ; then
 	AC_MSG_ERROR(Cannot find grep)
 fi
 
-AC_CHECK_PROG(GIT,git,git,no)
-if test "$GIT" = no ; then
-	AC_MSG_ERROR(Cannot find git)
-fi
-
 AC_CHECK_PROG(ETAGS,etags,etags,no)
 if test "$ETAGS" = no ; then
 	AC_MSG_ERROR(Cannot find etags)
@@ -116,7 +85,7 @@ AC_PROG_MKDIR_P
 
 AC_CHECK_PROG(TAR,tar,tar,no)
 if test "$TAR" = no ; then
-	AC_MSG_ERROR(Cannot find tar)
+	AC_MSG_WARN(Cannot find tar)
 fi
 
 AC_CHECK_PROG(RM,rm,rm,no)
@@ -124,20 +93,25 @@ if test "$RM" = no ; then
 	AC_MSG_ERROR(Cannot find rm)
 fi
 
+AC_CHECK_PROG(CURL,curl,curl,no)
+if test "$CURL" = no ; then
+	AC_MSG_ERROR(Cannot find curl)
+fi
+
+AC_CHECK_PROG(GIT,git,git,no)
+if test "$GIT" = no ; then
+	AC_MSG_WARN(Cannot find git; probably not needed)
+fi
+
 AC_CHECK_PROG(SBCL,sbcl,sbcl,no)
 if test "$SBCL" = no ; then
-	AC_MSG_ERROR(Cannot find sbcl)
+	AC_MSG_WARN(Cannot find sbcl; install it or set SBCL_HOME or ALLEGRO_HOME to build pvs)
 fi
 
 dnl ~/.config/common-lisp/source-registry.conf.d/20-pvs.conf
 
-dnl Get the platform to determine relevant Makefiles to update
-
-PLATFORM=$(./bin/pvs-platform)
-export PLATFORM
-
 # Finally create all the generated files
-AC_CONFIG_FILES([Makefile pvs pvsio proveit provethem pvs-get-patches doc/api/Makefile doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile])
+AC_CONFIG_FILES([Makefile pvs pvsio proveit provethem pvs-get-patches doc/api/Makefile doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile lib/registry.conf])
 AC_OUTPUT
 
 chmod a+x pvs pvsio proveit provethem
