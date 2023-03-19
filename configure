@@ -607,6 +607,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+PVSPATH
 build_os
 build_vendor
 build_cpu
@@ -653,6 +654,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_pvspath
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1281,6 +1283,11 @@ if test -n "$ac_init_help"; then
    esac
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-pvspath=path     path=current directory if automounted
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -1832,6 +1839,31 @@ build_os=$*
 IFS=$ac_save_IFS
 case $build_os in *\ *) build_os=`echo "$build_os" | sed 's/ /-/g'`;; esac
 
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking pvspath" >&5
+$as_echo_n "checking pvspath... " >&6; }
+
+# Check whether --with-pvspath was given.
+if test "${with_pvspath+set}" = set; then :
+  withval=$with_pvspath;
+fi
+
+if test "x$with_pvspath" = "x"; then
+  PVSPATH="$(pwd)"
+else
+  PVSPATH="$with_pvspath"
+fi
+if test -d "$PVSPATH"; then
+   if test -f "$PVSPATH/pvs.in"; then
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: found \"$PVSPATH/pvs.in\"" >&5
+$as_echo "found \"$PVSPATH/pvs.in\"" >&6; }
+   else
+     as_fn_error $? "Invalid pvspath: couldn't find \"$PVSPATH/pvs.in\"" "$LINENO" 5
+   fi
+else
+  as_fn_error $? "Invalid pvspath directory: \"$PVSPATH\"" "$LINENO" 5
+fi
 
 
 ac_ext=c
