@@ -525,7 +525,11 @@ endif
 # quicklisp automatically.
 ifeq ($(wildcard $(HOME)/quicklisp),)
 $(info Installing ~/quicklisp and updating ~/.sbclrc)
-$(shell	$(SBCL) --load src/quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))" --eval "(ql:quickload '(:babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi))" --quit)
+$(shell	$(SBCL) --load src/quicklisp.lisp \
+                --eval "(quicklisp-quickstart:install)" \
+                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+                --eval "(ql:quickload '(:babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi))" \
+                --quit > /dev/null)
 endif
 
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
