@@ -357,7 +357,6 @@ pvs-src = src/closopt.lisp \
           src/classes-expr.lisp \
           src/classes-decl.lisp \
           src/prover/estructures.lisp \
-          src/pvs-methods.lisp \
           src/utils/hashfn.lisp \
           src/macros.lisp \
           src/linked-hash-table.lisp \
@@ -474,7 +473,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/gensubsts.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
-lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
+lisp-files = pvs-config.lisp $(ground-prover) $(pvs-src) \
 	     $(interface) $(pvs-prover) $(bddlisp) \
 	     $(PVSiolisp) $(Maniplisp) $(Fieldlisp) $(ProofLitelisp) \
              $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd)
@@ -520,12 +519,6 @@ $(shell mkdir -p $(dir $(pvs-registry)))
 $(shell echo "(:tree \"$(CURDIR)\")" > $(pvs-registry))
 endif
 
-# @echo $(shell $(GIT) rev-parse HEAD) > git-commit
-
-.PHONY : all parser yices emacs prelude-files-and-regions
-
-all : $(pvs-images) yices prelude-files-and-regions etags
-
 # Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
 # This assumes quicklisp is installed in the default directory '~/quicklisp'
 # It will create that directory, and update the ~/.sbclrc init file to initialize
@@ -538,6 +531,12 @@ $(shell	$(SBCL) --load src/quicklisp.lisp \
 		--eval "(ql:quickload '(:babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi))" \
                 --quit)
 endif
+
+# @echo $(shell $(GIT) rev-parse HEAD) > git-commit
+
+.PHONY : all parser yices emacs prelude-files-and-regions
+
+all : $(pvs-images) yices prelude-files-and-regions etags
 
 devel : $(allegro-devel) 
 
@@ -559,8 +558,8 @@ bddlib = $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
 ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
-image-deps = $(fileutils) $(bddlib) $(ws1slib) $(pvs-make-files) \
-             $(ess-files) $(ff-files) $(lisp-files) \
+image-deps = $(pvs-make-files) \
+             $(ess-files) $(lisp-files) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 
 # Set the yices downlowd URLs
@@ -668,7 +667,6 @@ clean :
 		find . -type f -name \*.$$e -exec rm \{\} \; ; \
 	done
 	-find . -type f -name \*.elc -exec rm \{\} \;
-	-rm -rf src/WS1S/mona
 	-rm -f lib/*_adt.pvs
 	-for p in $(subst $(comma), ,$(platforms)) ; do \
 		rm -rf bin/$$p; \
@@ -690,7 +688,7 @@ distclean :
 	find . -type f -name \*.elc -exec rm \{\} \; ; \
 	rm -f Makefile TAGS autoloads.out config.log config.status configure \
               emacs/pvs-prelude-files-and-regions.el lib/*_adt.pvs \
-              pvs pvsio src/WS1S/mona
+              pvs pvsio
 	rm -f src/pvs-info.lisp src/pvs-lexer.lisp src/pvs-methods.lisp \
               src/pvs-parser.lisp src/pvs-sorts.lisp
 	rm -f src/utils/{$(platforms)}/b64

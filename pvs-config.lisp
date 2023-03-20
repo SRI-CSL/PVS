@@ -199,8 +199,10 @@ targets and copying them to the corresponding bin directory."
 	 (make-cmd (format nil "make -C ~a" make-dir))
 	 (foreign-ext #+linux "so" #+(or macosx os-macosx) "dylib")
 	 (lib-file (format nil "~a/~a.~a" make-dir lib foreign-ext))
-	 (bin-dir (format nil "~abin/~a/runtime" *pvs-path* (pvs-platform)))
-	 (bin-libfile (format nil "~a/~a.~a" bin-dir lib foreign-ext)))
+	 ;; Note the trailing slash is needed for ensure-directories-exist
+	 (bin-dir (format nil "~abin/~a/runtime/" *pvs-path* (pvs-platform)))
+	 (bin-libfile (format nil "~a~a.~a" bin-dir lib foreign-ext)))
+    (ensure-directories-exist bin-dir)
     (multiple-value-bind (out-str err-str err-code)
 	(uiop:run-program make-cmd
 	  :output '(:string :stripped t)
@@ -253,6 +255,8 @@ targets and copying them to the corresponding bin directory."
   (make-pvs-program* t)
   )
 
+(defvar *runtime* t)
+
 #+allegro
 (defun make-pvs-program* ()
   (format t "~%Making Allegro ~a" (if runtime? "runtime" "devel"))
@@ -263,6 +267,8 @@ targets and copying them to the corresponding bin directory."
 	 (platform-dir (format nil "./bin/~a/" platform))
 	 (build-dir (format nil "~a~a/"
 		     platform-dir (if runtime? "runtime" "devel"))))
+    (ensure-directory-exists platform-dir)
+    (ensure-directory-exists build-dir)
     ;;(excl:delete-directory-and-files tmp-dir :if-does-not-exist :ignore)
     ;; (unless (excl:file-directory-p tmp-dir)
     ;;   (excl:make-directory tmp-dir))

@@ -1,6 +1,6 @@
-BDD = ../mona/BDD
-DFA = ../mona/DFA
-UTILS = ../mona/Mem
+BDD = ../mona-1.4/BDD
+DFA = ../mona-1.4/DFA
+UTILS = ../mona-1.4/Mem
 MACOSX_DEPLOYMENT_TARGET=10.11
 CC = clang
 INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
@@ -20,7 +20,7 @@ XCFLAGS = -O2
 LD=/opt/homebrew/Cellar/llvm/14.0.6_1/bin/ld64.lld
 LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0
 SHELL = /bin/sh
-VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
+VPATH = ..:../mona-1.4/BDD:../mona-1.4/DFA:../mona-1.4/Mem
 
 obj  = analyze.o prefix.o product.o \
        quotient.o basic.o external.o \
