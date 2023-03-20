@@ -76,12 +76,13 @@ SBCL = $(SBCL_HOME)/run-sbcl.sh
 ifeq ($(wildcard $(SBCL)),)
 $(error "SBCL_HOME/run-sbcl.sh not found")
 endif
-SBCL_VERSION = $(shell $(SBCL) --version)
-else
+endif
+
 ifneq ($(SBCL),)
 SBCL_VERSION = $(shell $(SBCL) --version)
-else
 SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
+sbcl-rt = $(PVSPATH)bin/$(PLATFORM)/runtime/pvs-sbclisp
+pvs-images += $(sbcl-rt)
 endif
 
 # Build with Allegro only if ALLEGRO_HOME is set
@@ -92,13 +93,14 @@ $(error "ALLEGRO_HOME/mlisp not found")
 endif
 ALLEGRO_VERSION = \
    $(shell $(ALLEGRO) -e '(format t "~a" (lisp-implementation-version))' --kill)
-$(info Will build with $(ALLEGRO_VERSION))
 # Only needed for building Allegro runtime images
 export LD_LIBRARY_PATH
 LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
 allegro-devel = $(bindir)/devel/$(PACKAGE)-allegro
-ifeq ($(shell if `grep -q dynamic-runtime $(ALLEGRO_HOME)/devel.lic`; then echo OK; fi),OK)
+pvs-images += $(allegro-devel)
+ifneq ($(wildcard $(ALLEGRO_HOME)/devel.lic),)
 allegro-rt = $(bindir)/runtime/$(PACKAGE)-allegro
+pvs-images += $(allegro-rt)
 endif
 endif
 
@@ -211,7 +213,6 @@ ifeq ($(findstring MacOSX,$(PLATFORM)),MacOSX)
 LOAD-FOREIGN-EXTENSION=dylib
 else
 LOAD-FOREIGN-EXTENSION=so
-endif
 endif
 
 pvs-make-files = pvs.asd
@@ -519,33 +520,35 @@ $(shell mkdir -p $(dir $(pvs-registry)))
 $(shell echo "(:tree \"$(CURDIR)\")" > $(pvs-registry))
 endif
 
-.PHONY : all devel runtime parser yices emacs prelude-files-and-regions etags
+# @echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
-all : quicklisp yices runtime devel prelude-files-and-regions etags
-	@echo $(shell $(GIT) rev-parse HEAD) > git-commit
+.PHONY : all parser yices emacs prelude-files-and-regions
+
+all : $(pvs-images) yices prelude-files-and-regions etags
 
 # Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
 # This assumes quicklisp is installed in the default directory '~/quicklisp'
 # It will create that directory, and update the ~/.sbclrc init file to initialize
 # quicklisp automatically.
-quicklisp: ~/quicklisp
-~/quicklisp : src/quicklisp.lisp
-	$(SBCL) --load src/quicklisp.lisp \
+ifeq ($(wildcard $(HOME)/quicklisp),)
+$(info Installing ~/quicklisp and updating ~/.sbclrc)
+$(shell	$(SBCL) --load src/quicklisp.lisp \
 	        --eval "(quicklisp-quickstart:install)" \
                 --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
 		--eval "(ql:quickload '(:babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi))" \
-                --quit
+                --quit)
+endif
 
 devel : $(allegro-devel) 
 
-runtime : $(sbcl-image) # $(allegro-rt)
+runtime : $(sbcl-rt) # $(allegro-rt)
 
 prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
 
 etags : $(PVSPATH)TAGS
 
 $(PVSPATH)TAGS : $(lisp-files) $(emacs-src)
-	$(ETAGS) $@
+	$(ETAGS) $^
 
 fileutils = \
    $(PVSPATH)src/utils/file-utils.lisp \
@@ -599,14 +602,17 @@ $(yices2-tgt) :
 # (file_utils, mu, ws1s) and copies them to the bin directory
 
 ifneq ($(SBCL),)
-$(PVSPATH)bin/$(PLATFORM)/pvs-sbclisp : $(PVSPATH)/pvs.asd $(image-deps)
+$(sbcl-rt) : $(PVSPATH)pvs.asd $(image-deps)
 	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) \
 	        --eval "(asdf:operate :program-op :pvs)"
 endif
 
 ifneq ($(ALLEGRO_HOME),)
-$(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
-	$(ALLEGROEXE) -e "(asdf:operate :program-op :pvs)"
+$(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
+	$(ALLEGRO) -e "(asdf:operate :program-op :pvs)"
+$(allegro-devel) : $(image-deps) $(allegro-make-files) $(allegrolisp)
+	$(ALLEGRO) -e "(defvar *runtime* nil)" \
+	           -e "(asdf:operate :program-op :pvs)"
 endif
 
 .PHONY: all doc clean distclean tar
@@ -693,13 +699,6 @@ distclean :
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
 	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
 	rm -rf autom4te.cache bin/{$(platforms)}
-
-define install-quicklisp
-	@echo Installing quicklisp
-	test -d ~/quicklisp || $(LISP) --load quicklisp.lisp \
-	                       --eval (quicklisp-quickstart:install) \
-                               --eval (ql-util:without-prompting (ql:add-to-init-file))
-endef
 
 define create-distdir
 	@echo Creating $@...

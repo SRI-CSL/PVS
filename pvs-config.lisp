@@ -254,9 +254,10 @@ targets and copying them to the corresponding bin directory."
   )
 
 #+allegro
-(defun make-pvs-program* (&optional runtime?)
+(defun make-pvs-program* ()
   (format t "~%Making Allegro ~a" (if runtime? "runtime" "devel"))
   (let* ((*pvs-path* (or *pvs-path* (asdf:system-relative-pathname :pvs ".")))
+	 (runtime? *runtime*)
 	 (tmp-dir "/tmp/pvs-allegro-build/")
 	 (platform (pvs-platform))
 	 (platform-dir (format nil "./bin/~a/" platform))
