@@ -1,8 +1,9 @@
 # MACOSX_DEPLOYMENT_TARGET and -weak_library are needed so that dylibs work
 # for both leopard and tiger
-MACOSX_DEPLOYMENT_TARGET=10.11
+MACOSX_DEPLOYMENT_TARGET=12.3
+#SYSTEM_VERSION_COMPAT=1
 LD=ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 CC=gcc
 CFLAGS=-dynamic
 WFLAGS=
