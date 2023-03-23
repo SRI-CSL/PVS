@@ -4575,7 +4575,6 @@ type of the lhs."
 (defun set-assignment-arg-types (args-list values ex expr expected)
   (assert (typep expr '(or record-expr update-expr))) ;; these are the only terms with assignments;
   (assert (type-expr? expected))
-  (assert (or *in-checker* *in-evaluator* (null ex) (place ex)))
   (set-assignment-arg-types* args-list values ex expr expected))
 
 (defmethod set-assignment-arg-types* (args-list values ex expr expected)
