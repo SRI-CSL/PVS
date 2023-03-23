@@ -188,7 +188,7 @@ again during the same PVS session, it will be exactly as you left it."
 	  (unless (or init?
 		      (not (file-exists-p (current-context-path))))
 	     (save-context)) ;; Saves .pvscontext
-	  (set-working-directory dir)
+	  (set-working-directory (namestring dir))
 	  (setq *default-pathname-defaults* dir)
 	  (push *workspace-session* *workspace-stack*)
 	  (setq *workspace-session* next-ws)
@@ -198,7 +198,7 @@ again during the same PVS session, it will be exactly as you left it."
 	  (pvs-message "Context changed to ~a"
 	    (current-context-path))))
     (assert (pvs-context *workspace-session*))
-    (current-context-path)))
+    (namestring (current-context-path))))
 
 (defun change-context (directory &optional init?)
   "Old - deprecated"
@@ -2017,8 +2017,7 @@ Note that the lists might not be the same length."
 
 (defun copy-proofs-to-orphan-file (theoryid proofs)
   (when (and proofs
-	     (if *loading-prelude*
-		 (write-permission? (format nil "~a/lib" *pvs-path*))
+	     (or *loading-prelude*
 		 (write-permission?)))
     (let ((oproofs (read-orphaned-proofs))
 	  (filename (context-file-of theoryid))
