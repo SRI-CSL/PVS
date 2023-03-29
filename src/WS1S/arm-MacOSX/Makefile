@@ -17,8 +17,8 @@ XCFLAGS = -O2
 #  ld: -macosx_version_min argument missing
 # So there doesn't seem to be any choice.
 # 
-LD=/opt/homebrew/Cellar/llvm/14.0.6_1/bin/ld64.lld
-LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0
+LD=ld
+LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0  -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 SHELL = /bin/sh
 VPATH = ..:../mona-1.4/BDD:../mona-1.4/DFA:../mona-1.4/Mem
 
@@ -42,7 +42,7 @@ ws1s_extended_interface.o : ../ws1s_extended_interface.c
 	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
 ws1s.dylib : ${obj} ws1s_table.o
-	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o
+	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o -lc
 
 # ws1s_table.c : ws1s-ld-table
 # 	awk '/^ws1s___/ { print "extern int " $3 " (int);\nint (*" $1 ")(int) = " $3 ";\n\n" }' ../ws1s-ld-table > ws1s_table.c
