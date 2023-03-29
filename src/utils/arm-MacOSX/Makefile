@@ -4,8 +4,8 @@ MACOSX_DEPLOYMENT_TARGET=11
 CC=clang
 # CFLAGS=-dynamic
 CFLAGS=-g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14
-LD=/opt/homebrew/Cellar/llvm/14.0.6_1/bin/ld64.lld
-LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0
+LD=ld
+LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 WFLAGS=
 VPATH=..
 
@@ -18,7 +18,7 @@ obj=file_utils.o
 all : file_utils.dylib b64
 
 file_utils.dylib: ${obj} utils_table.o
-	$(LD) $(LDFLAGS) -o file_utils.dylib ${obj} utils_table.o
+	$(LD) $(LDFLAGS) -o file_utils.dylib ${obj} utils_table.o -lc
 
 utils_table.o : ../utils_table.c
 
