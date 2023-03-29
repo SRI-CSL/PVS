@@ -8,8 +8,8 @@ CC=clang
 INCLUDES=-I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
 CFLAGS=-g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 $(INCLUDES)
 XCFLAGS=-O2
-LD=/opt/homebrew/Cellar/llvm/14.0.6_1/bin/ld64.lld
-LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0
+LD=ld
+LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 
@@ -24,12 +24,15 @@ utilobj = double.o list.o hash.o alloc.o
 
 all : mu.dylib
 
-mu.dylib : ${muobj} ${utilobj}
-	$(LD) $(LDFLAGS) -o mu.dylib ${muobj} ${utilobj}
+mu.dylib : ${muobj} bdd_table.o mu_table.o ${utilobj}
+	$(LD) $(LDFLAGS) -o mu.dylib ${muobj} ${utilobj} bdd_table.o mu_table.o -lm -lc
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
 	ranlib libutils.a
+
+bdd_table.o : ../bdd_table.c
+mu_table.o : ../mu_table.c
 
 bdd_interface.o : bdd_interface.c bdd_fns.h
 bdd_factor.o : bdd_factor.c bdd_factor.h
