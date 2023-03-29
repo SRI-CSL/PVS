@@ -6150,8 +6150,8 @@ BEGIN
 
 %These file operations are benign and can appear anywhere. 
   getbyte(f: file, (i : below(file_size(f)))): byte
-
-  getbytestring(f: file, (i : below(file_size(f))), size: below(file_size(f) - i)): bytestring
+%The signature for the size parameter has to be detectably uint32 for the C attachment to work
+  getbytestring(f: file, (i : upto(file_size(f))), (size : upto(file_size(f)) | size <= file_size(f) - i)): bytestring
 
   readline(f: file, (i : below(file_size(f)))): bytestring
 
