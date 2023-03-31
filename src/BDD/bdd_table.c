@@ -98,9 +98,9 @@ BDDPTR bdd___bdd_create_var_after (BDDPTR v) {return bdd_create_var_after (v);}
 BDDPTR bdd___bdd_create_var_last (void) {return bdd_create_var_last ();}
 
 void bdd___bdd_print (FILE *fp, BDDPTR f, char *s)
-  {return bdd_print (fp, f, s);}
+  {bdd_print (fp, f, s);}
 
-void bdd___bdd_quit (void) {return bdd_quit ();}
+void bdd___bdd_quit (void) {bdd_quit ();}
 
 int bdd___bdd_nodes_alive (void) {return bdd_nodes_alive ();}
 
@@ -166,7 +166,7 @@ BDDPTR bdd___bdd_subst_par_list (BDD_LIST f_list, BDD_LIST vars, BDDPTR g)
 {return (BDDPTR) bdd_subst_par_list (f_list, vars, g);}
 
 void bdd___bdd_free_vec (BDDPTR *f_vec, int size)
-  {return bdd_free_vec (f_vec, size);}
+  {bdd_free_vec (f_vec, size);}
 
 const char* bdd___bdd_get_output_string (int idx) {
   return (char*) bdd_get_output_string (idx);

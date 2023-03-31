@@ -80,13 +80,13 @@ Term mu___mu_mk_equiv_term (Term fml1, Term fml2)
 Term mu___mu_mk_implies_term (Term fml1, Term fml2)
   {return (Term) mu_mk_implies_term (fml1, fml2);}
 
-char* mu___get_mu_bool_var_name (bdd_idx)
+char* mu___get_mu_bool_var_name (int bdd_idx)
   {return (char *) get_mu_bool_var_name (bdd_idx);}
 
 LIST mu___append_cont(void *p, LIST list)
   {return (LIST) append_cont (p, list);}
 
-LIST mu___empty_list () {return (LIST) empty_list ();}
+LIST mu___empty_list (void) {return (LIST) empty_list ();}
 
 int mu___set_mu_warnings (int flag) {return set_mu_warnings (flag);}
  
