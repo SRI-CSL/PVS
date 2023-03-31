@@ -83,6 +83,7 @@ SBCL_VERSION = $(shell $(SBCL) --version)
 SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
 sbcl-rt = $(PVSPATH)bin/$(PLATFORM)/runtime/pvs-sbclisp
 pvs-images += $(sbcl-rt)
+fasldirs += $(shell $(SBCL) --noinform --eval '(format t (namestring (asdf:apply-output-translations ".")))' --quit)
 endif
 
 # Build with Allegro only if ALLEGRO_HOME is set
@@ -523,13 +524,54 @@ endif
 # This assumes quicklisp is installed in the default directory '~/quicklisp'
 # It will create that directory, and update the ~/.sbclrc init file to initialize
 # quicklisp automatically.
+
+# First install ~/quicklisp; any Common Lisp will do that
 ifeq ($(wildcard $(HOME)/quicklisp),)
-$(info Installing ~/quicklisp and updating ~/.sbclrc)
+$(info Installing ~/quicklisp)
+ifneq ($(SBCL),)
 $(shell	$(SBCL) --load src/quicklisp.lisp \
                 --eval "(quicklisp-quickstart:install)" \
-                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
-                --eval "(ql:quickload '(:babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi))" \
                 --quit > /dev/null)
+else
+$(shell	$(ALLEGRO) -L "src/quicklisp.lisp" \
+                   -e "(quicklisp-quickstart:install)" \
+                   --kill > /dev/null)
+endif
+endif
+
+# Now make sure init file is set up to automatically load quicklisp/setup.lisp
+ifneq ($(SBCL),)
+ifeq ($(wildcard $(HOME)/.sbclrc),)
+$(info Creating ~/.sbclrc)
+$(shell $(SBCL) -L "$(HOME)/quicklisp/setup.lisp" \
+                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+                --quit > /dev/null)
+else
+$(shell $(GREP) -q "quicklisp/setup.lisp" $(HOME)/.sbclrc)
+ifneq ($(.SHELLSTATUS),0)
+$(info Updating ~/.sbclrc to include loading quicklisp/setup.lisp)
+$(shell $(SBCL) -L "$(HOME)/quicklisp/setup.lisp" \
+                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+                --quit > /dev/null)
+endif
+endif
+endif
+
+ifneq ($(ALLEGRO),)
+ifeq ($(wildcard $(HOME)/.clinit.cl),)
+$(info Creating ~/.clinit.cl)
+$(shell $(ALLEGRO) -L "$(HOME)/quicklisp/setup.lisp" \
+                   -e "(ql-util:without-prompting (ql:add-to-init-file))" \
+                   --kill > /dev/null)
+else
+$(shell $(GREP) -q "quicklisp/setup.lisp" $(HOME)/.clinit.cl)
+ifneq ($(.SHELLSTATUS),0)
+$(info Updating ~/.clinit.cl to include loading quicklisp/setup.lisp)
+$(shell $(SBCL) -L "$(HOME)/quicklisp/setup.lisp" \
+                -e "(ql-util:without-prompting (ql:add-to-init-file))" \
+                --kill > /dev/null)
+endif
+endif
 endif
 
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
@@ -603,15 +645,23 @@ $(yices2-tgt) :
 ifneq ($(SBCL),)
 $(sbcl-rt) : $(PVSPATH)pvs.asd $(image-deps)
 	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) \
-	        --eval "(asdf:operate :program-op :pvs)"
+		--eval "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+	        --eval "(asdf:operate :program-op :pvs)" \
+	        --quit > /dev/null
 endif
 
 ifneq ($(ALLEGRO_HOME),)
 $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
-	$(ALLEGRO) -e "(asdf:operate :program-op :pvs)"
+	$(ALLEGRO) -L "~/.clinit.cl" \
+		   -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+	           -e "(asdf:operate :program-op :pvs)" \
+	           --kill > /dev/null
 $(allegro-devel) : $(image-deps) $(allegro-make-files) $(allegrolisp)
-	$(ALLEGRO) -e "(defvar *runtime* nil)" \
+	$(ALLEGRO) -L "~/.clinit.cl" \
+		   -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+                   -e "(defvar *runtime* nil)" \
 	           -e "(asdf:operate :program-op :pvs)"
+	           --kill > /dev/null
 endif
 
 .PHONY: all doc clean distclean tar
@@ -663,8 +713,8 @@ comma:= ,
 
 clean :
 	-rm $(pvs-parser-out)
-	-for e in $(subst $(comma), ,$(faslexts)) ; do \
-		find . -type f -name \*.$$e -exec rm \{\} \; ; \
+	-for d in $(subst $(comma), ,$(fasldirs)) ; do \
+		rm -rf $$d; \
 	done
 	-find . -type f -name \*.elc -exec rm \{\} \;
 	-rm -f lib/*_adt.pvs
