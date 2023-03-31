@@ -2968,8 +2968,10 @@ if test "$GREP" = no ; then
 	as_fn_error $? "Cannot find grep" "$LINENO" 5
 fi
 
-# Extract the first word of "etags", so it can be a program name with args.
-set dummy etags; ac_word=$2
+for ac_prog in etags etags-emacs etags.emacs
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
 if ${ac_cv_prog_ETAGS+:} false; then :
@@ -2985,7 +2987,7 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_prog_ETAGS="etags"
+    ac_cv_prog_ETAGS="$ac_prog"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -2993,7 +2995,6 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_prog_ETAGS" && ac_cv_prog_ETAGS="no"
 fi
 fi
 ETAGS=$ac_cv_prog_ETAGS
@@ -3006,8 +3007,13 @@ $as_echo "no" >&6; }
 fi
 
 
+  test -n "$ETAGS" && break
+done
+test -n "$ETAGS" || ETAGS="no"
+
 if test "$ETAGS" = no ; then
-	as_fn_error $? "Cannot find etags" "$LINENO" 5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Cannot find etags" >&5
+$as_echo "$as_me: WARNING: Cannot find etags" >&2;}
 fi
 
 # Extract the first word of "mkdir", so it can be a program name with args.
