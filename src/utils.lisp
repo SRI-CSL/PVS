@@ -363,10 +363,10 @@ is replaced with replacement."
 	     (if (uiop:file-exists-p path)
 		 path
 		 (error "File ~a cannot be found" path))))
-	  (t (dolist (dir *pvs-directories*)
-	       (let* ((defaults (or (uiop:file-exists-p (format nil "~a/~a/"
-							  *pvs-path* dir))
-				    (uiop:directory-exists-p dir)))
+	  (t (dolist (pdir *pvs-directories*)
+	       (let* ((defaults (or (uiop:directory-exists-p (format nil "~a/~a/"
+							       *pvs-path* pdir))
+				    (uiop:directory-exists-p pdir)))
 		      (path (make-pathname :name name :type type
 					   :defaults defaults)))
 		 (when (uiop:file-exists-p path)
