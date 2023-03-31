@@ -91,9 +91,9 @@ if test "$GREP" = no ; then
 	AC_MSG_ERROR(Cannot find grep)
 fi
 
-AC_CHECK_PROG(ETAGS,etags,etags,no)
+AC_CHECK_PROGS(ETAGS,etags etags-emacs etags.emacs,no)
 if test "$ETAGS" = no ; then
-	AC_MSG_ERROR(Cannot find etags)
+	AC_MSG_WARN(Cannot find etags)
 fi
 
 AC_CHECK_PROG(MKDIR,mkdir,mkdir,no)
