@@ -29,21 +29,6 @@
 
 (in-package :pvs)
 
-;;; Called from outside PVS
-(export '(change-workspace context-files-and-theories context-usingchain
-	  current-context-path get-pvs-file-dependencies pvs-delete-proof
-	  pvs-rename-file pvs-select-proof pvs-view-proof save-context
-	  show-context-path show-orphaned-proofs show-proof-file
-	  show-proofs-pvs-file))
-
-;;; Called from PVS only
-(export '(handle-deleted-theories restore-from-context update-context
-	  te-formula-info te-id fe-status fe-id get-theory-dependencies
-	  restore-context valid-proofs-file get-context-theory-names
-	  get-context-theory-entry context-file-of pvs-file-of
-	  context-entry-of save-proofs save-all-proofs copy-theory-proofs-to-orphan-file
-	  read-strategies-files))
-
 (proclaim '(inline pvs-context-version pvs-context-libraries
 	    pvs-context-entries))
 
@@ -1330,7 +1315,7 @@ are all the same."
 	     (get-context-theory-entry theoryname (car file-entries)))
 	(get-context-theory-entry* theoryname (cdr file-entries)))))
 
-(defun get-context-formula-entry (fdecl &optional again?)
+(defun get-context-formula-entry (fdecl)
   (unless (from-prelude? fdecl)
     (let ((te (get-context-theory-entry (module fdecl))))
       (unless te
@@ -1572,9 +1557,8 @@ are all the same."
 	 (with-open-file (out prf-file :direction :output
 			      :if-exists :supersede)
 	   (mapc #'(lambda (prf)
-		     (write prf :length nil :level nil :escape t
-			    :pretty *save-proofs-pretty*
-			    :stream out)
+		     (write prf :stream out :length nil :level nil :readably t
+			    :pretty *save-proofs-pretty*)
 		     (when *save-proofs-pretty* (terpri out)))
 		 theory-proofs)
 	   (terpri out)))
@@ -2232,14 +2216,14 @@ Note that the lists might not be the same length."
 	  (cond ((and script (integerp script))
 		 ;; Old
 		 (setq script (read stream nil))
-		 (setq status (read stream nil))
+		 (read stream nil) ;; status 
 		 (setq refers-to
 		       (if *proof-file-debug*
 			   (read-proofs-refers-to stream)
 			   (ignore-errors (read-proofs-refers-to stream))))
-		 (setq real-time (read stream nil))
-		 (setq run-time (read stream nil))
-		 (setq interactive? (read stream nil))
+		 (read stream nil) ;; real-time
+		 (read stream nil) ;; run-time 
+		 (read stream nil) ;; interactive?
 		 (setq dp (read stream nil)))
 		(t
 		 (setq refers-to
