@@ -18,7 +18,8 @@ XCFLAGS = -O2
 # So there doesn't seem to be any choice.
 # 
 LD=ld
-LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0  -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+SDK=$(shell xcrun --show-sdk-path)
+LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0  -L $(SDK)/usr/lib
 SHELL = /bin/sh
 VPATH = ..:../mona-1.4/BDD:../mona-1.4/DFA:../mona-1.4/Mem
 

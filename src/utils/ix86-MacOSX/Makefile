@@ -2,7 +2,8 @@
 # for both leopard and tiger
 MACOSX_DEPLOYMENT_TARGET=10.11
 LD=ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+SDK=$(shell xcrun --show-sdk-path)
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L $(SDK)/usr/lib
 CC=gcc
 CFLAGS=-dynamic
 WFLAGS=

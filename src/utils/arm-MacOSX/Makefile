@@ -5,7 +5,8 @@ CC=clang
 # CFLAGS=-dynamic
 CFLAGS=-g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14
 LD=ld
-LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+SDK=$(shell xcrun --show-sdk-path)
+LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib
 WFLAGS=
 VPATH=..
 

@@ -6,7 +6,8 @@ INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
 # for both leopard and tiger
 MACOSX_DEPLOYMENT_TARGET=10.11
 LD = ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+SDK=$(shell xcrun --show-sdk-path)
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L $(SDK)/usr/lib
 CC = gcc
 CFLAGS = -dynamic -DNDEBUG -arch x86_64 $(INCLUDES)
 #CFLAGS = -dynamic -g -Wall -arch x86_64 $(INCLUDES)
