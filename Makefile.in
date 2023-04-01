@@ -689,7 +689,7 @@ tar :
 $(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
                   $(PVSPATH)emacs/pvs-set-prelude-info.el \
                   $(PVSPATH)lib/prelude.pvs
-	-./pvs -batch -l emacs/pvs-set-prelude-info.el \
+	-./pvs -batch -q -l emacs/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
 # We need to create the elc files, but this does not work well with make, as
@@ -701,7 +701,7 @@ $(PVSPATH)emacs/.readme : $(emacs-src)
 	echo "File exists for make dependency usage" > $@
 
 $(emacs-elc) : $(PVSPATH)emacs/.readme
-	(cd emacs; $(EMACS) -batch -l pvs-byte-compile.el)
+	(cd emacs; $(EMACS) -batch -q -l pvs-byte-compile.el)
 
 install:
 	@echo "target install is not used for PVS - see INSTALL"
