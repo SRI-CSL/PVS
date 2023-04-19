@@ -5150,15 +5150,15 @@ space")
 #+cmu
 (extensions:define-hash-table-test 'strong-tc-eq-test
 				   #'strong-tc-eq #'pvs-sxhash)
-#+(and sbcl (not sunos))
+#+sbcl
 (sb-ext:define-hash-table-test tc-eq pvs-sxhash)
-#+(and sbcl (not sunos))
+#+sbcl
 (sb-ext:define-hash-table-test strong-tc-eq pvs-sxhash)
 
-#+(and sbcl sunos)
-(sb-int:define-hash-table-test 'tc-eq #'tc-eq #'pvs-sxhash)
-#+(and sbcl sunos)
-(sb-int:define-hash-table-test 'strong-tc-eq #'strong-tc-eq #'pvs-sxhash)
+#+sbcl
+(sb-ext:without-package-locks
+    (sb-ext:define-hash-table-test string= sxhash))
+
 
 ;;; The following are for gathering information about dependencies
 ;;; Note it is difficult to be complete here - e.g., the user could
