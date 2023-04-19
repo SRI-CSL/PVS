@@ -2598,31 +2598,13 @@ Note that the lists might not be the same length."
       (let ((fwd (file-write-time file)))
 	(unless (= fwd (car dates))
 	  (setf (car dates) fwd)
-	  #+(and allegro (version>= 6) (not pvs6) (not pvs7))
-	  (unwind-protect
-	       (progn (excl:set-case-mode :case-insensitive-lower)
-		      (multiple-value-bind (v err)
-			  (ignore-errors (load file))
-			(declare (ignore v))
-			(when err
-			  (pvs-message "Error in loading ~a:~%  ~a" file err))))
-	    (excl:set-case-mode :case-sensitive-lower)
-	    (add-lowercase-prover-ids))
-	  #+(and allegro (version>= 6) (or pvs6 pvs7))
 	  (unwind-protect
 	       (multiple-value-bind (v err)
 		   (ignore-errors (load file))
 		 (declare (ignore v))
 		 (when err
 		   (pvs-message "Error in loading ~a:~%  ~a" file err)))
-	    (add-lowercase-prover-ids))
-	  #-(and allegro (version>= 6))
-	  (with-open-file (str file :direction :input)
-	    (multiple-value-bind (v err)
-		(ignore-lisp-errors (load str))
-	      (declare (ignore v))
-	      (when err
-		(pvs-message "Error in loading ~a:~%  ~a" file err)))))))))
+	    (add-lowercase-prover-ids)))))))
 
 
 (defun add-lowercase-prover-ids ()
