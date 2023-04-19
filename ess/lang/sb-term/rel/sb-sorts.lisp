@@ -899,10 +899,10 @@
 (lang:lang-define 
 :name "meta-grammar"
 :conc-name "sb"
-:code-package "syntax-box"
-:abs-syn-package "syntax-box"
-:use-packages '("ergolisp" "oper" "occ" "term" "sort" "sb-runtime" "lang" "newattr")
-:sub-languages '("lexical-terminals")
+:code-package :syntax-box
+:abs-syn-package :syntax-box
+:use-packages '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr)
+:sub-languages '(:lexical-terminals)
 :unparse-nts 't
 :parse-routine-name 'syntax-box::sb-parse
 :unparse-routine-name 'syntax-box::sb-unparse

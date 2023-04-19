@@ -100,15 +100,15 @@
 
 
 
-
+(deftype sym-or-string () '(or symbol string))
 
 (defstruct (lang-struct (:predicate langp))
   "Information about a language."
   (name "" 			:type string)
   (conc-name ""			:type string)
   (working-dir ""		:type string)
-  (code-package ""		:type string)
-  (abs-syn-package ""		:type string)
+  (code-package ""		:type sym-or-string)
+  (abs-syn-package ""		:type sym-or-string)
   (use-packages ()		:type list)
   (grammar-file ""		:type string)
   (lexer-file ""		:type string)
