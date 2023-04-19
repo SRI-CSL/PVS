@@ -48,7 +48,6 @@
 ;; (export '(print-all-boxes print-all-crates print-all-suffixes print-all-efiles
 ;; 	  all-boxes all-crates all-suffixes all-efiles)) ; For checking
 ;; (export '(*box-debug* *box-messages* *box-warn*)) ; For controlling messages
-;; (export '(*system-administration-mode*)) ; For generating a system.
 ;; (export '(*null-output* *box-edit-query*)) ; Misc. stuff
 
 ;; (eexport '(\#>))
@@ -381,18 +380,6 @@ Would you like to reload it? " box)) )
 (defun user-equal (name1 name2)
   "Disregards case."
   (string-equal (string name1) (string name2)))
-
-(defvar *system-administration-mode* nil
-  "If T, the current user will be allowed to generate any box.
-Dangerous if used unjudiciously, but a necessary backdoor.")
-
-(defun generate-legal-p (box)
-  "Determines if it is legal for the current user to generate a file
-in the given box."
-  ;; (or *system-administration-mode*
-  ;;     (member (user-name) (box-maintainers box) :test #'user-equal)
-  ;;     (member :all (box-maintainers box)))
-  )
 
 ;;;
 ;;; *efiletable* maintenance.
@@ -1051,36 +1038,30 @@ for the requested file (argument `output-efile')."
     (when (null output-file)
       (setq output-file (efile-name output-efile)))
     (assert (member ".cache" (pathname-directory output-file) :test #'string=))
-    (if (not (generate-legal-p (efile-box output-efile)))
-	(boxwarn "File ~S of box ~S should be regenerated,
-but only ~S are maintainers of the box."
-		 output-efile (efile-box output-efile)
-		 (box-maintainers (efile-box output-efile)))
-	(progn
-	  (cond ((= 0 (box-load-time box))
-		 ;; Box has never been loaded.
-		 (boxmsg "Box ~S is needed for generating file ~S, but not loaded."
-			 box output-efile)
-		 (boxload-fun (list (box-name box))))
-		((> (box-write-time box) (box-load-time box))
-		 ;; Box has been edited incompatibly.
-		 (boxwarn "Box ~S has been edited.")
-		 (funcall *box-edit-action* box)))
-	  (let* ((input-opts (apply #'merge-input-opts
-				    (mapcar #'efile-local-opts input-efiles)))
-		 (process-args
-		  (merge-opts
-		   (list-merge (suffix-governing-keys output-suffix) input-files)
-		   (list (suffix-key output-suffix) output-file)
-		   ;; Input and output-file cannot be overriden by local options.
-		   (if relevant-dir-key
-		       (list (first relevant-dir-key) relevant-directory)
-		       '())
-		   (efile-eload-opts output-efile)
-		   input-opts
-		   (box-local-opts (efile-box output-efile)))))
-	    (boxmsg "Applying function ~A to ~S." process-fnspec process-args)
-	    (generator-apply process-fnspec process-args box))))
+    (cond ((= 0 (box-load-time box))
+	   ;; Box has never been loaded.
+	   (boxmsg "Box ~S is needed for generating file ~S, but not loaded."
+		   box output-efile)
+	   (boxload-fun (list (box-name box))))
+	  ((> (box-write-time box) (box-load-time box))
+	   ;; Box has been edited incompatibly.
+	   (boxwarn "Box ~S has been edited.")
+	   (funcall *box-edit-action* box)))
+    (let* ((input-opts (apply #'merge-input-opts
+			 (mapcar #'efile-local-opts input-efiles)))
+	   (process-args
+	    (merge-opts
+	     (list-merge (suffix-governing-keys output-suffix) input-files)
+	     (list (suffix-key output-suffix) output-file)
+	     ;; Input and output-file cannot be overriden by local options.
+	     (if relevant-dir-key
+		 (list (first relevant-dir-key) relevant-directory)
+		 '())
+	     (efile-eload-opts output-efile)
+	     input-opts
+	     (box-local-opts (efile-box output-efile)))))
+      (boxmsg "Applying function ~A to ~S." process-fnspec process-args)
+      (generator-apply process-fnspec process-args box))
     ;; The TRUENAME in the next line is necessary so that symbolic
     ;; links are resolved correctly.
     (setf (efile-dir-file output-efile) (namestring (truename output-file)))
@@ -1381,24 +1362,22 @@ in the search path for box ~S with directories ~S."
 	;; :verbose nil :if-does-not-exist :error :print nil)
 	(setf (efile-load-time efile) (current-time)))))
 
-(defun eload-regenerated-efile (efile relevant-directory)
-  "Finally loads the regenerated file in the relevant directory, if necessary."
+(defun eload-regenerated-efile (efile)
+  "Finally loads the regenerated file if necessary."
   ;; Hack this for now. ???.
   ;; Here we should compare the last load-time with file-write-date
   ;; to see if we need to reload.
-  ;; Also reload if flagged or looking in different directory.
+  ;; Also reload if flagged
   (if (or (> (efile-write-time efile)
 	     (efile-load-time efile))
-	  ;; (not (string= relevant-directory
-	  ;; 		(directory-namestring (efile-dir-file efile))))
 	  (> (efile-flag-time efile) (efile-load-time efile)))
       (eload-do efile (efile-eload-opts efile))
       (boxdebug "Not loading efile ~S as file ~S."
 		efile (efile-dir-file efile))))
 
-(defun eload-regenerated-efiles (efiles relevant-directory)
+(defun eload-regenerated-efiles (efiles)
   (dolist (efile efiles)
-    (eload-regenerated-efile efile relevant-directory)))
+    (eload-regenerated-efile efile)))
 
 (defun source-opt-p (efile eload-opts)
   (cond ((member2 :source eload-opts)
@@ -1443,7 +1422,7 @@ in the search path for box ~S with directories ~S."
 	    (eprocess-graph efile relevant-files relevant-directory)
 	  (when loadp
 	    (retry-catch :load
-	      (eload-regenerated-efile efile relevant-directory)))))
+	      (eload-regenerated-efile efile)))))
       ;;)
       ))
 
@@ -1614,18 +1593,10 @@ are checked."
 	  regenerate-p forced)
       (retry-catch :box
 	(if regenerate-p
-	    (if (generate-legal-p box)
-		(progn (boxmsg "Regenerating and Loading box ~S." box)
-		       (load-regen (box-loadable-efiles box))
-		       (run-load-hook box)
-		       (setf (box-load-time box) (current-time)))
-		(progn (boxwarn "Not regenerating box ~S because you, ~A, are not in the
-list of maintainers ~A for it."
-				box (user-name) (box-maintainers box))
-		       (boxmsg "Loading box ~S." box)
-		       (load-search (box-loadable-efiles box))
-		       (run-load-hook box)
-		       (setf (box-load-time box) (current-time))))
+	    (progn (boxmsg "Regenerating and Loading box ~S." box)
+		   (load-regen (box-loadable-efiles box))
+		   (run-load-hook box)
+		   (setf (box-load-time box) (current-time)))
 	    (progn
 	      (boxmsg "Loading box ~S." box)
 	      (load-search (box-loadable-efiles box))
