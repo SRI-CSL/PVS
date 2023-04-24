@@ -682,10 +682,11 @@
     return result;
 }")
 
+;;Signature in the prelude allows i upto(file_size(f), and size upto(file_size(f) - i).
 (def-c-attach-primitive "file" "getbytestring" "bytestrings__bytestring" '(f i size) '(file__file uint32 uint32)
   nil
   "{bytestrings_array_0_t newarray = new_bytestrings_array_0(size);
-    memcpy(newarray, (char *) f->contents + i, size);
+    memcpy(newarray->elems, (char *) f->contents + i, size);
     bytestrings__bytestring_t newstring = new_bytestrings__bytestring();
     newstring->length = size;
     newstring->seq = newarray;

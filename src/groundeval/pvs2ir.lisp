@@ -271,7 +271,7 @@
 
 
 (defun mk-ir-variable (ir-name ir-type &optional ir-pvsid)
-;  (when (null ir-type) (break "mk-ir-variable"))
+  (when (null ir-type) (break "mk-ir-variable"))
   (make-instance 'ir-variable
 		 :ir-name ir-name
 		 :ir-vtype ir-type
@@ -332,7 +332,7 @@
 		 :ir-body body))
 
 (defun mk-ir-lett (vartype bind-type expr  body)
-;;  (when (null expr) (break "mk-ir-lett"))
+  (when (null bind-type) (break "mk-ir-lett"))
   (make-instance 'ir-lett
 		 :ir-vartype vartype
 		 :ir-bind-type bind-type
@@ -785,9 +785,9 @@
 	 (bnd (assoc  decl bindings :key #'declaration)))
     (assert (not (and bnd (const-decl? decl))))
     (if bnd
-	(let ((ir-expected-type (pvs2ir-type expected))
+	(let ((ir-expected-type (and expected (pvs2ir-type expected)))
 	      (bnd-irvar (cdr bnd)))
-	  (if (ir2c-tequal ir-expected-type (ir-vtype (cdr bnd)))
+	  (if (or (null ir-expected-type) (ir2c-tequal ir-expected-type (ir-vtype (cdr bnd))))
 	      bnd-irvar
 	    (let ((expected-irvar (mk-ir-variable (new-irvar) ir-expected-type)))
 	      (mk-ir-let expected-irvar
@@ -1656,12 +1656,12 @@
 	  (t (format t "Shouldn't reach here."))))
 
 (defmethod pvs2ir-constructor-recordtype ((constructor ir-adt-constructor))
-  (let ((index (intern "_index"))
-	(index-fieldtype (mk-ir-fieldtype index
-					  (mk-ir-subrange (ir-adt-constructor-index constructor)
-							  (ir-adt-constructor-index constructor))))
-	(rest-fieldtypes (loop for accessor in (ir-adt-accessors constructor)
-			       collect (mk-ir-fieldtype (ir-adt-accessor-id accessor)
+  (let* ((index (intern "_index"))
+	 (index-fieldtype (mk-ir-fieldtype index
+					   (mk-ir-subrange (ir-adt-constructor-index constructor)
+							   (ir-adt-constructor-index constructor))))
+	 (rest-fieldtypes (loop for accessor in (ir-adt-accessors constructor)
+				collect (mk-ir-fieldtype (ir-adt-accessor-id accessor)
 							 (ir-adt-accessor-type accessor)))))
     (mk-ir-recordtype (cons index-fieldtype rest-fieldtypes) (gensym (string (id constructor))))));NSH(4-3-22): label added
 
@@ -1827,11 +1827,14 @@
 					  when (or (null (type-value act))
 						   (eq (check-actual-type (type-value act) bindings) 'ref))
 					  collect act))
-		       (ref-formals (loop for fml in formals
-					  as act in actuals ;;collect const actuals and ref actuals
-					  when (or (null (type-value act))
-						   (eq (check-actual-type (type-value act) bindings) 'ref))
-					  collect fml))
+		       (ref-formals (if actuals ;if there are actuals, then collect only the type formals 
+					(loop for fml in formals ;where the matching actual has a ref type
+					                        ;other non-ref type actuals are monomorphized
+					      as act in actuals ;;collect const actuals and ref actuals
+					      when (or (null (type-value act))
+						       (eq (check-actual-type (type-value act) bindings) 'ref))
+					      collect fml)
+				      formals)) ;otherwise, return all the formals. 
 		       (ir-formals (pvs2ir* ref-formals bindings nil))
 		       (ir-actuals (pvs2ir* ref-actuals bindings nil))
 		       (actvars (loop for fml in ir-formals
@@ -1875,7 +1878,7 @@
 		      (if ir-actuals ;;then generating code outside theory
 			  (make-ir-lett* actvars actual-types ir-actuals
 					 op-arg-application-ir)
-			op-arg-application-ir);;generating code within theory
+			(make-ir-let* actvars ir-formals op-arg-application-ir));;generating code within theory
 		  
 		    (if (and op-ir-defn  args-ir (null op-ir-args))
 			(let ((op-var (mk-ir-variable (new-irvar)(pvs2ir-type (type op) bindings))))
