@@ -611,6 +611,11 @@
     `(lambda (,@(print-ir ir-vartypes)) '-> ,(print-ir ir-rangetype) ,(print-ir ir-body)
        ,(print-ir ir-lastvars))))
 
+(defmethod print-ir ((ir-expr ir-forall))
+  (with-slots (ir-vartype ir-body) ir-expr
+    `(forall ,(print-ir ir-vartype) ,(print-ir ir-body))))
+
+
 (defmethod print-ir ((ir-expr ir-ift))
   (with-slots (ir-condition ir-then ir-else) ir-expr
 	      `(if ,(print-ir ir-condition) ,(print-ir ir-then) ,(print-ir ir-else))))
@@ -2228,25 +2233,32 @@
 			       (pvs2ir-type (type expression) bindings)
 			       bindings))))
 
-;; (defmethod pvs2ir* ((expr forall-expr) bindings expected)
-;;   (with-slots ((expr-bindings bindings) expression) expr
-;;     (let ((ir-bindings (pvs2ir-lambda-bindings expr-bindings bindings))
-;; 	  (ir-var-bindings (pairlis expr-bindings ir-bindings))
-;; 	  (in-bindings (append ir-var-bindings bindings))
-;; 	  (ir-expr (pvs2ir* expression in-bindings))
-;; 	  (pvs2ir-forall-expr ir-bindings ir-expr)))))
+(defmethod pvs2ir* ((expr forall-expr) bindings expected)
+  (with-slots ((expr-bindings bindings) expression) expr
+    (let* ((ir-bindings (pvs2ir-lambda-bindings expr-bindings bindings))
+	   (ir-var-bindings (pairlis expr-bindings ir-bindings))
+	   (in-bindings (append ir-var-bindings bindings))
+	   (ir-expr (pvs2ir* expression in-bindings expected)))
+      (pvs2ir-forall-expr ir-bindings ir-expr))))
 
-;; (defun pvs2ir-forall-expr (bindings expr)
-;;   (cond (bindings
-;; 	 (let ((bnd1 (car bindings))
-;; 	       (index1 (
-;; 	       (rest (cdr bindings)))
-;; 	   (if (ir-subrange? (ir-vtype bnd1))
-;; 	   (mk-ir-forall bnd1 (pvs2ir-forall-expr rest expr))))
-;; 	expr))
-	   
-	   
+(defun check-quantifier-subrange (ir-low ir-high)
+  (and (integerp ir-low)
+       (integerp ir-high)
+       (or (and (>= ir-low 0)(< ir-high (expt 2 32)))
+	   (and (>= ir-low (expt 2 31)))(< ir-high (expt 2 31)))))
 
+(defun pvs2ir-forall-expr (bindings expr)
+  (cond (bindings
+	 (let* ((bnd1 (car bindings))
+		(rest (cdr bindings))
+		(bnd1type (ir-vtype bnd1)))
+	   (cond ((and (ir-subrange? bnd1type)
+		       (check-quantifier-subrange (ir-low bnd1type)(ir-high bnd1type)))
+		  (mk-ir-forall bnd1 (pvs2ir-forall-expr rest expr)))
+		 (t (unless *to-emacs*
+		      (format t "~%PVS2C Error generating code for ~% ~a ~%Quantifiers are not handled" expr))
+		    (mk-ir-function 'u_undef_quant_expr)))))
+	(t expr)))
 
 (defmethod pvs2ir* ((expr quant-expr) bindings expected)
   (declare (ignore bindings expected))
@@ -6045,6 +6057,40 @@
   (with-slots (size high) ir-arraytype
     (or (and (ir-offset? high) high)
 	size)))
+
+(defmethod ir2c* ((ir-expr ir-offset) returnvar returntype)
+  (with-slots (expr offset) ir-expr
+    (let* ((size-offset (1+ offset))
+	   (offset-instr
+	    (format nil "~a += ~a" returnvar size-offset)))
+    (append (ir2c* expr returnvar returntype)
+	    (list offset-instr)))))
+
+(defmethod ir2c* ((ir-expr ir-forall) return-var return-type)
+  (with-slots (ir-vartype ir-body) ir-expr
+    (let* ((index (ir-name  ir-vartype))
+	   (ir-vtype (ir-vtype ir-vartype))
+	   (index-c-type (add-c-type-definition (ir2c-type ir-vtype)))
+	   (lowvar (gentemp "low"))
+	   (highvar (gentemp "highvar"))
+	   (low-instrs (if (ir-low-expr ir-vtype)
+			   (ir2c* (ir-low-expr ir-vtype) lowvar ir-vtype)
+			 (list (format nil "~a = (~a_t) ~a" lowvar index-c-type (ir-low ir-vtype)))))
+	   (high-instrs (if (ir-high-expr ir-vtype)
+			    (ir2c* (ir-high-expr ir-vtype) highvar ir-vtype)
+			  			 (list (format nil "~a = (~a_t) ~a" lowvar index-c-type (ir-high ir-vtype)))))
+	   (prelude-instrs (list (format nil "~a_t ~a" index-c-type index)
+				 (format nil "~a_t ~a" index-c-type lowvar)
+				 (format nil "~a_t ~a" index-c-type highvar)
+				 (format nil "bool_t ~a" return-var)))
+	   (c-body (ir2c* ir-body return-var return-type))
+	   (return-instr (format nil "if !~a break" return-var))
+	   (loop-body (append c-body (list return-instr)))
+	   (for-instr (mk-for-instr (format nil "uint32_t ~a = ~a; ~a < ~a; ~a++"
+						index lowvar index highvar index)
+					loop-body)))
+      (append prelude-instrs low-instrs high-instrs (list for-instr)))))
+
 
 ;;A lambda-expression turns into the initialization for an array.  
 (defmethod ir2c* ((ir-expr ir-lambda) return-var return-type)

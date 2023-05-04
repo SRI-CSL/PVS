@@ -73,6 +73,8 @@
 
 (defcl ir-forall (ir-expr)
   ir-vartype
+  ;; ir-low
+  ;; ir-high
   ir-body)
 
 (defcl ir-ift (ir-expr)
