@@ -8842,12 +8842,22 @@ successful."
     (pvs2c-preceding-theories* theory-defn)
       *pvs2c-preceding-theories*))
 
-(defun pvs2c-preceding-theories* (theory)
+(defmethod pvs2c-preceding-theories* ((theory module))
   (unless (eq (all-imported-theories theory) 'unbound)
     (loop for thy in (all-imported-theories theory)
 	  do (pvs2c-preceding-theories* thy)))
   (unless (from-prelude? theory)
     (pushnew theory *pvs2c-preceding-theories* :test #'same-id)))
+
+(defmethod pvs2c-preceding-theories* ((theory datatype))
+  (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
+    (unless (eq (all-imported-theories theory) 'unbound)
+      (loop for thy in all-imported-theories
+	    do (pvs2c-preceding-theories* thy)))
+    ;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
+    (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))))
 
 (defun pvs2c-pvs-file (fileref)
   (let ((theories (typecheck-file fileref nil nil nil t))
@@ -8873,7 +8883,6 @@ successful."
 (defun pvs2c-theory* (theory &optional force?)
   (with-workspace theory
 		  (pvs2c-theory-body theory force?)))
-
 
 (defun pvs2c-theory-body (theory &optional force? indecl);;*theory-id* needs to be bound by caller
   (let* ((*theory-id* (simple-id (id theory))))

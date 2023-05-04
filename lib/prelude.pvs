@@ -4918,6 +4918,9 @@ finite_sequences [T: TYPE]: THEORY
 
   CONVERSION finseq_appl;
 
+  every(P: [T->bool])(fs): bool = (FORALL (i: below(fs`length)): P(fs`seq(i)));
+  some(P: [T->bool])(fs): bool = (EXISTS (i: below(fs`length)): P(fs`seq(i)));
+
   o(fs1, fs2): finseq =
      LET l1 = fs1`length,
          lsum = l1 + fs2`length
@@ -4927,6 +4930,13 @@ finite_sequences [T: TYPE]: THEORY
                          THEN fs1`seq(n)
                          ELSE fs2`seq(n-l1)
                       ENDIF) #);
+
+  P: VAR [T -> bool]
+  every_compose: LEMMA
+    every(P)(fs1 o fs2) = (every(P)(fs1) AND every(P)(fs2))
+
+  some_compose: LEMMA
+    some(P)(fs1 o fs2) = (some(P)(fs1) OR some(P)(fs2))
 
   p: VAR [nat, nat]
 
