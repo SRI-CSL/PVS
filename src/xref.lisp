@@ -55,6 +55,12 @@
     (setf (refers-to decl) nil)
     (generate-xref decl)))
 
+(defmethod regenerate-xref ((use importing))
+  (generate-xref (theory-name use)))
+
+(defmethod regenerate-xref ((c simple-constructor))
+  nil)
+
 #-gcl
 (defmethod generate-xref (obj)
   (error "~a not handled" obj))
@@ -90,6 +96,9 @@
 
 (defmethod generate-xref ((use importing))
   (generate-xref (theory-name use)))
+
+(defmethod generate-xref ((use exporting))
+  nil)
 
 (defmethod generate-xref ((d formal-type-decl))
   (generate-xref (type-value d)))
