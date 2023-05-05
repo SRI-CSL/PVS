@@ -2342,35 +2342,48 @@
 
 
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-recordtype) lhs rhs-irvar ir-exprvar bindings)
-    (cond ((consp lhs)
-	   (let* ((lhs1 (caar lhs));;lhs1 is a field-name-expr
-		  (ir-field-decl (find (id lhs1) (ir-field-types ir-expr-type) :key #'ir-id))
-		  (ir-expr-type11 (ir-vtype ir-field-decl)) ;;(pvs2ir-type (range (type lhs1)))
-		  (ir-exprvar11 (new-irvar))
-		  (ir-expr-vartype11 (mk-ir-variable ir-exprvar11 ir-expr-type11))
-		  (ir-rest-assignment (if (consp (cdr lhs))
-					  (pvs2ir-assignment1 ir-expr-type11 (cdr lhs)
-							      rhs-irvar ir-expr-vartype11
-							      bindings)
-					rhs-irvar)))
-	     (let* ((ir-exprvar1 (new-irvar))
-		    (ir-expr-vartype1 (mk-ir-variable ir-exprvar1 ir-expr-type))
-		    (ir-new-rhsvar (new-irvar))
-		    (ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11)))
-	       (mk-ir-let ir-expr-vartype11
-			  (mk-ir-get ir-exprvar (id lhs1));;directly get the field
-			  (mk-ir-let ir-expr-vartype1
-				     (if (ir-reference-type? ir-expr-type11)
-					 (let* ((ir-nullvar (new-irvar))
-						(ir-nullvartype (mk-ir-variable ir-nullvar ir-expr-type11)))
-					   (mk-ir-let ir-nullvartype
-						      (mk-ir-nil)
-						      (mk-ir-update ir-exprvar (id lhs1) ir-nullvartype)))
-				       ir-exprvar)
-				     (mk-ir-let ir-new-rhsvartype
-						ir-rest-assignment
-						(mk-ir-update ir-expr-vartype1 (id lhs1) ir-new-rhsvartype)))))))
-	  (t ir-exprvar)))
+    (break "~% Should not be called anymore, see explanation in code.")) ;; GSC, see below
+
+
+;; Why the function below ?
+;; We always want recordtypes to be called behind their custom types (because we want to relate 
+;; it to the correct struct in Rust). So we modified pvs2ir-assignement1 typename in order to 
+;; call this function if it detects a record type behind a typename.
+;; The typename is preserved.
+
+(defmethod pvs2ir-assignment1-custom-recordtype ((ir-expr-typename ir-typename) lhs rhs-irvar ir-exprvar bindings)
+	(let* ((ir-expr-type (ir-type-defn ir-expr-typename)))
+		(cond ((consp lhs)
+			(let* ((lhs1 (caar lhs));;lhs1 is a field-name-expr
+				(ir-field-decl (find (id lhs1) (ir-field-types ir-expr-type) :key #'ir-id))
+				(ir-expr-type11 (ir-vtype ir-field-decl)) ;;(pvs2ir-type (range (type lhs1)))
+				(ir-exprvar11 (new-irvar))
+				(ir-expr-vartype11 (mk-ir-variable ir-exprvar11 ir-expr-type11))
+				(ir-rest-assignment (if (consp (cdr lhs))
+							(pvs2ir-assignment1 ir-expr-type11 (cdr lhs)
+										rhs-irvar ir-expr-vartype11
+										bindings)
+							rhs-irvar)))
+				(let* ((ir-exprvar1 (new-irvar))
+					(ir-expr-vartype1 (mk-ir-variable ir-exprvar1 ir-expr-typename))
+					(ir-new-rhsvar (new-irvar))
+					(ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11)))
+				(mk-ir-let ir-expr-vartype11
+					(mk-ir-get ir-exprvar (id lhs1));;directly get the field
+					(mk-ir-let ir-expr-vartype1
+							(if (ir-reference-type? ir-expr-type11)
+							(let* ((ir-nullvar (new-irvar))
+								(ir-nullvartype (mk-ir-variable ir-nullvar ir-expr-type11)))
+							(mk-ir-let ir-nullvartype
+									(mk-ir-nil)
+									(mk-ir-update ir-exprvar (id lhs1) ir-nullvartype)))
+							ir-exprvar)
+							(mk-ir-let ir-new-rhsvartype
+								ir-rest-assignment
+								(mk-ir-update ir-expr-vartype1 (id lhs1) ir-new-rhsvartype)))))))
+			(t ir-exprvar))
+	)
+    )
 
 
 ;;had to add method for ir-adt-recordtype since the type here is the adt and not the constructor,
@@ -2409,8 +2422,13 @@
 
 ;(defmethod pvs2ir-assignment1 ((ir-expr-type ir-adt-recordtype) lhs rhs-irvar ir-exprvar bindings)
 
+;; See explanation before pvs2ir-assignment1-custom-recordtype
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-typename) lhs rhs-irvar ir-exprvar bindings)
-  (pvs2ir-assignment1 (ir-type-defn ir-expr-type) lhs rhs-irvar ir-exprvar bindings))
+  (if (typep (ir-type-defn ir-expr-type) 'ir-recordtype)
+	(pvs2ir-assignment1-custom-recordtype ir-expr-type lhs rhs-irvar ir-exprvar bindings)
+	(pvs2ir-assignment1 (ir-type-defn ir-expr-type) lhs rhs-irvar ir-exprvar bindings)
+  )
+  )
 
 ;;Actual type parameters can only be int/uint bool, _8 _16 _32 _64, nat, int, rat, array/function, record, tuple, adt.
 ;;For the reference types (array/function, record, tuple, adt), we generate polymorphic code.
@@ -4268,7 +4286,7 @@
 			     (gmp-ui-or-si arg2-c-type)
 			     return-var (uint-or-int arg2-c-type) arg2)
 		     (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1 return-var)))
-	      (t (break "Not implemented yet"))))
+	      (t (format nil "Division step error ir2c.lisp" ))))
 	   (mpz
 	    (case arg2-c-type
 	      (mpq (let ((arg1-mpq-var (gentemp "tmp")))
@@ -4302,7 +4320,7 @@
 			       arg1-mpq-var return-var)
 		       (format nil "mpq_clear(~a)" arg1-mpq-var)
 		       )))
-	      (t (break "Not implemented yet."))))
+	      (t (format nil "Division step error ir2c.lisp" ))))
 	   ((uint8 uint16 uint32 uint64 int8 int16 int32 int64)
 	     (case arg2-c-type
 	       (mpq (let ((tmp (gentemp "tmp")))
@@ -4342,9 +4360,9 @@
 			(format nil "mpq_clear(~a)" arg1-mpq-var)
 			(format nil "mpq_clear(~a)" arg2-mpq-var)
 			)))
-	       (t (break "Not implemented yet."))))
-	   (t (break "Not implemented yet."))))
-    ((__int128 __uint128) (break "Not implemented yet."))
+	       (t (format nil "Division step error ir2c.lisp" ))))
+	   (t (format nil "Division step error ir2c.lisp" ))))
+    ((__int128 __uint128) (format nil "Division step error ir2c.lisp" ))
     (mpz (let* ((mpq-return-var (gentemp "tmp"))
 		(mpq-instrs (ir2c-division-step mpq-return-var "mpq" arg1 arg1-c-type arg1 arg2-c-type)))
 	   (cons (format nil "mpq_t ~a" mpq-return-var)
@@ -4360,7 +4378,7 @@
 		    (list (format nil "mpz_mk_set_q(~a, ~a)" return-var mpz-return-var)
 			  (format nil "mpq_clear(~a)" mpz-return-var)
 			  )))))
-    (t (break "Not implemented."))))
+    (t (format nil "Division step error ir2c.lisp" ))))
 
 	    
 (defun ir2c-sqrt (return-var arg);both have to be of type mpq
