@@ -5876,9 +5876,9 @@
 ;;   hdomain)
 
 
-(defmethod print-ir ((ir-type ir-arraytype))
+(defmethod print-ir ((ir-type ir-arraytype)) 
   (with-slots (size high ir-range) ir-type
-	      (format nil "~a[~d/~a]" (print-ir ir-range) size (print-ir high))))
+	      (format nil "(array ~a [~d/~a])" (print-ir ir-range) size (print-ir high))))
 
 (defmethod ir2c-type ((ir-typ ir-funtype))
   (with-slots (ir-domain ir-range) ir-typ
