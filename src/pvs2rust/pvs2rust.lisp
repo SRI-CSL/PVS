@@ -32,11 +32,6 @@
 (defvar *suppress-output* nil)
 
 
-  
-  
-
-
-
 
 (defmethod decl-eval-info-instance ((decl formal-const-decl))
   'formal-const-eval-info)
@@ -271,7 +266,7 @@
 
 
 (defun mk-ir-variable (ir-name ir-type &optional ir-pvsid)
-  (when (null ir-type) (break "mk-ir-variable"))
+;  (when (null ir-type) (break "mk-ir-variable"))
   (make-instance 'ir-variable
 		 :ir-name ir-name
 		 :ir-vtype ir-type
@@ -332,7 +327,7 @@
 		 :ir-body body))
 
 (defun mk-ir-lett (vartype bind-type expr  body)
-  (when (null bind-type) (break "mk-ir-lett"))
+;;  (when (null expr) (break "mk-ir-lett"))
   (make-instance 'ir-lett
 		 :ir-vartype vartype
 		 :ir-bind-type bind-type
@@ -378,41 +373,7 @@
 		 :ir-lastvars lastvars
 		 :ir-rangetype rangetype
 		 :ir-body  body))
-
-;;Wrote this to move independent subexpressions out of the scope of a lambda. 
-;;This can be revisited when there are motivating examples.  
-;; (defun make-ir-lambda-with-livevars
-;;     (vartypes livevars rangetype body dependent-boundvars dependent-lets liftable-lets)
-;;   (cond ((ir-let? body)
-;; 	 (with-slots (ir-vartype ir-bind-expr ir-body) body
-;; 	   (let ((bind-freevars (pvs2ir-freevars* ir-bind-expr)))
-;; 	     (cond ((null (intersection dependent-boundvars bind-freevars :test #'eq))
-;; 		    (make-ir-lambda-with-livevars vartypes livevars rangetype
-;; 						  ir-body dependent-boundvars dependent-lets
-;; 						  (cons body liftable-lets)))
-;; 		   (t (make-ir-lambda-with-livevars vartypes livevars rangetype
-;; 						    ir-body (append (pvs2ir-freevars* ir-bind-expr)
-;; 								    dependent-boundvars)
-;; 						    (cons body dependent-lets) liftable-lets))))))
-;; 	(t (rebuild-ir-lambda vartypes livevars rangetype body dependent-lets liftable-lets))))
-
-;; (defun rebuild-ir-lambda (vartypes livevars rangetype body dependent-lets liftable-lets)
-;;   (cond ((consp dependent-lets)
-;; 	 (rebuild-ir-lambda vartypes rangetype (lcopy  (car dependent-lets) 'ir-body body)
-;; 			    (cdr dependent-lets) liftable-lets))
-;; 	(t
-;; 	 (rebuild-lifted-lets (mk-ir-lambda-with-lastvars vartypes
-;; 							    (set-difference (pvs2ir-freevars* body) livevars :test #'eq)
-;; 							    rangetype body)
-;; 			      liftable-lets))))
-
-;; (defun rebuild-lifted-lets (body liftable-lets)
-;;   (cond ((consp liftable-lets)
-;; 	 (rebuild-lifted-lets (lcopy (car liftable-lets) 'ir-body body)
-;; 			      (cdr liftable-lets)))
-;; 	(t body)))
-						    
-		    
+	    
 
 (defun mk-ir-ift (condition then else)
   (make-instance 'ir-ift
@@ -611,11 +572,6 @@
     `(lambda (,@(print-ir ir-vartypes)) '-> ,(print-ir ir-rangetype) ,(print-ir ir-body)
        ,(print-ir ir-lastvars))))
 
-(defmethod print-ir ((ir-expr ir-forall))
-  (with-slots (ir-vartype ir-body) ir-expr
-    `(forall ,(print-ir ir-vartype) ,(print-ir ir-body))))
-
-
 (defmethod print-ir ((ir-expr ir-ift))
   (with-slots (ir-condition ir-then ir-else) ir-expr
 	      `(if ,(print-ir ir-condition) ,(print-ir ir-then) ,(print-ir ir-else))))
@@ -660,9 +616,8 @@
 
 (defmethod print-ir ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn type-declaration) ir-type
-    (format nil "~a!~a"
-	    (if type-declaration (id (module type-declaration)) "")
-	    ir-type-id)))
+    (format nil "(~a : ~a)"
+	    ir-type-id (print-ir ir-type-defn))))
 
 
 (defmethod print-ir ((ir-type ir-formal-typename))
@@ -1781,17 +1736,31 @@
 		      (mk-ir-ift arg-var-type1
 				 (cadr args-ir)
 				 (mk-ir-bool t))))
-	(t (let ((arg-vartypes (loop for ir-var in arg-names
+	(t (let ((arg-vars (loop for ir-var in arg-names
 				     as ir-typ in op-arg-types
 				     collect (mk-ir-variable ir-var ir-typ))))
-	     (mk-ir-let* arg-vartypes
-			 args-ir
-			 (mk-ir-apply (pvs2ir-constant op bindings) arg-vartypes nil ir-expr-type)))))))))
 
-(defun pvs2ir-application (op args ir-expr-type bindings expected)
-  ;;(format t "pvs2ir-application")
+			(let ((real-vars (loop for arg-var in arg-vars
+		 						   for arg-ir in args-ir 
+								when (not (typep arg-ir 'ir-integer)) collect arg-var
+							 ))
+				  (corresponding-ir (loop for arg-ir in args-ir 
+									when (not (typep arg-ir 'ir-integer)) collect arg-ir ;BUG ici
+									))
+				  (full-args (loop for arg-var in arg-vars
+		 						   for arg-ir in args-ir 
+								collect (if (typep arg-ir 'ir-integer) (slot-value arg-ir 'ir-intval) arg-var)
+							 ))
+				 )
+				(mk-ir-let* real-vars
+			 				corresponding-ir
+			 				(mk-ir-apply (pvs2ir-constant op bindings) full-args nil ir-expr-type))
+			 ))))))))
+
+(defun pvs2ir-application (op args ir-expr-type bindings expected) ; GASC c ici qu il va falloir travailler
   (declare (ignore expected))
-  (let* ((arg-names (new-irvars (length args)))
+
+  (let* ((arg-names (new-irvars (length args))) ; ici que les variables sont crees
 	 ;;(dummy (format t "arg-types"))
 	 (args-ir (pvs2ir* args bindings nil))
 	 (arg-types 
@@ -1803,21 +1772,11 @@
 			   (best-ir-subrange-pair (pvs2ir-expr-type arg bindings)
 						  (ir-arith-type ir-arg)))))) ;;NSH(3-20-16):
 	 (op-arg-types arg-types) ;;NSH(3-22-18)
-	 ;; (if (pvs2ir-primitive? op)
-	 ;; 		   arg-types
-	 ;; 		   (loop for type in (types (domain (find-supertype (type op))))
-	 ;; 			 collect (pvs2ir-type type)))
 	 (ir-expr-type (ir-apply-op-type op op-arg-types ir-expr-type))
 					;(op-range-type (pvs2ir-type (range (find-supertype (type op)))))
 	 (apply-return-var (new-irvartype ir-expr-type))
 					;(dummy (format t "arg-vartypes"))
-	 ;; (arg-vartypes 
-	 ;; 	       (loop for ir-var in arg-names
-	 ;; 		     as ir-typ in op-arg-types
-	 ;; 		     collect (mk-ir-variable ir-var ir-typ)))
-	 )				;(break "pvs2ir-application")
-					;(format t "~%op: ~a: ~{ ~a~}" (when (constant? op)(id op))(print-ir op-arg-types))
-    ;; (when (and (constant? op)(eq (id op) 'transpose_step)) (break "pvs2ir-application"))
+	 )
     (if (constant? op)
 	(if (pvs2ir-primitive? op)
 	    (pvs2ir-primitive-application op arg-names op-arg-types args-ir ir-expr-type bindings)
@@ -1832,24 +1791,16 @@
 					  when (or (null (type-value act))
 						   (eq (check-actual-type (type-value act) bindings) 'ref))
 					  collect act))
-		       (ref-formals (if actuals ;if there are actuals, then collect only the type formals 
-					(loop for fml in formals ;where the matching actual has a ref type
-					                        ;other non-ref type actuals are monomorphized
-					      as act in actuals ;;collect const actuals and ref actuals
-					      when (or (null (type-value act))
-						       (eq (check-actual-type (type-value act) bindings) 'ref))
-					      collect fml)
-				      formals)) ;otherwise, return all the formals. 
+		       (ref-formals (loop for fml in formals
+					  as act in actuals ;;collect const actuals and ref actuals
+					  when (or (null (type-value act))
+						   (eq (check-actual-type (type-value act) bindings) 'ref))
+					  collect fml))
 		       (ir-formals (pvs2ir* ref-formals bindings nil))
 		       (ir-actuals (pvs2ir* ref-actuals bindings nil))
 		       (actvars (loop for fml in ir-formals
 				  as formal in ref-formals
 				  collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal))))
-			;; (if ref-actuals 
-			;;     (loop for fml in ir-formals
-			;; 	  as formal in ref-formals
-			;; 	  collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal)))
-			;; (loop for fml in formals collect (get-assoc fml bindings)))
 		       (actual-types
 			(loop for actual in ref-actuals
 			      as formal in ref-formals
@@ -1857,13 +1808,6 @@
 					  (pvs2ir-type (type (expr actual)) bindings)
 					*type-actual-ir-name*)))
 		       (op-domain-vars (mk-variables-from-types (types (domain (find-supertype (type op)))) bindings))
-		       ;; (let ((ir-args (ir-args (ir (eval-info opdecl)))))
-		       ;; 		    (if ir-args
-		       ;; 			(loop for ir-var in ir-args
-		       ;; 			      when (not (ir-const-formal? ir-var))
-		       ;; 			      collect (mk-ir-variable (new-irvar)(ir-vtype ir-var)))
-		       ;; 		      (mk-variables-from-types (types (domain (find-supertype (type op)))) bindings)))
-;		       (op-domain-vars (mk-variables-from-ir-types op-domain));(mk-variables-from-types op-domain bindings)
 		       (op-ir (pvs2ir-constant-ir op bindings opdecl))
 		       (op-ir-function (ir-function-name op-ir))
 		       (op-ir-defn (ir-defn op-ir))
@@ -1878,12 +1822,12 @@
 						   actvars)
 					;op-range-type
 						  apply-return-var)))
-		       )  ;(break "pvs2ir-application")
+		       )
 		  (if formals
 		      (if ir-actuals ;;then generating code outside theory
 			  (make-ir-lett* actvars actual-types ir-actuals
 					 op-arg-application-ir)
-			(make-ir-let* actvars ir-formals op-arg-application-ir));;generating code within theory
+			op-arg-application-ir);;generating code within theory
 		  
 		    (if (and op-ir-defn  args-ir (null op-ir-args))
 			(let ((op-var (mk-ir-variable (new-irvar)(pvs2ir-type (type op) bindings))))
@@ -1942,22 +1886,6 @@
 					      (mk-ir-let apply-return-var ;op-range-type
 							 (mk-ir-apply op-var arg-vartypes nil) ;op-range-type
 							 apply-return-var)))))))))
-	  
-				 ;; (if (eql (length arg-vartypes) 1)
-				 ;;     (mk-ir-apply op-var arg-vartypes)
-				 ;;   (let* ((ir-fields (loop for ir-vartype in arg-vartypes
-				 ;; 			   as i from 1 
-				 ;; 			   collect
-				 ;; 			   (mk-ir-field (intern (format nil "project_~a" i))
-				 ;; 					ir-vartype)))
-				 ;; 	  (ir-recordtype (mk-ir-tupletype
-				 ;; 			  (loop for ir-vartype in arg-vartypes
-				 ;; 				as i from 1
-				 ;; 				collect (mk-ir-fieldtype (intern (format nil "project_~a" i))
-				 ;; 							 (ir-vtype ir-vartype)))))
-				 ;; 	  (ir-recordvar (new-irvartype ir-recordtype)))
-				 ;;     (mk-ir-let ir-recordvar (mk-ir-record ir-fields ir-recordtype)
-				 ;; 		(mk-ir-apply op-var (list ir-recordvar)))))))))))))
 
 (defmethod pvs2ir* ((expr list) bindings expected)
   (cond ((consp expr)
@@ -2022,12 +1950,13 @@
   (cond ((branch? expr)
 	 (if (last-cond-expr? expr)
 	     (pvs2ir* (then-part expr) bindings expected)
-	   (let ((ifvar (mk-ir-variable (new-irvar) 'boolean))
+	   (let ((ifvar (mk-ir-variable (new-irvar) 'boolean)) ;GASC
 		 (cond-ir (pvs2ir* (condition expr) bindings nil))
 		 (then-ir (pvs2ir* (then-part expr) bindings expected))
 		 (else-ir (pvs2ir* (else-part expr) bindings expected)))
 	     (mk-ir-let  ifvar cond-ir
-			 (mk-ir-ift ifvar then-ir else-ir)))))
+		 	 (mk-ir-ift ifvar then-ir else-ir))))) ; GASC changed for allowing direct ivar < 1 and avoid let ivar2 = 1
+		;(mk-ir-ift cond-ir then-ir else-ir))))
 	(t (call-next-method))))
 
 (defmethod pvs2ir* ((expr let-expr) bindings expected)
@@ -4126,13 +4055,13 @@
 ;;The reference counting on the last occurrence is done by the client: ir2c*(ir-apply)
 ;;An application is always assigned to a variable of the same type - casting is purely
 ;;between IR variables
-(defun ir2c-function-apply (return-var return-type ir-function ir-args)
-    (let* ((ir-arg-vars (loop for ir-var in ir-args
-			      collect (get-ir-last-var ir-var)))
-	   (ir-arg-var-names (loop for ir-var in ir-arg-vars
-				   collect (ir-name ir-var)))
+(defun ir2c-function-apply (return-var return-type ir-function ir-args); GASC changed for allowing direct ivar < 1 and avoid let ivar2 = 1
+	(let* ((ir-arg-vars (loop for ir-var in ir-args
+			      collect (if (typep ir-var 'fixnum) (mk-ir-subrange ir-var ir-var) (get-ir-last-var ir-var))))
+	   (ir-arg-var-names (loop for ir-var in ir-args
+				   collect (if (typep ir-var 'fixnum) ir-var (ir-name (get-ir-last-var ir-var)))))
 	   (ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))));;(break "ir2c-function-apply")
-      (if (ir-primitive-function? ir-function)
+	  (if (ir-primitive-function? ir-function)
 	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names)))
 					;(format t "~%~a" instrs)
 	    instrs
@@ -4193,13 +4122,6 @@
 	       (make-c-application-assignment return-var c-return-type
 					      ir-function-name arg-string
 					      c-fun-range-type)))))))))
-				       
-	       ;; (format nil "~a = (~a_t)~a(~a)"  return-var (mppointer-type c-return-type)
-	       ;; 		    ir-function-name arg-string)
-		    ;; (case c-return-type
-		    ;;   ((mpz mpq) (format nil "~a(~a, ~a)"  ir-function-name  return-var arg-string))
-		    ;;   (t (format nil "~a = (~a_t)~a(~a)"  return-var c-return-type ir-function-name arg-string)))
-
 
 (defun gmp-suffix (c-type)
   (case c-type
@@ -4262,9 +4184,10 @@
     (t "")))
 
 (defun ir2c-primitive-apply (return-var return-type ir-function-name ir-args ir-arg-names)
+; GASC now the two last ones can be numbers
 ;  (cond ((ir-primitive-function-name? ir-function-name);
   (let* ((arg-types (loop for ir-var in ir-args
-			  collect (ir2c-type (ir-vtype ir-var))))
+			  collect (ir2c-type ( if (typep ir-var 'ir-subrange) ir-var (ir-vtype ir-var)))))
 	 (c-arg-types (loop for ir-type in arg-types
 			   collect (add-c-type-definition ir-type)))
 	(c-return-type (add-c-type-definition (ir2c-type return-type)))
@@ -5806,7 +5729,7 @@
 		     ;; (rhs-string (format nil "~a(~{~a~^, ~})" ir-func-var ir-arg-vars))
 		     ;; (invoke-instr (format nil "~a = ~a" return-var rhs-string))
 		     (release-instrs (loop for ir-var in ir-params-args ;;bump the counts of non-last references by one
-					   when (and (not (ir-last? ir-var))(ir-reference-type? (ir-vtype (get-ir-last-var ir-var))))
+					   when (and (not (ir-last? ir-var))(ir-reference-type? (if (typep ir-var 'fixnum) nil (ir-vtype (get-ir-last-var ir-var)))))
 					   collect (format nil "~a->count++" (ir-name ir-var))))
 		     ;; (mp-release-instrs (loop for ir-var in ir-params-args
 		     ;; 			      when (and (ir-last? ir-var)
@@ -6186,7 +6109,8 @@
 	      (let ((c-then-instrs (ir2c* ir-then return-var return-type))
 		    (c-else-instrs (ir2c* ir-else return-var return-type)))
 		(list (mk-if-instr 
-		       (ir-name (get-ir-last-var ir-condition))
+		       (ir-name (get-ir-last-var ir-condition)) ; GASC changed for allowing direct ivar < 1 and avoid let ivar2 = 1
+			   ;(if (typep ir-condition ir-variable) (ir-name (get-ir-last-var ir-condition)) (ir2c* ir-condition return-var return-type))
 		       c-then-instrs
 		       c-else-instrs)))))
 
