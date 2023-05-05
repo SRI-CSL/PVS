@@ -2308,54 +2308,38 @@
 	       (mk-ir-let  ir-lhs1-vartype lhs1-ir
 			   (mk-ir-let ir-expr-vartype11
 				      (mk-ir-apply ir-exprvar (list ir-lhs1-vartype));;was lookup
-				      (mk-ir-let ir-expr-vartype1
-						 (if (ir-reference-type? ir-expr-type11)
-						     (let* ((ir-nullvar (new-irvar))
-							    (ir-nullvartype (mk-ir-variable ir-nullvar ir-expr-type11)))
-						     (mk-ir-let ir-nullvartype
-								(mk-ir-nil)
-								(mk-ir-update ir-exprvar ir-lhs1-vartype ir-nullvartype)))
-						   ir-exprvar)
-						 (mk-ir-let ir-new-rhsvartype
-							    ir-rest-assignment
-							    (mk-ir-update ir-expr-vartype1 ir-lhs1-vartype ir-new-rhsvartype)))))))))
+					  (mk-ir-let ir-new-rhsvartype
+							ir-rest-assignment
+							(mk-ir-update ir-exprvar ir-lhs1-vartype ir-new-rhsvartype))
+				      ))
+			))))
 	(t ir-exprvar)))
 
+;; Gasc : i made a new way to change arrays to optimize array update in pvs2rust
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-arraytype) lhs rhs-irvar ir-exprvar bindings)
-  (cond ((consp lhs)
-	 (let* ((ir-exprvar11 (new-irvar))
-		(ir-expr-type11 (ir-range ir-expr-type))
-		(ir-expr-vartype11 (mk-ir-variable ir-exprvar11 ir-expr-type11))
-		(ir-rest-assignment (if (consp (cdr lhs))
-					(pvs2ir-assignment1 ir-expr-type11
-							    (cdr lhs)
-							    rhs-irvar ir-expr-vartype11
-							    bindings)
-				      rhs-irvar))
-		(lhs1 (caar lhs)))
-	   (let ((lhs1-irvar (new-irvar))
-		 (lhs1-ir (pvs2ir* lhs1 bindings nil)) ;;the index expression
-		 (lhs1-ir-type (ir-domain ir-expr-type))
-		 (ir-exprvar1 (new-irvar))
-		 (ir-new-rhsvar (new-irvar)))
-	     (let ((ir-lhs1-vartype (mk-ir-variable lhs1-irvar lhs1-ir-type))
-		   (ir-expr-vartype1 (mk-ir-variable ir-exprvar1 ir-expr-type))
-		   (ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11)))
-	       (mk-ir-let  ir-lhs1-vartype lhs1-ir
-			   (mk-ir-let ir-expr-vartype11
-				      (mk-ir-apply ir-exprvar (list ir-lhs1-vartype));;was lookup
-				      (mk-ir-let ir-expr-vartype1
-						 (if (ir-reference-type? ir-expr-type11)
-						     (let* ((ir-nullvar (new-irvar))
-							    (ir-nullvartype (mk-ir-variable ir-nullvar ir-expr-type11)))
-						     (mk-ir-let ir-nullvartype
-								(mk-ir-nil)
-								(mk-ir-update ir-exprvar ir-lhs1-vartype ir-nullvartype)))
-						   ir-exprvar)
-						 (mk-ir-let ir-new-rhsvartype
-							    ir-rest-assignment
-							    (mk-ir-update ir-expr-vartype1 ir-lhs1-vartype ir-new-rhsvartype)))))))))
-	(t ir-exprvar)))
+	(format t "~%lhs ~a  rhs-ivar ~a ir-exprvar ~a ~%bindings ~a" lhs (print-ir rhs-irvar) ir-exprvar bindings)
+	(let* ((lhs1 (caar lhs)) ; i
+		   (lhs1-ir (pvs2ir* lhs1 bindings nil)) 
+		   (lhs-exprvar (mk-ir-lookup ir-exprvar (list lhs1-ir))) ; A[i] : lookup
+
+		   (lhs1-irvar (new-irvar))
+		   (lhs1-ir-type (ir-domain ir-expr-type))
+		   (ir-lhs1-vartype (mk-ir-variable lhs1-irvar lhs1-ir-type))
+		  )
+		  (if (consp (cdr lhs))
+			  (pvs2ir-assignment1 ir-expr-type (cdr lhs) rhs-irvar lhs-exprvar bindings)
+			  (mk-ir-let ir-lhs1-vartype lhs1-ir
+				(mk-ir-update 
+			  	  ir-exprvar
+				  ir-lhs1-vartype
+				  rhs-irvar
+				)
+			  )
+		  )
+	)
+)
+
+
 
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-recordtype) lhs rhs-irvar ir-exprvar bindings)
     (cond ((consp lhs)
@@ -6146,44 +6130,48 @@
     (format nil "~a = new_~a()" return-var ctype)))
 
 (defmethod ir2c* ((ir-expr ir-update) return-var return-type)
-  (with-slots (ir-target ir-lhs ir-rhs) ir-expr
-	      (let* ((target-var (get-ir-last-var ir-target))
-		     (target-var-name (ir-name target-var))
-		     (rhs-var (get-ir-last-var ir-rhs))
-		     (rhs-var-name (ir-name rhs-var))
-		     (ir-ctype (ir2c-type (ir-vtype target-var)))
-		     (ctype (add-c-type-definition ir-ctype))
-		     (creturn-type (add-c-type-definition (ir2c-type return-type)))
-		     (target-last (ir-last? ir-target))
-		     (rhs-last (and (not (ir-constructor-update? ir-expr))
-				    (ir-last? ir-rhs)
-				    (ir-reference-type? (ir-vtype rhs-var))))
-		     (rhs-last-instr (if rhs-last
-					(list (format nil "if (~a != NULL) ~a->count--"
-						      rhs-var-name rhs-var-name))
-				       nil))) ;(break "ir2c*(ir-update)")
-		;(when (ir-constructor-update? ir-expr)(break "ir2c*(ir-constructor-update)"))
-		(if (ir-lvariable? ir-lhs)  ;;this doesn't work with names
-		                            ;;(ir-arraytype? (get-ir-type-value ir-ctype))
-		    (let* ((lhs-var (get-ir-last-var ir-lhs))
-			   (lhs-var-name (ir-name lhs-var)))
-		      (if target-last
-			  (cons (format nil "~a = (~a_t)update_~a(~a, ~a, ~a)"
-					return-var creturn-type ctype target-var-name lhs-var-name rhs-var-name)
-				rhs-last-instr)
-			(cons (format nil "{~a = (~a_t)copy_~a(~a); update_~a(~a, ~a, ~a)}"
-				      return-var creturn-type ctype target-var-name ctype
-				       return-var  lhs-var-name rhs-var-name)
-			      rhs-last-instr)))
-		  ;;else we're assuming it's a record
-		  (if target-last
-		      (cons (format nil "~a = (~a_t)update_~a_~a(~a, ~a)"
-					return-var creturn-type ctype ir-lhs target-var-name rhs-var-name)
-			    rhs-last-instr)
-		    (cons (format nil "{~a = (~a_t)copy_~a(~a); ~a = (~a_t)update_~a_~a(~a, ~a);}"
-				  return-var creturn-type ctype target-var-name
-				  return-var creturn-type ctype ir-lhs return-var rhs-var-name)
-			  rhs-last-instr))))))
+  (with-slots (ir-target ir-lhs ir-rhs) ir-expr ; ir-target can be lookup
+		  (if (typep ir-target 'ir-lookup)
+		  	  (cons (format nil "Error : this version does not intend to create c code") nil)
+			  (let* ((target-var (get-ir-last-var ir-target))
+						(target-var-name (ir-name target-var))
+						(rhs-var (get-ir-last-var ir-rhs))
+						(rhs-var-name (ir-name rhs-var))
+						(ir-ctype (ir2c-type (ir-vtype target-var)))
+						(ctype (add-c-type-definition ir-ctype))
+						(creturn-type (add-c-type-definition (ir2c-type return-type)))
+						(target-last (ir-last? ir-target))
+						(rhs-last (and (not (ir-constructor-update? ir-expr))
+								(ir-last? ir-rhs)
+								(ir-reference-type? (ir-vtype rhs-var))))
+						(rhs-last-instr (if rhs-last
+								(list (format nil "if (~a != NULL) ~a->count--"
+										rhs-var-name rhs-var-name))
+								nil))) ;(break "ir2c*(ir-update)")
+					;(when (ir-constructor-update? ir-expr)(break "ir2c*(ir-constructor-update)"))
+					(if (ir-lvariable? ir-lhs)  ;;this doesn't work with names
+												;;(ir-arraytype? (get-ir-type-value ir-ctype))
+						(let* ((lhs-var (get-ir-last-var ir-lhs))
+						(lhs-var-name (ir-name lhs-var)))
+						(if target-last
+						(cons (format nil "~a = (~a_t)update_~a(~a, ~a, ~a)"
+								return-var creturn-type ctype target-var-name lhs-var-name rhs-var-name)
+							rhs-last-instr)
+						(cons (format nil "{~a = (~a_t)copy_~a(~a); update_~a(~a, ~a, ~a)}"
+								return-var creturn-type ctype target-var-name ctype
+								return-var  lhs-var-name rhs-var-name)
+							rhs-last-instr)))
+					;;else we're assuming it's a record
+					(if target-last
+						(cons (format nil "~a = (~a_t)update_~a_~a(~a, ~a)"
+								return-var creturn-type ctype ir-lhs target-var-name rhs-var-name)
+							rhs-last-instr)
+						(cons (format nil "{~a = (~a_t)copy_~a(~a); ~a = (~a_t)update_~a_~a(~a, ~a);}"
+							return-var creturn-type ctype target-var-name
+							return-var creturn-type ctype ir-lhs return-var rhs-var-name)
+						rhs-last-instr))))
+		  )
+	      ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;process a type into its C definition relative to *c-type-info-table*
