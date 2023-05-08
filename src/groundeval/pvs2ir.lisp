@@ -2768,7 +2768,7 @@
 	       ((subtype-of? type *character*) 'char)
 					;((subtype-of? type *number*) (break "pvs2ir-type*(subtype)"))
 	       (t (pvs2ir-type* (supertype type) tbinding)))))
-    (format t "~%PVS type: ~a => IR type: ~a" type (print-ir result))
+    ;(format t "~%PVS type: ~a => IR type: ~a" type (print-ir result))
     result))
 
 
