@@ -969,21 +969,32 @@
 ;; la fonction, regarder s'ils sont partages entre les fonctions etc
 ;; aussi enlever certain print
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
-  (format t "~% type decl")
-  (let* (;(thid (simple-id (id (module decl))))
+  (let* (
 	 (declid (simple-id (id decl)))
 	 (thname (intern (format nil "~a__~a" *theory-id* declid)))
-	 (hashentry (gethash  thname *c-primitive-type-attachments-hash*)))
+	 (hashentry (gethash thname *c-primitive-type-attachments-hash*)))
     (cond (hashentry
 	   (unless *to-emacs*
 	     (format t "~% attaching definition for type ~a" declid))
 	   (push-type-info-to-decl hashentry decl)
 	   thname)
-	  (t (let ((typename (pvs2ir-decl* decl)))
-	       (if (adt (type-value decl))
-		   (add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
-		 (let* ((ir-type-id (ir-type-id typename))
-			(c-type-info (mk-simple-c-type-info nil ir-type-id
-							    (format nil "//uninterpreted type~%typedef void * ~a_t;" ir-type-id) nil (format nil "~s" (id *pvs2c-current-decl*)))))
-		   (push-type-info-to-decl c-type-info decl)
-		   ir-type-id)))))))
+
+	  (t (let* ((adt-type (type-value decl))
+			(adt-type-id (pvs2ir-unique-decl-id decl))
+			(adt-adt-id (format nil "~a_adt" adt-type-id))
+			(adt (adt adt-type))
+			(typename (pvs2ir-adt-decl decl))
+			(constructors (constructors adt))
+			)
+			(format t "~%@DATATYPE ~a $" adt-adt-id)
+			(loop for con in constructors
+				collect (progn (
+					format t "~%CONSTRUCTOR ~a" (pvs2ir-unique-decl-id (con-decl con))
+				)(
+					loop for acc in (acc-decls con)
+							    collect (format t "~%ACCESSOR ~a TYPE ~a" (pvs2ir-unique-decl-id acc) (print-ir (pvs2ir-type (range (type acc)))))      
+				))
+			)
+			(add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
+			))
+)))
