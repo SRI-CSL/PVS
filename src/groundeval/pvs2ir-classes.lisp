@@ -71,7 +71,16 @@
   ir-rangetype
   ir-body)
 
+(defcl ir-array-literal (ir-expr)
+  ir-array-literal-exprs)
+
 (defcl ir-forall (ir-expr)
+  ir-vartype
+  ;; ir-low
+  ;; ir-high
+  ir-body)
+
+(defcl ir-exists (ir-expr)
   ir-vartype
   ;; ir-low
   ;; ir-high
