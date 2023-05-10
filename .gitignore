@@ -74,6 +74,14 @@ orphaned-proofs.prf
 pvsbin
 *.err
 
+prover-log.yaml
+pvs-version.lisp
+.vscode/settings.json
+emacs/.readme
+emacs/pvs-prelude-files-and-regions.el 
+.DS_Store
+git-commit
+
 python/.DS_Store
 
 python/src/.DS_Store
