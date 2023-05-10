@@ -16,6 +16,9 @@
   (with-slots (size high ir-range) ir-type
 	      (format nil "(array ~a [~d/~a])" (print-ir ir-range) size (print-ir high))))
 
+(defmethod print-ir ((ir-type ir-adt-recordtype))
+  (with-slots (ir-field-types ir-constructors) ir-type
+	      `adt-recordtype))
 
 
 (defun pvs2ir-primitive-application (op arg-names op-arg-types args-ir ir-expr-type bindings)
@@ -368,6 +371,95 @@
   )
   )
 
+(defun pvs2ir-adt-record-recognizer (rdecl index index-id index-type 
+				    adt-type-name)
+  (let* ((einfo (get-eval-info rdecl))
+	 ;(ir-einfo (ir einfo))
+	 (*var-counter* nil))
+    (newcounter *var-counter*)
+;    (or ir-einfo)
+    (let* ((rid (pvs2ir-unique-decl-id rdecl))
+	   (rargs (list (mk-ir-variable (new-irvar) adt-type-name)))
+	   (index-expr (mk-ir-get (car rargs) index-id))
+	   (index-expr-var (mk-ir-variable (new-irvar) index-type))
+	   (index-var (mk-ir-variable (new-irvar) index-type))
+	   (check-expr (mk-ir-apply (mk-ir-primitive-function '=) (list index-expr-var index-var)))
+	   (rbody (mk-ir-let index-var (mk-ir-integer index)
+			     (mk-ir-let index-expr-var index-expr
+					check-expr)))
+	   (recognizer-name (mk-ir-function (intern (format nil "~a" rid)) rdecl))
+					;(rdefn (mk-ir-lambda rargs 'bool rbody))
+	   )				;(break "recognizer")
+      
+      (setf (ir einfo)(mk-ir-defn recognizer-name rargs 'bool rbody)
+	    (cdefn einfo) nil
+	    (c-type-info-table einfo) nil)
+      (ir einfo))))
+
+(defmethod pvs2ir-adt-accessor* ((adecl adt-accessor-decl)
+				 constructor constructors index index-id adt-type-name)
+  (declare (ignore index index-id constructors))
+   (let* ((adecl-id (id adecl))
+	 (einfo (get-eval-info adecl))
+	 ;(ir-einfo (ir einfo))
+	 (cinfo (get-eval-info (con-decl constructor)))
+	 (ir-cinfo (ir cinfo))
+	 (ctype (ir-constructor-type ir-cinfo))
+	 (*var-counter* nil));(break "accessor*")
+    (newcounter *var-counter*)
+;    (or (ir einfo))
+	(let* (;(aid (pvs2ir-unique-decl-id adecl))
+	       (aargvar (mk-ir-variable (new-irvar) adt-type-name))
+	       (accessor-ir-type (pvs2ir-type (range (type adecl))))
+	       (cast-var (mk-ir-variable (new-irvar) ctype))
+	       (project-expr (mk-ir-get cast-var adecl-id))
+	       (abody (mk-ir-let cast-var aargvar
+				 project-expr))
+;	       (adefn (mk-ir-lambda (list aargvar) accessor-ir-type abody))
+	       (new-value-var (mk-ir-variable (new-irvar) accessor-ir-type))
+	       (accessor-name (mk-ir-function (format nil "~a__~a" (ir-type-id adt-type-name) adecl-id) adecl))
+	       (update-name (mk-ir-function (format nil "~a__~a__update" (ir-type-id adt-type-name) adecl-id) adecl))
+	       (ubody (mk-ir-let cast-var aargvar (mk-ir-constructor-update cast-var adecl-id new-value-var))))
+	  (setf (ir einfo)
+		(mk-ir-accessor-defn accessor-name (list aargvar) accessor-ir-type abody
+				     (mk-ir-defn update-name (list aargvar new-value-var) ctype ubody))
+		(cdefn einfo) nil (c-type-info-table einfo) nil (update-cdefn einfo) nil)
+	  ;(format t "~%Adding definition for singular accessor: ~a" adecl-id)
+	  (ir einfo))))
+	  
+(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty
+  (let* ((adt-type (type-value adt-decl))
+	 (adt-adt-id (format nil "~a" *theory-id*))
+	 (adt (adt adt-type))
+	 (constructors (constructors adt))
+	 (index-id (intern (format nil "~a_index" adt-adt-id)))
+	 (index-type (mk-ir-subrange 0 (1- (length constructors))))
+	 (adt-enum-or-record-type
+	  (if (enumtype? adt)
+	      index-type
+	    (mk-ir-adt-recordtype (list (mk-ir-fieldtype index-id
+							 index-type))
+				  (loop for con in constructors
+					collect (cons (pvs2ir-unique-decl-id (con-decl con))
+						      (loop for acc in (acc-decls con)
+							    collect (pvs2ir-unique-decl-id acc)))))))
+	 (adt-type-name (mk-ir-typename adt-adt-id adt-enum-or-record-type nil nil adt-decl)));;need to add params/nil for now
+    (push adt-type-name *ir-type-info-table*)
+    (setf (ir-type-value adt-decl)
+	  (mk-eval-type-info adt-type-name))
+    (loop for constructor in constructors
+	  as index from 0
+	  do (pvs2ir-adt-constructor constructor index index-id index-type
+				     adt-enum-or-record-type adt-type-name))
+					;(break "before accessor")
+    (unless (enumtype? adt)
+      (loop for constructor in constructors
+	    as index from 0
+	    do (pvs2ir-adt-accessors (acc-decls constructor) constructor constructors
+				     index index-id 
+				     adt-type-name)))
+    adt-type-name
+    ))
 
 
 ;; ------- IR2C --------
@@ -963,15 +1055,10 @@
 	(pvs2c-theory ref t))
 
 
-;; Cette fonction est appelée a la definition d un datattpe, on peut essayer de
-;; print les info necessaires a ce moment
-;; a terme on peut faire pareil avec tous les typde def (typename) et les mettre avant
-;; la fonction, regarder s'ils sont partages entre les fonctions etc
-;; aussi enlever certain print
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
   (let* (
 	 (declid (simple-id (id decl)))
-	 (thname (intern (format nil "~a__~a" *theory-id* declid)))
+	 (thname (intern (format nil "~a" *theory-id*)))
 	 (hashentry (gethash thname *c-primitive-type-attachments-hash*)))
     (cond (hashentry
 	   (unless *to-emacs*
@@ -986,15 +1073,16 @@
 			(typename (pvs2ir-adt-decl decl))
 			(constructors (constructors adt))
 			)
-			(format t "~%@DATATYPE ~a $" adt-adt-id)
+			(format t "~%$DATATYPE ~a ~%@(" thname)
 			(loop for con in constructors
 				collect (progn (
-					format t "~%CONSTRUCTOR ~a" (pvs2ir-unique-decl-id (con-decl con))
+					format t "~%(CONSTRUCTOR ~a" (pvs2ir-unique-decl-id (con-decl con))
 				)(
 					loop for acc in (acc-decls con)
-							    collect (format t "~%ACCESSOR ~a TYPE ~a" (pvs2ir-unique-decl-id acc) (print-ir (pvs2ir-type (range (type acc)))))      
-				))
+							    collect (format t "~%(ACCESSOR ~a ~a)" (pvs2ir-unique-decl-id acc) (print-ir (pvs2ir-type (range (type acc)))))      
+				)(format t ")"))
 			)
+			(format t ")")
 			(add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
 			))
 )))
