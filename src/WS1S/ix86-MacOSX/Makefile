@@ -15,7 +15,9 @@ INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
 # 
 MACOSX_DEPLOYMENT_TARGET=10.11
 LD = ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress
+#LDFLAGS = -bundle -flat_namespace -undefined suppress
+# Compiling with Allegro on MacOS:
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 CC = gcc
 CFLAGS += -fPIC -dynamic -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O2
@@ -42,7 +44,7 @@ ws1s_extended_interface.o : ../ws1s_extended_interface.c
 	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
 ws1s.dylib : ${obj} ws1s_table.o
-	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o
+	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o -lc
 
 # ws1s_table.c : ws1s-ld-table
 # 	awk '/^ws1s___/ { print "extern int " $3 " (int);\nint (*" $1 ")(int) = " $3 ";\n\n" }' ../ws1s-ld-table > ws1s_table.c
