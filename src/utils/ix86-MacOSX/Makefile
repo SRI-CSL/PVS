@@ -2,7 +2,9 @@
 # for both leopard and tiger
 MACOSX_DEPLOYMENT_TARGET=10.11
 LD=ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress
+#LDFLAGS = -bundle -flat_namespace -undefined suppress
+# Compiling with Allegro on MacOS:
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 CC=gcc
 CFLAGS=-dynamic
 WFLAGS=

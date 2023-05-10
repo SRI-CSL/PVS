@@ -482,6 +482,7 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 	         src/groundeval/pvs2c-code.lisp \
 	         src/groundeval/pvs2c-analysis.lisp \
 	         src/groundeval/pvs2ir.lisp \
+			 src/pvs2rust/pvs2rust.lisp \
 	         src/groundeval/c-primitive-attachments.lisp
 
 inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
