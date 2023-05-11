@@ -513,67 +513,6 @@ finitesetslib = $(PVSPATH)lib/finite_sets/pvsbin/top.bin
 dist-allegro-gzip = $(GIT_DESC)-$(PLATFORM)-allegro.tgz
 dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
-pvs-registry = ~/.config/common-lisp/source-registry.conf.d/20-pvs.conf
-ifeq (,$(wildcard $(pvs-registry)))
-$(info Creating $(pvs-registry) so ASDF can find pvs.asd)
-$(shell mkdir -p $(dir $(pvs-registry)))
-$(shell echo "(:tree \"$(CURDIR)\")" > $(pvs-registry))
-endif
-
-# Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
-# This assumes quicklisp is installed in the default directory '~/quicklisp'
-# It will create that directory, and update the ~/.sbclrc init file to initialize
-# quicklisp automatically.
-
-# First install ~/quicklisp; any Common Lisp will do that
-ifeq ($(wildcard $(HOME)/quicklisp),)
-$(info Installing ~/quicklisp)
-ifneq ($(SBCL),)
-$(shell	$(SBCL) --load src/quicklisp.lisp \
-                --eval "(quicklisp-quickstart:install)" \
-                --quit > /dev/null)
-else
-$(shell	$(ALLEGRO) -L "src/quicklisp.lisp" \
-                   -e "(quicklisp-quickstart:install)" \
-                   --kill > /dev/null)
-endif
-endif
-
-# Now make sure init file is set up to automatically load quicklisp/setup.lisp
-ifneq ($(SBCL),)
-ifeq ($(wildcard $(HOME)/.sbclrc),)
-$(info Creating ~/.sbclrc)
-$(shell $(SBCL) -L "$(HOME)/quicklisp/setup.lisp" \
-                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
-                --quit > /dev/null)
-else
-$(shell $(GREP) -q "quicklisp/setup.lisp" $(HOME)/.sbclrc)
-ifneq ($(.SHELLSTATUS),0)
-$(info Updating ~/.sbclrc to include loading quicklisp/setup.lisp)
-$(shell $(SBCL) -L "$(HOME)/quicklisp/setup.lisp" \
-                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
-                --quit > /dev/null)
-endif
-endif
-endif
-
-ifneq ($(ALLEGRO),)
-ifeq ($(wildcard $(HOME)/.clinit.cl),)
-$(info Creating ~/.clinit.cl)
-$(shell $(ALLEGRO) -L "$(HOME)/quicklisp/setup.lisp" \
-                   -e "(ql-util:without-prompting (ql:add-to-init-file))" \
-                   --kill > /dev/null)
-else
-$(shell $(GREP) -q "quicklisp/setup.lisp" $(HOME)/.clinit.cl)
-ifneq ($(.SHELLSTATUS),0)
-$(info Updating ~/.clinit.cl to include loading quicklisp/setup.lisp)
-$(shell $(SBCL) -L "$(HOME)/quicklisp/setup.lisp" \
-                -e "(ql-util:without-prompting (ql:add-to-init-file))" \
-                --kill > /dev/null)
-endif
-endif
-endif
-
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
 .PHONY : all parser yices emacs prelude-files-and-regions
@@ -585,6 +524,41 @@ devel : $(allegro-devel)
 runtime : $(sbcl-rt) # $(allegro-rt)
 
 prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
+
+# Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
+# This assumes quicklisp is installed in the default directory '~/quicklisp'
+# It will create that directory, and update the ~/.sbclrc init file to initialize
+# quicklisp automatically.
+
+# First install ~/quicklisp; any Common Lisp will do that
+ifneq ($(SBCL),)
+$(HOME)/quicklisp : src/quicklisp.lisp
+	$(SBCL) --load src/quicklisp.lisp \
+                --eval "(quicklisp-quickstart:install)" \
+                --quit
+else
+$(HOME)/quicklisp : src/quicklisp.lisp
+	$(ALLEGRO) -L "src/quicklisp.lisp" \
+                   -e "(quicklisp-quickstart:install)" \
+                   --kill
+endif
+
+# Now make sure init file is set up to automatically load quicklisp/setup.lisp
+# Note that if .sbclrc or .clinit.cl already exist, they are assumed to load
+# quicklisp
+ifneq ($(SBCL),)
+$(HOME)/.sbclrc : $(HOME)/quicklisp
+	$(SBCL) --load "$(HOME)/quicklisp/setup.lisp" \
+                --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+                --quit
+endif
+
+ifneq ($(ALLEGRO),)
+$(HOME)/.clinit.cl : $(HOME)/quicklisp
+	$(ALLEGRO) -L "$(HOME)/quicklisp/setup.lisp" \
+                   -e "(ql-util:without-prompting (ql:add-to-init-file))" \
+                   --kill
+endif
 
 etags : $(PVSPATH)TAGS
 
@@ -629,12 +603,12 @@ yices2-tgt = yices/$(PLATFORM)/yices-$(yices2-version)
 yices : $(yices1-tgt) $(yices2-tgt)
 
 $(yices1-tgt) :
-	-$(MKDIR_P) yices/$(PLATFORM)
+	@-$(MKDIR_P) yices/$(PLATFORM)
 	curl --output - $(yices1-tar) | tar xzf - -C ./yices/$(PLATFORM)
 	(cd yices; ln -s ../$@/bin/yices yices1)
 
 $(yices2-tgt) :
-	-$(MKDIR_P) yices/$(PLATFORM)
+	@-$(MKDIR_P) yices/$(PLATFORM)
 	curl --output - $(yices2-tar) | tar xzf - -C ./yices/$(PLATFORM)
 	(cd yices; ln -s ../$@/bin/yices yices2)
 
@@ -642,26 +616,36 @@ $(yices2-tgt) :
 # work. It not only builds the image, it creates all the libraries
 # (file_utils, mu, ws1s) and copies them to the bin directory
 
+# ASDF manual deprecates asdf:*central-registry* in favor of
+# ~/.config/common-lisp/source-registry.conf.d/ entries, but that is very
+# inconvenient, especially with multiple PVS installations. In fact,
+# Quicklisp itself uses *central-registry*.
+
 ifneq ($(SBCL),)
 $(sbcl-rt) : $(PVSPATH)pvs.asd $(image-deps)
+	@-$(MKDIR_P) bin/$(PLATFORM)/runtime
 	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) \
 		--eval "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+		--eval "(push *default-pathname-defaults* asdf:*central-registry*)" \
 	        --eval "(asdf:operate :program-op :pvs)" \
-	        --quit > /dev/null
+	        --quit
 endif
 
 ifneq ($(ALLEGRO_HOME),)
 $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
-	$(ALLEGRO) -L "~/.clinit.cl" \
-		   -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
-	           -e "(asdf:operate :program-op :pvs)" \
-	           --kill > /dev/null
+	@-$(MKDIR_P) bin/$(PLATFORM)/runtime
+	$(ALLEGRO) -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+		-e "(defvar *runtime* t)" \
+		-e "(push *default-pathname-defaults* asdf:*central-registry*)" \
+		-e "(asdf:operate :program-op :pvs)" \
+		--kill
 $(allegro-devel) : $(image-deps) $(allegro-make-files) $(allegrolisp)
-	$(ALLEGRO) -L "~/.clinit.cl" \
-		   -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
-                   -e "(defvar *runtime* nil)" \
-	           -e "(asdf:operate :program-op :pvs)"
-	           --kill > /dev/null
+	@-$(MKDIR_P) bin/$(PLATFORM)/devel
+	$(ALLEGRO) -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+		-e "(defvar *runtime* nil)" \
+		-e "(push *default-pathname-defaults* asdf:*central-registry*)" \
+		-e "(asdf:operate :program-op :pvs)" \
+		--kill
 endif
 
 .PHONY: all doc clean distclean tar
