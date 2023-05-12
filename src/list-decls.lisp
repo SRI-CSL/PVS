@@ -2226,3 +2226,98 @@ place set."
 			 (id-occurs-in ref (definition decl)))
 		(push decl ref-forms)))))
     ref-forms))
+
+;; Lemma heuristics
+
+(defvar *histogram-lemma-matches* 5)
+
+(defun lemma-histogram-matches ()
+  (let ((matches (lemma-hist-matches *ps* *histogram-lemma-matches*)))
+    (pvs-buffer "Lemma Histogram Matches"
+      (with-output-to-string (*standard-output*)
+	(dolist (match matches)
+	  (format t "~%~a(~a) : ~a" (id (car match)) (cdr match) (definition (car match)))))
+      'temp t)))
+
+(defun lemma-hist-matches (ps &optional num)
+  (let ((lem-hist (collect-lemma-hist))
+	(ps-hist (proofstate-hist ps))
+	(matches nil))
+    (dolist (lemh lem-hist)
+      (let ((num-matches (num-hist-matches ps-hist (cdr lemh))))
+	(unless (zerop num-matches)
+	  (push (cons (car lemh) num-matches) matches))))
+    (let ((sorted (sort matches #'> :key #'cdr)))
+      (if num
+	  (subseq sorted 0 num)
+	  sorted))))
+
+(defun collect-lemma-hist ()
+  (assert *current-context*)
+  (let ((lem-hist nil))
+    (do-all-declarations #'(lambda (decl)
+			     (when (formula-decl? decl)
+			       (let ((hist (collect-name-hists (definition decl))))
+				 (when hist
+				   (push (cons decl hist) lem-hist))))))
+    lem-hist))
+
+(defun num-hist-matches (h1 h2 &optional (num 0))
+  (if (or (null h1) (null h2))
+      num
+      (let* ((h2-elt (assq (caar h1) h2))
+	     (h2-num (if h2-elt (min (cdr h2-elt) (cdar h1)) 0)))
+	(num-hist-matches (cdr h1) h2 (+ num h2-num)))))
+
+(defun collect-all-lemma-hists ()
+  (let ((lemhists nil))
+    (do-all-theories #'(lambda (th)
+			 (dolist (fm (all-formulas th))
+			   (let ((hists (collect-name-hists (definition fm))))
+			     (push (cons fm hists) lemhists)))))
+    lemhists))
+
+(defun proofstate-hist (ps)
+  (let* ((formulas (mapcar #'formula (s-forms (current-goal ps))))
+	 (hists (collect-name-hists formulas)))
+    (sort hists #'> :key #'cdr)))
+
+(defun collect-name-hists (formulas)
+  (let ((hists nil)
+	(*parsing-or-unparsing* t))
+    (mapobject #'(lambda (obj)
+		   (when (and (name-expr? obj)
+			      (constant? obj)
+			      (declaration obj)
+			      (not (memq (id (declaration obj))
+					 '(TRUE FALSE NOT AND OR IMPLIES IFF IF =
+					   number_field_pred real_pred rational_pred)))
+			      (not (skolem-const-decl? (declaration obj))))
+		     (let ((hist (assq (declaration obj) hists)))
+		       (if hist
+			   (incf (cdr hist))
+			   (push (cons (declaration obj) 1) hists)))))
+	       formulas)
+    hists))
+
+(defun collect-token-list (term &optional (level 0))
+  (let ((tlist nil)
+	(*parsing-or-unparsing* t)
+	(*mapobject-infix* t))
+    (mapobject #'tokenize term)
+    (reverse tlist)))
+
+(defmethod tokenize ((ex name-expr))
+  )
+
+(defmethod binding-op ((ex forall-expr))
+  "FORALL")
+
+(defmethod binding-op ((ex exists-expr))
+  "EXISTS")
+
+(defmethod binding-op ((ex lambda-expr))
+  "LAMBDA")
+
+(defmethod binding-op ((ex binding-application))
+  (operator ex))
