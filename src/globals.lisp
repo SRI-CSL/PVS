@@ -498,6 +498,9 @@ Needed to generate the same dummy name for record literals.")
 (defvar *last-proof* nil
   "The last proof attempted - an instance of proofstate")
 
+;;(defvar *dump-proof-data-to-file* nil)
+
+(defvar *log-proofs* :ask)
 
 ;;; Variables used in the X proof display code (wish.lisp)
 
