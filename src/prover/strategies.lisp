@@ -273,9 +273,11 @@
     (cond (primitive
 	   (format-if "~%~a exists as a primitive rule.  It cannot be redefined." name))
 	  (rule
-	   (format-if "~%~a exists as a defined rule." name))
+	   (let ((source #+allegro (cdr (assq :strategy (excl:source-file name t)))))
+	     (format-if "~%~a exists as a defined rule from ~a." name source)))
 	  (strat
-	   (format-if "~%~a exists as a strategy." name)))
+	   (let ((source #+allegro (cdr (assq :strategy (excl:source-file name t)))))
+	     (format-if "~%~a exists as a strategy from ~a." name source))))
     (cond (primitive (format t "~%No change. "))
 	  (t (if (or rule strat)
 		 (format-if "~%Redefining ~a. " name)

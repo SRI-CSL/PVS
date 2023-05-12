@@ -85,14 +85,12 @@
 (defvar *rerunning-proof-message-time* nil)
 (defvar *top-label* nil)
 (defvar *max-occurrence* 0)
-(defvar *rechecking-proof* nil)
+;; (defvar *rechecking-proof* nil)
 (defvar *hash-rewrites?* nil)
 (defvar *rewrite-hits* 0)
 (defvar *rewrite-misses* 0)
 (defvar *rewrite-hash* nil)
 (defvar *no-match-assert-test* nil)
-(defvar *pvs-voss-hash* nil)
-(defvar *voss-pvs-hash* nil)
 (defvar *subtype-hash* nil)
 (defvar *track-rewrites* nil)
 (defvar *ruletrace* nil)
@@ -306,6 +304,7 @@
      (let* ((com (format nil ,string ,@args))
 	    (trcom (string-trim '(#\Space #\Tab #\Newline) com)))
        (or (session-output trcom)
+	   (unless *noninteractive* (push (cons "commentary" trcom) *prover-log*) nil)
 	   (format t "~a" com)))))
 
 (defmacro error-format-if (string &rest args)
@@ -688,11 +687,26 @@
      `(connective-occurs? ,fmla))
 
 (defvar *prover-input-hooks* nil)
+(defvar *prover-output-hooks* nil)
+(defvar *prover-done-hooks* nil)
 
-(defun run-prover-input-hooks (&optional (hooks *prover-input-hooks*))
-  (when hooks
-    (or (funcall (car hooks))
-	(run-prover-input-hooks (cdr hooks)))))
+(defmacro with-prover-input-hook (hook-fn &body body)
+  (let ((fn (gentemp)))
+    `(let* ((,fn (find-hook-fn ,hook-fn))
+	    (*prover-input-hooks* (cons ,fn *prover-input-hooks*)))
+       ,@body)))
+
+(defmacro with-prover-output-hook (hook-fn &body body)
+  (let ((fn (gentemp)))
+    `(let* ((,fn (find-hook-fn ,hook-fn))
+	    (*prover-output-hooks* (cons ,fn *prover-output-hooks*)))
+       ,@body)))
+
+(defmacro with-prover-done-hook (hook-fn &body body)
+  (let ((fn (gentemp)))
+    `(let* ((,fn (find-hook-fn ,hook-fn))
+	    (*prover-done-hooks* (cons ,fn *prover-done-hooks*)))
+       ,@body)))
 
 (defun find-hook-fn (hook-fn)
   (if (symbolp hook-fn)
@@ -703,18 +717,17 @@
 	       (let ((efn (eval hook-fn)))
 		 (and (functionp efn) efn))))))
 
-(defun add-prover-input-hook (hook-fn)
-  (let ((fn (find-hook-fn hook-fn)))
-    (assert (functionp fn) () "Illegal hook-fn, must be a function")
-    (pushnew hook-fn *prover-input-hooks*)))
+(defun run-prover-input-hooks (&optional (hooks *prover-input-hooks*))
+  (when hooks
+    (or (funcall (car hooks))
+	(run-prover-input-hooks (cdr hooks)))))
 
-(defun remove-prover-input-hook (hook-fn)
-  (let ((fn (find-hook-fn hook-fn)))
-    (assert (functionp fn) () "Illegal hook-fn, must be a function")
-    (setq *prover-input-hooks* (delete fn *prover-input-hooks*))))
+(defun run-prover-output-hooks (ps &optional (hooks *prover-output-hooks*))
+  (when hooks
+    (or (funcall (car hooks) ps)
+	(run-prover-output-hooks ps (cdr hooks)))))
 
-(defmacro with-prover-input-hook (hook-fn &body body)
-  (let ((fn (gentemp)))
-    `(let* ((,fn (find-hook-fn ,hook-fn))
-	    (*prover-input-hooks* (cons ,fn *prover-input-hooks*)))
-       ,@body)))
+(defun run-prover-done-hooks (&optional (hooks *prover-done-hooks*))
+  (when hooks
+    (or (funcall (car hooks))
+	(run-prover-done-hooks (cdr hooks)))))
