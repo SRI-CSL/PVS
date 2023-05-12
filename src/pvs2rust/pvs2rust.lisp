@@ -277,14 +277,11 @@
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-recordtype) lhs rhs-irvar ir-exprvar bindings)
     (break "~% Should not be called anymore, see explanation in code.")) ;; GSC, see below
 
-
 ;; Why the function below ?
 ;; We always want recordtypes to be called behind their custom types (because we want to relate 
 ;; it to the correct struct in Rust). So we modified pvs2ir-assignement1 typename in order to 
 ;; call this function if it detects a record type behind a typename.
 ;; The typename is preserved.
-
-;; TODO : Delete the null assignement
 (defmethod pvs2ir-assignment1-custom-recordtype ((ir-expr-typename ir-typename) lhs rhs-irvar ir-exprvar bindings)
 	(let* ((ir-expr-type (ir-type-defn ir-expr-typename)))
 		(let* ((lhs1 (caar lhs)) ; i ;;lhs1 is a field-name-expr
@@ -301,31 +298,7 @@
 					(id lhs1)
 					rhs-irvar
 				)
-			)
-		)
-		;;(let* ((lhs1 (caar lhs));;lhs1 is a field-name-expr
-		;;	(ir-field-decl (find (id lhs1) (ir-field-types ir-expr-type) :key #'ir-id))
-		;;	(ir-expr-type11 (ir-vtype ir-field-decl)) ;;(pvs2ir-type (range (type lhs1)))
-		;;	(ir-exprvar11 (new-irvar))
-		;;	(ir-expr-vartype11 (mk-ir-variable ir-exprvar11 ir-expr-type11))
-		;;	(ir-rest-assignment (if (consp (cdr lhs))
-		;;				(pvs2ir-assignment1 ir-expr-type11 (cdr lhs)
-		;;							rhs-irvar ir-expr-vartype11
-		;;							bindings)
-		;;				rhs-irvar)))
-		;;	(let* ((ir-exprvar1 (new-irvar))
-		;;		(ir-expr-vartype1 (mk-ir-variable ir-exprvar1 ir-expr-typename))
-		;;		(ir-new-rhsvar (new-irvar))
-		;;		(ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11)))
-		;;	(mk-ir-let ir-expr-vartype11
-		;;		(mk-ir-get ir-exprvar (id lhs1));;directly get the field
-		;;		(mk-ir-let ir-expr-vartype1
-		;;				ir-exprvar
-		;;				(mk-ir-let ir-new-rhsvartype
-		;;					ir-rest-assignment
-		;;					(mk-ir-update ir-expr-vartype1 (id lhs1) ir-new-rhsvartype))))))
-	)
-    )
+			))))
 
 
 ;;had to add method for ir-adt-recordtype since the type here is the adt and not the constructor,
@@ -429,7 +402,7 @@
 	  
 (defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty
   (let* ((adt-type (type-value adt-decl))
-	 (adt-adt-id (format nil "~a" *theory-id*))
+	 (adt-adt-id (format nil "~a" adt-type))
 	 (adt (adt adt-type))
 	 (constructors (constructors adt))
 	 (index-id (intern (format nil "~a_index" adt-adt-id)))
@@ -461,6 +434,46 @@
     adt-type-name
     ))
 
+(defmethod pvs2ir-type* ((type arraytype) tbinding)
+  (with-slots (domain range) type
+    (let* ((ir-dom (pvs2ir-type* domain tbinding))
+	   (new-tbinding (if (binding? domain)
+			     (acons domain (mk-ir-variable (new-irvar)
+							   ir-dom)
+				    tbinding)
+			   tbinding))
+	   (ptype (print-type type))
+	   (ir-actuals (loop for act in (actuals ptype)
+			   collect (if (type-value act)
+				       (mk-ir-type-actual (pvs2ir-type (type-value act) bindings))
+				     (mk-ir-const-actual (pvs2ir* act bindings nil)))))
+	   (defined-ir-type-value (when (type-name? ptype)
+			     (ir-type-value-with-actuals (declaration ptype) ir-actuals)))
+	   (defined-ir-domtype (when (and defined-ir-type-value
+					  (ir-arraytype? (ir-type-defn (ir-type-name defined-ir-type-value))))
+				 (ir-domain (ir-type-defn (ir-type-name defined-ir-type-value)))))
+	   (ir-type (let ((ir-dom-subrange (is-ir-subrange? ir-dom)))
+		      (if (ir-subrange? ir-dom-subrange)
+			  (with-slots (ir-low ir-high ir-high-expr) ir-dom-subrange
+			    (let ((check-range (check-arraytype-ir-subrange ir-low ir-high)))
+			      (if check-range
+				  (mk-ir-arraytype check-range (or ir-high-expr check-range)
+						   ir-dom (pvs2ir-type* range new-tbinding))
+				(if defined-ir-domtype
+				    (with-slots ((ir-defined-low ir-low) (ir-defined-high ir-high)) defined-ir-domtype
+				      (let ((check-defined-range (check-arraytype-ir-subrange ir-defined-low ir-defined-high)))
+					(if check-defined-range 
+					    (mk-ir-arraytype check-defined-range (or ir-high-expr check-defined-range)
+							     ir-dom (pvs2ir-type* range new-tbinding))
+					  (mk-ir-funtype ir-dom
+							 (pvs2ir-type* range new-tbinding)))))
+				  (mk-ir-funtype ir-dom
+						 (pvs2ir-type* range new-tbinding))))))
+		      (mk-ir-funtype ir-dom
+				     (pvs2ir-type* range new-tbinding))))))
+    ;;  (when (ir-funtype? ir-type)(break "pvs2ir-type*(arraytype)")
+	;;	(format t "~%Unable to translate ~a as an array; using function type instead" type))
+      ir-type)))
 
 ;; ------- IR2C --------
 
@@ -841,6 +854,45 @@
 
 ;; -------- PVS2C ---------
 
+(defmethod pvs2c-preceding-theories* ((theory datatype))
+  (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
+    (unless (eq (all-imported-theories theory) 'unbound)
+      (loop for thy in all-imported-theories
+	    do (pvs2c-preceding-theories* thy)))
+    ;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
+    (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
+    ;(when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
+    ;(when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))
+	))
+
+(defmethod pvs2c-decl* ((decl const-decl))
+  (if (or (adt-constructor-decl? decl)	;;these are automatically generated from the adt type decl
+			   (adt-recognizer-decl? decl)
+			   (adt-accessor-decl? decl)) nil 
+			   (let* (;(thid (simple-id (id (module decl))))
+					(declid (simple-id (id decl)))
+					(ir-function-id (intern (format nil "~a__~a" *theory-id* declid)))
+					(hashentry (gethash ir-function-id *c-primitive-attachments-hash*)))
+					(cond (hashentry
+					(let* ((einfo (or (eval-info decl)
+								(let* ((new-einfo (make-instance 'eval-info))
+									)	;all nil for now
+								(setf (eval-info decl) new-einfo)
+								new-einfo)))
+						(new-ir-function (mk-ir-function ir-function-id decl))
+						(new-ir (mk-ir-defn new-ir-function nil nil nil)))
+						(setf (ir einfo) new-ir)
+						(setf (cdefn einfo) hashentry)
+						(op-name hashentry)))
+					(t   (unless (or (adt-constructor-decl? decl)	;;these are automatically generated from the adt type decl
+							(adt-recognizer-decl? decl)
+							(adt-accessor-decl? decl))
+						(pvs2ir-decl decl))
+						(let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
+						(ir2c-decl* ir decl)))))
+			   )
+  )
+
 (defun make-c-defn-info (ir pvs-return-type) ;(break "make-c-defn-info")
   (with-slots
 	(ir-function-name ir-return-type ir-args ir-defn) ir
@@ -1043,13 +1095,10 @@
 		     (or (const-decl? decl) 
 			 (type-eq-decl? decl)(type-decl? decl)(adt-type-decl? decl))
 		     (eq decl indecl))
-	    do (if (isDatatype (get-theory theory)) 
-			(if (type-decl? decl) (pvs2c-decl decl force?) nil ) (pvs2c-decl decl force?))
+	    do (progn ;(format t "~%decl ~a th ~a" decl theory)
+				  (pvs2c-decl decl force?))
 	)
 	))
-
-(defun isDatatype(theory)
-	(if (search "_adt" (format nil "~a" (id theory))) t nil))
 
 (defun pvs2rust (ref)
 	(pvs2c-theory ref t))
@@ -1067,19 +1116,17 @@
 	   thname)
 
 	  (t (let* ((adt-type (type-value decl))
-			(adt-type-id (pvs2ir-unique-decl-id decl))
-			(adt-adt-id (format nil "~a_adt" adt-type-id))
 			(adt (adt adt-type))
 			(typename (pvs2ir-adt-decl decl))
 			(constructors (constructors adt))
 			)
-			(format t "~%$DATATYPE ~a ~%@(" thname)
+			(format t "~%$DATATYPE ~a THEORY ~a~%@(" adt-type thname)
 			(loop for con in constructors
 				collect (progn (
-					format t "~%(CONSTRUCTOR ~a" (pvs2ir-unique-decl-id (con-decl con))
+					format t "~%(CONSTRUCTOR ~a" (decl-id (con-decl con))
 				)(
 					loop for acc in (acc-decls con)
-							    collect (format t "~%(ACCESSOR ~a ~a)" (pvs2ir-unique-decl-id acc) (print-ir (pvs2ir-type (range (type acc)))))      
+							    collect (format t "~%(ACCESSOR ~a ~a)" (decl-id acc) (print-ir (pvs2ir-type (range (type acc)))))      
 				)(format t ")"))
 			)
 			(format t ")")
