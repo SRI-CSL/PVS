@@ -74,6 +74,9 @@ orphaned-proofs.prf
 pvsbin
 *.err
 
+*_c.c 
+*_c.h
+
 prover-log.yaml
 pvs-version.lisp
 .vscode/settings.json
