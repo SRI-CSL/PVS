@@ -429,7 +429,7 @@
   ;; Indicates an error; no recovery possible.
   (assert (or (null file-name)
 	      *from-buffer*
-	      (file-exists-p file-name)))
+	      (uiop:file-exists-p file-name)))
   (let* ((place (if *adt-decl* (place *adt-decl*) place))
 	 (buff (if *adt-decl*
 		   (or (filename *generating-adt*)
@@ -484,9 +484,11 @@
 				       #-sbcl (if full? "(Yes or No) " "(Y or N) ")))
 		  (answer (if full?
 			      (yes-or-no-p prompt)
-			      (y-or-n-p prompt))))
-	     (session-output (format nil "~a~:[~:[No~;Yes~]~;~:[N~;Y~]~]"
-			       prompt full? answer))
+			      (y-or-n-p prompt)))
+		  (cmt (format nil "~a~:[~:[No~;Yes~]~;~:[N~;Y~]~]"
+			 prompt full? answer)))
+	     (session-output cmt)
+	     (push (cons "commentary" cmt) *prover-log*)
 	     answer))))
 
 (defun pvs-dialog (prompt &rest args)
