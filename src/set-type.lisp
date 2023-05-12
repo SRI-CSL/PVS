@@ -4371,7 +4371,12 @@ type of the lhs."
                (cdr expected-types)))))
       (let ((*tcc-conditions*
              (append (car *appl-tcc-conditions*) *tcc-conditions*)))
-        (set-type* (car bindings) (car expected-types))
+	(cond ((rational-expr? (car bindings))
+	       (unless (compatible? (car expected-types) *number*)
+		 (type-incompatible (car bindings) (ptypes (car bindings))
+				    (car expected-types)))
+	       (setf (type (car bindings)) *real*))
+              (t (set-type* (car bindings) (car expected-types))))
         (when (cdr expected-types)
           ;; Only happens for lambda-expr with type
           ;; We have set-type for the lambda body against the return-type
@@ -4402,7 +4407,7 @@ type of the lhs."
            (mapcar #'(lambda (a)
                        (let ((fld (caar (arguments a)))
                              (ty (if (rational-expr? (expression a))
-				     *real*
+				     (car (judgement-types (expression a)))
 				     (best-judgement-type (expression a)))))
                          (mk-field-decl (id fld) ty ty)))
                    ass)
