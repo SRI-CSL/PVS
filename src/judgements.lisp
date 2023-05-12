@@ -808,7 +808,7 @@
 	 (decl (declaration op))
 	 (th (module decl))
 	 (formals (when th (formals-sans-usings th))))
-    (when formals
+    (when (and formals (not (constructor-name-expr? op)))
       (let* ((th (module decl))
 	     (thname (mk-modname (id th))))
 	(multiple-value-bind (bindings ftype)
@@ -865,7 +865,16 @@
       ex))
 
 (defmethod judgement-types* ((ex coercion))
-  nil)
+  (multiple-value-bind (types jdecls)
+      (call-next-method)
+    (let ((stypes nil)
+	  (sjdecls nil))
+      (mapc #'(lambda (jty jd)
+		(when (subtype-of? jty (type ex))
+		  (push jty stypes)
+		  (push jd sjdecls)))
+	    types jdecls)
+      (values (nreverse stypes) (nreverse sjdecls)))))
 
 (defmethod judgement-types* ((ex list-expr))
   nil)
