@@ -40,7 +40,7 @@
   (require :uri)
   (require :pxml-sax)
   (require :sock-s)
-  (require :smputil)
+  ;;(require :smputil)
   (let ((excl:*enable-package-locked-errors* nil))
     ;; These are autoloaded functions - ed was accidentally used in a proof
     ;; and caused an unexpected error
@@ -132,6 +132,7 @@
 ;;(mk:operate-on-system :pvs :compile)
 (require :asdf)
 (load "~/quicklisp/setup.lisp")
+(push *default-pathname-defaults* asdf:*central-registry*)
 (asdf:load-system :pvs)
 (when (sys:getenv "PVSMAKELOADAFTER")
   (load (sys:getenv "PVSMAKELOADAFTER")))
