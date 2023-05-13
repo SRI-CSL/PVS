@@ -517,7 +517,7 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 .PHONY : all parser yices emacs prelude-files-and-regions
 
-all : $(pvs-images) yices prelude-files-and-regions etags
+all : $(HOME)/quicklisp $(pvs-images) yices prelude-files-and-regions etags
 
 devel : $(allegro-devel) 
 

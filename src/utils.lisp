@@ -4781,15 +4781,6 @@ space")
 	(next-proof-id fdecl (1+ num))
 	id)))
 
-(defun prover-status (&optional (ps *ps*) (top-ps *top-proofstate*))
-  "Checks the status of the prover: active or inactive."
-  ;; (format t "~%pvs:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
-  ;;   (and top-ps t) (and last-proof t) (and ps t))
-  (declare (ignore ps))
-  (if top-ps
-      :active
-      :inactive))
-
 (defun last-proof-status ()
   "After a proof is run, *last-proof* is set, and can be queried."
   (if *last-proof*

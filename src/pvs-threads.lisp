@@ -388,7 +388,7 @@ Returns a list of the form ((id . status) (id . status) ...)"
     (ensure-directories-exist json-path)
     (dolist (th *prelude-theories*)
       (let ((th-path (format nil "~a~a.json" json-path (id th)))
-	    (prfs (mapcar #'(lambda (fmla) (prover-init fmla t))
+	    (prfs (mapcar #'(lambda (fmla) (prover-init fmla :rerun? t))
 		    (all-formulas th))))
 	(when prfs
 	  (with-open-file (out th-path :direction :output :if-exists :supersede)

@@ -154,9 +154,10 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (declaim (optimize (compilation-speed 0) (space 1) (safety 1) (speed 3) (cl:debug 1)))
   ;; Note that these do very little SBCL simply does not want to shut up
-  #+sbcl (declaim (sb-ext:muffle-conditions cl:warning))
-  #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
-  #+sbcl (declaim (sb-ext:muffle-conditions sb-ext:compiler-note)))
+  ;; #+sbcl (declaim (sb-ext:muffle-conditions cl:warning))
+  ;; #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
+  ;; #+sbcl (declaim (sb-ext:muffle-conditions sb-ext:compiler-note))
+  )
 
 (defun file-time (file)
   #+allegro (excl.osi:stat-mtime (excl.osi:stat file))
