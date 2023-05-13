@@ -82,7 +82,7 @@ ifneq ($(SBCL),)
 SBCL_VERSION = $(shell $(SBCL) --version)
 SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
 sbcl-rt = $(PVSPATH)bin/$(PLATFORM)/runtime/pvs-sbclisp
-pvs-images += $(sbcl-rt)
+pvs-images += $(HOME)/.sbclrc $(sbcl-rt)
 fasldirs += $(shell $(SBCL) --noinform --eval '(format t (namestring (asdf:apply-output-translations ".")))' --quit)
 endif
 
@@ -101,7 +101,7 @@ allegro-devel = $(bindir)/devel/$(PACKAGE)-allegro
 pvs-images += $(allegro-devel)
 ifneq ($(wildcard $(ALLEGRO_HOME)/devel.lic),)
 allegro-rt = $(bindir)/runtime/$(PACKAGE)-allegro
-pvs-images += $(allegro-rt)
+pvs-images += $(HOME)/.clinit.cl $(allegro-rt)
 endif
 endif
 
