@@ -1267,7 +1267,7 @@ be typechecked when set-type selects a resolution."
 		 (let ((tr (delete-if-not
 			       #'(lambda (r)
 				   (and (interpretable? (declaration r))
-					;;(memq (declaration r) lhs-theory-decls)
+					(memq (declaration r) lhs-theory-decls)
 					(length= (decl-formals (declaration r)) dfmls)))
 			     (with-no-type-errors
 				 (resolve* (lhs mapping) 'type nil)))))
@@ -1288,6 +1288,7 @@ be typechecked when set-type selects a resolution."
 		   (delete-if-not
 		       #'(lambda (r)
 			   (and (interpretable? (declaration r))
+				(memq (declaration r) lhs-theory-decls)
 				;; Need to make sure it's not already mapped
 				;; This may already be done
 				(length= (decl-formals (declaration r)) dfmls)))
@@ -1313,16 +1314,15 @@ be typechecked when set-type selects a resolution."
 			     (not (eq (kind mapping) 'theory)))
 		  (delete-if-not
 		      #'(lambda (r)
-			  (and ;;(memq (declaration r) lhs-theory-decls)
-			       (or (module? (declaration r))
-				   (length= (decl-formals (declaration r)) dfmls)
-				   (interpretable? (declaration r)))))
+			  (and (memq (declaration r) lhs-theory-decls)
+			       (length= (decl-formals (declaration r)) dfmls)
+			       (interpretable? (declaration r))))
 		    (with-no-type-errors
 			(resolve* (lhs mapping) 'module nil))))))
     (unless (or eres nres tres thres)
       (type-error (lhs mapping)
 	"Map lhs~%  ~a~%does not resolve to an uninterpreted ~
-                   type, constant, or theory within theory:~%  ~a~
+                   type, constant, or theory declaration in theory:~%  ~a~
           ~@[~%Note: ~a is not allowed to be interpreted~]"
 	(lhs mapping) (id lhs-theory)
 	(car (memq (id (lhs mapping)) '(boolean number)))))
@@ -1499,8 +1499,7 @@ declarations"
     (let* ((tres (unless (and kind
 			      (not (eq kind 'type)))
 		   (with-no-type-errors (resolve* ex 'type nil))))
-	   (eres (unless (and kind
-			      (not (eq kind 'expr)))
+	   (eres (unless (and kind (not (eq kind 'expr)))
 		   (if (or tres (null (mod-id ex)))
 		       (with-no-type-errors (get-resolutions ex 'expr nil))
 		       (get-resolutions ex 'expr nil))))
@@ -1609,7 +1608,7 @@ declarations"
   (interpretable-declarations (declaration thref)))
 
 (defmethod interpretable? ((thref module))
-  (some #'interpretable? (all-decls thref)))
+  nil)
 
 (defmethod interpretable? ((ty recursive-type))
   t)
@@ -1627,11 +1626,14 @@ declarations"
 	 (th (or (declaration mn)
 		 (get-theory mn))))
     (if th
-	(interpretable? th)
+	(some #'interpretable? (all-decls th))
 	(let ((reses (resolve* (lcopy mn :mappings nil) 'module nil)))
 	  (assert reses () "interpretable? (mod-decl) reses failed")
 	  (assert (null (cdr reses)) () "interpretable? (mod-decl) ambiguous reses")
 	  (interpretable? (declaration (car reses)))))))
+
+(defmethod interpretable? ((d theory-abbreviation-decl))
+  t)
 
 
 (defmethod interpretable? ((d formal-type-decl))
