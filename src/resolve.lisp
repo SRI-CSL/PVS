@@ -595,7 +595,7 @@
 	  ;; check if in second case
 	  (if (and (null dacts)
 		   (not (dacts-there? name))
-		   (= (length dacts) (length (decl-formals decl)))
+		   (= (length acts) (length (decl-formals decl)))
 		   (not (compat-params acts (formals-sans-usings dth)
 				       (eq dth (current-theory)))))
 	      (resolve-with-actuals decl name nil acts dth args mappings)
