@@ -245,14 +245,14 @@ targets and copying them to the corresponding bin directory."
       ;;(pvs::initialize-prelude-attachments)
       ;;(pvs::register-manip-type pvs::*number_field* 'pvs::pvs-type-real)
       ))
-  #+allegro
-  (let* ((optfile (format nil "~a/src/closopt.lisp"
-		    ;;(symbol-value (intern (string :*pvs-path*) :pvs))
-		    (asdf:system-relative-pathname :pvs ".")))
-	 (fasl-file (make-fasl-file-name optfile)))
-    (unless (uiop:file-exists-p fasl-file)
-      (compile-file optfile :output-file fasl-file))
-    (load fasl-file))
+  ;; #+allegro
+  ;; (let* ((optfile (format nil "~a/src/closopt.lisp"
+  ;; 		    ;;(symbol-value (intern (string :*pvs-path*) :pvs))
+  ;; 		    (asdf:system-relative-pathname :pvs ".")))
+  ;; 	 (fasl-file (funcall (intern (string :make-fasl-file-name) :pvs) optfile)))
+  ;;   (unless (uiop:file-exists-p fasl-file)
+  ;;     (compile-file optfile :output-file fasl-file))
+  ;;   (load fasl-file))
   (funcall (intern (string :remove-typecheck-caches) :pvs))
   (assert (every #'fboundp (symbol-value (intern (string :*untypecheck-hook*) :pvs))))
   ;;(asdf:clear-configuration)
@@ -263,8 +263,8 @@ targets and copying them to the corresponding bin directory."
 
 #+allegro
 (defun make-pvs-program ()
-  ;;(make-pvs-program* nil)
-  (make-pvs-program* t)
+  (make-pvs-program* nil)
+  ;;(make-pvs-program* t)
   )
 
 (defvar *runtime* nil)
@@ -280,8 +280,9 @@ targets and copying them to the corresponding bin directory."
     ;; (setq *pvs-path* nil)
     (ensure-directories-exist build-dir)
     ;; (ensure-directories-exist platform-dir)
-    ;; (excl:delete-directory-and-files tmp-dir :if-does-not-exist :ignore)
-    ;; (ensure-directories-exist tmp-dir)
+    (if runtime?
+	(excl:delete-directory-and-files tmp-dir :if-does-not-exist :ignore)
+	(ensure-directories-exist tmp-dir))
     (format t "~%Calling generate-application for ~a" tmp-dir)
     (excl:generate-application
      "pvs-allegro"
