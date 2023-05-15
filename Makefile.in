@@ -83,7 +83,9 @@ SBCL_VERSION = $(shell $(SBCL) --version)
 SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
 sbcl-rt = $(PVSPATH)bin/$(PLATFORM)/runtime/pvs-sbclisp
 pvs-images += $(HOME)/.sbclrc $(sbcl-rt)
-fasldirs += $(shell $(SBCL) --noinform --eval '(format t (namestring (asdf:apply-output-translations ".")))' --quit)
+fasldirs += $(shell $(SBCL) --noinform \
+	--eval '(require :asdf)' \
+	--eval '(format t (namestring (asdf:apply-output-translations ".")))' --quit)
 endif
 
 # Build with Allegro only if ALLEGRO_HOME is set
@@ -625,6 +627,7 @@ ifneq ($(SBCL),)
 $(sbcl-rt) : $(PVSPATH)pvs.asd $(image-deps)
 	@-$(MKDIR_P) bin/$(PLATFORM)/runtime
 	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) \
+		--eval "(require :asdf)" \
 		--eval "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
 		--eval "(push *default-pathname-defaults* asdf:*central-registry*)" \
 	        --eval "(asdf:operate :program-op :pvs)" \
@@ -634,14 +637,16 @@ endif
 ifneq ($(ALLEGRO_HOME),)
 $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
 	@-$(MKDIR_P) bin/$(PLATFORM)/runtime
-	$(ALLEGRO) -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+	$(ALLEGRO) -e "(require :asdf)" \
+		-e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
 		-e "(defvar *runtime* t)" \
 		-e "(push *default-pathname-defaults* asdf:*central-registry*)" \
 		-e "(asdf:operate :program-op :pvs)" \
 		--kill
 $(allegro-devel) : $(image-deps) $(allegro-make-files) $(allegrolisp)
 	@-$(MKDIR_P) bin/$(PLATFORM)/devel
-	$(ALLEGRO) -e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
+	$(ALLEGRO) -e "(require :asdf)" \
+		-e "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
 		-e "(defvar *runtime* nil)" \
 		-e "(push *default-pathname-defaults* asdf:*central-registry*)" \
 		-e "(asdf:operate :program-op :pvs)" \
