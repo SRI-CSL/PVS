@@ -202,7 +202,7 @@
 targets and copying them to the corresponding bin directory."
   (let* ((make-dir (format nil "~a/~a" dir (pvs-platform)))
 	 (make-cmd (format nil "make -C ~a" make-dir))
-	 (foreign-ext #+linux "so" #+(or macosx os-macosx) "dylib")
+	 (foreign-ext #-(or macosx os-macosx) "so" #+(or macosx os-macosx) "dylib")
 	 (lib-file (format nil "~a/~a.~a" make-dir lib foreign-ext))
 	 ;; Note the trailing slash is needed for ensure-directories-exist
 	 ;;(bin-dir (format nil "~abin/~a/runtime/" *pvs-path* (pvs-platform)))
@@ -369,7 +369,7 @@ targets and copying them to the corresponding bin directory."
   (let* ((tmp-dir "/tmp/pvs-allegro-build/")
 	 (platform (pvs-platform))
 	 (platform-dir (format nil "./bin/~a/" platform))
-	 (lext #+x86-64 "so" #-x86-64 "dylib")
+	 (lext #-(or macosx os-macosx) "so" #+(or macosx os-macosx) "dylib")
 	 (build-dir (format nil "~aruntime/" platform-dir))
 	 (pvs-prog (format nil "~apvs-sbclisp" build-dir)))
     (format t "~%Creating SBCL core image in ~a" pvs-prog)

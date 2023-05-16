@@ -761,5 +761,5 @@ useful if more than one specification is to be included in one document")
 	(in2out)))))
 
 (defun latex-viewer ()
-  #+macosx "open"
-  #-macosx "evince")
+  #+(or macosx os-macosx) "open"
+  #-(or macosx os-macosx) "evince")
