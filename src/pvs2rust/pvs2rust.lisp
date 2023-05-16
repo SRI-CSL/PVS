@@ -6,6 +6,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod print-ir ((ir-expr ir-apply))
+  (with-slots (ir-func ir-params ir-args ir-atype) ir-expr
+	      `(,(print-ir ir-func) ,@(print-ir ir-params) ,@(print-ir ir-args)  ,(print-ir ir-atype))))
 
 (defmethod print-ir ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn type-declaration) ir-type
@@ -19,6 +22,13 @@
 (defmethod print-ir ((ir-type ir-adt-recordtype))
   (with-slots (ir-field-types ir-constructors) ir-type
 	      `adt-recordtype))
+
+(defmethod print-ir :around ((ir-type ir-type))
+  (with-slots (renamings) ir-type
+    (let ((print-renames (loop for (x . y) in renamings collect (cons (print-ir x)(print-ir y)))))
+      (if print-renames
+	  `,(call-next-method)
+	(call-next-method)))))
 
 
 (defun pvs2ir-primitive-application (op arg-names op-arg-types args-ir ir-expr-type bindings)
@@ -474,6 +484,159 @@
     ;;  (when (ir-funtype? ir-type)(break "pvs2ir-type*(arraytype)")
 	;;	(format t "~%Unable to translate ~a as an array; using function type instead" type))
       ir-type)))
+
+
+(defun pvs2ir-application (op args ir-expr-type bindings expected)
+  (declare (ignore expected))
+  (let* ((arg-names (new-irvars (length args)))
+	 	 (args-ir (pvs2ir* args bindings nil))
+	 	 (arg-types 
+			(loop for arg in args
+				as ir-arg in args-ir
+				collect (let ((num (pvs-integer? arg)))
+					(if num
+					(mk-ir-subrange num num)
+					(best-ir-subrange-pair (pvs2ir-expr-type arg bindings)
+								(ir-arith-type ir-arg)))))) ;;NSH(3-20-16):
+	 	 (op-arg-types arg-types) 
+	 	 (ir-expr-type (ir-apply-op-type op op-arg-types ir-expr-type))
+	 	 (apply-return-var (new-irvartype ir-expr-type))
+		 )	
+    (if (constant? op)
+		(if (pvs2ir-primitive? op)
+			(pvs2ir-primitive-application op arg-names op-arg-types args-ir ir-expr-type bindings)
+		(let* ((opdecl (declaration op))
+			(theory (module opdecl)))
+			(if (memq (id theory) *primitive-prelude-theories*);;NSH(6-16-21)
+			(progn ;(break "undefined primitive")
+				(mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
+			(let* ((formals (formals-sans-usings (module opdecl)))
+				(actuals (actuals (module-instance op))) ;;handling theory actuals
+				(ref-actuals (loop for act in actuals ;;collect const actuals and ref actuals
+						when (or (null (type-value act))
+							(eq (check-actual-type (type-value act) bindings) 'ref))
+						collect act))
+				(ref-formals (if actuals ;if there are actuals, then collect only the type formals 
+						(loop for fml in formals ;where the matching actual has a ref type
+												;other non-ref type actuals are monomorphized
+							as act in actuals ;;collect const actuals and ref actuals
+							when (or (null (type-value act))
+								(eq (check-actual-type (type-value act) bindings) 'ref))
+							collect fml)
+						formals)) ;otherwise, return all the formals. 
+				(ir-formals (pvs2ir* ref-formals bindings nil))
+				(ir-actuals (pvs2ir* ref-actuals bindings nil))
+				(actvars (loop for fml in ir-formals
+					as formal in ref-formals
+					collect (mk-ir-variable (new-irvar)(ir-formal-type fml) (id formal))))
+				(actual-types
+				(loop for actual in ref-actuals
+					as formal in ref-formals
+					collect (if (formal-const-decl? formal)
+						(pvs2ir-type (type (expr actual)) bindings)
+						*type-actual-ir-name*)))
+				(op-domain-vars (mk-variables-from-types (types (domain (find-supertype (type op)))) bindings))
+				(op-ir (pvs2ir-constant-ir op bindings opdecl))
+				(op-ir-function (ir-function-name op-ir))
+				(op-ir-defn (ir-defn op-ir))
+				(op-ir-args (ir-args op-ir))
+				(op-arg-application-ir
+				(make-ir-lett* op-domain-vars ; was arg-vartypes
+						arg-types
+						args-ir
+						(mk-ir-let apply-return-var ;op-range-type
+							(mk-ir-apply
+							op-ir-function op-domain-vars
+							actvars)
+						;op-range-type
+							apply-return-var)))
+				)  ;(break "pvs2ir-application")
+			(if formals
+				(if ir-actuals ;;then generating code outside theory
+				(make-ir-lett* actvars actual-types ir-actuals
+						op-arg-application-ir)
+				(make-ir-let* actvars ir-formals op-arg-application-ir));;generating code within theory
+			
+				(if (and op-ir-defn  args-ir (null op-ir-args))
+				(let ((op-var (mk-ir-variable (new-irvar)(pvs2ir-type (type op) bindings))))
+						;(break "pvs2ir-application")
+				(make-ir-lett* op-domain-vars ;was arg-vartypes
+						arg-types
+						args-ir
+						(make-ir-let op-var
+								op-ir-function
+								(mk-ir-let apply-return-var ;op-range-type
+									(mk-ir-apply op-var op-domain-vars nil) ;op-range-type
+									apply-return-var))))
+				(make-ir-lett* op-domain-vars ;was arg-vartypes
+						arg-types
+						args-ir
+						(mk-ir-let apply-return-var ;op-range-type
+							(mk-ir-apply op-ir-function op-domain-vars nil) ;op-range-type
+							apply-return-var))))))))
+	(let* ((op-ir-type (pvs2ir-type (type op) bindings))
+	       (op-var (new-irvartype op-ir-type))
+	       (op-ir (pvs2ir* op bindings nil)); expected is nil 
+	       (arg-vartypes (mk-variables-from-ir-domain-types op-ir-type nil))); (break "pvs2ir-application-2")
+;;	  (when (not (eql (length arg-vartypes)(length arg-types))) (break "pvs2-ir-application: arg-vartypes: ~s, ~% argtypes: ~s" arg-vartypes arg-types))
+	  (if (ir-array? op-ir-type)
+	      (mk-ir-let op-var op-ir
+			 (mk-ir-let (car arg-vartypes)(car args-ir)
+				    (mk-ir-let apply-return-var ;op-range-type
+					       (mk-ir-lookup op-var (car arg-vartypes))
+					       apply-return-var)))
+	      (if (ir-lambda? op-ir) ;;op-var is ignored, IR is beta-reduced
+		  (with-slots (ir-vartypes ir-body) op-ir
+		    (mk-ir-let* arg-vartypes args-ir
+				(if (eql (length ir-vartypes)(length arg-vartypes))
+				    (mk-ir-let* ir-vartypes arg-vartypes
+						ir-body)
+				    (if (eql (length arg-vartypes) 1)
+					(let ((ir-projected-args
+					       (loop for ir-vartype in ir-vartypes
+						  as i from 1
+						  collect (mk-ir-get (car arg-vartypes)
+								     (intern (format nil "project_~a" i))))))
+
+					  (mk-ir-let* ir-vartypes ir-projected-args ir-body))
+					(let* ((ir-fields (loop for ir-vartype in arg-vartypes
+							     as i from 1 
+							     collect
+							       (mk-ir-field (intern (format nil "project_~a" i))
+									    ir-vartype)))
+					       (ir-recordtype (ir-vtype (car ir-vartypes))))
+					  (mk-ir-let (car ir-vartypes) (mk-ir-record ir-fields ir-recordtype)
+						     ir-body))))))
+		  (let* ((ir-var-vtype (with-slots (ir-name ir-vtype ir-pvsid) op-var ir-vtype)))
+					(if (ir-funtype? ir-var-vtype) (with-slots (ir-domain ir-range) ir-var-vtype
+						(if (typep ir-domain 'ir-recordtype) ;; in fact ir-tupletype
+						(with-slots (ir-label ir-field-types) ir-domain 
+							(let* ((record-arg-irvar (mk-ir-variable (new-irvar) ir-domain))
+								(ir-fields (loop for ir-vartype in arg-vartypes
+									as i from 1 
+									collect
+									(mk-ir-field (intern (format nil "project_~a" i))
+											ir-vartype)))
+								)
+								(make-ir-let op-var op-ir 
+									(mk-ir-let apply-return-var 
+									(mk-ir-let record-arg-irvar (mk-ir-record ir-fields ir-domain) 
+									(mk-ir-apply op-var (list record-arg-irvar) nil ))
+									apply-return-var
+								))
+							))
+						(make-ir-let op-var op-ir ;; arg is not record, we go the usual way
+							(make-ir-lett* arg-vartypes
+									arg-types
+									args-ir
+									(mk-ir-let apply-return-var ;op-range-type
+										(mk-ir-apply op-var arg-vartypes nil) ;op-range-type
+										apply-return-var)))
+						)
+					)(break "op-var non-funtype"))
+				)
+		  
+		  ))))))
 
 ;; ------- IR2C --------
 
@@ -959,6 +1122,7 @@
 			  ))
 	       )
 	  (unless *suppress-output* ;*to-emacs* ;; causes problems
+	    (format t "~% PRE IR ~a" (print-ir pre-ir))
 	    (format t "~%$~a"  ir-function-name)   
 	    (format t "~%@~a~%" (print-ir post-ir))
 		)
