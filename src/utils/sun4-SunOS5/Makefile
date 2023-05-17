@@ -13,13 +13,10 @@ obj=file_utils.o
 .SUFFIXES: .c .o
 .c.o : ; $(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
-all : file_utils.so b64
+all : file_utils.so
 
 file_utils.so: ${obj}
 	$(LD) ../utils-ld-table $(LDFLAGS) -o file_utils.so ${obj}
 
-b64: ../b64.c
-	$(CC) -o ./b64 ../b64.c
-
 clean :
-	rm -f b64 *.o *.a *.so
+	rm -f *.o *.a *.so

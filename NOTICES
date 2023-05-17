@@ -8,34 +8,6 @@ GNU Public License (GPL).  A copy of the GPL is available in the file "LICENSE".
 o Mona (Available from http://www.brics.dk/mona/)
 o Emacs (Available from http://www.gnu.org/software/emacs/)
 
-This software also uses the "defsystem.lisp" package due to Mark Kantrowitz
-of CMU, to which the following notice applies:
-
-     Use and copying of this software and preparation of derivative works
-     based upon this software are permitted, so long as the following
-     conditions are met:
-	  o no fees or compensation are charged for use, copies, or
-	    access to this software
-	  o this copyright notice is included intact.
-     This software is made available AS IS, and no warranty is made about 
-     the software or its performance. 
-
-This software also uses "b64.c" due to Bob Trower, to which the following
-notice applies:
-
-     Permission is hereby granted, free of charge, to any person
-     obtaining a copy of this software and associated
-     documentation files (the "Software"), to deal in the
-     Software without restriction, including without limitation
-     the rights to use, copy, modify, merge, publish, distribute,
-     sublicense, and/or sell copies of the Software, and to
-     permit persons to whom the Software is furnished to do so,
-     subject to the following conditions:
-
-     The above copyright notice and this permission notice shall
-     be included in all copies or substantial portions of the
-     Software.
-
 This software uses the following public domain software:
 
 o md5.lisp (Pierre R. Mai)

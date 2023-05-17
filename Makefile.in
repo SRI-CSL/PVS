@@ -152,7 +152,7 @@ endif # end of buildcmds check
 SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	pvs.asd pvs pvsio proveit provethem emacs/pvs.xpm emacs/pvslogo.gif \
 	pvs-tex.sub pvs.sty bin/pvs-platform \
-	$(bindir)/b64 bin/tar-b64-mail Examples \
+	bin/tar-b64-mail Examples \
 	$(wildcard lib/*.pvs lib/*.prf lib/*.help) \
 	lib/pvs.grammar lib/pvs.bnf lib/pvs-style.css \
 	wish/pvs-support.tcl \
@@ -226,7 +226,6 @@ emacs-src = $(shell $(GIT) ls-files | $(GREP) -E ".*\.el$$" | $(GREP) -v "^\(doc
 emacs-src += emacs/pvs-prelude-files-and-regions.el
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
-           src/utils/$(PLATFORM)/b64 \
            src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
            src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
@@ -569,8 +568,7 @@ $(PVSPATH)TAGS : $(lisp-files) $(emacs-src)
 
 fileutils = \
    $(PVSPATH)src/utils/file-utils.lisp \
-   $(PVSPATH)src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
-   $(PVSPATH)src/utils/$(PLATFORM)/b64
+   $(PVSPATH)src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION)
 
 bddlib = $(PVSPATH)src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
@@ -599,20 +597,26 @@ yices2-tar = $(yices2-url)/$(yices2-version)/yices-$(yices2-version)-x86_64-appl
 endif
 endif
 endif
-yices1-tgt = yices/$(PLATFORM)/yices-$(yices1-version)
-yices2-tgt = yices/$(PLATFORM)/yices-$(yices2-version)
+yices1-tgt = yices/$(PLATFORM)/yices-$(yices1-version)/bin/yices
+yices2-tgt = yices/$(PLATFORM)/yices-$(yices2-version)/bin/yices
+yices1-lnk = bin/$(PLATFORM)/yices1
+yices2-lnk = bin/$(PLATFORM)/yices2
 
-yices : $(yices1-tgt) $(yices2-tgt)
+yices : | $(yices1-lnk) $(yices2-lnk)
 
 $(yices1-tgt) :
 	@-$(MKDIR_P) yices/$(PLATFORM)
 	curl --output - $(yices1-tar) | tar xzf - -C ./yices/$(PLATFORM)
-	(cd yices; ln -s ../$@/bin/yices yices1)
+
+$(yices1-lnk) : $(yices1-tgt)
+	ln -s ../../$< $@
 
 $(yices2-tgt) :
 	@-$(MKDIR_P) yices/$(PLATFORM)
 	curl --output - $(yices2-tar) | tar xzf - -C ./yices/$(PLATFORM)
-	(cd yices; ln -s ../$@/bin/yices yices2)
+
+$(yices2-lnk) : $(yices2-tgt)
+	ln -s ../../$< $@
 
 # Here are the rules for building PVS using pvs.asd, which does most of the
 # work. It not only builds the image, it creates all the libraries
@@ -730,7 +734,6 @@ distclean :
               pvs pvsio
 	rm -f src/pvs-info.lisp src/pvs-lexer.lisp src/pvs-methods.lisp \
               src/pvs-parser.lisp src/pvs-sorts.lisp
-	rm -f src/utils/{$(platforms)}/b64
 	rm -rf emacs/emacs19/*.{el,elc} emacs/emacs24 emacs/emacs23 \
                emacs/emacs22 emacs/emacs20 emacs/xeamcs20 emacs/xemacs21
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
@@ -777,7 +780,11 @@ allegro-devel-distdir: $(ALLEGRO_DEVEL_DISTFILES)
 sbclisp-distdir: $(SBCLISP_DISTFILES)
 	$(create-distdir)
 
-dist-gzip: ${dist-allegro-gzip} ${dist-sbclisp-gzip}
+dist-gzip: dist-allegro-gzip dist-sbclisp-gzip
+
+dist-allegro-gzip: ${dist-allegro-gzip}
+
+dist-sbclisp-gzip: ${dist-sbclisp-gzip}
 
 ${dist-allegro-gzip}: ${SYSTEM_FILES} allegro-distdir
 	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro.tgz
