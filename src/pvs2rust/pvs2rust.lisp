@@ -3,6 +3,8 @@
 ;;lambda-expressions, if-expressions, lets, and updates.
 
 (in-package :pvs)
+(defvar *pvs2rust-preceding-theories* nil)
+(defvar *current-pvs2rust-theory* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -643,10 +645,72 @@
 										(mk-ir-apply op-var arg-vartypes nil) ;op-range-type
 										apply-return-var)))
 						)
-					)(break "op-var non-funtype"))
+					)(progn ;(format t "~%ir var type ~a print ~a" ir-var-vtype (print-ir ir-var-vtype))
+					(make-ir-let op-var op-ir ;; arg is not record, we go the usual way
+							(make-ir-lett* arg-vartypes
+									arg-types
+									args-ir
+									(mk-ir-let apply-return-var ;op-range-type
+										(mk-ir-apply op-var arg-vartypes nil) ;op-range-type
+										apply-return-var)))
+					))
 				)
 		  
 		  ))))))
+
+(defun pvs2ir-constant (expr bindings)
+  (let* ((decl (declaration expr)))
+    (cond ((pvs2ir-primitive? expr) ;;borrowed from pvseval-update.lisp
+	   (cond ((eq (id expr) 'TRUE) (mk-ir-bool t))
+		 ((eq (id expr) 'FALSE) (mk-ir-bool nil))
+		 (t (mk-ir-primitive-function (id expr) decl))));for primitives, types are derived from args
+	  (t (let ((ir-defn (pvs2ir-constant-ir expr bindings decl)))
+	       (ir-function-name ir-defn))))))
+
+(defun pvs2ir-constant-ir (expr bindings decl)
+  (if (adt-expr? expr)
+      (let ((adt (adt expr)));(break "pvs2ir-constant-ir(adt)")
+	(pvs2ir-adt adt)
+	(ir (eval-info decl)))
+    (let* ((theory (module decl))
+	   (thinst (module-instance expr))
+	   (actuals (actuals thinst))
+	   (type-actuals (loop for act in actuals
+			       when (type-value act)
+			       collect (check-actual-type (type-value act) bindings)))
+	   (nonref-actuals (loop for actlabel in type-actuals
+				 when (not (eq actlabel 'ref))
+				 collect actlabel))
+	   (new-theory-id (format nil "~a_~{~a~^_~}" (simple-id (id theory))
+					type-actuals))
+	   (intern-theory-id (intern new-theory-id))
+	   ) (when nonref-actuals (break "nonref-actuals"))
+      (cond ((and nonref-actuals (not (eq theory *current-pvs2rust-theory*)))  ;; was (eq intern-theory-id *theory-id*)))
+	     (let* ((*theory-id* intern-theory-id)
+		    (monoclones (ht-instance-clone theory))
+		    (dummy (when (null monoclones)(format t "~% No monoclones")))
+		    (thclone (and monoclones (gethash  intern-theory-id monoclones)))
+		    (theory-instance (or thclone
+					 (let ((new-instance (subst-mod-params theory thinst)))
+					   (setf (id new-instance) *theory-id*)
+					   new-instance)))
+		    (dummy2 (when thclone (format t "~%Found thclone")))
+		    (instdecl (find  decl (theory theory-instance) :key #'generated-by))
+		    ) ;(break "nonref-actuals")			;place information matches
+	       (cond (thclone
+		      (format t "~%Pushing ~a" intern-theory-id)
+		      (pushnew theory-instance *preceding-mono-theories*)
+		      (ir (eval-info instdecl)))
+		     (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
+			(setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
+			(pvs2rust-theory-body-step theory-instance t nil) ;;NSH(3/20/22): Need to clear inherited eval-info
+			(format t "~%Pushing ~a" intern-theory-id)
+			(pushnew theory-instance *preceding-mono-theories*)
+			;; (if (memq theory *preceding-prelude-theories*)
+			;; 	 (push theory-instance *preceding-prelude-theories*)
+			;;   (push theory-instance *preceding-theories*))
+			(ir (eval-info instdecl))))))
+	    (t (ir (eval-info decl)))))))
 
 ;; ------- IR2C --------
 
@@ -1027,16 +1091,28 @@
 
 ;; -------- PVS2C ---------
 
-(defmethod pvs2c-preceding-theories* ((theory datatype))
+(defun pvs2rust-preceding-theories (theory)
+  (let ((*pvs2rust-preceding-theories* nil)
+	(theory-defn (get-theory theory)))
+    (pvs2rust-preceding-theories* theory-defn)
+      *pvs2rust-preceding-theories*))
+
+(defmethod pvs2rust-preceding-theories* ((theory datatype))
   (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
     (unless (eq (all-imported-theories theory) 'unbound)
       (loop for thy in all-imported-theories
-	    do (pvs2c-preceding-theories* thy)))
+	    do (pvs2rust-preceding-theories* thy)))
     ;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
-    (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
-    ;(when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
-    ;(when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-theory (pushnew adt-theory *pvs2rust-preceding-theories* :test #'same-id))
 	))
+
+(defmethod pvs2rust-preceding-theories* ((theory module))
+  (unless (eq (all-imported-theories theory) 'unbound)
+    (loop for thy in (all-imported-theories theory)
+	  do (pvs2rust-preceding-theories* thy)))
+  (unless (from-prelude? theory)
+    (pushnew theory *pvs2rust-preceding-theories* :test #'same-id)))
+
 
 (defmethod pvs2c-decl* ((decl const-decl))
   (if (or (adt-constructor-decl? decl)	;;these are automatically generated from the adt type decl
@@ -1244,9 +1320,25 @@
 		    (format output "~%#endif")
 		    (id theory))))
 
+(defun pvs2rust (theoryref)
+	(let* ((theory (get-typechecked-theory theoryref nil t))
+		(force? t))
+		(with-workspace theory
+				(pvs2rust-theories (pvs2rust-preceding-theories theory) force?))))
 
-(defun pvs2c-theory-body-step (theory force? indecl)
-  (let* ((*current-pvs2c-theory* theory)
+(defun pvs2rust-theories (theories force?)
+  (mapcar #'(lambda (th) (pvs2rust-theory* th force?)) (reverse theories)))
+
+(defun pvs2rust-theory* (theory &optional force?)
+  (with-workspace theory
+		  (pvs2rust-theory-body theory force?)))
+
+(defun pvs2rust-theory-body (theory &optional force? indecl);;*theory-id* needs to be bound by caller
+  (let* ((*theory-id* (simple-id (id theory))))
+    (pvs2rust-theory-body-step theory force? indecl)))
+
+(defun pvs2rust-theory-body-step (theory force? indecl)
+  (let* ((*current-pvs2rust-theory* theory)
 	 (*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
 	 (*theory-formals* (formals-sans-usings theory))
 	 (*ir-type-info-table* nil)
@@ -1273,10 +1365,6 @@
 				  (pvs2c-decl decl force?))
 	)
 	))
-
-(defun pvs2rust (ref)
-	(pvs2c-theory ref t))
-
 
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
   (let* (
