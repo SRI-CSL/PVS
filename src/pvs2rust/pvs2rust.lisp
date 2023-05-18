@@ -8,7 +8,11 @@
 
 (defmethod print-ir ((ir-expr ir-apply))
   (with-slots (ir-func ir-params ir-args ir-atype) ir-expr
-	      `(,(print-ir ir-func) ,@(print-ir ir-params) ,@(print-ir ir-args)  ,(print-ir ir-atype))))
+	      `(,(print-ir ir-func) ,@(print-ir ir-params) ,@(print-ir ir-args))))
+
+(defmethod print-ir ((ir-expr ir-record ))
+  (with-slots (ir-fields ir-recordtype) ir-expr
+	      `(record ,(print-ir ir-recordtype) ,(print-ir ir-fields))))
 
 (defmethod print-ir ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn type-declaration) ir-type
@@ -28,6 +32,7 @@
     (let ((print-renames (loop for (x . y) in renamings collect (cons (print-ir x)(print-ir y)))))
       (if print-renames
 	  `,(call-next-method)
+	  ;;`(rename ,print-renames in ,(call-next-method))
 	(call-next-method)))))
 
 
@@ -619,11 +624,16 @@
 											ir-vartype)))
 								)
 								(make-ir-let op-var op-ir 
-									(mk-ir-let apply-return-var 
-									(mk-ir-let record-arg-irvar (mk-ir-record ir-fields ir-domain) 
-									(mk-ir-apply op-var (list record-arg-irvar) nil ))
-									apply-return-var
-								))
+									(make-ir-lett* arg-vartypes
+										arg-types
+										args-ir
+										(mk-ir-let apply-return-var 
+											(mk-ir-let record-arg-irvar (mk-ir-record ir-fields ir-domain) 
+											(mk-ir-apply op-var (list record-arg-irvar) nil ))
+											apply-return-var
+										)
+									)
+								)
 							))
 						(make-ir-let op-var op-ir ;; arg is not record, we go the usual way
 							(make-ir-lett* arg-vartypes
@@ -1122,7 +1132,7 @@
 			  ))
 	       )
 	  (unless *suppress-output* ;*to-emacs* ;; causes problems
-	    (format t "~% PRE IR ~a" (print-ir pre-ir))
+	    ;;(format t "~% PRE IR ~a" (print-ir pre-ir))
 	    (format t "~%$~a"  ir-function-name)   
 	    (format t "~%@~a~%" (print-ir post-ir))
 		)
