@@ -337,7 +337,7 @@ case $PVSLISP in
 	evalflag="-eval"
 	;;
     sbclisp)
-	noinit="--noinform --no-userinit"
+	noinit="--no-userinit"
 	evalflag="--eval"
 	;;
 esac
