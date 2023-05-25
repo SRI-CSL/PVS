@@ -338,8 +338,8 @@ containing decl.  Otherwise it is a list of declarations."
 		   (or (and (declaration? ex) (generated-by ex)) ; no need to go down further
 		       (and (typep ex '(or actual funtype type-name lambda-conversion))
 			    (null (place ex)))
-		       (and (typep ex '(and syntax
-					(not (or exporting domain-tupletype arg-tuple-expr))))
+		       (and (syntax? ex)
+			    (not (typep ex '(or exporting domain-tupletype arg-tuple-expr)))
 			    (or (place ex)
 				(typep ex '(or lambda-expr expr-as-type chained-branch))
 				(break "Place not set"))
@@ -351,11 +351,7 @@ containing decl.  Otherwise it is a list of declarations."
 			      (push ex objects))
 			    nil)
 		       (when (and (place ex)
-				  (typep ex '(and syntax
-					      (not assignment)
-					      (or funtype
-					       tupletype
-					       recordtype)))
+				  (typep ex '(and syntax (not assignment) (or funtype tupletype recordtype)))
 				  (within-place pos1 (place ex))
 				  (or (equal pos1 pos2)
 				      (within-place pos2 (place ex))))
