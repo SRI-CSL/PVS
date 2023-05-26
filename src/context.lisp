@@ -2569,9 +2569,8 @@ Note that the lists might not be the same length."
 (defvar *library-strategy-file-dates* nil)
 
 (defun load-library-strategy-files ()
-  (dolist (lib-path ;;(current-library-pathnames)
-	    (get-pvs-library-alist))
-    (load-library-strategy-file (cdr lib-path))))
+  (dolist (lib-path (current-library-pathnames))
+    (load-library-strategy-file lib-path)))
 
 (defun load-library-strategy-file (lib)
   (let* (#+allegro
