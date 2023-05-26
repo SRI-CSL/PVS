@@ -1056,7 +1056,7 @@
 	(if quiet-flag
 	    pp
 	    (unless *suppress-printing*
-	      (commentary pp)))))))
+	      (commentary (protect-format-string pp))))))))
 
 
 (defun if-form? (x) (and (typep x 'sequence)
