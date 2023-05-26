@@ -107,6 +107,7 @@
 ;******
 
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
+  (asdf/source-registry:initialize-source-registry)
   (setq *pvs-path* (initial-pvs-path path))
   (setq *pvs-log-stream* nil)
   (start-load-watching)
@@ -131,6 +132,8 @@
 		  top-level::*print-level* nil)
   (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
     (pushnew exepath *pvs-directories*)
+    ;;(cffi:load-foreign-library (format nil "libssl.~a" #+darwin "dylib" #-darwin "so"))
+    ;;(cffi:load-foreign-library (format nil "libcrypto.~a" #+darwin "dylib" #-darwin "so"))
     (cffi:load-foreign-library (format nil "~a/file_utils.~a" exepath
 				       #+darwin "dylib"
 				       #-darwin "so"))
@@ -238,10 +241,10 @@ should be enough."
 		      (t (pvs-warning "The environment variable PVSPATH is set to ~a, ~
                                   which does not exist" evpath)
 			 nil)))))
-	((let ((cdir (uiop:directory-exists-p (car (uiop:raw-command-line-arguments)))))
+	((let ((cfile (uiop:truename* (car (uiop:raw-command-line-arguments)))))
 	   ;; We were started as, e.g., bin/ix86_64-Linux/runtime/pvs-allegro
 	   ;; assume the parent of bin is a valid PVS installed directory.
-	   (and cdir (find-pvs-path-from cdir))))
+	   (and cfile (find-pvs-path-from cfile))))
 	((let* ((pvs-sys (asdf:find-system :pvs))
 		(path (when pvs-sys (slot-value pvs-sys 'asdf/component:absolute-pathname))))
 	   path))

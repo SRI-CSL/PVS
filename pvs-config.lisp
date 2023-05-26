@@ -386,6 +386,14 @@ targets and copying them to the corresponding bin directory."
 	   (lib-src (format nil "~asrc/WS1S/~a/~a" *pvs-path* platform lib))
 	   (lib-dst (format nil "~a/~a" build-dir lib)))
       (alexandria:copy-file lib-src lib-dst))
+    ;;(clrhash asdf/source-registry:*source-registry*)
+    (dolist (shobj sb-sys:*shared-objects*)
+      (when (member (sb-alien::shared-object-namestring shobj)
+		    '("libcrypto.so" "libssl.so")
+		    :test #'(lambda (str1 str2) (uiop:string-prefix-p str2 str1)))
+	(sb-alien:unload-shared-object (sb-alien::shared-object-pathname shobj))
+	;;(setf (sb-alien::shared-object-dont-save shobj) t)
+	))
     (sb-ext:save-lisp-and-die
      pvs-prog
      :toplevel (function startup-pvs)
