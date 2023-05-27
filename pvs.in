@@ -381,17 +381,6 @@ if [ "$PVS_LIBRARY_PATH" -a ! "$getversion" -a ! "$rawmode" ]
    done
 fi
 
-# Warn if yices is not in the path
-# Note the $SHELL call - without it, aliases (at least for tcsh) won't be found
-yicesv=`$SHELL -c "yices --version" 2> /dev/null`
-if [ -z "yicesv" ]
- then echo "Warning: yices not in your PATH - the new yices prover command"
-      echo "  will not work."
-      echo "It is not needed to run PVS, but if you want to try it out,"
-      echo "  Download it from http://yices.csl.sri.com, install it,"
-      echo "  add to your PATH, and restart PVS."
-fi
-
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $emacsargs $loadafter"
 
 if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
