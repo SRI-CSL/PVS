@@ -38,76 +38,6 @@
 	(call-next-method)))))
 
 
-(defun pvs2ir-primitive-application (op arg-names op-arg-types args-ir ir-expr-type bindings)
-  (let ((ir-op (pvs2ir-constant op bindings)))
-    (with-slots (ir-fname) ir-op
-      (let ((arg-var-type1 (mk-ir-variable (car arg-names)(car op-arg-types))))
-	(case ir-fname
-	  ((AND & ∧)
-	   (mk-ir-let arg-var-type1 (car args-ir)
-		      (mk-ir-ift arg-var-type1
-				 (cadr args-ir)
-				 (mk-ir-bool nil))))
-	  ((OR ∨)
-	   (mk-ir-let arg-var-type1 (car args-ir)
-		      (mk-ir-ift arg-var-type1
-				 (mk-ir-bool t)
-				 (cadr args-ir))))
-	  ((IMPLIES => ⇒)
-	   (mk-ir-let arg-var-type1 (car args-ir)
-		      (mk-ir-ift arg-var-type1
-				 (cadr args-ir)
-				 (mk-ir-bool t))))
-	(t (let ((arg-vars (loop for ir-var in arg-names
-				     as ir-typ in op-arg-types
-				     collect (mk-ir-variable ir-var ir-typ))))
-
-			(let ((real-vars (loop for arg-var in arg-vars
-		 						   for arg-ir in args-ir 
-								when (not (typep arg-ir 'ir-integer)) collect arg-var
-							 ))
-				  (corresponding-ir (loop for arg-ir in args-ir 
-									when (not (typep arg-ir 'ir-integer)) collect arg-ir ;BUG ici
-									))
-				  (full-args (loop for arg-var in arg-vars
-		 						   for arg-ir in args-ir 
-								collect (if (typep arg-ir 'ir-integer) (slot-value arg-ir 'ir-intval) arg-var)
-							 ))
-				 )
-				(mk-ir-let* real-vars
-			 				corresponding-ir
-			 				(mk-ir-apply (pvs2ir-constant op bindings) full-args nil ir-expr-type))
-			 ))))))))
-
-(defmethod pvs2ir* ((expr if-expr) bindings expected)
-  (cond ((branch? expr)
-	 (if (last-cond-expr? expr)
-	     (pvs2ir* (then-part expr) bindings expected)
-	   (let ((ifvar (mk-ir-variable (new-irvar) 'boolean)) ;GASC
-		 (cond-ir (pvs2ir* (condition expr) bindings nil))
-		 (then-ir (pvs2ir* (then-part expr) bindings expected))
-		 (else-ir (pvs2ir* (else-part expr) bindings expected)))
-	     (mk-ir-let  ifvar cond-ir
-		 	 (mk-ir-ift ifvar then-ir else-ir))))) ; GASC changed for allowing direct ivar < 1 and avoid let ivar2 = 1
-		;(mk-ir-ift cond-ir then-ir else-ir))))
-	(t (call-next-method))))
-
-
-(defun pvs2ir-assignments (lhs-list rhs-irvar-list
-			       ir-exprvar ir-expr-type bindings)
-  (cond ((consp lhs-list)
-	 (let ((ir-assignment1
-		(pvs2ir-assignment1 ir-expr-type
-				    (car lhs-list)
-				    (car rhs-irvar-list)
-				    ir-exprvar bindings))
-	       (ir-var1 (new-irvar)))
-	   (let ((ir-vartype1 (mk-ir-variable ir-var1 ir-expr-type)))
-	     (mk-ir-let  ir-vartype1 ir-assignment1
-			 (pvs2ir-assignments (cdr lhs-list)(cdr rhs-irvar-list)
-					     ir-vartype1 ir-expr-type bindings)))))
-	(t ir-exprvar)))
-
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
   (cond ((consp lhs)
 	 (let* ((ir-exprvar11 (new-irvar))
@@ -1001,7 +931,8 @@
 							(adt-accessor-decl? decl))
 						(pvs2ir-decl decl))
 						(let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
-						(ir2c-decl* ir decl)))))
+						(ir2c-decl* ir decl)
+						))))
 			   )
   )
 
