@@ -900,7 +900,7 @@ is replaced with replacement."
       (intern sym :pvs)))
 
 (defun unique-symbol* (sym ctr)
-  (let ((nstr (format nil "~a~d" sym ctr)))
+  (let ((nstr (format nil "~a-~d" sym ctr)))
     (if (find-symbol nstr)
 	(unique-symbol* sym (1+ ctr))
 	(intern nstr))))
@@ -2873,12 +2873,15 @@ and get-print-type returns a funtype with type-name domain and range."
 	       (cpos (position cdecl same-ids))
 	       (vdecl (declaration x))
 	       (vpos (position vdecl *rename-variables*)))
-	  (assert cpos)
-	  (unless vpos
-	    (setq *rename-variables* (append *rename-variables* (list vdecl)))
-	    (setq vpos (position vdecl *rename-variables*)))
-	  (copy x :id (makesym "~a%~a%~d%~a%~d%a"
-			       (id cth) (id cdecl) cpos (id x) vpos (type-of (type x)))))
+	  (cond (cpos
+		 (unless vpos
+		   (setq *rename-variables* (append *rename-variables* (list vdecl)))
+		   (setq vpos (position vdecl *rename-variables*)))
+		 (copy x :id (makesym "~a%~a%~d%~a%~d%~a"
+				      (id cth) (id cdecl) cpos (id x) vpos (type-of (type x)))))
+		(t
+		 (copy x :id (makesym "~a%~a%~a%~a"
+				      (id cth) (id cdecl) (id x) (type-of (type x)))))))
 	(copy x
 	  'id (id (resolution x))
 	  'mod-id (when (or (not (current-theory))
@@ -2948,7 +2951,7 @@ and get-print-type returns a funtype with type-name domain and range."
 			   (when *full-name-depth*
 			     (1- *full-name-depth*))))
 	 (maps (mappings mi))
-	 (nmi (mk-modname (or modid (id mi)) acts libid maps dacts))
+	 (nmi (mk-modname (or modid (id mi)) acts libid maps dacts (declaration x)))
 	 (res (mk-resolution (declaration x) nmi nil)))
     (copy x
       'mod-id modid
