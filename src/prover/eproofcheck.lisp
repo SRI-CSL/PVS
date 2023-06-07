@@ -29,10 +29,6 @@
 
 (in-package :pvs)
 
-(export '(pc-parse pc-typecheck check-arguments
-	  *multiple-proof-default-behavior* *last-attempted-proof*
-	  extract-justification-sexp collect-justification))
-
 (defvar *subgoals* nil)
 
 (defvar *prover-log* nil)
