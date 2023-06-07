@@ -1312,8 +1312,8 @@ decl, args, and mappings."
 		   (expr-as-type
 		    (break "matching-actual expr-as-type"))
 		   (subtype
-		    (assert (set-expr? aex))
-		    (break "matching-actual subtype"))
+		    (when (or (typep aex 'set-expr) (plusp (parens aex)))
+		      (matching-actual-expr aex mactual)))
 		   (null (matching-actual-expr aex mactual))
 		   (t (break "matching-actual: fall-through"))))
 	     (matching-actual-expr aex mactual))))))
