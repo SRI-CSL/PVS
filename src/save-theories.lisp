@@ -955,6 +955,7 @@ type-decls in classes-decl.lisp."
       (assert (module? (current-theory)))
       (setf (declarations-hash obj)
 	    (restore-declarations-hash (declarations-hash obj)))
+      #+pvsdebug
       (maphash #'(lambda (id decls)
 		   (assert (every #'(lambda (decl) (same-last-id id (id decl))) decls)
 			   () "Decl-id mismatch in restore-saved-context of file ~a~a.pvs"
