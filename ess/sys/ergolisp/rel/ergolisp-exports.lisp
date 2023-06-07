@@ -27,7 +27,7 @@
 
 #+harlequin-common-lisp
 (export '(assq))
-(export '(ergo-disksave def-disksave-hook mover))
+;;(export '(ergo-disksave def-disksave-hook mover))
 
 ;;;; TYPE-CHECK
 

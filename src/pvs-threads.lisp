@@ -74,7 +74,8 @@
   thread
   input-queue
   output-queue
-  outputs)
+  outputs
+  logs)
 
 ;; Need to be able to return the following, note that only the commentary is
 ;; not derivable from the ps.
@@ -189,6 +190,7 @@ the input-queue, and return the lisp form of the string."
       (when (outputs sess)
 	;;(format t "~%session-read: have ~d outputs" (length (outputs sess)))
 	(push-queue (outputs sess) (output-queue sess))
+	(push (outputs sess) (logs sess))
 	(setf (outputs sess) nil))
       ;;(format t "~%session-read: waiting on input-queue")
       (session-read* sess))))
@@ -198,15 +200,17 @@ the input-queue, and return the lisp form of the string."
     ;; (format t "~%session-read*: input = ~s" input)
     (multiple-value-bind (inp err)
 	(ignore-errors (read-from-string input))
-      (if inp
-	  (if (in-the-debugger)
-	      (if (and (consp inp)
-		       (symbolp (car inp))
-		       (string-equal (car inp) "lisp"))
-		  inp
-		  (list '(restore) inp))
-	      (if (quit-command-p inp) '(quit) inp))
-	  err))))
+      (cond (inp
+	     (push inp (logs sess))
+	     (if (in-the-debugger)
+		 (if (and (consp inp)
+			  (symbolp (car inp))
+			  (string-equal (car inp) "lisp"))
+		     inp
+		     (list '(restore) inp))
+		 (if (quit-command-p inp) '(quit) inp)))
+	    (t (push err (logs sess))
+	       err)))))
 
 (defun session-finish ()
   "This should be called from the thread, to notify the output queue that
@@ -214,6 +218,7 @@ the session is finished after this."
   (let ((sess (current-session)))
     (when sess
       (push-queue (outputs sess) (output-queue sess))
+      (push (outputs sess) (logs sess))
       (loop until (queue-empty-p (output-queue sess))
 	    do (progn ;;(format t "~%finish-proofstate: waiting for output-queue to empty")
 		      (sleep .1))))))
@@ -247,11 +252,14 @@ Returns a list of the form ((id . status) (id . status) ...)"
 			(if (session-alive-p sess) :active :inactive)))
 	prf-sessions))))
 
-(defun prove-formula-in-session (id fdecl rerun?)
+(defun prove-formula-in-session (id fdecl rerun? input-hook)
   "This is the function run in a proof-session thread."
   ;; For some reason, a waiting thread in Allegro is difficult to delete,
   (let ((*multiple-proof-default-behavior* :noquestions)
 	(*pvs-emacs-interface* nil)
+	(*prover-input-hooks* (if input-hook
+				  (cons input-hook *prover-input-hooks*)
+				  *prover-input-hooks*))
 	(*pvs-message-hook* (list #'session-output)))
     (session-output (format nil "~%~a started at ~a" id (iso8601-date)))
     (prove-formula fdecl :rerun? rerun?)))
@@ -272,11 +280,12 @@ Returns a list of the form ((id . status) (id . status) ...)"
 ;;;       :waiting - prover is waiting for input
 ;;;      Note that if it's not waiting, then the session is gone
 
-(defun prover-init (formref &optional rerun?)
+(defun prover-init (formref &key rerun? input-hook)
   "Creates a proof-session, and returns (values proofstate log id status)."
   (let* ((fdecl (get-formula-decl formref))
 	 (id (get-new-session-id (id fdecl)))
-	 (sess (make-session id #'(lambda () (prove-formula-in-session id fdecl rerun?)))))
+	 (sess (make-session id #'(lambda ()
+				    (prove-formula-in-session id fdecl rerun? input-hook)))))
     (change-class sess 'proof-session :formula-decl fdecl)
     ;; Wait for output-proofstate to produce a new proofstate
     ;;(format t "~%make-proof-session: waiting for output-queue")
@@ -371,6 +380,7 @@ Returns a list of the form ((id . status) (id . status) ...)"
       (setf (status-flag ps) 'quit))
     (session-output ps)
     (session-finish)
+    (write-prover-log)
     ps))
 
 (defun prove-prelude-to-json ()
@@ -378,7 +388,7 @@ Returns a list of the form ((id . status) (id . status) ...)"
     (ensure-directories-exist json-path)
     (dolist (th *prelude-theories*)
       (let ((th-path (format nil "~a~a.json" json-path (id th)))
-	    (prfs (mapcar #'(lambda (fmla) (prover-init fmla t))
+	    (prfs (mapcar #'(lambda (fmla) (prover-init fmla :rerun? t))
 		    (all-formulas th))))
 	(when prfs
 	  (with-open-file (out th-path :direction :output :if-exists :supersede)

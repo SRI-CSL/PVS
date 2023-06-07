@@ -107,6 +107,7 @@
 ;******
 
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
+  (asdf/source-registry:initialize-source-registry)
   (setq *pvs-path* (initial-pvs-path path))
   (setq *pvs-log-stream* nil)
   (start-load-watching)
@@ -115,7 +116,7 @@
   ;; Possible we want to use TMPDIR value regardless
   (let ((tmpdir (environment-variable "TMPDIR")))
     (when tmpdir
-      (unless (and (directory-p tmpdir)
+      (unless (and (uiop:directory-exists-p tmpdir)
 		   (write-permission? tmpdir))
 	(pvs-message "environment variable TMPDIR is not a writable directory:~%  ~a"
 	  tmpdir)
@@ -129,9 +130,10 @@
   (setq *print-pretty* t)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  #+(or cmu sbcl)
   (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
     (pushnew exepath *pvs-directories*)
+    ;;(cffi:load-foreign-library (format nil "libssl.~a" #+darwin "dylib" #-darwin "so"))
+    ;;(cffi:load-foreign-library (format nil "libcrypto.~a" #+darwin "dylib" #-darwin "so"))
     (cffi:load-foreign-library (format nil "~a/file_utils.~a" exepath
 				       #+darwin "dylib"
 				       #-darwin "so"))
@@ -141,9 +143,7 @@
     (cffi:load-foreign-library (format nil "~a/ws1s.~a" exepath
 				       #+darwin "dylib"
 				       #-darwin "so"))
-    (BDD_bdd_init)
-    #+allegro
-    (nlyices-init))
+    (BDD_bdd_init))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
@@ -216,10 +216,10 @@
 (defun possible-pvs-path (dir)
   "Simply checks if dir/pvs and dir/bin exist - obviously not fool-proof, but
 should be enough."
-  (let ((path (directory-p dir)))
+  (let ((path (uiop:directory-exists-p dir)))
     (and path
-	 (file-exists-p (concatenate 'string (namestring path) "pvs"))
-	 (directory-p (concatenate 'string (namestring path) "bin"))
+	 (uiop:file-exists-p (concatenate 'string (namestring path) "pvs"))
+	 (uiop:directory-exists-p (concatenate 'string (namestring path) "bin"))
 	 path)))
 
 (defun find-pvs-path-from (dir)
@@ -236,14 +236,15 @@ should be enough."
 	     (error "Bad PVS path: ~a" path)))
 	((let ((evpath (environment-variable "PVSPATH")))
 	   (and evpath
-		(cond ((uiop:directory-exists-p evpath))
+		(cond ((uiop:directory-exists-p evpath)
+		       (truename evpath))
 		      (t (pvs-warning "The environment variable PVSPATH is set to ~a, ~
                                   which does not exist" evpath)
 			 nil)))))
-	((let ((cdir (uiop:directory-exists-p (car (uiop:raw-command-line-arguments)))))
+	((let ((cfile (uiop:truename* (car (uiop:raw-command-line-arguments)))))
 	   ;; We were started as, e.g., bin/ix86_64-Linux/runtime/pvs-allegro
 	   ;; assume the parent of bin is a valid PVS installed directory.
-	   (and cdir (find-pvs-path-from cdir))))
+	   (and cfile (find-pvs-path-from cfile))))
 	((let* ((pvs-sys (asdf:find-system :pvs))
 		(path (when pvs-sys (slot-value pvs-sys 'asdf/component:absolute-pathname))))
 	   path))
@@ -399,14 +400,14 @@ nil."
 (defun library-path-to-id (abspath)
   (car (rassoc abspath (pvs-library-alist) :test #'file-equal)))
 
-(defun lirary-id-to-path (lib-id)
+(defun library-id-to-path (lib-id)
   (cdr (assoc lib-id (pvs-library-alist))))
 
 ;;; Called by Emacs function pvs-add-library-path
 (defun add-library-path (dir)
   (when (string= dir "")
     (setq dir (merge-pathnames #p"lib/" *pvs-path*)))
-  (if (file-exists-p dir)
+  (if (uiop:file-exists-p dir)
       (let ((tdir (truename dir)))
 	(if (member tdir *pvs-library-path* :test #'file-equal)
 	    (pvs-warning "~a is already in your pvs library path")
@@ -598,7 +599,7 @@ nil."
 
 (defun get-pvs-version ()
   "Returns the major.minor.revision form (e.g., 7.0.1078)"
-  (if (file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
+  (if (uiop:file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
       (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*))
 	(read vers))
       *pvs-version*))
@@ -2480,7 +2481,7 @@ Note that even proved ones get overwritten"
 
 (defun prove-file-at (name declname line rerun?
 			   &optional origin buffer prelude-offset
-			   background? display? unproved?)
+			   background? display? unproved? in-thread)
   ;; Check for old style input - there was no declname then
   (unless (integerp line)
     (setq unproved? display?
@@ -2493,7 +2494,8 @@ Note that even proved ones get overwritten"
 	  line declname
 	  declname nil))
   (let ((*to-emacs* background?))
-    (if (or *in-checker* *in-evaluator*)
+    (if (and (not in-thread)
+	     (or *in-checker* *in-evaluator*))
 	(pvs-message "Must exit the prover/evaluator first")
 	(with-pvs-file (fname) name
 	  (multiple-value-bind (fdecl place)
@@ -2503,49 +2505,58 @@ Note that even proved ones get overwritten"
 		     (null (justification fdecl)))
 		(pvs-message "Formula ~a has no proof to rerun." (id fdecl))
 		(if fdecl
-		    (with-context (context fdecl)
-		      (let ((*current-system* (if (member origin '("tccs" "ppe"))
-						  'pvs
-						  (intern origin :pvs)))
-			    (*start-proof-display* display?)
-			    (ojust (extract-justification-sexp
-				    (justification fdecl)))
-			    (decision-procedure (decision-procedure-used fdecl))
-			    (*justifications-changed?* nil))
-			(read-strategies-files)
-			(let ((proof (cond (background?
-					    (pvs-prove-decl fdecl t))
-					   (t (auto-save-proof-setup fdecl)
-					      (prove fdecl
-						     :strategy
-						     (when rerun? '(rerun)))))))
-			  (when (typep proof 'proofstate)
-			    (setq *last-proof* proof)))
-			(unless (or background?
-				    (null (default-proof fdecl)))
-			  (setf (interactive? (default-proof fdecl)) t))
-		      ;; Save the proof if it is different.
-			(unless (or (equal origin "prelude")
-				    (from-prelude? fdecl))
-			  (when (or *justifications-changed?*
-				    (not (equal ojust
-						(extract-justification-sexp
-						 (justification fdecl))))
-				    (not (eq (decision-procedure-used fdecl)
-					     decision-procedure)))
-			    (save-all-proofs (module fdecl)))
-			  ;; If the proof status has changed, update the context.
-			  (update-context-proof-status fdecl))
-			(remove-auto-save-proof-file)
-			(let ((*to-emacs* t))
-			  (pvs-locate buffer fdecl
-				      (if (and prelude-offset
-					       (not (zerop prelude-offset)))
-					  (vector (- (line-begin place) prelude-offset)
-						  (col-begin place)
-						  (- (line-end place) prelude-offset)
-						  (col-end place))
-					  place)))))))))))
+		    (if in-thread
+			(let ((result (prover-init fdecl)))
+			  (if *to-emacs*
+			      (let* ((*print-pretty* nil)
+				     (*output-to-emacs*
+				      (format nil ":pvs-prfthd ~a :end-pvs-prfthd"
+					result)))
+				(to-emacs))
+			      (format t "~a" result)))
+			(with-context (context fdecl)
+			  (let ((*current-system* (if (member origin '("tccs" "ppe"))
+						      'pvs
+						      (intern origin :pvs)))
+				(*start-proof-display* display?)
+				(ojust (extract-justification-sexp
+					(justification fdecl)))
+				(decision-procedure (decision-procedure-used fdecl))
+				(*justifications-changed?* nil))
+			    (read-strategies-files)
+			    (let ((proof (cond (background?
+						(pvs-prove-decl fdecl t))
+					       (t (auto-save-proof-setup fdecl)
+						  (prove fdecl
+							 :strategy
+							 (when rerun? '(rerun)))))))
+			      (when (typep proof 'proofstate)
+				(setq *last-proof* proof)))
+			    (unless (or background?
+					(null (default-proof fdecl)))
+			      (setf (interactive? (default-proof fdecl)) t))
+			    ;; Save the proof if it is different.
+			    (unless (or (equal origin "prelude")
+					(from-prelude? fdecl))
+			      (when (or *justifications-changed?*
+					(not (equal ojust
+						    (extract-justification-sexp
+						     (justification fdecl))))
+					(not (eq (decision-procedure-used fdecl)
+						 decision-procedure)))
+				(save-all-proofs (module fdecl)))
+			      ;; If the proof status has changed, update the context.
+			      (update-context-proof-status fdecl))
+			    (remove-auto-save-proof-file)
+			    (let ((*to-emacs* t))
+			      (pvs-locate buffer fdecl
+					  (if (and prelude-offset
+						   (not (zerop prelude-offset)))
+					      (vector (- (line-begin place) prelude-offset)
+						      (col-begin place)
+						      (- (line-end place) prelude-offset)
+						      (col-end place))
+					      place))))))))))))
   ;; This prints nothing - better than "nil"
   ;; Actually causes problems - will look into other solutions
   ;; (unless *noninteractive*
@@ -2555,78 +2566,79 @@ Note that even proved ones get overwritten"
 (deftype unproved-formula-decl () '(and formula-decl (satisfies unproved?)))
 
 (defun formula-decl-to-prove (fileref declname line origin &optional unproved?)
-  (with-pvs-file (name) fileref
-    (if (and (member origin '("ppe" "tccs") :test #'string-equal)
-	     (not (get-theory name)))
-	(pvs-message "~a is not typechecked" name)
-	(cond
-	  ((string-equal origin "ppe")
-	   (let* ((theories (ppe-form (get-theory name)))
-		  (typespec (formula-typespec unproved?))
-		  (decl (get-decl-at line typespec theories)))
-	     (when decl
-	       (values (find-if #'(lambda (d)
-				    (and (formula-decl? d)
-					 (eq (id d) (id decl))))
-			 (all-decls (get-theory name)))
-		       (place decl)))))
-	  ((string-equal origin "tccs")
-	   (let* ((theory (get-theory name))
-		  (decls
-		   (if declname
-		       (tcc-form (declname-to-decl declname theory))
-		       (tcc-form theory)))
-		  (decl (find-if #'(lambda (d)
-				     (and (numberp (line-end (place d)))
-					  (>= (line-end (place d)) line)
-					  (or (null unproved?)
-					      (unproved? d))))
-			  decls)))
-	     (when decl
-	       (values (find-if #'(lambda (d) (and (eq (module d) theory)
-						   (formula-decl? d)
-						   (eq (id d) (id decl))))
-			 (all-decls theory))
-		       (place decl)))))
-	  ((member origin '("prelude" "pvsio_prelude") :test #'string-equal)
-	   (let* ((theory (ignore-errors (get-theory name)))
-		  (theories (if (and theory (generated-by theory))
-				(list theory)
-				(remove-if #'generated-by
-				  (if (string= name "pvsio_prelude")
-				      (member '|stdlang| *prelude-theories*
-					      :key #'id)
-				      *prelude-theories*))))
-		  (typespec (formula-typespec unproved?))
-		  (decl-at (get-decl-at line typespec theories))
-		  (decl (if (judgement? decl-at)
-			    (let ((jtcc (find-if #'(lambda (d)
-						     (eq (id d)
-							 (id decl-at)))
-					  (generated decl-at))))
-			      (unless (place jtcc)
-				(setf (place jtcc) (place decl-at)))
-			      jtcc)
-			    decl-at)))
-	     (values decl (place decl))))
-	  ((string-equal origin "proof-status")
-	   (let* ((theory (get-theory name))
-		  (fdecl (find-if #'(lambda (d)
+  (with-pvs-file (fname) fileref
+    (let ((name (pathname-name fname)))
+      (if (and (member origin '("ppe" "tccs") :test #'string-equal)
+	       (not (get-theory name)))
+	  (pvs-message "~a is not typechecked" name)
+	  (cond
+	    ((string-equal origin "ppe")
+	     (let* ((theories (ppe-form (get-theory name)))
+		    (typespec (formula-typespec unproved?))
+		    (decl (get-decl-at line typespec theories)))
+	       (when decl
+		 (values (find-if #'(lambda (d)
 				      (and (formula-decl? d)
-					   (string= (id d) declname)))
-			   (all-decls theory))))
-	     (values fdecl (vector line 0 line 0))))
-	  (t (let* ((theories (typecheck-file name nil nil nil t))
+					   (eq (id d) (id decl))))
+			   (all-decls (get-theory name)))
+			 (place decl)))))
+	    ((string-equal origin "tccs")
+	     (let* ((theory (get-theory name))
+		    (decls
+		     (if declname
+			 (tcc-form (declname-to-decl declname theory))
+			 (tcc-form theory)))
+		    (decl (find-if #'(lambda (d)
+				       (and (numberp (line-end (place d)))
+					    (>= (line-end (place d)) line)
+					    (or (null unproved?)
+						(unproved? d))))
+			    decls)))
+	       (when decl
+		 (values (find-if #'(lambda (d) (and (eq (module d) theory)
+						     (formula-decl? d)
+						     (eq (id d) (id decl))))
+			   (all-decls theory))
+			 (place decl)))))
+	    ((member origin '("prelude" "pvsio_prelude") :test #'string-equal)
+	     (let* ((theory (ignore-errors (get-theory name)))
+		    (theories (if (and theory (generated-by theory))
+				  (list theory)
+				  (remove-if #'generated-by
+				    (if (string= name "pvsio_prelude")
+					(member '|stdlang| *prelude-theories*
+						:key #'id)
+					*prelude-theories*))))
 		    (typespec (formula-typespec unproved?))
 		    (decl-at (get-decl-at line typespec theories))
 		    (decl (if (judgement? decl-at)
-			      (let ((jtcc (find-if #'judgement-tcc?
+			      (let ((jtcc (find-if #'(lambda (d)
+						       (eq (id d)
+							   (id decl-at)))
 					    (generated decl-at))))
 				(unless (place jtcc)
 				  (setf (place jtcc) (place decl-at)))
 				jtcc)
 			      decl-at)))
-	       (values decl (when decl (place decl)))))))))
+	       (values decl (place decl))))
+	    ((string-equal origin "proof-status")
+	     (let* ((theory (get-theory name))
+		    (fdecl (find-if #'(lambda (d)
+					(and (formula-decl? d)
+					     (string= (id d) declname)))
+			     (all-decls theory))))
+	       (values fdecl (vector line 0 line 0))))
+	    (t (let* ((theories (typecheck-file name nil nil nil t))
+		      (typespec (formula-typespec unproved?))
+		      (decl-at (get-decl-at line typespec theories))
+		      (decl (if (judgement? decl-at)
+				(let ((jtcc (find-if #'judgement-tcc?
+					      (generated decl-at))))
+				  (unless (place jtcc)
+				    (setf (place jtcc) (place decl-at)))
+				  jtcc)
+				decl-at)))
+		 (values decl (when decl (place decl))))))))))
 
 (defun formula-typespec (unproved?)
   (if unproved?
@@ -3093,7 +3105,8 @@ If formname is nil, then formref should resolve to a unique formula name."
 
 (defun prove-theories (name theories retry? &optional use-default-dp? save-proofs?)
   (let ((total 0) (proved 0) (realtime 0) (runtime 0)
-	(*use-default-dp?* use-default-dp?))
+	(*use-default-dp?* use-default-dp?)
+	(*noninteractive* t))
     (read-strategies-files)
     (dolist (theory theories)
       (with-theory (th) theory

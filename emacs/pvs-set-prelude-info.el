@@ -37,7 +37,7 @@
   "emacs/pvs-prelude-files-and-regions.el")
 
 (defun set-prelude-files-and-regions ()
-  (pvs-message "Creating pvs-prelude-files-and-regions.el")
+  ;; (pvs-message "Creating pvs-prelude-files-and-regions.el")
   (let* ((files (directory-files (concat pvs-path "/lib")
 				 t "^prelude\\.pvs$\\|^pvsio_prelude\\.pvs$\\|.*_adt\\.pvs$"))
 	 (files-and-regions
@@ -45,7 +45,7 @@
 		      (save-excursion
 			(let ((noninteractive t)) ;; Shut up about read-only
 			  (set-buffer (find-file-noselect file)))
-			(cons (file-name-nondirectory file) (theory-regions* t))))
+			(cons (file-name-nondirectory file) (theory-regions*))))
 	    files)))
     (set-buffer (find-file-noselect (concat pvs-path "/" region-file)))
     (erase-buffer)

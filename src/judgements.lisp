@@ -240,7 +240,7 @@
 (defmethod add-judgement-decl ((decl subtype-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (declare (ignore quiet?))
-  (assert (not *in-checker*))
+  (assert (or (not *in-checker*) (not (eq (context *ps*) *current-context*))))
   (assert (subtype decl))
   (assert (type decl))
   (add-to-known-subtypes (subtype decl) (type decl)))
@@ -250,7 +250,7 @@
 (defmethod add-judgement-decl ((decl number-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (declare (ignore quiet?))
-  (assert (not *in-checker*))
+  (assert (or (not *in-checker*) (not (eq (context *ps*) *current-context*))))
   (clrhash (judgement-types-hash (current-judgements)))
   (let* ((num (number (number-expr decl)))
 	 (entry (assoc num (number-judgements-alist (current-judgements))
@@ -271,7 +271,7 @@
 (defmethod add-judgement-decl ((jdecl name-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (declare (ignore quiet?))
-  (assert (not *in-checker*))
+  (assert (or (not *in-checker*) (not (eq (context *ps*) *current-context*))))
   (let* ((decl (declaration (name jdecl)))
 	 (entry (assq decl (name-judgements-alist (current-judgements)))))
     (let ((sjdecl (when entry
@@ -311,7 +311,7 @@
 
 (defmethod add-judgement-decl ((jdecl application-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
-  (assert (not *in-checker*))
+  (assert (or (not *in-checker*) (not (eq (context *ps*) *current-context*))))
   (let* ((decl (declaration (name jdecl)))
 	 (currynum (length (formals jdecl)))
 	 (applalist (application-judgements-alist (current-judgements))))
@@ -808,7 +808,7 @@
 	 (decl (declaration op))
 	 (th (module decl))
 	 (formals (when th (formals-sans-usings th))))
-    (when formals
+    (when (and formals (not (constructor-name-expr? op)))
       (let* ((th (module decl))
 	     (thname (mk-modname (id th))))
 	(multiple-value-bind (bindings ftype)
@@ -865,7 +865,16 @@
       ex))
 
 (defmethod judgement-types* ((ex coercion))
-  nil)
+  (multiple-value-bind (types jdecls)
+      (call-next-method)
+    (let ((stypes nil)
+	  (sjdecls nil))
+      (mapc #'(lambda (jty jd)
+		(when (subtype-of? jty (type ex))
+		  (push jty stypes)
+		  (push jd sjdecls)))
+	    types jdecls)
+      (values (nreverse stypes) (nreverse sjdecls)))))
 
 (defmethod judgement-types* ((ex list-expr))
   nil)

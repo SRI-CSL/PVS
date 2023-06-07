@@ -29,10 +29,6 @@
 
 (in-package :pvs)
 
-(export '(pc-parse pc-typecheck check-arguments
-	  *multiple-proof-default-behavior* *last-attempted-proof*
-	  extract-justification-sexp collect-justification))
-
 (defvar *subgoals* nil)
 
 (defvar *prover-log* nil)
@@ -213,8 +209,6 @@
 (defvar *force-dp* nil)
 
 (defvar *dump-sequents-to-file* nil)
-(defvar *dump-proof-data-to-file* nil)
-(defvar *pp-json-ml-proof-data* nil)
 (defvar *show-parens-in-proof* nil)
 
 (defmethod prove-decl :around ((decl formula-decl) &key strategy context)
@@ -244,6 +238,7 @@
 	  (setf (closed-definition decl)
 		(universal-closure (definition decl))))))
   (let* ((init-real-time (get-internal-real-time))
+	 (init-date (iso8601-date))
 	 (init-run-time (get-run-time))
 	 (*skovar-counter* nil)
 	 (*skofun-counter* nil)
@@ -292,9 +287,7 @@
 	 (*named-exprs* nil)
 	 (*tccs-proved* nil)
 	 (*query-input* nil)
-	 ;;(*pp-json-ml-type-hash* (make-pvs-hash-table))
-	 ;;(*pp-json-ml-proof-data* nil)
-	 )
+	 (*prover-log* nil))
     (reset-pseudo-normalize-caches)
     (reset-beta-cache)
     (newcounter *translate-id-counter*)
@@ -325,14 +318,16 @@
 	     (cur-all-subst-mod-params-caches
 	      (all-subst-mod-params-caches *workspace-session*))
 	     (new-all-subst-mod-params-caches
-	      (copy-subst-mod-params-cache)))
+	      (copy-subst-mod-params-cache))
+	     ;; (*dump-proof-data-to-file*
+	     ;;  (or *dump-proof-data-to-file*
+	     ;; 	  (when *log-proofs* (format nil "~a/pvs-logs/prf-~a.json"
+	     ;; 			       (current-context-path) init-date))))
+	     )
 	(before-prove*)
 	(setf (all-subst-mod-params-caches *workspace-session*)
 	      new-all-subst-mod-params-caches)
-	(unwind-protect
-	     (progn (when *dump-proof-data-to-file*
-		      (push (iso8601-date) *pp-json-ml-proof-data*))
-		    (dpi-start #'prove-decl-body))
+	(unwind-protect (dpi-start #'prove-decl-body)
 	  (setf (all-subst-mod-params-caches *workspace-session*)
 		cur-all-subst-mod-params-caches)
 	  (after-prove*)
@@ -442,35 +437,13 @@
       (display-proofstate nil))
     (when *dump-sequents-to-file*
       (dump-sequents-to-file *top-proofstate*)))
-  (when *dump-proof-data-to-file*
-    (assert *pp-json-ml-type-hash*)
-    (let* ((data (reverse *pp-json-ml-proof-data*))
-	   (date (car data))
-	   (prf-data (mapcar #'(lambda (d)
-				 (assert (listp d))
-				 ;; proofstates already in pp-json-ml form, need :inputs also
-				 (if (symbolp (car d))
-				     (pp-json-ml d)
-				     d))
-		       (cdr data)))
-	   (prdata `(("tag" . "proof-session")
-		     ("time" . ,date)
-		     ("status" . ,(if (eq (status-flag *top-proofstate*) '!)
-				      "proved" "quit"))
-		     ("proof" . ,prf-data)
-		     ("type-hash" . ,(print-type-hash)))))
-      (with-open-file (prfdump *dump-proof-data-to-file*
-			       :direction :output :if-exists :supersede
-			       :if-does-not-exist :create)
-	(setq *last-prdata* prdata)
-	(json:encode-json-alist prdata prfdump))))
+  ;;(run-prover-done-hooks)
   (when *subgoals*
     (setq *subgoals*
 	  (mapcar #'current-goal
 	    (collect-all-remaining-subgoals *top-proofstate*))))
   (unless *recursive-prove-decl-call*
     (clear-proof-hashes))
-  ;;(write-prover-log)
   )
 
 (defun dump-sequents-to-file (ps)
@@ -549,7 +522,7 @@
 	  ;; if the prf was rerun in *auto-fix-on-rerun* mode and it ended proved, save it.
 	  (and *auto-fix-on-rerun*
 	       (eq (status-flag *top-proofstate*) '!)
-	       (not *context-modified*))))	
+	       (not *context-modified*))))
     (cond ((or (null (script prinfo))
 	       (equal (script prinfo) '("" (postpone) nil nil))
 	       (and (tcc-decl? decl)
@@ -701,10 +674,13 @@
 	     ;;(not (null (strategy proofstate)))
 	     ;;(NSH:11.17.94): commented out
 	     )
-    (prover-log proofstate)
     ;; If in a proof-session, push the proofstate to the outputs list
     (or (session-output proofstate)
+	(unless *noninteractive*
+	  (push (cons "proofstate" proofstate) *prover-log*)
+	  nil)
 	(print-proofstate-if proofstate))
+    ;;(run-prover-output-hooks proofstate)
     (clear-strategy-errors))
   (let ((nextstate (proofstepper proofstate)))
     (cond ((null (parent-proofstate proofstate))
@@ -731,65 +707,6 @@
 		 (t (prove*-int nextstate))))
 	  (t (prove*-int nextstate)))))
 
-;; Prover log functions
-;;  (prover-log ps) creates a prlog instance, with the time and proofstate
-;;                  and puts it in the *prover-log* list. Called from prove*-int
-;;  (write-prover-log) appends *prover-log* to <PVS>/prover-log.yaml and clears it.
-;;                     Called from after-prove*
-
-(defun prlog-print (prlog stream depth)
-  (declare (ignore depth))
-  (let* ((ps (prlog-ps prlog))
-	 (command (prlog-input prlog)))
-    (format stream "~%- time: ~a~%  command: ~a~%  sequent: ~a"
-      (prlog-time prlog)
-      command
-      (add-indentations (format nil "~a" ps) 4))))
-
-(defun get-logged-command (ps)
-  (let* ((pps (parent-proofstate ps))
-	 (command (if (top-proofstate? ps)
-		      "Top"
-		      (when pps
-			(or ;;(current-rule pps)
-			    (current-input pps))))))
-    (when (and (consp command)
-	       (eq (car command) 'instantiate))
-      (break "get-logged-command"))
-    command))
-
-(defstruct (prlog (:print-function prlog-print))
-  time
-  input
-  ps)
-
-(defun prover-log (ps)
-  (push (make-prlog
-	 :time (get-universal-time)
-	 :input (or *query-input*
-		    (and (top-proofstate? ps) '(prove-decl)))
-	 :ps ps)
-	*prover-log*))
-
-(defun write-prover-log ()
-  (when *prover-log*
-    (if (write-permission? *pvs-path*)
-	(let* ((logfile (format nil "~a/prover-log.yaml" *pvs-path*))
-	       (new? (not (file-exists-p logfile)))
-	       (logs (reverse *prover-log*)))
-	  (with-open-file (out logfile :direction :output
-			       :if-does-not-exist :create :if-exists :append)
-	    (when new?
-	      (format out "# This logs the proof commands used under this PVS installation.~%")
-	      (format out "# We would like to use this in some machine learning research we are doing,.~%")
-	      (format out "# We would appreciate if you would send it to pvs@csl.sri.com.~%"))
-	    (format out "--- # Start of proof session~%")
-	    (dolist (log logs)
-	      (write log :stream out)))
-	  (setq *prover-log* nil))
-	(pvs-message "Cannot write prover log"))))
-
-;; End of prover log functions
 
 (defun check-command-arguments (cmd keywords arguments has-rest? &optional expect-key?)
   (or (null arguments)
@@ -869,6 +786,8 @@
 	(t (format t "~%~a" prompt)
 	   (finish-output)
 	   (let ((input (prover-read)))
+	     (unless *noninteractive*
+	       (push (cons "input" input) *prover-log*))
 	     (cond ((and (consp input)
 			 (eq (car input) 'lisp))
 		    (format-if "~%~s~%"  (eval (cadr input)))
@@ -954,6 +873,7 @@
 			       (*proof-strategy-stack*
 				(cons strategy *proof-strategy-stack*)))
 			  (setf (strategy proofstate) strategy)
+			  ;;(run-prover-output-hooks ps)
 			  (if (current-session)
 			      (multiple-value-bind (result err)
 				  (ignore-errors (rule-apply strategy proofstate))
@@ -989,15 +909,15 @@
 		       (setq *rerunning-proof-message-time*
 			     (get-internal-real-time))
 		       (pvs-message *rerunning-proof*))
-		     (format-nif "~%this yields  ~a subgoals: "
-				 (length (remaining-subgoals post-proofstate))))
+		     (format-if "~%this yields  ~a subgoals: "
+				(length (remaining-subgoals post-proofstate))))
 		    ((not (typep (car (remaining-subgoals post-proofstate))
 				 'strat-proofstate))
-		     (format-nif "~%this simplifies to: ")))
+		     (format-if "~%this simplifies to: ")))
 	      post-proofstate)
 	     ((eq (status-flag post-proofstate) '!) ;;rule-apply proved
-	      (dolist (hook *success-proofstate-hooks*)
-		(funcall hook proofstate)) 
+	      ;; (dolist (hook *success-proofstate-hooks*)
+	      ;; 	(funcall hook proofstate)) 
 	      (format-printout post-proofstate)
 	      (wish-done-proof post-proofstate)
 	      (dpi-end post-proofstate)
@@ -1061,6 +981,55 @@
   (dolist (hook *proofstate-hooks*)
     (funcall hook proofstate)))
 
+
+(defun write-prover-log ()
+  (when nil ;;*prover-log*
+    (let* ((logfile (format nil "~a/prooflog-~a.json"
+		      *pvs-log-directory* (subseq (iso8601-date) 0 10)))
+	   (prlog (jsonify-prover-log)))
+      (with-open-file (out logfile :direction :output
+			   :if-does-not-exist :create :if-exists :append)
+	;; JSON doesn't support comments, except as data
+	;; (when new?
+	;;   (format out "# This logs the proof commands used under this PVS installation.~%")
+	;;   (format out "# We would like to use this in some machine learning research we are doing,.~%")
+	;;   (format out "# We would appreciate if you would send it to pvs@csl.sri.com.~%"))
+	(json:encode-json prlog out)))
+    (setq *prover-log* nil)))
+
+(defun jsonify-prover-log ()
+  (let* ((*current-context* (context (cdr (assoc "proofstate" *prover-log* :test #'string=))))
+	 (*pp-json-ml-type-hash* (or *pp-json-ml-type-hash* (make-pvs-hash-table)))
+	 (*pp-type-json-ml-hash* (or *pp-type-json-ml-hash*
+				     (make-hash-table :test 'string=)))
+	 (log (jsonify-prover-log* *prover-log*))
+	 (thash (print-type-hash)))
+    `(("tag" . "prover-log")
+      ("log" . ,log)
+      ("type-hash" . ,thash))))
+    
+
+(defun jsonify-prover-log* (prlog &optional result)
+  (if (null prlog)
+      result
+      (let ((elt (jsonify-prover-log-elt (car prlog))))
+	(jsonify-prover-log* (cdr prlog) (cons elt result)))))
+
+(defun jsonify-prover-log-elt (elt)
+  (assert (listp elt))
+  (cond ((string= (car elt) "commentary")
+	 (assert (stringp (cdr elt)))
+	 `(("tag" . "commentary")
+	   ("string" . ,(cdr elt))))
+	((string= (car elt) "input")
+	 (pp-json-ml-input (cdr elt)))
+	((string= (car elt) "proofstate")
+	 (pp-json-proofstate (cdr elt) nil))
+	(t (error "jsonify-prover-log-elt: unexpected elt ~a" elt))))
+
+;; End of prover log functions
+
+
 (defun nonstrat-parent-proofstate (ps) ;;NSH(7.18.94): for restore in
 				       ;;proofstepper. 
   (if (strat-proofstate? ps)
@@ -1083,7 +1052,7 @@
 	(if quiet-flag
 	    pp
 	    (unless *suppress-printing*
-	      (commentary pp)))))))
+	      (commentary (protect-format-string pp))))))))
 
 
 (defun if-form? (x) (and (typep x 'sequence)
@@ -2200,16 +2169,7 @@
 						 :rule (rule-input topstep)
 						 :comment (new-comment ps)))
 		      (make-updates updates ps)
-		      (when (and (current-input ps) *dump-proof-data-to-file*)
-			;; (with-open-file (prfdump *dump-proof-data-to-file*
-			;; 			 :direction :output :if-exists :append)
-			;;   (format prfdump "~%~s ::: ~s" (pp-json-ml ps) (parsed-input ps)))
-			(assert *pp-json-ml-type-hash*)
-			(let ((ps-json (pp-json-ml ps)))
-			  (when ps-json
-			    (push ps-json *pp-json-ml-proof-data*)
-			    (push (pp-json-ml-input (parsed-input ps))
-				  *pp-json-ml-proof-data*))))
+		      ;; (run-prover-output-hooks)
 		      ps)
 		     ((eq signal '?) ;;subgoals generated
 		      (make-updates updates ps)
@@ -2316,18 +2276,7 @@
 					 (remaining-subgoals ps) subgoal-proofstates)
 				   (unless (typep ps 'top-proofstate)
 				     (setf (strategy ps) nil))
-				   (when (and (current-input ps) *dump-proof-data-to-file*)
-				     ;; (with-open-file (prfdump *dump-proof-data-to-file*
-				     ;; 			      :direction :output
-				     ;; 			      :if-exists :append)
-				     ;;   (format prfdump "~%~s ::: ~s"
-				     ;; 	 (pp-json-ml ps) (parsed-input ps)))
-				     (assert *pp-json-ml-type-hash*)
-				     (let ((ps-json (pp-json-ml ps)))
-				       (when ps-json
-					 (push ps-json *pp-json-ml-proof-data*)
-					 (push (pp-json-ml-input (parsed-input ps))
-					       *pp-json-ml-proof-data*))))
+				   ;;(run-prover-output-hooks ps)
 				   ps)))))
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
@@ -2348,7 +2297,8 @@
 		     ((eq signal '*)
 		      (setf (status-flag ps) '*)
 		      ps)
-		     (t (undo-proof signal ps))))))
+		     (t ;;(run-prover-output-hooks ps)
+			(undo-proof signal ps))))))
 	  ((typep (topstep step) 'strategy)
 	   (setf (status-flag ps) '?
 		 ;;		 (current-rule ps) (strategy-input rule)
@@ -2952,26 +2902,6 @@
 		    (append (revert-justification (cdr ejustif) label)
 			    (list (car ejustif)))))))))
   
-
-(defmethod pp-justification ((justification justification))
-  (pp-justification* (extract-justification-sexp justification) nil))
-
-(defmethod pp-justification (justification)
-  (pp-justification* justification nil))
-
-
-(defun pp-justification* (justification label)
-  (cond ((null justification)
-	 nil)
-	(t (when (comment justification)
-	     (commentary "~%~a" (comment justification)))
-	   (cond ((equal (label justification) label)
-		  (commentary "~%")
-		  (commentary "~V@T" (+ 3 (length (string label)))))
-		 (t (commentary "~%~a : " (label justification))))
-	   (commentary "~a" (format-rule (rule justification)))
-	   (loop for entry in (reverse (subgoals justification))
-		 do (pp-justification* entry (car justification))))))
 
 (defun format-rule (sexp &optional no-escape?)
   (cond ((null sexp) nil)

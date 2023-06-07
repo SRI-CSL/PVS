@@ -363,10 +363,10 @@ is replaced with replacement."
 	     (if (uiop:file-exists-p path)
 		 path
 		 (error "File ~a cannot be found" path))))
-	  (t (dolist (dir *pvs-directories*)
-	       (let* ((defaults (or (uiop:file-exists-p (format nil "~a/~a/"
-							  *pvs-path* dir))
-				    (uiop:directory-exists-p dir)))
+	  (t (dolist (pdir *pvs-directories*)
+	       (let* ((defaults (or (uiop:directory-exists-p (format nil "~a/~a/"
+							       *pvs-path* pdir))
+				    (uiop:directory-exists-p pdir)))
 		      (path (make-pathname :name name :type type
 					   :defaults defaults)))
 		 (when (uiop:file-exists-p path)
@@ -1090,6 +1090,19 @@ is replaced with replacement."
 	    path
 	    (cons dir path)))))
 
+(defun escape-string-for-pvs (string)
+  "Escapes the \", and \\ characters, putting backslash in front, and wraps the whole string in quotes."
+  (assert (stringp string))
+  (with-output-to-string (str)
+    (write-char #\" str)
+    (loop for ch across string
+	  do (case ch
+	       ((#\" #\\)
+		(write-char #\\ str) (write-char ch str))
+	       (#\newline
+		(write-char #\\ str) (write-char #\n str))
+	       (t (write-char ch str))))
+    (write-char #\" str) ))
 
 (defun splice (new-elt after-elt list)
   (let ((tail (and after-elt (memq after-elt list))))
@@ -4768,15 +4781,6 @@ space")
 	(next-proof-id fdecl (1+ num))
 	id)))
 
-(defun prover-status (&optional (ps *ps*) (top-ps *top-proofstate*))
-  "Checks the status of the prover: active or inactive."
-  ;; (format t "~%pvs:prover-status: *top-proofstate* ~a, *last-proof* ~a, *ps* ~a~%"
-  ;;   (and top-ps t) (and last-proof t) (and ps t))
-  (declare (ignore ps))
-  (if top-ps
-      :active
-      :inactive))
-
 (defun last-proof-status ()
   "After a proof is run, *last-proof* is set, and can be queried."
   (if *last-proof*
@@ -5137,15 +5141,15 @@ space")
 #+cmu
 (extensions:define-hash-table-test 'strong-tc-eq-test
 				   #'strong-tc-eq #'pvs-sxhash)
-#+(and sbcl (not sunos))
+#+sbcl
 (sb-ext:define-hash-table-test tc-eq pvs-sxhash)
-#+(and sbcl (not sunos))
+#+sbcl
 (sb-ext:define-hash-table-test strong-tc-eq pvs-sxhash)
 
-#+(and sbcl sunos)
-(sb-int:define-hash-table-test 'tc-eq #'tc-eq #'pvs-sxhash)
-#+(and sbcl sunos)
-(sb-int:define-hash-table-test 'strong-tc-eq #'strong-tc-eq #'pvs-sxhash)
+#+sbcl
+(sb-ext:without-package-locks
+    (sb-ext:define-hash-table-test string= sxhash))
+
 
 ;;; The following are for gathering information about dependencies
 ;;; Note it is difficult to be complete here - e.g., the user could

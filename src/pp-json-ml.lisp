@@ -616,8 +616,8 @@
     (when (some #'(lambda (fv) (typep fv '(or dep-binding field-decl)))
 		(freevars texpr))
       (break "set-json-ml-hashes bad type: ~a" texpr))
-    (let ((pexpr (gethash hash *pp-type-json-ml-hash*)))
-      (when pexpr (break "already in *pp-type-json-ml-hash*: ~a" pexpr)))
+    ;; (let ((pexpr (gethash hash *pp-type-json-ml-hash*)))
+    ;;   (when pexpr (break "already in *pp-type-json-ml-hash*: ~a" pexpr)))
     (unless (or (null (print-type texpr))
 		(eq print-type texpr))
       (let* ((*pp-ml-dont-hash* t)
@@ -745,30 +745,54 @@
     `(("tag" . "type-application")
       ("type" ,(pp-json-ml* type))
       ("parameters" . ,(pp-json-ml* parameters)))))
-      
+
+
+;;; Proof sessions
+
+(defun pp-json-proof-session (session)
+  ;; Session has the form
+  ;; (("id" . id) ("proofstate" . ps) ("status" . status)
+  ;;  ("commentary" . (list of strings and proofstates))
+  (pp-json-proof-session* (cdr (assoc "commentary" session :test #'string=))))
+
+(defun pp-json-proof-session* (session &optional commentary ps-jsons)
+  (cond ((null session)
+	 (when commentary
+	   (let ((last-commentary (assoc "commentary" (car ps-jsons) :test #'string=)))
+	     (if last-commentary
+		 (nconc last-commentary (nreverse commentary))
+		 (nconc (car ps-jsons) `(("commentary" . ,(nreverse commentary)))))))
+	 (reverse ps-jsons))
+	((proofstate? (car session))
+	 (let ((ps-json (pp-json-proofstate (car session) (reverse commentary))))
+	   (pp-json-proof-session* (cdr session) nil (cons ps-json ps-jsons))))
+	(t (assert (stringp (car session)))
+	   (pp-json-proof-session* (cdr session) (cons (car session) commentary) ps-jsons))))
 
 ;;; Proofstates
 
-(defmethod pp-json-ml* ((ps proofstate))
-  (with-slots (label current-goal current-rule current-input) ps
-    (unless (and (not (eq ps *top-proofstate*)) ;; ignore ghost proofstates
-		 (= (proofstate-depth ps) 0))
-      (unless (or (eq ps *top-proofstate*)
-		  (parent-proofstate ps))
-	(break "no way to determine new?"))
-      (let* ((par-sforms (unless (eq ps *top-proofstate*)
-			   (s-forms (current-goal (parent-proofstate ps)))))
-	     (pp-json-ml-rule (pp-json-ml-input current-rule))
-	     (pp-json-ml-inp (pp-json-ml-input current-input))
-	     (pp-json-ml-ps `(("tag" . "proofstate")
-			      ("label" . ,label)
-			      ("depth" . ,(proofstate-depth ps))
-			      ("current-goal" . ,(pp-json-ml-sequent current-goal par-sforms))
-			      ("current-rule" . ,pp-json-ml-rule)
-			      ("current-input" . ,pp-json-ml-inp))))
-	;; (with-output-to-string (*standard-output*)
-	;; 	(json:encode-json pp-json-ml-ps))
-	pp-json-ml-ps))))
+(defun pp-json-proofstate (ps commentary)
+  (unless (or (top-proofstate? ps)
+	      (parent-proofstate ps))
+    (break "no way to determine new?"))
+  (let* ((label (label ps))
+	 (current-goal (current-goal ps))
+	 (current-rule (current-rule ps))
+	 (current-input (current-input ps))
+	 (par-sforms (unless (top-proofstate? ps)
+		       (s-forms (current-goal (parent-proofstate ps)))))
+	 (pp-json-ml-rule (pp-json-ml-input current-rule))
+	 (pp-json-ml-inp (pp-json-ml-input current-input))
+	 (pp-json-ml-ps `(("tag" . "proofstate")
+			  ("label" . ,label)
+			  ("depth" . ,(proofstate-depth ps))
+			  ("current-goal" . ,(pp-json-ml-sequent current-goal par-sforms))
+			  ,@(when current-rule `(("current-rule" . ,pp-json-ml-rule)))
+			  ,@(when current-input `(("current-input" . ,pp-json-ml-inp)))
+			  ,@(when commentary `(("commentary" . ,(nreverse commentary)))))))
+    ;; (with-output-to-string (*standard-output*)
+    ;; 	(json:encode-json pp-json-ml-ps))
+    pp-json-ml-ps))
 
 (defun pp-json-ml-sequent (seq par-sforms)
   (with-slots (p-sforms n-sforms hidden-s-forms) seq
@@ -785,7 +809,8 @@
 
 (defmethod pp-json-ml-sform (sform par-sforms)
   (with-slots (formula label) sform
-    (let ((new? (not (memq sform par-sforms))))
+    (let ((new? (not (memq sform par-sforms)))
+	  (*pp-json-ml-bindings* nil))
       `(("tag" . "s-formula")
 	,@(when label `(("label" . ,label)))
 	("new?" . ,new?)
@@ -901,6 +926,25 @@
 (defun pp-json-ml-theory (theory)
   (pp-json-ml* theory))
 
+(defmethod pp-justification ((justification justification))
+  (pp-justification* (extract-justification-sexp justification) nil))
+
+(defmethod pp-justification (justification)
+  (pp-justification* justification nil))
+
+(defun pp-justification* (justification label)
+  (cond ((null justification)
+	 nil)
+	(t (when (comment justification)
+	     (commentary "~%~a" (comment justification)))
+	   (cond ((equal (label justification) label)
+		  (commentary "~%")
+		  (commentary "~V@T" (+ 3 (length (string label)))))
+		 (t (commentary "~%~a : " (label justification))))
+	   (commentary "~a" (format-rule (rule justification)))
+	   (loop for entry in (reverse (subgoals justification))
+		 do (pp-justification* entry (car justification))))))
+
 (defun pp-json-ml-prelude ()
   (with-workspace (format nil "~a/lib/" *pvs-path*)
     (uiop:ensure-all-directories-exist (list "json/"))
@@ -962,42 +1006,87 @@
       (dolist (formula formulas)
 	(collect-json-proof formula)))))
 
-(defun prover-list-input ()
-  (if *prover-input-list*
-      (pop *prover-input-list*)
-      '(quit)))
+;; (defun prover-list-input ()
+;;   (if *prover-input-list*
+;;       (let ((input (pop *prover-input-list*)))
+;; 	(push input *dump-proof-data-to-file*)
+;;       '(quit))))
+
+;; (defun pp-json-output-hook (ps)
+;;   (when *dump-proof-data-to-file*
+;;     (push ps *pp-json-ml-proof-data*)))
+
+;; (defun pp-json-done-hook ()
+;;   (when *dump-proof-data-to-file*
+;;     (assert *pp-json-ml-type-hash*)
+;;     (let* ((data (reverse *pp-json-ml-proof-data*))
+;; 	   (date (car data))
+;; 	   (prf-data (mapcar #'(lambda (d)
+;; 				 (assert (listp d))
+;; 				 ;; proofstates already in pp-json-ml form, need :inputs also
+;; 				 (if (symbolp (car d))
+;; 				     (pp-json-ml d)
+;; 				     d))
+;; 		       (cdr data)))
+;; 	   (prdata `(("tag" . "proof-session")
+;; 		     ("time" . ,date)
+;; 		     ("status" . ,(if (eq (status-flag *top-proofstate*) '!)
+;; 				      "proved" "quit"))
+;; 		     ("proof" . ,prf-data)
+;; 		     ("type-hash" . ,(print-type-hash)))))
+;;       (ensure-directories-exist *dump-proof-data-to-file*)
+;;       (with-open-file (prfdump *dump-proof-data-to-file*
+;; 			       :direction :output :if-exists :supersede
+;; 			       :if-does-not-exist :create)
+;; 	(setq *last-prdata* prdata)
+;; 	(json:encode-json-alist prdata prfdump)))))
 
 (defun collect-json-proof (formula)
-  (let* ((thdir (format nil "~ajson/~a-proofs"
-		  (context-path (module formula)) (id (module formula))))
-	 (dfile (format nil "~a/~a.json" thdir (id formula)))
+  (let* ((fdecl (get-formula-decl formula))
+	 (*current-context* (context fdecl))
+	 (thdir (format nil "~ajson/~a-proofs"
+		  (context-path (module fdecl)) (id (module fdecl))))
+	 (dfile (format nil "~a/~a.json" thdir (id fdecl)))
+	 ;;(*dump-proof-data-to-file* dfile)
 	 (*pp-json-ml-type-hash* (make-pvs-hash-table))
 	 (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
-	 (*pp-json-ml-proof-data* nil)
+	 (*log-proofs* t)
 	 (*noninteractive* t)
-	 (*suppress-printing* t)
 	 (*rewrite-msg-off* t) ;; *suppress-printing* isn't enough to shut off these messages
 	 (*multiple-proof-default-behavior* :noquestions)
-	 (def-prf (default-proof formula))
-	 (*dump-proof-data-to-file* dfile)
-	 (*prover-input-list* (when def-prf
-				(flatten-proof-script
-				 (editable-justification (script def-prf))))))
+	 (def-prf (default-proof fdecl))
+	 (input-list (when def-prf
+		       (flatten-proof-script
+			(editable-justification (script def-prf))))))
     (format t "~%Generating ~a" dfile)
     (uiop:ensure-all-directories-exist (list thdir))
-    (with-prover-input-hook 'prover-list-input
-      (prove-formula formula))
+    ;; (with-prover-input-hook 'prover-list-input
+    ;;   (with-prover-output-hook 'pp-json-output-hook
+    ;; 	(with-prover-done-hook 'pp-json-done-hook
+    ;; 	  (prove-formula fdecl))))
+    (let* ((result (prover-init
+		    fdecl
+		    :input-hook (let ((pr-input input-list))
+				  (lambda ()
+				    (if pr-input
+					(let ((inp (pop pr-input)))
+					  (commentary "input: ~a" inp)
+					  inp)
+					'(quit))))))
+	   (prf-session (pp-json-proof-session result)))
+      (with-open-file (str dfile :direction :output :if-exists :supersede)
+	(json:encode-json prf-session str)))
     (format t "~%Generated size ~d"
       #+allegro (excl.osi:stat-size (excl.osi:stat dfile))
       #+sbcl (sb-posix:stat-size (sb-posix:stat dfile)))
     (when *testing-json*
       (let ((json:*identifier-name-to-key* 'string-downcase))
-	(json:decode-json-from-source (pathname *dump-proof-data-to-file*))))))
+	(json:decode-json-from-source dfile)))))
 
 (defun pp-json-ml-input (inp)
-  (let* ((inp-args (pp-json-ml-input-args inp))
+  (let* ((inp-args (when (listp inp) (pp-json-ml-input-args inp)))
 	 (pp-json-ml-inp `(("tag" . "input")
-			   ("rule" . ,(car inp))
+			   ("rule" . ,(string-downcase (if (listp inp) (car inp) inp)))
 			   ("arguments" . ,inp-args))))
     ;;(json:encode-json pp-json-ml-inp)
     pp-json-ml-inp))

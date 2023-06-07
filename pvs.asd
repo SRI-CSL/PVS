@@ -56,13 +56,13 @@
 
 (asdf:defsystem "pvs"
   :description "PVS is a verification system; see http://pvs.csl.sri.com"
-  :version "7.2.0"
+  :version "8.0"
   :author "Sam Owre, N. Shankar, and others"
   :maintainer "Sam Owre <owre@csl.sri.com>"
   :license "GPL"
   :entry-point "pvs::startup-pvs"
   ;;:defsystem-depends-on (#:asdf-shared-library)
-  :depends-on (#:babel #| #:fast-websocket |# #:clack #:websocket-driver
+  :depends-on (#:babel #:clack #:websocket-driver
 		       #:hunchentoot #:anaphora #:lparallel #:cl-json #:cffi)
   :serial t
   :perform (asdf:load-op :after (op cmp)
@@ -78,13 +78,91 @@
   ((:file "packages")
    (:module :ess ;; Needed for pvs-parser
      :pathname "ess/"
-     :components ((:file "dist-ess"))
-     :perform (asdf:load-op
-	       :after (op c)
-	       ;; (generate-ess 'ergolisp 'sb)
-	       (funcall (intern (string :generate-ess) :cl-user)
-    			(intern (string :ergolisp) :cl-user)
-			(intern (string :sb) :cl-user)))
+     :components ((:file "dist-ess")
+		  ;; Loads ess/init-load.lisp
+		  ;;   Loads ess/sys/ergolisp/rel/ergo-system.lisp
+		  ;;   Loads ess/sys/tools/rel/retry.lisp
+		  ;;   Loads ess/sys/tools/rel/box-system.lisp
+		  ;;   Loads ess/sys/tools/rel/box.lisp
+		  ;;   Loads ess/box-defs.lisp
+		  (:file "sys/ergolisp/rel/ergolisp")
+		  (:file "sys/ergolisp/rel/ergolisp-exports")
+		  (:file "sys/ergolisp/rel/ergo-system")
+		  (:file "sys/ergolisp/rel/ergo-types")
+		  (:file "sys/ergolisp/rel/type-check")
+		  (:file "sys/tools/rel/regression-test")
+		  (:file "sys/tools/rel/clet")
+		  (:file "sys/tools/rel/retry")
+		  (:file "sys/tools/rel/box-system")
+		  (:file "sys/tools/rel/box")
+		  (:file "sys/tools/rel/box-lib")
+		  (:file "sys/tools/rel/print-utils")
+		  (:file "sys/ergolisp/rel/dlambda")
+		  (:file "sys/ergolisp/rel/dlambda-lib")
+		  (:file "term/language/rel/languages")
+		  (:file "term/terms/rel/opers")
+		  (:file "term/terms/rel/occur")
+		  (:file "term/terms/rel/sorts")
+		  (:file "term/trep/rel/attr-prims")
+		  (:file "term/trep/rel/gterm")
+		  (:file "term/terms/rel/terms")
+		  (:file "term/terms/rel/termop")
+		  (:file "lang/sb-term/rel/sbrt-lang-def")
+		  (:file "lang/sb-term/rel/sbrt-sorting")
+		  (:file "lang/sb-term/rel/rt-structs")
+		  (:file "lang/sb-term/rel/rt-unp-structs")
+		  (:file  "lang/sb-term/rel/rt-lex")
+		  (:file "lang/sb-term/rel/rt-term")
+		  (:file "lang/sb-term/rel/rt-parse-mac")
+		  (:file "lang/sb-term/rel/rt-parse")
+		  (:file "lang/sb-term/rel/rt-unparse")
+		  (:file "term/attr/rel/attr-lang-lib") ;; Loads
+		  (:file "term/attr/rel/attr-sort") ;; Loads
+		  (:file "term/attr/rel/attr-lang") ;; Loads
+		  (:file "term/attr/rel/attr-global") ;; Loads
+		  (:file "lang/sb-term/rel/rt-unp-attr") ;; Loads
+		  (:file "lang/sb-term/rel/rt-format") ;; Loads
+		  (:file "lang/sb-term/rel/rt-unp-tex") ;; Loads
+		  (:file "lang/sb-term/rel/rt-unp-top") ;; Loads
+		  (:file "term/attr/rel/attr-lib") ;; Loads
+		  (:file "term/attr/rel/attr-gsort") ;; Loads
+		  (:file "term/attr/rel/attr-occ") ;; Loads
+		  (:file "lang/ab-term/rel/af-runtime")
+		  (:file "sys/constr/rel/constr")
+		  (:file "sys/constr/rel/constr-term-rep")
+		  (:file "sys/constr/rel/constr-sorts")
+		  (:file "sys/constr/rel/constr-lexer")
+		  (:file "sys/constr/rel/constr-parser")
+		  (:file "sys/constr/rel/defsconstr")
+		  (:file "sys/ergolisp/rel/tdefun")
+		  (:file "lang/sb-term/rel/access")
+		  (:file "lang/sb-term/rel/access-par")
+		  (:file "lang/sb-term/rel/aux-funs")
+		  (:file "lang/sb-term/rel/sb-lexer")
+		  (:file "lang/sb-term/rel/sb-parser")
+		  (:file "lang/sb-term/rel/sb-sorts")
+		  (:file "lang/sb-term/rel/sb-unparser")
+		  (:file "lang/sb-term/rel/sb-unparsing-aux")
+		  (:file "lang/sb-term/rel/pre-process")
+		  (:file "lang/sb-term/rel/inter-phase")
+		  (:file "lang/sb-term/rel/sort-gen")
+		  (:file "lang/sb-term/rel/lexer-gen")
+		  (:file "lang/sb-term/rel/flatten")
+		  (:file "lang/sb-term/rel/look-ahead")
+		  (:file "lang/sb-term/rel/compare")
+		  (:file "lang/sb-term/rel/collapse")
+		  (:file "lang/sb-term/rel/phase-three")
+		  (:file "lang/sb-term/rel/top-parse")
+		  (:file "lang/sb-term/rel/unp-code-revise")
+		  (:file "lang/sb-term/rel/unparse-gen")
+		  (:file "lang/sb-term/rel/top"))
+     ;; :perform (asdf:load-op
+     ;; 	       :after (op c)
+     ;; 	       ;; (generate-ess 'ergolisp 'sb)
+     ;; 	       (when t ;; (parser-needs-rebuilding?)
+     ;; 		 (funcall (intern (string :generate-ess) :cl-user)
+     ;; 			  (intern (string :ergolisp) :cl-user)
+     ;; 			  (intern (string :sb) :cl-user))))
      )
    (:file "pvs-config" :depends-on ("packages"))
    (:module :pvs-parser
@@ -98,11 +176,12 @@
 	       :after (op c)
 	       ;;(funcall (intern (string :make-pvs-parser) :pvs))
 	       ;; (sb:sb-make :language "pvs" :working-dir "./src/" :unparser? nil)
-	       (funcall (intern (string :sb-make) :sb)
-			:language "pvs"
-			:working-dir "./src/"
-			:unparser? nil)
-	       )
+	       (when t ;(funcall (intern (string :parser-needs-rebuilding?) :pvs))
+		 (funcall (intern (string :sb-make) :sb)
+			  :language "pvs"
+			  :working-dir "./src/"
+			  :unparser? nil)
+		 ))
      ;; :output-files (asdf:load-op (op c)
      ;; 			    (list "pvs-lexer.lisp"
      ;; 				  "pvs-parser.lisp"
@@ -143,7 +222,7 @@
      :perform (asdf:load-op :before (op c)
 			    (format t "~%Making and loading file_utils.so")
 			    (funcall (intern (string :make-in-platform) :pvs)
-				     (asdf:component-pathname c) "file_utils"))
+				     (asdf:component-pathname c) "file_utils" "b64"))
      :components ((:file "hashfn")
 		  (:file "file-utils")))
    (:module :pvs2c

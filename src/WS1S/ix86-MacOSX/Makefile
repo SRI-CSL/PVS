@@ -1,6 +1,6 @@
-BDD = ../mona/BDD
-DFA = ../mona/DFA
-UTILS = ../mona/Mem
+BDD = ../mona-1.4/BDD
+DFA = ../mona-1.4/DFA
+UTILS = ../mona-1.4/Mem
 INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
 # MACOSX_DEPLOYMENT_TARGET and -weak_library are needed so that dylibs work
 # for older versions of MacOS X
@@ -15,12 +15,13 @@ INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
 # 
 MACOSX_DEPLOYMENT_TARGET=10.11
 LD = ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress
+SDK=$(shell xcrun --show-sdk-path)
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L $(SDK)/usr/lib
 CC = gcc
 CFLAGS += -fPIC -dynamic -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O2
 SHELL = /bin/sh
-VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
+VPATH = ..:../mona-1.4/BDD:../mona-1.4/DFA:../mona-1.4/Mem
 
 obj  = analyze.o prefix.o product.o \
        quotient.o basic.o external.o \
@@ -42,7 +43,7 @@ ws1s_extended_interface.o : ../ws1s_extended_interface.c
 	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
 ws1s.dylib : ${obj} ws1s_table.o
-	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o
+	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o -lc
 
 # ws1s_table.c : ws1s-ld-table
 # 	awk '/^ws1s___/ { print "extern int " $3 " (int);\nint (*" $1 ")(int) = " $3 ";\n\n" }' ../ws1s-ld-table > ws1s_table.c

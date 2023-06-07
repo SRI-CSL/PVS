@@ -151,6 +151,8 @@ the formula.  With an argument, runs the proof in the background."
 ;;; will attempt to get back to the beginning of the formula that was
 ;;; attempted.
 
+(defvar pvs-prove-in-thread nil)
+
 (defun pvs-prove-formula (fref &optional rerun-proof background display
 			       unproved)
   (let* ((kind (pvs-fref-kind fref))
@@ -166,11 +168,14 @@ the formula.  With an argument, runs the proof in the background."
 		     (or fname theory) fmlastr line kind rerun-proof unproved)
 		 nil nil "t\\|T\\|no\\|NO")))
 ; evw   (pushw)
-    (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
+    (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s %s)"
 		     (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
-		     poff background display unproved)))
+		     poff background display unproved pvs-prove-in-thread)))
       (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
       (ilisp-send input nil 'pr (not background)))))
+
+(defun pvs-proof-thread (init-ps)
+  (setq xxx init-ps))
 
 (defpvs prove-next-unproved-formula prove ()
   "Invokes the prover on the next unproved formula.
@@ -1877,6 +1882,12 @@ current sequent."
 The explain-tcc command explains the source of a TCC subgoal in a proof."
   (interactive)
   (pvs-send-and-wait "(call-explain-tcc)" nil nil 'dont-care))
+
+(defpvs lemma-histogram-matches proof-display ()
+  "Shows the top n formulas based on histogram matches"
+  (interactive)
+  (pvs-send-and-wait "(lemma-histogram-matches)" nil nil 'dont-care))
+
 
 (defpvs help-pvs-prover-command help (command)
   "Displays the help documentation for the command

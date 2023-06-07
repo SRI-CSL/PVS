@@ -89,7 +89,8 @@
 (defun stop-pvs-server ()
   (when *websocket-server*
     (clack:stop *websocket-server*)
-    (hunchentoot:stop *websocket-server*)))
+    ;;(hunchentoot:stop *websocket-server*)
+    ))
 
 (defun websocket-pvs-server (env)
   (let ((ws (wsd:make-server env)))

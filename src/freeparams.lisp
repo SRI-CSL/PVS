@@ -181,6 +181,7 @@
 
 (defmethod free-params* ((texpr print-type-name) frees)
   (assert (resolution texpr))
+  #+badassert ;; actuals could be [n+1] vs [1+n] from pseudonormalize
   (assert (or (null (actuals texpr))
 	      (tc-eq (actuals texpr) (actuals (module-instance texpr)))))
   (let ((mi (module-instance texpr)))

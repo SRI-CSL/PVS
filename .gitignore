@@ -3,7 +3,6 @@
 /doc/user-guide/Makefile
 /doc/prover/Makefile
 /doc/language/Makefile
-/configure
 /proveit
 /provethem
 /pvs-get-patches
@@ -15,7 +14,9 @@ pvs-patches/patch*
 autom4te.cache
 bin/*
 lib/why/*
+lib/registery.conf
 pvs*.tgz
+/yices
 
 emacs/emacs23
 emacs/emacs24

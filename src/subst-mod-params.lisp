@@ -353,6 +353,7 @@
 				    (all-dactuals decl modinst))
 			    (mappings modinst) nil)))
 	    (assert (or (theory-reference? (current-declaration))
+			(importing? (current-declaration))
 			(every #'(lambda (fp)
 				   (or (not (decl-formal? fp))
 				       (memq fp (decl-formals (current-declaration)))
@@ -1152,7 +1153,9 @@
 	 (subst-mod-params-decls (cdr decls) modinst bindings nth ndecls))
 	(t (multiple-value-bind (nfmls fbindings)
 	       (subst-mod-params-formal-decls (decl-formals (car decls)) (car decls) modinst nil)
-	     (let* ((ndecl (copy (car decls)
+	     (let* ((*subst-mod-free-params* (append (decl-formals (car decls))
+						     *subst-mod-free-params*))
+		    (ndecl (copy (car decls)
 			     :decl-formals nfmls
 			     :generated-by (car decls) :module nth :place nil
 			     :pvs-sxhash-value nil :ir-type-value nil

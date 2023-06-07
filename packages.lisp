@@ -4,6 +4,9 @@
 #+:allegro
 (require :loop)
 
+#+:allegro
+(require :asdf)
+
 #+:sbcl
 (require :sb-md5)
 #+:sbcl
@@ -67,7 +70,8 @@
 	   #:eexport
 	   #:ergo-disksave
 	   #:fdlambda
-	   #:mover ;; #:memq
+	   #:mover
+	   ;; #:memq
 	   #:pop2
 	   #:proclaim-ftype
 	   #:push2
@@ -455,7 +459,6 @@
 	   #:*load-messages*
 	   #:*null-output*
 	   #:*plain-readtable*
-	   #:*system-administration-mode*
 	   #:*time-function*
 	   #:all-boxes
 	   #:all-crates

@@ -62,9 +62,9 @@ in util.lisp")
   (let ((end (position #\space excl::cl-release-date :from-end t)))
     (subseq excl::cl-release-date 0 end)))
 
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (defparameter *pvs-version* "8.0")
+(defvar *pvs-version* "8.0")
 
+(eval-when (:execute :compile-toplevel :load-toplevel)
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
   (pushnew :pvs8.0 *features*)
@@ -498,6 +498,9 @@ Needed to generate the same dummy name for record literals.")
 (defvar *last-proof* nil
   "The last proof attempted - an instance of proofstate")
 
+;;(defvar *dump-proof-data-to-file* nil)
+
+(defvar *log-proofs* :ask)
 
 ;;; Variables used in the X proof display code (wish.lisp)
 

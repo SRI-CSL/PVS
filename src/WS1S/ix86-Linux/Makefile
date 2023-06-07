@@ -2,9 +2,9 @@ ifneq (,)
 This makefile requires GNU Make.
 endif
 
-BDD = ../mona/BDD
-DFA = ../mona/DFA
-UTILS = ../mona/Mem
+BDD = ../mona-1.4/BDD
+DFA = ../mona-1.4/DFA
+UTILS = ../mona-1.4/Mem
 INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
 LD = ld
 LDFLAGS = -Bsymbolic -shared -L./
@@ -12,7 +12,7 @@ CC = gcc
 CFLAGS += -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O
 SHELL = /bin/sh
-VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
+VPATH = ..:../mona-1.4/BDD:../mona-1.4/DFA:../mona-1.4/Mem
 
 #obj  = ws1s_table.o ws1s_extended_interface.o -lmonadfa
 

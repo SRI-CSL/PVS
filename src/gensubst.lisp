@@ -801,6 +801,8 @@ behavior:
 
 (defvar *mapobject-cache* (make-hash-table :test #'eq :size 37))
 
+(defvar *mapobject-infix* nil)
+
 (defun mapobject (fn obj)
   (unwind-protect
       (mapobject* fn obj)
@@ -1019,6 +1021,13 @@ behavior:
 (defmethod mapobject* (fn (ex application))
   (mapobject* fn (operator ex))
   (mapobject* fn (argument ex)))
+
+(defmethod mapobject* (fn (ex infix-application))
+  (cond (*mapobject-infix*
+	 (mapobject* fn (args1 ex))
+	 (mapobject* fn (operator ex))
+	 (mapobject* fn (args2 ex)))
+	(t (call-next-method))))
 
 (defmethod mapobject* (fn (ex binding-expr))
   (mapobject* fn (bindings ex))

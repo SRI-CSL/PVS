@@ -2,7 +2,8 @@
 # for both leopard and tiger
 MACOSX_DEPLOYMENT_TARGET=10.11
 LD=ld
-LDFLAGS = -bundle -flat_namespace -undefined suppress
+SDK=$(shell xcrun --show-sdk-path)
+LDFLAGS = -bundle -flat_namespace -undefined suppress -L $(SDK)/usr/lib
 CC=gcc
 CFLAGS=-dynamic
 WFLAGS=
@@ -14,15 +15,12 @@ obj=file_utils.o
 .SUFFIXES: .c .o
 .c.o : ; $(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
-all : file_utils.dylib b64
+all : file_utils.dylib
 
 file_utils.dylib: ${obj} utils_table.o
 	$(LD) $(LDFLAGS) -o file_utils.dylib ${obj} utils_table.o -lc
 
 utils_table.o : ../utils_table.c
-
-b64: ../b64.c
-	$(CC) -o ./b64 ../b64.c
 
 clean :
 	rm -f *.o *.a *.dylib
