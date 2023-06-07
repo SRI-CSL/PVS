@@ -400,7 +400,7 @@ nil."
 (defun library-path-to-id (abspath)
   (car (rassoc abspath (pvs-library-alist) :test #'file-equal)))
 
-(defun lirary-id-to-path (lib-id)
+(defun library-id-to-path (lib-id)
   (cdr (assoc lib-id (pvs-library-alist))))
 
 ;;; Called by Emacs function pvs-add-library-path
