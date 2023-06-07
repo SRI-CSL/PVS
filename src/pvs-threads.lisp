@@ -107,6 +107,7 @@
 (defvar *pvs-y-or-n-hook* nil)
 (defvar *pvs-query-hook* nil)
 (defvar *pvs-dialog-hook* nil)
+(defvar *prover-input-hooks* nil)
 
 (defun clear-pvs-hooks ()
   (setq *pvs-message-hook* nil
@@ -163,9 +164,8 @@ Sends a quit, waits half a sec, then kills the thread, and moves the session to 
   (dolist (sess *all-sessions*)
     (if (session-alive-p sess)
 	(let ((id (id sess)))
-	  (prover-step id "(quit)")
-	  (sleep .5)
-	  (session-kill sess))
+	  (handler-case (bt:with-timeout (3) (prover-step id "(quit)"))
+	    (bt:timeout () (session-kill sess))))
 	(session-kill sess))))
 
 ;; Current-session returns the session associated with the current-thread
@@ -180,6 +180,8 @@ otherwise returns nil."
       (let ((outp (if (stringp output)
 		      (string-trim '(#\Space #\Tab #\Newline) output)
 		      output)))
+	(unless (typep outp '(or string proofstate simple-condition))
+	  (break "Strange output: ~a" outp))
 	(push outp (outputs sess))))))
 
 (defun session-read ()
@@ -261,6 +263,8 @@ Returns a list of the form ((id . status) (id . status) ...)"
 				  (cons input-hook *prover-input-hooks*)
 				  *prover-input-hooks*))
 	(*pvs-message-hook* (list #'session-output)))
+    ;;(sys:set-stack-cushion 1219182)
+    ;;(format t "~%stack-cushion = ~a" (sys:stack-cushion))
     (session-output (format nil "~%~a started at ~a" id (iso8601-date)))
     (prove-formula fdecl :rerun? rerun?)))
 
@@ -288,13 +292,15 @@ Returns a list of the form ((id . status) (id . status) ...)"
 				    (prove-formula-in-session id fdecl rerun? input-hook)))))
     (change-class sess 'proof-session :formula-decl fdecl)
     ;; Wait for output-proofstate to produce a new proofstate
-    ;;(format t "~%make-proof-session: waiting for output-queue")
     (let ((out (pop-queue (output-queue sess))))
       (assert (typep (car out) 'proofstate))
       (let* ((ps (car out))
 	     (commentary (reverse (cdr out)))
-	     (status (if (eq (status-flag ps) '!) "proved" "init"))) ;; prover-step adds
-	(when (string-equal status "proved")
+	     (status (case (status-flag ps)
+		       (! "proved")
+		       (quit "quit")
+		       (t "init")))) ;; prover-step adds
+	(unless (string-equal status "init")
 	  (push (cons (id sess) status) *done-sessions*)
 	  (loop while (session-alive-p sess)
 		do (progn ;; (format t "~%Waiting for thread to die")
@@ -320,22 +326,24 @@ Returns a list of the form ((id . status) (id . status) ...)"
     (push-queue cmd (input-queue sess))
     ;; (format t "~%pr-step: pushed ~a to input-queue, waiting for output" cmd)
     (let ((outs (pop-queue (output-queue sess)))) ;; Waits on output-queue
-      ;;(format t "~%(car outs) = ~s: ~a" (car outs) (type-of (car outs)))
       (if (typep (car outs) 'proofstate)
 	  (let* ((ps (car outs))
 		 (commentary (reverse (cdr outs)))
-		 (status (if (typep ps 'top-proofstate)
-			     (case (status-flag ps)
-			       (! 'proved)
-			       (quit 'quit)
-			       (t 'waiting))
-			     (if (eq (status-flag ps) 'quit) ;; shouldn't happen
-				 'quit 'waiting)))
+		 (status (cond ((typep ps 'top-proofstate)
+				(case (status-flag ps)
+				  (! 'proved)
+				  (quit 'quit)
+				  (t 'waiting)))
+			       ((eq (status-flag ps) 'quit)
+				;; shouldn't happen
+				;; (format t ~%Found quit on non-top-proofstate)
+				'quit)
+			       (t 'waiting)))
 		 (err (find-if #'(lambda (c) (typep c 'error)) commentary)))
 	    (when err (setq commentary (remove err commentary)))
 	    (unless (eq status 'waiting)
 	      (loop while (session-alive-p sess)
-		    do (progn ;;(format t "~%Waiting for thread to die")
+		    do (progn ;; (format t "~%Waiting for thread to die")
 			      (sleep .1)))
 	      (setf *all-sessions* (remove sess *all-sessions*))
 	      (push (cons (id sess) status) *done-sessions*))
