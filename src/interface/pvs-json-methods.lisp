@@ -225,7 +225,7 @@ determines the formula declaration, then creates a new proof-session,
 returning the unique id (within a PVS session)."
   ;; (pvs:pvs-log "~%prove-formula: ~s" formula-ref)
   ;;(format t "~%prove-formula: (prove-formula ~a)" formula-ref)
-  (let* ((prf-result (pvs:prover-init formula-ref rerun?))
+  (let* ((prf-result (pvs:prover-init formula-ref :rerun? rerun?))
 	 (prf-alist (pvs2json-response prf-result))
 	 (prf-json (json:encode-json-to-string prf-alist)))
     ;;(format t "~%prove-formula: response = ~s" prf-alist)
@@ -241,7 +241,7 @@ returning the unique id (within a PVS session)."
   (let* ((prf-result (pvs:prover-step proof-id form))
 	 (prf-alist (pvs2json-response prf-result))
 	 (prf-json (json:encode-json-to-string prf-alist)))
-    ;;(format t "~%proof-command: after prf-json")
+    (format t "~%proof-command: after prf-json")
     (values prf-alist prf-json)))
 
 (defun pvs2json-response (prv-result)
