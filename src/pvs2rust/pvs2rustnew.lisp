@@ -5,6 +5,7 @@
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
 (defvar *current-pvs2rust-theory* nil)
+(defvar *output* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -195,7 +196,6 @@
 	 ;(ir-einfo (ir einfo))
 	 (cinfo (get-eval-info (con-decl constructor)))
 	 (ir-cinfo (ir cinfo))
-	 (aaa (format t "~%accessor ~a of constructor ~a" adecl (decl-id (con-decl constructor))))
 	 (ctype (ir-constructor-type ir-cinfo))
 	 (*var-counter* nil));(break "accessor*")
     (newcounter *var-counter*)
@@ -217,13 +217,11 @@
 				     (mk-ir-defn update-name (list aargvar new-value-var) ctype ubody))
 		(cdefn einfo) nil (c-type-info-table einfo) nil (update-cdefn einfo) nil)
 	  ;(format t "~%Adding definition for singular accessor: ~a" adecl-id)
-	  (format t "~% ir einfo ~a" (print-ir (ir-function-name (ir einfo))))
 	  (ir einfo))))
 
 (defmethod pvs2ir-adt-accessor* ((adecl shared-adt-accessor-decl)
 				 constructor constructors index index-id adt-type-name)
   (declare (ignore index constructor))
-  (format t "~%shared accessor ~a of constructor ~a" adecl (decl-id (con-decl constructor)))
   (let* ((adecl-id (id adecl))
 	 (einfo (get-eval-info adecl))
 	 ;(ir-einfo (ir einfo))
@@ -1220,34 +1218,33 @@
 		 (ir2c-decl* ir decl))))))
 
 (defmethod pvs2rust-decl* ((decl type-decl)) ;;has to be an adt-type-decl, returns a string
-  (if (typep type-decl adt-type-decl) ()
+  (if (adt-type-decl? decl)
 	(let* (
 		(name (type-value decl))
 		(thname (intern (format nil "~a" *theory-id*)))
 		(adt-type (type-value decl))
 		(adt (adt adt-type))
 		(constructors (constructors adt))
-		(*output* "")
 	) 
+    (setf *output* "")
 	; (let* ((*output* (format nil "~a~%" *output*))))
 
 	;; --- ENUM CONSTRUCTION ---
-	
-	(let* ((*output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]~%enum ~a{" *output* name))))
+	(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]~%enum ~a{" *output* name))
 	(loop for constructor in constructors
 		collect (let* ((cname (decl-id (con-decl constructor))))
-			(let* ((*output* (format nil "~a~%~a(~a)," *output* cname cname))))
+			(setf *output* (format nil "~a~%~a(~a)," *output* cname cname))
 		)
 	)
-	(let* ((*output* (format nil "~a~%~}~%" *output*))))
+	(setf *output* (format nil "~a~%}~%" *output*))
 
 	;; --- STRUCTS CONSTRUCTION ---
 	(loop for constructor in constructors
 		collect (let* ((cname (decl-id (con-decl constructor))))
 			(progn 
-				(let* ((*output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]~%struct ~a {" *output* cname))))
+				(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]~%struct ~a {" *output* cname))
 				(loop for accessor in (acc-decls constructor)
-					collect (let* ((*output* (format nil "~a~%~a: Rc<~a>," *output* (decl-id acc) (ir2rust-type (pvs2ir-type (range (type acc))))))))
+					collect (setf *output* (format nil "~a~%~a: Rc<~a>," *output* (decl-id accessor) (ir2rust-type (pvs2ir-type (range (type accessor))))))
 				)
 			)
 		)
@@ -1257,16 +1254,16 @@
 	(loop for constructor in constructors
 		collect (let* ((cname (decl-id (con-decl constructor))))
 			(progn 
-				(let* ((*output* (format nil "~a~%fn ~a__~a(" *output* name cname))))
+				(setf *output* (format nil "~a~%fn ~a__~a(" *output* name cname))
 				(loop for accessor in (acc-decls constructor)
-					collect (let* (*output* (format nil "~a~a : ~a, " *output* (decl-id acc) (ir2rust-type (pvs2ir-type (range (type acc)))))))
+					collect (setf *output* (format nil "~a~a : ~a, " *output* (decl-id accessor) (ir2rust-type (pvs2ir-type (range (type accessor))))))
 				)
-				(let* ((*output* (format nil "~a) -> ~a {~%" *output* name))))
-				(let* ((*output* (format nil "~a~a::~a(~a{" *output* name cname cname))))
+				(setf *output* (format nil "~a) -> ~a {~%" *output* name))
+				(setf *output* (format nil "~a~a::~a(~a{" *output* name cname cname))
 				(loop for accessor in (acc-decls constructor)
-					collect (let* ((*output* (format nil "~a~a: Rc::new(~a), " *output* (decl-id acc) (decl-id acc)))))
+					collect (setf *output* (format nil "~a~a: Rc::new(~a), " *output* (decl-id accessor) (decl-id accessor)))
 				)
-				(let* ((*output* (format nil "~a})~%}~%" *output*))))
+				(setf *output* (format nil "~a})~%}~%" *output*))
 			)
 		)
 	)
@@ -1275,16 +1272,16 @@
 	(loop for constructor in constructors
 		collect (let* ((cname (decl-id (con-decl constructor))))
 			(progn
-				(let* ((*output* (format nil "~a~%fn ~a__~ap(arg : ~a) -> bool {~%match arg {~%" *output* name cname name))))
+				(setf *output* (format nil "~a~%fn ~a__~ap(arg : ~a) -> bool {~%match arg {~%" *output* name cname name))
 				(loop for constructor2 in constructors
 					collect (let* ((cname2 (decl-id (con-decl constructor2))))
-						(if (= cname cname2)
-							(let* ((*output* (format nil "~a~a::~a(ref ~a) => true,~%" *output* name cname2 cname2))))
-							(let* ((*output* (format nil "~a~a::~a(ref ~a) => false,~%" *output* name cname2 cname2))))
+						(if (eq cname cname2)
+							(setf *output* (format nil "~a~a::~a(ref ~a) => true,~%" *output* name cname2 cname2))
+							(setf *output* (format nil "~a~a::~a(ref ~a) => false,~%" *output* name cname2 cname2))
 						)
 					)
 				)
-				(let* ((*output* (format nil "~a}~%}~%" *output*))))
+				(setf *output* (format nil "~a}~%}~%" *output*))
 			)
 		)
 	)
@@ -1296,7 +1293,7 @@
 
 	)
   (break "Type decl is not adt-type-decl"))
-  (format t "~a" *output*)
+  (format t "Output : ~a" *output*)
   (break "END")
   ;;
   (let* (
@@ -1338,5 +1335,16 @@
 (defmethod ir2rust-type ((ir-typ ir-subrange))
   (format nil "i32"))
 
+(defmethod ir2rust-type ((ir-type ir-typename))
+  (with-slots (ir-type-id ir-type-defn type-declaration ir-actuals) ir-type
+    (format nil "~a" ir-type-id)))
+
 (defmethod ir2rust-type ((ir-typ t))
+  (format t "~%~a" ir-typ)
   (break "Unsupported type"))
+
+;; MISC
+
+(defun adt-type-decl? (decl)
+  (and (type-decl? decl)
+       (adt-type-name? (type-value decl))))
