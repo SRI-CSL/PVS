@@ -655,7 +655,10 @@ use binfiles."
   (unless *workspace-session* (initialize-workspaces))
   (with-pvs-file (fname) fileref
     (assert (current-pvs-context))
-    (let* ((filename (pathname-name fname))
+    (let* ((ext (pathname-type fname))
+	   (filename (if (string-equal ext "pvs")
+			 (pathname-name fname)
+			 fname))
 	   (*current-file* filename)
 	   (file (make-specpath filename))
 	   (theories (get-theories file)))
