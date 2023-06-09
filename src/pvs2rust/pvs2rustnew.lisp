@@ -1356,39 +1356,7 @@
 	)
   (break "Type decl is not adt-type-decl"))
   (format t "Output : ~a" *output*)
-  (break "END")
-  ;;
-  (let* (
-	 (declid (simple-id (id decl)))
-	 (thname (intern (format nil "~a" *theory-id*)))
-	 (hashentry (gethash thname *c-primitive-type-attachments-hash*)))
-    (cond (hashentry
-	   (unless *to-emacs*
-	     (format t "~% attaching definition for type ~a" declid))
-	   (push-type-info-to-decl hashentry decl)
-	   thname)
-
-	  (t (let* ((adt-type (type-value decl))
-			(adt (adt adt-type))
-			(typename (pvs2ir-adt-decl decl))
-			(constructors (constructors adt))
-			)
-			(format t "~%$DATATYPE ~a THEORY ~a~%@(" adt-type thname)
-			(loop for con in constructors
-				collect (progn (
-					format t "~%(CONSTRUCTOR ~a" (decl-id (con-decl con))
-				)(
-					loop for acc in (acc-decls con)
-							    collect (if (shared-adt-accessor-decl? acc)
-								(format t "~%(SHARED_ACCESSOR ~a ~a)" (decl-id acc) (print-ir (pvs2ir-type (range (type acc))))) 
-								(format t "~%(ACCESSOR ~a ~a)" (decl-id acc) (print-ir (pvs2ir-type (range (type acc))))) 
-								)  
-				)(format t ")"))
-			)
-			(format t ")")
-			(add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
-			))
-)))
+  (break "END"))
 
 
 
