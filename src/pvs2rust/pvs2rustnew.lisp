@@ -5,7 +5,8 @@
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
 (defvar *current-pvs2rust-theory* nil)
-(defvar *output* nil)
+(defvar *output* nil) ;; tmp used for output construction in pvs2rust(decl  functions (not elsewhere) 
+(defvar *functions* nil) ;; list of all fn names
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1227,6 +1228,7 @@
 		(constructors (constructors adt))
 	) 
     (setf *output* "")
+    (setf *functions* "")
 	; (let* ((*output* (format nil "~a~%" *output*))))
 
 	;; --- ENUM CONSTRUCTION ---
@@ -1264,6 +1266,7 @@
 					collect (setf *output* (format nil "~a~a: Rc::new(~a), " *output* (decl-id accessor) (decl-id accessor)))
 				)
 				(setf *output* (format nil "~a})~%}~%" *output*))
+                (setf *functions* (cons (format nil "~a__~a" name cname) *functions*))
 			)
 		)
 	)
@@ -1282,12 +1285,71 @@
 					)
 				)
 				(setf *output* (format nil "~a}~%}~%" *output*))
+                (setf *functions* (cons (format nil "~a__~ap" name cname) *functions*))
 			)
 		)
 	)
 
 	;; --- ACCESSORS ---
+    (loop for constructor in constructors
+		collect (let* ((cname (decl-id (con-decl constructor))))
+			(progn
+				(loop for accessor in (acc-decls constructor)
+					collect (if (member (format nil "~a__~a" name (decl-id accessor)) *functions*)
+                    nil ;; the function already exists
+                    (progn
+                        (setf *output* (format nil "~a~%fn ~a__~a<T>(arg : ~a) -> T {~%match arg{" *output* name (decl-id accessor) name))
+                        (loop for constructor2 in constructors 
+                            collect (let* ((cname2 (decl-id (con-decl constructor2))))
+                            (if (member accessor (acc-decls constructor2))
+                                (setf *output* (format nil "~a~%~a::~a(ref ~a) => unsafe{std::mem::transmute_copy(&Rc_unwrap_or_clone(~a.~a.clone()))}," 
+                                                *output* name cname2 cname2 cname2 (decl-id accessor)))
+                            )
+                            )
+                        )
+                        (setf *output* (format nil "~a~%_ => unreachable!()~%}~%}~%" *output*))
+                        (setf *functions* (cons (format nil "~a__~a" name (decl-id accessor)) *functions*))
+                    )
+                    )
+				)
+			)
+		)
+	)
 
+    ;; --- UPDATE FUNCTIONS ---
+    (loop for constructor in constructors
+		collect (let* ((cname (decl-id (con-decl constructor))))
+			(progn
+				(loop for accessor in (acc-decls constructor)
+					collect (if (member (format nil "~a__~a__update" name (decl-id accessor)) *functions*)
+                    nil ;; the function already exists
+                    (progn
+                        (setf *output* (format nil "~a~%fn ~a__~a__update<T>(arg : ~a, ~a : T) -> ~a {~%match arg{" *output* name (decl-id accessor) name (decl-id accessor) name))
+                        (loop for constructor2 in constructors 
+                            collect (let* ((cname2 (decl-id (con-decl constructor2)))) ; WIP
+                            (if (member accessor (acc-decls constructor2))
+                                (progn
+                                    (setf *output* (format nil "~a~%~a::~a(ref ~a) => ~a::~a(~a{" 
+                                                *output* name cname2 cname2 name cname2 cname2))
+                                    (loop for accessor2 in (acc-decls constructor2)
+                                        collect (if (eq (decl-id accessor2) (decl-id accessor))
+                                            (setf *output* (format nil "~a~a: Rc::new( unsafe{std::mem::transmute_copy(&~a)})," *output* (decl-id accessor2) (decl-id accessor)))
+                                            (setf *output* (format nil "~a~a: ~a.~a.clone()," *output* (decl-id accessor2) cname2 (decl-id accessor2)))
+                                        )
+                                    )
+                                    (setf *output* (format nil "~a~%})," *output*))
+                                )
+                            )
+                            )
+                        )
+                        (setf *output* (format nil "~a~%_ => unreachable!()~%}~%}~%" *output*))
+                        (setf *functions* (cons (format nil "~a__~a__update" name (decl-id accessor)) *functions*))
+                    )
+                    )
+				)
+			)
+		)
+	)
 
 
 
