@@ -7,6 +7,9 @@
 (defvar *current-pvs2rust-theory* nil)
 (defvar *output* nil) ;; tmp used for output construction in pvs2rust(decl  functions (not elsewhere) 
 (defvar *functions* nil) ;; list of all fn names
+(defvar *header* nil) ;; type, const, datatype & misc declaration
+(defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1120,6 +1123,7 @@
 				(pvs2rust-theories (pvs2rust-preceding-theories theory) force?))))
 
 (defun pvs2rust-theories (theories force?)
+  (setf *header* "")
   (mapcar #'(lambda (th) (pvs2rust-theory* th force?)) (reverse theories)))
 
 (defun pvs2rust-theory* (theory &optional force?)
@@ -1164,15 +1168,15 @@
 	)
 	))
 
-(defun pvs2rust-decl (decl force?)
-  (let (;;(saved-c-type-info-table *c-type-info-table*)
-	;;(*pvs2c-current-decl* decl) ;;used to save auxilliary type defns in c-type-info-table
-	;;(*current-context* (decl-context decl))
-	;;(*var-counter* nil)
-	;;(*pvs2c-defn-actuals* nil)
+(defun pvs2rust-decl (decl force?) ;; Variable non-global but temporal scope
+  (let ((saved-c-type-info-table *c-type-info-table*)
+	(*pvs2c-current-decl* decl) ;;used to save auxilliary type defns in c-type-info-table
+	(*current-context* (decl-context decl))
+	(*var-counter* nil)
+	(*pvs2c-defn-actuals* nil)
 	)
     (when force? (clear-decl decl))
-    ;;(newcounter *var-counter*)
+    (newcounter *var-counter*)
     (pvs2rust-decl* decl)))
 
 (defmethod pvs2rust-decl* ((decl type-eq-decl))
@@ -1228,7 +1232,7 @@
 		(constructors (constructors adt))
 	) 
     (setf *output* "")
-    (setf *functions* "")
+    (setf *functions* (cons "" nil))
 	; (let* ((*output* (format nil "~a~%" *output*))))
 
 	;; --- ENUM CONSTRUCTION ---
@@ -1246,8 +1250,10 @@
 			(progn 
 				(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]~%struct ~a {" *output* cname))
 				(loop for accessor in (acc-decls constructor)
-					collect (setf *output* (format nil "~a~%~a: Rc<~a>," *output* (decl-id accessor) (ir2rust-type (pvs2ir-type (range (type accessor))))))
+					collect (progn ;(format t "~%t~a" (type-of (range (type accessor))))
+                    (setf *output* (format nil "~a~%~a: Rc<~a>," *output* (decl-id accessor) (ir2rust-type (pvs2ir-type (range (type accessor)))))))
 				)
+                (setf *output* (format nil "~a~%}~%" *output* cname))
 			)
 		)
 	)
@@ -1295,7 +1301,7 @@
 		collect (let* ((cname (decl-id (con-decl constructor))))
 			(progn
 				(loop for accessor in (acc-decls constructor)
-					collect (if (member (format nil "~a__~a" name (decl-id accessor)) *functions*)
+					collect (if (member (format nil "~a__~a" name (decl-id accessor)) *functions* :test #'equal)
                     nil ;; the function already exists
                     (progn
                         (setf *output* (format nil "~a~%fn ~a__~a<T>(arg : ~a) -> T {~%match arg{" *output* name (decl-id accessor) name))
@@ -1321,7 +1327,7 @@
 		collect (let* ((cname (decl-id (con-decl constructor))))
 			(progn
 				(loop for accessor in (acc-decls constructor)
-					collect (if (member (format nil "~a__~a__update" name (decl-id accessor)) *functions*)
+					collect (if (member (format nil "~a__~a__update" name (decl-id accessor)) *functions* :test #'equal)
                     nil ;; the function already exists
                     (progn
                         (setf *output* (format nil "~a~%fn ~a__~a__update<T>(arg : ~a, ~a : T) -> ~a {~%match arg{" *output* name (decl-id accessor) name (decl-id accessor) name))
@@ -1337,7 +1343,7 @@
                                             (setf *output* (format nil "~a~a: ~a.~a.clone()," *output* (decl-id accessor2) cname2 (decl-id accessor2)))
                                         )
                                     )
-                                    (setf *output* (format nil "~a~%})," *output*))
+                                    (setf *output* (format nil "~a})," *output*))
                                 )
                             )
                             )
@@ -1360,17 +1366,81 @@
 
 
 
-;; IR 2 RUST TYPES , takes ir-type returns string
+;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition if needed
+
+;; plusieurs problemes : 
+;; - les custom types : il faut ajouter les declarations de type au debut du fichier rust 
+;; - les records : il faut ajouter les structs en debut de fichier
+;; - le reste est *straitforward*
 
 (defmethod ir2rust-type ((ir-typ ir-subrange))
+  ;(format t "~%subrange")
   (format nil "i32"))
 
-(defmethod ir2rust-type ((ir-type ir-typename))
+(defmethod ir2rust-type ((ir-type symbol)) ;not. mpq
+  (case ir-type
+    (boolean "bool")
+    (mpq "NotNan<f32>")
+    (t ir-type)))
+
+(defmethod ir2rust-type ((ir-type ir-typename)) ; if recordtype build struct, else makes a type declaration 
   (with-slots (ir-type-id ir-type-defn type-declaration ir-actuals) ir-type
-    (format nil "~a" ir-type-id)))
+    (if (member ir-type-id *type-defs*) nil
+        (progn (setf *type-defs* (cons ir-type-id *type-defs*))
+            (if (typep ir-type-defn 'ir-recordtype)
+                (progn (setf *header* (format nil "~a~%struct ~a {~%" *header* ir-type-id))
+                    (with-slots (ir-label ir-field-types) ir-type-defn
+                        (loop for field in ir-field-types 
+                            collect (with-slots (ir-id ir-name ir-vtype) field 
+                            (setf *header* (format nil "~a~%~a : ~a;~%" *header* ir-id (ir2rust-type ir-vtype))))
+                        )
+                    )
+                    (setf *header* (format nil "~a~%}~%" *header*))
+                )
+                (setf *header* (format nil "~a~%type ~a = ~a;~%" *header* ir-type-id (ir2rust-type ir-type-defn)))
+            )))
+    (format nil "~a" ir-type-id) 
+  ))
+
+(defmethod ir2rust-type ((ir-typ ir-funtype))
+  (with-slots (ir-domain ir-range) ir-typ
+    (format nil "funtype<~a,~a>" (ir2rust-type ir-domain) (ir2rust-type ir-range))
+  ))
+
+(defmethod ir2rust-type ((ir-typ ir-recordtype))
+  (break "Should not be called directly but only behind ir2rust for ir-typename"))
+
+(defmethod ir2rust-type ((ir-typ ir-tupletype)) ;TODO
+  (break "ir-tupletype not implemented")
+  (with-slots (ir-field-types) ir-typ
+	      (mk-ir-tupletype
+	       (ir2c-type-fields ir-field-types)
+	       (ir-label ir-typ))))
+
+(defmethod ir2rust-type ((ir-typ ir-adt-recordtype)) ; it looks like it s never called : a verifier
+  (break "ir-adt recordtype should not be called")
+;;  (with-slots (ir-field-types ir-constructors) ir-typ
+;;	      (mk-ir-adt-recordtype
+;;	       (ir2c-type-fields ir-field-types)
+;;	       ir-constructors))
+)
+
+(defmethod ir2-type ((ir-typ ir-adt-constructor-recordtype)) ; TODO
+  (with-slots (constructor-id ir-field-types ir-adt-name) ir-typ
+    (mk-ir-adt-constructor-recordtype
+     constructor-id
+     (ir2c-type-fields ir-field-types)
+     ir-adt-name)))
+
+(defmethod ir2c-type ((ir-type ir-const-formal)) ; TODO
+  (with-slots (ir-name ir-vtype) ir-type
+    (mk-ir-typename ir-name  ir-vtype nil nil nil)))
+
+(defmethod ir2c-type ((ir-type ir-formal-typename)) ; TODO
+  ir-type)
 
 (defmethod ir2rust-type ((ir-typ t))
-  (format t "~%~a" ir-typ)
+  (format t "~%~a ~a" ir-typ (type-of ir-typ))
   (break "Unsupported type"))
 
 ;; MISC
