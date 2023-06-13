@@ -763,7 +763,8 @@
 
 (defmethod pvs2ir* ((expr array-expr) bindings expected)
   (with-slots (exprs type) expr
-    (let* ((elem-type (range (find-supertype expected)))
+    (let* ((type (or expected (type expr)))
+	   (elem-type (range (find-supertype type)))
 	   (let-vars (loop for x in exprs collect (new-irvartype elem-type)))
 	   (ir-exprs (loop for x in exprs collect (pvs2ir* x bindings elem-type))));(break "array-expr")
       (mk-ir-let* let-vars ir-exprs  (mk-ir-array-literal let-vars)))))
@@ -1327,7 +1328,7 @@
 	   (new-theory-id (format nil "~a_~{~a~^_~}" (simple-id (id theory))
 					type-actuals))
 	   (intern-theory-id (intern new-theory-id))
-	   ) (when nonref-actuals (break "nonref-actuals"))
+	   ) ;(when nonref-actuals (break "nonref-actuals"))
       (cond ((and nonref-actuals (not (eq theory *current-pvs2c-theory*)))  ;; was (eq intern-theory-id *theory-id*)))
 	     (let* ((*theory-id* intern-theory-id)
 		    (monoclones (ht-instance-clone theory))
@@ -1346,7 +1347,7 @@
 		      (ir (eval-info instdecl)))
 		     (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
 			(setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
-			(pvs2c-theory-body-step theory-instance t nil) ;;NSH(3/20/22): Need to clear inherited eval-info
+			(pvs2c-theory-body-step theory-instance t nil)  ;;NSH(3/20/22): Need to clear inherited eval-info
 			(format t "~%Pushing ~a" intern-theory-id)
 			(pushnew theory-instance *preceding-mono-theories*)
 			;; (if (memq theory *preceding-prelude-theories*)
@@ -2073,7 +2074,7 @@
 		(ir-var (new-irvar))
 		(type1 (type var1))
 		(ir-type (pvs2ir-type type1 bindings))
-		(ir-arg-type (pvs2ir-type (type (car args)) bindings))
+		(ir-arg-type (pvs2ir-expr-type (car args) bindings))
 		(ir-vartype (mk-ir-variable ir-var ir-type (id var1)));;NSH(1/17/20)
 		(ir-bind-expr (pvs2ir* (car args) bindings nil))
 		(ir-body (pvs2ir-let-expr (cdr let-bindings) (cdr args)
@@ -2705,15 +2706,16 @@
 				    tbinding)
 			   tbinding))
 	   (ptype (print-type type))
-	   (ir-actuals (loop for act in (actuals ptype)
-			   collect (if (type-value act)
-				       (mk-ir-type-actual (pvs2ir-type (type-value act) bindings))
-				     (mk-ir-const-actual (pvs2ir* act bindings nil)))))
+	   (ir-actuals (when (type-name? ptype)
+			 (loop for act in (actuals ptype)
+			       collect (if (type-value act)
+					   (mk-ir-type-actual (pvs2ir-type (type-value act) tbinding))
+					 (mk-ir-const-actual (pvs2ir* act tbinding nil))))))
 	   (defined-ir-type-value (when (type-name? ptype)
-			     (ir-type-value-with-actuals (declaration ptype) ir-actuals)))
+			     (ir-type-name-with-actuals (declaration ptype) ir-actuals)))
 	   (defined-ir-domtype (when (and defined-ir-type-value
-					  (ir-arraytype? (ir-type-defn (ir-type-name defined-ir-type-value))))
-				 (ir-domain (ir-type-defn (ir-type-name defined-ir-type-value)))))
+					  (ir-arraytype? (ir-type-defn defined-ir-type-value)))
+				 (ir-domain (ir-type-defn defined-ir-type-value))))
 	   (ir-type (let ((ir-dom-subrange (is-ir-subrange? ir-dom)))
 		      (if (ir-subrange? ir-dom-subrange)
 			  (with-slots (ir-low ir-high ir-high-expr) ir-dom-subrange
@@ -2835,6 +2837,7 @@
 	       ((subtype-of? type *character*) 'char)
 					;((subtype-of? type *number*) (break "pvs2ir-type*(subtype)"))
 	       (t (pvs2ir-type* (supertype type) tbinding)))))
+;    (when (eq result 'mpq)(break "pvs2ir-type* (subtype)"))
     (format t "~%PVS type: ~a => IR type: ~a" type (print-ir result))
     result))
 
@@ -5878,8 +5881,8 @@
 	 (theory-params *ir-theory-formals*)
 	 (c-param-arg-string (format nil "~{, ~a~}" (loop for ir-formal in
 								  theory-params
-								  collect (ir-name ir-formal)))))
-    (make-release-call ir2c-type ctype (ir-name ir-array-var) c-param-arg-string)))
+								  collect (ir-formal-id ir-formal)))))
+    (make-release-call ir2c-type ctype (ir-name ir-array-var) theory-params c-param-arg-string)))
 
 (defmethod ir2c* ((ir-expr ir-apply) return-var return-type)
   (with-slots (ir-func ir-params ir-args) ir-expr
@@ -6182,8 +6185,7 @@
 	   (high-instrs (if (ir-high-expr ir-vtype)
 			    (ir2c* (ir-high-expr ir-vtype) highvar ir-vtype)
 			  			 (list (format nil "~a = (~a_t) ~a" lowvar index-c-type (ir-high ir-vtype)))))
-	   (prelude-instrs (list (format nil "~a_t ~a" index-c-type index)
-				 (format nil "~a_t ~a" index-c-type lowvar)
+	   (prelude-instrs (list (format nil "~a_t ~a" index-c-type lowvar)
 				 (format nil "~a_t ~a" index-c-type highvar)
 				 (format nil "~a = true" return-var)))
 	   (c-body (ir2c* ir-body return-var return-type))
@@ -6207,8 +6209,7 @@
 	   (high-instrs (if (ir-high-expr ir-vtype)
 			    (ir2c* (ir-high-expr ir-vtype) highvar ir-vtype)
 			  			 (list (format nil "~a = (~a_t) ~a" lowvar index-c-type (ir-high ir-vtype)))))
-	   (prelude-instrs (list (format nil "~a_t ~a" index-c-type index)
-				 (format nil "~a_t ~a" index-c-type lowvar)
+	   (prelude-instrs (list (format nil "~a_t ~a" index-c-type lowvar)
 				 (format nil "~a_t ~a" index-c-type highvar)
 				 (format nil "~a = false" return-var)))
 	   (c-body (ir2c* ir-body return-var return-type))
@@ -6359,6 +6360,10 @@
 		     (ctype (add-c-type-definition ir-ctype))
 		     (creturn-type (add-c-type-definition (ir2c-type return-type)))
 		     (target-last (ir-last? ir-target))
+		     (theory-params *ir-theory-formals*)
+		     (c-param-arg-string (format nil "~{, ~a~}" (loop for ir-formal in
+								      theory-params
+								      collect (ir-formal-id ir-formal))))		     
 		     (rhs-last (and (not (ir-constructor-update? ir-expr))
 				    (ir-last? ir-rhs)
 				    (ir-reference-type? (ir-vtype rhs-var))))
@@ -6372,8 +6377,8 @@
 		    (let* ((lhs-var (get-ir-last-var ir-lhs))
 			   (lhs-var-name (ir-name lhs-var)))
 		      (if target-last
-			  (cons (format nil "~a = (~a_t)update_~a(~a, ~a, ~a)"
-					return-var creturn-type ctype target-var-name lhs-var-name rhs-var-name)
+			  (cons (format nil "~a = (~a_t)update_~a(~a, ~a, ~a~a)"
+					return-var creturn-type ctype target-var-name lhs-var-name rhs-var-name c-param-arg-string)
 				rhs-last-instr)
 			(cons (format nil "{~a = (~a_t)copy_~a(~a); update_~a(~a, ~a, ~a)}"
 				      return-var creturn-type ctype target-var-name ctype
@@ -6381,8 +6386,8 @@
 			      rhs-last-instr)))
 		  ;;else we're assuming it's a record
 		  (if target-last
-		      (cons (format nil "~a = (~a_t)update_~a_~a(~a, ~a)"
-					return-var creturn-type ctype ir-lhs target-var-name rhs-var-name)
+		      (cons (format nil "~a = (~a_t)update_~a_~a(~a, ~a~a)"
+					return-var creturn-type ctype ir-lhs target-var-name rhs-var-name c-param-arg-string)
 			    rhs-last-instr)
 		    (cons (format nil "{~a = (~a_t)copy_~a(~a); ~a = (~a_t)update_~a_~a(~a, ~a);}"
 				  return-var creturn-type ctype target-var-name
@@ -6561,7 +6566,7 @@
 	       (closure-type-decl (format nil "~%struct ~a;~%~8Ttypedef struct ~a * ~a;"
 					  closure-struct-name closure-struct-name closure-type-name))
 	       (closure-type-defn ;the fptr takes the closure itself and a pointer to the lambda-args
-		(format nil "struct ~a {uint32_t count;~%~8T ~a_t ftbl;~%~8T ~a_htbl_t htbl;~{~%~8T~a;~^~}};"
+		(format nil "struct ~a {uint32_t count;~%~8T ~a_t ftbl;~%~8T ~a_htbl_t htbl~{;~%~8T~a~^~}~a;};"
 			closure-struct-name 
 			ftbl-type-name c-funtype
 			fvar-cvar-decls
@@ -6609,9 +6614,8 @@
 					    (count-instrs (when (ir-reference-type? (ir-vtype ir-bvar))
 							    (list (format nil "~a->count++" rhs i)))))
 				       (nconc init-instrs count-instrs)))
-			 (list (format nil "release_~a(bvar~{, ~a~})" c-domaintype
-				       (loop for ir-formal in (free-ir-formals ir-domaintype)
-					     collect (ir-type-id ir-formal)))))))
+			 (list (format nil "release_~a(bvar~a)" c-domaintype
+				       c-param-arg-string)))))
 	       ;;(8/7/21) Might need all theory formals and not just the free ones. 
 	       (release-bvar-projections
 		(when (> (length ir-boundvars) 1)
@@ -6621,11 +6625,11 @@
 				 (gmp-type? (ir2c-type (ir-vtype ir-bvar))))
 			collect (let ((atype (add-c-type-definition (ir2c-type (ir-vtype ir-bvar)))))
 				  (format nil "release_~a(bvar_~a)" atype i)))))
-	       (bvar-fvar-args (format nil "~{~a~^, ~}~{, ~a~}"
+	       (bvar-fvar-args (format nil "~{~a~^, ~}~{, ~a~}~{, ~a~}"
 				       bvar-cvars
 				       (loop for i from 1 to (length ir-freevars)
 					     collect (format nil "closure->fvar_~a" i))
-				       (loop for param in theory-c-params collect (format nil "closure->~a" param))))
+				       (loop for param in theory-params collect (format nil "closure->~a" (ir-formal-id param)))))
 	       (hashable-domain (ir-hashable-index? (ir2c-type ir-domaintype)))
 	       ;;(hashable-range (ir-hashable-index? (ir2c-type ir-rangetype)))
 	       (closure-fptr-defn 
@@ -6731,7 +6735,7 @@
 	  (push closure-defn-info
 		*c-type-info-table*)
 	  (let ((closure-function-definition
-		 (make-c-closure-defn-info ir-lambda-expr closure-hptr-name))
+		 (make-c-closure-defn-info ir-lambda-expr closure-hptr-name c-param-decl-string))
 		)
 	    (when (null closure-function-definition) (break "add-closure-definition"))
 	    (setf (hdefn closure-defn-info) closure-function-definition)
@@ -7393,9 +7397,16 @@
   (ir-reference-type? ir-type))
 
 (defun make-release-call (ir-type c-ir-type c-expr c-param-arg-string)
+;;  (when (ir-formal-typename? ir-type) (break "mkrc"))
   (if (ir-formal-typename? ir-type)
       (format nil "~a->release_ptr(~a, ~a)" c-ir-type c-expr c-ir-type)
-    (format nil "release_~a(~a~a)"  c-ir-type c-expr c-param-arg-string)))
+    (if (ir-typename? ir-type)
+	(if (ir-formals ir-type)
+	    (if (ir-actuals ir-type)
+		(break "Not implemented.")
+	      (format nil "release_~a(~a~a)"  c-ir-type c-expr c-param-arg-string))
+	  (format nil "release_~a(~a)"  c-ir-type c-expr))
+      (format nil "release_~a(~a~a)"  c-ir-type c-expr c-param-arg-string))))
 
 (defun make-array-release-header (release-name type-name-root c-param-decl-string)
   (format nil "extern void ~a(~a_t x~a);" release-name type-name-root c-param-decl-string))
@@ -7936,14 +7947,27 @@
 				   (ir-id ft)
 				   (ir-id ft)
 				   cft)
-			   (if (ir-reference-type? (ir-vtype ft))
-			       (format nil "~%~8Ttmp = tmp && equal_~a(x->~a, y->~a~a)"
-				       cft
-				       (ir-id ft)
-				       (ir-id ft)
-				       c-param-arg-string)
-			     (format nil "~%~8Ttmp = tmp && x->~a == y->~a"
-				     (ir-id ft)  (ir-id ft)))))))
+			 (if (ir-reference-type? (ir-vtype ft))
+			     (let ((ft-vtype (ir-vtype ft)))
+			       (if (ir-typename? ft-vtype)
+				   (if (and (ir-formals ft-vtype)
+					    (ir-actuals ft-vtype))
+				       (format nil "pvs2cerror(~s, ~a)" "Parametric datatypes not handled" 0)
+				     (format nil "~%~8Ttmp = tmp && equal_~a(x->~a, y->~a)"
+					     cft
+					     (ir-id ft)
+					     (ir-id ft)))
+				 (format nil "~%~8Ttmp = tmp && equal_~a(x->~a, y->~a~a)"
+					     cft
+					     (ir-id ft)
+					     (ir-id ft)
+					     c-param-arg-string)))
+			   (if (eq (ir-vtype ft) 'mpz)
+			       (format nil "tmp = tmp && (mpz_cmp(x->~a, y->~a) == 0)" (ir-id ft) (ir-id ft))
+			     (if (eq (ir-vtype ft) 'mpq)
+				 (format nil "tmp = tmp && (mpq_cmp(x->~a, y->~a) == 0)" (ir-id ft) (ir-id ft))
+			       (format nil "~%~8Ttmp = tmp && x->~a == y->~a"
+				       (ir-id ft)  (ir-id ft)))))))))
     (format nil "bool_t equal_~a(~a_t x, ~a_t y~a){~%~8Tbool_t tmp = true;~{~a;~}~%~8Treturn tmp;}"
 	    type-name-root type-name-root type-name-root  c-param-decl-string equal-field-instrs)))
 
@@ -7972,7 +7996,7 @@
 				       fldvar
 				       cft
 				       (ir-id ft)
-				       c-param-arg-string)
+				       (if (ir-typename? (ir-vtype ft)) ""  c-param-arg-string))
 			     (format nil "~a;~%~8Ttmp[~a] = safe_strcat(~a, json_~a(x->~a))"
 				     stmt index fldvar cft (ir-id ft))))))))
     (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp[~a]; ~{~a;~}~%~8T char * result = json_list_with_sep(tmp, ~a,  \'{\', \',\', \'}\');~%~8T for (uint32_t i = 0; i < ~a; i++) free(tmp[i]);~%~8Treturn result;}"
@@ -7998,14 +8022,16 @@
 	(mpcft (mppointer-type c-field-type)))
     (if (ir-reference-type? ftype)
 	(format nil "~a_t ~a(~a_t x, ~a_t v~a){~%~8T~a_t y;~%~8Tif (v != NULL){v->count++;};~
-                     ~%~8Tif (x->count == 1){y = x; if (x->~a != NULL){release_~a(x->~a~a);};}~%~8T~
+                     ~%~8Tif (x->count == 1){y = x; if (x->~a != NULL){~a;};}~%~8T~
                      else {y = copy_~a(x); x->count--; y->~a->count--;};~%~8T~
                      ~a;~%~8Treturn y;}"
 		type-name-root update-name type-name-root mpcft
 		c-param-decl-string
 		type-name-root 
-		fname c-field-type fname
-		c-param-arg-string
+		fname ;c-field-type
+		(make-release-call ftype c-field-type (format nil "x->~a" fname) c-param-arg-string)
+		;fname
+		;c-param-arg-string
 		type-name-root fname (make-c-assignment (format nil "y->~a"fname)
 							      c-field-type
 							       "v" c-field-type))
@@ -8066,10 +8092,18 @@
   (equal (ir2c-type texpr1)(ir2c-type texpr2)))
 
 (defmethod ir2c-tequal* ((texpr1 ir-typename)(texpr2 ir-typename))
-  (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
-	      (with-slots ((id2 ir-type-id)(tdef2 ir-type-defn)) texpr2
-			  ;(and (eq id1 id2))
-		(ir2c-tequal* tdef1 tdef2))))
+  (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)(act1 ir-actuals)) texpr1
+	      (with-slots ((id2 ir-type-id)(tdef2 ir-type-defn)(act2 ir-actuals)) texpr2
+		(and (eq id1 id2)
+		     (ir2c-tequal* tdef1 tdef2)
+		     (ir2c-tequal* act1 act2)))));;actuals fall through so they need to be eq.
+
+(defmethod ir2c-tequal* ((texpr1 ir-formal-typename)(texpr2 ir-formal-typename))
+  (with-slots ((id1 ir-type-id)) texpr1
+    (with-slots ((id2 ir-type-id)) texpr2
+      (eq id1 id2))))
+
+
 
 (defmethod ir2c-tequal* ((texpr1 ir-typename)(texpr2 t))
   (with-slots ((id1 ir-type-id)(tdef1 ir-type-defn)) texpr1
@@ -8562,7 +8596,7 @@
 	  (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn c-arg-types
 			  c-result-type)))))
 
-(defun make-c-closure-defn-info (ir-lambda-expr ir-function-name)
+(defun make-c-closure-defn-info (ir-lambda-expr ir-function-name c-param-decl-string)
   (let* ((ir-args (ir-vartypes ir-lambda-expr))
 	 (ir-result-type (ir-rangetype ir-lambda-expr)) ;(pvs2ir-type (range (find-supertype (type decl))))
 	 (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
@@ -8577,8 +8611,9 @@
 	 (c-args-string (if (consp c-args)
 			    (format nil "~{~a~^, ~}" c-args)
 			  (format nil "void")))
-	 (c-header (format nil "extern ~a_t ~a(~a)" (mppointer-type c-result-type)
-			   ir-function-name c-args-string))
+	 (c-header (format nil "extern ~a_t ~a(~a~a)" (mppointer-type c-result-type)
+			   ir-function-name c-args-string
+			   c-param-decl-string))
 	 ;; (case c-result-type
 	 ;; 	     ((mpz mpq)
 	 ;; 	      (if (consp c-args)
@@ -8622,7 +8657,7 @@
     (unless *suppress-output* ;;*to-emacs*
       (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
       (format t "~%Generates C definition = ~%~a" c-defn))
-;    (break "make-c-closure-defn")
+    ;(break "make-c-closure-defn")
     (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn
 		    c-defn-arg-types c-defn-result-type)))
 
@@ -8713,7 +8748,10 @@
   (let* (;(theory-id (id theory)) ;made this a parameter
 	 (file-string (format nil "~a_c.h" theory-id))
 	 (preceding-theories (pvs2c-preceding-theories theory))
-	 (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory)))
+	 (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory))
+	 ;; (theory-instances (when (ht-instance-clone theory)
+	 ;; 		     (maphash #'(lambda (x y) x) (ht-instance-clone theory))))
+	 )
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
@@ -9059,12 +9097,13 @@ successful."
 		  (pvs2c-theory-body theory force?)))
 
 (defun pvs2c-theory-body (theory &optional force? indecl);;*theory-id* needs to be bound by caller
-  (let* ((*theory-id* (simple-id (id theory))))
+  (let* ((*theory-id* (simple-id (id theory)))
+	 (*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
+	 )
     (pvs2c-theory-body-step theory force? indecl)))
 
 (defun pvs2c-theory-body-step (theory force? indecl)
   (let* ((*current-pvs2c-theory* theory)
-	 (*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
 	 (*theory-formals* (formals-sans-usings theory))
 	 (*ir-type-info-table* nil)
 	 (*c-type-info-table* nil)
