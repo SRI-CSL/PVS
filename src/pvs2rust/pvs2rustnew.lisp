@@ -1285,8 +1285,8 @@
 				(loop for constructor2 in constructors
 					collect (let* ((cname2 (decl-id (con-decl constructor2))))
 						(if (eq cname cname2)
-							(setf *output* (format nil "~a~a::~a(ref ~a) => true,~%" *output* name cname2 cname2))
-							(setf *output* (format nil "~a~a::~a(ref ~a) => false,~%" *output* name cname2 cname2))
+							(setf *output* (format nil "~a~a::~a(_) => true,~%" *output* name cname2))
+							(setf *output* (format nil "~a~a::~a(_) => false,~%" *output* name cname2))
 						)
 					)
 				)
