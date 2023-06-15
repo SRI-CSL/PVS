@@ -1064,57 +1064,102 @@
     (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn
 		    c-defn-arg-types c-defn-result-type)))
 
-(defun print-header-file (theory-id theory)
-  (let* (;(theory-id (id theory)) ;made this a parameter
-	 (file-string (format nil "~a_c.h" theory-id))
-	 (preceding-theories (pvs2c-preceding-theories theory))
-	 (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory)))
+
+(defun print-rust-file (theory-id text)
+  (let* ((file-string (format nil "~a.rs"  theory-id))
+	 (file-path (format nil "~a" (working-directory))))
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
-		    (format output "//Code generated using pvs2ir")
-		    (format output "~%#ifndef _~a_h ~%#define _~a_h" theory-id theory-id)
-		    (format output "~%~%#include <stdio.h>")
-		    (format output "~%~%#include <stdlib.h>")
-		    (format output "~%~%#include <inttypes.h>")
-		    (format output "~%~%#include <stdbool.h>")
-		    (format output "~%~%#include <stdarg.h>")		    
-		    (format output "~%~%#include <string.h>")
-		    (format output "~%~%#include <fcntl.h>")		    
-		    (format output "~%~%#include <math.h>")
-		    (format output "~%~%#include <sys/mman.h>")
-		    (format output "~%~%#include <sys/stat.h>")
-		    (format output "~%~%#include <sys/types.h>")
-		    (format output "~%~%#include <gmp.h>")
-		    (format output "~%~%#include \"pvslib.h\"")
-		    (loop for thy in  preceding-prelude-theories
-			  when (not (same-id thy theory-id))
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
-		    (loop for thy in  preceding-theories
-			  when (not (same-id thy theory-id))
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
-		    (loop for thy in  *preceding-mono-theories*
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
-		    (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
-		    (format output " -I ~a/include" *pvs-path*)
-		    (format output " ~a/lib/pvslib.c " *pvs-path*)
-		    (format output " -I ~alib" *pvs-path*)
-		    (loop for thy in preceding-prelude-theories
-			  do (format output " ~alib/~a_c.c" *pvs-path* (id thy)))
-		    (loop for thy in preceding-theories
-			  do (format output " ~a_c.c" (id thy)))
-		    (loop for thy in  *preceding-mono-theories*
-			  do (format output " ~a_c.c" (id thy)))
-		    (format output " -lgmp ")
-		    (loop for formal in (formals theory)
-		      	  when (formal-type-decl? formal)
-		      	  do (format output "~%~%typedef pointer_t ~a_t;" (ir-type-id (ir-type-name (ir-type-value formal)))))
-		    (print-type-info-headers-to-file output *c-type-info-table*)
-		    (loop for decl in (theory theory)
-		     	  when (and (const-decl? decl)(eval-info decl)(cdefn (eval-info decl)))
-			  do (print-header-decl decl output))
-		    (format output "~%#endif")
-		    (id theory))))
+      (format output "//Code generated using pvs2ir2rust")
+      (format output "~%// --- HEADER BEGINS ---
+#![allow(
+    non_snake_case,
+    dead_code,
+    non_upper_case_globals,
+    non_camel_case_types,
+    unused_variables,
+    unused_parens,
+    unreachable_patterns,
+    unused_imports
+)]
+
+use std::hash::Hash;
+use std::rc::Rc;
+use std::clone::Clone;
+use std::any::Any;
+use ordered_float::NotNan;
+use std::collections::HashMap;
+use std::mem::transmute_copy;
+use std::hash::BuildHasherDefault;
+use fxhash::FxHasher;
+
+fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
+    Rc::try_unwrap(rc).unwrap_or_else(|rc| (*rc).clone())
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ordstruct {}
+
+trait RegularOrd: Clone + PartialEq + Eq + Hash where Self: std::marker::Sized {}
+
+impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
+
+#[derive(Clone)]
+struct funtype<A: RegularOrd, V: RegularOrd> {
+    explicit: Rc<dyn Fn(A) -> V>,
+    hashtable: Rc<HashMap<A, V, BuildHasherDefault<FxHasher>>>, // way better than BTreeMap...
+}
+
+impl<A: RegularOrd, V: RegularOrd> PartialEq for funtype<A, V> {
+    fn eq(&self, other: &Self) -> bool {
+        panic!(\"Can't test equality of two functions\")
+    }
+}
+impl<A: RegularOrd, V: RegularOrd> Eq for funtype<A, V> {}
+
+impl<A: RegularOrd, V: RegularOrd> Hash for funtype<A, V> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        panic!(\"Can't have proper ordering for two functions\")
+    }
+}
+
+impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
+    fn new(explicit: Rc<dyn Fn(A) -> V>) -> funtype<A, V> {
+        funtype {
+            explicit,
+            hashtable: Rc::new(HashMap::default()),
+        }
+    }
+    fn lookup(&self, a: A) -> V {
+        match self.hashtable.get(&a) {
+            Some(v) => v.clone(),
+            None => (self.explicit)(a),
+        }
+    }
+    fn update(mut self, a: A, v: V) -> Self {
+        // slow make mut
+        Rc::make_mut(&mut self.hashtable).insert(a, v);
+        self
+    }
+}
+// --- HEADER ENDS ---~%"  )
+      (format output "~%~a~%//fn main(){}" text)
+      ;(prettier-rust-file file-string)
+      (format t "~%Wrote ~a" file-string)
+    )
+
+    (concatenate 'string file-path file-string)
+    ))
+
+(defun concatString (list)
+  "A non-recursive function that concatenates a list of strings."
+  (if (listp list)
+      (let ((result ""))
+        (dolist (item list)
+          (if (stringp item)
+              (setq result (concatenate 'string result item))))
+        result)))
 
 (defun pvs2rust (theoryref)
 	(let* ((theory (get-typechecked-theory theoryref nil t))
@@ -1158,15 +1203,16 @@
 								       *type-actual-ir-name*)))))
 	 (*ir-theory-tbindings* (pairlis *theory-formals* *ir-theory-formals*))
 	 )
-    (loop for decl in (theory theory)
+    (let* ((outputs (loop for decl in (theory theory)
 	    when (if (null indecl)
 		     (or (const-decl? decl) 
 			 (type-eq-decl? decl)(type-decl? decl)(adt-type-decl? decl))
 		     (eq decl indecl))
-	    do (progn ;(format t "~%decl ~a th ~a" decl theory)
-				  (pvs2rust-decl decl force?))
-	)
+	    collect (pvs2rust-decl decl force?)
 	))
+    (text (concatString outputs)))
+    (print-rust-file *theory-id* text)
+    )))
 
 (defun pvs2rust-decl (decl force?) ;; Variable non-global but temporal scope
   (let ((saved-c-type-info-table *c-type-info-table*)
@@ -1199,28 +1245,8 @@
   
 ;;conversion for a definition
 (defmethod pvs2rust-decl* ((decl const-decl))
-	(break "const-decl")
-  (let* (;(thid (simple-id (id (module decl))))
-	 (declid (simple-id (id decl)))
-	 (ir-function-id (intern (format nil "~a__~a" *theory-id* declid)))
-	 (hashentry (gethash ir-function-id *c-primitive-attachments-hash*)))
-    (cond (hashentry
-	   (let* ((einfo (or (eval-info decl)
-			     (let* ((new-einfo (make-instance 'eval-info))
-				    )	;all nil for now
-			       (setf (eval-info decl) new-einfo)
-			       new-einfo)))
-		  (new-ir-function (mk-ir-function ir-function-id decl))
-		  (new-ir (mk-ir-defn new-ir-function nil nil nil)))
-	     (setf (ir einfo) new-ir)
-	     (setf (cdefn einfo) hashentry)
-	     (op-name hashentry)))
-	  (t   (unless (or (adt-constructor-decl? decl)	;;these are automatically generated from the adt type decl
-			   (adt-recognizer-decl? decl)
-			   (adt-accessor-decl? decl))
-		 (pvs2ir-decl decl))
-	       (let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
-		 (ir2c-decl* ir decl))))))
+	(format t "~%Skipping const-decl : ~a" decl)
+)
 
 (defmethod pvs2rust-decl* ((decl type-decl)) ;;has to be an adt-type-decl, returns a string
   (if (adt-type-decl? decl)
@@ -1364,8 +1390,7 @@
 
 	)
   (break "Type decl is not adt-type-decl"))
-  (format t "Output : ~a" *output*)
-  (break "END"))
+  *output*)
 
 
 
