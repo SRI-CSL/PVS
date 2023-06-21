@@ -120,6 +120,23 @@
 
 (defvar *debug-ws* t)
 
+(defvar *ws-messages* nil)
+
+;; (defun ws-message (conn message)
+;;   (let ((f (lparallel.promise:future
+;; 	    (let ((pvs:*pvs-emacs-interface* nil)
+;; 		  (pvs:*pvs-websocket-interface* t))
+;; 	      (format t "~%ws-message: ~s" message)
+;; 	      (if *debug-ws*
+;; 		  (pvs-jsonrpc:process-jsonrpc message conn)
+;; 		  (handler-case
+;; 		      (pvs-jsonrpc:process-jsonrpc message conn)
+;; 		    (error (c) (format t "~a" c))))))))
+;;     (loop until (lparallel.promise:fulfilledp f)
+;; 	  do (lparallel.promise:force f))
+;;    )
+;;   )
+
 (defun ws-message (conn message)
   ;;(format t "~%ws-message: ~s" message)
   (let ((pvs:*pvs-emacs-interface* nil)
@@ -131,13 +148,18 @@
 	  (error (c) (format t "~a" c))))))
 
 (defun ws-close (conn code reason)
-  (declare (ignore code reason))
+  ;;(declare (ignore code reason))
+  (declare (ignore conn))
+  ;; usocket:socket-close
+  ;; (wsd:close-connection conn)
   (let ((telt (assoc (bordeaux-threads:current-thread) *ws-thread-connections*)))
-    (assert telt)
-    (assert (eq (cdr telt) conn))
-    ;; (format t "~%Closing PVS connection, code: ~a, reason: ~a~%" code reason)
-    (finish-output)
-    (setf *ws-thread-connections* (remove telt *ws-thread-connections*))))
+    (unless (equal code 1006)
+      (format t "~%Closing PVS connection, code: ~a, reason: ~a~%" code reason))
+    (when telt
+      ;; (assert (eq (cdr telt) conn))
+      ;; (format t "~%Closing PVS connection, code: ~a, reason: ~a~%" code reason)
+      (finish-output)
+      (setf *ws-thread-connections* (remove telt *ws-thread-connections*)))))
 
 (defun ws-error (conn errmsg)
   (declare (ignore conn))
