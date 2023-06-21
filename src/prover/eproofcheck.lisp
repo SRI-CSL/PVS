@@ -741,10 +741,14 @@
 		    (check-command-arguments cmd keywords (cddr arguments) has-rest? t))))
 	  (check-command-arguments cmd keywords (cdr arguments) has-rest?))))
 
-(defun prover-command-entry (cmd)
-  (or (gethash cmd *rulebase*)
-      (gethash cmd *rules*)
-      (gethash cmd *steps*)))
+(defun prover-command-entry (command)
+  (let ((cmd (if (stringp command)
+		 #+sbcl (intern (string-upcase command) :pvs)
+		 #+allegro (intern (string-downcase command) :pvs)
+		 command)))
+    (or (gethash cmd *rulebase*)
+	(gethash cmd *rules*)
+	(gethash cmd *steps*))))
 
 (defun check-arguments (pcmd)
   (let* ((keylist (assq (car pcmd) *prover-keywords*))
