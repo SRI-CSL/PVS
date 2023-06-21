@@ -355,20 +355,23 @@ nil."
 			  ((null workspace)
 			   (list *workspace-session*)))))
     (dolist (ws workspaces)
-      (clrhash (pvs-files ws))
-      (clrhash (pvs-theories ws))
-      (clrhash (all-subst-mod-params-caches ws))
-      (if empty-pvs-context
-	  (setf (pvs-context ws) (make-pvs-context))
-	  (when (and (not dont-load-prelude-libraries)
-		     (listp (pvs-context-libraries))
-		     (every #'stringp (pvs-context-libraries)))
-	    ;; May need to make sure a later ws isn't a prelude-library
-	    (load-prelude-libraries (prelude-libs ws))))
-      (when delete-binfiles
-	(let ((bindir (format nil "~a~a/" (path ws) *pvsbin-string*)))
-	  (dolist (bf (uiop:directory-files bindir "*.bin"))
-	    (delete-file bf)))))
+      (cond ((uiop:directory-exists-p (path ws))
+	     (clrhash (pvs-files ws))
+	     (clrhash (pvs-theories ws))
+	     (clrhash (all-subst-mod-params-caches ws))
+	     (if empty-pvs-context
+		 (setf (pvs-context ws) (make-pvs-context))
+		 (when (and (not dont-load-prelude-libraries)
+			    (listp (pvs-context-libraries))
+			    (every #'stringp (pvs-context-libraries)))
+		   ;; May need to make sure a later ws isn't a prelude-library
+		   (load-prelude-libraries (prelude-libs ws))))
+	     (when delete-binfiles
+	       (let ((bindir (format nil "~a~a/" (path ws) *pvsbin-string*)))
+		 (dolist (bf (uiop:directory-files bindir "*.bin"))
+		   (delete-file bf)))))
+	    (t (setq *all-workspace-sessions* (remove ws *all-workspace-sessions*))
+	       (pvs-message "Directory ~a has disappeared" (path ws)))))
     t))
 
 (defun intialize-workspace-session (ws)
@@ -655,10 +658,7 @@ use binfiles."
   (unless *workspace-session* (initialize-workspaces))
   (with-pvs-file (fname) fileref
     (assert (current-pvs-context))
-    (let* ((ext (pathname-type fname))
-	   (filename (if (string-equal ext "pvs")
-			 (pathname-name fname)
-			 fname))
+    (let* ((filename (pvs-filename fname))
 	   (*current-file* filename)
 	   (file (make-specpath filename))
 	   (theories (get-theories file)))
@@ -666,7 +666,7 @@ use binfiles."
 	     (unless no-message?
 	       (pvs-message "PVS file ~a is not in the current context" filename)))
 	    ((and (not forced?)
-		  (gethash (pathname-name filename) (current-pvs-files))
+		  (gethash filename (current-pvs-files))
 		  (parsed-file? file))
 	     (unless no-message?
 	       (pvs-message "~a is already parsed" filename))
@@ -850,7 +850,7 @@ where each comment has the form
 	(subdirs (uiop:subdirectories dir)))
     (with-workspace dir
       (dolist (path pvs-files)
-	(let* ((file (pathname-name path))
+	(let* ((file (pvs-filename path))
 	       (theories (or (get-theories file)
 			     (handler-case
 				 (parse-file file nil t)
@@ -872,7 +872,7 @@ where each comment has the form
   "Parsing filename gives the new-theories, we check for problems here"
   (check-for-duplicate-theories new-theories)
   (check-for-prelude-theory-clashes new-theories)
-  (check-for-context-theory-clashes new-theories (pathname-name filename) forced?))
+  (check-for-context-theory-clashes new-theories (pvs-filename filename) forced?))
 
 (defun check-for-duplicate-theories (new-theories)
   (when (cdr new-theories)
@@ -913,8 +913,8 @@ where each comment has the form
 
 (defmethod pvs-filename ((str string))
   "Extracts the filename from the string, assuming it is a pvs-file
-reference; pathname-name doesn't work if the file is of the form
-'/home/user/foo.bar', where the '.pvs' extension was omitted."
+reference. Doesn't just blindly use pathname-name, in case filename has a
+period in it."
   (let ((fname (pathname-name str))
 	(ext (pathname-type str)))
     (if (or (null ext)
@@ -1387,7 +1387,7 @@ reference; pathname-name doesn't work if the file is of the form
 
 #-(or akcl cmu sbcl)
 (defmethod parse-file ((filename pathname) &optional forced? no-message? typecheck?)
-  (parse-file (pathname-name filename) forced? no-message? typecheck?))
+  (parse-file (pvs-filename filename) forced? no-message? typecheck?))
 
 #+(or akcl cmu sbcl)
 (defmethod parse-file (filename &optional forced? no-message? typecheck?)
@@ -1530,7 +1530,7 @@ reference; pathname-name doesn't work if the file is of the form
 
 (defun typecheck-theories (pathname theories)
   (let* ((specpath (make-specpath pathname))
-	 (filename (pathname-name specpath))
+	 (filename (pvs-filename specpath))
 	 (all-proofs (read-pvs-file-proofs filename))
 	 (sorted-theories (sort-theories theories)))
     ;;(check-import-circularities sorted-theories)
@@ -1568,7 +1568,7 @@ reference; pathname-name doesn't work if the file is of the form
 		    (id theory) time tot prv sub unprv simp
 		    (length (conversion-messages theory))
 		    (length (warnings theory)) (length (info theory))))))))))
-  (let* ((filename (pathname-name pathname))
+  (let* ((filename (pvs-filename pathname))
 	 (ctheory (car (last theories)))
 	 (*current-context* (saved-context ctheory)))
     (let ((dep (assoc filename *circular-file-dependencies* :test #'equal)))
@@ -2570,7 +2570,7 @@ Note that even proved ones get overwritten"
 
 (defun formula-decl-to-prove (fileref declname line origin &optional unproved?)
   (with-pvs-file (fname) fileref
-    (let ((name (pathname-name fname)))
+    (let ((name (pvs-filename fname)))
       (if (and (member origin '("ppe" "tccs") :test #'string-equal)
 	       (not (get-theory name)))
 	  (pvs-message "~a is not typechecked" name)
@@ -3450,12 +3450,12 @@ If formname is nil, then formref should resolve to a unique formula name."
 		  (mapcar #'(lambda (m) (string (car m))) (cdr ctx))
 		  (if (pvs-y-or-n-p
 		       "Context from an earlier version - list all theory files? ")
-		      (mapcar #'pathname-name
+		      (mapcar #'pvs-filename
 			      (directory (make-pathname :defaults path
 							:name :wild
 							:type "pvs"))))))
 	    (if (pvs-y-or-n-p "No context - list all theory files? ")
-		(mapcar #'pathname-name (directory path)))))))
+		(mapcar #'pvs-filename (directory path)))))))
 
 
 ;;;---------------------------------------------
@@ -3581,7 +3581,7 @@ nil is returned in that case."
 (defun collect-library-files ()
   (mapcan #'(lambda (elt)
 	      (mapcar #'(lambda (fpath)
-			  (format nil "~a@~a.pvs" (car elt) (pathname-name fpath)))
+			  (format nil "~a@~a.pvs" (car elt) (pvs-filename fpath)))
 		(uiop:directory-files (cdr elt) "*.pvs")))
     (pvs-library-alist)))
 
@@ -3602,7 +3602,7 @@ nil is returned in that case."
 	 (files-with-clashes nil)
 	 (files-with-theoryref nil))
     (dolist (file pvs-files)
-      (let ((fname (pathname-name file)))
+      (let ((fname (pvs-filename file)))
 	(unless (parsed-file? fname)
 	  ;; More refined search - strips comments first
 	  (let* ((sed-grep-form (format nil "sed 's/%.*//g' ~a | grep -q -w ~a" file thname))
@@ -4256,9 +4256,10 @@ nil is returned in that case."
 		    (break "primitive-rule"))))))))
 
 (defun find-proof-rule (name)
-  (or (gethash name *rulebase*)
-      (gethash name *steps*)
-      (gethash name *rules*)))
+  (prover-command-entry name))
+
+(defun prover-help (name)
+  (nth-value (funcall (help-rule-fun name) nil) 0))
 
 (defun all-proof-commands-json ()
   (let* ((rule-deps (collect-rule-dependencies))
