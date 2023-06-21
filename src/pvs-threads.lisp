@@ -56,7 +56,8 @@
 ;;;  (pr-interrupt id &optional (after :restore)) ; :quit :break
 ;;;
 
-(declaim (ftype (function () t) in-the-debugger iso8601-date))
+(declaim (ftype (function () t) in-the-debugger))
+(declaim (ftype (function (&optional t))  iso8601-date))
 (declaim (ftype (function (t) t)
 		all-formulas get-formula-decl provable-formulas quit-command-p
 		pvs-jsonrpc:pvs2json-response))
@@ -254,6 +255,25 @@ Returns a list of the form ((id . status) (id . status) ...)"
 			(if (session-alive-p sess) :active :inactive)))
 	prf-sessions))))
 
+(defvar *sessions-to-be-interrupted* nil)
+
+(defun interrupt-session (id)
+  (pushnew id *sessions-to-be-interrupted*)
+  (format t "~%interrupt-session for ~a" id)
+  "Interrupted")
+
+(defun handle-interrupt ()
+  (let* ((sess (current-session))
+	 (id (when sess (id sess))))
+    (when (member id *sessions-to-be-interrupted* :test #'string=)
+      (setq *sessions-to-be-interrupted*
+	    (remove id *sessions-to-be-interrupted* :test #'string=))
+      (when (session-alive-p sess)
+	(format t "~%In handle-interrupt about to restore")
+	(if (find-restart 'prover-abort)
+	    (invoke-restart 'prover-abort)
+	    (throw 'abort nil))))))
+
 (defun prove-formula-in-session (id fdecl rerun? input-hook)
   "This is the function run in a proof-session thread."
   ;; For some reason, a waiting thread in Allegro is difficult to delete,
@@ -266,6 +286,13 @@ Returns a list of the form ((id . status) (id . status) ...)"
     ;;(sys:set-stack-cushion 1219182)
     ;;(format t "~%stack-cushion = ~a" (sys:stack-cushion))
     (session-output (format nil "~%~a started at ~a" id (iso8601-date)))
+    ;; trivial-timer should be used for Allegro
+    #+sbcl
+    (let ((timer (sb-ext:make-timer #'handle-interrupt)))
+      (sb-ext:schedule-timer timer 1 :repeat-interval 1)
+      (prove-formula fdecl :rerun? rerun?)
+      (sb-ext:unschedule-timer timer))
+    #-sbcl
     (prove-formula fdecl :rerun? rerun?)))
 
 
@@ -321,10 +348,11 @@ Returns a list of the form ((id . status) (id . status) ...)"
     ;; While debugging, sometimes outputs are not popped, so we clean up here.
     ;; Should allow multiple inputs to pile up, however
     (dotimes (i (queue-count (output-queue sess)))
-      (format t "output-queue unhandled element ~d: ~a"
-	i (pop-queue (output-queue sess))))
+      (let ((outp (pop-queue (output-queue sess))))
+	(format t "output-queue unhandled element ~d: ~a" i outp)
+	(push outp (outputs sess))))
     (push-queue cmd (input-queue sess))
-    ;; (format t "~%pr-step: pushed ~a to input-queue, waiting for output" cmd)
+      ;; (format t "~%pr-step: pushed ~a to input-queue, waiting for output" cmd)
     (let ((outs (pop-queue (output-queue sess)))) ;; Waits on output-queue
       (if (typep (car outs) 'proofstate)
 	  (let* ((ps (car outs))
@@ -344,7 +372,7 @@ Returns a list of the form ((id . status) (id . status) ...)"
 	    (unless (eq status 'waiting)
 	      (loop while (session-alive-p sess)
 		    do (progn ;; (format t "~%Waiting for thread to die")
-			      (sleep .1)))
+			 (sleep .1)))
 	      (setf *all-sessions* (remove sess *all-sessions*))
 	      (push (cons (id sess) status) *done-sessions*))
 	    (let* ((prf-result `(("id" . ,(string id))
@@ -360,11 +388,11 @@ Returns a list of the form ((id . status) (id . status) ...)"
 		   )
 	      prf-result))
 	  (error "Caught an error: ~%~a" outs))
-      ;; ((and (listp result)
-      ;; 	    (eq (car result) :error))
-      ;;  (error (apply #'error (cadr result) (cddr result))))
-      ;;(t (break "bad result from session"))
-      )))
+	;; ((and (listp result)
+	;; 	    (eq (car result) :error))
+	;;  (error (apply #'error (cadr result) (cddr result))))
+	;;(t (break "bad result from session"))
+	)))
 
 (defun get-new-session-id (id)
   (unique-symbol* id 0))
