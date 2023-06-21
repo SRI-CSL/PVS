@@ -1117,6 +1117,7 @@
    #:info
    #:inline-datatype
    #:inline-recursive-type
+   #:interrupt-session
    #:intersection-type
    #:iso8601-date
    #:json-decl-list
@@ -1221,6 +1222,7 @@
    #:prove-formula
    #:prove-tccs
    #:proved?
+   #:prover-help
    #:prover-init
    #:prover-status
    #:prover-step
@@ -1393,7 +1395,8 @@
   (:use #:cl-user #:common-lisp)
   (:nicknames #:pvs-ws)
   (:export #:start-pvs-server
-	   #:start-proof-server
+	   ;;#:start-proof-server
+	   #:stop-pvs-server
 	   #:ws-current-connection
 	   ))
 
