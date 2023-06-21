@@ -213,6 +213,11 @@
   (break "interrupt")
   )
 
+(defrequest interrupt-proof (id)
+  "Interrupts proof session."
+  (format t "Trying to interrupt ~s" id)
+  (pvs:interrupt-session id))
+
 ;;; Prover interface
 
 (defrequest quit-all-proof-sessions ()
@@ -241,19 +246,39 @@ returning the unique id (within a PVS session)."
   (let* ((prf-result (pvs:prover-step proof-id form))
 	 (prf-alist (pvs2json-response prf-result))
 	 (prf-json (json:encode-json-to-string prf-alist)))
-    (format t "~%proof-command: after prf-json")
+    ;;(format t "~%proof-command: after prf-json")
     (values prf-alist prf-json)))
+
+(defrequest proof-help (cmd)
+  "Gets help for the given cmd"
+  (pvs:prover-help cmd))
 
 (defun pvs2json-response (prv-result)
   "prv-result is an alist of the form
  ((\"proofstate\" ...) (\"commentary\" ...) (\"id\" ...) (\"status\" ...))"
   (let* ((id (cdr (assoc "id" prv-result :test #'string-equal)))
 	 (ps (cdr (assoc "proofstate" prv-result :test #'string-equal)))
-	 (commentary (cdr (assoc "commentary" prv-result :test #'string-equal)))
+	 (err (cdr (assoc "error" prv-result :test #'string-equal)))
+	 (errstr (when err (concatenate 'string "Error: " (strim-all err))))
+	 (com (cdr (assoc "commentary" prv-result :test #'string-equal)))
+	 (commentary (if err (cons errstr com) com))
 	 (status (cdr (assoc "status" prv-result :test #'string-equal)))
 	 (ps-json (pvs2json-ps ps commentary id status)))
     ;; (format t "~%pvs2json-response: ps-json =~%  ~s~%" ps-json)
     ps-json))
+
+(defun strim-all (string)
+  (let ((trstr (pvs:strim string))
+	(last-space nil))
+    (with-output-to-string (str)
+      (loop for ch across trstr
+	    do (case ch
+		 ((#\space #\newline #\tab)
+		  (unless last-space
+		    (write-char #\space str)
+		    (setq last-space t)))
+		 (t (write-char ch str)
+		    (setq last-space nil)))))))
 
 (defun pvs2json-ps (ps commentary id status)
   (with-slots (pvs:label pvs:comment pvs:current-goal (pps pvs:parent-proofstate)) ps
@@ -433,23 +458,21 @@ to the associated declaration."
       (pvs:pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
     (pvs:save-all-proofs theory)))
 
-;; M3: Request to store the script for the last attempted proof into the corresponding declaration [Sept 2020]
-;; (defrequest save-proof (proof-id &optional new-script-id new-script-desc)
-;;   "Store current proof script in the provided formula, by default as the proof-id.
-;; "
-;;   (error "store-last-attempted-proof called")
-;;   (let ((dst-decl (pvs:get-formula-decl theory formula)))
-;;     (if (equal dst-decl (car pvs:*last-attempted-proof*))
-;; 	(let ((script (cdr pvs:*last-attempted-proof*)))
-;; 	  (if overwrite?
-;; 	      (setf (pvs:script (pvs:default-proof dst-decl)) (car script))
-;; 	    (let ((id (or new-script-id (pvs:next-proof-id dst-decl)))
-;; 		  (description (or new-script-desc "")))
-;; 	      (setf (pvs:default-proof dst-decl)
-;; 		    (pvs:make-default-proof dst-decl (car script) id description)))))
-;;       (pvs:pvs-error "store-last-attempted-proof error"
-;; 		 (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
-;; 			 (car pvs:*last-attempted-proof*) dst-decl)))))
+(defrequest store-last-attempted-proof (proof-id &optional overwrite? new-script-id new-script-desc)
+  "Store current proof script in the provided formula, by default as the proof-id."
+  (declare (ignore proof-id overwrite? new-script-id new-script-desc))
+  (error "store-last-attempted-proof called")
+  ;; (let ((script (cdr pvs:*last-attempted-proof*)))
+  ;;   (if overwrite?
+  ;; 	(setf (pvs:script (pvs:default-proof dst-decl)) (car script))
+  ;; 	(let ((id (or new-script-id (pvs:next-proof-id dst-decl)))
+  ;; 	      (description (or new-script-desc "")))
+  ;; 	  (setf (pvs:default-proof dst-decl)
+  ;; 		(pvs:make-default-proof dst-decl (car script) id description)))))
+  ;; (pvs:pvs-error "store-last-attempted-proof error"
+  ;;   (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
+  ;;     (car pvs:*last-attempted-proof*) dst-decl))
+  )
 
 (defrequest add-pvs-library (string)
   "Just evaluate the string in lisp"
