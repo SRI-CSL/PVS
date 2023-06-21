@@ -167,7 +167,7 @@ SYSTEM_FILES = README.md INSTALL LICENSE LICENSE-SRI NOTICES install-sh \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
 	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2 \
-	emacs/configured-for-x src/asdf-patch.lisp Vagrantfile vagrant.README \
+	emacs/configured-for-x Vagrantfile vagrant.README \
 	pvs-version.lisp git-commit
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
@@ -518,7 +518,7 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 .PHONY : all parser yices emacs prelude-files-and-regions
 
-all : $(HOME)/quicklisp $(pvs-images) yices prelude-files-and-regions etags
+all : $(HOME)/quicklisp $(pvs-images) $(if $(yices2-tar), yices) prelude-files-and-regions etags
 
 devel : $(allegro-devel) 
 
