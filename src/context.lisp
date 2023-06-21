@@ -248,29 +248,32 @@ retypechecked."
 (defun write-context (&optional (ws *workspace-session*) empty quiet?)
   (unless ws (setq ws (initialize-workspaces)))
   (assert (pvs-context ws))
-  (with-workspace ws
-    (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
-    (when (or (pvs-context-changed ws)
-	      (and (pvs-context-entries)
-		   (not (file-exists-p (path ws)))))
-      (if (write-permission? (path ws))
-	  (let ((context (if empty (initial-context) (make-pvs-context))))
-	    (assert (every #'(lambda (ce)
-			       (file-exists-p (make-specpath (ce-file ce))))
-			   (cdddr context)))
-	    (multiple-value-bind (value condition)
-		(progn			;ignore-file-errors
-		  (store-object-to-file context (context-pathname)))
-	      (declare (ignore value))
-	      (cond (condition
-		     (pvs-message "~a" condition))
-		    (t (setf (pvs-context ws) context)
-		       (setf (pvs-context-changed ws) nil)
-		       (unless quiet?
-			 (pvs-message "Context file ~a written~%"
-			   (namestring (context-pathname))))))))
-	  (pvs-log "Context file ~a not written, do not have write permission"
-		   (namestring (context-pathname)))))))
+  (cond ((uiop:directory-exists-p (path ws))
+	 (with-workspace ws
+	   (assert (not (duplicates? (pvs-context-entries) :key #'ce-file)))
+	   (when (or (pvs-context-changed ws)
+		     (and (pvs-context-entries)
+			  (not (file-exists-p (path ws)))))
+	     (if (write-permission? (path ws))
+		 (let ((context (if empty (initial-context) (make-pvs-context))))
+		   (assert (every #'(lambda (ce)
+				      (file-exists-p (make-specpath (ce-file ce))))
+				  (cdddr context)))
+		   (multiple-value-bind (value condition)
+		       (progn		;ignore-file-errors
+			 (store-object-to-file context (context-pathname)))
+		     (declare (ignore value))
+		     (cond (condition
+			    (pvs-message "~a" condition))
+			   (t (setf (pvs-context ws) context)
+			      (setf (pvs-context-changed ws) nil)
+			      (unless quiet?
+				(pvs-message "Context file ~a written~%"
+				  (namestring (context-pathname))))))))
+		 (pvs-log "Context file ~a not written, do not have write permission"
+			  (namestring (context-pathname)))))))
+	(t (setq *all-workspace-sessions* (remove ws *all-workspace-sessions*))
+	   (pvs-message "Directory ~a has disappeared" (path ws)))))
 
 (defvar *testing-restore* nil)
 
