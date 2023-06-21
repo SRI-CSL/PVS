@@ -42,6 +42,27 @@
 	  ;;`(rename ,print-renames in ,(call-next-method))
 	(call-next-method)))))
 
+(defun pvs2ir-update (assignments ir-expression expression-type bindings)
+  (let ((rhs-list (mapcar #'expression assignments))
+		   (lhs-list (mapcar #'arguments assignments)))
+	       (let* ((rhs-irvar-list (loop for i from 1 to (length rhs-list)
+					    collect (new-irvar)))
+		      (ir-rhs-types (loop for lhs in lhs-list
+					  collect (get-component-ir-type expression-type lhs)))
+		      (ir-rhs-vartypes (mk-vartype-list rhs-irvar-list ir-rhs-types))
+		      (ir-rhs-list (loop for rhs in rhs-list
+					 collect
+					 (pvs2ir* rhs bindings nil)))
+		      (ir-exprvar (mk-ir-variable (new-irvar) expression-type nil t))) ; mark var as mutable
+		 (let ((ir-update-expr (pvs2ir-assignments lhs-list ;build updates
+							   ir-rhs-vartypes
+							   ir-exprvar
+							   expression-type
+							   bindings)))
+		   (make-ir-let* ir-rhs-vartypes ir-rhs-list
+				 (make-ir-let ir-exprvar 
+					      ir-expression
+					      ir-update-expr))))))
 
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
   (cond ((consp lhs)
@@ -569,208 +590,60 @@
   (with-slots (ir-var) ir-expr
 	      (ir2rust* ir-var return-var return-type t)))
 
-(defmethod ir2rust* ((ir-expr ir-variable) return-var return-type &optional is-last) ; TODO
+(defmethod ir2rust* ((ir-expr ir-variable) return-var return-type &optional is-last) 
   (with-slots (ir-name ir-vtype) ir-expr
-    (let* ((ir2c-return-type (ir2c-type return-type))
-	   (ir2c-vtype  (ir2c-type ir-vtype))
-	   (c-return-type (add-c-type-definition ir2c-return-type))
-	   ;;(c-rhs-type (add-c-type-definition ir2c-vtype))
-	   (c-assignments (copy-type ir2c-return-type ir2c-vtype return-var ir-name)))
-      c-assignments)))
-
-(defmethod ir2rust* ((ir-expr ir-record) return-var return-type)
-  (with-slots (ir-fields ir-recordtype) ir-expr ;(break "ir2rust*(ir-record)")
-    (let ((ctype (add-c-type-definition (ir2c-type ir-recordtype)))
-	  (c-return-type (add-c-type-definition (ir2c-type return-type)))
-	  (tmpvar (gentemp "tmp")))
-      (cons (format nil "~a_t ~a = new_~a();" ctype tmpvar ctype)
-	    (cons (format nil "~a = (~a_t)~a" return-var c-return-type tmpvar)
-		  (loop for fld in ir-fields
-			as fldtype in (ir-field-types (ir-type-def ir-recordtype)) ;;NSH(8-27-22) was return-type
-			append
-			(with-slots (ir-fieldname ir-value) fld
-			  (let* ((rhs-var (get-ir-last-var ir-value))
-				 (c-rhs-type (add-c-type-definition (ir2c-type (ir-vtype rhs-var))))
-				 (c-ftype (add-c-type-definition (ir2c-type (ir-vtype fldtype))))
-				 (c-field-expr (format nil "~a->~a"  tmpvar ir-fieldname))
-				 (c-field-assignment (make-c-assignment 
-						      c-field-expr c-ftype
-						      (ir-name rhs-var)
-						      c-rhs-type))
-				 (c-field-assign-instrs
-				  (if (mpnumber-type? c-ftype)
-				      (list (format nil "~a_init(~a)" c-ftype c-field-expr)
-					    c-field-assignment)
-				    (list c-field-assignment))))
-					;(break "ir2c(ir-record)")
-			    (append c-field-assign-instrs
-				    (cond ((and (ir-reference-type? (ir-vtype rhs-var))
-						(not (ir-last? ir-value)))
-					   (list (format nil "~a->count++" (ir-name rhs-var))))
-					  ((and (ir-last? ir-value)
-						(gmp-type? c-rhs-type)
-					;(not (member rhs-var *mpvar-parameters*))
-						)
-					   (list (format nil "~a_clear(~a)" c-rhs-type
-							 (ir-name rhs-var))
-						 ))
-					  (t nil)))))))))))
+    (if (or is-last (typep ir-vtype 'ir-subrange)) ir-name (format nil "~a.clone()" ir-name))))
 		
-(defmethod ir2rust* ((ir-expr ir-get) return-var return-type)
+(defmethod ir2rust* ((ir-expr ir-get) return-var return-type) ; lookup of a record 
   (with-slots (ir-record ir-field) ir-expr
-	      (let* ((ir-record-var (get-ir-last-var ir-record))
-		     (c-return-type (add-c-type-definition (ir2c-type return-type)))
-		     (record-var-type (get-ir-type-value
-				       (ir-vtype ir-record-var)))
-		     (field-type (get-field-type record-var-type ir-field))
-		     (c-field-type (add-c-type-definition
-					(ir2c-type field-type)))
-		     (c-rhs (if (ir-stringtype? record-var-type)
-			      (if (eq ir-field 'length)
-				  (format t "strlen(~a)" (ir-name ir-record-var))
-				(format t "~a" (ir-name ir-record-var)))
-			    (format nil "~a->~a" (ir-name ir-record-var) ir-field)))
-		     (assign-instr
-		      (make-c-assignment return-var c-return-type
-				       c-rhs
-				       c-field-type))
-		     (assign-instrs
-		      (case c-return-type
-			((mpq mpz)
-			 (list (format nil "~a = safe_malloc(sizeof(~a_t))" return-var c-return-type)
-			       (format nil "~a_init(~a)" c-return-type return-var)
-			       assign-instr))
-			(t (list assign-instr))))
-		     (refcount-get-instr	;if lookup is a reference, first bump its count
-		      (when (ir-reference-type? (ir-record-field-type (get-ir-type-value (ir-vtype ir-record-var)) ir-field))
-			(list (format nil "~a->count++"  return-var))))
-		     (release-record-instr
-		      (when (ir-last? ir-record) ;if last, then release the array
-			(list (release-last-var ir-record-var)))))
-		(append assign-instrs (append refcount-get-instr release-record-instr)))))
+	      (let* ((ir-record-var (get-ir-last-var ir-record)))
+            (if (ir-last? ir-record)
+                (format nil "~a.~a" (ir-name ir-record-var) ir-field)
+                (format nil "~a.~a.clone()" (ir-name ir-record-var) ir-field)))))
 
-(defmethod ir2rust* ((ir-expr ir-lookup) return-var return-type)
+(defmethod ir2rust* ((ir-expr ir-lookup) return-var return-type) ; lookup of an array 
   (with-slots (ir-array ir-index) ir-expr
-	      (let* ((ir-array-var (get-ir-last-var ir-array))
-		     (ir-index-var (get-ir-last-var ir-index))
-		     (c-return-type (add-c-type-definition (ir2c-type return-type)))
-		     (elem-type (ir-range (get-ir-type-value (ir-vtype ir-array-var))))
-		     (c-elem-type  (add-c-type-definition (ir2c-type return-type)))
-		     (rhs (format nil "~a->elems[~a]" (ir-name ir-array-var)(ir-name ir-index-var)))
-		     (assign-instrs (case c-return-type 
-				      ((mpq mpz)  ;;could've used mk-c-assignment here
-				       (list (format nil "~a = safe_malloc(sizeof(~a_t))"
-						     return-var c-return-type)
-					     (format nil "~a_init(~a)" c-return-type return-var)
-					     (make-c-assignment return-var c-return-type
-								rhs c-elem-type)))
-				      (t (list (format nil "~a = (~a_t)~a"  return-var
-						       c-return-type rhs)))))
-		     (refcount-lookup-instr	;if lookup is a reference, first bump its count
-		      (when (ir-reference-type? elem-type)
-			(list (format nil "~a->count++"  return-var))))
-		     (release-array-instr
-		      (when (ir-last? ir-array) ;if last, then release the array
-			(list (release-last-var ir-array-var)))))
-		(append assign-instrs (append refcount-lookup-instr release-array-instr)))))
+	      (let* ((ir-array-var (get-ir-last-var ir-array)))
+            (if (ir-last? ir-array)
+                (format nil "~a[~a]" (ir-name ir-array-var) (ir2rust* ir-index nil (mk-ir-subrange 0 0)))
+                (format nil "~a[~a].clone()" (ir-name ir-array-var) (ir2rust* ir-index nil (mk-ir-subrange 0 0)))))))
 
-(defmethod ir2rust* ((ir-expr ir-apply) return-var return-type)
+(defmethod ir2rust* ((ir-expr ir-apply) return-var return-type) ; lookup of a function, can we have a apply on array ? no
   (with-slots (ir-func ir-params ir-args) ir-expr
 	      (let* ((ir-func-var (get-ir-last-var ir-func))
-		     (hi-array (when (ir-variable? ir-func-var)
-				 (ir-array? (ir-vtype ir-func-var))))
-		     (ir-index-var (when hi-array (get-ir-last-var (car ir-args)))))
-	      (if hi-array;;if operator is an array
-		  (let* ((assign-instr (mk-c-assignment 
-					       return-var
-					       (add-c-type-definition (ir2c-type return-type))
-					       (format nil "~a->elems[~a]"
-						       (ir-name ir-func-var)(ir-name ir-index-var))
-					       (add-c-type-definition (get-range (ir-vtype ir-func-var)))))
-			 (refcount-lookup-instr	;if lookup is a reference, first bump its count
-			  (when (ir-reference-type? (ir-range (get-ir-type-value (ir-vtype ir-func-var))))
-			    (list (format nil "~a->count++"  return-var))))
-			 (release-array-instr
-			  (when (ir-last? ir-func) ;if last, then release the array
-			    (list (release-last-var ir-func-var)))))
-		    ;(break "ir-apply")
-		    (cons assign-instr (append refcount-lookup-instr release-array-instr)))
-		;;otherwise, it's a function call
-		(let* ((ir-params-args (append ir-params ir-args))
-		       (invoke-instrs (ir2c-function-apply return-var return-type ir-func ir-params-args
-							   ))
-		     ;; (rhs-string (format nil "~a(~{~a~^, ~})" ir-func-var ir-arg-vars))
-		     ;; (invoke-instr (format nil "~a = ~a" return-var rhs-string))
-		     (release-instrs (loop for ir-var in ir-params-args ;;bump the counts of non-last references by one
-					   when (and (not (ir-last? ir-var))(ir-reference-type? (ir-vtype (get-ir-last-var ir-var))))
-					   collect (format nil "~a->count++" (ir-name ir-var))))
-		     )
-		  (format t "~%*mpvar-parameters* = ~{~a, ~}" (print-ir *mpvar-parameters*))
-		;(break "ir-apply")
-		  (nconc release-instrs invoke-instrs) ;nconc invoke-instrs mp-release-instrs
-					       )))))
+		        (hi-array (when (ir-variable? ir-func-var) (ir-array? (ir-vtype ir-func-var)))))
+          (if hi-array (break (format nil "Trying to call an array : ~a" ir-func)))
+	      (format nil "~a(~[~a,~])" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil nil)))
+          )))
 
+(defmethod ir2rust* ((ir-expr ir-let) return-var return-type) ; later : change var name to pvsid ?
+  (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr 
+    (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
+        (format nil "let~a ~a : a = {~a};~%~a" (if ir-mutable " mut" "")
+            ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr nil ir-vtype) (ir2rust* ir-body nil return-type))  
+    )))
 
-(defmethod ir2rust* ((ir-expr ir-let) return-var return-type)
-  (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr
-    (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
-;;      (when (ir-lvariable? ir-body)(break "variable body"))
-      (cond ((and (ir-lvariable? ir-body)
-		  (equal return-type (ir2c-type ir-vtype)))
-	     (ir2rust* ir-bind-expr return-var return-type))
-	    (t (let* ((ir2c-vtype (ir2c-type ir-vtype))
-		      (var-ctype (add-c-type-definition ir2c-vtype))
-		      (decl-var-ctype (mppointer-type var-ctype))
-		      (decl-instr (if ir-pvsid
-				      (format nil "/* ~a */ ~a_t ~a" ir-pvsid decl-var-ctype ir-name)
-				    (format nil "~a_t ~a" decl-var-ctype ir-name)))
-		      (init-instrs nil)
-		      (bind-instrs (ir2rust* ir-bind-expr ir-name 
-					  ir2c-vtype)) ;(ir2c-type (ir-vtype ir-vartype))
-		      (body-instrs (ir2rust* ir-body return-var return-type)) ;(break "ir-let")
-		      (finalize-instrs (when (ir-type-actual? ir-bind-expr)
-					 (list (format nil "safe_free(~a)" ir-name))))
-		      )
-		 (if init-instrs
-		     (cons decl-instr (append init-instrs
-			     		      (append bind-instrs body-instrs)))
-		   (cons decl-instr (append bind-instrs body-instrs finalize-instrs)))))))))
-
-(defmethod ir2rust* ((ir-expr ir-lett) return-var return-type);;assume ir-bind-expr is an ir-variable
+(defmethod ir2rust* ((ir-expr ir-lett) return-var return-type);;assume ir-bind-expr is an ir-variable ; a terminer
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
-	      (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
-			  (let* ((ir2c-vtype (ir2c-type ir-vtype))
-				 (ir2c-btype (ir2c-type ir-bind-type))
-				 (var-ctype (add-c-type-definition ir2c-vtype))
-				 (decl-var-ctype (mppointer-type var-ctype))
-				 (var-btype (add-c-type-definition ir2c-btype))
-				 (decl-instr (if ir-pvsid
-						 (format nil "/* ~a */ ~a_t ~a" ir-pvsid decl-var-ctype ir-name)
-						 (format nil "~a_t ~a" decl-var-ctype ir-name)));;need mpz_init/release for mpz_t
-				 (init-instrs nil )
-				 (bind-instrs (copy-type ir2c-vtype ir2c-btype ir-name
-							 (ir-name (get-ir-last-var ir-bind-expr))))
-				 (all-bind-instrs (cons decl-instr (append init-instrs bind-instrs))
-						  )
-				 (body-instrs (ir2rust* ir-body return-var return-type))
-				 (finalize-instrs (when (ir-type-actual? ir-bind-expr)
-					 (list (format nil "safe_free(~a)" ir-name)))));(break "ir-let")
-			    (if (ir-last? ir-bind-expr)
-				     ;(not (member (get-ir-last-var ir-bind-expr) *mpvar-parameters*))
-				(let ((clear-instrs
-				       (if (mpnumber-type? var-btype)
-					   (list
-					    (format nil "~a_clear(~a)" var-btype
-						    (ir-name (ir-var ir-bind-expr)))
-					    )
-					 (if (ir-reference-type? ir2c-btype)
-					     (list (release-last-var (ir-var ir-bind-expr)))
-					   nil))))
-				  (append all-bind-instrs clear-instrs body-instrs finalize-instrs))
-			      (append all-bind-instrs body-instrs finalize-instrs))))))
+	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
+			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
+                (rhs-vtype (ir-vtype rhs-var))
+                (rhs (case (type-of ir-vtype)
+                        ((type-of rhs-vtype) (format nil "{~a}" (ir2rust* ir-bind-expr nil nil)))   
+                        ('ir-subrange (if (eq rhs-vtype 'mpq) (format nil "{~a}.into_inner() as i32" (ir2rust* ir-bind-expr nil nil))) (break "Invalid conversion 1"))
+                        ('symbol (if (and (eq ir-vtype 'mpq) (typep rhs-vtype 'ir-subrange)) (format nil "NotNan::new({~a} as f32)" (ir2rust* ir-bind-expr nil nil)) (break "Invalid conversion 2")))
+                        ('ir-arraytype (if (typep rhs-vtype 'ir-funtype) (toRustArray rhs-vtype (ir-name rhs-var)) (break "Invalid conversion")))
+                        (t (break "Invalid conversion 4"))
+                     )
+                ))
+			    ()
+              ))))
 
+(defun toRustArray (arrayType fnName)
+    (break "To rust array is to be implemented")
+)
 
-(defmethod ir2rust* ((ir-expr ir-lambda) return-var return-type)
+(defmethod ir2rust* ((ir-expr ir-lambda) return-var return-type) ;TODO
   (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr
     ;(break "ir2rust*(ir-lambda)")
     (let* ((ir-arraytype  (get-arraytype return-type)) 
@@ -849,46 +722,30 @@
 							  
 		;; (break "closure alert"))))); (error 'pvs2c-error :format-control "closures not yet implemented")))))
 
-(defmethod get-arraytype ((ir-type ir-typename))
-  (with-slots (ir-type-id ir-type-defn) ir-type
-	      (get-arraytype ir-type-defn)))
-
-(defmethod get-arraytype ((ir-type ir-arraytype))
-  ir-type)
-
-(defmethod get-arraytype ((ir-type t)) nil)
-
 (defmethod ir2rust* ((ir-expr ir-ift) return-var return-type)
   (with-slots (ir-condition ir-then ir-else) ir-expr
-	      (let ((c-then-instrs (ir2rust* ir-then return-var return-type))
-		    (c-else-instrs (ir2rust* ir-else return-var return-type)))
-		(list (mk-if-instr 
-		       (ir-name (get-ir-last-var ir-condition))
-		       c-then-instrs
-		       c-else-instrs)))))
+	      (let ((rust-then-instrs (ir2rust* ir-then return-var return-type))
+		    (rust-else-instrs (ir2rust* ir-else return-var return-type)))
+		(format nil "if ~a {~a} else {~a}" (ir-name (get-ir-last-var ir-condition)) rust-then-instrs rust-else-instrs))))
 
 (defmethod ir2rust* ((ir-expr ir-release) return-var return-type)
   (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
-	      (let ((c-body (ir2rust* ir-body return-var return-type))
-		    (pre-release-instrs (release-instrs pre-ir-vars)
-					)
-		    (post-release-instrs (release-instrs post-ir-vars)))
-		(append pre-release-instrs c-body post-release-instrs))))
+	      (ir2rust* ir-body return-var return-type))) ; can be improved with a mem::forget in rust
 
 (defmethod ir2rust* ((ir-expr ir-new) return-var return-type)
   (declare (ignore return-type))
   (with-slots (ir-etype) ir-expr
-	      (ir2c-new ir-etype return-var)))
+	      (ir2rust-new ir-etype return-var)))
 
-(defmethod ir2c-new ((ir-type ir-arraytype) return-var)
+(defmethod ir2rust-new ((ir-type ir-arraytype) return-var) ; TODO
   (let ((ctype (add-c-type-definition (ir2c-type ir-type))))
     (format nil "~a = new_~a()" return-var ctype)))
 
-(defmethod ir2c-new ((ir-type ir-recordtype) return-var)
+(defmethod ir2rust-new ((ir-type ir-recordtype) return-var) ; TODO
   (let ((ctype (add-c-type-definition (ir2c-type ir-type))))
     (format nil "~a = new_~a()" return-var ctype)))
 
-(defmethod ir2rust* ((ir-expr ir-update) return-var return-type)
+(defmethod ir2rust* ((ir-expr ir-update) return-var return-type) ; TODO
   (with-slots (ir-target ir-lhs ir-rhs) ir-expr
 	      (let* ((target-var (get-ir-last-var ir-target))
 		     (target-var-name (ir-name target-var))
@@ -954,36 +811,6 @@
 	  do (pvs2rust-preceding-theories* thy)))
   (unless (from-prelude? theory)
     (pushnew theory *pvs2rust-preceding-theories* :test #'same-id)))
-
-
-(defmethod pvs2c-decl* ((decl const-decl))
-  (if (or (adt-constructor-decl? decl)	;;these are automatically generated from the adt type decl
-			   (adt-recognizer-decl? decl)
-			   (adt-accessor-decl? decl)) nil 
-			   (let* (;(thid (simple-id (id (module decl))))
-					(declid (simple-id (id decl)))
-					(ir-function-id (intern (format nil "~a__~a" *theory-id* declid)))
-					(hashentry (gethash ir-function-id *c-primitive-attachments-hash*)))
-					(cond (hashentry
-					(let* ((einfo (or (eval-info decl)
-								(let* ((new-einfo (make-instance 'eval-info))
-									)	;all nil for now
-								(setf (eval-info decl) new-einfo)
-								new-einfo)))
-						(new-ir-function (mk-ir-function ir-function-id decl))
-						(new-ir (mk-ir-defn new-ir-function nil nil nil)))
-						(setf (ir einfo) new-ir)
-						(setf (cdefn einfo) hashentry)
-						(op-name hashentry)))
-					(t   (unless (or (adt-constructor-decl? decl)	;;these are automatically generated from the adt type decl
-							(adt-recognizer-decl? decl)
-							(adt-accessor-decl? decl))
-						(pvs2ir-decl decl))
-						(let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
-						(ir2c-decl* ir decl)
-						))))
-			   )
-  )
 
 
 (defun print-rust-file (theory-id text)

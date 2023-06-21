@@ -34,7 +34,8 @@
 (defcl ir-variable (ir-expr)
   ir-name
   ir-vtype
-  ir-pvsid) ;optional pvsid for the variable
+  ir-pvsid ;optional pvsid for the variable
+  ir-mutable) ; default to nil ; en fait peut etr epas besoin car on peut check vtype au momen tdu let
 
 (defcl ir-function (ir-expr)
   ir-fname
