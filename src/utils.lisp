@@ -453,7 +453,13 @@ is replaced with replacement."
 
 #+sbcl
 (defun working-directory ()
-  (truename (sb-posix:getcwd)))
+  (let ((wd (ignore-errors (sb-posix:getcwd))))
+    (cond (wd (truename wd))
+	  ((uiop:directory-exists-p *default-pathname-defaults*)
+	   (sb-posix:chdir *default-pathname-defaults*)
+	   (truename *default-pathname-defaults*))
+	  (t (sb-posix:chdir (user-homedir-pathname))
+	     (truename (user-homedir-pathname))))))
 
 #+sbcl
 (defun set-working-directory (dir)
@@ -1695,16 +1701,18 @@ prove itself from the mapped axioms."
 			      (adt-reduce-theory adt)))))))
 
 (defmethod module ((using importing))
-  (let ((utheory nil))
-    (maphash #'(lambda (id theory)
-		 (declare (ignore id))
-		 (unless utheory
-		   (when (or (memq using (formals theory))
-			     (memq using (assuming theory))
-			     (memq using (theory theory)))
-		     (setq utheory theory))))
-	     (current-pvs-theories))
-    utheory))
+  (if (saved-context using)
+      (theory (saved-context using))
+      (let ((utheory nil))
+	(maphash #'(lambda (id theory)
+		     (declare (ignore id))
+		     (unless utheory
+		       (when (or (memq using (formals theory))
+				 (memq using (assuming theory))
+				 (memq using (theory theory)))
+			 (setq utheory theory))))
+		 (current-pvs-theories))
+	utheory)))
 
 (defmethod module ((ctx context))
   (theory ctx))
