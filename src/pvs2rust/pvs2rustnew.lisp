@@ -13,6 +13,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable)
+  (when (null ir-type) (break "mk-ir-variable"))
+  (make-instance 'ir-variable
+		 :ir-name ir-name
+		 :ir-vtype ir-type
+		 :ir-pvsid ir-pvsid
+		 :ir-mutable mutable))
+
 (defun pvs2ir-update (assignments ir-expression expression-type bindings)
   (let ((rhs-list (mapcar #'expression assignments))
 		   (lhs-list (mapcar #'arguments assignments)))
@@ -559,12 +567,11 @@
 
 (defmethod ir2rust* ((ir-expr ir-last) return-type)
   (with-slots (ir-var) ir-expr
-    (with-slots (ir-name ir-vtype) ir-var)
-	      (if (typep ir-vtype 'ir-subrange) ir-name (format nil "~a.clone()" ir-name))))
+    (with-slots (ir-name ir-vtype) ir-var ir-name))) ; no clone if last
 
 (defmethod ir2rust* ((ir-expr ir-variable) return-type) 
   (with-slots (ir-name ir-vtype) ir-expr
-    ir-name))
+    (if (typep ir-vtype 'ir-subrange) ir-name (format nil "~a.clone()" ir-name))))
 		
 (defmethod ir2rust* ((ir-expr ir-get) return-type) ; lookup of a record 
   (with-slots (ir-record ir-field) ir-expr
@@ -581,12 +588,12 @@
                 (format nil "~a[~a].clone()" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0)))))))
 
 (defmethod ir2rust* ((ir-expr ir-apply) return-type) ; lookup of a function, can we have a apply on array ? no mais on peut avoir des primitives
-  (with-slots (ir-func ir-params ir-args) ir-expr
+  (with-slots (ir-func ir-params ir-args) ir-expr ; bug
 	      (let* ((ir-func-var (get-ir-last-var ir-func))
 		        (hi-array (when (ir-variable? ir-func-var) (ir-array? (ir-vtype ir-func-var)))))
           (if hi-array (break (format nil "Trying to call an array : ~a" ir-func)))
 	      	(if (ir-primitive-function? ir-func) (ir2rust-primitive-apply return-type ir-func ir-args)
-			  (format nil "~a(~[~a,~])" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil))))
+			  (format nil "~a.lookup(~{~a,~})" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil))))
           )))
 
 (defun ir2rust-primitive-apply (return-type ir-function ir-args)
@@ -631,28 +638,34 @@
 (defmethod ir2rust* ((ir-expr ir-let) return-type) ; later : change var name to pvsid ?
   (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr 
     (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
-        (format nil "let~a ~a : a = {~a};~%~a" (if ir-mutable " mut" "")
-            ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
+		;(format t "~%ir2rust let ~a ~a" ir-name (ir2rust-type ir-vtype))
+        (format nil "let~a~a : ~a = {~a};~%~a" (if ir-mutable " mut " " ") ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
     )))
 
 (defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; a terminer
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
 	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
 			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
-                (rhs-vtype (ir-vtype rhs-var))
-                (rhs (case (type-of ir-vtype)
-                        ((type-of rhs-vtype) (format nil "{~a}" (ir2rust* ir-bind-expr nil)))   
-                        ('ir-subrange (if (eq rhs-vtype 'mpq) (format nil "{~a}.into_inner() as i32" (ir2rust* ir-bind-expr nil))) (break "Invalid conversion 1"))
-                        ('symbol (if (and (eq ir-vtype 'mpq) (typep rhs-vtype 'ir-subrange)) (format nil "NotNan::new({~a} as f32)" (ir2rust* ir-bind-expr nil)) (break "Invalid conversion 2")))
-                        ('ir-arraytype (if (typep rhs-vtype 'ir-funtype) (toRustArray rhs-vtype (ir-name rhs-var)) (break "Invalid conversion 3")))
-                        (t (break "Invalid conversion 4"))
-                     )
-                ))
-			    ()
-              ))))
+                (rust-rhs (rust-copy-type ir-vtype rhs-var)))
+			    (if rust-rhs 
+					(format nil "let~a ~a : ~a = ~a;~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
+					(progn (setf (ir-name ir-vartype) (ir-name rhs-var))
+						(ir2rust* ir-body return-type))
+				)
+			  ))))
 
-(defun toRustArray (arrayType fnName)
-    (break "To rust array is to be implemented")
+(defmethod rust-copy-type ((lhs-vtype ir-subrange) rhs-var)
+	(let* ((rhs-vtype (ir-vtype rhs-var)))
+		(if (typep rhs-vtype 'ir-subrange)
+			nil
+			(if (and (typep rhs-vtype 'symbol) (eq rhs-vtype 'mpq))
+				(format nil "{~a}.into_inner() as i32" (ir-name rhs-var))
+				(break (format nil "Cannot convert from ~a to ~a" (type-of rhs-vtype) (type-of lhs-vtype))))))
+)
+
+(defmethod rust-copy-type ((lhs-vtype t) rhs-var)
+	(let* ((rhs-vtype (ir-vtype rhs-var)))
+		(break (format nil "Cannot convert from ~a to ~a" (type-of rhs-vtype) (type-of lhs-vtype))))
 )
 
 (defmethod ir2rust* ((ir-expr ir-lambda) return-type) ; only called at non-zero level
@@ -690,7 +703,7 @@
                 (format nil "(*Rc::make_mut(&mut ~a))[~a as usize] = ~a; ~a" target-var-rust lhs-rust rhs-rust target-var-naturalnumbers)
             )))
         ('ir-funtype (with-slots (ir-domain ir-range) target-type
-            (let* ((target-var-rust (ir2rust* target-var target-type))
+            (let* ((target-var-rust (ir2rust* ir-target target-type))
                     (rhs-rust (ir2rust* ir-rhs ir-range))
                     (lhs-rust (ir2rust* ir-lhs ir-domain)))
                 (format nil "~a.update(~a, ~a)" target-var-rust lhs-rust rhs-rust)
@@ -939,16 +952,19 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 
 	        (rust-result-type (ir2rust-type ir-result-type)) 
 
-	        (rust-args (format nil "~[~a~]" (loop for arg in ir-args
+	        (rust-args (format nil "~{~a~}" (loop for arg in ir-args
 		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
 
 	        (ir-body (if (ir-lambda? post-ir) ; OK
 			    (ir-body post-ir)
 			    post-ir))
             
-	        (rust-body (ir2rust* ir-body ir-result-type)))
+	        (rust-body (ir2rust* ir-body ir-result-type))
+			(rust-fn (format nil "fn ~a (~a) -> ~a {~a}~%~%" ir-f-name rust-args rust-result-type rust-body)))
+			(format t "~% DEBUG rust args ~a " rust-args)
 			(format t "~%IR : ~%~a" (print-ir ir-body))
-            (format nil "fn ~a (~a) -> ~a {~a}~%~%" ir-f-name rust-args rust-result-type rust-body)
+			(format t "~%Rust : ~%~a" rust-fn)
+            rust-fn
 	    )
       ) (break "only functions implemented for now"))
 )
