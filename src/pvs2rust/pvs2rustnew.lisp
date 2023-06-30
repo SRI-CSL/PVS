@@ -690,7 +690,10 @@
 
 (defmethod ir2rust* ((ir-expr ir-release) return-type)
   (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
-	      (ir2rust* ir-body return-type))) ; can be improved with a std::mem::drop in rust
+		(let ((rust-body (ir2rust* ir-body return-type))
+		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars collect (ir-name var))))
+		    (post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var)))))
+		(format nil "~a~a~a" pre-release-instrs rust-body post-release-instrs))))
 
 
 (defmethod ir2rust* ((ir-expr ir-update) return-type) 
@@ -788,6 +791,7 @@ use ordered_float::NotNan;
 use std::collections::HashMap;
 use std::mem::transmute_copy;
 use std::hash::BuildHasherDefault;
+use std::mem::drop;
 use fxhash::FxHasher;
 
 fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
