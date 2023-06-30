@@ -78,6 +78,17 @@
 (defun smt2-type-name (expr)
   (smt2-name expr))
 
+(defmethod translate-to-smt* :around ((obj type-expr) bindings)
+  (declare (ignore bindings))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-smt2-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-smt2-hash*)
+		    result)
+	      result)))))
+
 (defmethod translate-to-smt2* ((ty type-name) bindings)
   (declare (ignore bindings))
   (let ((smt2name-hash (gethash ty *smt2name-hash*)))
@@ -103,14 +114,85 @@
 	  ((tc-eq ty *real*) "Real")
 	  (t (translate-to-smt2* supertype bindings)))))
 
+(defmethod translate-to-smt* ((ty tupletype) bindings)
+  (with-slots (types) ty
+    (format nil "(Tuple_~a ~{~a ~})"
+	    (length  types)
+	    (translate-to-smt2* types bindings))))
+
+(defmethod translate-to-smt2* ((ty recordtype) bindings)
+  (with-slots (fields) ty
+    (format nil "(Tuple_~a ~{~a ~})"
+	    (length fields)
+	    (translate-to-smt2* fields bindings))))
+
+(defmethod translate-to-smt2* ((ty field-decl) bindings)
+  (translate-to-smt2* (type ty) bindings))
+
+(defmethod translate-to-smt2* ((ty dep-binding) bindings)
+  (translate-to-smt2* (type ty) bindings))
+
+(defmethod translate-to-smt2* ((ty funtype) bindings)
+  (with-slots (domain range) ty
+    (format nil "(Array ~a ~a)"
+	    (translate-to-smt2* domain bindings)
+	    (translate-to-smt2* range bindings))))
 
 
-;; (defmethod translate-to-smt2* ((ty funtype) bindings)
-;;   (with-slots (domain range) ty
-;; 	      (let ((sdom (if (dep-binding? domain)  ;;NSH(4-16-11)
-;; 			      (find-supertype (type domain))
-;; 			    (find-supertype domain))))
-;; 	      (format nil "(Array ~{ ~a~} ~a)"
-;; 		      (translate-to-yices2-list (types sdom) nil
-;; 						(translate-to-yices2* range bindings)
-;; 						bindings)))))
+(defmethod translate-to-smt2* ((list list) bindings)
+  (cond ((consp list)
+	 (cons (translate-to-smt2* (car list) bindings)
+	       (translate-to-smt2* (cdr list) bindings)))
+	(t nil)))
+
+
+(defmethod translate-to-smt2* :around ((obj expr) bindings)
+
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-smt2-hash*)))
+	(or hashed-value
+	    (let* ((result (call-next-method))
+		   (type-constraints (type-constraints obj :none))
+		   (rtype-constraints (loop for fmla in type-constraints
+					 nconc (and+ fmla))))
+	      (setf (gethash obj *translate-to-smt2-hash*)
+		    result)
+	      (loop for tc in rtype-constraints
+		 do (let* ((ytc (translate-to-smt2* tc bindings))
+			   (yclause (if *smt2-conditions*
+					(format nil "(assert (implies (and ~{ ~a~}) ~a))"
+					  *smt2-conditions*
+					  ytc)
+					(format nil "(assert ~a)" ytc))))
+		      (push yclause *smt2-subtype-constraints*)))
+	      result)))))
+
+(defun smt2-recognizer (name bindings)
+  (when (recognizer? name)
+    (translate-to-smt2* (type name) bindings)
+    (format nil "~a?" (translate-to-smt2* (constructor name) bindings) )))
+
+(defmethod translate-to-smt2* ((expr name-expr) bindings)
+  (let ((bpos (assoc expr bindings
+		     :test #'same-declaration)))
+    (if bpos (if (consp (cdr bpos))
+		 (format nil "(mk-tuple_~a ~{ ~a~})" (length (cdr bpos)) (cdr bpos))
+		 (cdr bpos))
+	(let* ((smt2name-hashentry (gethash expr *smt2name-hash*)))
+	  (or smt2name-hashentry
+	      (smt2-interpretation expr)
+	      ;(eta-expanded-smt2-interpretation expr)
+	      (smt2-recognizer expr bindings)
+	      (let* ((smt2type (translate-to-smt2* (type expr)
+						bindings))
+		     (smt2name-hashentry (gethash expr *smt2name-hash*)))
+		(or smt2name-hashentry
+		    (let* ((smt2name (smt2-name expr))
+			   (defn (format nil "(declare-const ~a ~a)"
+					 smt2name
+					 smt2type)))
+		      (push defn
+			    *smt2defns*)
+		      (format-if "~%Adding definition: ~a" defn)
+		      smt2name))))))))
