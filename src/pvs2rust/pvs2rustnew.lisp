@@ -14,36 +14,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable)
+(defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable) ; Can be kept 
   (when (null ir-type) (break "mk-ir-variable"))
   (make-instance 'ir-variable
 		 :ir-name ir-name
 		 :ir-vtype ir-type
 		 :ir-pvsid ir-pvsid
 		 :ir-mutable mutable))
-
-(defun pvs2ir-update (assignments ir-expression expression-type bindings)
-  (let ((rhs-list (mapcar #'expression assignments))
-		   (lhs-list (mapcar #'arguments assignments)))
-	       (let* ((rhs-irvar-list (loop for i from 1 to (length rhs-list)
-					    collect (new-irvar)))
-		      (ir-rhs-types (loop for lhs in lhs-list
-					  collect (get-component-ir-type expression-type lhs)))
-		      (ir-rhs-vartypes (mk-vartype-list rhs-irvar-list ir-rhs-types))
-		      (ir-rhs-list (loop for rhs in rhs-list
-					 collect
-					 (pvs2ir* rhs bindings nil)))
-		      (ir-exprvar (mk-ir-variable (new-irvar) expression-type nil t))) ; mark var as mutable
-		 (let ((ir-update-expr (pvs2ir-assignments lhs-list ;build updates
-							   ir-rhs-vartypes
-							   ir-exprvar
-							   expression-type
-							   bindings)))
-		   (make-ir-let* ir-rhs-vartypes ir-rhs-list
-				 (make-ir-let ir-exprvar 
-					      ir-expression
-					      ir-update-expr))))))
-
 
 ;; Suppression of the null assignement
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
@@ -170,7 +147,7 @@
   )
   )
 
-(defun pvs2ir-adt-record-recognizer (rdecl index index-id index-type 
+(defun pvs2ir-adt-record-recognizer (rdecl index index-id index-type  ; can be kept 
 				    adt-type-name)
   (let* ((einfo (get-eval-info rdecl))
 	 ;(ir-einfo (ir einfo))
@@ -195,7 +172,7 @@
 	    (c-type-info-table einfo) nil)
       (ir einfo))))
 
-(defmethod pvs2ir-adt-accessor* ((adecl adt-accessor-decl)
+(defmethod pvs2ir-adt-accessor* ((adecl adt-accessor-decl) ; can also be kept : naming
 				 constructor constructors index index-id adt-type-name)
   (declare (ignore index index-id constructors))
    (let* ((adecl-id (id adecl))
@@ -226,7 +203,7 @@
 	  ;(format t "~%Adding definition for singular accessor: ~a" adecl-id)
 	  (ir einfo))))
 
-(defmethod pvs2ir-adt-accessor* ((adecl shared-adt-accessor-decl)
+(defmethod pvs2ir-adt-accessor* ((adecl shared-adt-accessor-decl) ;idem
 				 constructor constructors index index-id adt-type-name)
   (declare (ignore index constructor))
   (let* ((adecl-id (id adecl))
@@ -257,7 +234,7 @@
 					;(format t "~%Adding definition for shared accessor: ~a" adecl-id)
       (ir einfo))))
 	  
-(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty
+(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty ; can be kept : naming
   (let* ((adt-type (type-value adt-decl))
 	 (adt-adt-id (format nil "~a" adt-type))
 	 (adt (adt adt-type))
@@ -291,48 +268,7 @@
     adt-type-name
     ))
 
-(defmethod pvs2ir-type* ((type arraytype) tbinding)
-  (with-slots (domain range) type
-    (let* ((ir-dom (pvs2ir-type* domain tbinding))
-	   (new-tbinding (if (binding? domain)
-			     (acons domain (mk-ir-variable (new-irvar)
-							   ir-dom)
-				    tbinding)
-			   tbinding))
-	   (ptype (print-type type))
-	   (ir-actuals (loop for act in (actuals ptype)
-			   collect (if (type-value act)
-				       (mk-ir-type-actual (pvs2ir-type (type-value act) bindings))
-				     (mk-ir-const-actual (pvs2ir* act bindings nil)))))
-	   (defined-ir-type-value (when (type-name? ptype)
-			     (ir-type-value-with-actuals (declaration ptype) ir-actuals)))
-	   (defined-ir-domtype (when (and defined-ir-type-value
-					  (ir-arraytype? (ir-type-defn (ir-type-name defined-ir-type-value))))
-				 (ir-domain (ir-type-defn (ir-type-name defined-ir-type-value)))))
-	   (ir-type (let ((ir-dom-subrange (is-ir-subrange? ir-dom)))
-		      (if (ir-subrange? ir-dom-subrange)
-			  (with-slots (ir-low ir-high ir-high-expr) ir-dom-subrange
-			    (let ((check-range (check-arraytype-ir-subrange ir-low ir-high)))
-			      (if check-range
-				  (mk-ir-arraytype check-range (or ir-high-expr check-range)
-						   ir-dom (pvs2ir-type* range new-tbinding))
-				(if defined-ir-domtype
-				    (with-slots ((ir-defined-low ir-low) (ir-defined-high ir-high)) defined-ir-domtype
-				      (let ((check-defined-range (check-arraytype-ir-subrange ir-defined-low ir-defined-high)))
-					(if check-defined-range 
-					    (mk-ir-arraytype check-defined-range (or ir-high-expr check-defined-range)
-							     ir-dom (pvs2ir-type* range new-tbinding))
-					  (mk-ir-funtype ir-dom
-							 (pvs2ir-type* range new-tbinding)))))
-				  (mk-ir-funtype ir-dom
-						 (pvs2ir-type* range new-tbinding))))))
-		      (mk-ir-funtype ir-dom
-				     (pvs2ir-type* range new-tbinding))))))
-    ;;  (when (ir-funtype? ir-type)(break "pvs2ir-type*(arraytype)")
-	;;	(format t "~%Unable to translate ~a as an array; using function type instead" type))
-      ir-type)))
-
-
+;; Modified for reduction of a normal form
 (defun pvs2ir-application (op args ir-expr-type bindings expected)
   (declare (ignore expected))
   (let* ((arg-names (new-irvars (length args)))
@@ -497,60 +433,6 @@
 				)
 		  
 		  ))))))
-
-(defun pvs2ir-constant (expr bindings)
-  (let* ((decl (declaration expr)))
-    (cond ((pvs2ir-primitive? expr) ;;borrowed from pvseval-update.lisp
-	   (cond ((eq (id expr) 'TRUE) (mk-ir-bool t))
-		 ((eq (id expr) 'FALSE) (mk-ir-bool nil))
-		 (t (mk-ir-primitive-function (id expr) decl))));for primitives, types are derived from args
-	  (t (let ((ir-defn (pvs2ir-constant-ir expr bindings decl)))
-	       (ir-function-name ir-defn))))))
-
-(defun pvs2ir-constant-ir (expr bindings decl)
-  (if (adt-expr? expr)
-      (let ((adt (adt expr)));(break "pvs2ir-constant-ir(adt)")
-	(pvs2ir-adt adt)
-	(ir (eval-info decl)))
-    (let* ((theory (module decl))
-	   (thinst (module-instance expr))
-	   (actuals (actuals thinst))
-	   (type-actuals (loop for act in actuals
-			       when (type-value act)
-			       collect (check-actual-type (type-value act) bindings)))
-	   (nonref-actuals (loop for actlabel in type-actuals
-				 when (not (eq actlabel 'ref))
-				 collect actlabel))
-	   (new-theory-id (format nil "~a_~{~a~^_~}" (simple-id (id theory))
-					type-actuals))
-	   (intern-theory-id (intern new-theory-id))
-	   ) (when nonref-actuals (break "nonref-actuals"))
-      (cond ((and nonref-actuals (not (eq theory *current-pvs2rust-theory*)))  ;; was (eq intern-theory-id *theory-id*)))
-	     (let* ((*theory-id* intern-theory-id)
-		    (monoclones (ht-instance-clone theory))
-		    (dummy (when (null monoclones)(format t "~% No monoclones")))
-		    (thclone (and monoclones (gethash  intern-theory-id monoclones)))
-		    (theory-instance (or thclone
-					 (let ((new-instance (subst-mod-params theory thinst)))
-					   (setf (id new-instance) *theory-id*)
-					   new-instance)))
-		    (dummy2 (when thclone (format t "~%Found thclone")))
-		    (instdecl (find  decl (theory theory-instance) :key #'generated-by))
-		    ) ;(break "nonref-actuals")			;place information matches
-	       (cond (thclone
-		      (format t "~%Pushing ~a" intern-theory-id)
-		      (pushnew theory-instance *preceding-mono-theories*)
-		      (ir (eval-info instdecl)))
-		     (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
-			(setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
-			(pvs2rust-theory-body-step theory-instance t nil) ;;NSH(3/20/22): Need to clear inherited eval-info
-			(format t "~%Pushing ~a" intern-theory-id)
-			(pushnew theory-instance *preceding-mono-theories*)
-			;; (if (memq theory *preceding-prelude-theories*)
-			;; 	 (push theory-instance *preceding-prelude-theories*)
-			;;   (push theory-instance *preceding-theories*))
-			(ir (eval-info instdecl))))))
-	    (t (ir (eval-info decl)))))))
 
 ;; ------- IR2RUST --------
 
@@ -845,6 +727,11 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
       (format output "~%~a~%//fn main(){}" text)
       ;(prettier-rust-file file-string)
       (format t "~%Wrote ~a" file-string)
+		;;(excl:run-shell-command ; not working, i don t know why
+		;;	     (format nil "prettier --write ~a" file-string)
+		;;	     :input "//dev//null"
+		;;	     :output nil
+		;;	     :error-output :output)
     )
 
     (concatenate 'string file-path file-string)
