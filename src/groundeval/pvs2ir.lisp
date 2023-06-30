@@ -6625,11 +6625,12 @@
 				 (gmp-type? (ir2c-type (ir-vtype ir-bvar))))
 			collect (let ((atype (add-c-type-definition (ir2c-type (ir-vtype ir-bvar)))))
 				  (format nil "release_~a(bvar_~a)" atype i)))))
-	       (bvar-fvar-args (format nil "~{~a~^, ~}~{, ~a~}~{, ~a~}"
+	       (bvar-fvar-args (format nil "~{~a~^, ~}~{, ~a~}" ;~{, ~a~}
 				       bvar-cvars
 				       (loop for i from 1 to (length ir-freevars)
 					     collect (format nil "closure->fvar_~a" i))
-				       (loop for param in theory-params collect (format nil "closure->~a" (ir-formal-id param)))))
+				       ;;(loop for param in theory-params collect (format nil "closure->~a" (ir-formal-id param)))
+				       ))
 	       (hashable-domain (ir-hashable-index? (ir2c-type ir-domaintype)))
 	       ;;(hashable-range (ir-hashable-index? (ir2c-type ir-rangetype)))
 	       (closure-fptr-defn 
@@ -8611,9 +8612,9 @@
 	 (c-args-string (if (consp c-args)
 			    (format nil "~{~a~^, ~}" c-args)
 			  (format nil "void")))
-	 (c-header (format nil "extern ~a_t ~a(~a~a)" (mppointer-type c-result-type)
-			   ir-function-name c-args-string
-			   c-param-decl-string))
+	 (c-header (format nil "extern ~a_t ~a(~a)" (mppointer-type c-result-type)
+			   ir-function-name c-args-string))
+			   ;;ignoring params since they are in the free vars;;c-param-decl-string
 	 ;; (case c-result-type
 	 ;; 	     ((mpz mpq)
 	 ;; 	      (if (consp c-args)
