@@ -1,10 +1,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; translate-to-smt2.lisp -- 
-;; Author          : Karthik Nukala and N. Shankar
+;; Author          : K. Nukala and N. Shankar
 ;; Created On      : June 2023
-;; Last Modified By: N. Shankar
-;; Last Modified On: 
-;; Update Count    : 
+;; Last Modified By: K. Nukala
+;; Last Modified On: 07/03/2023
+;; Update Count    : 2
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -36,7 +36,7 @@
 (defvar *smt2defns* nil)
 ;;(defvar *smt2datatype-warning* nil)
 (defvar *smt2name-hash* (make-pvs-hash-table))
-(defvar *translate-to-yices2-hash* (make-pvs-hash-table))
+(defvar *translate-to-smt2-hash* (make-pvs-hash-table))
 (defvar *smt2-executable* nil)
 (defvar *smt2-flags* "--mode=one-shot")
 (defvar *smt2-id-counter*)  ;;needs to be initialized in eproofcheck
@@ -71,9 +71,6 @@
      (princ-to-string
       (funcall
        *smt2-id-counter*))) :pvs))
-
-;;Next, we translate PVS types to Yices types so that any enumerated
-;;types or datatypes introduce names.
 
 (defun smt2-type-name (expr)
   (smt2-name expr))
@@ -117,7 +114,7 @@
 (defmethod translate-to-smt* ((ty tupletype) bindings)
   (with-slots (types) ty
     (format nil "(Tuple_~a ~{~a ~})"
-	    (length  types)
+	    (length types)
 	    (translate-to-smt2* types bindings))))
 
 (defmethod translate-to-smt2* ((ty recordtype) bindings)
@@ -147,7 +144,6 @@
 
 
 (defmethod translate-to-smt2* :around ((obj expr) bindings)
-
   (if (or *bound-variables* *bindings*)
       (call-next-method)
       (let ((hashed-value (gethash obj *translate-to-smt2-hash*)))
@@ -177,7 +173,7 @@
   (let ((bpos (assoc expr bindings
 		     :test #'same-declaration)))
     (if bpos (if (consp (cdr bpos))
-		 (format nil "(mk-tuple_~a ~{ ~a~})" (length (cdr bpos)) (cdr bpos))
+		 (format nil "(Tuple_~a ~{ ~a~})" (length (cdr bpos)) (cdr bpos))
 		 (cdr bpos))
 	(let* ((smt2name-hashentry (gethash expr *smt2name-hash*)))
 	  (or smt2name-hashentry
@@ -196,3 +192,37 @@
 			    *smt2defns*)
 		      (format-if "~%Adding definition: ~a" defn)
 		      smt2name))))))))
+
+
+(defmethod translate-to-smt2* ((expr constructor-name-expr) bindings)
+  (call-next-method (lift-adt expr) bindings))
+
+(defmethod translate-to-smt2* ((expr rational-expr) bindings)
+  (declare (ignore bindings))
+  (number expr))
+
+(defmethod translate-to-smt2* ((ex string-expr) bindings)
+  (declare (ignore bindings))
+  (string->int (string-value ex)))
+
+(defmethod translate-to-smt2* ((expr record-expr) bindings)
+  (with-slots (assignments) expr
+    (format nil "(Tuple_~a ~{ ~a~})"
+	    (length assignments)
+	    (translate-to-smt2* (sort-assignments (assignments expr)) bindings))))
+
+(defmethod translate-to-smt2* ((expr tuple-expr) bindings)
+  (with-slots (exprs) expr
+    (format nil "(Tuple_~a ~{ ~a~})"
+	    (length exprs)
+	    (translate-to-smt2* (exprs expr) bindings))))
+
+(defmethod translate-to-smt2* ((expr branch) bindings)
+  (let ((smt2condition (translate-to-smt2* (condition expr) bindings)))
+  (format nil "(ite ~a ~a ~a)"
+    smt2condition
+    (let ((*smt2-conditions* (push smt2condition *smt2-conditions*)))
+      (translate-to-smt2* (then-part expr) bindings))
+    (let ((*smt2-conditions* (push `(not ,smt2condition) *smt2-conditions*)))
+      (translate-to-smt2* (else-part expr) bindings)))))
+
