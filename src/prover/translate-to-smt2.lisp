@@ -113,14 +113,12 @@
 
 (defmethod translate-to-smt* ((ty tupletype) bindings)
   (with-slots (types) ty
-    (format nil "(Tuple_~a ~{~a ~})"
-	    (length types)
+    (format nil "(Prod ~{~a ~})"
 	    (translate-to-smt2* types bindings))))
 
 (defmethod translate-to-smt2* ((ty recordtype) bindings)
   (with-slots (fields) ty
-    (format nil "(Tuple_~a ~{~a ~})"
-	    (length fields)
+    (format nil "(Prod ~{~a ~})"
 	    (translate-to-smt2* fields bindings))))
 
 (defmethod translate-to-smt2* ((ty field-decl) bindings)
@@ -173,7 +171,7 @@
   (let ((bpos (assoc expr bindings
 		     :test #'same-declaration)))
     (if bpos (if (consp (cdr bpos))
-		 (format nil "(Tuple_~a ~{ ~a~})" (length (cdr bpos)) (cdr bpos))
+		 (format nil "(Prod ~{ ~a~})"  (cdr bpos))
 		 (cdr bpos))
 	(let* ((smt2name-hashentry (gethash expr *smt2name-hash*)))
 	  (or smt2name-hashentry
@@ -207,14 +205,12 @@
 
 (defmethod translate-to-smt2* ((expr record-expr) bindings)
   (with-slots (assignments) expr
-    (format nil "(Tuple_~a ~{ ~a~})"
-	    (length assignments)
+    (format nil "(tuple ~{ ~a~})"
 	    (translate-to-smt2* (sort-assignments (assignments expr)) bindings))))
 
 (defmethod translate-to-smt2* ((expr tuple-expr) bindings)
   (with-slots (exprs) expr
-    (format nil "(Tuple_~a ~{ ~a~})"
-	    (length exprs)
+    (format nil "(tuple ~{ ~a~})"
 	    (translate-to-smt2* (exprs expr) bindings))))
 
 (defmethod translate-to-smt2* ((expr branch) bindings)
@@ -226,3 +222,19 @@
     (let ((*smt2-conditions* (push `(not ,smt2condition) *smt2-conditions*)))
       (translate-to-smt2* (else-part expr) bindings)))))
 
+(defmethod translate-to-smt2* ((expr projection-expr) bindings)
+  (break "Can't translate standalone projections"))
+
+(defmethod translate-to-smt2* ((expr projection-application) bindings)
+  (with-slots (argument index) expr
+    (if (variable? argument)
+	(let ((bnd (assoc argument bindings
+			  :test #'same-declaration)))
+	  (if (and bnd (consp (cdr bnd)))
+	      (nth (1- index) (cdr bnd))
+	      (format nil "((_ project ~a) ~a)"
+		(1+ (index expr))
+		(translate-to-yices2* argument bindings))))
+	(format nil "((_ project ~a) ~a)"
+		(1+ (index expr))
+		(translate-to-yices2* argument bindings)))))
