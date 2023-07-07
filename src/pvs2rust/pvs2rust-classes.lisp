@@ -50,6 +50,11 @@
   ir-args
   ir-atype);return type of the application
 
+(defcl ir-delete (ir-expr) 
+  ir-func
+  ir-arg
+  ir-body)
+
 (defcl ir-let (ir-expr)
   ir-vartype ;an ir-variable
   ir-bind-expr

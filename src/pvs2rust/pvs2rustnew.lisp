@@ -15,12 +15,41 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable) ; Can be kept 
-  (when (null ir-type) (break "mk-ir-variable"))
   (make-instance 'ir-variable
 		 :ir-name ir-name
 		 :ir-vtype ir-type
 		 :ir-pvsid ir-pvsid
 		 :ir-mutable mutable))
+
+(defun mk-ir-delete (funct arg body)
+  (make-instance 'ir-delete
+		 :ir-func funct
+		 :ir-arg arg
+		 :ir-body body))
+
+(defmethod print-ir ((ir-expr ir-apply))
+  (with-slots (ir-func ir-params ir-args ir-atype) ir-expr
+	      `(,(format nil "ir-apply") ,(print-ir ir-func) ,@(print-ir ir-params) ,@(print-ir ir-args)  ,(print-ir ir-atype))))
+
+(defmethod print-ir ((ir-expr ir-delete))
+  (with-slots (ir-func ir-args ir-body) ir-expr
+	      `(,(format nil "ir-delete") ,(print-ir ir-func) ,(print-ir ir-arg) ,(print-ir ir-body))))
+
+(defmethod preprocess-ir* ((ir-expr ir-delete) livevars bindings);;the ir-args are always distinct, but we are
+  (with-slots (ir-func ir-arg ir-body) ir-expr               ;;not exploiting this here.
+	      (let* ((ir-params-with-bindings (apply-bindings bindings (pvs2ir-freevars* ir-params)))
+		     (ir-args-with-bindings (apply-bindings bindings (pvs2ir-freevars* ir-args)))
+		     (new-ir-func
+		      (preprocess-ir* ir-func (union ir-params-with-bindings
+					       (union ir-args-with-bindings 
+						      livevars :test #'eq) :test #'eq)
+				      bindings))
+		     (new-ir-args (preprocess-ir* ir-arg (union ir-params-with-bindings
+								 livevars :test #'eq)
+						  bindings))
+		     ;; (new-ir-atype (ir-apply-arith-type new-ir-func new-ir-args ir-atype))
+		     )
+		(mk-ir-apply new-ir-func new-ir-arg ))))
 
 ;; Suppression of the null assignement
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
@@ -39,17 +68,25 @@
 		 (lhs1-ir (pvs2ir* lhs1 bindings nil)) ;;the index expression
 		 (lhs1-ir-type (ir-domain ir-expr-type))
 		 (ir-exprvar1 (new-irvar))
-		 (ir-new-rhsvar (new-irvar)))
+		 (ir-new-rhsvar (new-irvar))
+		 (ir-var-post-delete (new-irvar)))
 	     (let ((ir-lhs1-vartype (mk-ir-variable lhs1-irvar lhs1-ir-type))
 		   (ir-expr-vartype1 (mk-ir-variable ir-exprvar1 ir-expr-type))
-		   (ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11)))
-	       (mk-ir-let  ir-lhs1-vartype lhs1-ir
-			   (mk-ir-let ir-expr-vartype11
-				      (mk-ir-apply ir-exprvar (list ir-lhs1-vartype));;was lookup
-					  (mk-ir-let ir-new-rhsvartype
+		   (ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11))
+		   (ir-vartype-post-delete (mk-ir-variable ir-var-post-delete (ir-vtype ir-exprvar))))
+	       (mk-ir-let ir-lhs1-vartype lhs1-ir
+		   		(mk-ir-let ir-expr-vartype11
+					(mk-ir-apply ir-exprvar (list ir-lhs1-vartype))
+					(if (ir-reference-type? ir-expr-type11)
+						(mk-ir-let ir-vartype-post-delete 
+							(mk-ir-apply (mk-ir-primitive-function 'delete) (list ir-exprvar ir-lhs1-vartype))
+							(mk-ir-let ir-new-rhsvartype
+								ir-rest-assignment
+								(mk-ir-update ir-vartype-post-delete ir-lhs1-vartype ir-new-rhsvartype)))
+						(mk-ir-let ir-new-rhsvartype
 							ir-rest-assignment
-							(mk-ir-update ir-exprvar ir-lhs1-vartype ir-new-rhsvartype))
-				      ))
+							(mk-ir-update ir-exprvar ir-lhs1-vartype ir-new-rhsvartype)))
+					)) 
 			))))
 	(t ir-exprvar)))
 
@@ -471,10 +508,9 @@
                 (format nil "~a[~a].clone()" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0)))))))
 
 (defmethod ir2rust* ((ir-expr ir-apply) return-type) ; lookup of a function, can we have a apply on array ? no mais on peut avoir des primitives
-  (with-slots (ir-func ir-params ir-args) ir-expr ; on peut avoir des variable ou des functions
+  (with-slots (ir-func ir-params ir-args ir-atype) ir-expr ; on peut avoir des variable ou des functions
 	      (let* ((ir-func-var (get-ir-last-var ir-func))
 		        (hi-array (when (ir-variable? ir-func-var) (ir-array? (ir-vtype ir-func-var)))))
-		  (format t "~% ~a ~a" ir-func-var (type-of ir-func-var))
           (if hi-array (break (format nil "Trying to call an array : ~a" ir-func)))
 	      	(if (ir-primitive-function? ir-func)
 				(ir2rust-primitive-apply return-type ir-func ir-args)
@@ -482,6 +518,12 @@
 					(format nil "~a(~{~a,~})" (ir-fname ir-func) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))
 					(format nil "~a.lookup(~{~a,~})" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))))
           )))
+
+(defmethod ir2rust* ((ir-expr ir-delete) return-type) 
+  (with-slots (ir-func ir-arg ir-body) ir-expr ; on peut avoir que des variables
+	      (let* ((ir-func-var (get-ir-last-var ir-func))
+		  		(rust-body (ir2rust* ir-body return-type)))
+	      	(format nil "~a.delete(~a);~%~a" (ir-name ir-func-var) (ir2rust* ir-arg nil) rust-body))))
 
 (defun ir2rust-primitive-apply (return-type ir-function ir-args)
   (let* ((ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))))
@@ -519,6 +561,7 @@
 	;		 (car ir-arg-names)  (cadr ir-arg-names)
 	;		 (car ir-arg-names)  (cadr ir-arg-names))))
     ;  ((code char) (list (format nil "~a = (uint32_t) ~a" return-var (car ir-arg-names))))
+	  (delete (format nil "~a.delete(~a)" (ir2rust* (car ir-args) nil) (ir2rust* (cadr ir-args) nil)))
       (t (list (format nil "~a(~{~a~^, ~})" ir-function-name ir-args)))
       )))
 
@@ -533,7 +576,8 @@
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
 	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
 			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
-                (rust-rhs (rust-copy-type ir-vtype rhs-var)))
+			    (rhs-type (if (ir-typename? ir-vtype) (ir-type-defn ir-vtype) ir-vtype))
+                (rust-rhs (rust-copy-type rhs-type rhs-var)))
 			    (if rust-rhs 
 					(format nil "let~a ~a : ~a = ~a;~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
 					(progn (setf (ir-name ir-vartype) (ir-name rhs-var))
@@ -544,10 +588,14 @@
 (defmethod rust-copy-type ((lhs-vtype ir-subrange) rhs-var)
 	(let* ((rhs-vtype (ir-vtype rhs-var)))
 		(if (typep rhs-vtype 'ir-subrange)
-			nil
+			(ir-name rhs-var)
 			(if (and (typep rhs-vtype 'symbol) (eq rhs-vtype 'mpq))
 				(format nil "{~a}.into_inner() as i32" (ir-name rhs-var))
 				(break (format nil "Cannot convert from ~a to ~a" (type-of rhs-vtype) (type-of lhs-vtype))))))
+)
+
+(defmethod rust-copy-type ((lhs-vtype ir-typename) rhs-var)
+	(rust-copy-type (ir-type-defn lhs-vtype) rhs-var)
 )
 
 (defmethod rust-copy-type ((lhs-vtype t) rhs-var)
@@ -574,14 +622,17 @@
   (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
 		(let ((rust-body (ir2rust* ir-body return-type))
 		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars collect (ir-name var))))
-		    (post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var)))))
-		(format nil "~a~a~a" pre-release-instrs rust-body post-release-instrs))))
+		    (post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var))))) ;; no post release rn
+		(format nil "~a~a" pre-release-instrs rust-body)))) ;; are they post release irl ?
+
+;;(defmethod ir2rust* ((ir-expr ir-nil) return-type)
+;;  (if return-type (rust-get-nil-for-type return-type) (break "Trying to create nil of unspecified type"))) 
 
 
 (defmethod ir2rust* ((ir-expr ir-update) return-type) 
   (with-slots (ir-target ir-lhs ir-rhs) ir-expr
     (let* ((target-var (get-ir-last-var ir-target))
-            (target-type (ir-vtype target-var))
+            (target-type (if (ir-typename? (ir-vtype target-var)) (ir-type-defn (ir-vtype target-var)) (ir-vtype target-var)))
             (target-var-name (ir-name target-var))
             )
     (case (type-of target-type)
@@ -662,7 +713,8 @@
     unused_variables,
     unused_parens,
     unreachable_patterns,
-    unused_imports
+    unused_imports,
+    drop_copy
 )]
 
 use std::hash::Hash;
@@ -687,7 +739,7 @@ impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
 #[derive(Clone)]
 struct funtype<A: RegularOrd, V: RegularOrd> {
     explicit: Rc<dyn Fn(A) -> V>,
-    hashtable: Rc<HashMap<A, V, BuildHasherDefault<FxHasher>>>, // way better than BTreeMap...
+    hashtable: Rc<HashMap<A, V, BuildHasherDefault<FxHasher>>>,
 }
 
 impl<A: RegularOrd, V: RegularOrd> PartialEq for funtype<A, V> {
@@ -714,6 +766,12 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
         match self.hashtable.get(&a) {
             Some(v) => v.clone(),
             None => (self.explicit)(a),
+        }
+    }
+	fn delete(mut self, a: A) -> Self {
+        match Rc::make_mut(&mut self.hashtable).remove(&a) {
+            Some(x) => {drop(x); self},
+            None => self,
         }
     }
     fn update(mut self, a: A, v: V) -> Self {
@@ -812,13 +870,11 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
     (newcounter *var-counter*)
     (pvs2rust-decl* decl)))
 
-(defmethod pvs2rust-decl* ((decl type-eq-decl)) ; TODO
-	(break "Type eq decl")
+(defmethod pvs2rust-decl* ((decl type-eq-decl))
   (let ((typename (pvs2ir-decl decl)))
-    ;(break "type-eq-decl")
-    (when  (and (ir-typename? typename)
-		(ir-type-value decl));some type definitions translate to no-ops
-      (add-c-type-definition typename)))); (ir2c-type (ir-type-defn typename))(ir-type-id typename)))))
+    (when  (and (ir-typename? typename) (ir-type-value decl))
+      (setf *header* (format nil "~a~%type ~a = ~a;~%" *header* (ir-type-id typename) (ir-type-defn typename))))
+	""))
 
 (defmethod pvs2rust-decl* ((decl formal-type-decl))
 	(break "formal-type-decl")
@@ -863,8 +919,6 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 
 	        (ir-args (when (ir-lambda? post-ir) (ir-vartypes post-ir)))
 			(pvs-return-type (type decl))
-
-			(aaaaaa (format t "~%AAA ~a~%~a~%~a~%~a" (print-ir post-ir) post-ir pvs-return-type ir-defn))
 
 	        (ir-result-type (if (ir-lambda? post-ir)
 				(ir-rangetype post-ir)
@@ -1101,10 +1155,6 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 				))
 		))) 
 
-(defmethod ir2rust-type ((ir-typ ir-adt-recordtype)) ; it looks like it s never called : a verifier
-  (break "ir-adt recordtype should not be called")
-)
-
 (defmethod ir2rust-type ((ir-typ ir-arraytype)) 
   (with-slots (size high ir-domain ir-range) ir-typ
     (format nil "Rc<[~a; ~a]>" (ir2rust-type ir-range) size)))
@@ -1112,6 +1162,43 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 (defmethod ir2rust-type ((ir-typ t))
   (format t "~%~a ~a" ir-typ (type-of ir-typ))
   (break "Unsupported type"))
+
+;; rust-get-nil-for-type
+
+;;(defmethod rust-get-nil-for-type ((ir-typ ir-subrange))
+;;  (format nil "0i32"))
+;;
+;;(defmethod rust-get-nil-for-type ((ir-type symbol)) ;not. mpq
+;;  (case ir-type
+;;    (boolean "false")
+;;    (mpq "NotNan::new(0f32).unwrap()")
+;;    (t (break "No null for ~a" ir-type))))
+;;
+;;(defmethod rust-get-nil-for-type ((ir-type ir-typename)) ; if recordtype build struct, else makes a type declaration 
+;;  (rust-get-nil-for-type (ir-type-defn ir-type)))
+;;
+;;(defmethod rust-get-nil-for-type ((ir-typ ir-funtype))
+;;  (with-slots (ir-domain ir-range) ir-typ
+;;    (format nil "funtype::new(Rc::new(move |x : ~a| ~a))" (ir2rust-type ir-domain) (rust-get-nil-for-type ir-range))
+;;  ))
+;;
+;;(defmethod rust-get-nil-for-type ((ir-typ ir-recordtype)) 
+;;	(with-slots (ir-fields ir-recordtype) ir-expr 
+;;		(let* ((record-name (ir2rust-type ir-recordtype))
+;;		    (ir-field-types (ir-field-types ir-recordtype))
+;;			(field-value-list (loop for field in ir-field-types 
+;;						collect (with-slots (ir-id ir-vtype) field 
+;;						(format nil "~a : ~a," ir-id (rust-get-nil-for-type ir-vtype)))))
+;;			(fields-values (format nil "~{~a~}" field-value-list)))
+;;			(format nil "~a {~a}" record-name fields-values)))) 
+;;
+;;(defmethod rust-get-nil-for-type ((ir-typ ir-arraytype)) 
+;;  (with-slots (size high ir-domain ir-range) ir-typ
+;;    (format nil "unsafe {Rc::try_new_uninit::<[~a; ~a]>().unwrap_unchecked().assume_init()}" (ir2rust-type ir-range) size)))
+;;
+;;(defmethod rust-get-nil-for-type ((ir-typ t))
+;;  (format t "~%~a ~a" ir-typ (type-of ir-typ))
+;;  (break "Unsupported type"))
 
 ;; MISC
 
