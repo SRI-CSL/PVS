@@ -1,18 +1,30 @@
-;;pvs2ir translates PVS expressions, definitions, and theories to an intermediate
-;;representation (IR).  The IR consists of variables, tuples, function applications,
-;;lambda-expressions, if-expressions, lets, and updates.
+;; pvs2ir translates PVS expressions, definitions, and theories to an intermediate
+;; representation (IR).  The IR consists of variables, tuples, function applications,
+;; lambda-expressions, if-expressions, lets, and updates. It does not handles dependant types,
+;; and other constructs yet.
+
+;; pvs2ir is yet under dev, so it is not compiled / loaded by PVS at start. to use it, you must first
+;; import the file using lf.
+;; (lf ".../src/pvs2rust/pvs2rust.lisp")
+;; (pvs2rust "theory-name")
 
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
-(defvar *current-pvs2rust-theory* nil)
-(defvar *output* nil) ;; tmp used for output construction in pvs2rust(decl  functions (not elsewhere) 
 (defvar *functions* nil) ;; list of all fn names
-(defvar *header* nil) ;; type, const, datatype & misc declaration
+(defvar *header* nil) ;; rust code containing type, const, datatype & misc declarations
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; We first add the possible mutability of variables
+
+(defcl ir-variable (ir-expr)
+  ir-name
+  ir-vtype
+  ir-pvsid 
+  ir-mutable) ; default to nil ; en fait peut etr epas besoin car on peut check vtype au moment du let
 
 (defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable) ; Can be kept 
   (make-instance 'ir-variable
@@ -21,11 +33,8 @@
 		 :ir-pvsid ir-pvsid
 		 :ir-mutable mutable))
 
-(defmethod print-ir ((ir-expr ir-apply))
-  (with-slots (ir-func ir-params ir-args ir-atype) ir-expr
-	      `(,(format nil "ir-apply") ,(print-ir ir-func) ,@(print-ir ir-params) ,@(print-ir ir-args)  ,(print-ir ir-atype))))
 
-;; Suppression of the null assignement
+;; Suppression of the null assignement, adding delete when needed
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
   (cond ((consp lhs)
 	 (let* ((ir-exprvar11 (new-irvar))
@@ -64,7 +73,7 @@
 			))))
 	(t ir-exprvar)))
 
-;; Gasc : i made a new way to change arrays to optimize array update in pvs2rust
+;; I made a new way to change arrays to optimize array update in pvs2rust
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-arraytype) lhs rhs-irvar ir-exprvar bindings)
 	(let* ((lhs1 (caar lhs)) ; i
 		   (lhs1-ir (pvs2ir* lhs1 bindings nil)) 
@@ -100,10 +109,6 @@
 	(let* ((ir-expr-type (ir-type-defn ir-expr-typename)))
 		(let* ((lhs1 (caar lhs)) ; i ;;lhs1 is a field-name-expr
 			(lhs-exprvar (mk-ir-get ir-exprvar (id lhs1))) ; A[i] : get
-
-			;;(lhs1-irvar (new-irvar))
-			;;(lhs1-ir-type (ir-domain ir-expr-type))
-			;;(ir-lhs1-vartype (mk-ir-variable lhs1-irvar lhs1-ir-type))
 			)
 			(if (consp (cdr lhs))
 				(pvs2ir-assignment1-custom-recordtype ir-expr-typename (cdr lhs) rhs-irvar lhs-exprvar bindings)
@@ -111,11 +116,10 @@
 					ir-exprvar
 					(id lhs1)
 					rhs-irvar
-				)
-			))))
+				)))))
 
 
-;;had to add method for ir-adt-recordtype since the type here is the adt and not the constructor,
+;;I had to add method for ir-adt-recordtype since the type here is the adt and not the constructor,
 ;;whereas in the record case, the field-assign does not have a type s othat ir-expr-type11 has to
 ;;be computed from the ir-type of the field.  
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-adt-recordtype) lhs rhs-irvar ir-exprvar bindings)
@@ -183,6 +187,7 @@
 	    (c-type-info-table einfo) nil)
       (ir einfo))))
 
+;; I only changed the naming there
 (defmethod pvs2ir-adt-accessor* ((adecl adt-accessor-decl) ; can also be kept : naming
 				 constructor constructors index index-id adt-type-name)
   (declare (ignore index index-id constructors))
@@ -481,8 +486,8 @@
                 (format nil "~a[~a]" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0)))
                 (format nil "~a[~a].clone()" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0)))))))
 
-(defmethod ir2rust* ((ir-expr ir-apply) return-type) ; lookup of a function, can we have a apply on array ? no mais on peut avoir des primitives
-  (with-slots (ir-func ir-params ir-args ir-atype) ir-expr ; on peut avoir des variable ou des functions
+(defmethod ir2rust* ((ir-expr ir-apply) return-type) ; lookup of a function, can we have a apply on array ? no : only closures & primitives
+  (with-slots (ir-func ir-params ir-args ir-atype) ir-expr 
 	      (let* ((ir-func-var (get-ir-last-var ir-func))
 		        (hi-array (when (ir-variable? ir-func-var) (ir-array? (ir-vtype ir-func-var)))))
           (if hi-array (break (format nil "Trying to call an array : ~a" ir-func)))
@@ -540,7 +545,7 @@
         (format nil "let~a~a : ~a = {~a};~%~a" (if ir-mutable " mut " " ") ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
     )))
 
-(defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; a terminer
+(defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; TODO : complete
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
 	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
 			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
@@ -572,7 +577,7 @@
 )
 
 (defmethod ir2rust* ((ir-expr ir-lambda) return-type) ; only called at non-zero level
-  (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr ; ir-vartypes : ir-variables des args
+  (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr 
     (let* ((args-rust (format nil "~a~a : ~a" (if (ir-mutable (car ir-vartypes)) "mut " "") (ir-name (car ir-vartypes)) (ir2rust-type (ir-vtype (car ir-vartypes)))))
            (body-rust (ir2rust* ir-body ir-rangetype)))
         (if (> (length ir-vartypes) 1) (break "Only one argument is allowed for non-zero level lambda function for now.")
@@ -591,10 +596,7 @@
 		(let ((rust-body (ir2rust* ir-body return-type))
 		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars collect (ir-name var))))
 		    (post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var))))) ;; no post release rn
-		(format nil "~a~a" pre-release-instrs rust-body)))) ;; are they post release irl ?
-
-;;(defmethod ir2rust* ((ir-expr ir-nil) return-type)
-;;  (if return-type (rust-get-nil-for-type return-type) (break "Trying to create nil of unspecified type"))) 
+		(format nil "~a~a" pre-release-instrs rust-body)))) ;; are they post release ? 
 
 
 (defmethod ir2rust* ((ir-expr ir-update) return-type) 
@@ -608,7 +610,7 @@
             (let* ((target-var-rust (ir2rust* target-var target-type))
                     (rhs-rust (ir2rust* ir-rhs ir-range))
                     (lhs-rust (ir2rust* ir-lhs ir-domain))
-                    (garb (setf (ir-mutable target-var-rust) t))) ; will it work ?
+                    (garb (setf (ir-mutable target-var-rust) t))) ; add the required mutability
                 (format nil "(*Rc::make_mut(&mut ~a))[~a as usize] = ~a; ~a" target-var-rust lhs-rust rhs-rust target-var-naturalnumbers)
             )))
         ('ir-funtype (with-slots (ir-domain ir-range) target-type
@@ -772,6 +774,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
               (setq result (concatenate 'string result item))))
         result)))
 
+;; Entry point
 (defun pvs2rust (theoryref)
 	(let* ((theory (get-typechecked-theory theoryref nil t))
 		(force? t))
@@ -797,11 +800,9 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
     (pvs2rust-theory-body-step theory force? indecl)))
 
 (defun pvs2rust-theory-body-step (theory force? indecl)
-  (let* ((*current-pvs2rust-theory* theory)
-	 (*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
+  (let* ((*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
 	 (*theory-formals* (formals-sans-usings theory))
 	 (*ir-type-info-table* nil)
-	 (*c-type-info-table* nil)
 	 (*rust-functions* nil)
 	 (*theory-type-formals* (loop for formal in *theory-formals* when  (formal-type-decl? formal) collect formal))
 	 (*ir-theory-formals* (loop for formal in *theory-formals*
@@ -828,9 +829,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
     )))
 
 (defun pvs2rust-decl (decl force?) ;; Variable non-global but temporal scope
-  (let ((saved-c-type-info-table *c-type-info-table*)
-	(*pvs2c-current-decl* decl) ;;used to save auxilliary type defns in c-type-info-table
-	(*current-context* (decl-context decl))
+  (let ((*current-context* (decl-context decl))
 	(*var-counter* nil)
 	(*pvs2c-defn-actuals* nil)
 	)
@@ -917,7 +916,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 
 ;; END CONST DECL
 
-(defmethod pvs2rust-decl* ((decl type-decl)) ;;has to be an adt-type-decl, returns a string
+(defmethod pvs2rust-decl* ((decl type-decl)) ;; TODO : rewrite in a more LISP way
   (if (adt-type-decl? decl)
 	(let* (
 		(name (type-value decl))
@@ -925,8 +924,8 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 		(adt-type (type-value decl))
 		(adt (adt adt-type))
 		(constructors (constructors adt))
+		(*output* "")
 	) 
-    (setf *output* "")
     (setf *functions* (cons "" nil))
 	(setf *type-defs* (cons (format nil "~a" name) *type-defs*))
 	; (let* ((*output* (format nil "~a~%" *output*))))
@@ -1064,12 +1063,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 
 
 
-;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition if needed
-
-;; plusieurs problemes : 
-;; - les custom types : il faut ajouter les declarations de type au debut du fichier rust 
-;; - les records : il faut ajouter les structs en debut de fichier
-;; - le reste est *straitforward*
+;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition to *header* if needed
 
 (defmethod ir2rust-type ((ir-typ ir-subrange))
   (format nil "i32"))
@@ -1130,46 +1124,3 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 (defmethod ir2rust-type ((ir-typ t))
   (format t "~%~a ~a" ir-typ (type-of ir-typ))
   (break "Unsupported type"))
-
-;; rust-get-nil-for-type
-
-;;(defmethod rust-get-nil-for-type ((ir-typ ir-subrange))
-;;  (format nil "0i32"))
-;;
-;;(defmethod rust-get-nil-for-type ((ir-type symbol)) ;not. mpq
-;;  (case ir-type
-;;    (boolean "false")
-;;    (mpq "NotNan::new(0f32).unwrap()")
-;;    (t (break "No null for ~a" ir-type))))
-;;
-;;(defmethod rust-get-nil-for-type ((ir-type ir-typename)) ; if recordtype build struct, else makes a type declaration 
-;;  (rust-get-nil-for-type (ir-type-defn ir-type)))
-;;
-;;(defmethod rust-get-nil-for-type ((ir-typ ir-funtype))
-;;  (with-slots (ir-domain ir-range) ir-typ
-;;    (format nil "funtype::new(Rc::new(move |x : ~a| ~a))" (ir2rust-type ir-domain) (rust-get-nil-for-type ir-range))
-;;  ))
-;;
-;;(defmethod rust-get-nil-for-type ((ir-typ ir-recordtype)) 
-;;	(with-slots (ir-fields ir-recordtype) ir-expr 
-;;		(let* ((record-name (ir2rust-type ir-recordtype))
-;;		    (ir-field-types (ir-field-types ir-recordtype))
-;;			(field-value-list (loop for field in ir-field-types 
-;;						collect (with-slots (ir-id ir-vtype) field 
-;;						(format nil "~a : ~a," ir-id (rust-get-nil-for-type ir-vtype)))))
-;;			(fields-values (format nil "~{~a~}" field-value-list)))
-;;			(format nil "~a {~a}" record-name fields-values)))) 
-;;
-;;(defmethod rust-get-nil-for-type ((ir-typ ir-arraytype)) 
-;;  (with-slots (size high ir-domain ir-range) ir-typ
-;;    (format nil "unsafe {Rc::try_new_uninit::<[~a; ~a]>().unwrap_unchecked().assume_init()}" (ir2rust-type ir-range) size)))
-;;
-;;(defmethod rust-get-nil-for-type ((ir-typ t))
-;;  (format t "~%~a ~a" ir-typ (type-of ir-typ))
-;;  (break "Unsupported type"))
-
-;; MISC
-
-(defun adt-type-decl? (decl)
-  (and (type-decl? decl)
-       (adt-type-name? (type-value decl))))
