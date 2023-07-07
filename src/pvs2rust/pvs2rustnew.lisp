@@ -21,35 +21,9 @@
 		 :ir-pvsid ir-pvsid
 		 :ir-mutable mutable))
 
-(defun mk-ir-delete (funct arg body)
-  (make-instance 'ir-delete
-		 :ir-func funct
-		 :ir-arg arg
-		 :ir-body body))
-
 (defmethod print-ir ((ir-expr ir-apply))
   (with-slots (ir-func ir-params ir-args ir-atype) ir-expr
 	      `(,(format nil "ir-apply") ,(print-ir ir-func) ,@(print-ir ir-params) ,@(print-ir ir-args)  ,(print-ir ir-atype))))
-
-(defmethod print-ir ((ir-expr ir-delete))
-  (with-slots (ir-func ir-args ir-body) ir-expr
-	      `(,(format nil "ir-delete") ,(print-ir ir-func) ,(print-ir ir-arg) ,(print-ir ir-body))))
-
-(defmethod preprocess-ir* ((ir-expr ir-delete) livevars bindings);;the ir-args are always distinct, but we are
-  (with-slots (ir-func ir-arg ir-body) ir-expr               ;;not exploiting this here.
-	      (let* ((ir-params-with-bindings (apply-bindings bindings (pvs2ir-freevars* ir-params)))
-		     (ir-args-with-bindings (apply-bindings bindings (pvs2ir-freevars* ir-args)))
-		     (new-ir-func
-		      (preprocess-ir* ir-func (union ir-params-with-bindings
-					       (union ir-args-with-bindings 
-						      livevars :test #'eq) :test #'eq)
-				      bindings))
-		     (new-ir-args (preprocess-ir* ir-arg (union ir-params-with-bindings
-								 livevars :test #'eq)
-						  bindings))
-		     ;; (new-ir-atype (ir-apply-arith-type new-ir-func new-ir-args ir-atype))
-		     )
-		(mk-ir-apply new-ir-func new-ir-arg ))))
 
 ;; Suppression of the null assignement
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
@@ -518,12 +492,6 @@
 					(format nil "~a(~{~a,~})" (ir-fname ir-func) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))
 					(format nil "~a.lookup(~{~a,~})" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))))
           )))
-
-(defmethod ir2rust* ((ir-expr ir-delete) return-type) 
-  (with-slots (ir-func ir-arg ir-body) ir-expr ; on peut avoir que des variables
-	      (let* ((ir-func-var (get-ir-last-var ir-func))
-		  		(rust-body (ir2rust* ir-body return-type)))
-	      	(format nil "~a.delete(~a);~%~a" (ir-name ir-func-var) (ir2rust* ir-arg nil) rust-body))))
 
 (defun ir2rust-primitive-apply (return-type ir-function ir-args)
   (let* ((ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))))
