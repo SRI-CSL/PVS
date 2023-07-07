@@ -45,6 +45,46 @@
 
 (newcounter *smt2-id-counter*)
 
+(defparameter *smt2-interpreted-names*
+  '((=  (|equalities| . =))
+    (/=  (|notequal| . /=))
+    (TRUE (|booleans| . true))
+    (FALSE (|booleans| . false))
+    (IMPLIES  (|booleans| . =>))
+    (=>  (|booleans| . =>))
+    (⇒ (|booleans| . =>))
+    (IFF (|booleans| . =))
+    (⇔ (|booleans| . =))
+    (AND (|booleans| . and) (|bv_bitwise| . bvand))
+    (∧ (|booleans| . and))
+    (& (|booleans| . and))
+    (OR  (|booleans| . or) (|bv_bitwise| . bvor))
+    (∨  (|booleans| . or))
+    (NOT  (|booleans| . not)(|bv_bitwise| . bvnot))
+    (¬ (|booleans| . not))
+    (+  (|number_fields| . +)(|bv_arith_nat_defs| . bvadd))
+    (- (|number_fields| . -)(|bv_arithmetic_defs| . bvsub))
+    (*   (|number_fields| . *))
+    (/  (|number_fields| . /))
+;    (rem (|modulo_arithmetic| . mod))
+;    (ndiv (|modulo_arithmetic| . div))
+    (< (|reals| . <)(|bv_arith_nat_defs| . bvult))
+    (<=  (|reals| . <=)(|bv_arith_nat_defs| . bvule))
+    (> (|reals| . >)(|bv_arith_nat_defs| . bvugt))
+    (>=  (|reals| . >=)(|bv_arith_nat_defs| . bvuge))
+    (O (|bv_concat_def| . concat))
+    (& (|booleans| . and)(|bv_bitwise| . bvand))
+    (XOR  (|bv_bitwise| . bv-xor))
+    ;; (^ (|bv_caret| .  "(_ extract ~a ~a)")
+    ;; (sign_extend   (|bv_extend| . "(_ sign_extend ~a)")
+    (|bv_slt| (|bv_arithmetic_defs| . bvslt))
+    (|bv_sle| (|bv_arithmetic_defs| . bvsle))
+    (|bv_sgt| (|bv_arithmetic_defs| . bvsgt))
+    (|bv_sge| (|bv_arithmetic_defs| . bvsge))
+    (|bv_splus| (|bv_arithmetic_defs| . bvadd))
+    (|bv_stimes| (|bv_arithmetic_defs| . bvmul))
+    ))
+
 (defun clear-smt2 ()
   (setq *smt2defns* nil)
   (clrhash *smt2name-hash*)
@@ -239,13 +279,10 @@
 		(1+ (index expr))
 		(translate-to-yices2* argument bindings)))))
 
-
-;; why do we let-bind fields to simply sfields?
 (defmethod translate-to-smt2* ((expr field-application) bindings)
   (with-slots (id argument type) expr
     (let* ((fields (fields (find-supertype (type argument))))
-	   ;; (sfields   fields)
-	   (pos (position id fields ;; sfields
+	   (pos (position id fields 
 			  :key #'id)))
       (format nil "((_ project ~a) ~a)"
 	      (1+ pos)
@@ -262,12 +299,12 @@
 					      bindings))
 		   (numer (translate-to-smt2* (args1 expr)
 					      bindings)))
-	       `(mod ,numer ,denom)))
+	       (format nil "(mod ~a ~a)" numer denom)))
 	    ((and (eq op-id '-)  ;;NSH(4-19-10)
 		  (unary-application? expr)
 		  (eq (id (module-instance (resolution op*)))
 		      '|number_fields|))
-	     (format nil "(- 0 ~a)" (translate-to-smt2* (argument expr) bindings)))
+	     (format nil "(- ~a)" (translate-to-smt2* (argument expr) bindings)))
 	    ((and (eq op-id 'nat2bv)
 		  (number-expr? (expr (car (actuals (module-instance op*))))))
 	     (let ((size (translate-to-smt2*
@@ -275,7 +312,7 @@
 			  bindings))
 		   (num (translate-to-smt2*
 			 (args1 expr) bindings)))
-	       `(mk-bv ,size ,num)))
+	       (format nil "(nat2bv[~a] ~a)" ,size ,num)))
 	    ((and (eq op-id '-)
 		  (eq (id (module-instance (resolution op*)))
 		      '|bv_arithmetic_defs|)
@@ -293,6 +330,20 @@
 		     (number (car (exprs (cadr (exprs argument)))))
 		     (number (cadr (exprs (cadr (exprs argument)))))
 		     (translate-to-smt2* (car (exprs argument)) bindings)))
+	    ((and (eq op-id 'sign_extend)
+		  (eq (id (module-instance (resolution op*)))
+		      '|bv_extend_defs|)
+		  (number-expr? (argument (operator expr))))
+	     (format nil "((_ sign_extend ~a) ~a)"
+		     (number (argument (operator expr)))
+		     (translate-to-smt2* argument bindings)))
+	    ((and (eq op-id 'zero_extend)
+		  (eq (id (module-instance (resolution op*)))
+		      '|bv_extend_defs|)
+		  (number-expr? (argument (operator expr))))
+	     (format nil "((_ zero_extend ~a) ~a)"
+		     (number (argument (operator expr)))
+		     (translate-to-smt2* argument bindings)))
 	    ((and (enum-adt? (find-supertype (type argument)))
 		  (recognizer? operator))
 	     (format nil "(= ~a ~a)"
@@ -309,29 +360,29 @@
 		   (format nil "(~a ~{ ~a~})"
 			   smt2-interpretation
 			   (translate-to-smt2* (arguments expr) bindings))
-		   (let* ((smt-op (translate-to-smt2* operator bindings))
-			  (arg (argument expr))
-			  (args (if (tuple-expr? arg)
-				    (arguments expr)
-				    (let ((stype (find-supertype (type arg))))
-				      (if (tupletype? stype)
-					  (if (and (variable? arg)
-						   (assoc arg bindings
-							  :test
-							  #'same-declaration))
-					      arg
-					      (loop for index from 1 to (length (types stype))
-						    collect (make-projection-application index arg)))
-					  (list arg)))))
-			  (yargs (if (and (variable? args)
-					  (tupletype? (find-supertype (type arg))))
-				     (let ((bnd (assoc arg bindings
-						       :test
-						       #'same-declaration)))
-				       (cdr bnd))
-				     (translate-to-smt2* args
-							 bindings))))
-		     (format nil "(~a ~{ ~a~})" smt-op yargs)))))))))
+		 (let* ((smt-op (translate-to-smt2* operator bindings))
+			(arg (argument expr))
+			(args (if (tuple-expr? arg)
+				  (arguments expr)
+				(let ((stype (find-supertype (type arg))))
+				  (if (tupletype? stype)
+				      (if (and (variable? arg)
+					       (assoc arg bindings
+						      :test
+						      #'same-declaration))
+					  arg
+					(loop for index from 1 to (length (types stype))
+					      collect (make-projection-application index arg)))
+				    (list arg)))))
+			(yargs (if (and (variable? args)
+					(tupletype? (find-supertype (type arg))))
+				   (let ((bnd (assoc arg bindings
+						     :test
+						     #'same-declaration)))
+				     (cdr bnd))
+				 (translate-to-smt2* args
+						     bindings))))
+		   (format nil "(~a ~{ ~a~})" smt-op yargs)))))))))
 
 
 (defun translate-smt2-bindings (bind-decls bindings prefix-string)
@@ -449,7 +500,7 @@
 	   (mod-assoc (cdr (assoc (id (module-instance
 				       (resolution name-expr)))
 				  id-assoc))))
-      mod-assoc)))
+	     mod-assoc)))
 
 
 
