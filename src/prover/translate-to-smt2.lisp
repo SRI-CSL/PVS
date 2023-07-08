@@ -42,6 +42,9 @@
 (defvar *smt2-id-counter*)  ;;needs to be initialized in eproofcheck
 (defvar *smt2-conditions* nil)
 (defvar *smt2-subtype-constraints* nil)
+(defvar *smt2-tuple-update-equalities* nil)
+(defvar *smt2-record-datatype* nil)
+(defvar *smt2-recordtype-hash* nil)
 
 (newcounter *smt2-id-counter*)
 
@@ -452,28 +455,67 @@
 				       bindings)
   (if args
       (let* ((label (id (caar args)))
-	     (newtrbasis (format nil "(select ~a ~a)" trbasis label)))
-	(format nil "(store ~a ~a ~a)" trbasis label
+	     
+	     (field-decls (fields type))
+	     (field-types (loop for fld in field-decls collect (find-supertype (type field-decls))))
+	     (super-field-types (loop for fld in field-decls
+				      as ft in field-types
+				      collect (mk-field-decl (id fld) ft)))
+	     (dummy-record-type (mk-recordtype super-field-types nil))
+	     (hashentry (gethash dummy-record-type *smt2-recordtype-hash*)))
+	(unless hashentry
+	  (let* ((smt2-recordtype-name (gentemp "smtrecord")))
+	    (push (format nil "(declare-datatypes () ((~a (mk-~a ~{ ~a~}))))"
+			  smt2-recordtype-name
+			  (loop for fld in field-decls
+				as fldtyp in super-field-types
+				collect (format nil "(~a ~a)"
+						(id fld)
+						(translate-to-smt2* fldtyp bindings))))
+		  *smt2-record-datatype*)
+	    (setf (gethash dummy-record-type *smt2-recordtype-hash*&)
+		  smt2-recordtype-name)))
+	(format nil "((_ update-field ~a) ~a ~a)" label trbasis
+		(translate-smt2-assign-args
+		 (cdr args) value newtrbasis
+		 (type (find (id (caar args)) (fields type)
+			     :test #'eq :key #'id))
+		 bindings)))
+    (translate-to-smt2* value bindings)))
+
+
+;;recursion through the arguments while creating a new constant for the new tuple that
+;;is equal to the old tuple except at the point of update where it is equal to the
+;;translated value.  
+(defmethod translate-smt2-assign-args (args value trbasis (type tupletype)
+				       bindings)
+  (if args
+      (let* ((index (car (number (caar args))))
+	     (types  (types type))
+	     (super-types (loop for typ in types
+				      collect (find-supertype typ)))
+	     (dummy-tuple-type (mk-tupletype super-types))
+	     (hashentry (gethash dummy-tuple-type *smt2-recordtype-hash*)))
+	(unless hashentry
+	  (let* ((smt2-tupletype-name (gentemp "smttuple")))
+	    (push (format nil "(declare-datatypes () ((~a (mk-~a ~{ ~a~}))))"
+			  smt2-tupletype-name
+			  (loop for fld in field-decls
+				as typ in super-types
+				as i from 1
+				collect (format nil "(project_~a ~a)"
+						i
+						(translate-to-smt2* typ bindings))))
+		  *smt2-record-datatype*)
+	    (setf (gethash dummy-tuple-type *smt2-recordtype-hash*)
+		  smt2-tupletype-name)))
+	(format nil "((_ update-field project_~a) ~a ~a)" index trbasis
 		(translate-smt2-assign-args
 		 (cdr args) value newtrbasis
 		 (type (find (id (caar args)) (fields type)
 			     :test #'eq :key #'id))
 		 bindings)))
       (translate-to-smt2* value bindings)))
-
-
-
-(defmethod translate-smt2-assign-args (args value trbasis (type tupletype)
-				       bindings)
-  (if args
-      (let* ((index (number (caar args)))
-	     (newtrbasis (format nil "((_ project ~a) ~a~)" index trbasis)))
-	(format nil "(store ~a ~a ~a)" trbasis index
-		(translate-smt2-assign-args
-		 (cdr args) value newtrbasis
-		 (type (nth (1- index) (types type))) bindings)))
-      (translate-to-smt2* value bindings)))
-
 
 
 (defmethod translate-smt2-assign-args (args value trbasis (type funtype)
