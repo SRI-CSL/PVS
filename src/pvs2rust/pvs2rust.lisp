@@ -1,12 +1,19 @@
-;; pvs2ir translates PVS expressions, definitions, and theories to an intermediate
-;; representation (IR).  The IR consists of variables, tuples, function applications,
-;; lambda-expressions, if-expressions, lets, and updates. It does not handles dependant types,
-;; and other constructs yet.
+;; -- PVS2Rust --
+;; PVS2Rust translates PVS expressions, definitions, and theories to the Rust language. 
+;; See my report for supported subset, or contact me : nathan[dot]gasc[at]gmx[dot]fr
 
+;; -- How to use PVS2Rust ? --
 ;; pvs2ir is yet under dev, so it is not compiled / loaded by PVS at start. to use it, you must first
-;; import the file using lf.
+;; import the file using lf. You can't use PVS2C at the same time due to shared code.
 ;; (lf ".../src/pvs2rust/pvs2rust.lisp")
 ;; (pvs2rust "theory-name")
+
+;; -- Some comments on future works --
+;; * The closure representation is still about 10 times slower than the array one, this because of 
+;;	 poor Rust HashMap performance.
+;; * Dependant types should be added easily using a generic type witha 'static lifetime in Rust.
+;; * There is a priori no need to move variable in closures declarations, because there are no
+;;   mutable variables in our semantics. See report & docs.
 
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
@@ -687,29 +694,30 @@
     drop_copy
 )]
 
-use std::hash::Hash;
-use std::rc::Rc;
-use std::clone::Clone;
-use std::any::Any;
+use fxhash::FxHasher;
 use ordered_float::NotNan;
 use std::collections::HashMap;
-use std::mem::transmute_copy;
 use std::hash::BuildHasherDefault;
+use std::hash::Hash;
 use std::mem::drop;
-use fxhash::FxHasher;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
     Rc::try_unwrap(rc).unwrap_or_else(|rc| (*rc).clone())
 }
 
-trait RegularOrd: Clone + PartialEq + Eq + Hash where Self: std::marker::Sized {}
+trait RegularOrd: Clone + PartialEq + Eq + Hash
+where
+    Self: std::marker::Sized,
+{}
 
 impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
 
 #[derive(Clone)]
 struct funtype<A: RegularOrd, V: RegularOrd> {
     explicit: Rc<dyn Fn(A) -> V>,
-    hashtable: Rc<HashMap<A, V, BuildHasherDefault<FxHasher>>>,
+    hashtable: Rc<RefCell<HashMap<A, V, BuildHasherDefault<FxHasher>>>>,
 }
 
 impl<A: RegularOrd, V: RegularOrd> PartialEq for funtype<A, V> {
@@ -729,24 +737,26 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
     fn new(explicit: Rc<dyn Fn(A) -> V>) -> funtype<A, V> {
         funtype {
             explicit,
-            hashtable: Rc::new(HashMap::default()),
+            hashtable: Rc::new(RefCell::new(HashMap::default())),
         }
     }
     fn lookup(&self, a: A) -> V {
-        match self.hashtable.get(&a) {
+        match self.hashtable.borrow().get(&a) {
             Some(v) => v.clone(),
             None => (self.explicit)(a),
         }
     }
-	fn delete(mut self, a: A) -> Self {
-        match Rc::make_mut(&mut self.hashtable).remove(&a) {
-            Some(x) => {drop(x); self},
-            None => self,
-        }
+    fn delete(self, a: A) -> Self {
+        match self.hashtable.borrow_mut().remove(&a) {
+            Some(x) => {
+                drop(x);
+            }
+            None => {},
+        };
+        self
     }
-    fn update(mut self, a: A, v: V) -> Self {
-        // slow make mut
-        Rc::make_mut(&mut self.hashtable).insert(a, v);
+    fn update(self, a: A, v: V) -> Self {
+        self.hashtable.borrow_mut().insert(a, v);
         self
     }
 }
