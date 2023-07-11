@@ -82,25 +82,42 @@
 
 ;; I made a new way to change arrays to optimize array update in pvs2rust
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-arraytype) lhs rhs-irvar ir-exprvar bindings)
-	(let* ((lhs1 (caar lhs)) ; i
-		   (lhs1-ir (pvs2ir* lhs1 bindings nil)) 
-		   (lhs-exprvar (mk-ir-lookup ir-exprvar (list lhs1-ir))) ; A[i] : lookup
-
-		   (lhs1-irvar (new-irvar))
-		   (lhs1-ir-type (ir-domain ir-expr-type))
-		   (ir-lhs1-vartype (mk-ir-variable lhs1-irvar lhs1-ir-type))
-		  )
-		  (if (consp (cdr lhs))
-			  (pvs2ir-assignment1 ir-expr-type (cdr lhs) rhs-irvar lhs-exprvar bindings)
-			  (mk-ir-let ir-lhs1-vartype lhs1-ir
-				(mk-ir-update 
-			  	  ir-exprvar
-				  ir-lhs1-vartype
-				  rhs-irvar
-				)
-			  )
-		  )
-	)
+	(cond ((consp lhs)
+	 (let* ((ir-exprvar11 (new-irvar))
+		(ir-expr-type11 (ir-range ir-expr-type))
+		(ir-expr-vartype11 (mk-ir-variable ir-exprvar11 ir-expr-type11))
+		(ir-rest-assignment (if (consp (cdr lhs))
+					(pvs2ir-assignment1 ir-expr-type11
+							    (cdr lhs)
+							    rhs-irvar ir-expr-vartype11
+							    bindings)
+				      rhs-irvar))
+		(lhs1 (caar lhs)))
+	   (let ((lhs1-irvar (new-irvar))
+		 (lhs1-ir (pvs2ir* lhs1 bindings nil)) ;;the index expression
+		 (lhs1-ir-type (ir-domain ir-expr-type))
+		 (ir-exprvar1 (new-irvar))
+		 (ir-new-rhsvar (new-irvar))
+		 (ir-var-post-delete (new-irvar)))
+	     (let ((ir-lhs1-vartype (mk-ir-variable lhs1-irvar lhs1-ir-type))
+		   (ir-expr-vartype1 (mk-ir-variable ir-exprvar1 ir-expr-type))
+		   (ir-new-rhsvartype (mk-ir-variable ir-new-rhsvar ir-expr-type11))
+		   (ir-vartype-post-delete (mk-ir-variable ir-var-post-delete (ir-vtype ir-exprvar))))
+	       (mk-ir-let ir-lhs1-vartype lhs1-ir
+		   		(mk-ir-let ir-expr-vartype11
+					(mk-ir-lookup ir-exprvar ir-lhs1-vartype)
+					(if (ir-reference-type? ir-expr-type11)
+						(mk-ir-let ir-vartype-post-delete 
+							(mk-ir-apply (mk-ir-primitive-function 'delete) (list ir-exprvar ir-lhs1-vartype))
+							(mk-ir-let ir-new-rhsvartype
+								ir-rest-assignment
+								(mk-ir-update ir-vartype-post-delete ir-lhs1-vartype ir-new-rhsvartype)))
+						(mk-ir-let ir-new-rhsvartype
+							ir-rest-assignment
+							(mk-ir-update ir-exprvar ir-lhs1-vartype ir-new-rhsvartype)))
+					)) 
+			))))
+	(t ir-exprvar))
 )
 
 
@@ -556,8 +573,8 @@
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
 	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
 			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
-			    (rhs-type (if (ir-typename? ir-vtype) (ir-type-defn ir-vtype) ir-vtype))
-                (rust-rhs (rust-copy-type rhs-type rhs-var)))
+			    (lhs-type (if (ir-typename? ir-vtype) (ir-type-defn ir-vtype) ir-vtype))
+                (rust-rhs (rust-copy-type lhs-type rhs-var)))
 			    (if rust-rhs 
 					(format nil "let~a ~a : ~a = ~a;~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
 					(progn (setf (ir-name ir-vartype) (ir-name rhs-var))
@@ -576,6 +593,25 @@
 
 (defmethod rust-copy-type ((lhs-vtype ir-typename) rhs-var)
 	(rust-copy-type (ir-type-defn lhs-vtype) rhs-var)
+)
+
+(defun rust-copy-fn-to-array (lhs-vtype rhs-var depth)
+	(with-slots (size high ir-domain ir-range) lhs-vtype 
+		(let* ((fn-name (ir-name rhs-var)))
+			(if (typep (ir-domain (ir-vtype rhs-var)) 'ir-funtype)
+				(let* ((new-rhs-var (mk-ir-variable (format nil "~a.lookup(j~a as i32)" fn-name depth) (ir-vtype rhs-var) (ir-pvsid rhs-var)) ))
+					(format nil "Rc::new(core::array::from_fn::<_, ~a, _>(|j~a : usize| ~a))" size depth (rust-copy-fn-to-array ir-domain new-rhs-var (+ depth 1))))
+				(format nil "Rc::new(core::array::from_fn::<_, ~a, _>(|j~a : usize| ~a.lookup(j~a as i32)))" size depth fn-name depth)))
+	)
+)
+
+(defmethod rust-copy-type ((lhs-vtype ir-arraytype) rhs-var)
+	(with-slots (size high ir-domain ir-range) lhs-vtype 
+		(if (typep (ir-vtype rhs-var) 'ir-funtype)
+			(rust-copy-fn-to-array lhs-vtype rhs-var 1)
+		(break "Cannot convert from non funtype to array, yet."))
+		
+	)
 )
 
 (defmethod rust-copy-type ((lhs-vtype t) rhs-var)
@@ -614,11 +650,10 @@
             )
     (case (type-of target-type)
         ('ir-arraytype (with-slots (size high ir-domain ir-range) target-type
-            (let* ((target-var-rust (ir2rust* target-var target-type))
-                    (rhs-rust (ir2rust* ir-rhs ir-range))
+            (let* ((rhs-rust (ir2rust* ir-rhs ir-range))
                     (lhs-rust (ir2rust* ir-lhs ir-domain))
-                    (garb (setf (ir-mutable target-var-rust) t))) ; add the required mutability
-                (format nil "(*Rc::make_mut(&mut ~a))[~a as usize] = ~a; ~a" target-var-rust lhs-rust rhs-rust target-var-naturalnumbers)
+                    (garb (setf (ir-mutable target-var) t))) ; add the required mutability
+                (format nil "(*Rc::make_mut(&mut ~a))[~a as usize] = ~a; ~a" target-var-name lhs-rust rhs-rust target-var-name)
             )))
         ('ir-funtype (with-slots (ir-domain ir-range) target-type
             (let* ((target-var-rust (ir2rust* ir-target target-type))
@@ -894,8 +929,14 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 			    ir-defn))
 	        (post-ir (preprocess-ir pre-ir))
 
+			(ir-body (if (ir-lambda? post-ir) ; OK
+			    (ir-body post-ir)
+			    post-ir))
+
 	        (ir-args (when (ir-lambda? post-ir) (ir-vartypes post-ir)))
 			(pvs-return-type (type decl))
+
+			(aaa (format t "~% DEBUG IR : ~%~a" (print-ir ir-body)))
 
 	        (ir-result-type (if (ir-lambda? post-ir)
 				(ir-rangetype post-ir)
@@ -906,10 +947,6 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 	        (rust-args (format nil "~{~a~}" (loop for arg in ir-args
 		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
 
-	        (ir-body (if (ir-lambda? post-ir) ; OK
-			    (ir-body post-ir)
-			    post-ir))
-            
 	        (rust-body (ir2rust* ir-body ir-result-type))
 			(rust-fn (format nil "fn ~a (~a) -> ~a {~a}~%~%" ir-f-name rust-args rust-result-type rust-body)))
 			(format t "~%Function ~a ~a ~a" ir-f-name ir decl)
