@@ -9,8 +9,6 @@
 ;; (pvs2rust "theory-name")
 
 ;; -- Some comments on future works --
-;; * The closure representation is still about 10 times slower than the array one, this because of 
-;;	 poor Rust HashMap performance.
 ;; * Dependant types should be added easily using a generic type witha 'static lifetime in Rust.
 ;; * There is a priori no need to move variable in closures declarations, because there are no
 ;;   mutable variables in our semantics. See report & docs.
@@ -22,24 +20,11 @@
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
 
+;; TODO
+;; write a cheat sheet tries and failures +  git merge 
+;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; We first add the possible mutability of variables
-
-(defcl ir-variable (ir-expr)
-  ir-name
-  ir-vtype
-  ir-pvsid 
-  ir-mutable) ; default to nil ; en fait peut etr epas besoin car on peut check vtype au moment du let
-
-(defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable) ; Can be kept 
-  (make-instance 'ir-variable
-		 :ir-name ir-name
-		 :ir-vtype ir-type
-		 :ir-pvsid ir-pvsid
-		 :ir-mutable mutable))
-
 
 ;; Suppression of the null assignement, adding delete when needed
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
@@ -486,7 +471,7 @@
 
 (defmethod ir2rust* ((ir-expr ir-integer) return-type)
   (with-slots (ir-intval) ir-expr
-	      (format nil "~ai32" ir-intval)))
+	      (format nil "~ausize" ir-intval)))
 
 (defmethod ir2rust* ((ir-expr ir-last) return-type)
   (with-slots (ir-var) ir-expr
@@ -506,9 +491,7 @@
 (defmethod ir2rust* ((ir-expr ir-lookup) return-type) ; lookup of an array 
   (with-slots (ir-array ir-index) ir-expr
 	      (let* ((ir-array-var (get-ir-last-var ir-array)))
-            (if (ir-last? ir-array)
-                (format nil "~a[~a]" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0)))
-                (format nil "~a[~a].clone()" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0)))))))
+            (format nil "~a.lookup(~a)" (ir-name ir-array-var) (ir2rust* ir-index (mk-ir-subrange 0 0))))))
 
 (defmethod ir2rust* ((ir-expr ir-apply) return-type) ; lookup of a function, can we have a apply on array ? no : only closures & primitives
   (with-slots (ir-func ir-params ir-args ir-atype) ir-expr 
@@ -564,19 +547,18 @@
 
 (defmethod ir2rust* ((ir-expr ir-let) return-type) ; later : change var name to pvsid ?
   (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr 
-    (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
-		;(format t "~%ir2rust let ~a ~a" ir-name (ir2rust-type ir-vtype))
-        (format nil "let~a~a : ~a = {~a};~%~a" (if ir-mutable " mut " " ") ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
+    (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
+        (format nil "let~a : ~a = {~a};~%~a" ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
     )))
 
 (defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; TODO : complete
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
-	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
+	      (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
 			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
 			    (lhs-type (if (ir-typename? ir-vtype) (ir-type-defn ir-vtype) ir-vtype))
                 (rust-rhs (rust-copy-type lhs-type rhs-var)))
 			    (if rust-rhs 
-					(format nil "let~a ~a : ~a = ~a;~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
+					(format nil "let ~a : ~a = ~a;~a" ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
 					(progn (setf (ir-name ir-vartype) (ir-name rhs-var))
 						(ir2rust* ir-body return-type))
 				)
@@ -587,7 +569,7 @@
 		(if (typep rhs-vtype 'ir-subrange)
 			(ir-name rhs-var)
 			(if (and (typep rhs-vtype 'symbol) (eq rhs-vtype 'mpq))
-				(format nil "{~a}.into_inner() as i32" (ir-name rhs-var))
+				(format nil "{~a}.into_inner() as usize" (ir-name rhs-var))
 				(break (format nil "Cannot convert from ~a to ~a" (type-of rhs-vtype) (type-of lhs-vtype))))))
 )
 
@@ -596,13 +578,14 @@
 )
 
 (defun rust-copy-fn-to-array (lhs-vtype rhs-var depth)
-	(with-slots (size high ir-domain ir-range) lhs-vtype 
+	(let* ((lhs-vtype-real (if (typep lhs-vtype 'ir-typename) (ir-type-defn lhs-vtype) lhs-vtype)))
+	(with-slots (size high ir-domain ir-range) lhs-vtype-real 
 		(let* ((fn-name (ir-name rhs-var)))
-			(if (typep (ir-domain (ir-vtype rhs-var)) 'ir-funtype)
-				(let* ((new-rhs-var (mk-ir-variable (format nil "~a.lookup(j~a as i32)" fn-name depth) (ir-vtype rhs-var) (ir-pvsid rhs-var)) ))
-					(format nil "Rc::new(core::array::from_fn::<_, ~a, _>(|j~a : usize| ~a))" size depth (rust-copy-fn-to-array ir-domain new-rhs-var (+ depth 1))))
-				(format nil "Rc::new(core::array::from_fn::<_, ~a, _>(|j~a : usize| ~a.lookup(j~a as i32)))" size depth fn-name depth)))
-	)
+			(if (typep (ir-range (ir-vtype rhs-var)) 'ir-funtype)
+				(let* ((new-rhs-var (mk-ir-variable (format nil "~a.lookup(j~a)" fn-name depth) (ir-range (ir-vtype rhs-var)) nil) ))
+					(format nil "arraytype::new(Rc::new(|j~a : usize| ~a))" depth (rust-copy-fn-to-array ir-range new-rhs-var (+ depth 1))))
+				(format nil "arraytype::new(Rc::new(|j~a : usize| ~a.lookup(j~a)))" depth fn-name depth)))
+	))
 )
 
 (defmethod rust-copy-type ((lhs-vtype ir-arraytype) rhs-var)
@@ -621,7 +604,7 @@
 
 (defmethod ir2rust* ((ir-expr ir-lambda) return-type) ; only called at non-zero level
   (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr 
-    (let* ((args-rust (format nil "~a~a : ~a" (if (ir-mutable (car ir-vartypes)) "mut " "") (ir-name (car ir-vartypes)) (ir2rust-type (ir-vtype (car ir-vartypes)))))
+    (let* ((args-rust (format nil "~a : ~a" (ir-name (car ir-vartypes)) (ir2rust-type (ir-vtype (car ir-vartypes)))))
            (body-rust (ir2rust* ir-body ir-rangetype)))
         (if (> (length ir-vartypes) 1) (break "Only one argument is allowed for non-zero level lambda function for now.")
         (format nil "funtype::new(Rc::new(move |~a| {~a}))" args-rust body-rust)) ; rust infers automatically the types
@@ -651,9 +634,8 @@
     (case (type-of target-type)
         ('ir-arraytype (with-slots (size high ir-domain ir-range) target-type
             (let* ((rhs-rust (ir2rust* ir-rhs ir-range))
-                    (lhs-rust (ir2rust* ir-lhs ir-domain))
-                    (garb (setf (ir-mutable target-var) t))) ; add the required mutability
-                (format nil "(*Rc::make_mut(&mut ~a))[~a as usize] = ~a; ~a" target-var-name lhs-rust rhs-rust target-var-name)
+                    (lhs-rust (ir2rust* ir-lhs ir-domain))) ; add the required mutability
+                (format nil "~a.update(~a, ~a)" target-var-name lhs-rust rhs-rust)
             )))
         ('ir-funtype (with-slots (ir-domain ir-range) target-type
             (let* ((target-var-rust (ir2rust* ir-target target-type))
@@ -731,12 +713,14 @@
 
 use fxhash::FxHasher;
 use ordered_float::NotNan;
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::hash::Hash;
 use std::mem::drop;
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::ops::Deref;
 
 fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
     Rc::try_unwrap(rc).unwrap_or_else(|rc| (*rc).clone())
@@ -745,7 +729,8 @@ fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
 trait RegularOrd: Clone + PartialEq + Eq + Hash
 where
     Self: std::marker::Sized,
-{}
+{
+}
 
 impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
 
@@ -776,7 +761,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
         }
     }
     fn lookup(&self, a: A) -> V {
-        match self.hashtable.borrow().get(&a) {
+        match self.hashtable.deref().borrow().get(&a) { // explicit deref due to borrow method name collision
             Some(v) => v.clone(),
             None => (self.explicit)(a),
         }
@@ -786,12 +771,41 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
             Some(x) => {
                 drop(x);
             }
-            None => {},
+            None => {}
         };
         self
     }
     fn update(self, a: A, v: V) -> Self {
         self.hashtable.borrow_mut().insert(a, v);
+        self
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct arraytype<const N: usize, V: RegularOrd> {
+    array : Rc<RefCell<[V; N]>>,
+}
+
+impl<const N : usize, V: RegularOrd> Hash for arraytype<N, V> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        panic!(\"Can't have proper ordering for two functions\")
+    }
+}
+
+impl<const N : usize, V: RegularOrd> arraytype<N, V> {
+    fn new(explicit: Rc<dyn Fn(usize) -> V>) -> arraytype<N, V> {
+        arraytype {
+            array : Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(explicit.deref())))
+        }
+    }
+    fn lookup(&self, a: usize) -> V {
+        self.array.deref().borrow()[a].clone()
+    }
+    fn delete(self, a: usize) -> Self {
+        self
+    }
+    fn update(self, a: usize, v: V) -> Self {
+        self.array.borrow_mut()[a] = v;
         self
     }
 }
@@ -917,7 +931,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 				(ir-result-type ir-return-type)
 				(rust-result-type (ir2rust-type ir-result-type))
 	        	(rust-args (format nil "~{~a~}" (loop for arg in ir-args
-		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
+		    	       collect (format nil "~a: ~a, " (ir-name arg) (ir2rust-type (ir-vtype arg))))))
 				(rust-out (format nil "~%fn ~a (~a) -> ~a {exit(); // extern function}~%" ir-function-name rust-args rust-result-type)))
 			(format t "~%Function ~a" ir-f-name)
 			(format t "~%IR : ~%~a" (print-ir ir))
@@ -945,7 +959,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 	        (rust-result-type (ir2rust-type ir-result-type)) 
 
 	        (rust-args (format nil "~{~a~}" (loop for arg in ir-args
-		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
+		    	       collect (format nil "~a: ~a, " (ir-name arg) (ir2rust-type (ir-vtype arg))))))
 
 	        (rust-body (ir2rust* ir-body ir-result-type))
 			(rust-fn (format nil "fn ~a (~a) -> ~a {~a}~%~%" ir-f-name rust-args rust-result-type rust-body)))
@@ -1113,7 +1127,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 ;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition to *header* if needed
 
 (defmethod ir2rust-type ((ir-typ ir-subrange))
-  (format nil "i32"))
+  (format nil "usize"))
 
 (defmethod ir2rust-type ((ir-type symbol)) ;not. mpq
   (case ir-type
@@ -1166,7 +1180,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 
 (defmethod ir2rust-type ((ir-typ ir-arraytype)) 
   (with-slots (size high ir-domain ir-range) ir-typ
-    (format nil "Rc<[~a; ~a]>" (ir2rust-type ir-range) size)))
+    (format nil "arraytype<~a, ~a>" (+ size 1) (ir2rust-type ir-range) )))
 
 (defmethod ir2rust-type ((ir-typ t))
   (format t "~%~a ~a" ir-typ (type-of ir-typ))
