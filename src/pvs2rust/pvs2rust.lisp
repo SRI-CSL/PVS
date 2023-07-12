@@ -548,7 +548,7 @@
 (defmethod ir2rust* ((ir-expr ir-let) return-type) ; later : change var name to pvsid ?
   (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr 
     (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
-        (format nil "let~a : ~a = {~a};~%~a" ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
+        (format nil "let ~a : ~a = {~a};~%~a" ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
     )))
 
 (defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; TODO : complete
@@ -577,21 +577,25 @@
 	(rust-copy-type (ir-type-defn lhs-vtype) rhs-var)
 )
 
-(defun rust-copy-fn-to-array (lhs-vtype rhs-var depth)
+(defun rust-copy-fn-to-array (lhs-vtype rhs-var depth fn-name) ;; fn-name contains potential lookups
 	(let* ((lhs-vtype-real (if (typep lhs-vtype 'ir-typename) (ir-type-defn lhs-vtype) lhs-vtype)))
 	(with-slots (size high ir-domain ir-range) lhs-vtype-real 
-		(let* ((fn-name (ir-name rhs-var)))
-			(if (typep (ir-range (ir-vtype rhs-var)) 'ir-funtype)
-				(let* ((new-rhs-var (mk-ir-variable (format nil "~a.lookup(j~a)" fn-name depth) (ir-range (ir-vtype rhs-var)) nil) ))
-					(format nil "arraytype::new(Rc::new(|j~a : usize| ~a))" depth (rust-copy-fn-to-array ir-range new-rhs-var (+ depth 1))))
-				(format nil "arraytype::new(Rc::new(|j~a : usize| ~a.lookup(j~a)))" depth fn-name depth)))
+		(if (typep (ir-range (ir-vtype rhs-var)) 'ir-funtype)
+			(let* ((new-rhs-var (mk-ir-variable (format nil "tmp") (ir-range (ir-vtype rhs-var)) nil) )) ;; only for type checking
+				(format nil "arraytype::new(Rc::new(move |j~a : usize| {let cl_var_~a = ~a.clone(); ~a}))" ;; the clone is required by the move
+					depth depth (if (= depth 1) (ir-name rhs-var) (format nil "cl_var_~a" (- depth 1)))
+					(rust-copy-fn-to-array ir-range new-rhs-var (+ depth 1) (format nil "~a.lookup(j~a)" fn-name depth)))
+			)
+			(format nil "arraytype::new(Rc::new(move |j~a : usize| ~a~a.lookup(j~a)))" 
+					depth (if (= depth 1) (ir-name rhs-var) (format nil "cl_var_~a" (- depth 1))) 
+					fn-name depth))
 	))
 )
 
 (defmethod rust-copy-type ((lhs-vtype ir-arraytype) rhs-var)
 	(with-slots (size high ir-domain ir-range) lhs-vtype 
 		(if (typep (ir-vtype rhs-var) 'ir-funtype)
-			(rust-copy-fn-to-array lhs-vtype rhs-var 1)
+			(rust-copy-fn-to-array lhs-vtype rhs-var 1 "")
 		(break "Cannot convert from non funtype to array, yet."))
 		
 	)
