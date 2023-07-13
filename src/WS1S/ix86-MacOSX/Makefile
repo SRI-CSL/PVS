@@ -42,7 +42,7 @@ ws1s_extended_interface.o : ../ws1s_extended_interface.c
 	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
 ws1s.dylib : ${obj} ws1s_table.o
-	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o
+	$(LD) $(LDFLAGS) -o ws1s.dylib ${obj} ws1s_table.o -lc
 
 # ws1s_table.c : ws1s-ld-table
 # 	awk '/^ws1s___/ { print "extern int " $3 " (int);\nint (*" $1 ")(int) = " $3 ";\n\n" }' ../ws1s-ld-table > ws1s_table.c
