@@ -65,7 +65,7 @@
 			))))
 	(t ir-exprvar)))
 
-;; I made a new way to change arrays to optimize array update in pvs2rust
+;; Suppression of the null assignement
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-arraytype) lhs rhs-irvar ir-exprvar bindings)
 	(cond ((consp lhs)
 	 (let* ((ir-exprvar11 (new-irvar))
@@ -91,15 +91,9 @@
 	       (mk-ir-let ir-lhs1-vartype lhs1-ir
 		   		(mk-ir-let ir-expr-vartype11
 					(mk-ir-lookup ir-exprvar ir-lhs1-vartype)
-					(if (ir-reference-type? ir-expr-type11)
-						(mk-ir-let ir-vartype-post-delete 
-							(mk-ir-apply (mk-ir-primitive-function 'delete) (list ir-exprvar ir-lhs1-vartype))
-							(mk-ir-let ir-new-rhsvartype
-								ir-rest-assignment
-								(mk-ir-update ir-vartype-post-delete ir-lhs1-vartype ir-new-rhsvartype)))
-						(mk-ir-let ir-new-rhsvartype
-							ir-rest-assignment
-							(mk-ir-update ir-exprvar ir-lhs1-vartype ir-new-rhsvartype)))
+					(mk-ir-let ir-new-rhsvartype
+						ir-rest-assignment
+						(mk-ir-update ir-exprvar ir-lhs1-vartype ir-new-rhsvartype))
 					)) 
 			))))
 	(t ir-exprvar))
@@ -114,6 +108,7 @@
 ;; it to the correct struct in Rust). So we modified pvs2ir-assignement1 typename in order to 
 ;; call this function if it detects a record type behind a typename.
 ;; The typename is preserved.
+;; With the new implementation, that may not be necessary anymore.
 (defmethod pvs2ir-assignment1-custom-recordtype ((ir-expr-typename ir-typename) lhs rhs-irvar ir-exprvar bindings)
 	(let* ((ir-expr-type (ir-type-defn ir-expr-typename)))
 		(let* ((lhs1 (caar lhs)) ; i ;;lhs1 is a field-name-expr
@@ -129,7 +124,7 @@
 
 
 ;;I had to add method for ir-adt-recordtype since the type here is the adt and not the constructor,
-;;whereas in the record case, the field-assign does not have a type s othat ir-expr-type11 has to
+;;whereas in the record case, the field-assign does not have a type so that ir-expr-type11 has to
 ;;be computed from the ir-type of the field.  
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-adt-recordtype) lhs rhs-irvar ir-exprvar bindings)
     (cond ((consp lhs)
@@ -171,7 +166,8 @@
   )
   )
 
-(defun pvs2ir-adt-record-recognizer (rdecl index index-id index-type  ; can be kept 
+;; I only changed the name of the recognzer function
+(defun pvs2ir-adt-record-recognizer (rdecl index index-id index-type  
 				    adt-type-name)
   (let* ((einfo (get-eval-info rdecl))
 	 ;(ir-einfo (ir einfo))
@@ -259,7 +255,7 @@
 					;(format t "~%Adding definition for shared accessor: ~a" adecl-id)
       (ir einfo))))
 	  
-(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty ; can be kept : naming
+(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty ; only naming was changed
   (let* ((adt-type (type-value adt-decl))
 	 (adt-adt-id (format nil "~a" adt-type))
 	 (adt (adt adt-type))
@@ -790,9 +786,9 @@ struct arraytype<const N: usize, V: RegularOrd> {
     array : Rc<RefCell<[V; N]>>,
 }
 
-impl<const N : usize, V: RegularOrd> Hash for arraytype<N, V> {
+impl<const N: usize, V: RegularOrd> Hash for arraytype<N, V> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        panic!(\"Can't have proper ordering for two functions\")
+        self.array.deref().borrow().hash(state)
     }
 }
 
