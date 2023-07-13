@@ -962,8 +962,6 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
 	        (ir-args (when (ir-lambda? post-ir) (ir-vartypes post-ir)))
 			(pvs-return-type (type decl))
 
-			(aaa (format t "~% DEBUG IR : ~%~a" (print-ir ir-body)))
-
 	        (ir-result-type (if (ir-lambda? post-ir)
 				(ir-rangetype post-ir)
 				(pvs2ir-type pvs-return-type)))
@@ -1161,7 +1159,8 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
                     )
                     (setf *header* (format nil "~a~%}~%" *header*))
                 )
-                (setf *header* (format nil "~a~%type ~a = ~a;~%" *header* ir-type-id (ir2rust-type ir-type-defn)))
+				(let* ((inner-type (ir2rust-type ir-type-defn)))
+				(setf *header* (format nil "~a~%type ~a = ~a;" *header* ir-type-id inner-type)))
             )))
     (format nil "~a" ir-type-id) 
   ))
