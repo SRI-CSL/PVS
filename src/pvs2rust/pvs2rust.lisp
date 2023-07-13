@@ -20,11 +20,22 @@
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
 
-;; TODO
-;; write a cheat sheet tries and failures +  git merge 
-;; 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; We first add the possible mutability of variables
+
+(defcl ir-variable (ir-expr)
+  ir-name
+  ir-vtype
+  ir-pvsid 
+  ir-mutable) ; default to nil 
+
+(defun mk-ir-variable (ir-name ir-type &optional ir-pvsid mutable) ; Can be kept 
+  (make-instance 'ir-variable
+		 :ir-name ir-name
+		 :ir-vtype ir-type
+		 :ir-pvsid ir-pvsid
+		 :ir-mutable mutable))
 
 ;; Suppression of the null assignement, adding delete when needed
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-funtype) lhs rhs-irvar ir-exprvar bindings)
@@ -543,18 +554,18 @@
 
 (defmethod ir2rust* ((ir-expr ir-let) return-type) ; later : change var name to pvsid ?
   (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr 
-    (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
-        (format nil "let ~a : ~a = {~a};~%~a" ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
+    (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
+        (format nil "let~a ~a : ~a = {~a};~%~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
     )))
 
 (defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; TODO : complete
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
-	      (with-slots (ir-name ir-vtype ir-pvsid) ir-vartype
+	      (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
 			  (let* ((rhs-var (get-ir-last-var ir-bind-expr))
 			    (lhs-type (if (ir-typename? ir-vtype) (ir-type-defn ir-vtype) ir-vtype))
                 (rust-rhs (rust-copy-type lhs-type rhs-var)))
 			    (if rust-rhs 
-					(format nil "let ~a : ~a = ~a;~a" ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
+					(format nil "let~a ~a : ~a = ~a;~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) rust-rhs (ir2rust* ir-body return-type))
 					(progn (setf (ir-name ir-vartype) (ir-name rhs-var))
 						(ir2rust* ir-body return-type))
 				)
@@ -604,7 +615,7 @@
 
 (defmethod ir2rust* ((ir-expr ir-lambda) return-type) ; only called at non-zero level
   (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr 
-    (let* ((args-rust (format nil "~a : ~a" (ir-name (car ir-vartypes)) (ir2rust-type (ir-vtype (car ir-vartypes)))))
+    (let* ((args-rust (format nil "~a~a : ~a" (if (ir-mutable (car ir-vartypes)) "mut " "") (ir-name (car ir-vartypes)) (ir2rust-type (ir-vtype (car ir-vartypes)))))
            (body-rust (ir2rust* ir-body ir-rangetype)))
         (if (> (length ir-vartypes) 1) (break "Only one argument is allowed for non-zero level lambda function for now.")
         (format nil "funtype::new(Rc::new(move |~a| {~a}))" args-rust body-rust)) ; rust infers automatically the types
@@ -646,6 +657,7 @@
         ('ir-recordtype (with-slots (ir-label ir-field-types) target-type
             (let* ((target-var-rust (ir2rust* target-var target-type))
                     (rhs-rust (ir2rust* ir-rhs nil)))
+				(setf (ir-mutable target-var) t)
                 (format nil "~a.~a = ~a; ~a" target-var-rust ir-lhs rhs-rust target-var-name)
             )))
         ('ir-adt (break (format nil "~%TODO. irlhs ~a ir-rhs ~a" (print-ir ir-lhs) (print-ir ir-rhs))))
@@ -931,7 +943,7 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
 				(ir-result-type ir-return-type)
 				(rust-result-type (ir2rust-type ir-result-type))
 	        	(rust-args (format nil "~{~a~}" (loop for arg in ir-args
-		    	       collect (format nil "~a: ~a, " (ir-name arg) (ir2rust-type (ir-vtype arg))))))
+		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
 				(rust-out (format nil "~%fn ~a (~a) -> ~a {exit(); // extern function}~%" ir-function-name rust-args rust-result-type)))
 			(format t "~%Function ~a" ir-f-name)
 			(format t "~%IR : ~%~a" (print-ir ir))
@@ -959,7 +971,7 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
 	        (rust-result-type (ir2rust-type ir-result-type)) 
 
 	        (rust-args (format nil "~{~a~}" (loop for arg in ir-args
-		    	       collect (format nil "~a: ~a, " (ir-name arg) (ir2rust-type (ir-vtype arg))))))
+		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
 
 	        (rust-body (ir2rust* ir-body ir-result-type))
 			(rust-fn (format nil "fn ~a (~a) -> ~a {~a}~%~%" ir-f-name rust-args rust-result-type rust-body)))
