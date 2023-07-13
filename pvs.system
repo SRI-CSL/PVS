@@ -346,8 +346,6 @@
 			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2ir-classes"
 			 :depends-on ("defcl"))
-		  (:file "pvs2rust/pvs2rust-classes"
-			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-utils" ; has macros
 			 :depends-on ("defcl"))))
    (:module macros
