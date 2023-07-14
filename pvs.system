@@ -371,6 +371,7 @@
      :components((:file "groundeval/pvs2c-types")
 		 (:file "groundeval/pvs2c-code")
 		 (:file "groundeval/pvs2c-analysis")
+		 (:file "pvs2rust/pvs2rust")
 		 (:file "groundeval/pvs2ir")))
    (:module pvs-methods
      :source-pathname "src/"
