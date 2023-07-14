@@ -2,8 +2,8 @@
 ;; translate-to-yices2.lisp -- 
 ;; Author          : N. Shankar
 ;; Created On      : Dec. 5, 2010
-;; Last Modified By: N. Shankar
-;; Last Modified On: 
+;; Last Modified By: K. Nukala
+;; Last Modified On: Jul. 14, 2023
 ;; Update Count    : 
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -55,34 +55,33 @@
     (⇒ (|booleans| . =>))
     (IFF (|booleans| . =))
     (⇔ (|booleans| . =))
-    (AND (|booleans| . and) (|bv_bitwise| . bv-and))
-    (∧ (|booleans| . and))
-    (& (|booleans| . and))
-    (OR  (|booleans| . or) (|bv_bitwise| . bv-or))
-    (∨  (|booleans| . or))
-    (NOT  (|booleans| . not)(|bv_bitwise| . bv-not))
-    (¬ (|booleans| . not))
-    (+  (|number_fields| . +)(|bv_arith_nat| . bv-add))
-    (- (|number_fields| . -)(|bv_arithmetic_defs| . bv-sub))
+    (AND (|booleans| . "and") (|bv_bitwise| . "bv-and"))
+    (∧ (|booleans| . "and"))
+    (OR  (|booleans| . "or") (|bv_bitwise| . "bv-or"))
+    (∨  (|booleans| . "or"))
+    (NOT  (|booleans| . "not")(|bv_bitwise| . "bv-not"))
+    (¬ (|booleans| . "not"))
+    (+  (|number_fields| . +)(|bv_arith_nat| . "bv-add"))
+    (- (|number_fields| . -)(|bv_arithmetic_defs| . "bv-sub"))
     (*   (|number_fields| . *))
     (/  (|number_fields| . /))
 ;    (rem (|modulo_arithmetic| . mod))
 ;    (ndiv (|modulo_arithmetic| . div))
-    (< (|reals| . <)(|bv_arith_nat| . bv-lt))
-    (<=  (|reals| . <=)(|bv_arith_nat| . bv-le))
-    (> (|reals| . >)(|bv_arith_nat| . bv-gt))
-    (>=  (|reals| . >=)(|bv_arith_nat| . bv-ge))
-    (O (|bv_concat_def| . bv-concat))
-    (& (|booleans| . and)(|bv_bitwise| . bv-and))
-    (XOR  (|bv_bitwise| . bv-xor))
-    (^ (|bv_caret| .  bv-extract))
-    (sign_extend   (|bv_extend| . bv-sign-extend))
-    (|bv_slt| (|bv_arithmetic_defs| . bv-slt))
-    (|bv_sle| (|bv_arithmetic_defs| . bv-sle))
-    (|bv_sgt| (|bv_arithmetic_defs| . bv-sgt))
-    (|bv_sge| (|bv_arithmetic_defs| . bv-sge))
-    (|bv_splus| (|bv_arithmetic_defs| . bv-add))
-    (|bv_stimes| (|bv_arithmetic_defs| . bv-mul))
+    (< (|reals| . <)(|bv_arith_nat| . "bv-lt"))
+    (<=  (|reals| . <=)(|bv_arith_nat| . "bv-le"))
+    (> (|reals| . >)(|bv_arith_nat| . "bv-gt"))
+    (>=  (|reals| . >=)(|bv_arith_nat| . "bv-ge"))
+    (O (|bv_concat_def| . "bv-concat"))
+    (& (|booleans| . "and")(|bv_bitwise| . "bv-and"))
+    (XOR  (|bv_bitwise| . "bv-xor"))
+    (^ (|bv_caret| .  "bv-extract"))
+    (sign_extend   (|bv_extend| . "bv-sign-extend"))
+    (|bv_slt| (|bv_arithmetic_defs| . "bv-slt"))
+    (|bv_sle| (|bv_arithmetic_defs| . "bv-sle"))
+    (|bv_sgt| (|bv_arithmetic_defs| . "bv-sgt"))
+    (|bv_sge| (|bv_arithmetic_defs| . "bv-sge"))
+    (|bv_splus| (|bv_arithmetic_defs| . "bv-add"))
+    (|bv_stimes| (|bv_arithmetic_defs| . "bv-mul"))
     ))
 
 (defun clear-yices2 ()
@@ -785,7 +784,7 @@
 	     (setq *yices2-executable* "(pvs-context-yices2-executable)"))
 	    ((program-version "yices2 --version" "Yices 2")
 	     (setq *yices2-executable* "yices2"))
-	    ((program-version "yices --version" "Yices 2")
+	    ((program-version "yices --version" "Yices")
 	     (setq *yices2-executable* "yices"))
 	    (t (format t "~%Yices 1 cannot be found in your path")
 	       (when (program-version "yices --version" "1")
@@ -805,7 +804,7 @@
 
 (defun yices2 (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
   #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
-                                   ;;functions
+      ;;functions
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*y2defns* nil)
@@ -821,13 +820,13 @@
 		     (let ((fmla (formula sf)))
 		       (if (negation? fmla)
 			   (format nil "(assert ~a)"
-			     (translate-to-yices2* (args1 fmla) nil))
+				   (translate-to-yices2* (args1 fmla) nil))
 			   (format nil "(assert (not ~a))"
-			     (translate-to-yices2* fmla  nil))))))
+				   (translate-to-yices2* fmla  nil))))))
 	      (revdefns (nreverse *y2defns*))
 	      (file (make-pathname :defaults (working-directory)
 				   :name (label ps) :type "yices")))
-	  (format-if "~%ydefns = ~% ~{~a~%~}" revdefns)
+	  (format-if "~%ydefns = ~% ~{~a~%~}, file= ~a" revdefns file)
 	  (format-if "~%ysubtypes = ~% ~{~a~%~}" *yices2-subtype-constraints*)
 	  (format-if "~%yforms = ~% ~{~a~%~}" yices-forms)
 	  (with-open-file (stream  file :direction :output
@@ -837,41 +836,46 @@
 	      (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
-	    ;(unless nonlinear? (format stream "(status)"))
+	    ;; (unless nonlinear? (format stream "(status)"))
 	    )
 	  (let ((*yices2-flags*
 		 (if nonlinear?
 		     (concatenate 'string
-		       *yices2-flags* " --logic=QF_UFNIRA")
+				  *yices2-flags* " --logic=QF_UFNIRA")
 		     *yices2-flags*)))
 	    (multiple-value-bind (output err-output status)
 		(uiop:run-program
-		    (format nil "~a ~a ~a"
-		      *yices2-executable*
-		      *yices2-flags*
-		      (namestring file))
-		  :input "//dev//null"
-		  :output '(:string :stripped t)
-		  :ignore-error-status t)
+		 (format nil "~a ~a ~a"
+			 *yices2-executable*
+			 *yices2-flags*
+			 (namestring file))
+		 :input "//dev//null"
+		 :output '(:string :stripped t)
+		 :ignore-error-status t)
 	      (when *y2datatype-warning*
 		(format t "~70,,,'*A" "")
 		(format t "~%Warning: The Yices datatype theory is not currently trustworthy.
 Please check your results with a proof that does not rely on Yices. ~%")
 		(format t "~70,,,'*A" ""))
 	      (cond ((zerop status)
-		     ;;(break "yices result")
-		     (format-if "~%Result = ~a" output)
 		     (cond ((search "unsat"  output :from-end t)
 			    (format-if "~%Yices translation of negation is unsatisfiable")
+
+			    (format-if "~%Removing generated .yices queries")
+			    (uiop:run-program
+			     (format nil "rm *.yices")
+			     :input "//dev//null"
+			     :output '(:string :stripped t)
+			     :ignore-error-status t)
+			    
 			    (values '! nil nil))
 			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
 			      (values 'X nil nil))))
 		    (t (format t
-			   "~%Error running yices - you may need to do one or more of:~
-                          ~% 1. Download yices from http://yices.csl.sri.com~
-                          ~% 2. add yices to your path and restart PVS.
-                          ~%The error message is:~% ~a"
-			 err-output)
+			       "~%Error running yices2 - either:~
+                          ~% 1. Download yices2 from http://yices.csl.sri.com~
+                          ~% 2. add yices2 to your path and restart PVS.~
+                          ~% 3. Check the generated yices2 query at ~a and see that it confirms to the yices2 language spec (https://yices.csl.sri.com/papers/manual.pdf)" (namestring file))
 		       (values 'X nil)))))))))
 
 	
