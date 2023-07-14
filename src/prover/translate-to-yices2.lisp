@@ -888,7 +888,12 @@ of the negations of the selected formulas is unsatisfiable. "
   
 (defstep yices2-with-rewrites
   (&optional (fnums *) defs theories rewrites exclude-theories exclude)
-  (then (simplify-with-rewrites fnums defs theories rewrites exclude-theories exclude)
+  (then (simplify-with-rewrites fnums
+				:defs defs
+				:theories theories
+				:rewrites rewrites
+				:exclude-theories exclude-theories
+				:exclude exclude)
 	(yices2 fnums))
   "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
 or explicit!), from THEORIES, and REWRITES, then applies (assert fnums) followed
