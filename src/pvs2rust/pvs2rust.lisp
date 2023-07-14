@@ -3,7 +3,6 @@
 ;; See my report for supported subset, or contact me : nathan[dot]gasc[at]gmx[dot]fr
 ;; Manual : https://carnets.binets.fr/szf64Md4QdqVJmGVLp6FEg?view
 
-;; TODO : error with signed integers and usize !!! switch to i64 for faster code ? (make tests)
 ;; make mod per theory for export
 
 
@@ -472,7 +471,7 @@
 
 (defmethod ir2rust* ((ir-expr ir-integer) return-type)
   (with-slots (ir-intval) ir-expr
-	      (format nil "~ausize" ir-intval)))
+	      (format nil "~ai64" ir-intval)))
 
 (defmethod ir2rust* ((ir-expr ir-last) return-type)
   (with-slots (ir-var) ir-expr
@@ -571,7 +570,7 @@
 		(if (typep rhs-vtype 'ir-subrange)
 			(ir-name rhs-var)
 			(if (and (typep rhs-vtype 'symbol) (eq rhs-vtype 'mpq))
-				(format nil "{~a}.into_inner() as usize" (ir-name rhs-var))
+				(format nil "{~a}.into_inner() as i64" (ir-name rhs-var))
 				(break (format nil "Cannot convert from ~a to ~a" (type-of rhs-vtype) (type-of lhs-vtype))))))
 )
 
@@ -586,9 +585,9 @@
 			(let* ((new-rhs-var (mk-ir-variable (format nil "tmp") (ir-range (ir-vtype rhs-var)) nil) )) ;; only for type checking
 				(format nil "arraytype::new(Rc::new(move |j~a : usize| {let cl_var_~a = ~a.clone(); ~a}))" ;; the clone is required by the move
 					depth depth (if (= depth 1) (ir-name rhs-var) (format nil "cl_var_~a" (- depth 1)))
-					(rust-copy-fn-to-array ir-range new-rhs-var (+ depth 1) (format nil "~a.lookup(j~a)" fn-name depth)))
+					(rust-copy-fn-to-array ir-range new-rhs-var (+ depth 1) (format nil "~a.lookup(j~a as i64)" fn-name depth)))
 			)
-			(format nil "arraytype::new(Rc::new(move |j~a : usize| ~a~a.lookup(j~a)))" 
+			(format nil "arraytype::new(Rc::new(move |j~a : usize| ~a~a.lookup(j~a as i64)))" 
 					depth (if (= depth 1) (ir-name rhs-var) (format nil "cl_var_~a" (- depth 1))) 
 					fn-name depth))
 	))
@@ -793,7 +792,7 @@ impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
 
 #[derive(Clone, PartialEq, Eq)]
 struct arraytype<const N: usize, V: RegularOrd> {
-    array : Rc<RefCell<[V; N]>>,
+    array: Rc<RefCell<[V; N]>>,
 }
 
 impl<const N: usize, V: RegularOrd> Hash for arraytype<N, V> {
@@ -802,20 +801,22 @@ impl<const N: usize, V: RegularOrd> Hash for arraytype<N, V> {
     }
 }
 
-impl<const N : usize, V: RegularOrd> arraytype<N, V> {
+impl<const N: usize, V: RegularOrd> arraytype<N, V> {
     fn new(explicit: Rc<dyn Fn(usize) -> V>) -> arraytype<N, V> {
         arraytype {
-            array : Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(explicit.deref())))
+            array: Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(
+                explicit.deref(),
+            ))),
         }
     }
-    fn lookup(&self, a: usize) -> V {
-        self.array.deref().borrow()[a].clone()
+    fn lookup(&self, a: i64) -> V {
+        self.array.deref().borrow()[a as usize].clone()
     }
-    fn delete(self, a: usize) -> Self {
+    fn delete(self, a: i64) -> Self {
         self
     }
-    fn update(self, a: usize, v: V) -> Self {
-        self.array.borrow_mut()[a] = v;
+    fn update(self, a: i64, v: V) -> Self {
+        self.array.borrow_mut()[a as usize] = v;
         self
     }
 }
@@ -1129,7 +1130,7 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
 ;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition to *header* if needed
 
 (defmethod ir2rust-type ((ir-typ ir-subrange))
-  (format nil "usize"))
+  (format nil "i64"))
 
 (defmethod ir2rust-type ((ir-type symbol)) ;not. mpq
   (case ir-type
