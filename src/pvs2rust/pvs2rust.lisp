@@ -1,17 +1,11 @@
 ;; -- PVS2Rust --
 ;; PVS2Rust translates PVS expressions, definitions, and theories to the Rust language. 
 ;; See my report for supported subset, or contact me : nathan[dot]gasc[at]gmx[dot]fr
+;; Manual : https://carnets.binets.fr/szf64Md4QdqVJmGVLp6FEg?view
 
-;; -- How to use PVS2Rust ? --
-;; pvs2ir is yet under dev, so it is not compiled / loaded by PVS at start. to use it, you must first
-;; import the file using lf. You can't use PVS2C at the same time due to shared code.
-;; (lf ".../src/pvs2rust/pvs2rust.lisp")
-;; (pvs2rust "theory-name")
+;; TODO : error with signed integers and usize !!! switch to i64 for faster code ? (make tests)
+;; make mod per theory for export
 
-;; -- Some comments on future works --
-;; * Dependant types should be added easily using a generic type witha 'static lifetime in Rust.
-;; * There is a priori no need to move variable in closures declarations, because there are no
-;;   mutable variables in our semantics. See report & docs.
 
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
@@ -572,7 +566,8 @@
 			  ))))
 
 (defmethod rust-copy-type ((lhs-vtype ir-subrange) rhs-var)
-	(let* ((rhs-vtype (ir-vtype rhs-var)))
+	(let* ((var-type (ir-vtype rhs-var))
+		(rhs-vtype (if (typep var-type 'ir-typename) (ir-type-defn var-type) var-type)))
 		(if (typep rhs-vtype 'ir-subrange)
 			(ir-name rhs-var)
 			(if (and (typep rhs-vtype 'symbol) (eq rhs-vtype 'mpq))
@@ -675,8 +670,11 @@
 			(format nil "~a {~a}" record-name fields-values)
 		)))
 
+;; Missing offset, forall, exists, formal & actuals
 (defmethod ir2rust* ((ir-expr t) return-type)
   (break (format nil "IR expr ~a cannot be translated into Rust: ~%~a" ir-expr (type-of ir-expr))))
+
+
 
 ;; -------- PVS2RUST ---------
 
@@ -1124,15 +1122,9 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
 				)
 			)
 		)
-	)
-
-
-
-	)
+	))
   (break "Type decl is not adt-type-decl"))
   *output*)
-
-
 
 ;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition to *header* if needed
 
@@ -1194,5 +1186,5 @@ impl<const N : usize, V: RegularOrd> arraytype<N, V> {
     (format nil "arraytype<~a, ~a>" (+ size 1) (ir2rust-type ir-range) )))
 
 (defmethod ir2rust-type ((ir-typ t))
-  (format t "~%~a ~a" ir-typ (type-of ir-typ))
+  (format t "~%~a ~a ~a" ir-typ (type-of ir-typ) (print-ir ir-typ))
   (break "Unsupported type"))
