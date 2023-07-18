@@ -8,6 +8,7 @@
 
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
+(defvar *ir-formal-consts* nil)
 (defvar *functions* nil) ;; list of all fn names
 (defvar *header* nil) ;; rust code containing type, const, datatype & misc declarations
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
@@ -500,9 +501,12 @@
           (if hi-array (break (format nil "Trying to call an array : ~a" ir-func)))
 	      	(if (ir-primitive-function? ir-func)
 				(ir2rust-primitive-apply return-type ir-func ir-args)
-				(if (ir-function? ir-func)  
-					(format nil "~a(~{~a,~})" (ir-fname ir-func) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))
-					(format nil "~a.lookup(~{~a,~})" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))))
+				(let* ((rust-args (format nil "~{~a,~}" (concat-lists (loop for formal in *ir-formal-consts* collect (ir2rust* formal nil)) 
+										(loop for ir-arg in ir-args collect (ir2rust* ir-arg nil))))))
+					(if (ir-function? ir-func)  
+						(format nil "~a(~a)" (ir-fname ir-func) rust-args)
+						(format nil "~a.lookup(~{~a,~})" (ir-name ir-func-var) (loop for ir-arg in ir-args collect (ir2rust* ir-arg nil)))))
+				)
           )))
 
 (defun ir2rust-primitive-apply (return-type ir-function ir-args)
@@ -548,7 +552,8 @@
 (defmethod ir2rust* ((ir-expr ir-let) return-type) ; later : change var name to pvsid ?
   (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr 
     (with-slots (ir-name ir-vtype ir-pvsid ir-mutable) ir-vartype
-        (format nil "let~a ~a : ~a = {~a};~%~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type))  
+        (if (is-var-type-actual ir-vartype) (ir2rust* ir-body return-type)
+		(format nil "let~a ~a : ~a = {~a};~%~a" (if ir-mutable " mut" "") ir-name (ir2rust-type ir-vtype) (ir2rust* ir-bind-expr ir-vtype) (ir2rust* ir-body return-type)))  
     )))
 
 (defmethod ir2rust* ((ir-expr ir-lett) return-type);;assume ir-bind-expr is an ir-variable ; TODO : complete
@@ -608,6 +613,7 @@
 )
 
 (defmethod ir2rust* ((ir-expr ir-lambda) return-type) ; only called at non-zero level
+  (format t "~%DEBUG ~a" return-type)
   (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr 
     (let* ((args-rust (format nil "~a~a : ~a" (if (ir-mutable (car ir-vartypes)) "mut " "") (ir-name (car ir-vartypes)) (ir2rust-type (ir-vtype (car ir-vartypes)))))
            (body-rust (ir2rust* ir-body ir-rangetype)))
@@ -625,8 +631,9 @@
 (defmethod ir2rust* ((ir-expr ir-release) return-type)
   (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
 		(let ((rust-body (ir2rust* ir-body return-type))
-		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars collect (ir-name var))))
-		    (post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var))))) ;; no post release rn
+		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars when (not (is-var-type-actual var)) collect (ir-name var))))
+		    ;;(post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var))))
+			) ;; no post release rn
 		(format nil "~a~a" pre-release-instrs rust-body)))) ;; are they post release ? 
 
 
@@ -669,7 +676,10 @@
 			(format nil "~a {~a}" record-name fields-values)
 		)))
 
-;; Missing offset, forall, exists, formal & actuals
+(defmethod ir2rust* ((ir-expr ir-formal-typename) return-type)
+  (format nil "~a" (ir-type-id ir-expr)))
+
+;; Missing offset, forall, exists, & actuals
 (defmethod ir2rust* ((ir-expr t) return-type)
   (break (format nil "IR expr ~a cannot be translated into Rust: ~%~a" ir-expr (type-of ir-expr))))
 
@@ -707,7 +717,7 @@
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
       (format output "//Code generated using pvs2ir2rust")
-      (format output "~%// --- HEADER BEGINS ---
+      (format output "
 #![allow(
     non_snake_case,
     dead_code,
@@ -719,110 +729,112 @@
     unused_imports,
     drop_copy
 )]
+mod pvs2rust {
+    use fxhash::FxHasher;
+    use ordered_float::NotNan;
+    use std::borrow::Borrow;
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::hash::BuildHasherDefault;
+    use std::hash::Hash;
+    use std::mem::drop;
+    use std::ops::Deref;
+    use std::rc::Rc;
 
-use fxhash::FxHasher;
-use ordered_float::NotNan;
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::hash::BuildHasherDefault;
-use std::hash::Hash;
-use std::mem::drop;
-use std::rc::Rc;
-use std::ops::Deref;
-
-fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
-    Rc::try_unwrap(rc).unwrap_or_else(|rc| (*rc).clone())
-}
-
-trait RegularOrd: Clone + PartialEq + Eq + Hash
-where
-    Self: std::marker::Sized,
-{
-}
-
-impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
-
-#[derive(Clone)]
-struct funtype<A: RegularOrd, V: RegularOrd> {
-    explicit: Rc<dyn Fn(A) -> V>,
-    hashtable: Rc<RefCell<HashMap<A, V, BuildHasherDefault<FxHasher>>>>,
-}
-
-impl<A: RegularOrd, V: RegularOrd> PartialEq for funtype<A, V> {
-    fn eq(&self, other: &Self) -> bool {
-        panic!(\"Can't test equality of two functions\")
+    fn Rc_unwrap_or_clone<T: Clone>(rc: Rc<T>) -> T {
+        Rc::try_unwrap(rc).unwrap_or_else(|rc| (*rc).clone())
     }
-}
-impl<A: RegularOrd, V: RegularOrd> Eq for funtype<A, V> {}
-
-impl<A: RegularOrd, V: RegularOrd> Hash for funtype<A, V> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        panic!(\"Can't have proper ordering for two functions\")
+    
+    pub trait RegularOrd: Clone + PartialEq + Eq + Hash
+    where
+        Self: std::marker::Sized,
+    {
     }
-}
-
-impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
-    fn new(explicit: Rc<dyn Fn(A) -> V>) -> funtype<A, V> {
-        funtype {
-            explicit,
-            hashtable: Rc::new(RefCell::new(HashMap::default())),
+    
+    impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
+    
+    #[derive(Clone)]
+    pub struct funtype<A: RegularOrd, V: RegularOrd> {
+        explicit: Rc<dyn Fn(A) -> V>,
+        hashtable: Rc<RefCell<HashMap<A, V, BuildHasherDefault<FxHasher>>>>,
+    }
+    
+    impl<A: RegularOrd, V: RegularOrd> PartialEq for funtype<A, V> {
+        fn eq(&self, other: &Self) -> bool {
+            panic!(\"Can't test equality of two functions\")
         }
     }
-    fn lookup(&self, a: A) -> V {
-        match self.hashtable.deref().borrow().get(&a) { // explicit deref due to borrow method name collision
-            Some(v) => v.clone(),
-            None => (self.explicit)(a),
+    impl<A: RegularOrd, V: RegularOrd> Eq for funtype<A, V> {}
+    
+    impl<A: RegularOrd, V: RegularOrd> Hash for funtype<A, V> {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            panic!(\"Can't have proper ordering for two functions\")
         }
     }
-    fn delete(self, a: A) -> Self {
-        match self.hashtable.borrow_mut().remove(&a) {
-            Some(x) => {
-                drop(x);
+    
+    impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
+        pub fn new(explicit: Rc<dyn Fn(A) -> V>) -> funtype<A, V> {
+            funtype {
+                explicit,
+                hashtable: Rc::new(RefCell::new(HashMap::default())),
             }
-            None => {}
-        };
-        self
-    }
-    fn update(self, a: A, v: V) -> Self {
-        self.hashtable.borrow_mut().insert(a, v);
-        self
-    }
-}
-
-#[derive(Clone, PartialEq, Eq)]
-struct arraytype<const N: usize, V: RegularOrd> {
-    array: Rc<RefCell<[V; N]>>,
-}
-
-impl<const N: usize, V: RegularOrd> Hash for arraytype<N, V> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.array.deref().borrow().hash(state)
-    }
-}
-
-impl<const N: usize, V: RegularOrd> arraytype<N, V> {
-    fn new(explicit: Rc<dyn Fn(usize) -> V>) -> arraytype<N, V> {
-        arraytype {
-            array: Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(
-                explicit.deref(),
-            ))),
+        }
+        pub fn lookup(&self, a: A) -> V {
+            match self.hashtable.deref().borrow().get(&a) {
+                // explicit deref due to borrow method name collision
+                Some(v) => v.clone(),
+                None => (self.explicit)(a),
+            }
+        }
+        pub fn delete(self, a: A) -> Self {
+            match self.hashtable.borrow_mut().remove(&a) {
+                Some(x) => {
+                    drop(x);
+                }
+                None => {}
+            };
+            self
+        }
+        pub fn update(self, a: A, v: V) -> Self {
+            self.hashtable.borrow_mut().insert(a, v);
+            self
         }
     }
-    fn lookup(&self, a: i64) -> V {
-        self.array.deref().borrow()[a as usize].clone()
+    
+    #[derive(Clone, PartialEq, Eq)]
+    pub struct arraytype<const N: usize, V: RegularOrd> {
+        array: Rc<RefCell<[V; N]>>,
     }
-    fn delete(self, a: i64) -> Self {
-        self
+    
+    impl<const N: usize, V: RegularOrd> Hash for arraytype<N, V> {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.array.deref().borrow().hash(state)
+        }
     }
-    fn update(self, a: i64, v: V) -> Self {
-        self.array.borrow_mut()[a as usize] = v;
-        self
+    
+    impl<const N: usize, V: RegularOrd> arraytype<N, V> {
+        pub fn new(explicit: Rc<dyn Fn(usize) -> V>) -> arraytype<N, V> {
+            arraytype {
+                array: Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(
+                    explicit.deref(),
+                ))),
+            }
+        }
+        pub fn lookup(&self, a: i64) -> V {
+            self.array.deref().borrow()[a as usize].clone()
+        }
+        pub fn delete(self, a: i64) -> Self {
+            self
+        }
+        pub fn update(self, a: i64, v: V) -> Self {
+            self.array.borrow_mut()[a as usize] = v;
+            self
+        }
     }
 }
-// --- HEADER ENDS ---~%"  )
-	  (format output "~%~a~%" *header*)
-      (format output "~%~a~%//fn main(){}" text)
+~%"  )
+      (format output "~%mod ~a {~%use ordered_float::NotNan;use std::rc::Rc;use crate::pvs2rust::*;~%~a~%~%~a~%}~%~%//fn main(){}" 
+	  theory-id *header* text)
       ;(prettier-rust-file file-string)
       (format t "~%Wrote ~a" file-string)
 		;;(excl:run-shell-command ; not working, i don t know why
@@ -942,7 +954,8 @@ impl<const N: usize, V: RegularOrd> arraytype<N, V> {
 				(ir-result-type ir-return-type)
 				(rust-result-type (ir2rust-type ir-result-type))
 	        	(rust-args (format nil "~{~a~}" (loop for arg in ir-args
-		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
+		    	       collect (if (is-var-type-actual arg) ""
+					(format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg)))))))
 				(rust-out (format nil "~%fn ~a (~a) -> ~a {exit(); // extern function}~%" ir-function-name rust-args rust-result-type)))
 			(format t "~%Function ~a" ir-f-name)
 			(format t "~%IR : ~%~a" (print-ir ir))
@@ -967,12 +980,19 @@ impl<const N: usize, V: RegularOrd> arraytype<N, V> {
 
 	        (rust-result-type (ir2rust-type ir-result-type)) 
 
+			(ir-formal-types (loop for arg in *ir-theory-formals* when (is-var-type-actual arg) collect arg))
+			(*ir-formal-consts* (loop for arg in *ir-theory-formals* when (not (is-var-type-actual arg)) collect arg))
+			(rust-formal-types (format nil "<~{~a: RegularOrd + 'static,~}>" (loop for ft in ir-formal-types collect (ir-name ft))))
+
 	        (rust-args (format nil "~{~a~}" (loop for arg in ir-args
-		    	       collect (format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg))))))
+		    	       collect (if (is-var-type-actual arg) ""
+					(format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg)))))))
 
 	        (rust-body (ir2rust* ir-body ir-result-type))
-			(rust-fn (format nil "fn ~a (~a) -> ~a {~a}~%~%" ir-f-name rust-args rust-result-type rust-body)))
-			(format t "~%Function ~a ~a ~a" ir-f-name ir decl)
+
+			(rust-fn (format nil "pub fn ~a~a (~a) -> ~a {~a}~%~%" ir-f-name rust-formal-types
+				rust-args rust-result-type rust-body)))
+			(format t "~%Function ~a ~a" ir-f-name ir-defn )
 			(format t "~%IR : ~%~a" (print-ir ir-body))
 			(format t "~%Rust : ~%~a" rust-fn)
             rust-fn
@@ -1140,10 +1160,13 @@ impl<const N: usize, V: RegularOrd> arraytype<N, V> {
 
 (defmethod ir2rust-type ((ir-type ir-typename)) ; if recordtype build struct, else makes a type declaration 
   (with-slots (ir-type-id ir-type-defn type-declaration ir-actuals) ir-type
-    (if (member ir-type-id *type-defs* :test 'string=) nil
+	(let* ((used-formals (used-type-formals ir-type-defn))
+			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a,~}>" used-formals) ""))
+			(formals-rust (if (consp used-formals) (format nil "<~{~a,~}>" used-formals) "")))
+		(if (member ir-type-id *type-defs* :test 'string=) nil
         (progn (setf *type-defs* (cons ir-type-id *type-defs*))
             (if (typep ir-type-defn 'ir-recordtype)
-                (progn (setf *header* (format nil "~a~%#[derive(Clone, PartialEq, Eq, Hash)]~%struct ~a {~%" *header* ir-type-id))
+                (progn (setf *header* (format nil "~a~%#[derive(Clone, PartialEq, Eq, Hash)]~%struct ~a~a {~%" *header* ir-type-id formals-rust-defs))
                     (with-slots (ir-label ir-field-types) ir-type-defn
                         (loop for field in ir-field-types 
                             collect (with-slots (ir-id ir-name ir-vtype) field 
@@ -1153,10 +1176,10 @@ impl<const N: usize, V: RegularOrd> arraytype<N, V> {
                     (setf *header* (format nil "~a~%}~%" *header*))
                 )
 				(let* ((inner-type (ir2rust-type ir-type-defn)))
-				(setf *header* (format nil "~a~%type ~a = ~a;" *header* ir-type-id inner-type)))
+				(setf *header* (format nil "~a~%type ~a~a = ~a;" *header* ir-type-id formals-rust-defs inner-type)))
             )))
-    (format nil "~a" ir-type-id) 
-  ))
+		(format nil "~a~a" ir-type-id formals-rust) 
+	)))
 
 (defmethod ir2rust-type ((ir-typ ir-funtype))
   (with-slots (ir-domain ir-range) ir-typ
@@ -1186,6 +1209,45 @@ impl<const N: usize, V: RegularOrd> arraytype<N, V> {
   (with-slots (size high ir-domain ir-range) ir-typ
     (format nil "arraytype<~a, ~a>" (+ size 1) (ir2rust-type ir-range) )))
 
+(defmethod ir2rust-type ((ir-typ ir-formal-typename)) 
+  (with-slots (ir-type-id) ir-typ
+    (format nil "~a" ir-type-id)))
+
 (defmethod ir2rust-type ((ir-typ t))
   (format t "~%~a ~a ~a" ir-typ (type-of ir-typ) (print-ir ir-typ))
   (break "Unsupported type"))
+
+
+(defmethod used-type-formals ((ir-typ ir-funtype)) 
+	(with-slots (ir-domain ir-range) ir-typ 
+		(concat-lists (used-type-formals ir-domain) (used-type-formals ir-range))))
+
+(defmethod used-type-formals ((ir-typ ir-arraytype)) 
+	(with-slots (ir-range) ir-typ)
+		(used-type-formals ir-range))
+
+(defmethod used-type-formals ((ir-typ ir-typename)) 
+	(with-slots (ir-type-defn) ir-typ)
+		(used-type-formals ir-type-defn))
+
+(defmethod used-type-formals ((ir-typ ir-recordtype)) 
+	(with-slots (ir-fields) ir-typ)
+		(break "To be implemented"))
+
+(defmethod used-type-formals ((ir-typ ir-formal-typename)) 
+	(with-slots (ir-type-id) ir-typ
+		(list ir-type-id)))
+
+(defmethod used-type-formals ((ir-typ t)) 
+	nil)
+
+(defun concat-lists (seq1 seq2)
+  (if (null seq1)
+      seq2
+      (cons (car seq1) (concat-lists (cdr seq1) seq2))))
+
+(defun is-var-type-actual (var)
+	(and (typep var 'ir-variable)
+	(typep (ir-vtype var) 'ir-typename)
+	(string= (ir-type-id (ir-vtype var)) "type_actual"))
+)
