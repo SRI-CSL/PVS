@@ -4028,4 +4028,18 @@
 	(t alist)))
 
 (defun proofstate-depth (&optional (ps *ps*))
-  (length (path-to-subgoal (or *top-proofstate* *last-proof*) ps)))
+  (let ((top-ps (or *top-proofstate* *last-proof*)))
+    (if top-ps
+	(length (path-to-subgoal top-ps ps))
+	(get-proofstate-depth ps 0))))
+
+(defun get-proofstate-depth (ps num)
+  (if (null (parent-proofstate ps))
+      num
+      (get-proofstate-depth (parent-proofstate ps) (1+ num))))
+
+(defun unique-ps-id (ps &optional (label (label ps)) (num 0))
+  (let ((par-ps (parent-proofstate ps)))
+    (if (or (null par-ps) (not (string= (label par-ps) label)))
+	(format nil "~a-~d" label num)
+	(unique-ps-id par-ps label (1+ num)))))
