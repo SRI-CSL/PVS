@@ -191,7 +191,7 @@
 
 (defun stdio-attachments ()
 
-(eval '(attachments stdio  
+(eval '(attachments |stdio|
 
 (defprimitive |printstr| (s) 
   "Prints lisp format of string S"
@@ -368,7 +368,7 @@
 
 (defun stdmath-attachments ()
 
-(eval '(attachments stdmath
+(eval '(attachments |stdmath|
 	     
 (defattach |RANDOM| ()
   "Real random number in the interval [0..1]"
@@ -383,7 +383,7 @@
 
 (defun stdindent-attachments ()
 
-(eval '(attachments stdindent  
+(eval '(attachments |stdindent|
 
 (defattach |create_indent| (n s) 
   "Creates an ident structure with indentation N and prefix S"
@@ -439,7 +439,7 @@
 
 (defun stdprog-attachments ()
 
-(eval '(attachments stdprog  
+(eval '(attachments |stdprog|
 
 (defattach |exit| ()
   "Exits the current evaluation and returns to the ground evaluator"
@@ -490,7 +490,7 @@
 
 (defun stdcatch-attachments ()
 
-(eval '(attachments stdcatch  
+(eval '(attachments |stdcatch|
 	     
 (defattach |catch_lift| (tag f1 f2)
   "If F1 throws the exception e tagged tag, then evaluates F2(e). Otherwise, returns F1"
@@ -506,7 +506,7 @@
 
 (defun stdpvs-attachments ()
 
-(eval '(attachments stdpvs  
+(eval '(attachments |stdpvs|
 
 (defattach |typeof| (e)
   "Returns the string value of the type of E"
@@ -526,7 +526,7 @@
 
 (defun stdpvsio-attachments ()
  
-(eval '(attachments stdpvsio 
+(eval '(attachments |stdpvsio|
 
 (defattach |help_pvs_attachment| (s)
   "Displays help for semantic attachment S"
@@ -552,7 +552,7 @@
 
 (defun stdsys-attachments ()
 
-(eval '(attachments stdsys  
+(eval '(attachments |stdsys|
 
 (defattach |get_time| ()
   "Gets current system time"

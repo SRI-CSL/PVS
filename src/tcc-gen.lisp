@@ -2286,8 +2286,9 @@ list of kind, etc."
     (format nil
 	"% The ~@[~a ~]~a TCC ~@[~a~] in decl ~a for~@[~% % term generated from ~a~]~
                         ~:[ ~;~%    % ~]~@[~a~]~@[~%    % ~a~]~%  ~a"
-      preason kind plstr nil ;(car genby)
+      preason kind plstr ;(car genby)
       (if (importing? decl) "IMPORTING" (id decl))
+      nil
       (> (+ (length preason)
 	    (length (string kind))
 	    (length plstr)
