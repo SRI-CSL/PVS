@@ -52,7 +52,9 @@
 (defun pp-json-ml-decl (decl)
   (let ((*current-context* (decl-context decl))
 	(*pp-json-ml-type-hash* (or *pp-json-ml-type-hash* (make-pvs-hash-table)))
-	(*pp-type-json-ml-hash* (or *pp-type-json-ml-hash* (make-hash-table :test 'string=))))
+	(*pp-type-json-ml-hash* (or *pp-type-json-ml-hash* (make-hash-table :test 'string=)))
+	;; (*pp-json-ml-term-hash* (make-pvs-hash-table))
+	)
     (pp-json-ml-decl* decl)))
 
 (defgeneric pp-json-ml-decl* (x))
@@ -330,16 +332,14 @@
       ("rewrite-names" . ,(mapcar #'pp-json-ml* rewrite-names)))))
 
 (defmethod pp-json-ml* ((rname rewrite-name))
-  (let* ((decl (declaration rname))
-	 (th (module decl))
-	 (lib (pp-json-library decl))
-	 (path (unless lib (pp-json-path th))))
+  (let* ((th (mod-id rname))
+	 (lib (library rname)))
     `(("tag" . "rewrite-name")
-      ("id" . ,(string (id decl)))
-      ,@(when lib `(("library" . ,lib)))
-      ,@(when path `(("path" . ,path))) ; Only when library not available
-      ("theory" . ,(string (id th)))
-      ("actuals" . ,(pp-json-ml* (actuals (module-instance rname)))))))
+      ("id" . ,(string (id rname)))
+      ,@(when lib `(("library" . ,(string lib))))
+      ,@(when th `(("theory" . ,(string th))))
+      ("actuals" . ,(pp-json-ml* (actuals rname)))
+      ("dactuals" . ,(pp-json-ml* (actuals rname))))))
 
 (defmethod pp-json-ml* ((pinfo proof-info))
   `(("tag" . "proof-info")
@@ -367,6 +367,12 @@
 	 (result (pp-json-ml* expr)))
     (values result *pp-json-ml-type-hash*)))
 
+;; (defmethod pp-json-el* :around ((expr expr))
+;;   (assert *pp-json-ml-term-hash*)
+;;   (or (gethash expr *pp-json-ml-term-hash*)
+;;       (let ((json-ml (call-next-method)))
+;; 	(setf (gethash expr *pp-json-ml-term-hash*) json-ml))))
+
 ;; (defmethod pp-json-ml* :around ((expr syntax))
 ;;   (let ((jexpr-alist (call-next-method)))
 ;;     (if (or (null (place expr))
@@ -391,14 +397,19 @@
   `(("tag" . "string")
     ("string-value" . ,(string-value expr))))
 
+(defvar *library-path-to-id-hash* (make-hash-table))
+
 (defun pp-json-library (decl)
   (let* ((th (module decl))
 	 (cpath (when th (context-path th)))
 	 (lib (when (and cpath
-			 (not (file-equal cpath (current-context-path))))
+			 ;;(not (file-equal cpath (current-context-path)))
+			 (not (eq cpath (current-context-path))))
 		(if (from-prelude? decl)
 		    "pvs:prelude"
-		    (library-path-to-id cpath)))))
+		    (or (gethash cpath *library-path-to-id-hash*)
+			(let ((libid (library-path-to-id cpath)))
+			  (setf (gethash cpath *library-path-to-id-hash*) libid)))))))
     (when lib (string lib))))
 
 (defmethod pp-json-ml* ((expr name-expr))
@@ -546,7 +557,8 @@
 (defmethod pp-json-ml* ((expr tuple-expr))
   (with-slots (exprs) expr
     `(("tag" . "tuple")
-      ("exprs" . ,(map 'vector #'pp-json-ml* exprs)))))
+      ;;("exprs" . ,(map 'vector #'pp-json-ml* exprs))
+      ("exprs" . ,(pp-json-ml* exprs)))))
 
 (defmethod pp-json-ml* ((expr projection-application))
   (with-slots (index argument) expr
@@ -699,9 +711,11 @@
 (defmethod pp-json-ml* ((texpr tupletype))
   (with-slots (types) texpr
     (if (some #'dep-binding? types)
-	(let ((ntypes (pp-json-ml-dep-tupletypes types)))
-	  `(("tag" . "dependent-tupletype")
-	    ("types" . ,(coerce ntypes 'vector))))
+	(let* ((ntypes (pp-json-ml-dep-tupletypes types))
+	       (jval `(("tag" . "dependent-tupletype")
+		       ("types" . ,(coerce ntypes 'vector)))))
+	  ;;(json:encode-json jval)
+	  jval)
 	`(("tag" . "tupletype")
 	  ("types" . ,(map 'vector #'(lambda (ty) (list (pp-json-ml* ty))) types))))))
 
@@ -713,8 +727,7 @@
 				(freevars (car types)))))
 	     (ml-ntype (let ((*pp-ml-dont-hash* nohash))
 			 (pp-json-ml* (car types))))
-	     (ml-type (if nohash ml-ntype (list ml-ntype))))
-	;;(break "pp-json-ml-dep-tupletypes")
+	     (ml-type (if (listp (car ml-ntype)) ml-ntype (list ml-ntype))))
 	(pp-json-ml-dep-tupletypes (cdr types)
 				   (cons ml-type ml-types)
 				   (if (dep-binding? (car types))
@@ -762,11 +775,15 @@
 	     (if last-commentary
 		 (nconc last-commentary (nreverse commentary))
 		 (nconc (car ps-jsons) `(("commentary" . ,(nreverse commentary)))))))
-	 (reverse ps-jsons))
+	 (nreverse ps-jsons))
 	((proofstate? (car session))
 	 (let ((ps-json (pp-json-proofstate (car session) (reverse commentary))))
 	   (pp-json-proof-session* (cdr session) nil (cons ps-json ps-jsons))))
-	(t (assert (stringp (car session)))
+	((typep (car session) 'simple-condition)
+	 (pp-json-proof-session* (cdr session)
+				 (cons (format nil "~a" (car session)) commentary) ps-jsons))
+	(t (unless (stringp (car session))
+	     (break "Strange session elt: ~a" (car session)))
 	   (pp-json-proof-session* (cdr session) (cons (car session) commentary) ps-jsons))))
 
 ;;; Proofstates
@@ -795,13 +812,15 @@
     pp-json-ml-ps))
 
 (defun pp-json-ml-sequent (seq par-sforms)
-  (with-slots (p-sforms n-sforms hidden-s-forms) seq
+  ;; Can't use with-slots for neg- or pos-sforms, as slot may not be set
+  ;; See neg-s-forms* and pos-s-forms* in eproofcheck.lisp
+  (let ((n-sfrms (neg-s-forms* seq))
+	(p-sfrms (pos-s-forms* seq))
+	(hidn-sfrms (hidden-s-forms seq)))
     `(("tag" . "sequent")
-      ;;,@(when n-sforms `(("antecedents" . ,(pp-json-ml-sforms n-sforms par-sforms))))
-      ("antecedents" . ,(pp-json-ml-sforms n-sforms par-sforms))
-      ("consequents" . ,(pp-json-ml-sforms p-sforms par-sforms))
-      ;;,@(when hidden-s-forms `(("hidden" . ,(pp-json-ml-sforms hidden-s-forms nil))))
-      ("hidden" . ,(pp-json-ml-sforms hidden-s-forms nil))
+      ("antecedents" . ,(pp-json-ml-sforms n-sfrms par-sforms))
+      ("consequents" . ,(pp-json-ml-sforms p-sfrms par-sforms))
+      ("hidden" . ,(pp-json-ml-sforms hidn-sfrms nil))
       )))
 
 (defun pp-json-ml-sforms (sforms par-sforms)
@@ -848,7 +867,8 @@
 
 (defun pp-json-path (th)
   (let ((cpath (context-path th)))
-    (unless (file-equal cpath (current-context-path))
+    (unless ;;(file-equal cpath (current-context-path))
+	(eq cpath (current-context-path))
       (namestring cpath))))
 
 (defmethod pp-json-ml* ((module module))
@@ -950,6 +970,9 @@
     (uiop:ensure-all-directories-exist (list "json/"))
     (dolist (th *prelude-theories*)
       (theory-to-json-file th)
+      (let ((formulas (provable-formulas th)))
+	(dolist (formula formulas)
+	  (collect-json-proof formula)))
       (when (recursive-type? th)
 	(theory-to-json-file (adt-theory th))
 	(when (adt-map-theory th)
@@ -961,15 +984,15 @@
   (dolist (lpair (pvs-library-alist))
     (pp-json-ml-library (cdr lpair))))
 
-(defun pp-json-ml-library (lib &optional (theory-names '("top")))
+(defun pp-json-ml-library (lib &key (file-names '("top")) force?)
   (with-workspace lib
     (unless nil ;(uiop:directory-exists-p "json")
       (uiop:ensure-all-directories-exist (list "json/"))
-      (dolist (thname theory-names)
-	(typecheck-file thname))
+      (dolist (fname file-names)
+	(typecheck-file fname))
       (maphash #'(lambda (thid th)
 		   (declare (ignore thid))
-		   (theory-to-json-file th)
+		   (theory-to-json-file th force?)
 		   (let ((formulas (provable-formulas th)))
 		     (dolist (formula formulas)
 		       (collect-json-proof formula))))
@@ -977,26 +1000,29 @@
 
 (defvar *testing-json* nil)
 
-(defun theory-to-json-file (th)
+(defun theory-to-json-file (th &optional force?)
   (with-workspace th
     (with-context th
-      (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
-	     (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
-	     (mlth (pp-json-ml-theory th))
-	     (thash (print-type-hash))
-	     (mlmod `(("tag" . "module-with-hash")
-		      ("module" . ,mlth)
-		      ("type-hash" . ,thash)))
-	     (json-path (format nil "json/~a.json" (id th))))
-	(uiop:ensure-all-directories-exist (list "json/"))
-	(with-open-file (jdmp json-path
-			      :direction :output :if-exists :supersede
-			      :if-does-not-exist :create)
-	  (json:encode-json mlmod jdmp))
-	(format t "~%Wrote ~a" (truename json-path))
-	(when *testing-json*
-	  (let ((json:*identifier-name-to-key* 'string-downcase))
-	    (json:decode-json-from-source (pathname json-path))))))))
+      (let ((json-path (format nil "json/~a.json" (id th))))
+	(if (and (not force?) (file-exists-p json-path))
+	    (format t "~%~a exists" json-path)
+	    (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
+		   (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
+		   (*pp-json-ml-term-hash* (make-pvs-hash-table))
+		   (mlth (pp-json-ml-theory th))
+		   (thash (print-type-hash))
+		   (mlmod `(("tag" . "module-with-hash")
+			    ("module" . ,mlth)
+			    ("type-hash" . ,thash))))
+	      (uiop:ensure-all-directories-exist (list "json/"))
+	      (with-open-file (jdmp json-path
+				    :direction :output :if-exists :supersede
+				    :if-does-not-exist :create)
+		(json:encode-json mlmod jdmp))
+	      (format t "~%Wrote ~a" (truename json-path))
+	      (when *testing-json*
+		(let ((json:*identifier-name-to-key* 'string-downcase))
+		  (json:decode-json-from-source (pathname json-path))))))))))
 
 (defvar *prover-input-list*)
 
@@ -1041,47 +1067,54 @@
 ;; 	(setq *last-prdata* prdata)
 ;; 	(json:encode-json-alist prdata prfdump)))))
 
-(defun collect-json-proof (formula)
+(defun collect-json-proof (formula &optional force?)
   (let* ((fdecl (get-formula-decl formula))
-	 (*current-context* (context fdecl))
-	 (thdir (format nil "~ajson/~a-proofs"
+	 (thdir (format nil "~ajson/~a-proofs/"
 		  (context-path (module fdecl)) (id (module fdecl))))
-	 (dfile (format nil "~a/~a.json" thdir (id fdecl)))
-	 ;;(*dump-proof-data-to-file* dfile)
-	 (*pp-json-ml-type-hash* (make-pvs-hash-table))
-	 (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
-	 (*log-proofs* t)
-	 (*noninteractive* t)
-	 (*rewrite-msg-off* t) ;; *suppress-printing* isn't enough to shut off these messages
-	 (*multiple-proof-default-behavior* :noquestions)
-	 (def-prf (default-proof fdecl))
-	 (input-list (when def-prf
-		       (flatten-proof-script
-			(editable-justification (script def-prf))))))
-    (format t "~%Generating ~a" dfile)
-    (uiop:ensure-all-directories-exist (list thdir))
-    ;; (with-prover-input-hook 'prover-list-input
-    ;;   (with-prover-output-hook 'pp-json-output-hook
-    ;; 	(with-prover-done-hook 'pp-json-done-hook
-    ;; 	  (prove-formula fdecl))))
-    (let* ((result (prover-init
-		    fdecl
-		    :input-hook (let ((pr-input input-list))
-				  (lambda ()
-				    (if pr-input
-					(let ((inp (pop pr-input)))
-					  (commentary "input: ~a" inp)
-					  inp)
-					'(quit))))))
-	   (prf-session (pp-json-proof-session result)))
-      (with-open-file (str dfile :direction :output :if-exists :supersede)
-	(json:encode-json prf-session str)))
-    (format t "~%Generated size ~d"
-      #+allegro (excl.osi:stat-size (excl.osi:stat dfile))
-      #+sbcl (sb-posix:stat-size (sb-posix:stat dfile)))
-    (when *testing-json*
-      (let ((json:*identifier-name-to-key* 'string-downcase))
-	(json:decode-json-from-source dfile)))))
+	 (dfile #+sbcl (sb-ext:parse-native-namestring
+			(format nil "~a/~a.json" thdir (id fdecl)))
+		#-sbcl (format nil "~a/~a.json" thdir (id fdecl))))
+    (if (and (not force?) (file-exists-p dfile))
+	(format t "~%~a exists" dfile)
+	(let* ((*current-context* (context fdecl))
+	       ;;(*dump-proof-data-to-file* dfile)
+	       (*pp-json-ml-type-hash* (make-pvs-hash-table))
+	       (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
+	       (*pp-json-ml-term-hash* (make-pvs-hash-table))
+	       (*log-proofs* t)
+	       (*noninteractive* t)
+	       (*rewrite-msg-off* t) ;; *suppress-printing* isn't enough to shut off these messages
+	       (*multiple-proof-default-behavior* :noquestions)
+	       (def-prf (default-proof fdecl))
+	       (input-list (when def-prf
+			     (flatten-proof-script
+			      (editable-justification (script def-prf))))))
+	  (uiop:ensure-all-directories-exist (list thdir))
+	  ;; (with-prover-input-hook 'prover-list-input
+	  ;;   (with-prover-output-hook 'pp-json-output-hook
+	  ;; 	(with-prover-done-hook 'pp-json-done-hook
+	  ;; 	  (prove-formula fdecl))))
+	  (format t "~%Rerunning proof")
+	  (let* ((result (prover-init
+			  fdecl
+			  :input-hook (let ((pr-input input-list))
+					(lambda ()
+					  (if pr-input
+					      (let ((inp (pop pr-input)))
+						(commentary "input: ~a" inp)
+						inp)
+					      '(quit))))))
+		 (foo (format t "~%Generating alist"))
+		 (prf-session (pp-json-proof-session result)))
+	    (with-open-file (str dfile :direction :output :if-exists :supersede)
+	      (format t "~%Generating ~a" dfile)
+	      (json:encode-json prf-session str)))
+	  (format t "~%Generated size ~d"
+	    #+allegro (excl.osi:stat-size (excl.osi:stat dfile))
+	    #+sbcl (sb-posix:stat-size (sb-posix:stat dfile)))
+	  (when *testing-json*
+	    (let ((json:*identifier-name-to-key* 'string-downcase))
+	      (json:decode-json-from-source dfile)))))))
 
 (defun pp-json-ml-input (inp)
   (let* ((inp-args (when (listp inp) (pp-json-ml-input-args inp)))
@@ -1135,6 +1168,7 @@
 		       (list (current-input (parent-proofstate ps)))))))
     (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
 	   (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
+	   (*pp-json-ml-term-hash* (make-pvs-hash-table))
 	   (json-ps (pp-json-ml* ps))
 	   (json-state `(("state" . ,json-ps)
 			 ("cmd_history" ,@(mapcar #'(lambda (c) (string (car c)))
@@ -1185,6 +1219,7 @@
 		       (list (current-input (parent-proofstate ps)))))))
     (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
 	   (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
+	   (*pp-json-ml-term-hash* (make-pvs-hash-table))
 	   (json-ps (pp-json-ml* ps))
 	   (json-state `(("state" . ,json-ps)
 			 ("cmd_history" ,@(mapcar #'(lambda (c) (string (car c)))
