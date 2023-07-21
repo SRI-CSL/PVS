@@ -75,9 +75,13 @@
 
 (defparameter *fff* nil)
 
-(defrequest typecheck (filename &optional force?)
+(defrequest typecheck (filename &optional content)
   "Typecheck a file"
   ;; (format t "~%Request tc ~s" filename)
+  (when content
+    ;; Try to write the file
+    (with-open-file (out filename :direction :output :if-exists :supersede)
+      (write content :stream out :escape nil)))
   (push filename *fff*)
   (let* ((theories (pvs:typecheck-file filename force?))
 	 (jtheories (json-theories theories)))
@@ -293,6 +297,10 @@ returning the unique id (within a PVS session)."
 				   (pvs:strim (if (stringp e) e (format nil "~a" e))))
 			 commentary)))
       (obj `(("id" . ,(string id))
+	     ("ps-id" . ,(unique-ps-id ps))
+	     ("parent" . (if (parent-proofstate ps)
+			     (unique-ps-id (parent-proofstate ps))
+			     "None"))
 	     ("status" . ,(string status))
 	     ,@(when commentary `(("commentary" . ,commentary)))
 	     ,@(when action `(("action" . ,action)))
