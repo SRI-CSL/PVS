@@ -518,7 +518,7 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 .PHONY : all parser yices emacs prelude-files-and-regions
 
-all : $(HOME)/quicklisp $(pvs-images) $(if $(yices2-tar), yices) prelude-files-and-regions etags
+all : $(HOME)/quicklisp $(pvs-images) yices prelude-files-and-regions etags
 
 devel : $(allegro-devel) 
 
@@ -532,6 +532,7 @@ prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
 # quicklisp automatically.
 
 # First install ~/quicklisp; any Common Lisp will do that
+ifeq ("$(wildcard $(HOME)/quicklisp/.*)","")
 ifneq ($(SBCL),)
 $(HOME)/quicklisp : src/quicklisp.lisp
 	$(SBCL) --load src/quicklisp.lisp \
@@ -542,6 +543,7 @@ $(HOME)/quicklisp : src/quicklisp.lisp
 	$(ALLEGRO) -L "src/quicklisp.lisp" \
                    -e "(quicklisp-quickstart:install)" \
                    --kill
+endif
 endif
 
 # Now make sure init file is set up to automatically load quicklisp/setup.lisp
@@ -598,6 +600,7 @@ yices2-tar = $(yices2-url)/$(yices2-version)/yices-$(yices2-version)-x86_64-appl
 endif
 endif
 endif
+
 yices1-tgt = yices/$(PLATFORM)/yices-$(yices1-version)/bin/yices
 yices2-tgt = yices/$(PLATFORM)/yices-$(yices2-version)/bin/yices
 yices1-lnk = bin/$(PLATFORM)/yices1
