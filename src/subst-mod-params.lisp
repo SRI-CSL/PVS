@@ -206,7 +206,6 @@
 		 :type-value ntypeval
 		 :type ntype
 		 :generated-by fml)))
-    ;;(break "make-new-theory-inst-param formal-type-decl")
     (values nfml (mk-actual ntype))))
 
 (defmethod make-new-theory-inst-param ((fml formal-const-decl) theory nalist)
@@ -218,7 +217,6 @@
 		 :generated-by fml))
 	 (res (mk-resolution nfml (mk-modname (id theory)) ntype))
 	 (nname (mk-name-expr (id nfml) nil nil res)))
-    ;;(break "make-new-theory-inst-param formal-const-decl")
     (values nfml (mk-actual nname))))
 
 (defmethod subst-theory-params (term (alist cons))
@@ -417,15 +415,14 @@
             modinst
             (change-class (copy modinst :actuals actuals)
                           'datatype-modname)))
-      (adt-modinst* postypes (cdr acts) (cdr formals) modinst
-                    (cons (if (and (not (formal-subtype-decl? (car formals)))
-                                   (member (car formals) postypes
-                                           :test #'same-id
-                                           :key #'(lambda (x)
-                                                    (or (print-type x) x))))
-                              (supertype-actual (car acts))
-                              (car acts))
-                          nacts))))
+      (let ((nact (if (and (not (formal-subtype-decl? (car formals)))
+                           (member (car formals) postypes
+                                   :test #'same-id
+                                   :key #'(lambda (x)
+                                            (or (print-type x) x))))
+                      (supertype-actual (car acts))
+                      (car acts))))
+	(adt-modinst* postypes (cdr acts) (cdr formals) modinst (cons nact nacts)))))
 
 (defun supertype-actual (act)
   (let* ((aty (type-value act))
@@ -1310,12 +1307,12 @@
 
 (defmethod subst-mod-params* ((nrectype inline-recursive-type) modinst bindings)
   (assert (generated-by nrectype))
-  (break "check this")
   (let ((nconstr (subst-mod-params* (constructors nrectype) modinst bindings))
 	(ntype-name (subst-mod-params* (adt-type-name nrectype) modinst bindings)))
     ;; importings
     ;; adt-theory
     ;; decl-formals
+    (break "check this")
     (multiple-value-bind (nass abindings)
 	(subst-mod-params-decls (assuming nrectype) modinst bindings (module nrectype))
       (multiple-value-bind (ngen #| tbindings |#)
@@ -1812,9 +1809,9 @@
     ;;   (break "type-name"))
     (cond ((actual? bdg)
 	   (if (strong-tc-eq (type-value bdg) type) type (type-value bdg))
-	   ;; sufficient since we know
-	   ;; type name was found on the bindings, and the corresponding
-	   ;; actual is there.  Here we actally do the substitution.
+	     ;; sufficient since we know
+	     ;; type name was found on the bindings, and the corresponding
+	     ;; actual is there.  Here we actally do the substitution.
 	   )
 	  ((decl-formal-type? bdg)
 	   ;;(assert (memq bdg (decl-formals (current-declaration))))
@@ -2272,6 +2269,8 @@
 
 (defmethod subst-mod-params* ((expr constructor-name-expr) modinst bindings)
   (declare (ignore modinst bindings))
+  ;; (assert (or (assq (declaration expr) bindings)
+  ;; 	      (not (assq (declaration (adt expr)) bindings))))
   (let ((nexpr (call-next-method)))
     (cond ((eq nexpr expr)
 	   expr)
@@ -2285,14 +2284,39 @@
 
 (defmethod subst-mod-params* ((expr recognizer-name-expr) modinst bindings)
   (declare (ignore modinst bindings))
-  (let ((nexpr (call-next-method)))
-    (cond ((eq nexpr expr)
-	   expr)
-	  ((recognizer-name-expr? nexpr)
-	   (lcopy nexpr
-	     :constructor-name nil
-	     :unit? 'unbound))
-	  (t nexpr))))
+  (if (and (not (assq (declaration expr) bindings))
+	   (assq (declaration (adt expr)) bindings))
+      (let* (;;(adt (adt (adt expr)))
+	     (constr (constructor expr))
+	     (accs (accessors constr))
+	     (sconstr (subst-mod-params* constr modinst bindings))
+	     (bd (make-new-bind-decl (if accs (range (type sconstr)) (type sconstr))))
+	     (var (make-variable-expr bd))
+	     (lex (if accs
+		      (make-recognizer-eqn sconstr bd var)
+		      (make!-lambda-expr (list bd) (make!-equation var sconstr)))))
+	lex)
+      (let ((nexpr (call-next-method)))
+	(cond ((eq nexpr expr)
+	       expr)
+	      ((recognizer-name-expr? nexpr)
+	       (lcopy nexpr
+		 :constructor-name nil
+		 :unit? 'unbound))
+	      (t nexpr)))))
+
+;; Need to construct, e.g., ∃ (x: T, y: list[T]): sconstr = cons(x, y)
+(defun make-recognizer-eqn (sconstr bd var)
+  (let* ((dtypes (domain-types (type sconstr)))
+	 (bds (make-new-bind-decls dtypes))
+	 (vars (mapcar #'make-variable-expr bds))
+	 (app (make!-application* sconstr vars))
+	 (eqn (make!-equation var app))
+	 (exists-ex (make!-exists-expr bds eqn))
+	 (lex (make!-lambda-expr (list bd) exists-ex)))
+    lex))
+
+		    
 
 (defmethod subst-mod-params* ((bd binding) modinst bindings)
   (let* ((ntype (subst-mod-params* (type bd) modinst bindings))
@@ -2520,7 +2544,9 @@
 				 (substit (range optype)
 				   (acons (domain optype) arg nil))
 				 (range optype)))
-		      (nex (lcopy expr :operator nop :argument arg :type rtype)))
+		      (nex (if (lambda-expr? nop)
+			       (make!-application nop arg)
+			       (lcopy expr :operator nop :argument arg :type rtype))))
 		 ;; Note: the copy :around (application) method takes care of
 		 ;; changing the class if it is needed.
 		 nex))))))
