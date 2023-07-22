@@ -1384,14 +1384,14 @@ resolution with a macro matching the signature of the arguments."
           (setf (current-theory-name) cthinst
 		(current-declaration) lhs)
           (unwind-protect
-               (set-type-mapping-rhs lhs rhs cthinst mapping)
+               (set-type-mapping-rhs lhs rhs cthinst map)
             (setf (current-theory-name) ctn
 		  (current-declaration) cdecl))
 	  (assert (every #'(lambda (fp)
 			     (or (not (decl-formal? fp))
 				 (memq fp (decl-formals lhs))))
 			 (free-params rhs))))
-        (set-type-mapping-rhs lhs rhs cthinst mapping))))
+        (set-type-mapping-rhs lhs rhs cthinst map))))
 
 (defmethod set-type-mapping ((map mapping-rename) thinst)
   (with-slots (lhs rhs) map
