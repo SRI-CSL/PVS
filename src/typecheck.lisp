@@ -453,7 +453,7 @@ TCCs are generated, and finally exportings are updated."
     (assert (resolution use1))
     (setf (resolutions inst) (resolutions use1))
     (let ((*ignore-exportings* t)
-	  (supinst (adt-modinst use1)))
+	  (supinst (if (mappings inst) use1 (adt-modinst use1))))
       (mapc #'typecheck-using
 	    `(,@(unless (eq supinst inst) (list supinst))
 		,@(when use2 (list use2))
