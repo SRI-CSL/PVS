@@ -471,6 +471,7 @@ looking in bindings and substs."
 	  ;; To make certain that subsumption is correct, run
 	  ;; simplify-expression with :interactive? t
 	  (break "Something may be wrong with subsumes"))
+	(when (eq kind 'mapped-axiom) (assert (formula-decl? type)))
 	(add-tcc-comment kind expr type (list 'subsumed match) match))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
@@ -522,6 +523,8 @@ looking in bindings and substs."
 		  (coverage nil)
 		  (disjointness nil)
 		  (existence nil)
+		  (mapped-axiom
+		   (format nil "for axiom ~a.~a" (id (module type)) (id type)))
 		  ((subtype termination-subtype)
 		   (format nil "expected type ~a"
 		     (unpindent type 19 :string t :comment? t)))
@@ -1366,14 +1369,14 @@ which is the transitive closure of the immediate assuming instances."
 			  ;;(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
 			  (if ndecl
 			      (add-tcc-comment
-			       'mapped-axiom nil modinst
+			       'mapped-axiom modinst axiom
 			       (cons 'map-to-nonempty 
 				     (format nil
 					 "%~a~%  % was not generated because ~a is non-empty"
 				       (unpindent ndecl 2 :string t :comment? t)
 				       (unpindent netype 2 :string t :comment? t))))
 			      (add-tcc-comment
-			       'mapped-axiom nil modinst)))))))))))))
+			       'mapped-axiom modinst axiom)))))))))))))
 
 ;; (defun generate-mapped-axiom (modinst axiom-decl mapped-axiom-defn)
 ;;   (unless (some #'(lambda (decl)
@@ -2232,6 +2235,7 @@ the same id for the substitution."
       ;; (assert (or (place expr)
       ;; 		  (let ((genby (assq expr *set-type-generated-terms*)))
       ;; 		    (and genby (place (cadr genby))))))
+      (when (eq kind 'mapped-axiom) (assert (formula-decl? type)))
       (unless place (break "add-tcc-comment: no place?"))
       (unless (member tcc-comment (cdr decl-tcc-comments) :test #'equal)
 	(if decl-tcc-comments
@@ -2274,7 +2278,10 @@ list of kind, etc."
 		   (disjointness nil)
 		   (existence nil)
 		   (mapped-axiom
-		    (unpindent type 4 :string t :comment? t))
+		    (assert (formula-decl? type))
+		    (format nil "for axiom ~a.~a" (id (module type)) (id type))
+		    ;;(unpindent type 4 :string t :comment? t)
+		    )
 		   ((subtype termination-subtype)
 		    (format nil "expected type ~a"
 		      (unpindent type 19 :string t :comment? t)))
@@ -2284,11 +2291,10 @@ list of kind, etc."
 		  (format nil "(at line ~d, column ~d)"
 		    (starting-row place) (starting-col place)))))
     (format nil
-	"% The ~@[~a ~]~a TCC ~@[~a~] in decl ~a for~@[~% % term generated from ~a~]~
+	"% The ~@[~a ~]~a TCC ~@[~a~] for~@[~% % term generated from ~a~]~
                         ~:[ ~;~%    % ~]~@[~a~]~@[~%    % ~a~]~%  ~a"
-      preason kind plstr ;(car genby)
+      preason kind plstr
       (if (importing? decl) "IMPORTING" (id decl))
-      nil
       (> (+ (length preason)
 	    (length (string kind))
 	    (length plstr)
