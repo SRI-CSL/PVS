@@ -1384,14 +1384,14 @@ resolution with a macro matching the signature of the arguments."
           (setf (current-theory-name) cthinst
 		(current-declaration) lhs)
           (unwind-protect
-               (set-type-mapping-rhs lhs rhs cthinst)
+               (set-type-mapping-rhs lhs rhs cthinst mapping)
             (setf (current-theory-name) ctn
 		  (current-declaration) cdecl))
 	  (assert (every #'(lambda (fp)
 			     (or (not (decl-formal? fp))
 				 (memq fp (decl-formals lhs))))
 			 (free-params rhs))))
-        (set-type-mapping-rhs lhs rhs cthinst))))
+        (set-type-mapping-rhs lhs rhs cthinst mapping))))
 
 (defmethod set-type-mapping ((map mapping-rename) thinst)
   (with-slots (lhs rhs) map
@@ -1415,10 +1415,10 @@ resolution with a macro matching the signature of the arguments."
          (let ((nmodname (subst-mod-params (modname rdecl) thinst (module ldecl))))
            (setf (modname rdecl) nmodname)))))))
 
-(defun set-type-mapping-rhs (lhs rhs thinst)
-  (set-type-mapping-rhs* (declaration lhs) lhs rhs thinst))
+(defun set-type-mapping-rhs (lhs rhs thinst mapping)
+  (set-type-mapping-rhs* (declaration lhs) lhs rhs thinst mapping))
 
-(defmethod set-type-mapping-rhs* ((ldecl type-decl) lhs rhs thinst)
+(defmethod set-type-mapping-rhs* ((ldecl type-decl) lhs rhs thinst mapping)
   (declare (ignore lhs thinst))
   (unless (type-value rhs)
     (typecheck* rhs nil 'type nil))
@@ -1427,13 +1427,13 @@ resolution with a macro matching the signature of the arguments."
       (type-error (expr rhs) "Type expected here"))
   (untypecheck* (expr rhs)))
 
-(defmethod set-type-mapping-rhs* ((ldecl module) lhs rhs thinst)
-  (set-type-mapping-rhs*-theoryref (id ldecl) lhs rhs thinst))
+(defmethod set-type-mapping-rhs* ((ldecl module) lhs rhs thinst mapping)
+  (set-type-mapping-rhs*-theoryref (id ldecl) lhs rhs thinst mapping))
 
-(defmethod set-type-mapping-rhs* ((ldecl theory-reference) lhs rhs thinst)
-  (set-type-mapping-rhs*-theoryref (id (theory-name ldecl)) lhs rhs thinst))
+(defmethod set-type-mapping-rhs* ((ldecl theory-reference) lhs rhs thinst mapping)
+  (set-type-mapping-rhs*-theoryref (id (theory-name ldecl)) lhs rhs thinst mapping))
 
-(defun set-type-mapping-rhs*-theoryref (thid lhs rhs thinst)
+(defun set-type-mapping-rhs*-theoryref (thid lhs rhs thinst mapping)
   (declare (ignore lhs thinst))
   (let ((threses (remove-if
                      (complement
@@ -1457,7 +1457,7 @@ resolution with a macro matching the signature of the arguments."
                (set-type-mappings (name-to-modname (expr rhs))
                                   (declaration (expr rhs))))))))
   
-(defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs name) rhs thinst)
+(defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs name) rhs thinst mapping)
   "Basically runs set-type on the rhs using the substituted type from the lhs.
 The first arguement is just a method discriminator."
   (assert (eq ldecl (declaration lhs)))
@@ -1469,7 +1469,21 @@ The first arguement is just a method discriminator."
     ;;(assert (compatible? (type (expr rhs)) stype))
     (set-type* (expr rhs) stype)))
 
-(defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs mapping-lhs) rhs thinst)
+(defmethod set-type-mapping-rhs* ((ldecl adt-constructor-decl) (lhs name) rhs thinst mapping)
+  "Basically runs set-type on the rhs using the substituted type from the lhs.
+The first arguement is just a method discriminator."
+  (assert (eq ldecl (declaration lhs)))
+  (setf (type-value rhs) nil)
+  (unless (resolution thinst)
+    (setf (resolutions thinst)
+	  (list (mk-resolution (module ldecl) thinst nil))))
+  (let* ((lhs-type (type (resolution lhs)))
+	 (sup-type (find-adt-supertype lhs-type))
+	 (subst-type (subst-mod-params sup-type thinst (module ldecl) ldecl)))
+    (set-type* (expr rhs) subst-type)
+    ))
+
+(defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs mapping-lhs) rhs thinst mapping)
   "Basically runs set-type on the rhs, using the substituted form of the
 type of the lhs."
   ;; Note: lhs has dformals, but these are not the same as the dformals
@@ -2813,13 +2827,16 @@ type of the lhs."
 		    ((>= num -32768) *int16*)
 		    ((>= num -2147483648) *int32*)
 		    ((>= num -9223372036854775808) *int64*)
-		    (t *integer*))
+		    ((and (evenp num) *even_negint*))
+		    ((and (oddp num) *odd_negint*))
+		    (t (or *negint* *integer*)))
 	      (cond ((< num 128) *uint8*)
 		    ((< num 32768) *uint16*)
 		    ((< num 2147483648) *uint32*)
 		    ((< num 9223372036854775808) *uint64*)
-		    (t *integer*))))
-      (or *rational* *real* *number_field*)))
+		    ((and (evenp num) *even_nat*))
+		    (t (or *posint* *integer*)))))
+      (or (if (minusp num) *negrat* *posrat*) *rational* *real* *number_field*)))
 
 (defun get-expr-number-class (ex num)
   (if (integerp num)
@@ -4005,8 +4022,10 @@ type of the lhs."
   (ground-arithmetic-term? (argument expr)))
 
 (defmethod arithmetic-op? ((ex name-expr))
-  (and (memq (id ex) '(+ - * /))
-       (eq (id (module-instance (car (resolutions ex)))) '|number_fields|)))
+  (or (and (memq (id ex) '(+ - * /))
+	   (eq (id (module-instance (car (resolutions ex)))) '|number_fields|))
+      (and (eq (id ex) 'exp2)
+	   (eq (id (module-instance (car (resolutions ex)))) '|exp2|))))
 
 (defmethod arithmetic-op? (ex)
   (declare (ignore ex))
@@ -4035,7 +4054,8 @@ type of the lhs."
       (< (< a1 a2))
       (<= (<= a1 a2))
       (> (> a1 a2))
-      (>= (>= a1 a2)))))
+      (>= (>= a1 a2))
+      (exp2 (expt 2 a1)))))
 
 (defmethod get-arithmetic-value ((expr conjunction))
   (and (get-arithmetic-value (args1 expr))
