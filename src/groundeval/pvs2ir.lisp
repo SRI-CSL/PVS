@@ -503,7 +503,7 @@
 (defun mk-ir-adt-recordtype (field-types constructors)
 ;  (when (and (consp field-types) (null (ir-id (car field-types))))(break "~a" (print-ir field-types)))
   (make-instance 'ir-adt-recordtype
-		 :ir-field-types field-types
+		 :ir-field-types field-types ;; ir-fieldtype with id and type
 		 :ir-constructors constructors))
 
 (defun mk-ir-adt-constructor-recordtype (constructor-id field-types adt-name)
@@ -1375,9 +1375,11 @@
 	    (mk-ir-adt-recordtype (list (mk-ir-fieldtype index-id
 							 index-type))
 				  (loop for con in constructors
-					collect (cons (pvs2ir-unique-decl-id (con-decl con))
-						      (loop for acc in (acc-decls con)
-							    collect (pvs2ir-unique-decl-id acc)))))))
+					collect (cons (mk-ir-fieldtype (pvs2ir-unique-decl-id (con-decl con)) nil) ;; constructor has no type
+						(loop for acc in (acc-decls con)
+							    collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
+									(pvs2ir-type (range (type acc))))))
+				  ))))
 	 (adt-type-name (mk-ir-typename adt-adt-id adt-enum-or-record-type nil nil adt-decl)));;need to add params/nil for now
     (push adt-type-name *ir-type-info-table*)
     (setf (ir-type-value adt-decl)
@@ -2525,7 +2527,7 @@
 
 
 ;;had to add method for ir-adt-recordtype since the type here is the adt and not the constructor,
-;;whereas in the record case, the field-assign does not have a type s othat ir-expr-type11 has to
+;;whereas in the record case, the field-assign does not have a type so that ir-expr-type11 has to
 ;;be computed from the ir-type of the field.  
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-adt-recordtype) lhs rhs-irvar ir-exprvar bindings)
     (cond ((consp lhs)
