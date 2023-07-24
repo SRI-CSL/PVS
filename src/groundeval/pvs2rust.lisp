@@ -10,7 +10,6 @@
 (defvar *pvs2rust-preceding-theories* nil)
 (defvar *ir-formal-consts* nil)
 (defvar *functions* nil) ;; list of all fn names
-;(defvar *output* nil) ;; datatype declaration must be re written to remove this
 (defvar *header* nil) ;; rust code containing type, const, datatype & misc declarations
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
@@ -253,7 +252,7 @@
 					;(format t "~%Adding definition for shared accessor: ~a" adecl-id)
       (ir einfo))))
 	  
-(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty ; only naming was changed
+(defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty
   (let* ((adt-type (type-value adt-decl))
 	 (adt-adt-id (format nil "~a" adt-type))
 	 (adt (adt adt-type))
@@ -264,16 +263,13 @@
 	  (if (enumtype? adt)
 	      index-type
 	    (mk-ir-adt-recordtype (list (mk-ir-fieldtype index-id
-		;; TODO Replace accessor unique decl by field type
-		;; then do the required corrections in ir2c
-		;; then use that to detect the used formals inside an ir-constructor (needed for constructor decl and call)
-		;; use it for decl and call of datatype also
-		;; OR use Phantom data in all constructors (easier but not beautifull)
 							 index-type))
 				  (loop for con in constructors
-					collect (cons (pvs2ir-unique-decl-id (con-decl con))
-						      (loop for acc in (acc-decls con)
-							    collect (pvs2ir-unique-decl-id acc)))))))
+					collect (cons (mk-ir-fieldtype (pvs2ir-unique-decl-id (con-decl con)) nil) ;; constructor has no type
+						(loop for acc in (acc-decls con)
+							    collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
+									(pvs2ir-type (range (type acc))))))
+				  ))))
 	 (adt-type-name (mk-ir-typename adt-adt-id adt-enum-or-record-type nil nil adt-decl)));;need to add params/nil for now
     (push adt-type-name *ir-type-info-table*)
     (setf (ir-type-value adt-decl)
