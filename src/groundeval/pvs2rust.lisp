@@ -268,7 +268,8 @@
 					collect (cons (mk-ir-fieldtype (pvs2ir-unique-decl-id (con-decl con)) nil) ;; constructor has no type
 						(loop for acc in (acc-decls con)
 							    collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
-									(pvs2ir-type (range (type acc))))))
+									(range (type acc)))
+						))
 				  ))))
 	 (adt-type-name (mk-ir-typename adt-adt-id adt-enum-or-record-type nil nil adt-decl)));;need to add params/nil for now
     (push adt-type-name *ir-type-info-table*)
@@ -1285,6 +1286,7 @@ mod pvs2rust {
 	(loop for constructor in (ir-constructors ir-typ) collect
 		(loop for accessor in constructor collect
 			(format t "~%AAAAA ~a ~a" accessor (type-of accessor))))
+	(break "")
 	(if recursion-guard nil 
 	(let* ((utf nil))
 		(loop for constructor in (ir-constructors ir-typ)
