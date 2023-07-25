@@ -3,8 +3,6 @@
 ;; See my report for supported subset, or contact me : nathan[dot]gasc[at]gmx[dot]fr
 ;; Manual : https://carnets.binets.fr/szf64Md4QdqVJmGVLp6FEg?view
 
-;; make mod per theory for export
-
 
 (in-package :pvs)
 (defvar *pvs2rust-preceding-theories* nil)
@@ -265,11 +263,10 @@
 	    (mk-ir-adt-recordtype (list (mk-ir-fieldtype index-id
 							 index-type))
 				  (loop for con in constructors
-					collect (cons (mk-ir-fieldtype (pvs2ir-unique-decl-id (con-decl con)) nil) ;; constructor has no type
-						(loop for acc in (acc-decls con)
-							    collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
-									(range (type acc)))
-						))
+					collect (loop for acc in (acc-decls con)
+							collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
+								(range (type acc)))
+						)
 				  ))))
 	 (adt-type-name (mk-ir-typename adt-adt-id adt-enum-or-record-type nil nil adt-decl)));;need to add params/nil for now
     (push adt-type-name *ir-type-info-table*)
@@ -1047,9 +1044,14 @@ mod pvs2rust {
 		(adt-type (type-value decl))
 		(adt (adt adt-type))
 		(constructors (constructors adt))
-		(ir-formal-types (loop for arg in *ir-theory-formals* when (is-var-type-actual arg) collect arg))
-		(rust-formal-types (format nil "<~{~a: RegularOrd + 'static,~}>" (loop for ft in ir-formal-types collect (ir-name ft))))
-		(rhs-generics (format nil "<~{~a,~}>" (loop for ft in ir-formal-types collect (ir-name ft)))) ;; <btree__t>
+		;; The formals used in the datatype are those used by all constructor
+		(ir-formal-types (let* ((ret nil))
+						 	(loop for constructor in constructors
+								collect (setf ret (concat-lists ret (constructor-formals constructor))))
+							(remove-duplicates ret :test 'string=)
+						 ))
+		(rust-formal-types (format nil "<~{~a: RegularOrd + 'static,~}>" ir-formal-types))
+		(rhs-generics (format nil "<~{~a,~}>" ir-formal-types)) ;; <btree__t>
 		(*output* "")
 	) 
     (setf *functions* (cons "" nil))
@@ -1058,23 +1060,25 @@ mod pvs2rust {
 	;; --- ENUM CONSTRUCTION ---
 	(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, Hash)]~%pub enum ~a~a{" *output* name rust-formal-types))
 	(loop for constructor in constructors
-		collect (let* ((cname (decl-id (con-decl constructor))))
-			(setf *output* (format nil "~a~%~a(~a~a)," *output* cname cname rhs-generics))
+		collect (let* ((cname (decl-id (con-decl constructor)))
+						(cons-formals (constructor-formals constructor)) ; we get the exact used constructors 
+						(rust-formals-string (if cons-formals (format nil "<~{~a,~}>" cons-formals) "")))
+			(setf *output* (format nil "~a~%~a(~a~a)," *output* cname cname rust-formals-string))
 		)
 	)
 	(setf *output* (format nil "~a~%}~%" *output*))
 
 	;; --- STRUCTS CONSTRUCTION ---
 	(loop for constructor in constructors
-		collect (let* ((cname (decl-id (con-decl constructor))))
-			(progn 
-				(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, Hash)]~%pub struct ~a~a {" *output* cname rust-formal-types))
-				(loop for accessor in (acc-decls constructor)
-					collect (progn 
-                    (setf *output* (format nil "~a~%~a: Rc<~a>," *output* (decl-id accessor) (ir2rust-type (pvs2ir-type (range (type accessor)))))))
-				)
-                (setf *output* (format nil "~a~%}~%" *output* cname))
+		collect (let* ((cname (decl-id (con-decl constructor)))
+						(cons-formals (constructor-formals constructor)) ; we get the exact used constructors 
+						(rust-formals-string (if cons-formals (format nil "<~{~a : RegularOrd + 'static,~}>" cons-formals) "")))
+			(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, Hash)]~%pub struct ~a~a {" *output* cname rust-formals-string))
+			(loop for accessor in (acc-decls constructor)
+				collect (progn 
+				(setf *output* (format nil "~a~%~a: Rc<~a>," *output* (decl-id accessor) (ir2rust-type (pvs2ir-type (range (type accessor)))))))
 			)
+			(setf *output* (format nil "~a~%}~%" *output* cname))
 		)
 	)
 
@@ -1183,6 +1187,14 @@ mod pvs2rust {
 	*output*)
   (break "Type decl is not adt-type-decl")))
 
+(defun constructor-formals (pvs-constructor)
+	(let* ((ret nil))
+		(loop for accessor in (acc-decls pvs-constructor) collect
+			(setf ret (concat-lists ret (used-formals (pvs2ir-type (range (type accessor)))))))
+		(remove-duplicates ret :test 'string=)
+	)
+)
+
 ;; IR 2 RUST TYPES , takes ir-type returns string, it also adds the type definition to *header* if needed
 
 (defmethod ir2rust-type ((ir-typ ir-subrange))
@@ -1196,7 +1208,7 @@ mod pvs2rust {
 
 (defmethod ir2rust-type ((ir-type ir-typename)) ; if recordtype build struct, else makes a type declaration
   (with-slots (ir-type-id ir-type-defn type-declaration ir-actuals) ir-type
-	(let* ((used-formals (remove-duplicates (used-type-formals ir-type-defn nil) :test 'string=))
+	(let* ((used-formals (used-formals ir-type-defn))
 			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a : RegularOrd + 'static,~}>" used-formals) ""))
 			(formals-rust (if (consp used-formals) (format nil "<~{~a,~}>" used-formals) "")))
 		(if (member ir-type-id *type-defs* :test 'string=) nil
@@ -1225,7 +1237,7 @@ mod pvs2rust {
 (defmethod ir2rust-type ((ir-typ ir-recordtype)) 
 	(with-slots (ir-label ir-field-types) ir-typ
 		(let* ((*hash* "")
-			(used-formals (remove-duplicates (used-type-formals ir-typ nil) :test 'string=))
+			(used-formals (used-formals ir-typ))
 			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a : RegularOrd + 'static,~}>" used-formals) ""))
 			(formals-rust (if (consp used-formals) (format nil "<~{~a,~}>" used-formals) "")))
 			(loop for field in ir-field-types 
@@ -1257,6 +1269,10 @@ mod pvs2rust {
   (format t "~%~a ~a ~a" ir-typ (type-of ir-typ) (print-ir ir-typ))
   (break "Unsupported type"))
 
+(defun used-formals (ir-type)
+	(let* ((formals (used-type-formals ir-type nil)))
+		(remove-duplicates formals :test 'string=))
+)
 
 (defmethod used-type-formals ((ir-typ ir-funtype) recursion-guard) 
 	(with-slots (ir-domain ir-range) ir-typ 
@@ -1283,15 +1299,11 @@ mod pvs2rust {
 )
 
 (defmethod used-type-formals ((ir-typ ir-adt-recordtype) recursion-guard) 
-	(loop for constructor in (ir-constructors ir-typ) collect
-		(loop for accessor in constructor collect
-			(format t "~%AAAAA ~a ~a" accessor (type-of accessor))))
-	(break "")
 	(if recursion-guard nil 
 	(let* ((utf nil))
 		(loop for constructor in (ir-constructors ir-typ)
-			collect (loop for accessor in (acc-decls constructor)
-				collect (setf utf (concat-lists utf (used-type-formals (pvs2ir-type (range (type accessor))) recursion-guard)))
+			collect (loop for accessor in constructor
+				collect (setf utf (concat-lists utf (used-type-formals (pvs2ir-type (ir-vtype accessor)) t)))
 			)
 		)
 	utf
@@ -1306,8 +1318,7 @@ mod pvs2rust {
 (defmethod used-type-formals ((ir-typ t) recursion-guard)
 	nil)
 
-;;TODO
-(defun used-type-formals-constructor (constructor))
+;; --- UTILS ---
 
 (defun concat-lists (seq1 seq2)
   (if (null seq1)
