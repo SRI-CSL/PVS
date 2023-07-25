@@ -2576,8 +2576,8 @@ Note that the lists might not be the same length."
     (load-library-strategy-file lib-path)))
 
 (defun load-library-strategy-file (lib)
-  (let* (#+allegro
-	 (sys:*load-search-list* *pvs-library-path*)
+  (let* (#+allegro (sys:*load-search-list* *pvs-library-path*)
+	 #+sbcl (sb-unix::*on-dangerous-wait* nil)
 	 (file (make-pathname :directory (namestring lib) :name "pvs-strategies")))
     (when (file-exists-p file)
       (let ((fwd (file-write-time file))

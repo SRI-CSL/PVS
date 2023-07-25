@@ -219,7 +219,7 @@ intervenes."
   ;; 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
   (setq comint-interrupt-regexp  "^  Interactive interrupt at")
   (setq comint-continue ":continue")
-  (setq ilisp-error-regexp "^[ \t]restarts (invokable by number or by possibly-abbreviated name):$")
+  (setq ilisp-error-regexp "^0\\(\\[[0-9]+\\)?\\] $")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
 (defun pvs-allegro-binary-extension ()
