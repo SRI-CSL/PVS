@@ -5882,6 +5882,57 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
       (json:encode-json diffs df))
     (format t "~%Found ~a diffferences" (length diffs))))
 
+#+sbcl
+(defun image-startup ()
+  ;; (asdf/source-registry:initialize-source-registry)
+  (setq *started-with-minus-q*
+	(let ((mq (environment-variable "PVSMINUSQ")))
+	  (and mq (not (equalp mq "")))))
+  (setq *noninteractive*
+	(let ((ni (environment-variable "PVSNONINTERACTIVE")))
+	  (and ni (not (equal ni "")))))
+  (setq *pvs-emacs-interface*
+	(let ((ei (environment-variable "PVSINEMACS")))
+	  (and ei (not (equal ei "")))))
+  (setq *noninteractive*
+	(let ((ni (environment-variable "PVSNONINTERACTIVE")))
+	  (and ni (not (equal ni "")))))
+  (setq *noninteractive-timeout*
+	(let ((to (environment-variable "PVSTIMEOUT")))
+	  (and to (ignore-errors (parse-integer to)))))
+  (setq *pvs-verbose*
+	(let ((str (environment-variable "PVSVERBOSE")))
+	  (when str
+	    (or (ignore-errors (parse-integer str)) 0))))
+  (setq *pvs-library-path* (get-pvs-library-path))
+  (load-pvs-patches)
+  (let ((evalload (environment-variable "PVSEVALLOAD")))
+    (when evalload
+      (multiple-value-bind (ignore error)
+	  (ignore-errors (eval (read-from-string evalload)))
+	(declare (ignore ignore))
+	(when error
+	  (pvs-message "Error executing ~a:~% ~a" evalload error)))))
+  (let ((port (environment-variable "PVSPORT")))
+    (when port
+      (pvs-ws:start-pvs-server :port (parse-integer port))))
+  (sb-impl::toplevel-init))
+
+#+sbcl
+(defun make-new-pvs-image (name)
+  "Creates a new pvs image of the given name, using sb-ext:save-lisp-and-die."
+  (if (string= name "pvs-sbclisp")
+      (error "Can't reuse the pvs-sbclisp name")
+      (let* ((platform (pvs-platform))
+	     (platform-dir (format nil "~a/bin/~a/" *pvs-path* platform))
+	     (build-dir (format nil "~aruntime/" platform-dir))
+	     (image (format nil "~a~a" build-dir name)))
+	(sb-ext:save-lisp-and-die
+	 image
+	 :toplevel (function image-startup)
+	 :executable t
+	 :save-runtime-options t))))
+
 ;; (defmethod initialize-instance :around ((te type-name) &rest ia)
 ;;   (declare (ignore ia))
 ;;   (call-next-method)

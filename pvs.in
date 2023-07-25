@@ -101,6 +101,8 @@ do
 	    exit 1;;
        esac
        shift;;
+     -image) PVSIMAGE="$2"
+	     shift;;
      -load-after) loadafter=$loadafter" -load $2"
                   shift;;
      -runtime) pvsruntime=1;;
@@ -305,7 +307,11 @@ if [ -z "$PVSLISP" ]
              exit 1
         fi
 fi
-PVSIMAGE=pvs-$PVSLISP
+
+# If PVSIMAGE is set, PVSLISP must be sbclisp
+if [ "$PVSIMAGE" ]; then PVSLISP=sbclisp; fi
+# Set PVSIMAGE if not already given
+PVSIMAGE=${PVSIMAGE:=pvs-$PVSLISP}
 
 if [ -d $PVSBINPATH/devel -a -e $PVSBINPATH/devel/$PVSIMAGE -a ! "$pvsruntime" ]
 then
