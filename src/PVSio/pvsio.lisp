@@ -73,36 +73,31 @@ To change output prompt '~a':
 " *pvsio-promptin* *pvsio-promptout*))
 
 (defun evaluation-mode-pvsio (theoryref &optional input tccs? (banner? t))
-  (multiple-value-bind (dir file thname)
-      (get-theory-ref theoryref)
-    (declare (ignore file))
-    (unless thname
-      (error "No theory name found in ~s" theoryref))
-    (with-workspace dir
-      (let ((theory (get-typechecked-theory (or thname fname))))
-	(with-open-file 
-	      (*error-output*
-	       (merge-pathnames (format nil "~a.log" (or thname fname)))
-	       :direction :output 
-	       :if-does-not-exist :create
-	       :if-exists (if *pvs-emacs-interface* :supersede :append))
-	    (let ((*pvstrace-wrappers* nil))
-	      (unwind-protect
-		   (let ((*generate-tccs* (if tccs? 'all 'none))
-			 (*current-context* (or (saved-context theory) (context nil)))
-			 (*suppress-msg* t)
-			 (*in-evaluator* t)
-			 (*destructive?* t)
-			 (*eval-verbose* nil)
-			 (*compile-verbose* nil)
-			 (*convert-back-to-pvs* t)
-			 (*disable-gc-printout* t)
-			 (*pvstrace-level* 0)
-			 (*eval-untranslatable* nil)
-			 (*pvs2cl-mappings* nil)
-			 (input-stream (when input (make-string-input-stream input))))
-		     (if banner?
-			 (format t "
+  (let ((theory (get-typechecked-theory theoryref)))
+    (with-open-file 
+	(*error-output*
+	 (merge-pathnames (format nil "~a.log" (id theory)))
+	 :direction :output 
+	 :if-does-not-exist :create
+	 :if-exists (if *pvs-emacs-interface* :supersede :append))
+      (let ((*pvstrace-wrappers* nil))
+	(unwind-protect
+	     (let ((*generate-tccs* (if tccs? 'all 'none))
+		   (*current-context* (or (saved-context theory) (context nil)))
+		   (*suppress-msg* t)
+		   (*in-evaluator* t)
+		   (*destructive?* t)
+		   (*eval-verbose* nil)
+		   (*compile-verbose* nil)
+		   (*convert-back-to-pvs* t)
+		   (*disable-gc-printout* t)
+		   (*pvstrace-level* 0)
+		   (*eval-untranslatable* nil)
+		   (*pvs2cl-mappings* nil)
+		   (input-stream (when input (make-string-input-stream input))))
+	       (unless (current-session)
+		 (if banner?
+		     (format t "
 +---- 
 | PVSio ~a
 |
@@ -117,16 +112,16 @@ To change output prompt '~a':
 | stack, or worse. If you crash into Lisp, type (restore) to resume.
 |
 +----~%" *pvsio-version* *pvsio-promptin* *pvsio-promptin*)
-			 (format t "Starting pvsio script~%"))
-		     ;; establish a restart - (invoke-restart 'pvsio-quit) exits the loop.
-		     (restart-case
-			 (evaluate-pvsio input-stream)
-		       (pvsio-quit () (format t "~%Exiting PVSio~%") nil)))
-		;; unwind-protected forms
-		(when *pvs-emacs-interface*
-		  (pvs-emacs-eval "(pvs-evaluator-ready)"))
-		#+allegro
-		(delete-all-trace-wrappers))))))))
+		     (format t "Starting pvsio script~%")))
+	       ;; establish a restart - (invoke-restart 'pvsio-quit) exits the loop.
+	       (restart-case
+		   (evaluate-pvsio input-stream)
+		 (pvsio-quit () (format t "~%Exiting PVSio~%") nil)))
+	  ;; unwind-protected forms
+	  (when *pvs-emacs-interface*
+	    (pvs-emacs-eval "(pvs-evaluator-ready)"))
+	  #+allegro
+	  (delete-all-trace-wrappers))))))
 
 (defun read-expr (input-stream)
   (do ((have-real-char nil)
@@ -239,10 +234,10 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
   (when (not input-stream)
     (format t "~%~a" *pvsio-promptin*)
     (force-output))
-  (let((input (read-expr input-stream)))
+  (let ((input (read-expr input-stream)))
     (if (stringp input)
 	(cond
-	 ((member input '("quit" "q" "(quit)") :test #'string-equal)
+	  ((member input '("quit" "q" "(quit)") :test #'string-equal)
 	   (clear-input)
 	   (when (pvs-y-or-n-p "Do you really want to quit? ")
 	     (unless (find-restart 'pvsio-quit)
@@ -251,7 +246,7 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	   (read-pvsio input-stream))
 	  ((member input '("exit" "(exit)") :test #'string-equal)
 	   (when (find-restart 'pvsio-quit)
-	       (invoke-restart 'pvsio-quit)))
+	     (invoke-restart 'pvsio-quit)))
 	  ((member input '("help") :test #'string-equal)
 	   (help-pvsio)
 	   (read-pvsio input-stream))
@@ -292,14 +287,14 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	   (load-pvs-attachments t)
 	   (read-pvsio input-stream))
 	  (t input))
-      (multiple-value-bind 
-	  (val err)
-	  (progn ;ignore-errors
-	    (eval input))
-	(if err (format t "ERROR (lisp): ~a" err)
-	  (format t "~a" val))
-	(fresh-line)
-	(read-pvsio input-stream)))))
+	(multiple-value-bind 
+	      (val err)
+	    (progn			;ignore-errors
+	      (eval input))
+	  (if err (format t "ERROR (lisp): ~a" err)
+	      (format t "~a" val))
+	  (fresh-line)
+	  (read-pvsio input-stream)))))
 
 #+allegro
 (defmacro pvstrace (&rest specs)
