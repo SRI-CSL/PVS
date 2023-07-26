@@ -12,6 +12,10 @@
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
 
+;; Switch to vec for arrays ? yes for upgrade of array : comment in header
+;; arrays are resizable, with the upgrade operation not in 
+;; https://doc.rust-lang.org/std/vec/struct.Vec.html#method.resize
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; We first add the possible mutability of variables
@@ -499,7 +503,7 @@
 					(if (ir-function? ir-func)  
 						(format nil "~a(~a)" (ir-fname ir-func) rust-args)
 						(let* ( ;; so this is a closure
-							(closure-type (ir-vtype ir-func-var))
+							(closure-type (if (ir-typename? (ir-vtype ir-func-var)) (ir-type-defn (ir-vtype ir-func-var)) (ir-vtype ir-func-var))) ;; get thru typename
 							(domain (ir-domain closure-type))
 							(record-name (ir2rust-type domain))
 							(rust-args (if (eql (length ir-args) 1)
@@ -708,7 +712,39 @@
 (defmethod ir2rust* ((ir-expr ir-function) return-type) 
   (format nil "~a()" (ir-fname ir-expr)))
 
-;; Missing offset, forall, exists, & actuals
+(defmethod ir2rust* ((ir-expr ir-forall) return-type) 
+  (with-slots (ir-vartype ir-body) ir-expr
+    (let* ((index (ir-name ir-vartype))
+	   (ir-vtype (ir-vtype ir-vartype))
+	   (low-instrs (if (ir-low-expr ir-vtype)
+			   (ir2rust* (ir-low-expr ir-vtype) ir-vtype)
+			 (ir-low ir-vtype)))
+	   (high-instrs (if (ir-high-expr ir-vtype) 
+			    (ir2rust* (ir-high-expr ir-vtype) ir-vtype)
+			 (ir-high ir-vtype)))
+	   (prelude-instrs (format nil "let lowvar : i64 = {~a};let highvar : i64 = {~a};let mut forall_index : bool = true;"
+	   		low-instrs high-instrs))
+	   (rust-body (ir2rust* ir-body return-type)))
+	  (format nil "~afor ~a in lowvar..highvar {forall_index = {~a};
+	   		if !forall_index {break;}} forall_index" prelude-instrs index rust-body))))
+
+(defmethod ir2rust* ((ir-expr ir-exists) return-type) 
+  (with-slots (ir-vartype ir-body) ir-expr
+    (let* ((index (ir-name ir-vartype))
+	   (ir-vtype (ir-vtype ir-vartype))
+	   (low-instrs (if (ir-low-expr ir-vtype)
+			   (ir2rust* (ir-low-expr ir-vtype) ir-vtype)
+			 (ir-low ir-vtype)))
+	   (high-instrs (if (ir-high-expr ir-vtype) 
+			    (ir2rust* (ir-high-expr ir-vtype) ir-vtype)
+			 (ir-high ir-vtype)))
+	   (prelude-instrs (format nil "let lowvar : i64 = {~a};let highvar : i64 = {~a};let mut exists_index : bool = false;"
+	   		low-instrs high-instrs))
+	   (rust-body (ir2rust* ir-body return-type)))
+	  (format nil "~afor ~a in lowvar..highvar {exists_index = {~a};
+	   		if exists_index {break;}} exists_index" prelude-instrs index rust-body))))
+
+;; Missing offset, forall, exists
 (defmethod ir2rust* ((ir-expr t) return-type)
   (break (format nil "IR expr ~a cannot be translated into Rust: ~%~a" ir-expr (type-of ir-expr))))
 
@@ -855,6 +891,8 @@ mod pvs2rust {
         pub fn delete(self, a: i64) -> Self {
             self
         }
+        // Arraytype does not have upgrade method yet. Nevertheless, it can be easily added
+        // by switching the representation from [V; N] to Vec<V,N> and using Vec::resize.
         pub fn update(self, a: i64, v: V) -> Self {
             self.array.borrow_mut()[a as usize] = v;
             self
@@ -986,7 +1024,7 @@ mod pvs2rust {
 		    	       collect (if (is-var-type-actual arg) ""
 					(format nil "~a~a: ~a, " (if (ir-mutable arg) "mut " "") (ir-name arg) (ir2rust-type (ir-vtype arg)))))))
 				(rust-out (format nil "~%fn ~a (~a) -> ~a {exit(); // extern function}~%" ir-function-name rust-args rust-result-type)))
-			(format t "~%Function ~a" ir-f-name)
+			(format t "~%~%Function ~a" ir-f-name)
 			(format t "~%IR : ~%~a" (print-ir ir))
 			(format t "~%Rust : ~%~a" rust-out)
 			rust-out)
