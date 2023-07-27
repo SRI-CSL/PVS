@@ -325,7 +325,7 @@
 		 :ir-atype atype))
 
 (defun mk-ir-let (vartype expr  body)
-;;  (when (ir-formal-typename? (ir-vtype vartype)) (break "mk-ir-let"))
+  (when (funtype? (ir-vtype vartype)) (break "mk-ir-let"))
   (make-instance 'ir-let
 		 :ir-vartype vartype
 		 :ir-bind-expr expr
@@ -765,7 +765,8 @@
   (with-slots (exprs type) expr
     (let* ((type (or expected (type expr)))
 	   (elem-type (range (find-supertype type)))
-	   (let-vars (loop for x in exprs collect (new-irvartype elem-type)))
+	   (ir-elem-type (pvs2ir-type elem-type bindings))
+	   (let-vars (loop for x in exprs collect (new-irvartype ir-elem-type)))
 	   (ir-exprs (loop for x in exprs collect (pvs2ir* x bindings elem-type))));(break "array-expr")
       (mk-ir-let* let-vars ir-exprs  (mk-ir-array-literal let-vars)))))
   
@@ -2128,9 +2129,13 @@
 
 
 (defmethod pvs2ir* ((expr record-expr) bindings expected);(break "pvs2ir*(record-expr)")
-  (pvs2ir-fields (sort-assignments (assignments expr)) bindings
-		 (and expected (fields (find-supertype expected)))
-		 expected))
+  (let* ((expected-supertype (and expected (find-supertype expected)))
+	 (sorted-fields (and expected
+			     (sort-fields (fields expected-supertype)
+					  (dependent-fields? (fields expected-supertype))))))
+    (pvs2ir-fields (sort-record-assignments (assignments expr) sorted-fields) bindings
+		   sorted-fields)))
+
 
 (defun mk-vartype-list (vars types)
   (cond ((consp vars)(cons (mk-ir-variable (car vars)(car types))
@@ -2150,6 +2155,13 @@
     (if (and entry (ir-variable? (cdr entry)))
 	(ir-vtype (cdr entry))
       (call-next-method))))
+
+(defun sort-record-assignments (assignments sorted-fields)
+  (if sorted-fields
+      (loop for fld in sorted-fields
+	    collect (find (id fld) assignments :key #'(lambda (x)(caar (arguments x)))
+			  :test #'same-id))
+    (sort-assignments assignments)))
 
 (defmethod pvs2ir-expr-type ((expr record-expr) &optional bindings)
   (with-slots (assignments) expr
@@ -2183,7 +2195,7 @@
 	    (best-ir-subrange (type expr)(judgement-types+ expr) bindings)
 	  (pvs2ir-type (type expr) bindings))))))
 
-(defun pvs2ir-field-assignments (assignments bindings expected expected-record-type
+(defun pvs2ir-field-assignments (assignments bindings expected 
 					     accum-ir-fieldvars
 					     accum-ir-assignments
 					     accum-ir-expr-types
@@ -2204,7 +2216,7 @@
 		(new-bindings (if expected (acons expec1 ir-field-vartype bindings)
 				bindings)))
 	   
-	   (pvs2ir-field-assignments (cdr assignments) new-bindings (cdr expected) expected-record-type
+	   (pvs2ir-field-assignments (cdr assignments) new-bindings (cdr expected) 
 				     (cons ir-field-vartype accum-ir-fieldvars)
 				     (cons ir-assgn1 accum-ir-assignments)
 				     (cons ir-expr-type accum-ir-expr-types)
@@ -2225,8 +2237,8 @@
 				    (mk-ir-recordtype (nreverse accum-ir-fieldtypes)))))));no label
   
 
-(defun pvs2ir-fields (assignments bindings expected expected-record-type)
-  (pvs2ir-field-assignments assignments bindings expected expected-record-type nil nil nil nil nil))
+(defun pvs2ir-fields (assignments bindings expected)
+  (pvs2ir-field-assignments assignments bindings expected  nil nil nil nil nil))
   ;; (let* ((expressions (mapcar #'expression assignments))
   ;; 	 (expected-field-types (mapcar #'type expected))
   ;; 	 (ir-assignments (pvs2ir*  expressions bindings expected-field-types));ignoring dependencies
@@ -2295,8 +2307,7 @@
 (defun check-quantifier-subrange (ir-low ir-high)
   (and (integerp ir-low)
        (integerp ir-high)
-       (or (and (>= ir-low 0)(< ir-high (expt 2 32)))
-	   (and (>= ir-low (expt 2 31)))(< ir-high (expt 2 31)))))
+       (and (>= ir-low 0)(< ir-high (expt 2 32)))))
 
 (defun pvs2ir-forall-expr (bindings expr)
   (cond (bindings
@@ -2318,7 +2329,7 @@
 		(bnd1type (ir-vtype bnd1)))
 	   (cond ((and (ir-subrange? bnd1type)
 		       (check-quantifier-subrange (ir-low bnd1type)(ir-high bnd1type)))
-		  (mk-ir-exists bnd1 (pvs2ir-forall-expr rest expr)))
+		  (mk-ir-exists bnd1 (pvs2ir-exists-expr rest expr)))
 		 (t (unless *to-emacs*
 		      (format t "~%PVS2C Error generating code for ~% ~a ~%Quantifiers are not handled" expr))
 		    (mk-ir-function 'u_undef_quant_expr)))))
@@ -2387,6 +2398,7 @@
 					 collect
 					 (pvs2ir* rhs bindings nil)))
 		      (ir-exprvar (mk-ir-variable (new-irvar) expression-type))) ;binds the ir-expression value
+		 ;(break "pvs2ir-update")
 		 (let ((ir-update-expr (pvs2ir-assignments lhs-list ;build updates
 							   ir-rhs-vartypes
 							   ir-exprvar
@@ -2431,7 +2443,9 @@
 							    rhs-irvar ir-expr-vartype11
 							    bindings)
 				      rhs-irvar))
-		(lhs1 (caar lhs)))
+		(lhs1 (if (singleton? (car lhs))
+			  (caar lhs)
+			(make!-tuple-expr* (car lhs)))))
 	   (let ((lhs1-irvar (new-irvar))
 		 (lhs1-ir (pvs2ir* lhs1 bindings nil)) ;;the index expression
 		 (lhs1-ir-type (ir-domain ir-expr-type))
@@ -2980,7 +2994,7 @@
 		ir-freevars)))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-variable))
-  (when (ir-fieldtype? ir-expr) (break "pvs2ir-freevars*(ir-fieldtype)"))
+;;  (when (ir-fieldtype? ir-expr) (break "pvs2ir-freevars*(ir-fieldtype)"))
   (with-slots (ir-vtype) ir-expr
     (union (list ir-expr) (pvs2ir-freevars* ir-vtype) :test #'eq)))
 
@@ -6738,7 +6752,8 @@
 	  (let ((closure-function-definition
 		 (make-c-closure-defn-info ir-lambda-expr closure-hptr-name c-param-decl-string))
 		)
-	    (when (null closure-function-definition) (break "add-closure-definition"))
+	     ;(break "add-closure-definition")
+	    ;(when (null closure-function-definition) (break "add-closure-definition"))
 	    (setf (hdefn closure-defn-info) closure-function-definition)
 	    closure-name-root)))))
 
@@ -7037,7 +7052,8 @@
 				(equal-info (make-function-equal-info type-name-root c-param-decl-string))
 				(json-info (make-function-json-info type-name-root c-param-decl-string)))
 			  ;;equal is defined to return false on function types.
-			  (when (get-c-type-info ir2c-type) (break "add-c- ir-funtype"))
+			  ;(break "add-c- ir-funtype")
+			  ;(when (get-c-type-info ir2c-type) (break "add-c- ir-funtype"))
 			  (push-type-info-to-decl
 			   (mk-closure-c-type-info ir2c-type type-name-root type-decl type-defn ftable-type-defn
 						   release-info copy-info  hash-entry-type-defn hash-type-defn
@@ -7460,10 +7476,18 @@
 			      (make-c-assignment "tmp->elems[i]" c-range-root
 						 "x->elems[i]" c-range-root)
 			      (ir-type-id elemtype))
-			    (format nil "for (uint32_t i = 0; i < x->size; i++){~a;}"
+			  (if (mpnumber-type? elemtype)
+			      (format nil "for (uint32_t i = 0; i < x->size; i++){~16T~a;~%~16T~a;~%~16T~a;}"
 					;size
-			      (make-c-assignment "tmp->elems[i]" c-range-root
-						 "x->elems[i]" c-range-root))))))
+				      (format nil "tmp->elems[i] = (~a_ptr_t)safe_malloc(sizeof(~a_t))"
+					      c-range-root c-range-root)
+				      (format nil "~a_init(tmp->elems[i])" c-range-root)
+				      (make-c-assignment "tmp->elems[i]" c-range-root
+							 "x->elems[i]" c-range-root))
+				(format nil "for (uint32_t i = 0; i < x->size; i++){~a;}"
+					;size
+					(make-c-assignment "tmp->elems[i]" c-range-root
+						 "x->elems[i]" c-range-root)))))))
     (format nil "~a_t ~a(~a_t x){~%~8T~a_t tmp = new_~a(x->size);~%~8T~
                tmp->count = 1;~
 	       ~%~8T~a;~%~8T return tmp;}"   
@@ -7885,7 +7909,7 @@
 					(format nil "case ~a: tmp = safe_strcat(tmp, json_~a((~a_t) x~a)); break"
 						index (car constructor)(car constructor)
 						c-param-arg-string))))
-    (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp = safe_malloc(24); sprintf(tmp, \"{ constructor = %u\", x->~a_index);~%~8Tswitch  (x->~a_index) {~{~%~16T~a;~}~%~8T};~%~8Ttmp = safe_strcat(tmp, \" }\");~%~8Treturn tmp;~%}" type-name-root type-name-root c-param-decl-string
+    (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp = safe_malloc(24); sprintf(tmp, \"{ \\\"constructor\\\" = %u,\", x->~a_index);~%~8Tswitch  (x->~a_index) {~{~%~16T~a;~}~%~8T};~%~8Ttmp = safe_strcat(tmp, \" }\");~%~8Treturn tmp;~%}" type-name-root type-name-root c-param-decl-string
 	    type-name-root type-name-root json-constructor-instrs)))
 
 (defun make-record-equal-ptr-info (type-name-root theory-c-params-variadic c-param-arg-string)
@@ -8295,7 +8319,8 @@
 			   (list (format nil "mpz_t ~a" mpindex)
 				 (format nil "mpz_init(~a)" mpindex))))
 	     (lhs-mp-init-instrs (when (mpnumber-type? et1)
-				   (list (format nil "~a_init(~a->elems[~a])" et1-ctype lhs index))))
+				   (list (format nil "~a->elems[~a] = (~a_ptr_t)safe_malloc(sizeof(~a_t))" lhs index et1-ctype et1-ctype et1-ctype)
+					 (format nil "~a_init(~a->elems[~a])" et1-ctype lhs index))))
 	     (for-body-instrs  (if mpz-dom2?
 				   (cons
 				    (format nil "mpz_set_ui(~a, ~a)" mpindex index)
@@ -8336,6 +8361,7 @@
 		       (et1-ctype (add-c-type-definition (ir2c-type et1)))
 		       (for-body-instrs (if (mpnumber-type? et1-ctype)
 					    (list
+					     (format nil "~a->elems[~a] = (~a_ptr_t)safe_malloc(sizeof(~a_t))" lhs index et1-ctype et1-ctype et1-ctype)
 					     (format nil "~a_init(~a->elems[~a])" et1-ctype lhs index)
 					     (make-c-assignment (format nil "~a->elems[~a]" lhs index)
 								et1-ctype
