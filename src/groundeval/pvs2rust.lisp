@@ -12,9 +12,6 @@
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
 
-;; Switch to vec for arrays ? yes for upgrade of array : comment in header
-;; arrays are resizable, with the upgrade operation not in 
-;; https://doc.rust-lang.org/std/vec/struct.Vec.html#method.resize
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -792,7 +789,8 @@
     unused_parens,
     unreachable_patterns,
     unused_imports,
-    drop_copy
+    drop_copy,
+	type_alias_bounds
 )]
 mod pvs2rust {
     use fxhash::FxHasher;
@@ -810,34 +808,34 @@ mod pvs2rust {
         Rc::try_unwrap(rc).unwrap_or_else(|rc| (*rc).clone())
     }
     
-    pub trait RegularOrd: Clone + PartialEq + Eq + Hash
+    pub trait RegularEq: Clone + PartialEq + Eq + Hash
     where
         Self: std::marker::Sized,
     {
     }
     
-    impl<T> RegularOrd for T where T: Clone + PartialEq + Eq + Hash {}
+    impl<T> RegularEq for T where T: Clone + PartialEq + Eq + Hash {}
     
     #[derive(Clone)]
-    pub struct funtype<A: RegularOrd, V: RegularOrd> {
+    pub struct funtype<A: RegularEq, V: RegularEq> {
         explicit: Rc<dyn Fn(A) -> V>,
         hashtable: Rc<RefCell<HashMap<A, V, BuildHasherDefault<FxHasher>>>>,
     }
     
-    impl<A: RegularOrd, V: RegularOrd> PartialEq for funtype<A, V> {
+    impl<A: RegularEq, V: RegularEq> PartialEq for funtype<A, V> {
         fn eq(&self, other: &Self) -> bool {
             panic!(\"Can't test equality of two functions\")
         }
     }
-    impl<A: RegularOrd, V: RegularOrd> Eq for funtype<A, V> {}
+    impl<A: RegularEq, V: RegularEq> Eq for funtype<A, V> {}
     
-    impl<A: RegularOrd, V: RegularOrd> Hash for funtype<A, V> {
+    impl<A: RegularEq, V: RegularEq> Hash for funtype<A, V> {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            panic!(\"Can't have proper ordering for two functions\")
+            panic!(\"Can't have proper hashing for functions\")
         }
     }
     
-    impl<A: RegularOrd, V: RegularOrd> funtype<A, V> {
+    impl<A: RegularEq, V: RegularEq> funtype<A, V> {
         pub fn new(explicit: Rc<dyn Fn(A) -> V>) -> funtype<A, V> {
             funtype {
                 explicit,
@@ -867,17 +865,17 @@ mod pvs2rust {
     }
     
     #[derive(Clone, PartialEq, Eq)]
-    pub struct arraytype<const N: usize, V: RegularOrd> {
+    pub struct arraytype<const N: usize, V: RegularEq> {
         array: Rc<RefCell<[V; N]>>,
     }
     
-    impl<const N: usize, V: RegularOrd> Hash for arraytype<N, V> {
+    impl<const N: usize, V: RegularEq> Hash for arraytype<N, V> {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             self.array.deref().borrow().hash(state)
         }
     }
     
-    impl<const N: usize, V: RegularOrd> arraytype<N, V> {
+    impl<const N: usize, V: RegularEq> arraytype<N, V> {
         pub fn new(explicit: Rc<dyn Fn(usize) -> V>) -> arraytype<N, V> {
             arraytype {
                 array: Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(
@@ -1052,7 +1050,7 @@ mod pvs2rust {
 
 			(ir-formal-types (loop for arg in *ir-theory-formals* when (is-var-type-actual arg) collect arg))
 			(*ir-formal-consts* (loop for arg in *ir-theory-formals* when (not (is-var-type-actual arg)) collect arg))
-			(rust-formal-types (format nil "<~{~a: RegularOrd + 'static,~}>" (loop for ft in ir-formal-types collect (ir-name ft))))
+			(rust-formal-types (format nil "<~{~a: RegularEq + 'static,~}>" (loop for ft in ir-formal-types collect (ir-name ft))))
 
 	        (rust-args (format nil "~{~a~}" (loop for arg in ir-args
 		    	       collect (if (is-var-type-actual arg) ""
@@ -1088,7 +1086,7 @@ mod pvs2rust {
 								collect (setf ret (concat-lists ret (constructor-formals constructor))))
 							(remove-duplicates ret :test 'string=)
 						 ))
-		(rust-formal-types (format nil "<~{~a: RegularOrd + 'static,~}>" ir-formal-types))
+		(rust-formal-types (format nil "<~{~a: RegularEq + 'static,~}>" ir-formal-types))
 		(rhs-generics (format nil "<~{~a,~}>" ir-formal-types)) ;; <btree__t>
 		(*output* "")
 	) 
@@ -1110,7 +1108,7 @@ mod pvs2rust {
 	(loop for constructor in constructors
 		collect (let* ((cname (decl-id (con-decl constructor)))
 						(cons-formals (constructor-formals constructor)) ; we get the exact used constructors 
-						(rust-formals-string (if cons-formals (format nil "<~{~a : RegularOrd + 'static,~}>" cons-formals) "")))
+						(rust-formals-string (if cons-formals (format nil "<~{~a : RegularEq + 'static,~}>" cons-formals) "")))
 			(setf *output* (format nil "~a~%#[derive(Clone, PartialEq, Eq, Hash)]~%pub struct ~a~a {" *output* cname rust-formals-string))
 			(loop for accessor in (acc-decls constructor)
 				collect (progn 
@@ -1247,7 +1245,7 @@ mod pvs2rust {
 (defmethod ir2rust-type ((ir-type ir-typename)) ; if recordtype build struct, else makes a type declaration
   (with-slots (ir-type-id ir-type-defn type-declaration ir-actuals) ir-type
 	(let* ((used-formals (used-formals ir-type-defn))
-			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a : RegularOrd + 'static,~}>" used-formals) ""))
+			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a : RegularEq + 'static,~}>" used-formals) ""))
 			(formals-rust (if (consp used-formals) (format nil "<~{~a,~}>" used-formals) "")))
 		(if (member ir-type-id *type-defs* :test 'string=) nil
         (progn (setf *type-defs* (cons ir-type-id *type-defs*))
@@ -1276,7 +1274,7 @@ mod pvs2rust {
 	(with-slots (ir-label ir-field-types) ir-typ
 		(let* ((*hash* "")
 			(used-formals (used-formals ir-typ))
-			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a : RegularOrd + 'static,~}>" used-formals) ""))
+			(formals-rust-defs (if (consp used-formals) (format nil "<~{~a : RegularEq + 'static,~}>" used-formals) ""))
 			(formals-rust (if (consp used-formals) (format nil "<~{~a,~}>" used-formals) "")))
 			(loop for field in ir-field-types 
 				collect (with-slots (ir-id ir-vtype) field 
