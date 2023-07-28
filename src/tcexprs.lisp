@@ -652,11 +652,12 @@
 		   (when (else-part expr) (list (list 'ELSE (ptypes (else-part expr)))))))
 	   (len1 (max (reduce #'max sel-types
 			      :key #'(lambda (st) (length (string (car st)))))
-		      9)))
-      (type-error expr "Selections have incompatible types: ~%~va Possible types~%~
+		      9))
+	   (errstr (format nil "Selections have incompatible types: ~%~va Possible types~%~
                       ~v,,,'-a~{~{~%~va ~{~a~^, ~}~}~}"
-		  len1 "Selection" (+ len1 14) ""
-		  (mapcar #'(lambda (st) (cons len1 st)) sel-types))))
+		     len1 "Selection" (+ len1 14) ""
+		     (mapcar #'(lambda (st) (cons len1 st)) sel-types))))
+      (type-error expr errstr)))
   expr)
 
 (defmethod find-adt-supertype ((te subtype))
