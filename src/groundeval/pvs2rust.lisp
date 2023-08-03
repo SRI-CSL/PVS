@@ -11,6 +11,7 @@
 (defvar *header* nil) ;; rust code containing type, const, datatype & misc declarations
 (defvar *type-defs* nil) ;; type, const & datatype names (as a list of str) 
 (defvar *unique-rust-records* nil) ;; store the hashes of the records
+(defvar *forall-depth* 0) ;; needed for different variable names in loops
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -657,11 +658,14 @@
 (defmethod ir2rust* ((ir-expr ir-release) return-type)
   (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
 		(let ((rust-body (ir2rust* ir-body return-type))
-		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars when (not (is-var-type-actual var)) collect (ir-name var))))
+		    (pre-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in pre-ir-vars when (and (not (is-var-type-actual var)) (not (copy-type-rust? var))) collect (ir-name var))))
 		    ;;(post-release-instrs (format nil "~{drop(~a);~%~}" (loop for var in post-ir-vars collect (ir-name var))))
 			) ;; no post release rn
 		(format nil "~a~a" pre-release-instrs rust-body)))) ;; are they post release ? 
 
+(defun copy-type-rust? (ir-var) ;; is it a type that implement the Copy trait ?
+(or (ir-subrange? (ir-vtype ir-var))
+	(eq 'mpq (ir-vtype ir-var))))
 
 (defmethod ir2rust* ((ir-expr ir-update) return-type) 
   (with-slots (ir-target ir-lhs ir-rhs) ir-expr
@@ -719,11 +723,13 @@
 	   (high-instrs (if (ir-high-expr ir-vtype) 
 			    (ir2rust* (ir-high-expr ir-vtype) ir-vtype)
 			 (ir-high ir-vtype)))
-	   (prelude-instrs (format nil "let lowvar : i64 = {~a};let highvar : i64 = {~a};let mut forall_index : bool = true;"
-	   		low-instrs high-instrs))
+	   (cond-var-name (format nil "cond_~a" *forall-depth*))
+	   (prelude-instrs (format nil "let lowvar : i64 = {~a};let highvar : i64 = {~a};let mut ~a : bool = true;"
+	   		low-instrs high-instrs cond-var-name))
 	   (rust-body (ir2rust* ir-body return-type)))
-	  (format nil "~afor ~a in lowvar..highvar {forall_index = {~a};
-	   		if !forall_index {break;}} forall_index" prelude-instrs index rust-body))))
+	  (setf *forall-depth* (1+ *forall-depth*))
+	  (format nil "~afor ~a in lowvar..highvar {~a = {~a}; if !~a {break;}} ~a" 
+	  prelude-instrs index cond-var-name rust-body cond-var-name cond-var-name))))
 
 (defmethod ir2rust* ((ir-expr ir-exists) return-type) 
   (with-slots (ir-vartype ir-body) ir-expr
@@ -735,13 +741,19 @@
 	   (high-instrs (if (ir-high-expr ir-vtype) 
 			    (ir2rust* (ir-high-expr ir-vtype) ir-vtype)
 			 (ir-high ir-vtype)))
-	   (prelude-instrs (format nil "let lowvar : i64 = {~a};let highvar : i64 = {~a};let mut exists_index : bool = false;"
-	   		low-instrs high-instrs))
+	   (cond-var-name (format nil "cond_~a" *forall-depth*))
+	   (prelude-instrs (format nil "let lowvar : i64 = {~a};let highvar : i64 = {~a};let mut ~a : bool = false;"
+	   		low-instrs high-instrs cond-var-name))
 	   (rust-body (ir2rust* ir-body return-type)))
-	  (format nil "~afor ~a in lowvar..highvar {exists_index = {~a};
-	   		if exists_index {break;}} exists_index" prelude-instrs index rust-body))))
+	  (setf *forall-depth* (1+ *forall-depth*))
+	  (format nil "~afor ~a in lowvar..highvar {~a = {~a}; if ~a {break;}} ~a" 
+	  prelude-instrs index cond-var-name rust-body cond-var-name cond-var-name))))
 
-;; Missing offset, forall, exists
+(defmethod ir2rust* ((ir-expr ir-offset) return-type)
+  (with-slots (expr offset) ir-expr
+    (let* ((size-offset (1+ offset)))
+    	(format nil "{~a} + ~a" (ir2rust* expr (mk-ir-subrange 0 0)) size-offset))))
+
 (defmethod ir2rust* ((ir-expr t) return-type)
   (break (format nil "IR expr ~a cannot be translated into Rust: ~%~a" ir-expr (type-of ir-expr))))
 
@@ -786,11 +798,9 @@
     non_upper_case_globals,
     non_camel_case_types,
     unused_variables,
-    unused_parens,
-    unreachable_patterns,
     unused_imports,
-    drop_copy,
-	type_alias_bounds
+    type_alias_bounds,
+	drop_copy
 )]
 mod pvs2rust {
     use fxhash::FxHasher;
@@ -819,38 +829,38 @@ mod pvs2rust {
     #[derive(Clone)]
     pub struct funtype<A: RegularEq, V: RegularEq> {
         explicit: Rc<dyn Fn(A) -> V>,
-        hashtable: Rc<RefCell<HashMap<A, V, BuildHasherDefault<FxHasher>>>>,
+        hashtable: Rc<HashMap<A, V, BuildHasherDefault<FxHasher>>>,
     }
-    
+
     impl<A: RegularEq, V: RegularEq> PartialEq for funtype<A, V> {
         fn eq(&self, other: &Self) -> bool {
-            panic!(\"Can't test equality of two functions\")
+            panic!("Can't test equality of two functions")
         }
     }
     impl<A: RegularEq, V: RegularEq> Eq for funtype<A, V> {}
-    
+
     impl<A: RegularEq, V: RegularEq> Hash for funtype<A, V> {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            panic!(\"Can't have proper hashing for functions\")
+            panic!("Can't have proper hashing for functions")
         }
     }
-    
+
     impl<A: RegularEq, V: RegularEq> funtype<A, V> {
         pub fn new(explicit: Rc<dyn Fn(A) -> V>) -> funtype<A, V> {
             funtype {
                 explicit,
-                hashtable: Rc::new(RefCell::new(HashMap::default())),
+                hashtable: Rc::new(HashMap::default()),
             }
         }
         pub fn lookup(&self, a: A) -> V {
-            match self.hashtable.deref().borrow().get(&a) {
+            match self.hashtable.deref().get(&a) {
                 // explicit deref due to borrow method name collision
-                Some(v) => v.clone(),
+                Some(v) => v.to_owned(),
                 None => (self.explicit)(a),
             }
         }
-        pub fn delete(self, a: A) -> Self {
-            match self.hashtable.borrow_mut().remove(&a) {
+        pub fn delete(mut self, a: A) -> Self {
+            match Rc::make_mut(&mut self.hashtable).remove(&a) {
                 Some(x) => {
                     drop(x);
                 }
@@ -858,41 +868,41 @@ mod pvs2rust {
             };
             self
         }
-        pub fn update(self, a: A, v: V) -> Self {
-            self.hashtable.borrow_mut().insert(a, v);
+        pub fn update(mut self, a: A, v: V) -> Self {
+            Rc::make_mut(&mut self.hashtable).insert(a, v); 
             self
         }
     }
-    
+
     #[derive(Clone, PartialEq, Eq)]
     pub struct arraytype<const N: usize, V: RegularEq> {
-        array: Rc<RefCell<[V; N]>>,
+        array: Rc<[V; N]>,
     }
-    
+
     impl<const N: usize, V: RegularEq> Hash for arraytype<N, V> {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            self.array.deref().borrow().hash(state)
+            self.array.deref().hash(state)
         }
     }
-    
+
     impl<const N: usize, V: RegularEq> arraytype<N, V> {
         pub fn new(explicit: Rc<dyn Fn(usize) -> V>) -> arraytype<N, V> {
             arraytype {
-                array: Rc::new(RefCell::new(core::array::from_fn::<_, N, _>(
+                array: Rc::new(core::array::from_fn::<_, N, _>(
                     explicit.deref(),
-                ))),
+                )),
             }
         }
         pub fn lookup(&self, a: i64) -> V {
-            self.array.deref().borrow()[a as usize].clone()
+            self.array.deref()[a as usize].clone()
         }
         pub fn delete(self, a: i64) -> Self {
             self
         }
         // Arraytype does not have upgrade method yet. Nevertheless, it can be easily added
         // by switching the representation from [V; N] to Vec<V,N> and using Vec::resize.
-        pub fn update(self, a: i64, v: V) -> Self {
-            self.array.borrow_mut()[a as usize] = v;
+        pub fn update(mut self, a: i64, v: V) -> Self {
+            Rc::make_mut(&mut self.array)[a as usize] = v;
             self
         }
     }
