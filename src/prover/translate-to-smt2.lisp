@@ -3,8 +3,8 @@
 ;; Author          : K. Nukala and N. Shankar
 ;; Created On      : June 2023
 ;; Last Modified By: K. Nukala
-;; Last Modified On: 07/03/2023
-;; Update Count    : 4
+;; Last Modified On: 07/30/2023
+;; Update Count    : 5
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -29,15 +29,13 @@
 
 (in-package :pvs)
 
-;;NSH(12/5/10): Adapting translate-to-prove-yices to yices2 output. 
-
 (defvar *smt2bindings* nil)
 (defvar *smt2embeddedf* nil)
 (defvar *smt2defns* nil)
 ;;(defvar *smt2datatype-warning* nil)
 (defvar *smt2name-hash* (make-pvs-hash-table))
 (defvar *translate-to-smt2-hash* (make-pvs-hash-table))
-(defvar *smt2-executable* nil)
+(defvar *smt2-executable* "~/z3/build/z3") ;; TODO: find/set this dynamically
 (defvar *smt2-flags* "--mode=one-shot")
 (defvar *smt2-id-counter*)  ;;needs to be initialized in eproofcheck
 (defvar *smt2-conditions* nil)
@@ -56,36 +54,37 @@
     (IMPLIES  (|booleans| . =>))
     (=>  (|booleans| . =>))
     (⇒ (|booleans| . =>))
+    (<=> (|booleans| . =))
     (IFF (|booleans| . =))
     (⇔ (|booleans| . =))
-    (AND (|booleans| . and) (|bv_bitwise| . bvand))
-    (∧ (|booleans| . and))
-    (& (|booleans| . and))
-    (OR  (|booleans| . or) (|bv_bitwise| . bvor))
-    (∨  (|booleans| . or))
-    (NOT  (|booleans| . not)(|bv_bitwise| . bvnot))
-    (¬ (|booleans| . not))
-    (+  (|number_fields| . +)(|bv_arith_nat_defs| . bvadd))
-    (- (|number_fields| . -)(|bv_arithmetic_defs| . bvsub))
+    (AND (|booleans| . "and") (|bv_bitwise| . "bvand"))
+    (∧ (|booleans| . "and"))
+    (& (|booleans| . "and"))
+    (OR  (|booleans| . "or") (|bv_bitwise| . "bvor"))
+    (∨  (|booleans| . "or"))
+    (NOT  (|booleans| . "not")(|bv_bitwise| . "bvnot"))
+    (¬ (|booleans| . "not"))
+    (+  (|number_fields| . +)(|bv_arith_nat_defs| . "bvadd"))
+    (- (|number_fields| . -)(|bv_arithmetic_defs| . "bvsub"))
     (*   (|number_fields| . *))
     (/  (|number_fields| . /))
-;    (rem (|modulo_arithmetic| . mod))
-;    (ndiv (|modulo_arithmetic| . div))
-    (< (|reals| . <)(|bv_arith_nat_defs| . bvult))
-    (<=  (|reals| . <=)(|bv_arith_nat_defs| . bvule))
-    (> (|reals| . >)(|bv_arith_nat_defs| . bvugt))
-    (>=  (|reals| . >=)(|bv_arith_nat_defs| . bvuge))
-    (O (|bv_concat_def| . concat))
-    (& (|booleans| . and)(|bv_bitwise| . bvand))
-    (XOR  (|bv_bitwise| . bv-xor))
+					;    (rem (|modulo_arithmetic| . mod))
+					;    (ndiv (|modulo_arithmetic| . div))
+    (< (|reals| . <)(|bv_arith_nat_defs| . "bvult"))
+    (<=  (|reals| . <=)(|bv_arith_nat_defs| . "bvule"))
+    (> (|reals| . >)(|bv_arith_nat_defs| . "bvugt"))
+    (>=  (|reals| . >=)(|bv_arith_nat_defs| . "bvuge"))
+    (O (|bv_concat_def| . "concat"))
+    (& (|booleans| . "and")(|bv_bitwise| . "bvand"))
+    (XOR  (|bv_bitwise| . "bv-xor"))
     ;; (^ (|bv_caret| .  "(_ extract ~a ~a)")
     ;; (sign_extend   (|bv_extend| . "(_ sign_extend ~a)")
-    (|bv_slt| (|bv_arithmetic_defs| . bvslt))
-    (|bv_sle| (|bv_arithmetic_defs| . bvsle))
-    (|bv_sgt| (|bv_arithmetic_defs| . bvsgt))
-    (|bv_sge| (|bv_arithmetic_defs| . bvsge))
-    (|bv_splus| (|bv_arithmetic_defs| . bvadd))
-    (|bv_stimes| (|bv_arithmetic_defs| . bvmul))
+    (|bv_slt| (|bv_arithmetic_defs| . "bvslt"))
+    (|bv_sle| (|bv_arithmetic_defs| . "bvsle"))
+    (|bv_sgt| (|bv_arithmetic_defs| . "bvsgt"))
+    (|bv_sge| (|bv_arithmetic_defs| . "bvsge"))
+    (|bv_splus| (|bv_arithmetic_defs| . "bvadd"))
+    (|bv_stimes| (|bv_arithmetic_defs| . "bvmul"))
     ))
 
 (defun clear-smt2 ()
@@ -97,10 +96,10 @@
 (defun smt2-name (expr &optional id) ;;expr must have id field,
   ;;or be given one
   (if (typep expr '(or dep-binding field-decl)) (or id (id expr))
-      (let ((entry (gethash expr *y2name-hash*)))
+      (let ((entry (gethash expr *smt2name-hash*)))
 	(or entry
 	    (let ((name (smt2-id-name (or id (id expr)))))
-	      (setf (gethash expr *y2name-hash*) name)
+	      (setf (gethash expr *smt2name-hash*) name)
 	      name)))))
 
 (defun smt2-id-name (id)
@@ -196,13 +195,13 @@
 	      (setf (gethash obj *translate-to-smt2-hash*)
 		    result)
 	      (loop for tc in rtype-constraints
-		    do (let* ((ytc (translate-to-smt2* tc bindings))
-			      (yclause (if *smt2-conditions*
-					   (format nil "(assert (implies (and ~{ ~a~}) ~a))"
-						   *smt2-conditions*
-						   ytc)
-					   (format nil "(assert ~a)" ytc))))
-			 (push yclause *smt2-subtype-constraints*)))
+		    do (let* ((smt2tc (translate-to-smt2* tc bindings))
+			      (smt2clause (if *smt2-conditions*
+					      (format nil "(assert (implies (and ~{ ~a~}) ~a))"
+						      *smt2-conditions*
+						      smt2tc)
+					      (format nil "(assert ~a)" smt2tc))))
+			 (push smt2clause *smt2-subtype-constraints*)))
 	      result)))))
 
 (defun smt2-recognizer (name bindings)
@@ -277,10 +276,10 @@
 	      (nth (1- index) (cdr bnd))
 	      (format nil "((_ project ~a) ~a)"
 		      (1+ (index expr))
-		      (translate-to-yices2* argument bindings))))
+		      (translate-to-smt2* argument bindings))))
 	(format nil "((_ project ~a) ~a)"
 		(1+ (index expr))
-		(translate-to-yices2* argument bindings)))))
+		(translate-to-smt2* argument bindings)))))
 
 (defmethod translate-to-smt2* ((expr field-application) bindings)
   (with-slots (id argument type) expr
@@ -315,7 +314,7 @@
 			  bindings))
 		   (num (translate-to-smt2*
 			 (args1 expr) bindings)))
-	       (format nil "(nat2bv[~a] ~a)" ,size ,num)))
+	       (format nil "(nat2bv[~a] ~a)" size num)))
 	    ((and (eq op-id '-)
 		  (eq (id (module-instance (resolution op*)))
 		      '|bv_arithmetic_defs|)
@@ -363,32 +362,35 @@
 		   (format nil "(~a ~{ ~a~})"
 			   smt2-interpretation
 			   (translate-to-smt2* (arguments expr) bindings))
-		 (let* ((smt-op (translate-to-smt2* operator bindings))
-			(arg (argument expr))
-			(args (if (tuple-expr? arg)
-				  (arguments expr)
-				(let ((stype (find-supertype (type arg))))
-				  (if (tupletype? stype)
-				      (if (and (variable? arg)
-					       (assoc arg bindings
-						      :test
-						      #'same-declaration))
-					  arg
-					(loop for index from 1 to (length (types stype))
-					      collect (make-projection-application index arg)))
-				    (list arg)))))
-			(yargs (if (and (variable? args)
-					(tupletype? (find-supertype (type arg))))
-				   (let ((bnd (assoc arg bindings
-						     :test
-						     #'same-declaration)))
-				     (cdr bnd))
-				 (translate-to-smt2* args
-						     bindings))))
-		   (format nil "(~a ~{ ~a~})" smt-op yargs)))))))))
+		   (let* ((smt-op
+			   (translate-to-smt2* operator bindings))
+			  (arg (argument expr))
+			  (args (if (tuple-expr? arg)
+				    (arguments expr)
+				    (let ((stype (find-supertype (type arg))))
+				      (if (tupletype? stype)
+					  (if (and (variable? arg)
+						   (assoc arg bindings
+							  :test
+							  #'same-declaration))
+					      arg
+					      (loop for index from 1 to (length (types stype))
+						    collect (make-projection-application index arg)))
+					  (list arg)))))
+			  (smt2args (if (and (variable? args)
+					     (tupletype? (find-supertype (type arg))))
+					(let ((bnd (assoc arg bindings
+							  :test
+							  #'same-declaration)))
+					  (cdr bnd))
+					(translate-to-smt2* args
+							    bindings))))
+		     (if (funtype? (find-supertype (type operator))) ;; do we need find-supertype?
+			   (format nil "(select ~a ~{ ~a ~} )" smt-op smt2args)
+			   (format nil "(~a ~{ ~a~})" smt-op smt2args))))))))))
 
 
-(defun translate-smt2-bindings (bind-decls bindings prefix-string)
+(defun translate-smt2-bindings (bind-decls bindings prefix-string vartypepairs)
   (cond ((consp bind-decls)
 	 (let ((smt2name (smt2-name (car bind-decls)))
 	       (smt2type (translate-to-smt2* (type (car bind-decls)) bindings)))
@@ -396,30 +398,35 @@
 				    (cons (cons (car bind-decls)
 						smt2name)
 					  bindings)
-				    (format nil "~a ~a-~a"
-					    prefix-string smt2name ytype))))
-	(t (values bindings prefix-string))))
+				    (format nil "~a (~a ~a)"
+					    prefix-string smt2name smt2type
+					    )
+				    (cons (list smt2name smt2type) vartypepairs))))
+	(t (values bindings prefix-string vartypepairs))))
 
 
-
-;; TODO: lambda/function case
-;; (defmethod translate-to-smt2* ((expr binding-expr) bindings)
-;;   (with-slots ((expr-bindings bindings) expression) expr
-;;     (let ((stype (find-supertype (type (car expr-bindings)))))
-;;       (multiple-value-bind (newbindings bindstring)
-;; 	  (translate-smt2-bindings  expr-bindings bindings "")
-;; 	(let ((smt2expression (translate-to-smt2* expression newbindings)))
-;; 	  (cond ((lambda-expr? expr)
-;; 		 (format nil "(define-fun ~a (~a) ~a)"
-;; 			 (symbol-name (gensym))
-;; 			 bindstring
-;; 			 smt2expression))
-;; 		((forall-expr? expr)
-;; 		 (format nil "(forall (~a) ~a)"
-;; 			 bindstring smt2expression))
-;; 		((exists-expr? expr)
-;; 		 (format nil "(exists (~a) ~a)"
-;; 			 bindstring smt2expression))))))))
+(defmethod translate-to-smt2* ((expr binding-expr) bindings)
+  (with-slots ((expr-bindings bindings) expression) expr
+    (let ((stype (find-supertype (type (car expr-bindings)))))
+      (multiple-value-bind (newbindings bindstring vartypepairs)
+	  (translate-smt2-bindings expr-bindings bindings "" nil)
+	(let ((smt2expression (translate-to-smt2* expression newbindings)))
+	  (cond ;; ((lambda-expr? expr)) - don't care?
+	    ((forall-expr? expr)
+	     (loop for pair in vartypepairs
+		   do
+		   (push (format nil "(declare-const ~a ~a)" (car pair) (cdr pair))
+			 *smt2defns*))
+	     (format nil "(forall (~a) ~a)"
+		     bindstring smt2expression)
+	     )
+	    ((exists-expr? expr)
+	     (loop for pair in vartypepairs
+		   do
+		   (push (format nil "(declare-const ~a ~a)" (car pair) (cdr pair))
+			 *smt2defns*))
+	     (format nil "(exists (~a) ~a)"
+		     bindstring smt2expression))))))))
 
 
 (defmethod translate-to-smt2* ((expr update-expr) bindings)
@@ -481,7 +488,7 @@
 		 (type (find (id (caar args)) (fields type)
 			     :test #'eq :key #'id))
 		 bindings)))
-    (translate-to-smt2* value bindings)))
+      (translate-to-smt2* value bindings)))
 
 
 ;;recursion through the arguments while creating a new constant for the new tuple that
@@ -493,7 +500,7 @@
       (let* ((index (car (number (caar args))))
 	     (types  (types type))
 	     (super-types (loop for typ in types
-				      collect (find-supertype typ)))
+				collect (find-supertype typ)))
 	     (dummy-tuple-type (mk-tupletype super-types))
 	     (hashentry (gethash dummy-tuple-type *smt2-recordtype-hash*)))
 	(unless hashentry
@@ -542,15 +549,15 @@
 	   (mod-assoc (cdr (assoc (id (module-instance
 				       (resolution name-expr)))
 				  id-assoc))))
-	     mod-assoc)))
+      mod-assoc)))
 
 
 
 ;; TODO: update this to arbitrary solver executables
-;; (defun find-yices2-executable ()
-;;   (or *yices2-executable*
-;;       (cond ((and (pvs-context-yices2-executable)
-;; 		  (program-version (pvs-context-yices2-executable) "1"))
+;; (defun find-smt2-executable ()
+;;   (or *smt2-executable*
+;;       (cond ((and (pvs-context-smt2-executable) ;; what is this case?
+;; 		  (program-version (pvs-context-smt2-executable) "1"))
 ;; 	     (setq *yices2-executable* "(pvs-context-yices2-executable)"))
 ;; 	    ((program-version "yices2 --version" "Yices 2")
 ;; 	     (setq *yices2-executable* "yices2"))
@@ -574,90 +581,88 @@
 ;; 	     (get-yices2-executable-path npath)))))
 
 
-;; (defun yices2 (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
-;;   #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
-;;                                    ;;functions
-;;       (let* ((goalsequent (current-goal ps))
-;; 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
-;; 	     (*y2defns* nil)
-;; 	     (*y2datatype-warning* nil)
-;; 	     (*yices2-conditions* nil)
-;; 	     (*yices2-subtype-constraints* nil))
-;; 	(find-yices2-executable)
-;; 	(assert *yices2-executable*)
-;; 	(clear-yices2)
-;; 	(let ((yices-forms
-;; 	       (loop for sf in s-forms
-;; 		     collect
-;; 		     (let ((fmla (formula sf)))
-;; 		       (if (negation? fmla)
-;; 			   (format nil "(assert ~a)"
-;; 			     (translate-to-yices2* (args1 fmla) nil))
-;; 			   (format nil "(assert (not ~a))"
-;; 			     (translate-to-yices2* fmla  nil))))))
-;; 	      (revdefns (nreverse *y2defns*))
-;; 	      (file (make-pathname :defaults (working-directory)
-;; 				   :name (label ps) :type "yices")))
-;; 	  (format-if "~%ydefns = ~% ~{~a~%~}" revdefns)
-;; 	  (format-if "~%ysubtypes = ~% ~{~a~%~}" *yices2-subtype-constraints*)
-;; 	  (format-if "~%yforms = ~% ~{~a~%~}" yices-forms)
-;; 	  (with-open-file (stream  file :direction :output
-;; 				   :if-exists :supersede)
-;; 	    (format stream "~{~a ~%~}" revdefns)
-;; 	    (unless nil ;;nonlinear?
-;; 	      (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
-;; 	    (format stream "~{~a ~%~}" yices-forms)
-;; 	    (format stream "(check)~%")
-;; 	    ;(unless nonlinear? (format stream "(status)"))
-;; 	    )
-;; 	  (let ((*yices2-flags*
-;; 		 (if nonlinear?
-;; 		     (concatenate 'string
-;; 		       *yices2-flags* " --logic=QF_UFNIRA")
-;; 		     *yices2-flags*)))
-;; 	    (multiple-value-bind (output err-output status)
-;; 		(uiop:run-program
-;; 		    (format nil "~a ~a ~a"
-;; 		      *yices2-executable*
-;; 		      *yices2-flags*
-;; 		      (namestring file))
-;; 		  :input "//dev//null"
-;; 		  :output '(:string :stripped t)
-;; 		  :ignore-error-status t)
-;; 	      (when *y2datatype-warning*
-;; 		(format t "~70,,,'*A" "")
-;; 		(format t "~%Warning: The Yices datatype theory is not currently trustworthy.
-;; Please check your results with a proof that does not rely on Yices. ~%")
-;; 		(format t "~70,,,'*A" ""))
-;; 	      (cond ((zerop status)
-;; 		     ;;(break "yices result")
-;; 		     (format-if "~%Result = ~a" output)
-;; 		     (cond ((search "unsat"  output :from-end t)
-;; 			    (format-if "~%Yices translation of negation is unsatisfiable")
-;; 			    (values '! nil nil))
-;; 			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
-;; 			      (values 'X nil nil))))
-;; 		    (t (format t
-;; 			   "~%Error running yices - you may need to do one or more of:~
-;;                           ~% 1. Download yices from http://yices.csl.sri.com~
-;;                           ~% 2. add yices to your path and restart PVS.
-;;                           ~%The error message is:~% ~a"
-;; 			 err-output)
-;; 		       (values 'X nil)))))))))
-
-
+(defun smt2 (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
+  #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
+      ;;functions
+      (let* ((goalsequent (current-goal ps))
+	     (s-forms (select-seq (s-forms goalsequent) sformnums))
+	     (*smt2defns* nil)
+	     (*smt2datatype-warning* nil)
+	     (*smt2-conditions* nil)
+	     (*smt2-subtype-constraints* nil)
+	     (*translate-to-smt2-hash* (make-pvs-hash-table))
+	     (*smt2name-hash* (make-pvs-hash-table)))
+	;; 	(find-yices2-executable)
+	;;	(assert *yices2-executable*)
+	;; (clear-smt2)
+	;; (loop for sf in s-forms
+	;;       (format nil "SFORMS: ~a" sf))
 	
+	(let ((smt2-forms
+	       (loop for sf in s-forms
+		     collect
+		     (let ((fmla (formula sf)))
+		       (if (negation? fmla)
+			   (format nil "(assert ~a)"
+				   (translate-to-smt2* (args1 fmla) nil))
+			   (format nil "(assert (not ~a))"
+				   (translate-to-smt2* fmla nil))))))
+	      (revdefns (nreverse *smt2defns*))
+	      (file (make-pathname :defaults (working-directory)
+				   :name (label ps) :type "smtlib2")))
+	  (format-if "~%smt2defns = ~% ~{~a~%~}" revdefns)
+	  (format-if "~%smt2subtypes = ~% ~{~a~%~}" *smt2-subtype-constraints*)
+	  (format-if "~%smt2forms = ~% ~{~a~%~}" smt2-forms)
+	  (with-open-file (stream  file :direction :output
+				   :if-exists :supersede)
+	    (format stream "~{~a ~%~}" revdefns)
+	    (unless nil ;;nonlinear?
+	      (format stream "~{~a ~%~}" *smt2-subtype-constraints*))
+	    (format stream "~{~a ~%~}" smt2-forms)
+	    (format stream "(check-sat)~%")
+					;(unless nonlinear? (format stream "(status)"))
+	    )
+
+	  (format-if "~%Command: ~a" (format nil "~a ~a"
+		       *smt2-executable*
+		       (namestring file)))
+	  
+	  (multiple-value-bind (output err-output status)
+	      (uiop:run-program
+	       (format nil "~a ~a"
+		       *smt2-executable*
+		       (namestring file))
+	       :output '(:string :stripped t)
+	       :ignore-error-status t)
+;;	    (break "run-smt2")
+	    (cond ((zerop status)
+		   (format-if "~%Result = ~a" output err-output)
+		   (cond ((search "unsat" output)
+			  (format-if "~%SMT translation of negation is unsatisfiable")
+			  (values '! nil nil))
+			 (t (format-if "~%SMT translation of negation is not known to be satisfiable or unsatisfiable")
+			    (values 'X nil nil))))
+		  (t (format t
+			     "~%Error running the solver - you may need to do one or more of:~
+	                            ~% 1. Re-download/reconfigure the solver
+	                            ~% 2. Add the solver executable to the path
+	                            ~%The error message is:~% ~a"
+			     err-output)
+		     (values 'X nil))))))))
+
+
+
 (addrule 'smt2 () ((fnums *) nonlinear?)
-  (smt2 fnums nonlinear?)
-  "Invokes an external endgame SMT solver to prove that the conjunction
+	 (smt2 fnums nonlinear?)
+	 "Invokes an external endgame SMT solver to prove that the conjunction
 of the negations of the selected formulas is unsatisfiable. "
-  "~%Simplifying with SMT,")
+	 "~%Simplifying with SMT,")
 
 
-  
-  
+
+
 (defstep smt2-with-rewrites
-  (&optional (fnums *) defs theories rewrites exclude-theories exclude)
+    (&optional (fnums *) defs theories rewrites exclude-theories exclude)
   (then (simplify-with-rewrites fnums defs theories rewrites exclude-theories exclude)
 	(smt2 fnums))
   "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
@@ -674,24 +679,24 @@ by (smt2 fnums), then turns off all the installed rewrites.  Examples:
   "Repeatedly skolemizes and flattens, and then applies an external SMT solver"
   "Repeatedly skolemizing and flattening, and then invoking an external SMT solver")
 
-  
+
 
 (defstep smt2grind (&optional (defs !); nil, t, !, explicit, or explicit!
-			  theories
-			  rewrites
-			  exclude
-			  (if-match t)
-			  (updates? t)
-			  polarity?
-			  (instantiator inst?)
-			  (let-reduce? t)
-			  cases-rewrite?
-			  quant-simp?
-			  no-replace?
-			  implicit-typepreds?
-			  nonlinear?)
+			      theories
+			      rewrites
+			      exclude
+			      (if-match t)
+			      (updates? t)
+			      polarity?
+			      (instantiator inst?)
+			      (let-reduce? t)
+			      cases-rewrite?
+			      quant-simp?
+			      no-replace?
+			      implicit-typepreds?
+			      nonlinear?)
   (then (install-rewrites$ :defs defs :theories theories
-		      :rewrites rewrites :exclude exclude)
+			   :rewrites rewrites :exclude exclude)
 	(repeat* (bash$ :if-match if-match :updates? updates?
 			:polarity? polarity? :instantiator instantiator
 			:let-reduce? let-reduce?
@@ -701,6 +706,6 @@ by (smt2 fnums), then turns off all the installed rewrites.  Examples:
 	(smt2 :nonlinear? nonlinear?))
   "Core of GRIND: Installs rewrites, repeatedly applies BASH, and then
    invokes an external SMT solver.  See BASH for more explanation."
-"Repeatedly simplifying with decision procedures, rewriting,
+  "Repeatedly simplifying with decision procedures, rewriting,
   propositional reasoning, quantifier instantiation, skolemization, dispatch to external SMT solver")
 

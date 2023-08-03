@@ -51,6 +51,7 @@
     (TRUE (|booleans| . true))
     (FALSE (|booleans| . false))
     (IMPLIES  (|booleans| . =>))
+    (<=> (|booleans| . =))
     (=>  (|booleans| . =>))
     (⇒ (|booleans| . =>))
     (IFF (|booleans| . =))
@@ -359,7 +360,6 @@
 	      result)))))
     
 (defmethod translate-to-yices2* :around ((obj expr) bindings)
-
   (if (or *bound-variables* *bindings*)
       (call-next-method)
       (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
