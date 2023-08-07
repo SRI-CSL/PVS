@@ -1,6 +1,6 @@
 ;;
 ;; defattach.lisp
-;; Release: PVSio-7.1.0 (11/05/20)
+;; Release: PVSio-8.0 (08/04/2023)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -169,48 +169,57 @@
 			    theory name (length args))
 	       (defattach-aux theory name args body t)))))))
 
+;; decls is a list of declarations for defun, e.g., (declare (ignore x))
+(defun defattach-body (attachment args body &optional decls)
+  (if (and body (listp (car body)) (equal (caar body) 'declare)) ;; Element is a declaration
+      (defattach-body attachment args (cdr body) (append decls (list (car body))))
+    (let* ((fnm    (attachment-symbol attachment))
+	   (theory (attachment-theory attachment))
+	   (name   (attachment-name   attachment))
+	   (argstr (if args (format nil "(~{~a~^, ~})" args) ""))
+	   (dobo   (if (and body (cdr body) (stringp (car body))) 
+		       body
+		     (cons "" body)))
+	   (newdoc (format nil "Attachment: ~a.~a 
+PVS Usage: ~a~a
+Documentation: ~a
+Lisp name: ~a
+Lisp declarations: ~{~a~^ ~}
+Lisp definition:
+~{~s~^ ~}" 
+			   theory (attachment-name-prim attachment)
+			   name argstr
+			   (car dobo)
+			   fnm
+			   decls
+			   (cdr dobo)))
+	   (mssg   
+	    (format nil 
+		    "Function ~a.~a is defined as a semantic attachment. 
+It cannot be evaluated in a formal proof." 
+		    theory name))
+	   (newargs (append args (list '&optional '*the-pvs-type*)))
+	   (newbody (if (attachment-primitive attachment)
+			(cdr dobo)
+		      (cons `(when *in-checker* 
+			       (error 'pvsio-inprover :format-control ,mssg))
+			    (cdr dobo)))))
+      (append `(defun ,fnm ,newargs)
+	      (cons '(declare (ignorable *the-pvs-type*)) decls)
+	      (cons newdoc newbody)))))
+
 ;; Primitive attachments are TRUSTED
 (defun defattach-aux (theory name args body &optional primitive)
-  (let* ((nargs     (length args))
-	 (newargs   (append args (list '&optional '*the-pvs-type*)))
-	 (fnm       (makesym "pvsio_~a_~a_~a" theory name nargs))
-	 (attachmnt (make-attachment :theory theory :name name :args nargs 
-				     :primitive primitive :symbol fnm))
-	 (nm        (makesym "~a" name))
-	 (th        (makesym "~a" theory))
-	 (argstr    (if args (format nil "(~{~a~^, ~})" args) ""))
-	 (dobo      (if (and body (cdr body) (stringp (car body))) 
-			body
-			(cons "" body)))
-	 (doc       (format nil "
-Attachment: ~a.~a~% 
-Usage: ~a~a~%
-Documentation: ~a~%
-Lisp name : ~a~%
-Lisp definition: ~%
-~s~%~%" 
-		      theory (attachment-name-prim attachmnt)
-                      name argstr
-		      (car dobo) 
-		      fnm 
-		      (cons 'progn (cdr dobo))))
-	 (mssg   
-	  (format 
-	      nil 
-	      "Function ~a.~a is defined as a semantic attachment. 
-It cannot be evaluated in a formal proof." 
-	    theory name)))
-    (when (find-attachment attachmnt)
-      (pvs-message "Redefining ~a.~a" theory (attachment-name-prim attachmnt)))
+  (let* ((nargs      (length args))
+	 (fnm        (makesym "pvsio_~a_~a_~a" theory name nargs))
+	 (attachment (make-attachment :theory theory :name name :args nargs 
+				     :primitive primitive :symbol fnm)))
+    (when (find-attachment attachment)
+      (pvs-message "Redefining ~a.~a" theory (attachment-name-prim attachment)))
     (setf (gethash theory *pvsio-attachments*)
-	  (cons attachmnt (remove-if #'(lambda (x) (same-attachment attachmnt x))
-			    (gethash theory *pvsio-attachments*))))
-    (let ((body (if primitive
-		    (cons 'progn (cdr dobo))
-		    `(if *in-checker* 
-			 (error 'pvsio-inprover :format-control ,mssg)
-			 ,(cons 'progn (cdr dobo))))))
-      `(defun ,fnm ,newargs ,doc ,body))))
+	  (cons attachment (remove-if #'(lambda (x) (same-attachment attachment x))
+				      (gethash theory *pvsio-attachments*))))
+    (defattach-body attachment args body)))
 
 (defmacro defattach-th-nm (theory nm args &rest body)
   (when (check-defattach nm body)
