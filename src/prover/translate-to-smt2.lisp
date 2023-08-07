@@ -641,6 +641,15 @@
 		   (format-if "~%Result = ~a" output err-output)
 		   (cond ((search "unsat" output)
 			  (format-if "~%SMT translation of negation is unsatisfiable")
+
+			   (format-if "~%Removing generated .smtlib2 queries")
+			    (uiop:run-program
+			     (format nil "rm *.smtlib2")
+			     :input "//dev//null"
+			     :output '(:string :stripped t)
+			     :ignore-error-status t)
+
+			  
 			  (values '! nil nil))
 			 (t (format-if "~%SMT translation of negation is not known to be satisfiable or unsatisfiable")
 			    (values 'X nil nil))))
