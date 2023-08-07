@@ -35,6 +35,7 @@
 ;;(defvar *smt2datatype-warning* nil)
 (defvar *smt2name-hash* (make-pvs-hash-table))
 (defvar *translate-to-smt2-hash* (make-pvs-hash-table))
+; (defvar *smt2-executable* nil)
 (defvar *smt2-executable* "~/z3/build/z3") ;; TODO: find/set this dynamically
 (defvar *smt2-flags* "--mode=one-shot")
 (defvar *smt2-id-counter*)  ;;needs to be initialized in eproofcheck
@@ -109,7 +110,7 @@
 			    (format nil "~r"
 				    id)
 			    id))
-		"_"
+		; "_"
 		(princ-to-string
 		 (funcall
 		  *smt2-id-counter*))) :pvs))
@@ -171,9 +172,14 @@
 
 (defmethod translate-to-smt2* ((ty funtype) bindings)
   (with-slots (domain range) ty
-    (format nil "(Array ~a ~a)"
-	    (translate-to-smt2* domain bindings)
-	    (translate-to-smt2* range bindings))))
+    (if (bitvector-type? ty)
+	(format nil "(_ BitVec ~a)" 32)
+	;; TODO: generalize 32 to N (from bitvec[N])
+	;; via (simple-below? domain)
+	(format nil "(Array ~a ~a)"
+		(translate-to-smt2* domain bindings)
+		(translate-to-smt2* range bindings)))
+    ))
 
 
 (defmethod translate-to-smt2* ((list list) bindings)
@@ -261,7 +267,7 @@
 	    smt2condition
 	    (let ((*smt2-conditions* (push smt2condition *smt2-conditions*)))
 	      (translate-to-smt2* (then-part expr) bindings))
-	    (let ((*smt2-conditions* (push `(not ,smt2condition) *smt2-conditions*)))
+	    (let ((*smt2-conditions* (push `("not" ,smt2condition) *smt2-conditions*)))
 	      (translate-to-smt2* (else-part expr) bindings)))))
 
 (defmethod translate-to-smt2* ((expr projection-expr) bindings)
@@ -415,7 +421,7 @@
 	    ((forall-expr? expr)
 	     (loop for pair in vartypepairs
 		   do
-		   (push (format nil "(declare-const ~a ~a)" (car pair) (cdr pair))
+		   (push (format nil "(declare-const ~a ~a)" (car pair) (cadr pair))
 			 *smt2defns*))
 	     (format nil "(forall (~a) ~a)"
 		     bindstring smt2expression)
@@ -554,23 +560,19 @@
 
 
 ;; TODO: update this to arbitrary solver executables
-;; (defun find-smt2-executable ()
-;;   (or *smt2-executable*
-;;       (cond ((and (pvs-context-smt2-executable) ;; what is this case?
-;; 		  (program-version (pvs-context-smt2-executable) "1"))
-;; 	     (setq *yices2-executable* "(pvs-context-yices2-executable)"))
-;; 	    ((program-version "yices2 --version" "Yices 2")
-;; 	     (setq *yices2-executable* "yices2"))
-;; 	    ((program-version "yices --version" "Yices 2")
-;; 	     (setq *yices2-executable* "yices"))
-;; 	    (t (format t "~%Yices 1 cannot be found in your path")
-;; 	       (when (program-version "yices --version" "1")
-;; 		 (format t "~%\"yices\" is in your path, but it is version 1"))
-;; 	       (unless (pvs-yes-or-no-p
-;; 			"~%Use yices (i.e., \"yices\" or \"yices-with-rewrites\") instead? ")
-;; 		 (format t "~%If necessary, download and install Yices 2 from http://yices.csl.sri.com")
-;; 		 (let ((path (pvs-dialog "~%Please enter the path to Yices 2: ")))
-;; 		   (get-yices2-executable-path path)))))))
+(defun find-smt2-executable ()
+  (or *smt2-executable*
+      (cond ;; ((and (pvs-context-yices-executable) ;; what is this case?
+	    ;; 	  (program-version (pvs-context-yices-executable) "1"))
+	    ;;  (break "case1")
+	    ;;  (setq *smt2-executable* "(pvs-context-smt2-executable)"))
+	    ((program-version "z3 --version" "Z3")
+	     (break "z3 case")
+	     (setq *smt2-executable* "z3"))
+	    ((program-version "cvc5 --version" "cvc5")
+	     (break "cvc5 case")
+	     (setq *smt2-executable* "cvc5"))
+	    (t (format t "~%Neither z3 nor cvc5 can be found on your path.")))))
 
 
 ;; (defun get-yices2-executable-path (path)
@@ -592,12 +594,9 @@
 	     (*smt2-subtype-constraints* nil)
 	     (*translate-to-smt2-hash* (make-pvs-hash-table))
 	     (*smt2name-hash* (make-pvs-hash-table)))
-	;; 	(find-yices2-executable)
-	;;	(assert *yices2-executable*)
-	;; (clear-smt2)
-	;; (loop for sf in s-forms
-	;;       (format nil "SFORMS: ~a" sf))
-	
+;	(find-smt2-executable)
+	(assert *smt2-executable*)
+	;; (clear-smt2)	
 	(let ((smt2-forms
 	       (loop for sf in s-forms
 		     collect
@@ -629,9 +628,12 @@
 	  
 	  (multiple-value-bind (output err-output status)
 	      (uiop:run-program
-	       (format nil "~a ~a"
+	       (let* ((options (cond ((eq *smt2-executable* "cvc5") "--lang smtlib2 --quiet")
+				     (t ""))))
+	       (format nil "~a ~a ~a"
 		       *smt2-executable*
-		       (namestring file))
+		       options
+		       (namestring file)))
 	       :output '(:string :stripped t)
 	       :ignore-error-status t)
 ;;	    (break "run-smt2")
