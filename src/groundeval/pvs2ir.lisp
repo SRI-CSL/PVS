@@ -968,7 +968,7 @@
   (with-slots (supertype) ty
     (bitvector-type? supertype)))
 
-(defmethod bitvector-type? ((ty T))
+(defmethod bitvector-type? ((ty t))
   nil)
 
 ;;intersects the subranges (if any) in ir-types; returns nil, otherwise. 
@@ -6775,7 +6775,7 @@
 
 (defun make-closure-copy-info (type-name-root c-funtype ir-rangetype ir-freevars)
   (let* ((new-name (intern (format nil "copy_~a" type-name-root)))
-	 (new-header (format nil ~a_t copy_~a(~a_t x);" type-name-root type-name-root type-name-root))
+	 (new-header (format nil "~a_t copy_~a(~a_t x);" type-name-root type-name-root type-name-root))
 	 (new-defn (format nil "~a_t copy_~a(~a_t x){~%~8T~a_t y = new_~a();
 ~8Ty->ftbl = x->ftbl;
 ~{~%~8T~a;~}
@@ -6813,7 +6813,7 @@
 
 (defun make-closure-new-info (type-name-root ftbl-type-name fptr-cast mptr-cast rptr-cast cptr-cast ir-freevars)
     (let* ((new-name (intern (format nil "new_~a" type-name-root)))
-	   (new-header (format nil ~a_t new_~a(void);" type-name-root type-name-root))
+	   (new-header (format nil "~a_t new_~a(void);" type-name-root type-name-root))
 	   (gmp-freevars-init (loop for ifv in ir-freevars
 				    as i from 1
 				    when (mpnumber-type? (ir2c-type (freevar-type ifv)))
@@ -7080,7 +7080,7 @@
 ;;equality and closures will return false with a warning
 (defun make-function-equal-info (type-name-root c-param-decl-string)
   (let* ((new-name (intern (format nil "equal_~a" type-name-root)))
-	 (new-header (format nil bool_t equal_~a(~a_t x, ~a_t y~a);"
+	 (new-header (format nil "bool_t equal_~a(~a_t x, ~a_t y~a);"
 			      type-name-root type-name-root type-name-root c-param-decl-string))
 	 (new-defn (format nil "bool_t equal_~a(~a_t x, ~a_t y~a){~%~8Treturn false;}"
 			   type-name-root type-name-root type-name-root c-param-decl-string)))
@@ -7088,7 +7088,7 @@
 
 (defun make-function-json-info (type-name-root c-param-decl-string)
   (let* ((name (format nil "json_~a" type-name-root))
-	 (header (format nil char* ~a(~a_t x~a)" name type-name-root c-param-decl-string))
+	 (header (format nil "char* ~a(~a_t x~a)" name type-name-root c-param-decl-string))
 	 (type-name-root-string (string type-name-root))
 	 (defn (format nil "char* ~a(~a_t x~a){char * result = safe_malloc(~a); sprintf(result, \"%s\", \"\\\"~a\\\"\"); return result;}"
 		       name type-name-root c-param-decl-string
@@ -7100,7 +7100,7 @@
 	 (header (format nil "~a_t ~a(~a_t x)" type-name-root name type-name-root (mppointer-type c-domain-root)))
 	 (body   (format nil "{return x->ftbl->cptr(x);}"))
 	 (defn (format nil "~a~a" header body)))
-    (mk-c-defn-info name  (format nil ~a;" header) defn (list type-name-root) type-name-root)))
+    (mk-c-defn-info name  (format nil "~a;" header) defn (list type-name-root) type-name-root)))
 
 (defun make-function-lookup-info (type-name-root c-domain-root htype )
   (declare (ignore htype))
@@ -7150,7 +7150,7 @@
 ~16Treturn dupdate_~a(x, i, v~a);
 ~12T}}" type-name-root c-param-arg-string type-name-root type-name-root type-name-root c-param-arg-string))
 	 (defn (format nil "~a~a" header body)))
-    (mk-c-defn-info name (format nil ~a;" header) defn (list type-name-root c-domain-root c-range-root) type-name-root)))
+    (mk-c-defn-info name (format nil "~a;" header) defn (list type-name-root c-domain-root c-range-root) type-name-root)))
 
 (defun make-function-dupdate-info (type-name-root c-domain-root htype c-range-root elemtype c-param-arg-string c-param-decl-string)
   (let* ((name (format nil "dupdate_~a" type-name-root))
@@ -7255,7 +7255,7 @@
 	 (body (format nil "{~%~8Tx->count--;~%~12Tif (x->count <= 0)
 ~%~16Tx->ftbl->rptr(x);}"))
 	 (defn (format nil "~a~a" header body)))
-    (mk-c-defn-info name (format nil ~a;" header) defn (list type-name-root) 'void)))
+    (mk-c-defn-info name (format nil "~a;" header) defn (list type-name-root) 'void)))
 ;;Let the rptr do all the work including disposing the ftbl and htbl, so no type parameters needed
 ;; ~%~20Tif (x->htbl->data != NULL)
 ;; safe_free(x->htbl->data);
@@ -7356,7 +7356,7 @@
     (mk-c-defn-info new-name new-header new-defn nil type-name-root)))
 
 (defun make-new-header (new-name type-name-root) ; c-param-decl-string
-  (format nil ~a_t ~a(uint32_t size);" type-name-root new-name))
+  (format nil "~a_t ~a(uint32_t size);" type-name-root new-name))
 
 ;;array has a size (number of elements) and max (capacity).  Initially, both are set to the actual size,
 ;;but as the array grows, the max is double till it reaches the limit of 2^32.
@@ -7441,7 +7441,7 @@
       (format nil "release_~a(~a~a)"  c-ir-type c-expr c-param-arg-string))))
 
 (defun make-array-release-header (release-name type-name-root c-param-decl-string)
-  (format nil void ~a(~a_t x~a);" release-name type-name-root c-param-decl-string))
+  (format nil "void ~a(~a_t x~a);" release-name type-name-root c-param-decl-string))
 ;;The release operation reduces the reference count of a reference by one, and frees the object
 ;;(releasing any connected objects) if the count falls to 0.  
 (defun make-array-release-defn (release-name type-name-root size ir-range c-range-root
@@ -7476,7 +7476,7 @@
 
 (defun make-array-copy-header (copy-name type-name-root elemtype c-param-decl-string)
   (declare (ignore elemtype c-param-decl-string))
-  (format nil ~a_t ~a(~a_t x);" type-name-root copy-name type-name-root))
+  (format nil "~a_t ~a(~a_t x);" type-name-root copy-name type-name-root))
 
 (defun make-array-copy-defn (copy-name type-name-root size elemtype c-range-root c-param-decl-string)
   (declare (ignore size c-param-decl-string))
@@ -7523,7 +7523,7 @@
 
 (defun make-array-json-header (json-name type-name-root elemtype c-param-decl-string)
   (declare (ignore elemtype))
-  (format nil char * ~a(~a_t x~a);" 
+  (format nil "char * ~a(~a_t x~a);" 
 	  json-name type-name-root  c-param-decl-string)
   )
 
@@ -7556,7 +7556,7 @@
 
 (defun make-array-json-ptr-header (json-name type-name-root elemtype c-param-decl-string)
   (declare (ignore type-name-root elemtype c-param-decl-string))
-  (format nil char * ~a_ptr(pointer_t x, type_actual_t T);" 
+  (format nil "char * ~a_ptr(pointer_t x, type_actual_t T);" 
 	  json-name)
     )
 
@@ -7572,9 +7572,9 @@
 (defun make-array-equal-header (equal-name type-name-root elemtype c-param-decl-string)
   (declare (ignore elemtype))
 ;;  (if (or (ir-formal-typename? elemtype)(ir-reference-type? elemtype))
-  (format nil bool_t ~a(~a_t x, ~a_t y~a);" 
+  (format nil "bool_t ~a(~a_t x, ~a_t y~a);" 
 	  equal-name type-name-root type-name-root c-param-decl-string)
-    ;; (format nil bool_t ~a(~a_t x, ~a_t y);" 
+    ;; (format nil "bool_t ~a(~a_t x, ~a_t y);" 
     ;; 	      equal-name type-name-root type-name-root)
   )
 
@@ -7616,7 +7616,7 @@
 (defun make-array-equal-ptr-header (equal-name type-name-root elemtype c-param-decl-string)
   (declare (ignore type-name-root elemtype c-param-decl-string))
 ;;  (if (or (ir-formal-typename? elemtype)(ir-reference-type? elemtype))  
-  (format nil bool_t ~a_ptr(pointer_t x, pointer_t y, type_actual_t T);" 
+  (format nil "bool_t ~a_ptr(pointer_t x, pointer_t y, type_actual_t T);" 
 	  equal-name)
     ;; (format nil bool_t ~a_ptr(pointer_t x, pointer_t y);" 
     ;; 	      equal-name)
@@ -7636,7 +7636,7 @@
 
 (defun make-array-update-header (update-name type-name-root ir-range c-range-root c-param-decl-string)
   (declare (ignore ir-range))
-  (format nil ~a_t ~a(~a_t x, uint32_t i, ~a_t v~a);" type-name-root update-name  type-name-root c-range-root c-param-decl-string))
+  (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a);" type-name-root update-name  type-name-root c-range-root c-param-decl-string))
 
 (defun make-array-update-defn (update-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):update is only invoked on last-marked array variable
@@ -7658,7 +7658,7 @@
 
 (defun make-array-upgrade-header (upgrade-name type-name-root ir-range c-range-root c-param-decl-string)
   (declare (ignore ir-range))
-  (format nil ~a_t ~a(~a_t x, uint32_t i, ~a_t v~a);" type-name-root upgrade-name  type-name-root c-range-root c-param-decl-string))
+  (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a);" type-name-root upgrade-name  type-name-root c-range-root c-param-decl-string))
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
@@ -7791,7 +7791,7 @@
 
 (defun make-record-new-info (type-name-root)
     (let* ((new-name (intern (format nil "new_~a" type-name-root)))
-	   (new-header (format nil ~a_t new_~a(void);" type-name-root type-name-root))
+	   (new-header (format nil "~a_t new_~a(void);" type-name-root type-name-root))
 	   (new-defn   (format nil "~a_t new_~a(void){~%~8T~a_t tmp = (~a_t) safe_malloc(sizeof(struct ~a_s));~%~8Ttmp->count = 1;~%~8Treturn tmp;}"
 			       type-name-root type-name-root type-name-root type-name-root type-name-root)))
       (mk-c-defn-info new-name new-header new-defn nil type-name-root)))
@@ -7800,7 +7800,7 @@
 						    c-param-arg-string  c-param-decl-string)
   (declare (ignore ir-field-types c-field-types))
   (let* ((release-name (intern (format nil "release_~a" type-name-root)))
-	 (release-header (format nil void release_~a(~a_t x~a);" type-name-root type-name-root c-param-decl-string))
+	 (release-header (format nil "void release_~a(~a_t x~a);" type-name-root type-name-root c-param-decl-string))
 	 (release-defn (let ((release-fields (loop for constructor in constructors
 						   as index from 0
 						   when (cdr constructor)
@@ -7835,7 +7835,7 @@
 
 (defun make-record-release-info (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
   (let* ((release-name (intern (format nil "release_~a" type-name-root)))
-	 (release-header (format nil void release_~a(~a_t x~a);" type-name-root type-name-root c-param-decl-string))
+	 (release-header (format nil "void release_~a(~a_t x~a);" type-name-root type-name-root c-param-decl-string))
 	 (release-defn (let ((release-fields (loop for ft in ir-field-types
 						   as cft in c-field-types
 						   when (ir-reference-type? (ir-vtype ft))
@@ -7852,7 +7852,7 @@
 
 (defun make-record-copy-info (type-name-root ir-field-types c-field-types)
   (let* ((copy-name (intern (format nil "copy_~a" type-name-root)))
-	 (copy-header (format nil ~a_t ~a(~a_t x);" type-name-root copy-name type-name-root))
+	 (copy-header (format nil "~a_t ~a(~a_t x);" type-name-root copy-name type-name-root))
 	 (copy-defn (make-record-copy-defn type-name-root ir-field-types c-field-types)))
     (mk-c-defn-info copy-name copy-header copy-defn (list type-name-root) type-name-root)))
 
@@ -7885,7 +7885,7 @@
 (defun make-adt-record-equal-info (type-name-root ir-field-types c-field-types constructors
 						  c-param-arg-string  c-param-decl-string)
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
-	 (equal-header (format nil bool_t ~a(~a_t x, ~a_t y~a);" equal-name
+	 (equal-header (format nil "bool_t ~a(~a_t x, ~a_t y~a);" equal-name
 			      type-name-root type-name-root c-param-decl-string))
 	 (equal-defn (make-adt-record-equal-defn type-name-root ir-field-types
 						 c-field-types constructors c-param-arg-string  c-param-decl-string)))
@@ -7894,7 +7894,7 @@
 (defun make-adt-record-json-info (type-name-root ir-field-types c-field-types constructors
 						  c-param-arg-string  c-param-decl-string)
   (let* ((json-name (intern (format nil "json_~a" type-name-root)))
-	 (json-header (format nil char * ~a(~a_t x~a);" json-name
+	 (json-header (format nil "char * ~a(~a_t x~a);" json-name
 			      type-name-root c-param-decl-string))
 	 (json-defn (make-adt-record-json-defn type-name-root ir-field-types
 						 c-field-types constructors c-param-arg-string  c-param-decl-string)))
@@ -7940,11 +7940,11 @@
     (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) "char *")))
 
 (defun make-record-equal-ptr-header (equal-name type-name-root)
-  (format nil bool_t ~a_ptr(pointer_t x, pointer_t y, actual_~a_t T);" 
+  (format nil "bool_t ~a_ptr(pointer_t x, pointer_t y, actual_~a_t T);" 
 	  equal-name type-name-root))
 
 (defun make-record-json-ptr-header (json-name type-name-root)
-  (format nil char * ~a_ptr(pointer_t x,  actual_~a_t T);" 
+  (format nil "char * ~a_ptr(pointer_t x,  actual_~a_t T);" 
 	  json-name type-name-root))
 
 (defun make-record-equal-ptr-defn (equal-name type-name-root  theory-c-params-variadic c-param-arg-string)
@@ -7963,7 +7963,7 @@
 
 (defun make-record-json-info (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
     (let* ((json-name (intern (format nil "json_~a" type-name-root)))
-	   (json-header (format nil char * ~a(~a_t x~a);" json-name
+	   (json-header (format nil "char * ~a(~a_t x~a);" json-name
 				type-name-root  c-param-decl-string))
 	   (json-defn (make-record-json-defn type-name-root ir-field-types c-field-types c-param-arg-string
 					     c-param-decl-string)))
@@ -7971,7 +7971,7 @@
 
 (defun make-record-equal-info (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
-	 (equal-header (format nil bool_t ~a(~a_t x, ~a_t y~a);" equal-name
+	 (equal-header (format nil "bool_t ~a(~a_t x, ~a_t y~a);" equal-name
 			      type-name-root type-name-root c-param-decl-string))
 	 (equal-defn (make-record-equal-defn type-name-root ir-field-types c-field-types c-param-arg-string
 					     c-param-decl-string)))
@@ -8048,8 +8048,8 @@
   (let* ((update-name (intern (format nil "update_~a_~a" type-name-root (ir-id ir-field-type))))
 	 (ftype (ir-vtype ir-field-type))
 	 (update-header (if (ir-reference-type? ftype)
-			    (format nil ~a_t ~a(~a_t x, ~a_t v~a);" type-name-root update-name type-name-root (mppointer-type c-field-type) c-param-decl-string)
-			  (format nil ~a_t ~a(~a_t x, ~a_t v);" type-name-root update-name type-name-root (mppointer-type c-field-type))))
+			    (format nil "~a_t ~a(~a_t x, ~a_t v~a);" type-name-root update-name type-name-root (mppointer-type c-field-type) c-param-decl-string)
+			  (format nil "~a_t ~a(~a_t x, ~a_t v);" type-name-root update-name type-name-root (mppointer-type c-field-type))))
 	 (update-defn (make-record-field-update-defn update-name type-name-root ir-field-type c-field-type
 						     c-param-arg-string c-param-decl-string)))
     (mk-c-defn-info update-name update-header update-defn (list type-name-root c-field-type) type-name-root)))
@@ -8543,7 +8543,7 @@
 	 (arg-string (if (null arg-type-pairs)
 			 (format nil "(void)")
 		       (format nil "(~{~a~^, ~})" arg-type-pairs)))
-	 (header (if definition (format nil ~a_t ~a~a;" return-type thname arg-string)
+	 (header (if definition (format nil "~a_t ~a~a;" return-type thname arg-string)
 		   (format nil "static inline ~a_t ~a~a~a" return-type thname arg-string header-defn)))
 	 (c-definition (when definition (format nil "~a_t ~a~a~a" return-type thname arg-string definition)))
 	 (c-defn-info (mk-c-defn-info thname header c-definition arg-types return-type)))
@@ -8562,7 +8562,7 @@
 	       (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
 	       ;; (dummy (when (null c-result-type) (break "make-c-defn-info")))
 	       ;;might need to adjust c-header when result type is gmp
-	       (c-header (format nil ~a_t ~a(~a)"
+	       (c-header (format nil "~a_t ~a(~a)"
 			   (mppointer-type c-result-type) ir-function-name
 			   (c-args-string ir-args))))
 	  (unless *to-emacs* ;; causes problems
@@ -8589,7 +8589,7 @@
 				       when (mpnumber-type? c-arg-type)
 				       collect arg))
 	       (c-args-string (c-args-string ir-args))
-	       (c-header (format nil ~a_t ~a(~a)" (mppointer-type c-result-type) ir-function-name c-args-string))
+	       (c-header (format nil "~a_t ~a(~a)" (mppointer-type c-result-type) ir-function-name c-args-string))
 	       ;; (case c-result-type
 	       ;; 		 ((mpz mpq)
 	       ;; 		  (if (consp c-args)
@@ -8653,7 +8653,7 @@
 	 (c-args-string (if (consp c-args)
 			    (format nil "~{~a~^, ~}" c-args)
 			  (format nil "void")))
-	 (c-header (format nil ~a_t ~a(~a)" (mppointer-type c-result-type)
+	 (c-header (format nil "~a_t ~a(~a)" (mppointer-type c-result-type)
 			   ir-function-name c-args-string))
 			   ;;ignoring params since they are in the free vars;;c-param-decl-string
 	 ;; (case c-result-type
