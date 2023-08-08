@@ -62,8 +62,11 @@
   "Capitalizes string S"
   (string-capitalize s))
 
-(defattach |substr| (s i j)
-  "Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range"   
+(defattach |substring| (s i j)
+  "If i <= j returns substring S[i..j]. Otherwise, returns substring
+S[j..i].
+NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
+with charstring.substr"
   (cond ((and (<= 0 i) (<= i j) (< j (length s)))
 	 (subseq s i (+ j 1)))
 	((and (<= 0 j) (<= j i) (< i (length s)))

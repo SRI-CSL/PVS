@@ -307,9 +307,12 @@ BEGIN
   %% Index of leftmost occurrence of s1 in s2, 2, starting from 0, or -1 if none
   strfind(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
 
-  %% Substring S[i..j] if i <= j, S[j..i] if j <= i
-  %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash with charstring.substr
-  substring(s:string,i,j:below(length(s))): {str:string | length(str) = max(i,j) - min(i,j) + 1}
+  %% If i <= j returns substring S[i..j]. Otherwise, returns substring
+  %% S[j..i].
+  %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
+  %% with charstring.substr"
+  substring(s:string,i,j:below(length(s))):
+    {str:string | length(str) = max(i,j) - min(i,j) + 1}
 
   strrev(s:string) : {str:string | length(str) = length(s)} =
     IF length(s) = 0 THEN s
