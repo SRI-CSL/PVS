@@ -2296,24 +2296,14 @@ place set."
 	       formulas)
     hists))
 
-(defun collect-token-list (term &optional (level 0))
-  (let ((tlist nil)
-	(*parsing-or-unparsing* t)
-	(*mapobject-infix* t))
-    (mapobject #'tokenize term)
-    (reverse tlist)))
+;; (defmethod binding-op ((ex forall-expr))
+;;   "FORALL")
 
-(defmethod tokenize ((ex name-expr))
-  )
+;; (defmethod binding-op ((ex exists-expr))
+;;   "EXISTS")
 
-(defmethod binding-op ((ex forall-expr))
-  "FORALL")
+;; (defmethod binding-op ((ex lambda-expr))
+;;   "LAMBDA")
 
-(defmethod binding-op ((ex exists-expr))
-  "EXISTS")
-
-(defmethod binding-op ((ex lambda-expr))
-  "LAMBDA")
-
-(defmethod binding-op ((ex binding-application))
-  (operator ex))
+;; (defmethod binding-op ((ex binding-application))
+;;   (operator ex))
