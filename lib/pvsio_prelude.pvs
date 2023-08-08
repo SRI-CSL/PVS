@@ -42,24 +42,59 @@ BEGIN
 
 END stdexc
 
+stdexc_tags : THEORY
+BEGIN
+
+% Mutable Exceptions
+  UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
+
+% Math Exceptions
+  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
+  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
+
+  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
+
+%% I/O Exceptions
+  FileNotFound          : ExceptionTag[string] = "FileNotFound"
+  FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
+  WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
+  WrongOutputStreamMode : ExceptionTag[string] = "WrongOutputStreamMode"
+  ClosedStream          : ExceptionTag[string] = "ClosedStream"
+  EndOfFile             : ExceptionTag[string] = "EndOfFile"
+  
+  IOExceptionTags : list[ExceptionTag[string]] = 
+    (: NotARealNumber, NotAnInteger, FileNotFound,
+       FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
+       ClosedStream, EndOfFile :)
+
+%% pvs2str Exception
+  CantTranslate	       : ExceptionTag[string] = "CantTranslate"
+
+END stdexc_tags
+
 %% stdcatch.pvs
 %% Definition of catch and throw 
 
-stdcatch[T1,T2:TYPE+] : THEORY
+stdcatch[ResultType,ExcTagType:TYPE+] : THEORY
 BEGIN
 
-  catch_lift(tag:ExceptionTag[T2],
-             t1:[Dummy->T1],
-             t2:[Exception[T2]->T1]) : T1
+  catch_lift(tag:ExceptionTag[ExcTagType],
+             result:[Dummy->ResultType],
+             handler:[Exception[ExcTagType]->ResultType]) : ResultType
 
-  catch(tag:ExceptionTag[T2],
-        t1:T1,
-        t2:[Exception[T2]->T1]) : MACRO T1 =
-    catch_lift(tag,LAMBDA(d:Dummy):t1,t2)
+  % Catch with a handler
+  catch(tag:ExceptionTag[ExcTagType],
+        result:ResultType,
+        handler:[Exception[ExcTagType]->ResultType]) : MACRO ResultType =
+    catch_lift(tag,LAMBDA(d:Dummy):result,handler)
 
-  catch_list_lift(l:list[ExceptionTag[T2]],
-                  f1:[Dummy->T1],
-                  f2:[Exception[T2]->T1]) : RECURSIVE T1 =
+  % Catch with an exceptional result
+  catch(tag:ExceptionTag[ExcTagType],result,exc_result:ResultType): MACRO ResultType =
+    catch(tag,result,LAMBDA(e:Exception[ExcTagType]):exc_result)
+
+  catch_list_lift(l:list[ExceptionTag[ExcTagType]],
+                  f1:[Dummy->ResultType],
+                  f2:[Exception[ExcTagType]->ResultType]) : RECURSIVE ResultType =
     CASES l OF
       null : f1(dummy),
       cons(e,r) : catch_lift(e,
@@ -68,13 +103,19 @@ BEGIN
     ENDCASES
     MEASURE l BY <<  
 
-  catch(l:list[ExceptionTag[T2]],t1:T1,t2:[Exception[T2]->T1]) : MACRO T1 =
-    catch_list_lift(l,LAMBDA(d:Dummy):t1,t2)
+  % Catch list with a handler
+  catch(l:list[ExceptionTag[ExcTagType]],
+        result:ResultType,handler:[Exception[ExcTagType]->ResultType]) : MACRO ResultType =
+    catch_list_lift(l,LAMBDA(d:Dummy):result,handler)
 
-  throw(tag:ExceptionTag[T2],e:Exception[T2]):T1
+  % Catch list with an execptional result
+  catch(l:list[ExceptionTag[ExcTagType]],result,exc_result:ResultType) : MACRO ResultType =
+    catch(l,result,LAMBDA(e:Exception[ExcTagType]):exc_result)
 
-  throw(tag:ExceptionTag[T2],val:T2) : MACRO T1 =
-    throw(tag,make_exc(tag,val))
+  throw(e:Exception[ExcTagType]):ResultType
+
+  throw(tag:ExceptionTag[ExcTagType],exc_val:ExcTagType) : MACRO ResultType =
+    throw(make_exc(tag,exc_val))
 
 END stdcatch
 
@@ -86,22 +127,15 @@ BEGIN
 
   prog(s:void,t:T): T = t
 
-  % Errors and Exceptions
+  % Throw an error
   error(mssg:string):T 
 
-  % Exists the current evaluation and returns to the Ground Evaluator
+  % Exit the current evaluation and return to the Ground Evaluator
   exit : T
-
-  catch(tag:ExceptionTag[void],t1,t2:T): MACRO T =
-    catch_lift[T,void](tag,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
 
   throw(tag:ExceptionTag[void]): MACRO T = throw[T,void](tag,fail)
 
-  catch(l:list[ExceptionTag[void]],t1,t2:T) : MACRO T =
-    catch_list_lift[T,void](l,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
-
   % Mutable data
-  UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
 
   Mutable : TYPE+
 
@@ -175,10 +209,9 @@ BEGIN
 
   pvs2str_lisp(t:T) : string
 
+  %% Throw CantTranslate
   pvs2str(t:T) : MACRO string =
-    catch("cant-translate",	
-	  pvs2str_lisp(t),
-          LAMBDA(e:Exception[void]):"<?>")
+    pvs2str_lisp(t)
 
 END stdpvs
 
@@ -200,12 +233,6 @@ BEGIN
   %% pi: trig@pi_def
   %% ln, exp, e:lnexp@ln_exp
   %% sinh, cosh, tanh: lnexp@hyperbolic
-
-% Math Exceptions
-  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
-  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
-
-  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
 
   % Rounding Modes
   RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty} 
@@ -232,44 +259,54 @@ END stdmath
 stdstr: THEORY
 BEGIN
 
+  StringChar : TYPE = {str:string | length(str) = 1}
+  
 % Char from code n
-  charcode(n:nat) : string
+  charcode(n:nat) : StringChar
 
 % Prints standard table of characters
-  chartable       : void 
+  chartable     : void 
 
   emptystr      : string = ""
-  space         : string = " "
-  newline       : string 
+  space         : StringChar = " "
+  newline       : StringChar 
   tab           : string 
-  doublequote   : string = charcode(34)
-  singlequote   : string = "'"
-  backquote     : string = "`"
-  spaces(n:nat) : string 
+  doublequote   : StringChar = charcode(34)
+  singlequote   : StringChar = "'"
+  backquote     : StringChar = "`"
+  spaces(n:nat) : {str : string | length(str)=n} 
 
-  upcase(s:string):string
-  downcase(s:string):string
-  capitalize(s:string):string
+  upcase(s:string): {str: string | length(str)=length(s)}
+  downcase(s:string): {str: string | length(str)=length(s)}
+  capitalize(s:string): {str: string | length(str)=length(s)}
   
   %% Index of leftmost occurrence of s1 in s2, 2, starting from 0, or -1 if none
-  strfind(s1,s2:string):int
+  strfind(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
 
-  %% Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range
-  substr(s:string,i,j:nat):string
+  %% Substring S[i..j] if i <= j, S[j..i] if j <= i
+  %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash with charstring.substr
+  substring(s:string,i,j:below(length(s))): {str:string | length(str) = max(i,j) - min(i,j) + 1}
 
-  %% Real to string - % r is a real number, precision represents the precision 10^-n, and rounding is the rounding mode 
+  strrev(s:string) : {str:string | length(str) = length(s)} =
+    IF length(s) = 0 THEN s
+    ELSE 
+      substring(s,length(s)-1,0)
+    ENDIF
+
+  %% Converts real number to string decimal representation using given precision, i.e., natural number, and rounding mode, i.e,
+  %% TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty
   real2decstr(r:real,precision:nat,rounding:RoundingMode) : string
 
-  %% Real to string 
+  %% Converts real number to string decimal representation using default precision and rounding mode
   real2str(r:real) :string = real2decstr(r,val(PRECISION),val(ROUNDING))
 
-  %% String representing a decimal number to rational number
-  decstr2rat(s:string) : real
+  %% Converts string representing a decimal number to rational number
+  decstr2rat(s:string) : rat
 
-  %% Rational number to string representing decimal number
+  %% Converst rational number to string decimal representation using a given precision
   rat2decstr(r:real,precision:nat) : string
 
-  %% Rational number to string 
+  %% Converts rational number to string decimal representation using a default precision
   rat2str(r:real) : string =
     rat2decstr(r,val(PRECISION))
 
@@ -292,7 +329,8 @@ BEGIN
   int?(s:string):bool
 
  %% String concatenation
-  concat(s1:string,s2:string):string = s1 o s2
+  concat(s1:string,s2:string):{ str:string | length(str)=length(s1)+length(s2) } =
+    s1 o s2
   ;+(s1:string,s2:string): MACRO string = concat(s1,s2)
   ;+(r:real,s:string): MACRO string = concat(tostr(r),s)
   ;+(s:string,r:real): MACRO string = concat(s,tostr(r))
@@ -353,19 +391,6 @@ END stdstr
 
 stdio : THEORY
 BEGIN
-
-%% I/O Exceptions
-  FileNotFound          : ExceptionTag[string] = "FileNotFound"
-  FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
-  WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
-  WrongOutputStreamMode : ExceptionTag[string] = "WrongOutputStreamMode"
-  ClosedStream          : ExceptionTag[string] = "ClosedStream"
-  EndOfFile             : ExceptionTag[string] = "EndOfFile"
-  
-  IOExceptionTags : list[ExceptionTag[string]] = 
-    (: NotARealNumber, NotAnInteger, FileNotFound,
-       FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
-       ClosedStream, EndOfFile :)
 
 %% Assert
   assert(b:bool,str:string):void =

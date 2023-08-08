@@ -198,14 +198,14 @@ Lisp definition:
 		    "Function ~a.~a is defined as a semantic attachment. 
 It cannot be evaluated in a formal proof." 
 		    theory name))
-	   (newargs (append args (list '&optional '*the-pvs-type*)))
+	   (newargs (append args (list '&optional 'the-pvs-type_)))
 	   (newbody (if (attachment-primitive attachment)
 			(cdr dobo)
 		      (cons `(when *in-checker* 
 			       (error 'pvsio-inprover :format-control ,mssg))
 			    (cdr dobo)))))
       (append `(defun ,fnm ,newargs)
-	      (cons '(declare (ignorable *the-pvs-type*)) decls)
+	      (cons '(declare (ignorable the-pvs-type_)) decls)
 	      (cons newdoc newbody)))))
 
 ;; Primitive attachments are TRUSTED

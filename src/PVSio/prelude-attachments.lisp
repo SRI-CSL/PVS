@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-7.1.0 (11/05/20)
+;; Release: PVSio-8.0 (08/04/2023)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -79,35 +79,44 @@
   (format nil "~a~a" s1 s2))
 
  (defattach |real2decstr| (r precision rounding)
-   "Converts real number r to string, where the integer precision represents the precision 10^-precision, and rounding is the rounding mode
-    (0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
-   (ratio2decimal r (or (= rounding 3) (and (= rounding 1) (> r 0)) (and (= rounding 0) (< r 0))) precision))
+  "Converts real number r to string. If rational can be represented by a finite decimal, it prints its excact represenation. Otherwise, it uses precision and rounding, where the precision represents the accuracy  10^-precision and rounding as as follows:
+0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
+  (real2decimal r rounding precision))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"
-  (decimals:parse-decimal-number s))
+  (handler-case
+      (decimals:parse-decimal-number s)
+    (decimals:decimal-parse-error
+     (condition)
+     (declare (ignore condition))
+     (throw-pvsio-exc "NotARealNumber" s))))
 
 (defattach |rat2decstr| (r precision)
   "Converts rational number to string representing decimal number using precision"
-  (multiple-value-bind (s x)
-      (decimals:format-decimal-number (rational r) :round-magnitude (- precision))
-    s))
+  (let ((str (nth-value
+	      0
+	      (decimals:format-decimal-number
+	       (rational r) :round-magnitude (- precision)))))
+    str))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
-  (let ((i (read-from-string s)))
-    (if (numberp i) (rational i) 
-      (throw '|NotARealNumber|
-	     (pvs2cl_record (the string "NotARealNumber")
-			    (the string s))))))
+  (handler-case
+      (decimals:parse-decimal-number s)
+    (decimals:decimal-parse-error
+     (condition)
+     (declare (ignore condition))
+     (let ((n (read-from-string s)))
+       (cond ((rationalp n) n)
+	     ((floatp n) (rationalize n))
+	     (t (throw-pvsio-exc "NotARealNumber" s)))))))
 
 (defattach |str2int| (s)
   "Integer denoted by S"
   (let ((i (read-from-string s)))
     (if (integerp i) i 
-      (throw '|NotAnInteger|
-	     (pvs2cl_record (the string "NotAnInteger")
-			    (the string s))))))
+      (throw-pvsio-exc "NotAnInteger" s))))
 
 (defattach |number?| (s)
   "Tests if S denotes a number"
@@ -171,23 +180,24 @@
 (defparameter *pvsio_length_str_stream* (make-hash-table))
 
 (defun read-token (f s)
-  (get-output-stream-string
-   (let ((c (read-char f nil nil)))
-     (when c
-       (do* ((str   (make-string-output-stream))
-	     (start t))
-	   ((not c) str)
-	 (let ((p (when c (position c s)))
-	       (m (when c (member c '(#\Space #\Tab #\Newline)))))
-	   (cond ((and start p)(write-char c str)
-		  (return str))
-		 (p (unread-char c f)
-		    (return str))
-		 ((and start m) (setq c (read-char f nil nil)))
-		 (m (return str))
-		 (t (setq start nil)
-		    (write-char c str)
-		    (setq c (read-char f nil nil))))))))))
+  (let* ((c (read-char f nil nil))
+	 (stream
+	  (when c
+	    (do* ((str   (make-string-output-stream))
+		  (start t))
+		((not c) str)
+	      (let ((p (when c (position c s)))
+		    (m (when c (member c '(#\Space #\Tab #\Newline)))))
+		(cond ((and start p)(write-char c str)
+		       (return str))
+		      (p (unread-char c f)
+			 (return str))
+		      ((and start m) (setq c (read-char f nil nil)))
+		      (m (return str))
+		      (t (setq start nil)
+			 (write-char c str)
+			 (setq c (read-char f nil nil)))))))))
+    (when stream (get-output-stream-string stream))))
 
 (defun stdio-attachments ()
 
@@ -212,18 +222,14 @@
   (prompt mssg)
   (let ((i (read)))
     (if (numberp i) (rational i)
-      (throw '|NotARealNumber|
-	     (pvs2cl_record (the string "NotARealNumber")
-			    (the string (format nil "~a" i)))))))
+      (throw-pvsio-exc "NotARealNumber" (format nil "~a" i)))))
 
 (defattach |query_int| (mssg) 
   "Queries an integer from standard input with prompt MSSG"
-  (prompt mssg)
+  (prompt mssg)       
   (let ((i (read)))
     (if (integerp i) i 
-      (throw '|NotAnInteger|
-	     (pvs2cl_record (the string "NotAnInteger")
-			    (the string (format nil "~a" i)))))))
+      (throw-pvsio-exc "NotAnInteger" (format nil "~a" i)))))
 
 (defattach |stdin| () 
   "Standard input stream"
@@ -240,9 +246,7 @@
 (defattach |fopenin_lisp| (s) 
   "Opens file input stream named S"
   (let ((f (open s :direction :input :if-does-not-exist nil)))
-    (or f (throw '|FileNotFound|
-		 (pvs2cl_record (the string "FileNotFound")
-				(the string s))))))
+    (or f (throw-pvsio-exc "FileNotFound" s))))
 
 (defattach |sopenin| (s) 
   "Opens string S as an input stream"
@@ -257,9 +261,7 @@
 		 ((= i 2) (open s :direction :output :if-exists :append))
 		 ((= i 3) (open s :direction :output :if-exists :overwrite))
 		 ((= i 4) (open s :direction :output :if-exists :rename)))))
-    (or f (throw '|FileAlreadyExists|
-		 (pvs2cl_record (the string "FileAlreadyExists")
-				(the string s))))))
+    (or f (throw-pvsio-exc "FileAlreadyExists" s))))
 
 (defattach |sopenout| (s) 
   "Opens string output stream"
@@ -349,18 +351,14 @@
   (let ((i (read f nil nil)))
     (when i 
       (if (numberp i) (rational i)
-	(throw '|NotARealNumber|
-	       (pvs2cl_record (the string "NotARealNumber")
-			      (the string (format nil "~a" i))))))))
+        (throw-pvsio-exc "NotARealNumber" (format nil "~a" i))))))
 
 (defattach |fread_int_lisp| (f)
   "Reads an integer from stream F"
   (let ((i (read f nil nil)))
     (when i 
       (if (integerp i) i
-	(throw '|NotAnInteger|
-	       (pvs2cl_record (the string "NotAnInteger")
-			      (the string (format nil "~a" i))))))))
+        (throw-pvsio-exc "NotAnInteger" (format nil "~a" i))))))
 )))
 
 (defun rat2double (x) 
@@ -471,12 +469,15 @@
 
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
-   (catch '|*pvsio-loop*|
-     (loop (pvs-funcall f 0))))
+   (handler-case 
+       (loop (pvs-funcall f nil))
+     (pvsio-loop
+      (condition)
+      (val condition))))
 
 (defattach |return| (e)
   "Returns E from an infinite loop"
-  (throw '|*pvsio-loop*| e))
+  (error 'pvsio-loop :val e))
 
  (defattach |to_lisp| (e)
    "Returns internal Lisp expression representing e. To be used exclusively in format function"
@@ -484,9 +485,23 @@
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain (pc-parse *the-pvs-type* 'type)))))))
+   (let ((the-type (pc-typecheck (cadr (types (domain (pc-parse the-pvs-type_ 'type)))))))
      (apply #'format (cons nil (cons s (formatargs e the-type))))))
+
 )))
+
+(define-condition pvsio-exception (simple-error)
+  ((str-tag :accessor str-tag  :initarg :str-tag)
+   (val :accessor val :initarg :val))
+  (:report
+   (lambda (condition stream)
+     (format stream "PVSio Exception (~a): ~a" (str-tag condition) (val condition)))))
+
+(define-condition pvsio-loop (simple-error)
+  ((val :accessor val :initarg :val)))
+
+(defun throw-pvsio-exc (str-tag val)
+  (error 'pvsio-exception :str-tag str-tag :val val))
 
 (defun stdcatch-attachments ()
 
@@ -494,14 +509,21 @@
 	     
 (defattach |catch_lift| (tag f1 f2)
   "If F1 throws the exception e tagged tag, then evaluates F2(e). Otherwise, returns F1"
-  (let ((e (catch (makesym tag) (cons '*pvsio-catch* (pvs-funcall f1 0)))))
-    (if (and (consp e) (eq (car e) '*pvsio-catch*))
-	(cdr e)
-      (pvs-funcall f2 e))))
+  (handler-case
+      (pvs-funcall f1 nil)
+    (pvsio-exception
+     (condition)
+     (if (equal tag (str-tag condition))
+	 (let* ((exc (pvs2cl_record tag (val condition))))
+	   (pvs-funcall f2 exc))
+       (error condition)))))
 
-(defattach |throw| (tag e)
-  "Throws the exception E"
-  (throw (makesym tag) e))
+(defattach |throw| (exc)
+  "Throws the exception EXC"
+  (let ((str-tag (elt exc 0))
+	(val     (elt exc 1)))
+    (throw-pvsio-exc str-tag val)))
+
 )))
 
 (defun stdpvs-attachments ()
@@ -509,8 +531,9 @@
 (eval '(attachments |stdpvs|
 
 (defattach |typeof| (e)
+  (declare (ignore e))		      
   "Returns the string value of the type of E"
-  (let* ((the-domain (domain *the-pvs-type*)))
+  (let* ((the-domain (domain the-pvs-type_)))
     (format nil "~a" (or (print-type the-domain) the-domain))))
 
 (defattach |str2pvs| (s)
@@ -519,8 +542,13 @@
 
 (defattach |pvs2str_lisp| (e)
   "Translates PVS expresion E to a string"
-  (let* ((the-domain (domain *the-pvs-type*)))
-    (format nil "~a" (cl2pvs e (pc-typecheck the-domain)))))
+  (let* ((the-domain (domain the-pvs-type_)))
+    (handler-case 
+	(str (cl2pvs e (pc-typecheck the-domain)))
+      (cl2pvs-error
+       (condition)
+       (throw-pvsio-exc "CantTranslate"
+			(format nil "~a" condition))))))
 
 )))
 

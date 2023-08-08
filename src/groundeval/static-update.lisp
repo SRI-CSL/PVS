@@ -277,7 +277,11 @@
   t)
 
 (defmethod contains-possible-closure? ((texpr recordtype))
-  (contains-possible-closure? (mapcar #'type (fields texpr))))
+  (let ((prtype (print-type texpr)))
+    ;; CM - Strings are internally represented as records, but they are updatable
+    (if (and (type-name? prtype) (equal (id prtype) '|string|))
+	(contains-possible-closure? prtype)
+      (contains-possible-closure? (mapcar #'type (fields texpr))))))
 
 (defmethod contains-possible-closure? ((texpr subtype))
   (contains-possible-closure? (find-supertype texpr)))
