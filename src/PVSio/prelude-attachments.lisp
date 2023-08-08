@@ -78,10 +78,10 @@
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
- (defattach |real2decstr| (r precision rounding)
-  "Converts real number r to string. If rational can be represented by a finite decimal, it prints its excact represenation. Otherwise, it uses precision and rounding, where the precision represents the accuracy  10^-precision and rounding as as follows:
-0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
-  (real2decimal r rounding precision))
+(defattach |rat2decstr| (r precision rounding)
+  "Converts rational number to string decimal representation using given precision, i.e., natural number n denoting 10^(-n), and
+rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty"
+  (ratio2decimal-with-rounding-mode r rounding precision))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"
@@ -91,14 +91,6 @@
      (condition)
      (declare (ignore condition))
      (throw-pvsio-exc "NotARealNumber" s))))
-
-(defattach |rat2decstr| (r precision)
-  "Converts rational number to string representing decimal number using precision"
-  (let ((str (nth-value
-	      0
-	      (decimals:format-decimal-number
-	       (rational r) :round-magnitude (- precision)))))
-    str))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
@@ -375,6 +367,29 @@
 (defattach |NRANDOM| (x)
   "Natural random number in the interval [0..X)"
   (random x))
+
+(defattach |rational| (x)
+  "Returns a rational number that is close to the real number (identity when input is rational)"
+  (rational x))
+
+(defprimitive |rat2numden| (r)
+  "Returns numerator and denominator of rational number"
+  (pvs2cl_tuple (numerator r) (denominator r)))
+
+(defattach |decimal_precision| (r)
+  "Compute the decimal precision of a rational number. Return 2 values the first one is number of
+non-repeating decimals. The second one is the period of the decimal. If the second value is 0,
+the rational has a finite decimal representation."
+  (multiple-value-bind (finp infp)
+      (decimal-precision-of-rat r)
+    (pvs2cl_tuple finp infp)))
+
+(defattach |finite_precision| (r)
+  "Compute the finite decimal precision of a rational number. Return -1, it the rational number
+doesn't have a finite representation. This function is the equivalent to the first projection of
+decimal_precision, but it doesn't compute the period of the decimal, which is expensive."
+  (finite-precision-of-rat r))
+
 )))
 
 (defstruct indent stack n prefix)
@@ -441,7 +456,7 @@
 
 (defattach |exit| ()
   "Exits the current evaluation and returns to the ground evaluator"
-  (throw 'abort t))
+  (error ""))
 
 (defattach |error| (mssg)
   "Signals the error message MSSG to the ground evaluator"

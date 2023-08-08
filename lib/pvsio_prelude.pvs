@@ -127,7 +127,7 @@ BEGIN
 
   prog(s:void,t:T): T = t
 
-  % Throw an error
+  % Throw a PVSio exception with a message provided by the user
   error(mssg:string):T 
 
   % Exit the current evaluation and return to the Ground Evaluator
@@ -209,7 +209,7 @@ BEGIN
 
   pvs2str_lisp(t:T) : string
 
-  %% Throw CantTranslate
+  %% May throw exception CantTranslate
   pvs2str(t:T) : MACRO string =
     pvs2str_lisp(t)
 
@@ -249,6 +249,30 @@ BEGIN
   RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
   NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
   BRANDOM           : bool = (NRANDOM(2) = 0)
+
+  % Returns a rational number that is close to the real number (identity when input is rational)
+  rational(x:real) : rat
+
+  % Returns nominator,denominator of rational number
+  rat2numden(r:rat) : {nd:[int,posnat] | LET (num,den) = nd IN r = num/den}
+
+  % Returns numerator of rational number
+  numerator(r:rat) : int =
+    rat2numden(r)`1
+
+  % Returns denominator of rational number
+  denominator(r:rat): posnat =
+    rat2numden(r)`2
+
+  %% Compute the decimal precision of a rational number. Return 2 values the first one is number of
+  %% non-repeating decimals. The second one is the period of the decimal. If the second value is 0,
+  %% the rational has a finite decimal representation.
+  decimal_precision(r:rat) : [nat,nat] 
+
+  %% Compute the finite decimal precision of a rational number. Return -1, it the rational number
+  %% doesn't have a finite representation. This function is the equivalent to the first projection of
+  %% decimal_precision, but it doesn't compute the period of the decimal, which is expensive.  
+  finite_precision(r:rat) : int 
 
 END stdmath
 
@@ -293,22 +317,52 @@ BEGIN
       substring(s,length(s)-1,0)
     ENDIF
 
-  %% Converts real number to string decimal representation using given precision, i.e., natural number, and rounding mode, i.e,
-  %% TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty
-  real2decstr(r:real,precision:nat,rounding:RoundingMode) : string
+  %% Converts real number to string decimal representation using given precision, i.e., natural
+  %% number n denoting 10^(-n), and rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
+  %% TowardsPosInfnty
+  rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string
+
+  %% Converts rational number to string. The rational is printed in decimal representation if the
+  %% representation is finite. Otherwise, it prints its rational form.
+  rat2str(r:rat) : string =
+    LET (finp,infp) = decimal_precision(r) IN
+    IF infp = 0 THEN
+      rat2decstr(r,finp,TowardsZero)
+    ELSE
+      format("~a",r)
+    ENDIF
+      
+  %% Converts rational number to string. The rational is printed in decimal representation if the
+  %% representation is finite with a trailing zero. Otherwise, it prints the decimal form until its period. 
+  rat2decstr(r:rat) : string =
+    LET (finp,infp) = decimal_precision(r) IN
+    IF denominator(r) = 1 THEN format("~a",r) % It's an integer
+    ELSIF infp = 0 THEN % Finite representation, add a trailing zero
+      format("~a0",rat2decstr(r,finp,TowardsZero))
+    ELSE
+      rat2decstr(r,finp+infp,TowardsZero) % Infinite representation, print to period
+    ENDIF
+
+  %% Converts real number r to string. If rational can be represented by a finite decimal, it prints
+  %% its exact representation. Otherwise, it uses precision and rounding, where the precision represents
+  %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,
+  %% TowardsPosInfnty.
+  real2decstr(r:real,precision:nat,rounding:RoundingMode) : string =
+    LET rat  = rational(r),
+        finp = finite_precision(rat) IN
+    IF finp >= 0 THEN
+      rat2decstr(rat,finp,TowardsZero)
+    ELSE
+      rat2decstr(rat,precision,rounding)
+    ENDIF
 
   %% Converts real number to string decimal representation using default precision and rounding mode
-  real2str(r:real) :string = real2decstr(r,val(PRECISION),val(ROUNDING))
+  real2str(r:real) :string =
+    real2decstr(r,val(PRECISION),val(ROUNDING))
 
   %% Converts string representing a decimal number to rational number
+  %% May throw exception NotARealNumber
   decstr2rat(s:string) : rat
-
-  %% Converst rational number to string decimal representation using a given precision
-  rat2decstr(r:real,precision:nat) : string
-
-  %% Converts rational number to string decimal representation using a default precision
-  rat2str(r:real) : string =
-    rat2decstr(r,val(PRECISION))
 
   %% Bool to string
   bool2str(b:bool): string =
@@ -318,8 +372,13 @@ BEGIN
   tostr(b:bool): MACRO string = bool2str(b)
 
   %% String to real
+  %% May throw exception NotARealNumber
   str2real(s:string): rat
-  str2int(s:string) : int 
+
+  %% String to real
+  %% May throw exception NotAnInteger
+  str2int(s:string) : int
+  
   str2bool(s,answer:string):bool = downcase(s) = downcase(answer)
 
   %% String is a number
@@ -423,8 +482,13 @@ BEGIN
   query_token(mssg,s:string): string
   query_word(mssg:string)   : MACRO string = query_token(mssg,emptystr) 
   query_line(mssg:string)   : string
+
+  % May throw exception NotARealNumber
   query_real(mssg:string)   : rat
+
+  % May throw exception NotAnInteger
   query_int(mssg:string)    : int
+  
   query_bool(mssg,answer:string):bool = str2bool(query_word(mssg),answer)
 
   % Reads from stdin
@@ -471,11 +535,13 @@ BEGIN
   tostr(m:Mode) : MACRO string = mode2str(m) 
 
   fopenin_lisp(s:string)        : IStream 
-  fopenout_lisp(s:string,n:nat) : OStream 
+  fopenout_lisp(s:string,n:nat) : OStream
+  
   sopenin(s:string)             : IStream
   sopenout(s:string)            : OStream
 
   % Opens a file as an input stream
+  % May throw exceptions FileNotFound and WrongInputStreamMode
   fopenin(m:Mode,s:string) : IStream = 
     IF    m = input AND length(s)=0 THEN stdin 
     ELSIF m = input THEN fopenin_lisp(s)
@@ -487,6 +553,7 @@ BEGIN
     fopenin_lisp(s)
 
   % Opens a file as an oput stream
+  % May throw exceptions FileAlreadyExists and WrongOutputStreamMode
   fopenout(m:Mode,s:string): OStream =
     IF    m = output AND length(s)=0 THEN stdout
     ELSIF m = output    THEN fopenout_lisp(s,0) 
@@ -593,10 +660,12 @@ BEGIN
     prog(fcheck(f),fread_line_lisp(f))
 
   % Reads a real number from f
+  % May throw the exception NotARealNumber 
   fread_real(f:IStream) : rat =
     prog(fcheck(f),fread_real_lisp(f))
 
   % Reads an integer from f
+  % May throw the exception NotAnInteger 
   fread_int(f:IStream)  : int =
     prog(fcheck(f),fread_int_lisp(f))
 
