@@ -230,7 +230,9 @@
      :components((:file "pvs2c-types")
 		 (:file "pvs2c-code")
 		 (:file "pvs2c-analysis")
-		 (:file "pvs2ir")))
+		 (:file "pvs2ir")
+		 ;;(:file "pvs2c-primop")
+		 (:file "pvs2c"))
    (:module :pvs-methods
      :pathname "src/"
      :components ((:file "pvs-methods"
