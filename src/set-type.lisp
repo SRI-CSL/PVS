@@ -1419,7 +1419,7 @@ resolution with a macro matching the signature of the arguments."
   (set-type-mapping-rhs* (declaration lhs) lhs rhs thinst mapping))
 
 (defmethod set-type-mapping-rhs* ((ldecl type-decl) lhs rhs thinst mapping)
-  (declare (ignore lhs thinst))
+  (declare (ignore lhs thinst mapping))
   (unless (type-value rhs)
     (typecheck* rhs nil 'type nil))
   (if (type-value rhs)
@@ -1434,7 +1434,7 @@ resolution with a macro matching the signature of the arguments."
   (set-type-mapping-rhs*-theoryref (id (theory-name ldecl)) lhs rhs thinst mapping))
 
 (defun set-type-mapping-rhs*-theoryref (thid lhs rhs thinst mapping)
-  (declare (ignore lhs thinst))
+  (declare (ignore lhs thinst mapping))
   (let ((threses (remove-if
                      (complement
                       #'(lambda (r)
@@ -1456,10 +1456,11 @@ resolution with a macro matching the signature of the arguments."
              (when (mappings (expr rhs))
                (set-type-mappings (name-to-modname (expr rhs))
                                   (declaration (expr rhs))))))))
-  
+
 (defmethod set-type-mapping-rhs* ((ldecl const-decl) (lhs name) rhs thinst mapping)
   "Basically runs set-type on the rhs using the substituted type from the lhs.
 The first arguement is just a method discriminator."
+  (declare (ignore mapping))
   (assert (eq ldecl (declaration lhs)))
   (setf (type-value rhs) nil)
   (unless (resolution thinst)
@@ -1472,6 +1473,7 @@ The first arguement is just a method discriminator."
 (defmethod set-type-mapping-rhs* ((ldecl adt-constructor-decl) (lhs name) rhs thinst mapping)
   "Basically runs set-type on the rhs using the substituted type from the lhs.
 The first arguement is just a method discriminator."
+  (declare (ignore mapping))
   (assert (eq ldecl (declaration lhs)))
   (setf (type-value rhs) nil)
   (unless (resolution thinst)
@@ -1488,6 +1490,7 @@ The first arguement is just a method discriminator."
 type of the lhs."
   ;; Note: lhs has dformals, but these are not the same as the dformals
   ;; of the (declaration lhs), The rhs references the former only.
+  (declare (ignore mapping))
   (assert (eq ldecl (declaration lhs)))
   (setf (type-value rhs) nil)
   (assert (every #'(lambda (fp)
@@ -2822,20 +2825,38 @@ type of the lhs."
   (if (integerp num)
       (if (null *int64*) ;; Must be loading the prelude
 	  (or *integer* *rational* *real* *number_field*)
-	  (if (minusp num)
-	      (cond ((>= num -128) *int8*)
-		    ((>= num -32768) *int16*)
-		    ((>= num -2147483648) *int32*)
-		    ((>= num -9223372036854775808) *int64*)
-		    ((and (evenp num) *even_negint*))
-		    ((and (oddp num) *odd_negint*))
-		    (t (or *negint* *integer*)))
-	      (cond ((< num 128) *uint8*)
-		    ((< num 32768) *uint16*)
-		    ((< num 2147483648) *uint32*)
-		    ((< num 9223372036854775808) *uint64*)
-		    ((and (evenp num) *even_nat*))
-		    (t (or *posint* *integer*)))))
+	  (cond ((minusp num)
+		 (cond ((>= num -128)
+			(or (if (evenp num) *even_neg_int8* *odd_neg_int8*)
+			    *neg_int8*))
+		       ((>= num -32768)
+			(or (if (evenp num) *even_neg_int16* *odd_neg_int16*)
+			    *neg_int16*))
+		       ((>= num -2147483648)
+			(or (if (evenp num) *even_neg_int32* *odd_neg_int32*)
+			    *neg_int32*))
+		       ((>= num -9223372036854775808)
+			(or (if (evenp num) *even_neg_int64* *odd_neg_int64*)
+			    *neg_int64*))
+		       ((and (evenp num) *even_negint*))
+		       ((and (oddp num) *odd_negint*))
+		       (t (or *negint* *integer*))))
+		((plusp num)
+		 (cond ((< num 128)
+			(or (if (evenp num) *even_pos_uint8* *odd_pos_uint8*)
+			    *pos_uint8*))
+		       ((< num 32768)
+			(or (if (evenp num) *even_pos_uint16* *odd_pos_uint16*)
+			    *pos_uint16*))
+		       ((< num 2147483648)
+			(or (if (evenp num) *even_pos_uint32* *odd_pos_uint32*)
+			    *pos_uint32*))
+		       ((< num 9223372036854775808)
+			(or (if (evenp num) *even_pos_uint64* *odd_pos_uint64*)
+			    *pos_uint64*))
+		       ((and (evenp num) *even_posnat*))
+		       (t (or *posint* *integer*))))
+		(t (or *even_uint8* *uint8*))))
       (or (if (minusp num) *negrat* *posrat*) *rational* *real* *number_field*)))
 
 (defun get-expr-number-class (ex num)
@@ -4427,7 +4448,7 @@ type of the lhs."
            (mapcar #'(lambda (a)
                        (let ((fld (caar (arguments a)))
                              (ty (if (rational-expr? (expression a))
-				     (car (judgement-types (expression a)))
+				     (car (judgement-types+ (expression a)))
 				     (best-judgement-type (expression a)))))
                          (mk-field-decl (id fld) ty ty)))
                    ass)

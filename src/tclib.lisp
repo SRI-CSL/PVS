@@ -55,6 +55,7 @@
 (defun load-core-prelude ()
   (multiple-value-bind (theories time comments)
       (parse :file *prelude-filename*)
+    (declare (ignore time))
     (when (and *prelude-theories*
 	       (or ;;(not (length= *prelude-theories* theories))
 		(let ((*current-context* *prelude-context*))
@@ -92,7 +93,24 @@
 	  *int8* nil
 	  *int16* nil
 	  *int32* nil
-	  *int64* nil)
+	  *int64* nil
+	  *even_uint8* nil
+	  *even_pos_uint8* nil
+	  *even_pos_uint16* nil
+	  *even_pos_uint32* nil
+	  *even_pos_uint64* nil
+	  *even_neg_int8* nil
+	  *even_neg_int16* nil
+	  *even_neg_int32* nil
+	  *even_neg_int64* nil
+	  *odd_pos_uint8* nil
+	  *odd_pos_uint16* nil
+	  *odd_pos_uint32* nil
+	  *odd_pos_uint64* nil
+	  *odd_neg_int8* nil
+	  *odd_neg_int16* nil
+	  *odd_neg_int32* nil
+	  *odd_neg_int64* nil)
     (makunbound '*manip-supported-types*)
     (when *pvs-initialized*
       (clear-theories :workspace :all))
@@ -148,6 +166,7 @@
   (let ((*generate-tccs* 'all))
     (multiple-value-bind (theories time comments)
 	(parse :file *pvsio-filename*)
+      (declare (ignore time))
       (add-comments-to-theories theories comments)
       (reset-typecheck-caches)
       (dolist (th theories)
@@ -885,13 +904,15 @@ not a dir: if a valid id
     (cond (dirp
 	   (cond ((equal lib-path (uiop:directory-exists-p (format nil "~a/lib/" *pvs-path*)))
 		  (values lib-path nil :prelude))
-		 ((equal lib-path (path *workspace-session*))
-		  (values lib-path nil :current-workspace))
+		 ;; ((equal lib-path (path *workspace-session*))
+		 ;;  (values lib-path nil :current-workspace))
 		 ((rassoc pid (current-subdir-alist))
 		  (values lib-path pid :subdirectory))
 		 ((rassoc dirp (pvs-library-alist) :test #'equal)
 		  (let ((lib-elt (rassoc dirp (pvs-library-alist) :test #'equal)))
-		    (values lib-path (car lib-elt) :pvs-library-path)))
+		    (values lib-path (car lib-elt)
+			    (if (equal lib-path (path *workspace-session*))
+				:current-workspace :pvs-library-path))))
 		 ((visible-lib-decl-id lib-path)
 		  (let ((libid (visible-lib-decl-id lib-path)))
 		    (values lib-path libid :Lib-decl)))
@@ -925,33 +946,35 @@ not a dir: if a valid id
   (assert (typep libref '(or pathname symbol string)))
   (if (or (null libref) (equal libref "") (equal libref "."))
       (current-context-path)
-      (let* ((pstr (typecase libref
-		     (symbol (string libref))
-		     (pathname (namestring libref))
-		     (t libref)))
-	     (dstr (when (stringp pstr)
-		     (if (char= (char pstr (1- (length pstr))) #\/)
-			 pstr (format nil "~a/" pstr))))
-	     (estr (when (stringp dstr) (ignore-errors (uiop:native-namestring dstr))))
-	     (dirp (when (and estr (uiop:directory-exists-p estr)) (truename estr)))
-	     (lib-path (when dirp (merge-pathnames dirp))))
-	;; dirp works for both absolute and relative pathnames Note that a
-	;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
-	;; same name.
-	(or lib-path
-	    (let* ((nstr (when (stringp pstr)
-			   (if (char= (char pstr (1- (length pstr))) #\/)
-			       (subseq pstr 0 (1- (length pstr)))
-			       pstr)))
-		   (lpos (when nstr (position #\/ nstr :from-end t)))
-		   (lstr (if lpos
-			     (subseq nstr (1+ lpos))
-			     nstr)))
-	      (when (and (stringp lstr)
-			 (valid-pvs-id* lstr))
-		(let ((lib-id (intern lstr :pvs)))
-		  (or (visible-lib-decl-pathname lib-id)
-		      (cdr (assq lib-id (pvs-library-alist)))))))))))
+      (if (eq libref :prelude)
+	  (context-path (theory *prelude-context*))
+	  (let* ((pstr (typecase libref
+			 (symbol (string libref))
+			 (pathname (namestring libref))
+			 (t libref)))
+		 (dstr (when (stringp pstr)
+			 (if (char= (char pstr (1- (length pstr))) #\/)
+			     pstr (format nil "~a/" pstr))))
+		 (estr (when (stringp dstr) (ignore-errors (uiop:native-namestring dstr))))
+		 (dirp (when (and estr (uiop:directory-exists-p estr)) (truename estr)))
+		 (lib-path (when dirp (merge-pathnames dirp))))
+	    ;; dirp works for both absolute and relative pathnames Note that a
+	    ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
+	    ;; same name.
+	    (or lib-path
+		(let* ((nstr (when (stringp pstr)
+			       (if (char= (char pstr (1- (length pstr))) #\/)
+				   (subseq pstr 0 (1- (length pstr)))
+				   pstr)))
+		       (lpos (when nstr (position #\/ nstr :from-end t)))
+		       (lstr (if lpos
+				 (subseq nstr (1+ lpos))
+				 nstr)))
+		  (when (and (stringp lstr)
+			     (valid-pvs-id* lstr))
+		    (let ((lib-id (intern lstr :pvs)))
+		      (or (visible-lib-decl-pathname lib-id)
+			  (cdr (assq lib-id (pvs-library-alist))))))))))))
 
 (defmethod get-library-id ((mod datatype-or-module))
   (get-library-id (context-path mod)))
@@ -961,6 +984,9 @@ not a dir: if a valid id
 
 (defmethod get-library-id ((res resolution))
   (get-library-id (module (declaration res))))
+
+(defmethod get-library-id ((decl declaration))
+  (get-library-id (module decl)))
 
 (defmethod get-library-id ((mn modname))
   (or (library mn)

@@ -4117,6 +4117,43 @@ integertypes: THEORY
      int32: TYPE = subrange(-exp2(31), exp2(31) - 1)
      int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
 
+     % Provide some intersection types, so that judgements can find a minimal type
+     pos_uint8: TYPE = {x: uint8 | x > 0}
+     pos_uint16: TYPE = {x: uint16 | x > 0}
+     pos_uint32: TYPE = {x: uint32 | x > 0}
+     pos_uint64: TYPE = {x: uint64 | x > 0}
+     neg_int8: TYPE = {x: int8 | x < 0}
+     neg_int16: TYPE = {x: int16 | x < 0}
+     neg_int32: TYPE = {x: int32 | x < 0}
+     neg_int64: TYPE = {x: int64 | x < 0}
+     % Now the even and odd forms of these
+     even_uint8: TYPE = {x: uint8 | even?(x)} % Only needed for 0, hence no odd_uint8
+     even_pos_uint8: TYPE = {x: uint8 | x > 0 and even?(x)}
+     even_pos_uint16: TYPE = {x: uint16 | x > 0 and even?(x)}
+     even_pos_uint32: TYPE = {x: uint32 | x > 0 and even?(x)}
+     even_pos_uint64: TYPE = {x: uint64 | x > 0 and even?(x)}
+     even_neg_int8: TYPE = {x: int8 | x < 0 and even?(x)}
+     even_neg_int16: TYPE = {x: int16 | x < 0 and even?(x)}
+     even_neg_int32: TYPE = {x: int32 | x < 0 and even?(x)}
+     even_neg_int64: TYPE = {x: int64 | x < 0 and even?(x)}
+     odd_pos_uint8: TYPE = {x: uint8 | x > 0 and odd?(x)}
+     odd_pos_uint16: TYPE = {x: uint16 | x > 0 and odd?(x)}
+     odd_pos_uint32: TYPE = {x: uint32 | x > 0 and odd?(x)}
+     odd_pos_uint64: TYPE = {x: uint64 | x > 0 and odd?(x)}
+     odd_neg_int8: TYPE = {x: int8 | x < 0 and odd?(x)}
+     odd_neg_int16: TYPE = {x: int16 | x < 0 and odd?(x)}
+     odd_neg_int32: TYPE = {x: int32 | x < 0 and odd?(x)}
+     odd_neg_int64: TYPE = {x: int64 | x < 0 and odd?(x)}
+
+     odd_pos_uint8_is_nzint: JUDGEMENT odd_pos_uint8 SUBTYPE_OF nzint
+     odd_pos_uint16_is_nzint: JUDGEMENT odd_pos_uint16 SUBTYPE_OF nzint
+     odd_pos_uint32_is_nzint: JUDGEMENT odd_pos_uint32 SUBTYPE_OF nzint
+     odd_pos_uint64_is_nzint: JUDGEMENT odd_pos_uint64 SUBTYPE_OF nzint
+     odd_neg_int8_is_nzint: JUDGEMENT odd_neg_int8 SUBTYPE_OF nzint
+     odd_neg_int16_is_nzint: JUDGEMENT odd_neg_int16 SUBTYPE_OF nzint
+     odd_neg_int32_is_nzint: JUDGEMENT odd_neg_int32 SUBTYPE_OF nzint
+     odd_neg_int64_is_nzint: JUDGEMENT odd_neg_int64 SUBTYPE_OF nzint
+
      mini8: int8 = -exp2(7)
      mini16: int16 = -exp2(15)
      mini32: int32 = -exp2(31)
@@ -4139,13 +4176,12 @@ integertypes: THEORY
      x32, y32, z32: VAR int32
      x64, y64, z64: VAR int64
 
-
      subtype_u8_u16: JUDGEMENT uint8 SUBTYPE_OF uint16
-     subtype_u8_i16: JUDGEMENT uint8 SUBTYPE_OF int16     
+     subtype_u8_i16: JUDGEMENT uint8 SUBTYPE_OF int16
      subtype_u16_u32: JUDGEMENT uint16 SUBTYPE_OF uint32
-     subtype_u16_i32: JUDGEMENT uint16 SUBTYPE_OF int32     
+     subtype_u16_i32: JUDGEMENT uint16 SUBTYPE_OF int32
      subtype_u32_u64: JUDGEMENT uint32 SUBTYPE_OF uint64
-     subtype_u32_i64: JUDGEMENT uint32 SUBTYPE_OF int64          
+     subtype_u32_i64: JUDGEMENT uint32 SUBTYPE_OF int64
      
      plus_u8_u8: JUDGEMENT +(ux8, uy8) HAS_TYPE uint16
      plus_u16_u16: JUDGEMENT +(ux16, uy16) HAS_TYPE uint32
