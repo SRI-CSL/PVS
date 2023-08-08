@@ -725,7 +725,6 @@ its dependencies."
 				#'(lambda (d)
 				    (typep d '(and declaration
 						   (not skolem-const-decl))))
-							  
 			      (proof-refers-to decl)))
 			  (if fentry
 			      (fe-proof-refers-to fentry))))))
@@ -754,6 +753,9 @@ its dependencies."
   
 
 (defun create-declaration-entry (decl)
+  ;; (unless (or (from-prelude? decl)
+  ;; 	      (get-library-id decl))
+  ;;   (break "create-declaration-entry"))
   (make-declaration-entry
    :id (id decl)
    :class (type-of decl)
@@ -762,7 +764,8 @@ its dependencies."
 	   (or (declared-type-string decl)
 	       (setf (declared-type-string decl)
 		     (unparse (declared-type decl) :string t))))
-   :theory-id (when (module decl) (id (module decl)))))
+   :theory-id (when (module decl) (id (module decl)))
+   :library (get-library-id decl)))
 
 
 ;;; Returns the list of filenames on which the input file depends.  It
