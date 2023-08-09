@@ -335,16 +335,11 @@ BEGIN
       format("~a",r)
     ENDIF
       
-  %% Converts rational number to string. The rational is printed in decimal representation if the
-  %% representation is finite with a trailing zero. Otherwise, it prints the decimal form until its period. 
+  %% Converts rational number to string decimal representation. If the representation is infinite,
+  %% it prints the decimal form until its period. 
   rat2decstr(r:rat) : string =
     LET (finp,infp) = decimal_precision(r) IN
-    IF denominator(r) = 1 THEN format("~a",r) % It's an integer
-    ELSIF infp = 0 THEN % Finite representation, add a trailing zero
-      format("~a0",rat2decstr(r,finp,TowardsZero))
-    ELSE
-      rat2decstr(r,finp+infp,TowardsZero) % Infinite representation, print to period
-    ENDIF
+      rat2decstr(r,finp+infp,TowardsZero) 
 
   %% Converts real number r to string. If rational can be represented by a finite decimal, it prints
   %% its exact representation. Otherwise, it uses precision and rounding, where the precision represents
