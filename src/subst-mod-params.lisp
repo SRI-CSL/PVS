@@ -2544,7 +2544,8 @@
 				 (substit (range optype)
 				   (acons (domain optype) arg nil))
 				 (range optype)))
-		      (nex (if (lambda-expr? nop)
+		      (nex (if (and (not (let-expr? expr))
+				    (lambda-expr? nop))
 			       (make!-application nop arg)
 			       (lcopy expr :operator nop :argument arg :type rtype))))
 		 ;; Note: the copy :around (application) method takes care of
