@@ -1849,7 +1849,6 @@ prove itself from the mapped axioms."
 
 (defmethod create-formulas ((res resolution) &optional (ctx *current-context*))
   (let ((*current-context* ctx)
-	(*substit-dont-simplify* t)
 	(hashentry (gethash res *create-formulas-cache*))
 	(decl (declaration res)))
     (if hashentry hashentry
