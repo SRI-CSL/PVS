@@ -34,6 +34,29 @@ is replaced with replacement."
           when pos do (write-string replacement out)
           while pos)))
 
+(defparameter *ol-digits* '("0̅" "1̅" "2̅" "3̅" "4̅" "5̅" "6̅" "7̅" "8̅" "9̅"))
+
+(defun replace-ol-digits (acc &optional (n 0) (ol *ol-digits*))
+  (if (null ol) acc
+    (replace-ol-digits (replace-string acc (format nil "~a" n) (car ol))
+		       (1+ n) (cdr ol))))
+
+(defun pp-decimal (str finp)
+  (let ((pos (position #\. str)))
+    (if pos
+	(let* ((fixp (+ pos finp 1))
+	       (pre  (subseq str 0 fixp))
+	       (pos  (subseq str fixp (length str))))
+	  (format nil "~a~a" pre (replace-ol-digits pos)))
+      str)))
+
+(defun pp-rational (r)
+  "Pretty prints rational numbers using overline to indicate repeating digits"
+  (multiple-value-bind (finp infp)
+      (decimal-precision-of-rat r)
+    (let ((str (ratio2decimal-with-rounding-mode r 0 (+ finp infp) t)))
+      (pp-decimal str finp))))
+
 (defun stdstr-attachments ()
 
 (eval '(attachments |stdstr|
@@ -106,6 +129,10 @@ is replaced with replacement."
 denoting 10^(-n), and rounding mode, i.e, TowardsZero, TowardsInfnty, TowardsNegInfnty, TowardsPosInfnty.
 Displays trailing zeroes when zeros is set to TRUE"
   (ratio2decimal-with-rounding-mode r rounding precision zeros))
+
+(defattach |pp_rat| (r)
+  "Pretty prints rational numbers using overline to indicate repeating digits"
+  (pp-rational r))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"

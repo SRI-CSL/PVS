@@ -353,6 +353,9 @@ BEGIN
     LET (finp,infp) = decimal_precision(r) IN
       rat2decstr_with_zeros(r,finp+infp,Truncate,infp > 0) 
 
+  %% Pretty print rational numbers using overline to indicate repeating digits
+  pp_rat(r:rat) : string 
+
   %% Converts real number r to string. If rational can be represented by a finite decimal, it prints
   %% its exact representation. Otherwise, it uses precision and rounding, where the precision represents
   %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,
