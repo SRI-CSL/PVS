@@ -675,7 +675,7 @@
 (defmacro trap-undefined (expr)
   `(handler-case
        ,expr
-     (groundeval-error (condition) *cant-translate*)))
+     (groundeval-error (condition) (declare (ignore condition)) *cant-translate*)))
 
 (defmacro pvs2cl_tuple (&rest args)
   (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
