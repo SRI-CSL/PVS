@@ -102,18 +102,18 @@
   hash closure size) ;size can be nil to indicate that it is unbounded or not an array
 
 (defmacro pvs-funcall (fun &rest args)
-  (let ((funval (gentemp)))
-    `(let ((,funval ,fun))
-       ;; (declare (cl:type pvs-funcallable ,funval))
-       (if (arrayp ,funval)
-	   (aref ,funval ,@args)
-	   (if (pvs-array-closure-p ,funval)
-	       (pvs-array-closure-lookup ,funval ,@args)
-	       (if (pvs-outer-array-p ,funval)
-		   (pvs-outer-array-lookup ,funval ,@args)
-		   (if (pvs-closure-hash-p ,funval) ;;NSH(9-19-12)
-		       (pvs-closure-hash-lookup ,funval ,@args)
-		       (funcall ,funval ,@args))))))))
+  (if (arrayp fun)
+      `(aref ,fun ,@args)
+    (let ((funval (gentemp)))
+      `(let ((,funval ,fun))
+	 ;; (declare (cl:type pvs-funcallable ,funval))
+	 (if (pvs-array-closure-p ,funval)
+	     (pvs-array-closure-lookup ,funval ,@args)
+	   (if (pvs-outer-array-p ,funval)
+	       (pvs-outer-array-lookup ,funval ,@args)
+	     (if (pvs-closure-hash-p ,funval) ;;NSH(9-19-12)
+		 (pvs-closure-hash-lookup ,funval ,@args)
+	       (funcall ,funval ,@args))))))))
 
 (deftype pvs-funcallable ()
   '(or array pvs-outer-array pvs-closure-hash function))
@@ -366,9 +366,7 @@
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))
-    `(let ((val (svref ,tuple ,ind)))
-       (if (eq val 'undefined)(undefined nil) val)   ;; what can we do here?
-	 )))
+    `(svref ,tuple ,ind)))
 
 (defun pvs_equalp (x y)
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"

@@ -45,16 +45,16 @@ END stdexc
 stdexc_tags : THEORY
 BEGIN
 
-% Mutable Exceptions
+% Mutable Exception Tag
   UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
 
-% Math Exceptions
+% Math Exception Tags
   NotARealNumber : ExceptionTag[string] = "NotARealNumber"
   NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
 
   MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
 
-%% I/O Exceptions
+%% I/O Exception Tags
   FileNotFound          : ExceptionTag[string] = "FileNotFound"
   FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
   WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
@@ -67,8 +67,8 @@ BEGIN
        FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
        ClosedStream, EndOfFile :)
 
-%% pvs2str Exception
-  CantTranslate	       : ExceptionTag[string] = "CantTranslate"
+%% PVS2CL Exception Tag
+  CantTranslateBack	       : ExceptionTag[string] = "CantTranslateBack"
 
 END stdexc_tags
 
@@ -209,7 +209,7 @@ BEGIN
 
   pvs2str_lisp(t:T) : string
 
-  %% May throw exception CantTranslate
+  %% May throw exception CantTranslateBack 
   pvs2str(t:T) : MACRO string =
     pvs2str_lisp(t)
 
@@ -235,7 +235,8 @@ BEGIN
   %% sinh, cosh, tanh: lnexp@hyperbolic
 
   % Rounding Modes
-  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty} 
+  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty}
+  Truncate     : MACRO RoundingMode = TowardsZero
   AwayFromZero : MACRO RoundingMode = TowardsInfnty
   Ceiling      : MACRO RoundingMode = TowardsPosInfnty
   Floor        : MACRO RoundingMode = TowardsNegInfnty
@@ -311,35 +312,46 @@ BEGIN
   %% S[j..i].
   %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
   %% with charstring.substr"
-  substring(s:string,i,j:below(length(s))):
+  strsub(s:string,i,j:below(length(s))):
     {str:string | length(str) = max(i,j) - min(i,j) + 1}
 
-  strrev(s:string) : {str:string | length(str) = length(s)} =
+  %% Reverse string
+  strreverse(s:string) : {str:string | length(str) = length(s)} =
     IF length(s) = 0 THEN s
     ELSE 
-      substring(s,length(s)-1,0)
+      strsub(s,length(s)-1,0)
     ENDIF
 
+  %% Returns a new string in which all the occurences of part in s 
+  %% is replaced with replacement."
+  strreplace(s,part,replacement:string):
+    {str:string | IF strfind(part,s) >= 0 THEN length(str) = length(s)-length(part)+length(replacement)
+                  ELSE length(str) = length(s) ENDIF} 
+  
   %% Converts real number to string decimal representation using given precision, i.e., natural
-  %% number n denoting 10^(-n), and rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
-  %% TowardsPosInfnty
-  rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string
+  %% number n denoting 10^(-n), rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
+  %% TowardsPosInfnty. Displays trailing zeros when zeros is set to TRUE
+  rat2decstr_with_zeros(r:rat,precision:nat,rounding:RoundingMode,zeros:bool) : string
+
+  rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string =
+    rat2decstr_with_zeros(r,precision,rounding,FALSE)
 
   %% Converts rational number to string. The rational is printed in decimal representation if the
   %% representation is finite. Otherwise, it prints its rational form.
   rat2str(r:rat) : string =
     LET (finp,infp) = decimal_precision(r) IN
     IF infp = 0 THEN
-      rat2decstr(r,finp,TowardsZero)
+      rat2decstr(r,finp,Truncate)
     ELSE
       format("~a",r)
     ENDIF
       
   %% Converts rational number to string decimal representation. If the representation is infinite,
-  %% it prints the decimal form until its period. 
+  %% it prints the decimal form until its period. Trailing zeros are significant when representation is
+  %% infinite as they are part of the period.
   rat2decstr(r:rat) : string =
     LET (finp,infp) = decimal_precision(r) IN
-      rat2decstr(r,finp+infp,TowardsZero) 
+      rat2decstr_with_zeros(r,finp+infp,Truncate,infp > 0) 
 
   %% Converts real number r to string. If rational can be represented by a finite decimal, it prints
   %% its exact representation. Otherwise, it uses precision and rounding, where the precision represents
@@ -388,6 +400,7 @@ BEGIN
  %% String concatenation
   concat(s1:string,s2:string):{ str:string | length(str)=length(s1)+length(s2) } =
     s1 o s2
+    
   ;+(s1:string,s2:string): MACRO string = concat(s1,s2)
   ;+(r:real,s:string): MACRO string = concat(tostr(r),s)
   ;+(s:string,r:real): MACRO string = concat(s,tostr(r))
@@ -435,13 +448,7 @@ BEGIN
   %% the end
   trim_right(s:string):string
 
-  %% Returns the name part of a file name
-  filename(s:string):string
-
-  %% Returns the directory part of a file name
-  directory(s:string):string
-
-END stdstr
+ END stdstr
 
 %% stdio.pvs
 %% Input/output operations
@@ -670,6 +677,12 @@ BEGIN
   % Reads a boolean from f
   fread_bool(f:IStream,answer:string): MACRO bool=
     str2bool(fread_word(f),answer)
+
+  %% Returns the name part of a file name
+  filename(s:string):string
+
+  %% Returns the directory part of a file name
+  directory(s:string):string
 
 END stdio
 

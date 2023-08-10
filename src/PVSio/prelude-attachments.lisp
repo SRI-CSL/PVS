@@ -19,6 +19,21 @@
 (decimals:define-decimal-formatter c (:round-magnitude -6) (:show-trailing-zeros t))
 (decimals:define-decimal-formatter d (:round-magnitude -6))
 
+(defun replace-string (string part replacement &key (test #'char=))
+  "Returns a new string in which all the occurences of the part 
+is replaced with replacement."
+  (with-output-to-string (out)
+    (loop with part-length = (length part)
+          for old-pos = 0 then (+ pos part-length)
+          for pos = (search part string
+                            :start2 old-pos
+                            :test test)
+          do (write-string string out
+                           :start old-pos
+                           :end (or pos (length string)))
+          when pos do (write-string replacement out)
+          while pos)))
+
 (defun stdstr-attachments ()
 
 (eval '(attachments |stdstr|
@@ -62,7 +77,7 @@
   "Capitalizes string S"
   (string-capitalize s))
 
-(defattach |substring| (s i j)
+(defattach |strsub| (s i j)
   "If i <= j returns substring S[i..j]. Otherwise, returns substring
 S[j..i].
 NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
@@ -73,6 +88,11 @@ with charstring.substr"
 	 (reverse (subseq s j (+ i 1)))	 )
 	(t "")))
 
+(defattach |strreplace| (s part replacement)
+  "Returns a new string in which all the occurences of part in s 
+is replaced with replacement."
+  (replace-string s part replacement))
+
 (defattach |strfind| (s1 s2)
   "Index of leftmost occurrence of S1 in S2, starting from 0, or -1 if none"
   (or (search s1 s2 :test #'char=) -1))
@@ -81,10 +101,11 @@ with charstring.substr"
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
-(defattach |rat2decstr| (r precision rounding)
-  "Converts rational number to string decimal representation using given precision, i.e., natural number n denoting 10^(-n), and
-rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty"
-  (ratio2decimal-with-rounding-mode r rounding precision))
+(defattach |rat2decstr_with_zeros| (r precision rounding zeros)
+  "Converts rational number to string decimal representation using given precision, i.e., natural number n
+denoting 10^(-n), and rounding mode, i.e, TowardsZero, TowardsInfnty, TowardsNegInfnty, TowardsPosInfnty.
+Displays trailing zeroes when zeros is set to TRUE"
+  (ratio2decimal-with-rounding-mode r rounding precision zeros))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"
@@ -155,14 +176,6 @@ rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty"
 (defattach |trim_right| (s)
    "A substring of s, with all the space characters stripped of the end"
    (string-right-trim '(#\Space #\Tab #\Newline) s))
-
-(defattach |filename| (s)
-  "Returns the name part of a file name"
-  (file-namestring s))
-
-(defattach |directory| (s)
-  "Returns the directory part of a file name"
-  (directory-namestring s))
 
 )))
 
@@ -354,6 +367,15 @@ rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty"
     (when i 
       (if (integerp i) i
         (throw-pvsio-exc "NotAnInteger" (format nil "~a" i))))))
+
+(defattach |filename| (s)
+  "Returns the name part of a file name"
+  (file-namestring s))
+
+(defattach |directory| (s)
+  "Returns the directory part of a file name"
+  (directory-namestring s))
+
 )))
 
 (defun rat2double (x) 
@@ -409,15 +431,15 @@ decimal_precision, but it doesn't compute the period of the decimal, which is ex
   "Pops one element of indent I"
   (or (setf (indent-stack i) (cdr (indent-stack i))) t))
 
+(defattach |top_indent| (i)
+  "Top of I"
+  (or (car (indent-stack i)) 0))
+
 (defattach |push_indent| (i n) 
   "Pushes a N-indentation in indent I"
   (setf (indent-stack i)
-	(cons (+ n (pvsio_stdindent_top_indent_1 i))
+	(cons (+ n (or (car (indent-stack i)) 0))
 	      (indent-stack i))))
-
-(defattach |top_indent| (i) 
-  "Top of I"
-  (or (car (indent-stack i)) 0))
 
 (defattach |get_indent| (i) 
   "Gets current indentation value of indent I"
@@ -563,9 +585,9 @@ decimal_precision, but it doesn't compute the period of the decimal, which is ex
   (let* ((the-domain (domain the-pvs-type_)))
     (handler-case 
 	(str (cl2pvs e (pc-typecheck the-domain)))
-      (cl2pvs-error
+      (pvseval-error
        (condition)
-       (throw-pvsio-exc "CantTranslate"
+       (throw-pvsio-exc "CantTranslateBack"
 			(format nil "~a" condition))))))
 
 )))

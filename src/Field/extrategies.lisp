@@ -229,25 +229,24 @@
 ;; a decimal number that is exact to the original one up to the n-1 decimal.
 ;; Furthermore, if over is t, then the output is an over-approximation. Otherwise, the
 ;; output is an under-approximation.
-(defun ratio2decimal (rat over precision)
+(defun ratio2decimal (rat over precision &optional zeros)
   (assert (rationalp rat))
   (let ((rounder (if (>= rat 0)
 		     (if over #'cl:ceiling #'cl:truncate)
 		   (if over #'cl:truncate #'cl:floor))))
     (decimals:format-decimal-number
-     rat :rounder rounder :round-magnitude (- precision))))
+     rat :rounder rounder :round-magnitude (- precision) :show-trailing-zeros zeros)))
 
 ;; Converts rational number to decimal string representation using rounding mode and precision.
 ;; Rounding modes are
-;; 0: to zero
-;; 1: to infinity (away from zero)
-;; 2: to negative infinity (floor)
-;; 3: to positive infinity (ceiling)
-(defun ratio2decimal-with-rounding-mode (rat rounding precision)
+;; 0: towards zero (truncate), 1: towards infinity (away from zero),
+;; 2: towards negative infinity (floor), 3: towards positive infinity (ceiling)
+;; Displays trailing zeroes when zeros is set to TRUE
+(defun ratio2decimal-with-rounding-mode (rat rounding precision &optional zeros)
   (assert (and (<= rounding 3) (>= rounding 0)))
   (let ((over (or (= rounding 3) (and (= rounding 1) (> rat 0))
 		  (and (= rounding 0) (< rat 0)))))
-    (ratio2decimal rat over precision)))
+    (ratio2decimal rat over precision zeros)))
 
 ;; Compute the multiplicative order of n and r, when n and r are co-primes. Return 0 if they are
 ;; not comprime. NOTE: The period of an infinite fraction m/n is the (mult-ord n 10), 
