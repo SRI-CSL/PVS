@@ -1104,7 +1104,7 @@
 						(commentary "input: ~a" inp)
 						inp)
 					      '(quit))))))
-		 (foo (format t "~%Generating alist"))
+		 ;;(foo (format t "~%Generating alist"))
 		 (prf-session (pp-json-proof-session result)))
 	    (with-open-file (str dfile :direction :output :if-exists :supersede)
 	      (format t "~%Generating ~a" dfile)
@@ -1120,7 +1120,7 @@
   (let* ((inp-args (when (listp inp) (pp-json-ml-input-args inp)))
 	 (pp-json-ml-inp `(("tag" . "input")
 			   ("rule" . ,(string-downcase (if (listp inp) (car inp) inp)))
-			   ("arguments" . ,inp-args))))
+			   ("arguments" . ,(coerce inp-args 'vector)))))
     ;;(json:encode-json pp-json-ml-inp)
     pp-json-ml-inp))
 
@@ -1169,7 +1169,7 @@
     (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
 	   (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
 	   (*pp-json-ml-term-hash* (make-pvs-hash-table))
-	   (json-ps (pp-json-ml* ps))
+	   (json-ps (pp-json-proofstate ps nil))
 	   (json-state `(("state" . ,json-ps)
 			 ("cmd_history" ,@(mapcar #'(lambda (c) (string (car c)))
 					    (last *cmdpred-history* 3)))))
@@ -1220,7 +1220,7 @@
     (let* ((*pp-json-ml-type-hash* (make-pvs-hash-table))
 	   (*pp-type-json-ml-hash* (make-hash-table :test 'string=))
 	   (*pp-json-ml-term-hash* (make-pvs-hash-table))
-	   (json-ps (pp-json-ml* ps))
+	   (json-ps (pp-json-proofstate ps nil))
 	   (json-state `(("state" . ,json-ps)
 			 ("cmd_history" ,@(mapcar #'(lambda (c) (string (car c)))
 					    (last *lemmaref-history* 3)))))
@@ -1241,3 +1241,387 @@
 							(not (tcc? (car decls))))))
 				lemmas)))
 	  (format t "~%Suggested lemmas:~% ~a" suggestions)))))))
+
+;;; Tokenized form of above
+
+(defmethod tokenize :around (term)
+  (declare (ignore term))
+  (let ((toks (call-next-method)))
+    (assert (and (listp toks)
+		 (every #'stringp toks)))
+    toks))
+
+(defmethod tokenize :around ((ex expr))
+  (let ((tokens (call-next-method)))
+    (if (zerop (parens ex))
+	tokens
+	(cons "(" (append tokens (list ")"))))))
+
+(defmethod tokenize ((ex name-expr))
+  (if (variable? ex)
+      (list (format nil "%~a" (id ex)))
+      (list (format nil "~a.~a" (id (module (declaration ex))) (id ex)))))
+
+(defmethod tokenize ((ex number-expr))
+  (list (str ex)))
+
+(defmethod tokenize ((ex int-expr))
+  (list (str ex)))
+
+(defmethod tokenize ((ex rational-expr))
+  (list (str ex)))
+
+(defmethod tokenize ((ex forall-expr))
+  `("forall" "(" ,@(tokenize-list (bindings ex) ",") ")" ":" ,@(tokenize (expression ex))))
+
+(defmethod tokenize ((ex exists-expr))
+  `("exists" "(" ,@(tokenize-list (bindings ex) ",") ")" ":" ,@(tokenize (expression ex))))
+
+(defmethod tokenize ((ex lambda-expr))
+  `("lambda" "(" ,@(tokenize-list (bindings ex) ",") ")" ":" ,@(tokenize (expression ex))))
+
+(defmethod tokenize ((ex application))
+  (let ((toks `(,@(tokenize (operator ex)) "(" ,@(tokenize (argument ex)) ")")))
+    toks))
+
+(defmethod tokenize ((ex binding-application))
+  (if (and (lambda-expr? (argument ex))
+	   )
+      `(,@(tokenize (operator ex)) "!"
+	  "(" ,@(tokenize-list (bindings (argument ex)) ",") ")"
+	  ":" ,@(tokenize (expression (argument ex))))
+      (call-next-method)))
+
+(defmethod tokenize ((ex tuple-expr))
+  (tokenize-list (exprs ex) ","))
+
+(defmethod tokenize ((ex cases-expr))
+  `("cases" ,@(tokenize (expression ex)) "of"
+	    ,@(tokenize-list (selections ex) ",")
+	    ,@(when (else-part ex) (cons "else" (tokenize (else-part ex))))
+	    "endcases"))
+
+(defmethod tokenize ((sel selection))
+  `(,@(tokenize (constructor sel))
+      ,@(when (args sel) `("(" ,@(tokenize-list (args sel) ",") ")"))
+      ":" ,@(tokenize (expression sel))))
+
+(defmethod tokenize ((ex record-expr))
+  `("(#" ,@(tokenize-list (assignments ex) ",") "#)"))
+
+(defmethod tokenize ((ex update-expr))
+  `(,@(tokenize(expression ex)) "with" "[" ,@(tokenize-list (assignments ex) ",") "]"))
+
+(defmethod tokenize ((ex assignment))
+  `(,@(if (and (typep ex 'uni-assignment)
+	       (simple-name? (caar (arguments ex))))
+	  (list (str (caar (arguments ex))))
+	  (tokenize-assargs (arguments ex)))
+      ":=" ,@(tokenize (expression ex))))
+
+;; Similar to pp-arguments* which is called on assignment arguments
+(defun tokenize-assargs (args &optional arg-tokens)
+  (if (null args)
+      arg-tokens
+      (tokenize-assargs
+       (cdr args)
+       (append arg-tokens
+	       (if (and (singleton? (car args))
+			(typep (caar args) 'quoted-assign))
+		   (tokenize (caar args))
+		   `("(" ,@(tokenize* (car args)) ")"))))))
+  
+
+;; Similar to pp-arguments  
+(defun tokenize-assargs* (args arg-tokens)
+  (if (null args)
+      arg-tokens
+      (tokenize-assargs*
+       (cdr args)
+       (append arg-tokens `("(" ,@(tokenize-list (car args) ",") ")")))))
+
+(defmethod tokenize ((ex field-assign))
+  (list (str (id ex))))
+
+(defmethod tokenize ((ex field-application))
+  `(,@(tokenize (argument ex)) "`" ,(string (id ex))))
+
+(defmethod tokenize ((ex projection-application))
+  `(,@(tokenize (argument ex)) "`" ,(str (index ex))))
+
+(defmethod tokenize ((ex injection-application))
+  `(,(str (id ex)) "(" ,@(tokenize (argument ex)) ")"))
+
+(defmethod tokenize ((ex injection?-application))
+  `(,(str (id ex)) "(" ,@(tokenize (argument ex)) ")"))
+
+(defmethod tokenize ((ex extraction-application))
+  `(,(str (id ex)) "(" ,@(tokenize (argument ex)) ")"))
+
+(defmethod tokenize ((ex injection-expr))
+  `(,(str (id ex))))
+
+(defmethod tokenize ((ex injection?-expr))
+  `(,(str (id ex))))
+
+(defmethod tokenize ((ex extraction-expr))
+  `(,(str (id ex))))
+
+(defun tokenize* (list &optional tokens)
+  (cond ((null list) nil)
+	((null (cdr list))
+	 `(,@tokens ,@(tokenize (car list))))
+	(t (tokenize* (cdr list) `(,@tokens ,@(tokenize (car list)))))))
+
+(defmethod tokenize-list (list sep &optional tokens)
+  (cond ((null list) nil)
+	((null (cdr list))
+	 `(,@tokens ,@(tokenize (car list))))
+	(t (tokenize-list (cdr list) sep `(,@tokens ,@(tokenize (car list)) ,sep)))))
+
+(defmethod tokenize ((ex string))
+  (list ex))
+
+(defmethod tokenize ((ex bind-decl))
+  (let ((type (or (declared-type ex) (type ex))))
+    (assert type)
+    `(,(format nil "%~a" (id ex)) ":" ,@(tokenize type))))
+
+(defmethod tokenize ((ex dep-binding))
+  `(,(format nil "%~a" (id ex)) ":" ,@(tokenize (declared-type ex))))
+
+(defmethod tokenize ((ex untyped-bind-decl))
+  `(,(format nil "%~a" (id ex))))
+
+(defmethod tokenize :around ((te type-expr))
+  (if (print-type te)
+      (tokenize (print-type te))
+      (call-next-method)))
+
+(defmethod tokenize ((te type-name))
+  (list (format nil "~a.~a" (id (module (declaration te))) (id te))))
+
+(defmethod tokenize ((te print-type-application))
+  `(,@(tokenize (type te)) "(" ,@(tokenize-list (parameters te) ",") ")"))
+
+(defmethod tokenize ((te type-application))
+  `(,@(tokenize (type te)) "(" ,@(tokenize-list (parameters te) ",") ")"))
+
+(defmethod tokenize ((te print-expr-as-type))
+  `("(" ,@(tokenize (expr te)) ")"))
+
+(defmethod tokenize ((te expr-as-type))
+  `("(" ,@(tokenize (expr te)) ")"))
+
+(defmethod tokenize ((te funtype))
+  `("[" ,@(tokenize (domain te)) "->" ,@(tokenize (range te)) "]"))
+
+(defmethod tokenize ((te tupletype))
+  `("[" ,@(tokenize-list (types te) ",") "]"))
+
+(defmethod tokenize ((te cotupletype))
+  `("[" ,@(tokenize-list (types te) "+") "]"))
+
+(defmethod tokenize ((te recordtype))
+  `("[#" ,@(tokenize-list (fields te) ",") "#]"))
+
+(defmethod tokenize ((fld field-decl))
+  (let ((type (or (declared-type fld) (type fld))))
+    `(,(str (id fld)) ":" ,@(tokenize type))))
+
+(defmethod tokenize ((te subtype))
+  (let* ((bindings (if (typep (predicate te) 'binding-expr)
+		       (bindings (predicate te))
+		       (let* ((id (make-new-variable '|x| te))
+			      (bd (mk-bind-decl id
+				    (or (and (supertype te)
+					     (print-type (supertype te)))
+					(supertype te)))))
+			 (list bd))))
+	 (expr (if (null (predicate te))
+		   (formula te)
+		   (if (typep (predicate te) 'binding-expr)
+		       (expression (predicate te))
+		       (let ((var (mk-name-expr (id (car bindings)))))
+			 (mk-application (predicate te) var))))))
+    (if (cdr bindings)
+	`("{" "(" ,@(tokenize-list bindings ",") ")" "|" ,@(tokenize expr)"}")
+	`("{" ,@(tokenize (car bindings)) "|" ,@(tokenize expr)"}"))))
+  
+(defun tokenize-visible-decls ()
+  (assert *current-context*)
+  (let ((lem-tokens nil)
+	(def-tokens nil))
+    (do-all-declarations #'(lambda (decl)
+			     (when (formula-decl? decl)
+			       ;; (format t "~%tokenizing ~a" (id decl))
+			       (let ((ftoks (tokenize (or (closed-definition decl)
+							  (definition decl)))))
+				 (push `(("tag" . "tokenized-formula")
+					 ("id" . ,(format nil "~a.~a"
+						    (id (module decl)) (id decl)))
+					 ("tokens" . ,ftoks))
+				       lem-tokens)))
+			     (when (and (const-decl? decl)
+					(definition decl))
+			       ;; (format t "~%tokenizing ~a" (id decl))
+			       (let ((ftoks (tokenize (car (def-axiom decl)))))
+				 (push `(("tag" . "tokenized-definition")
+					 ("id" . ,(format nil "~a.~a"
+						    (id (module decl)) (id decl)))
+					 ("recursive?" . ,(if (def-decl? decl) "true" "false"))
+					 ("tokens" . ,ftoks))
+				       def-tokens)))))
+    (values lem-tokens def-tokens)))
+
+(defun pp-tokenize-proof-session (session)
+  ;; Session has the form
+  ;; (("id" . id) ("proofstate" . ps) ("status" . status)
+  ;;  ("commentary" . (list of strings and proofstates))
+  (multiple-value-bind (formulas defs)
+      (tokenize-visible-decls)
+    (let ((prf-session (pp-tokenize-proof-session*
+			(cdr (assoc "commentary" session :test #'string=)))))
+      `(("definitions" . ,defs)
+	("formulas" . ,formulas)
+	("proof-session" . ,prf-session)))))
+
+(defun pp-tokenize-proof-session* (session &optional commentary ps-jsons)
+  (cond ((null session)
+	 (when commentary
+	   (let ((last-commentary (assoc "commentary" (car ps-jsons) :test #'string=)))
+	     (if last-commentary
+		 (nconc last-commentary (nreverse commentary))
+		 (nconc (car ps-jsons) `(("commentary" . ,(nreverse commentary)))))))
+	 (nreverse ps-jsons))
+	((proofstate? (car session))
+	 (let ((ps-json (pp-tokenize-proofstate (car session) (reverse commentary))))
+	   (pp-tokenize-proof-session* (cdr session) nil (cons ps-json ps-jsons))))
+	((typep (car session) 'simple-condition)
+	 (pp-tokenize-proof-session* (cdr session)
+				 (cons (format nil "~a" (car session)) commentary) ps-jsons))
+	(t (unless (stringp (car session))
+	     (break "Strange session elt: ~a" (car session)))
+	   (pp-tokenize-proof-session* (cdr session) (cons (car session) commentary) ps-jsons))))
+
+;;; Proofstates
+
+(defun pp-tokenize-proofstate (ps commentary)
+  (unless (or (top-proofstate? ps)
+	      (parent-proofstate ps))
+    (break "no way to determine new?"))
+  (let* ((label (label ps))
+	 (current-goal (current-goal ps))
+	 (current-rule (current-rule ps))
+	 (current-input (current-input ps))
+	 (par-sforms (unless (top-proofstate? ps)
+		       (s-forms (current-goal (parent-proofstate ps)))))
+	 (pp-json-ml-rule (pp-json-ml-input current-rule))
+	 (pp-json-ml-inp (pp-json-ml-input current-input))
+	 (pp-json-ml-ps `(("tag" . "proofstate")
+			  ("label" . ,label)
+			  ("depth" . ,(proofstate-depth ps))
+			  ("current-goal" . ,(pp-tokenize-sequent current-goal par-sforms))
+			  ,@(when current-rule `(("current-rule" . ,pp-json-ml-rule)))
+			  ,@(when current-input `(("current-input" . ,pp-json-ml-inp)))
+			  ,@(when commentary `(("commentary" . ,(nreverse commentary)))))))
+    ;; (with-output-to-string (*standard-output*)
+    ;; 	(json:encode-json pp-json-ml-ps))
+    pp-json-ml-ps))
+
+(defun pp-tokenize-sequent (seq par-sforms)
+  ;; Can't use with-slots for neg- or pos-sforms, as slot may not be set
+  ;; See neg-s-forms* and pos-s-forms* in eproofcheck.lisp
+  (let ((n-sfrms (neg-s-forms* seq))
+	(p-sfrms (pos-s-forms* seq))
+	(hidn-sfrms (hidden-s-forms seq)))
+    `(("tag" . "sequent")
+      ("antecedents" . ,(pp-tokenize-sforms n-sfrms par-sforms))
+      ("consequents" . ,(pp-tokenize-sforms p-sfrms par-sforms))
+      ("hidden" . ,(pp-tokenize-sforms hidn-sfrms nil))
+      )))
+
+(defun pp-tokenize-sforms (sforms par-sforms)
+  (map 'vector #'(lambda (sf) (pp-tokenize-sform sf par-sforms)) sforms))
+
+(defmethod pp-tokenize-sform (sform par-sforms)
+  (with-slots (formula label) sform
+    (let ((new? (not (memq sform par-sforms)))
+	  ;;(*pp-json-ml-bindings* nil)
+	  )
+      `(("tag" . "s-formula")
+	,@(when label `(("label" . ,label)))
+	("new?" . ,new?)
+	("formula" . ,(tokenize formula))
+	;; ("asserted?" . ,asserted?) ;; always nil currently, and shouldn't be a slot
+	))))
+
+(defun collect-tokenized-proof (formula &optional force?)
+  (let* ((fdecl (get-formula-decl formula))
+	 (thdir (format nil "~ajson/~a-tkn-proofs/"
+		  (context-path (module fdecl)) (id (module fdecl))))
+	 (dfile #+sbcl (sb-ext:parse-native-namestring
+			(format nil "~a/~a.json" thdir (id fdecl)))
+		#-sbcl (format nil "~a/~a.json" thdir (id fdecl))))
+    (if (and (not force?) (file-exists-p dfile))
+	(format t "~%~a exists" dfile)
+	(let* ((*current-context* (context fdecl))
+	       ;;(*dump-proof-data-to-file* dfile)
+	       (*log-proofs* t)
+	       (*noninteractive* t)
+	       (*rewrite-msg-off* t) ;; *suppress-printing* isn't enough to shut off these messages
+	       (*multiple-proof-default-behavior* :noquestions)
+	       (def-prf (default-proof fdecl))
+	       (input-list (when def-prf
+			     (flatten-proof-script
+			      (editable-justification (script def-prf))))))
+	  (uiop:ensure-all-directories-exist (list thdir))
+	  ;; (with-prover-input-hook 'prover-list-input
+	  ;;   (with-prover-output-hook 'pp-json-output-hook
+	  ;; 	(with-prover-done-hook 'pp-json-done-hook
+	  ;; 	  (prove-formula fdecl))))
+	  (format t "~%Rerunning proof of ~a.~a" (id (module fdecl)) (id fdecl))
+	  (let* ((result (prover-init
+			  fdecl
+			  :input-hook (let ((pr-input input-list))
+					(lambda ()
+					  (if pr-input
+					      (let ((inp (pop pr-input)))
+						(commentary "input: ~a" inp)
+						inp)
+					      '(quit))))))
+		 ;;(foo (format t "~%Generating alist"))
+		 (prf-session (pp-tokenize-proof-session result)))
+	    (with-open-file (str dfile :direction :output :if-exists :supersede)
+	      (format t "~%Generating ~a" dfile)
+	      (json:encode-json-alist prf-session str)))
+	  (format t "~%Generated size ~d"
+	    #+allegro (excl.osi:stat-size (excl.osi:stat dfile))
+	    #+sbcl (sb-posix:stat-size (sb-posix:stat dfile)))
+	  (when *testing-json*
+	    (let ((json:*identifier-name-to-key* 'string-downcase))
+	      (json:decode-json-from-source dfile)))))))
+
+(defun tokenize-ml-prelude (&optional force?)
+  (with-workspace (format nil "~a/lib/" *pvs-path*)
+    (uiop:ensure-all-directories-exist (list "json/"))
+    (dolist (th *prelude-theories*)
+      ;;(theory-to-json-file th)
+      (format t "~%Generating proofs for ~a" (id th))
+      (let ((formulas (provable-formulas th)))
+	(dolist (formula formulas)
+	  (collect-tokenized-proof formula force?))))))
+
+(defun tokenize-ml-library-proofs (lib &key (file-names '("top")) force?)
+  (with-workspace lib
+    (unless nil ;(uiop:directory-exists-p "json")
+      (uiop:ensure-all-directories-exist (list "json/"))
+      (dolist (fname file-names)
+	(typecheck-file fname))
+      (maphash #'(lambda (thid th)
+		   (declare (ignore thid))
+		   ;;(theory-to-json-file th force?)
+		   (let ((formulas (provable-formulas th)))
+		     (dolist (formula formulas)
+		       (collect-tokenized-proof formula force?))))
+	       (current-pvs-theories)))))
