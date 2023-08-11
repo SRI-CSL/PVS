@@ -906,6 +906,19 @@
 					;(format t "~%PVS: ~s becomes ~s" expr (print-ir lambda-ir))
 	lambda-ir))))
 
+(defmethod bitvector-type? ((ty funtype))
+  (with-slots (domain range) ty
+    (and (tc-eq (find-supertype range) *boolean*)
+	 (or (simple-below? domain)
+	     (simple-upto? domain)))))
+
+(defmethod bitvector-type? ((ty subtype))
+  (with-slots (supertype) ty
+    (bitvector-type? supertype)))
+
+(defmethod bitvector-type? ((ty T))
+  nil)
+
 
 ;;intersects the subranges (if any) in ir-types; returns nil, otherwise. 
 (defun best-ir-subrange-list (ir-types)
@@ -6264,7 +6277,7 @@
 	       (closure-type-decl (format nil "~%struct ~a;~%~8Ttypedef struct ~a * ~a;"
 					  closure-struct-name closure-struct-name closure-type-name))
 	       (closure-type-defn ;the fptr takes the closure itself and a pointer to the lambda-args
-		(format nil "struct ~a {uint32_t count;~%~8T ~a_t ftbl;~%~8T ~a_htbl_t htbl;~{~%~8T~a;~^~}};"
+		(format nil "struct ~a {uint64_t count;~%~8T ~a_t ftbl;~%~8T ~a_htbl_t htbl;~{~%~8T~a;~^~}};"
 			closure-struct-name 
 			ftbl-type-name c-funtype
 			fvar-cvar-decls
@@ -6679,7 +6692,7 @@
 		      ;(break "add-c-type-definition ir-funtype")
 		      (if nil ;;(ir-index? ir-domain);;NSH(9/15/2022): remove this option
 			  (let* ((size (ir-index? ir-domain))
-				 (type-defn (format nil "struct ~a { uint32_t count;~% ~a_t elems[~a]; };~%typedef struct ~a * ~a;"
+				 (type-defn (format nil "struct ~a { uint64_t count;~% ~a_t elems[~a]; };~%typedef struct ~a * ~a;"
 						    struct-name (mppointer-type c-range-root) size struct-name type-name))
 				 (new-info (make-array-new-info type-name-root size elemtype))
 				 (release-info (make-array-release-info type-name-root size elemtype c-range-root c-param-arg-string c-param-decl-string))
@@ -6722,7 +6735,7 @@
 				 )
 				(type-decl (format nil "struct ~a;~%~8Ttypedef struct ~a * ~a;" struct-name
 						   struct-name type-name))
-				(type-defn (format nil "struct ~a {uint32_t count;~%~8T~a_ftbl_t ftbl;~%~8T~a_htbl_t htbl;};~%typedef struct ~a * ~a;" struct-name  type-name-root type-name-root struct-name type-name))
+				(type-defn (format nil "struct ~a {uint64_t count;~%~8T~a_ftbl_t ftbl;~%~8T~a_htbl_t htbl;};~%typedef struct ~a * ~a;" struct-name  type-name-root type-name-root struct-name type-name))
 				(hashtype (ir-hashable-index? ir-domain))
 				;;need range to be a fixed-width int
 				(release-info (make-function-release-info type-name-root c-param-decl-string))
@@ -6950,7 +6963,7 @@
 		 (c-param-arg-string (format nil "~{, ~a~}" (loop for ir-formal in
 								  theory-params
 								  collect (ir-name ir-formal))))
-		 (type-defn (format nil "struct ~a { uint32_t count;~%~8Tuint32_t size;~%~8T uint32_t max;~%~8T ~a_t elems[]; };~%typedef struct ~a * ~a;"  
+		 (type-defn (format nil "struct ~a { uint64_t count;~%~8Tuint32_t size;~%~8T uint32_t max;~%~8T ~a_t elems[]; };~%typedef struct ~a * ~a;"  
 				    struct-name (mppointer-type c-range-root) ;size
 				    struct-name type-name))) ;(break "add-c-type")
 	    (make-array-c-type-info ir2c-type type-name-root type-defn size
@@ -7344,7 +7357,7 @@
 			   (c-field-decls (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (format nil "~a_t ~a" cft (ir-id ft))))
-			   (type-defn (format nil "struct ~a_s {~%~8Tuint32_t count; ~{~%~8T~a;~}};~%typedef struct ~a_s * ~a_t;"
+			   (type-defn (format nil "struct ~a_s {~%~8Tuint64_t count; ~{~%~8T~a;~}};~%typedef struct ~a_s * ~a_t;"
 					      type-name-root c-field-decls type-name-root type-name-root)));(break "add-c-type-definition")
 		      (let* ((theory-params *ir-theory-formals*)
 			     (theory-formals *theory-formals*)
@@ -7398,7 +7411,7 @@
 			   (c-field-decls (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (format nil "~a_t ~a" cft (ir-id ft))))
-			   (type-defn (format nil "struct ~a_s {~%~8T uint32_t count; ~{~%~8T~a;~}};~%typedef struct ~a_s * ~a_t;"
+			   (type-defn (format nil "struct ~a_s {~%~8T uint64_t count; ~{~%~8T~a;~}};~%typedef struct ~a_s * ~a_t;"
 					      type-name-root c-field-decls type-name-root type-name-root)));(break "add-c-type-definition")
 		      (let* ((theory-params *ir-theory-formals*)
 			     (theory-formals *theory-formals*)
