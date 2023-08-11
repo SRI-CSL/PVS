@@ -339,8 +339,8 @@ BEGIN
   %% Converts rational number to string. The rational is printed in decimal representation if the
   %% representation is finite. Otherwise, it prints its rational form.
   rat2str(r:rat) : string =
-    LET (finp,infp) = decimal_precision(r) IN
-    IF infp = 0 THEN
+    LET finp = finite_precision(r) IN
+    IF finp >= 0 THEN
       rat2decstr(r,finp,Truncate)
     ELSE
       format("~a",r)
