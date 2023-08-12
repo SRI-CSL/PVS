@@ -138,6 +138,7 @@
 	:output '(:string :stripped t)
 	:error-output :output ; shared out string; err will be nil
 	:ignore-error-status t)
+    (declare (ignore err))
     (cons status (string-trim '(#\Space #\Newline) out))))
 
 ;; Get the absolute path to the PVS NASA library -- DEPRECATED use (nasalib-path) instead
@@ -988,6 +989,7 @@ arguments ARGS. ARGS can only have constant values.")
   (let ((dummy (multiple-value-bind
 		   (second minute hour date month year day-of-week dst-p tz)
 		   (get-decoded-time)
+		 (declare (ignore dst-p))
 		 (format t "~%TIME ~d/~2,'0d/~d  ~2,'0d:~2,'0d:~2,'0d~%"
 			 month
 			 date

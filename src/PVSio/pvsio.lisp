@@ -193,6 +193,7 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	 (pr-input   (pc-parse input 'expr))
 	 (*tccforms* nil)
 	 (tc-input   (pc-typecheck pr-input))
+	 (quiet      nil)
 	 (isvoid     (and tc-input 
 			  (type-name? (type tc-input))
 			  (string= "void" 
@@ -289,11 +290,11 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	   (read-pvsio input-stream))
 	  (t input))
 	(multiple-value-bind 
-	      (val err)
+	    (val err)
 	    (progn			;ignore-errors
 	      (eval input))
 	  (if err (format t "ERROR (lisp): ~a" err)
-	      (format t "~a" val))
+	    (format t "~a" val))
 	  (fresh-line)
 	  (read-pvsio input-stream)))))
 

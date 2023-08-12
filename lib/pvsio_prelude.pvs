@@ -45,6 +45,9 @@ END stdexc
 stdexc_tags : THEORY
 BEGIN
 
+% PVSioError Exception Tag
+  PVSioError : ExceptionTag[string] = "PVSioError"
+
 % Mutable Exception Tag
   UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
 
@@ -241,11 +244,14 @@ BEGIN
   Ceiling      : MACRO RoundingMode = TowardsPosInfnty
   Floor        : MACRO RoundingMode = TowardsNegInfnty
 
-  % set(PRECISION,n) sets default precision to 10^(-val(PRECISION)) for computations and printing
+  % set(PRECISION,<precision>) sets default precision to 10^(-val(PRECISION)) for computations and printing
   PRECISION : Global[nat,6] 
 
-  % set(ROUNDING,mode) sets default rounding mode for computation and printing
+  % set(ROUNDING,<mode>) sets default rounding mode for computation and printing
   ROUNDING  : Global[RoundingMode,TowardsZero]
+
+  %% set(PP_RATIONALS,<bool>) sets default for pretty printing rational numbers in PVSio
+  PP_RATIONALS : Global[bool,TRUE]
 
   RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
   NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
@@ -268,7 +274,8 @@ BEGIN
   %% Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
   %% non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
   %% decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
-  %% maxinfp is non-negative, the second value is the minimum between the period and maxinf+1.
+  %% maxinfp is non-negative, the second value is the minimum between the period and maxinf+1. In either case,
+  %% if the second value is 0, the rational has a finite decimal representation.
   decimal_precision(r:rat,maxinfp:int) : [nat,nat] 
 
 END stdmath
@@ -332,6 +339,15 @@ BEGIN
   rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string =
     rat2decstr_with_zeros(r,precision,rounding,FALSE)
 
+  %% Converts rational number to string decimal representation. If the representation is infinite,
+  %% prints all its non-repeating decimals and its repeating decimals, truncating at the minimum of period
+  %% and PRECISION and rounding according to ROUNDING. 
+  rat2decstr(r:rat) : string =
+    LET  maxinfp = val(PRECISION),
+         (finp,infp) = decimal_precision(r,maxinfp),
+	 rounding = IF infp > maxinfp THEN val(ROUNDING) ELSE Truncate ENDIF IN
+    rat2decstr_with_zeros(r,finp+infp,rounding,TRUE)
+
   %% Converts rational number to string. The rational is printed in decimal representation if the
   %% representation is finite. Otherwise, it prints its rational form.
   rat2str(r:rat) : string =
@@ -342,17 +358,17 @@ BEGIN
       format("~a",r)
     ENDIF
       
-  %% When *pvsio-fancy-rats* is set to t, pretty prints decimal using overline to indicate repeating digits
-  pp_decstr(str:string,finp,infp,maxinfp:nat) : string 
+  %% Pretty prints decimal using overline to indicate repeating digits. Finp is the precision of the
+  %% non-repeating digits. Truncated indicates that the infinite representation was truncated.
+  pp_decstr(str:string,finp:nat,truncated:bool) : string 
 
-  %% Converts rational number to string decimal representation. If the representation is infinite,
-  %% it prints all the non-repeating decimals and then all repeating decimals until the minimum of period
-  %% and PRECISION+1. Trailing zeros are significant when decimal representation is repeating.
-  rat2decstr(r:rat) : string =
+  %% Pretty prints rational numbers using overline to indicate repeating digits and ellipsis
+  %% when decimal expansion is truncated.
+  pp_rat(r:rat) : string =
     LET  maxinfp = val(PRECISION),
          (finp,infp) = decimal_precision(r,maxinfp),
-	 rounding = IF infp > maxinfp THEN Truncate ELSE val(ROUNDING) ENDIF IN
-    pp_decstr(rat2decstr_with_zeros(r,finp+infp,rounding,TRUE),finp,infp,maxinfp)
+	 str = rat2decstr_with_zeros(r,finp+min(infp,maxinfp),Truncate,TRUE) IN
+    pp_decstr(str,finp,infp > maxinfp)
 
   %% Converts real number r to string using a given precision and rounding, where the precision represents
   %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,

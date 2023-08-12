@@ -34,36 +34,38 @@ is replaced with replacement."
           when pos do (write-string replacement out)
           while pos)))
 
+;; Oveline: <char> Ctrl-x 8 305 
 (defparameter *ol-digits* '("0̅" "1̅" "2̅" "3̅" "4̅" "5̅" "6̅" "7̅" "8̅" "9̅"))
+(defparameter *ellipsis* "…")
 
 (defun replace-ol-digits (acc &optional (n 0) (ol *ol-digits*))
   (if (null ol) acc
     (replace-ol-digits (replace-string acc (format nil "~a" n) (car ol))
 		       (1+ n) (cdr ol))))
 
-(defparameter *pvsio-fancy-rats* t)
+;; Pretty prints decimal using overline to indicate repeating digits. Finp is the precision of the
+;; non-repeating digits. Truncated indicates that the infinite representation was truncated.
+(defun pp-decstr (str finp truncated)
+  (let ((pos (position #\. str)))
+    (if pos
+	(let* ((fixp (+ pos finp 1))
+	       (pre  (subseq str 0 fixp))
+	       (pos  (subseq str fixp (length str)))
+	       (ell  (when truncated *ellipsis*)))
+	  (format nil "~a~a~@[~a~]" pre (replace-ol-digits pos) ell))
+      str)))
 
-;; When *pvsio-fancy-rats* is set to t, pretty prints decimal using overline to indicate repeating digits
-(defun pp-decstr (str finp infp maxinfp)
-  (if *pvsio-fancy-rats*
-      (let ((pos (position #\. str)))
-	(if pos
-	    (let* ((fixp (+ pos finp 1))
-		   (pre  (subseq str 0 fixp))
-		   (mid  (min (length str) (+ fixp maxinfp)))
-		   (pos  (subseq str fixp mid))
-		   (fin  (when (> infp maxinfp) (subseq str mid (length str)))))
-	      (format nil "~a~a~@[~a~]" pre (replace-ol-digits pos) fin))
-	  str))
-    str))
-
-(defun pp-rat (r &optional (rounding 0) (maxinfp 6))
-  "Pretty prints rational numbers using overline to indicate repeating digits"
-  (multiple-value-bind (finp infp)
-      (decimal-precision-of-rat r maxinfp)
-    (let ((str (ratio2decimal-with-rounding-mode
-		r (if (> infp maxinfp) rounding 0) (+ finp infp) t)))
-      (pp-decstr str finp infp maxinfp))))
+(defun pp-rat (r &optional (maxinfp 6))
+  "Pretty prints rational numbers using overline to indicate repeating digits and ellipsis when decimal
+expansion is truncated. If maxinfp is negative, the rational is printed in decimal representation if the
+representation is finite. Otherwise, it prints its rational form."
+  (let ((prec (max 0 maxinfp)))
+    (multiple-value-bind (finp infp)
+	(decimal-precision-of-rat r prec)
+      (if (and (< maxinfp 0) (> infp 0))
+	  (format nil "~a" r)
+	(let ((str (ratio2decimal-with-rounding-mode r 0 (+ finp (min infp prec)) t)))
+	  (pp-decstr str finp (> infp prec)))))))
 
 (defun stdstr-attachments ()
 
@@ -138,9 +140,10 @@ denoting 10^(-n), and rounding mode, i.e, TowardsZero, TowardsInfnty, TowardsNeg
 Displays trailing zeroes when zeros is set to TRUE"
   (ratio2decimal-with-rounding-mode r rounding precision zeros))
 
-(defattach |pp_decstr| (str finp infp maxinfp)
-  "When *pvsio-fancy-rats* is set to t, pretty prints decimal using overline to indicate repeating digits."
-  (pp-decstr str finp infp maxinfp))
+(defattach |pp_decstr| (str finp truncated)
+  "Pretty prints decimal using overline to indicate repeating digits. Finp is the precision of the
+non-repeating digits. Truncated indicates that the infinite representation was truncated."
+  (pp-decstr str finp truncated))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"
@@ -436,19 +439,15 @@ Displays trailing zeroes when zeros is set to TRUE"
   "Returns numerator and denominator of rational number"
   (pvs2cl_tuple (numerator r) (denominator r)))
 
-(defattach |decimal_precision| (r)
-  "Compute the decimal precision of a rational number. Return 2 values the first one is number of
-non-repeating decimals. The second one is the period of the decimal. If the second value is 0,
-the rational has a finite decimal representation."
+(defattach |decimal_precision| (r maxinfp)
+  "Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+ non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
+ decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
+ maxinfp is non-negative, the second value is the minimum between the period and maxinf+1. In either case,
+ if the second value is 0, the rational has a finite decimal representation."
   (multiple-value-bind (finp infp)
-      (decimal-precision-of-rat r)
+      (decimal-precision-of-rat r maxinfp)
     (pvs2cl_tuple finp infp)))
-
-(defattach |finite_precision| (r)
-  "Compute the finite decimal precision of a rational number. Return -1, it the rational number
-doesn't have a finite representation. This function is the equivalent to the first projection of
-decimal_precision, but it doesn't compute the period of the decimal, which is expensive."
-  (finite-precision-of-rat r))
 
 )))
 
