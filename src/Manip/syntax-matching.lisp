@@ -121,11 +121,13 @@
 	 (prf-steps (mapcar #'(lambda (step)
 				(subst-target step var-subs instances fnums t))
 			    steps))
-	 (unmatched-var     ;; check for strings with remaining %-chars
-	   (apply-to-selected-nodes
-	     #'stringp (lambda (s) (find #\% s))
-	     (lambda (x) nil) #'(lambda (s) (some #'identity s))
-	     (append contracta prf-steps)))
+	 ;; M3: check for non replaced percent symbol is removed
+	 ;;     in order to allow nested applications of match
+	 ;; (unmatched-var     ;; check for strings with remaining %-chars
+	 ;;   (apply-to-selected-nodes
+	 ;;     #'stringp (lambda (s) (find #\% s))
+	 ;;     (lambda (x) nil) #'(lambda (s) (some #'identity s))
+	 ;;     (append contracta prf-steps)))
 	 (lhs (if (and (typep (car instances) 'expr)
 		       (> (parens (car instances)) 0))
 		  (car instances)
@@ -140,14 +142,17 @@
 			(match-action-p               ;; relational operator
 			 `(case ,(format nil "~A ~A ~A" lhs op rhs)))))
 	 (main-rule
-	  (cond (unmatched-var
-		 (gen-manip-response 'match
-		   (format nil
-			   "Not all %-variables in templates were bound.~%")))
-		((eq op 'step)
-		 (if (stringp (car contracta))
-		     (handler-case (read-from-string (car contracta))
-		       (error (condition)
+	  (cond 
+	   ;; M3: check for non replaced percent symbol is removed
+	   ;;     in order to allow nested applications of match
+	   ;; (unmatched-var
+	   ;;  (gen-manip-response 'match
+	   ;;    (format nil
+	   ;; 	   "Not all %-variables in templates were bound.~%")))
+	   ((eq op 'step)
+	    (if (stringp (car contracta))
+		(handler-case (read-from-string (car contracta))
+		  (error (condition)
 			 (gen-manip-response 'match
 			   (format nil "Bad step: ~A~%" (car contracta)))))
 		     (car contracta)))
@@ -156,7 +161,10 @@
 		 `(,op ,@(mapcar #'(lambda (e) (format nil "~A" e))
 				 instances)))
 		(t br-rule))))
-    (values (if (or unmatched-var (eq op 'step)) ;; (not match-action-p))
+    (values (if ;; M3: check for non replaced percent symbol is removed
+		;;     in order to allow nested applications of match
+		;; (or unmatched-var (eq op 'step)) ;; (not match-action-p))
+		(eq op 'step)
 		main-rule
 	        `(branch-back$ ,main-rule ,prf-steps))
 	    prf-steps)))
