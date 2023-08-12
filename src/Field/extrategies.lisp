@@ -103,7 +103,7 @@
   (mapcar #'car (extra-list-oracles enabled)))
 
 (defmacro deforacle (name args step doc format &optional internal)
-  (let* ((info     (format nil "Try (help ~a)" name name))
+  (let* ((info     (format nil "Try (help ~a)" name))
 	 (dismsg   (format nil "~a has been disabled" name))
 	 (docmsg   (if internal doc (format nil "[Trusted Oracle] ~a" doc))))
   `(progn
@@ -249,13 +249,15 @@
     (ratio2decimal rat over precision zeros)))
 
 ;; Compute the multiplicative order of n and r, when n and r are co-primes. Return 0 if they are
-;; not comprime. NOTE: The period of an infinite fraction m/n is the (mult-ord n 10), 
-;; assuming that n doesn't have factors of 2 or 5. 
-(defun mult-ord (n r)
+;; not comprime. The period of an infinite fraction m/n is the (mult-ord n 10), 
+;; assuming that n doesn't have factors of 2 or 5. This operation is expensive, for that reason
+;; a maxinfp is provided. If this value is non-negative, the function returns the minimum between
+;; period and maxinfp+1. 
+(defun mult-ord (n r &optional (maxinfp 0))
   (if (> (gcd r n) 1) 0
       (loop for k from 1
 	    for v = r then (* v r)
-	    when (= 1 (mod v n))
+	    when (or (= 1 (mod v n)) (and (>= maxinfp 0) (> k maxinfp)))
 	    do (return k))))
 
 ;; Count the numbers of 10,5,2 factors in den. Return 2 values, the count and the reminder
@@ -268,36 +270,30 @@
 	  ((= den 1)  (values acc 0))
 	  (t          (values acc den)))))
 
-;; Compute the decimal precision of a rational number. Return 2 values the first one is
-;; number of non-repeating decimals. The second one is the period of the decimal. This is only computed
-;; if multord? is t. If the second value is 0, the rational has a finite decimal representation.
-;; This function assumes that rat is a rational number
-(defun decimal-precision-of-rat (rat &optional (multord? t))
+ ;; Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+ ;; non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
+ ;; decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
+ ;; maxinfp is non-negative, the second value is the minimum between the period and maxinf+1.
+ ;; This function assumes that rat is a rational number
+(defun decimal-precision-of-rat (rat &optional (maxinfp 0))
   (assert (rationalp rat))
   (let ((den (denominator rat)))
     (if (= den 1) (values 0 0) ;; An integer
       (multiple-value-bind (fprec rem)
 	  (count-div-10-5-2 den)
 	(if (= rem 0) (values fprec 0)
-	  (values fprec (if multord? (mult-ord rem 10) -1)))))))
-
-;; Compute the finite decimal precision of a rational number. Return -1, it the rational number
-;; doesn't have a finite representation.
-(defun finite-precision-of-rat (rat)
-  (multiple-value-bind
-      (finp infp)
-      (decimal-precision-of-rat rat nil)
-    (if (= infp 0) finp -1)))
+	  (values fprec (mult-ord rem 10 maxinfp)))))))
 
 ;; Converts real number r to string. If real can be represented by a finite decimal, it prints its exact representation.
 ;; Otherwise, it uses precision and rounding, where the precision represents the accuracy 10^-precision and rounding as
 ;; in ratio2decimal-with-rounding-mode
 (defun real2decimal (r rounding precision)
-  (let* ((rat  (rational r))
-	 (finp (finite-precision-of-rat rat)))
-    (if (>= finp 0)
+  (let* ((rat  (rational r)))
+    (multiple-value-bind (finp infp)
+	(decimal-precision-of-rat rat)
+    (if (= infp 0)
 	(decimals:format-decimal-number rat :round-magnitude (- finp))
-      (ratio2decimal-with-rounding-mode rat rounding precision))))
+      (ratio2decimal-with-rounding-mode rat rounding precision)))))
 
 (defun is-var-decl-expr (expr)
   (and (name-expr? expr)
@@ -639,7 +635,7 @@
 	     (/ (number (args1 expr)) (number (args2 expr))))
 	    ((not shallow?)
 	     (let ((val (evalexpr expr)))
-	       (when (expr? val)
+	       (when val
 		 (extra-get-number-from-expr val t))))))))
 
 (defun is-bool-type (type)
@@ -788,7 +784,7 @@
       (let ((val  (assoc expr *extra-evalexprs* :test #'compare*)))
 	(or (cdr val)
 	    (let ((exval (evalexpr expr)))
-	      (when (expr? exval) 
+	      (when exval 
 		(unless (or (compare* expr exval)
 			    (same-neg fmexpr exval)
 			    (same-div fmexpr exval))
@@ -999,6 +995,7 @@ arguments ARGS. ARGS can only have constant values.")
 			 hour
 			 minute
 			 second))))
+    (declare (ignore dummy))
     (skip))
   "[Extrategies] Prints current time.")
 
@@ -2224,6 +2221,7 @@ variables can be specified using VAR."
   "[Extrategies] Internal strategy." "")
 
 (defun skoletin-formula (fn expr)
+  (declare (ignore fn))
   (let-expr? expr))
 
 (defstep skoletin (&optional (fnum (+ -)) name (nth 1) var postfix hide?
@@ -2526,6 +2524,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
    "Rewriting recursively with ~a")
 
 (defun quantified-formula (fn expr)
+  (declare (ignore fn))
   (or (exists-expr? expr) (forall-expr? expr)))
 
 (defun get-suffices-expr (expr estr conseq forall var qn &optional (n 1) b)
@@ -2766,6 +2765,7 @@ quantifier, if provided."
 			(typetup (copy (type namexpr)
 				   'types
 				   (removepos p (types (type namexpr))))))
+		     (declare (ignore dummy))
 		     (progn
 		       (when ret (setf (ret-expr ret) (list mergename prj)))
 		       (setf (type argexpr) typetup)
@@ -2822,16 +2822,23 @@ quantifier, if provided."
 
 ;;; PVSio
 
-(define-condition eval-error (simple-condition) ())
-
 (define-condition pvsio-inprover (simple-condition) ())
+
+(defmacro handler-case-pvsio-eval (quiet prog2eval)
+  `(handler-case ,prog2eval
+     ;; At the moment, all errors simply print the condition, and evalexpr returns nil
+     (pvseval-error    (condition) (unless ,quiet (format t "~%[pvseval-error] ~a" condition)))
+     (groundeval-error (condition) (unless ,quiet (format t "~%[groundeval-error] ~a" condition)))
+     (cl2pvs-error     (condition) (unless ,quiet (format t "~%[cl2pvs-error] ~a" condition)))
+     (pvsio-inprover   (condition) (unless ,quiet (format t "~%[pvsio-inprover] ~a" condition)))))
 
 ;; Evaluates ground expression expr.
 ;; When safe is t, evaluation doesn't proceed when there are TCCs.
 ;; When timing is t, timing information of the ground evaluation is printed.
-(defun evalexpr (expr &optional safe timing)
+;; Returns a PVS expr or nil if evaluation raises an error
+(defun evalexpr (expr &optional safe timing quiet)
   (when expr
-    (handler-case
+    (handler-case-pvsio-eval quiet
 	(let* ((pr-input (extra-get-expr expr))
 	       (*tccforms* nil)
 	       (*generate-tccs* 'all)
@@ -2839,35 +2846,29 @@ quantifier, if provided."
 	  (when (and *tccforms* safe)
 	    (format t "~%Typechecking ~s produced TCCs:~%" expr)
 	    (evaluator-print-tccs *tccforms*)
-	    (error 'eval-error
-		   :format-control "Use option :safe? nil if TCCs are provable"))
-	  (let* ((cl-input (handler-case (pvs2cl tc-input)
-			     (pvseval-error (condition) nil)))
+	    (error 'groundeval-error
+		   :format-control "Ground evaluation is unsafe in the presence of TCCs. Use option :safe? nil if TCCs are provable"))
+	  (let* ((cl-input (pvs2cl tc-input))
 		 (cl-eval (if timing
 			      (time (eval cl-input))
 			      (eval cl-input)))
 		 (pvs-val (cl2pvs cl-eval (type tc-input))))
 	    (assert (expr? pvs-val))
-	    pvs-val))
-      ;; At the moment, all errors simply print the condition, and evalexpr returns nil
-      (groundeval-error (condition) (when *eval-verbose* (format t "~%~a" condition)))
-      (pvsio-inprover (condition) (format t "~%error2: ~a" condition)))))
+	    pvs-val)))))
 
 (deforacle eval-expr (expr &optional safe? (auto? t) quiet? timing?)
   (let ((e (extra-get-expr expr)))
     (when e
-	(let ((result (evalexpr e safe? timing?)))
-	  (if (stringp result)
-	      (unless quiet? (printf "Error: ~a~%" result))
-	    (when result
-	      (let ((casexpr (format nil "(~a) = ~a" e result)))
-		(with-fresh-labels
-		 (!evx)
-		 (trust-branch!
-		  eval-expr
-		  (discriminate (case casexpr) !evx)
-		  ((skip) !
-		   (when auto? (eval-formula !evx safe? quiet?)))))))))))
+      (let ((result (evalexpr e safe? timing? quiet?)))
+	(when result
+	  (let ((casexpr (format nil "(~a) = ~a" e result)))
+	    (with-fresh-labels
+	     (!evx)
+	     (trust-branch!
+	      eval-expr
+	      (discriminate (case casexpr) !evx)
+	      ((skip) !
+	       (when auto? (eval-formula !evx safe? quiet?))))))))))
   "[PVSio] Adds the hypothesis expr=eval(EXPR) to the current goal,
 where eval(EXPR) is the ground evaluation of EXPR. If SAFE? is t and
 EXPR generates TCCs, the expression is not evaluated. Otherwise, TCCs
@@ -2884,11 +2885,10 @@ evaluation."
   (let ((fexpr (extra-get-seqf fnum)))
     (when fexpr
       (let ((expr   (formula fexpr))
-	    (result (evalexpr expr safe? timing?))
-	    (doit   (extra-is-true result)))
-	(if (stringp result)
-	    (unless quiet? (printf "Error: ~a~%" result))
-	  (when doit (trust! eval-formula))))))
+	    (result (evalexpr expr safe? timing? quiet?)))
+	(when result
+	  (let ((doit (extra-is-true result)))
+	    (when doit (trust! eval-formula)))))))
   "[PVSio] Evaluates the formula FNUM in Common Lisp and adds the
 result to the antecedent of the current goal. If SAFE? is t and FNUM
 generates TCCs, the expression is not evaluated. The strategy is safe
@@ -2903,11 +2903,9 @@ information of the ground evaluation."
   (let ((e (extra-get-expr expr)))
     (when e
       (let ((*in-evaluator* t)
-	    (result (evalexpr e safe? timing?)))
-	(if (stringp result)
-	    (unless quiet? (printf "Error: ~a~%" result))
-	  (when result
-	    (printf "(~a) = ~a~%" e result))))))
+	    (result (evalexpr e safe? timing? quiet?)))
+	(when result
+	  (printf "(~a) = ~a~%" e result)))))
   "[PVSio] Prints the evaluation of expression EXPR. If SAFE? is t and EXPR 
 generates TCCs, the expression is not evaluated. This strategy evaluates
 semantic attachments. Therefore, it may not terminate properly. When QUIET? 
@@ -2940,8 +2938,10 @@ when the list of FNUMS is over. Options are as in eval-formula."
   (if (member :strat-debug *features*)
       (let ((dummy (setq *features* (remove :strat-debug *features*)))
 	    (dummy (load "pvs-strategies")))
+	(declare (ignore dummy))
 	(printf "~%Debug mode disabled.~%"))
     (let ((dummy (pushnew :strat-debug *features*))
 	  (dummy (load "pvs-strategies")))
+      (declare (ignore dummy))
       (printf "~%Debug mode enabled.~%")))
   "[Extrategies] Toggles debug mode on the current theory strategies.")

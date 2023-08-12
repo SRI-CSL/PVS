@@ -367,6 +367,10 @@
 (defmacro project (index tuple)
   (let ((ind (1- index)))
     `(svref ,tuple ,ind)))
+;; [CM] Element of tuple cannot be 'undefined since undefinedness is checked by
+;; pvs2cl-record and pvs2cl-tuple
+;; `(let ((val (svref ,tuple ,ind)))
+;;   (if (eq val 'undefined)(undefined nil) val))   ;; what can we do here?
 
 (defun pvs_equalp (x y)
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"

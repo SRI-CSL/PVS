@@ -41,21 +41,29 @@ is replaced with replacement."
     (replace-ol-digits (replace-string acc (format nil "~a" n) (car ol))
 		       (1+ n) (cdr ol))))
 
-(defun pp-decimal (str finp)
-  (let ((pos (position #\. str)))
-    (if pos
-	(let* ((fixp (+ pos finp 1))
-	       (pre  (subseq str 0 fixp))
-	       (pos  (subseq str fixp (length str))))
-	  (format nil "~a~a" pre (replace-ol-digits pos)))
-      str)))
+(defparameter *pvsio-fancy-rats* t)
 
-(defun pp-rational (r)
+;; When *pvsio-fancy-rats* is set to t, pretty prints decimal using overline to indicate repeating digits
+(defun pp-decstr (str finp infp maxinfp)
+  (if *pvsio-fancy-rats*
+      (let ((pos (position #\. str)))
+	(if pos
+	    (let* ((fixp (+ pos finp 1))
+		   (pre  (subseq str 0 fixp))
+		   (mid  (min (length str) (+ fixp maxinfp)))
+		   (pos  (subseq str fixp mid))
+		   (fin  (when (> infp maxinfp) (subseq str mid (length str)))))
+	      (format nil "~a~a~@[~a~]" pre (replace-ol-digits pos) fin))
+	  str))
+    str))
+
+(defun pp-rat (r &optional (rounding 0) (maxinfp 6))
   "Pretty prints rational numbers using overline to indicate repeating digits"
   (multiple-value-bind (finp infp)
-      (decimal-precision-of-rat r)
-    (let ((str (ratio2decimal-with-rounding-mode r 0 (+ finp infp) t)))
-      (pp-decimal str finp))))
+      (decimal-precision-of-rat r maxinfp)
+    (let ((str (ratio2decimal-with-rounding-mode
+		r (if (> infp maxinfp) rounding 0) (+ finp infp) t)))
+      (pp-decstr str finp infp maxinfp))))
 
 (defun stdstr-attachments ()
 
@@ -120,7 +128,7 @@ is replaced with replacement."
   "Index of leftmost occurrence of S1 in S2, starting from 0, or -1 if none"
   (or (search s1 s2 :test #'char=) -1))
 
-(defprimitive |concat| (s1 s2)
+(defprimitive |strconcat| (s1 s2)
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
@@ -130,9 +138,9 @@ denoting 10^(-n), and rounding mode, i.e, TowardsZero, TowardsInfnty, TowardsNeg
 Displays trailing zeroes when zeros is set to TRUE"
   (ratio2decimal-with-rounding-mode r rounding precision zeros))
 
-(defattach |pp_rat| (r)
-  "Pretty prints rational numbers using overline to indicate repeating digits"
-  (pp-rational r))
+(defattach |pp_decstr| (str finp infp maxinfp)
+  "When *pvsio-fancy-rats* is set to t, pretty prints decimal using overline to indicate repeating digits."
+  (pp-decstr str finp infp maxinfp))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"
@@ -562,7 +570,7 @@ decimal_precision, but it doesn't compute the period of the decimal, which is ex
    (val :accessor val :initarg :val))
   (:report
    (lambda (condition stream)
-     (format stream "PVSio Exception (~a): ~a" (str-tag condition) (val condition)))))
+     (format stream "PVSio Exception (~a)~@[: ~a~]" (str-tag condition) (val condition)))))
 
 (define-condition pvsio-loop (simple-error)
   ((val :accessor val :initarg :val)))

@@ -254,7 +254,7 @@ BEGIN
   % Returns a rational number that is close to the real number (identity when input is rational)
   rational(x:real) : rat
 
-  % Returns nominator,denominator of rational number
+  % Returns numerator,denominator of rational number
   rat2numden(r:rat) : {nd:[int,posnat] | LET (num,den) = nd IN r = num/den}
 
   % Returns numerator of rational number
@@ -265,15 +265,11 @@ BEGIN
   denominator(r:rat): posnat =
     rat2numden(r)`2
 
-  %% Compute the decimal precision of a rational number. Return 2 values the first one is number of
-  %% non-repeating decimals. The second one is the period of the decimal. If the second value is 0,
-  %% the rational has a finite decimal representation.
-  decimal_precision(r:rat) : [nat,nat] 
-
-  %% Compute the finite decimal precision of a rational number. Return -1, it the rational number
-  %% doesn't have a finite representation. This function is the equivalent to the first projection of
-  %% decimal_precision, but it doesn't compute the period of the decimal, which is expensive.  
-  finite_precision(r:rat) : int 
+  %% Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+  %% non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
+  %% decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
+  %% maxinfp is non-negative, the second value is the minimum between the period and maxinf+1.
+  decimal_precision(r:rat,maxinfp:int) : [nat,nat] 
 
 END stdmath
 
@@ -339,35 +335,31 @@ BEGIN
   %% Converts rational number to string. The rational is printed in decimal representation if the
   %% representation is finite. Otherwise, it prints its rational form.
   rat2str(r:rat) : string =
-    LET finp = finite_precision(r) IN
-    IF finp >= 0 THEN
+    LET (finp,infp) = decimal_precision(r,0) IN
+    IF infp = 0 THEN
       rat2decstr(r,finp,Truncate)
     ELSE
       format("~a",r)
     ENDIF
       
+  %% When *pvsio-fancy-rats* is set to t, pretty prints decimal using overline to indicate repeating digits
+  pp_decstr(str:string,finp,infp,maxinfp:nat) : string 
+
   %% Converts rational number to string decimal representation. If the representation is infinite,
-  %% it prints the decimal form until its period. Trailing zeros are significant when representation is
-  %% infinite as they are part of the period.
+  %% it prints all the non-repeating decimals and then all repeating decimals until the minimum of period
+  %% and PRECISION+1. Trailing zeros are significant when decimal representation is repeating.
   rat2decstr(r:rat) : string =
-    LET (finp,infp) = decimal_precision(r) IN
-      rat2decstr_with_zeros(r,finp+infp,Truncate,infp > 0) 
+    LET  maxinfp = val(PRECISION),
+         (finp,infp) = decimal_precision(r,maxinfp),
+	 rounding = IF infp > maxinfp THEN Truncate ELSE val(ROUNDING) ENDIF IN
+    pp_decstr(rat2decstr_with_zeros(r,finp+infp,rounding,TRUE),finp,infp,maxinfp)
 
-  %% Pretty print rational numbers using overline to indicate repeating digits
-  pp_rat(r:rat) : string 
-
-  %% Converts real number r to string. If rational can be represented by a finite decimal, it prints
-  %% its exact representation. Otherwise, it uses precision and rounding, where the precision represents
+  %% Converts real number r to string using a given precision and rounding, where the precision represents
   %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,
   %% TowardsPosInfnty.
   real2decstr(r:real,precision:nat,rounding:RoundingMode) : string =
-    LET rat  = rational(r),
-        finp = finite_precision(rat) IN
-    IF finp >= 0 THEN
-      rat2decstr(rat,finp,TowardsZero)
-    ELSE
+    LET rat  = rational(r) IN
       rat2decstr(rat,precision,rounding)
-    ENDIF
 
   %% Converts real number to string decimal representation using default precision and rounding mode
   real2str(r:real) :string =
@@ -401,14 +393,14 @@ BEGIN
   int?(s:string):bool
 
  %% String concatenation
-  concat(s1:string,s2:string):{ str:string | length(str)=length(s1)+length(s2) } =
+  strconcat(s1:string,s2:string):{ str:string | length(str)=length(s1)+length(s2) } =
     s1 o s2
     
-  ;+(s1:string,s2:string): MACRO string = concat(s1,s2)
-  ;+(r:real,s:string): MACRO string = concat(tostr(r),s)
-  ;+(s:string,r:real): MACRO string = concat(s,tostr(r))
-  ;+(b:bool,s:string): MACRO string = concat(tostr(b),s)
-  ;+(s:string,b:bool): MACRO string = concat(s,tostr(b))
+  ;+(s1:string,s2:string): MACRO string = strconcat(s1,s2)
+  ;+(r:real,s:string): MACRO string = strconcat(tostr(r),s)
+  ;+(s:string,r:real): MACRO string = strconcat(s,tostr(r))
+  ;+(b:bool,s:string): MACRO string = strconcat(tostr(b),s)
+  ;+(s:string,b:bool): MACRO string = strconcat(s,tostr(b))
 
   %% Concatenates n-times string s
   pad(n:nat,s:string): RECURSIVE string = 

@@ -22,15 +22,16 @@
 ;;The ground-eval step evaluates a ground PVS expression returning its value,
 ;;but has no effect on the proof
 ;;Modified such that printf is used insted of dummy format (Feb 20 2015) [CM]
-(defstep ground-eval (expr &optional destructive?)
-  (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
-	(cl-expr (let ((*destructive?* destructive?))
-		   (pvs2cl tc-expr)))
-	(val (time (handler-case (eval cl-expr)
-		     (pvseval-error (condition) (format t "~%~a" condition))))))
-    (printf "~%~a ~%translates to ~s~%evaluates to ~%~a" expr cl-expr val))
-  "Ground evaluation of expression EXPR."
-  "Ground evaluating ~a")
+;;[CM] This strategy have been replaced by (eval) in extrategies
+;;(defstep ground-eval (expr &optional destructive?)
+;;  (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
+;;	(cl-expr (let ((*destructive?* destructive?))
+;;		   (pvs2cl tc-expr)))
+;;	(val (time (handler-case (eval cl-expr)
+;;		     (pvseval-error (condition) (format t "~%~a" condition))))))
+;;    (printf "~%~a ~%translates to ~s~%evaluates to ~%~a" expr cl-expr val))
+;;  "Ground evaluation of expression EXPR."
+;;  "Ground evaluating ~a")
 
 ;;; Instead of (throw 'undefined), use (error 'pvseval-error :expr expr :fmt-str str)
 ;;; Note that the error happens at evaluation time, so the use is something like
