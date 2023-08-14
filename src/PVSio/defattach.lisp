@@ -201,7 +201,7 @@ It cannot be evaluated in a formal proof."
 	   (newargs (append args (list '&optional 'the-pvs-type_)))
 	   (newbody (if (attachment-primitive attachment)
 			(cdr dobo)
-		      (cons `(when *in-checker* 
+		      (cons `(unless *in-evaluator* 
 			       (error 'pvsio-inprover :format-control ,mssg))
 			    (cdr dobo)))))
       (append `(defun ,fnm ,newargs)

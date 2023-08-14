@@ -2832,7 +2832,10 @@ quantifier, if provided."
      (pvseval-error    (condition) (unless ,quiet (format t "~%[pvseval-error] ~a" condition)))
      (groundeval-error (condition) (unless ,quiet (format t "~%[groundeval-error] ~a" condition)))
      (cl2pvs-error     (condition) (unless ,quiet (format t "~%[cl2pvs-error] ~a" condition)))
-     (pvsio-inprover   (condition) (unless ,quiet (format t "~%[pvsio-inprover] ~a" condition)))))
+     (pvsio-inprover   (condition) (unless ,quiet (format t "~%[pvsio-inprover] ~a" condition)))
+     (pvsio-exception  (condition) (unless ,quiet (format t "~a" condition)))
+     (pvsio-error      (condition) (unless ,quiet (format t "~a" condition)))
+     (pvsio-return     (condition) (unless ,quiet (format t "~a" condition)))))
 
 ;; Evaluates ground expression expr.
 ;; When safe is t, evaluation doesn't proceed when there are TCCs.
@@ -2904,14 +2907,15 @@ information of the ground evaluation."
 (defrule eval (expr &optional safe? quiet? timing?)
   (let ((e (extra-get-expr expr)))
     (when e
-      (let ((*in-evaluator* t)
+      (let ((*in-evaluator* (not safe?)) ;; When safe? doesn't evaluate semantic attachments
+	    (prompt (format nil *pvsio-promptout*))
 	    (result (evalexpr e safe? timing? quiet?)))
 	(when result
-	  (printf "(~a) = ~a~%" e result)))))
+	  (printf "~a~a~%" prompt result)))))
   "[PVSio] Prints the evaluation of expression EXPR. If SAFE? is t and EXPR 
 generates TCCs, the expression is not evaluated. This strategy evaluates
-semantic attachments. Therefore, it may not terminate properly. When QUIET? 
-is t, the strategy fails silently."
+semantic attachments unless safe? is set to t. When safe? is set to nil, the strategy may
+not terminate properly. When QUIET? is t, the strategy fails silently."
   "Printing the evaluation of ~a")
 
 (defstep eval-formula* (&optional (fnums *) safe? quiet?)

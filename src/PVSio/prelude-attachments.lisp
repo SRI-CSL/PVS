@@ -506,7 +506,9 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 		   append (formatargs ei ti)))
 	    ((numberp e) (list (rat2double e)))
 	    (t (list e)))))
-   ((or (stringp e) (numberp e)) (list e))
+   ((or (tc-eq (find-supertype type) *number*)
+	(tc-eq (find-supertype type) *string-type*))
+    (list e))
    (t (list (cl2pvs e type)))))
 
 (defun stdprog-attachments ()
@@ -515,11 +517,11 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |exit| ()
   "Exits the current evaluation and returns to the ground evaluator"
-  (error ""))
+  (error 'pvsio-error :message nil))
 
 (defattach |error| (mssg)
   "Signals the error message MSSG to the ground evaluator"
-  (error "~a" mssg))
+  (error 'pvsio-error :message mssg))
 
 (defattach |new| ()
   "Creates a new mutable variable without any current value"
@@ -545,13 +547,13 @@ non-repeating digits. Truncated indicates that the infinite representation was t
    "Applies F in an infinite loop"
    (handler-case 
        (loop (pvs-funcall f nil))
-     (pvsio-loop
+     (pvsio-return
       (condition)
       (val condition))))
 
 (defattach |return| (e)
   "Returns E from an infinite loop"
-  (error 'pvsio-loop :val e))
+  (error 'pvsio-return :val e))
 
  (defattach |to_lisp| (e)
    "Returns internal Lisp expression representing e. To be used exclusively in format function"
@@ -559,7 +561,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain (pc-parse the-pvs-type_ 'type)))))))
+   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
      (apply #'format (cons nil (cons s (formatargs e the-type))))))
 
 )))
@@ -571,11 +573,21 @@ non-repeating digits. Truncated indicates that the infinite representation was t
    (lambda (condition stream)
      (format stream "PVSio Exception (~a)~@[: ~a~]" (str-tag condition) (val condition)))))
 
-(define-condition pvsio-loop (simple-error)
-  ((val :accessor val :initarg :val)))
-
 (defun throw-pvsio-exc (str-tag val)
   (error 'pvsio-exception :str-tag str-tag :val val))
+
+(define-condition pvsio-error (simple-error)
+  ((message :accessor message  :initarg :message))
+  (:report
+   (lambda (condition stream)
+     (format stream "~@[~a~]" (message condition)))))
+
+(define-condition pvsio-return (simple-error)
+  ((val :accessor val :initarg :val))
+  (:report
+   (lambda (condition stream)
+     (declare (ignore condition))
+     (format stream "The PVSio function \"return\" is only supported within a loop"))))
 
 (defun stdcatch-attachments ()
 
@@ -604,10 +616,10 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (eval '(attachments |stdpvs|
 
-(defattach |typeof| (e)
+(defattach |type_of_domain_lisp| (e)
   (declare (ignore e))		      
   "Returns the string value of the type of E"
-  (let* ((the-domain (domain the-pvs-type_)))
+  (let* ((the-domain (domain (domain the-pvs-type_))))
     (format nil "~a" (or (print-type the-domain) the-domain))))
 
 (defattach |str2pvs| (s)

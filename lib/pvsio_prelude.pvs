@@ -130,13 +130,19 @@ BEGIN
 
   prog(s:void,t:T): T = t
 
-  % Throw a PVSio exception with a message provided by the user
+  % Throw a PVSio error with a message provided by the user
   error(mssg:string):T 
 
-  % Exit the current evaluation and return to the Ground Evaluator
+  % Exit the current evaluation and return to PVSio
   exit : T
 
   throw(tag:ExceptionTag[void]): MACRO T = throw[T,void](tag,fail)
+
+  catch(tag:ExceptionTag[void],t1,t2:T): MACRO T =
+    catch_lift[T,void](tag,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
+
+  catch(l:list[ExceptionTag[void]],t1,t2:T) : MACRO T =
+    catch_list_lift[T,void](l,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
 
   % Mutable data
 
@@ -206,7 +212,13 @@ END stdglobal
 stdpvs[T:TYPE+] : THEORY
 BEGIN
 
-  typeof(t:T) : string
+  type_of_domain_lisp(f:[T->void]): string
+
+  dummy_fun(t:T) :void = skip
+
+  %% t may be an uninterpreted constant
+  typeof(t:T) : MACRO string =
+    type_of_domain_lisp(dummy_fun)
 
   str2pvs(s:string):T 
 
@@ -338,6 +350,9 @@ BEGIN
 
   rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string =
     rat2decstr_with_zeros(r,precision,rounding,FALSE)
+
+  rat2decstr(r:rat,precision:nat) : string =
+    rat2decstr_with_zeros(r,precision,val(ROUNDING),FALSE)
 
   %% Converts rational number to string decimal representation. If the representation is infinite,
   %% prints all its non-repeating decimals and its repeating decimals, truncating at the minimum of period
