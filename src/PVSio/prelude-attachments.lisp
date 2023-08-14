@@ -517,7 +517,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |exit| ()
   "Exits the current evaluation and returns to the ground evaluator"
-  (error 'pvsio-error :message nil))
+  (error 'pvsio-exit))
 
 (defattach |error| (mssg)
   "Signals the error message MSSG to the ground evaluator"
@@ -547,17 +547,23 @@ non-repeating digits. Truncated indicates that the infinite representation was t
    "Applies F in an infinite loop"
    (handler-case 
        (loop (pvs-funcall f nil))
-     (pvsio-return
+     (pvsio-break
       (condition)
       (val condition))))
 
-(defattach |return| (e)
-  "Returns E from an infinite loop"
-  (error 'pvsio-return :val e))
+(defattach |last| (e)
+  "Breaks a loop with the value E"
+  (let ((the-type (domain the-pvs-type_)))
+    (error 'pvsio-break :val e :type the-type)))
 
- (defattach |to_lisp| (e)
-   "Returns internal Lisp expression representing e. To be used exclusively in format function"
-   e)
+(defattach |return| (e)
+  "Returns E as the value of a function call"
+  (let ((the-type (domain the-pvs-type_)))
+    (error 'pvsio-return :val e :type the-type)))
+
+(defattach |to_lisp| (e)
+  "Returns internal Lisp expression representing e. To be used exclusively in format function"
+  e)
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
@@ -582,12 +588,21 @@ non-repeating digits. Truncated indicates that the infinite representation was t
    (lambda (condition stream)
      (format stream "~@[~a~]" (message condition)))))
 
+(define-condition pvsio-exit (simple-error) ())
+
 (define-condition pvsio-return (simple-error)
-  ((val :accessor val :initarg :val))
+  ((val :accessor val :initarg :val)
+   (type :accessor type :initarg :type))
   (:report
    (lambda (condition stream)
-     (declare (ignore condition))
-     (format stream "The PVSio function \"return\" is only supported within a loop"))))
+     (let ((val-str (str (cl2pvs (val condition) (pc-typecheck (type condition))))))
+       (format stream "Value ~a was returned outside the scope of a function" val-str)))))
+
+(define-condition pvsio-break (pvsio-return) ()
+  (:report
+   (lambda (condition stream)
+     (let ((val-str (str (cl2pvs (val condition) (pc-typecheck (type condition))))))
+       (format stream "Value ~a was returned outside the scope of a loop" val-str)))))
 
 (defun stdcatch-attachments ()
 
@@ -628,7 +643,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |pvs2str_lisp| (e)
   "Translates PVS expresion E to a string"
-  (let* ((the-domain (domain the-pvs-type_)))
+  (let ((the-domain (domain the-pvs-type_)))
     (handler-case 
 	(str (cl2pvs e (pc-typecheck the-domain)))
       (pvseval-error

@@ -178,7 +178,10 @@ BEGIN
 
   loop(s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
 
-  return(t:T):void = fail
+  % Last breaks a loop with a given value
+  last(t:T):T
+
+  return(t:T):T 
 
   % Formatting text
   format(s:string,t:T):string
@@ -484,10 +487,10 @@ BEGIN
 
 %% Assert
   assert(b:bool,str:string):void =
-    try(b,error[void]("[Assertion Failure] "+str) & fail)
+    try(b,error[void]("PVSio Assertion Failure: "+str) & fail)
 
 %% While loops
-  break : MACRO void = return(skip)
+  break : MACRO void = last(skip)
 
   while(b:bool,s:void) : MACRO void =
     loop(if b then s else break endif)

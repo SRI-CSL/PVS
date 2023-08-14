@@ -2833,9 +2833,11 @@ quantifier, if provided."
      (groundeval-error (condition) (unless ,quiet (format t "~%[groundeval-error] ~a" condition)))
      (cl2pvs-error     (condition) (unless ,quiet (format t "~%[cl2pvs-error] ~a" condition)))
      (pvsio-inprover   (condition) (unless ,quiet (format t "~%[pvsio-inprover] ~a" condition)))
-     (pvsio-exception  (condition) (unless ,quiet (format t "~a" condition)))
-     (pvsio-error      (condition) (unless ,quiet (format t "~a" condition)))
-     (pvsio-return     (condition) (unless ,quiet (format t "~a" condition)))))
+     (pvsio-error      (condition) (unless ,quiet (format t "~%[pvsio-error] ~a" condition)))
+     (pvsio-break      (condition) (unless ,quiet (format t "~%[pvsio-break] ~a" condition)))
+     (pvsio-return     (condition) (unless ,quiet (format t "~%[pvsio-return] ~a" condition)))
+     (pvsio-exit       (condition) (declare (ignore condition)) (unless ,quiet (format t "~%[pvsio-exit]")))
+     (pvsio-exception  (condition) (unless ,quiet (format t "~a" condition)))))
 
 ;; Evaluates ground expression expr.
 ;; When safe is t, evaluation doesn't proceed when there are TCCs.
