@@ -36,7 +36,7 @@ is replaced with replacement."
 
 ;; Oveline: <char> Ctrl-x 8 305 
 (defparameter *ol-digits* '("0̅" "1̅" "2̅" "3̅" "4̅" "5̅" "6̅" "7̅" "8̅" "9̅"))
-(defparameter *ellipsis* "…")
+(defparameter *ellipsis* "¨̅")
 
 (defun replace-ol-digits (acc &optional (n 0) (ol *ol-digits*))
   (if (null ol) acc
