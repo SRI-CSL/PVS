@@ -286,12 +286,12 @@ BEGIN
   denominator(r:rat): posnat =
     rat2numden(r)`2
 
-  %% Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
-  %% non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
-  %% decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
-  %% maxinfp is non-negative, the second value is the minimum between the period and maxinf+1. In either case,
-  %% if the second value is 0, the rational has a finite decimal representation.
-  decimal_precision(r:rat,maxinfp:int) : [nat,nat] 
+  % Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+  % non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
+  % digits. Computing the period is expensive for rationals with large denominators. Therefore, if
+  % maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
+  % In either case, if the second value is 0, the rational has a finite decimal representation.
+  decimal_precision(r:rat,maxperiod:int) : [nat,nat] 
 
 END stdmath
 
@@ -323,21 +323,27 @@ BEGIN
   downcase(s:string): {str: string | length(str)=length(s)}
   capitalize(s:string): {str: string | length(str)=length(s)}
   
-  %% Index of leftmost occurrence of s1 in s2, 2, starting from 0, or -1 if none
+  %% Index of leftmost occurrence of s1 in s2 or -1 if s1 doesn't occur in s2
   strfind(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
 
+  %% Index of rightmost occurrence of s1 in s2 or -1 if s1 doesn't occur in s2
+  strfind_from_end(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
+
   %% If i <= j returns substring S[i..j]. Otherwise, returns substring
-  %% S[j..i].
+  %% S[j..i]. Empty if indices are out of range    
   %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
-  %% with charstring.substr"
-  strsub(s:string,i,j:below(length(s))):
-    {str:string | length(str) = max(i,j) - min(i,j) + 1}
+  %% with charstring.substr
+  substring(s:string,i,j:int) : {str:string |
+    IF 0 <= i < length(str) AND 0 <= j < length(str) THEN
+      length(str) = max(i,j) - min(i,j) + 1
+    ELSE length(str)=0
+    ENDIF}
 
   %% Reverse string
   strreverse(s:string) : {str:string | length(str) = length(s)} =
     IF length(s) = 0 THEN s
     ELSE 
-      strsub(s,length(s)-1,0)
+      substring(s,length(s)-1,0)
     ENDIF
 
   %% Returns a new string in which all the occurences of part in s 
@@ -345,7 +351,10 @@ BEGIN
   strreplace(s,part,replacement:string):
     {str:string | IF strfind(part,s) >= 0 THEN length(str) = length(s)-length(part)+length(replacement)
                   ELSE length(str) = length(s) ENDIF} 
-  
+
+  %% Split str using separator
+  strsplit(str: string, separator: StringChar): list[string]
+
   %% Converts real number to string decimal representation using given precision, i.e., natural
   %% number n denoting 10^(-n), rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
   %% TowardsPosInfnty. Displays trailing zeros when zeros is set to TRUE
@@ -354,17 +363,15 @@ BEGIN
   rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string =
     rat2decstr_with_zeros(r,precision,rounding,FALSE)
 
+  %% Converts rational number to string decimal representation, truncating at precision, and with
+  %% trailing zeros when significant
   rat2decstr(r:rat,precision:nat) : string =
-    rat2decstr_with_zeros(r,precision,val(ROUNDING),FALSE)
-
-  %% Converts rational number to string decimal representation. If the representation is infinite,
-  %% prints all its non-repeating decimals and its repeating decimals, truncating at the minimum of period
-  %% and PRECISION and rounding according to ROUNDING. 
+    LET (finp,infp) = decimal_precision(r,precision),
+        prec = IF infp = 0 AND finp <= precision THEN finp ELSE precision ENDIF IN
+    rat2decstr_with_zeros(r,prec,Truncate,TRUE)    
+ 
   rat2decstr(r:rat) : string =
-    LET  maxinfp = val(PRECISION),
-         (finp,infp) = decimal_precision(r,maxinfp),
-	 rounding = IF infp > maxinfp THEN val(ROUNDING) ELSE Truncate ENDIF IN
-    rat2decstr_with_zeros(r,finp+infp,rounding,TRUE)
+    rat2decstr(r,val(PRECISION))
 
   %% Converts rational number to string. The rational is printed in decimal representation if the
   %% representation is finite. Otherwise, it prints its rational form.
@@ -556,15 +563,7 @@ BEGIN
 
   Mode   : TYPE = {input,output,create,append,overwrite,rename,str}
 
-  mode2str(m:Mode) : string = CASES m OF
-    input     : "input",
-    output    : "output",
-    create    : "create",
-    append    : "append",
-    overwrite : "overwrite",
-    rename    : "rename",
-    str       : "str"
-  ENDCASES
+  mode2str(m:Mode) : string = pvs2str[Mode](m)
 
   tostr(m:Mode) : MACRO string = mode2str(m) 
 
@@ -707,11 +706,31 @@ BEGIN
   fread_bool(f:IStream,answer:string): MACRO bool=
     str2bool(fread_word(f),answer)
 
-  %% Returns the name part of a file name
+  % Returns the name part of a file name
   filename(s:string):string
 
-  %% Returns the directory part of a file name
+  % Returns the directory part of a file name
   directory(s:string):string
+
+  %% Return path name as a list of directories
+  pathname_path(name:string) : list[string]
+
+  %% Split filename given a seprator
+  split_filename(name:string,separator:StringChar) : [string,string] =
+    LET pos = strfind_from_end(separator,name) IN
+      IF pos < 0 THEN
+        (name,"")
+       ELSE
+        (substring(name,0,pos-1),substring(name,pos+1,length(name)-1))
+      ENDIF
+
+  %% Filename without extension
+  filename_name(name:string) : string =
+    split_filename(name,".")`1
+
+  %% Extension of filename
+  filename_extension(name:string) : string =
+    split_filename(name,".")`2
 
 END stdio
 

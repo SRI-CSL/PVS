@@ -250,15 +250,15 @@
     (ratio2decimal rat over precision zeros)))
 
 ;; Compute the multiplicative order of n and r, when n and r are co-primes. Return 0 if they are
-;; not comprime. The period of an infinite fraction m/n is the (mult-ord n 10), 
+;; not co-prime. The period of an infinite fraction m/n is the (mult-ord n 10), 
 ;; assuming that n doesn't have factors of 2 or 5. This operation is expensive, for that reason
-;; a maxinfp is provided. If this value is non-negative, the function returns the minimum between
-;; period and maxinfp+1. 
-(defun mult-ord (n r &optional (maxinfp 0))
+;; a maxperiod is provided. If this value is non-negative, the function returns the minimum between
+;; period and maxperiod+1. 
+(defun mult-ord (n r &optional (maxperiod 0))
   (if (> (gcd r n) 1) 0
       (loop for k from 1
 	    for v = r then (* v r)
-	    when (or (= 1 (mod v n)) (and (>= maxinfp 0) (> k maxinfp)))
+	    when (or (= 1 (mod v n)) (and (>= maxperiod 0) (> k maxperiod)))
 	    do (return k))))
 
 ;; Count the numbers of 10,5,2 factors in den. Return 2 values, the count and the reminder
@@ -271,30 +271,20 @@
 	  ((= den 1)  (values acc 0))
 	  (t          (values acc den)))))
 
- ;; Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
- ;; non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
- ;; decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
- ;; maxinfp is non-negative, the second value is the minimum between the period and maxinf+1.
- ;; This function assumes that rat is a rational number
-(defun decimal-precision-of-rat (rat &optional (maxinfp 0))
+;; Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+;; non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
+;; digits. Computing the period is expensive for rationals with large denominators. Therefore, if
+;; maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
+;; In either case, if the second value is 0, the rational has a finite decimal representation.
+;; This function assumes that rat is a rational number
+(defun decimal-precision-of-rat (rat &optional (maxperiod 0))
   (assert (rationalp rat))
   (let ((den (denominator rat)))
     (if (= den 1) (values 0 0) ;; An integer
       (multiple-value-bind (fprec rem)
 	  (count-div-10-5-2 den)
 	(if (= rem 0) (values fprec 0)
-	  (values fprec (mult-ord rem 10 maxinfp)))))))
-
-;; Converts real number r to string. If real can be represented by a finite decimal, it prints its exact representation.
-;; Otherwise, it uses precision and rounding, where the precision represents the accuracy 10^-precision and rounding as
-;; in ratio2decimal-with-rounding-mode
-(defun real2decimal (r rounding precision)
-  (let* ((rat  (rational r)))
-    (multiple-value-bind (finp infp)
-	(decimal-precision-of-rat rat)
-    (if (= infp 0)
-	(decimals:format-decimal-number rat :round-magnitude (- finp))
-      (ratio2decimal-with-rounding-mode rat rounding precision)))))
+	  (values fprec (mult-ord rem 10 maxperiod)))))))
 
 (defun is-var-decl-expr (expr)
   (and (name-expr? expr)

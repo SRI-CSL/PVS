@@ -110,9 +110,9 @@ representation is finite. Otherwise, it prints its rational form."
   "Capitalizes string S"
   (string-capitalize s))
 
-(defattach |strsub| (s i j)
+(defattach |substring| (s i j)
   "If i <= j returns substring S[i..j]. Otherwise, returns substring
-S[j..i].
+S[j..i]. Empty if indices are out of range  
 NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
 with charstring.substr"
   (cond ((and (<= 0 i) (<= i j) (< j (length s)))
@@ -126,9 +126,17 @@ with charstring.substr"
 is replaced with replacement."
   (replace-string s part replacement))
 
+(defattach |strsplit| (str separator)
+  "Splits the string STR using SEPARATOR as separator."
+  (split str (char separator 0)))
+
 (defattach |strfind| (s1 s2)
-  "Index of leftmost occurrence of S1 in S2, starting from 0, or -1 if none"
+  "Index of leftmost occurrence of S1 in S2 or -1 if S1 doesn't occur in S2"
   (or (search s1 s2 :test #'char=) -1))
+
+(defattach |strfind_from_end| (s1 s2)
+  "Index of rightmost occurrence of S1 in S2 or -1 if S1 doesn't occur in S2"
+  (or (search s1 s2 :from-end t :test #'char=) -1))
 
 (defprimitive |strconcat| (s1 s2)
   "Concatenates S1 and S2"
@@ -408,11 +416,18 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |filename| (s)
   "Returns the name part of a file name"
-  (file-namestring s))
+  (or (file-namestring s) ""))
 
 (defattach |directory| (s)
   "Returns the directory part of a file name"
   (directory-namestring s))
+
+(defattach |pathname_path| (name)
+   "Path (list of directories) of pathname"
+   (let ((dirs (pathname-directory name)))
+     (if (equal (car dirs) ':absolute)
+         (cons "/" (cdr dirs))
+       (cdr dirs))))
 
 )))
 
@@ -433,20 +448,20 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |rational| (x)
   "Returns a rational number that is close to the real number (identity when input is rational)"
-  (rational x))
+  (if (floatp x) (rationalize x) x))
 
 (defprimitive |rat2numden| (r)
   "Returns numerator and denominator of rational number"
   (pvs2cl_tuple (numerator r) (denominator r)))
 
-(defattach |decimal_precision| (r maxinfp)
+(defattach |decimal_precision| (r maxperiod)
   "Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
- non-repeating decimals. If maxinfp is negative, the second value is the period of the non-repeating
- decimal. Computing the period is expensive for rationals with large denominators. Therefore, if
- maxinfp is non-negative, the second value is the minimum between the period and maxinf+1. In either case,
- if the second value is 0, the rational has a finite decimal representation."
+non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
+digits. Computing the period is expensive for rationals with large denominators. Therefore, if
+maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
+In either case, if the second value is 0, the rational has a finite decimal representation."
   (multiple-value-bind (finp infp)
-      (decimal-precision-of-rat r maxinfp)
+      (decimal-precision-of-rat r maxperiod)
     (pvs2cl_tuple finp infp)))
 
 )))
