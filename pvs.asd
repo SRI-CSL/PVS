@@ -206,7 +206,7 @@
 		  (:file "pvs-threads" :depends-on ("defcl"))
 		  (:file "classes-decl" :depends-on ("defcl"))
 		  (:file "prover/estructures" :depends-on ("defcl"))
-		  (:file "groundeval/pvs2c-utils" :depends-on ("defcl"))
+		  ;;(:file "groundeval/pvs2c-utils" :depends-on ("defcl"))
 		  (:file "groundeval/pvs2ir-classes" :depends-on ("defcl"))))
    (:module :macros
      :pathname "src/"
@@ -227,12 +227,13 @@
 		  (:file "file-utils")))
    (:module :pvs2c
      :pathname "src/groundeval"
-     :components((:file "pvs2c-types")
-		 (:file "pvs2c-code")
-		 (:file "pvs2c-analysis")
+     :components(;; (:file "pvs2c-types")
+		 ;; (:file "pvs2c-code")
+		 ;; (:file "pvs2c-analysis")
 		 (:file "pvs2ir")
-		 ;;(:file "pvs2c-primop")
-		 (:file "pvs2c"))
+		 ;; (:file "pvs2c-primop")
+		 ;; (:file "pvs2c")
+		 ))
    (:module :pvs-methods
      :pathname "src/"
      :components ((:file "pvs-methods"
