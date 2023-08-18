@@ -383,17 +383,17 @@ BEGIN
       format("~a",r)
     ENDIF
       
-  %% Pretty prints decimal using overline to indicate repeating digits. Finp is the precision of the
+  %% Pretty prints decimal using overline to indicate repeating digits. Finp is the number of 
   %% non-repeating digits. Truncated indicates that the infinite representation was truncated.
   pp_decstr(str:string,finp:nat,truncated:bool) : string 
 
-  %% Pretty prints rational numbers using overline to indicate repeating digits and ellipsis
-  %% when decimal expansion is truncated.
+  %% Pretty prints rational numbers upto precision using overline to indicate repeating digits
+  %% and ellipsis when decimal expansion is truncated.
   pp_rat(r:rat) : string =
-    LET  maxinfp = val(PRECISION),
-         (finp,infp) = decimal_precision(r,maxinfp),
-	 str = rat2decstr_with_zeros(r,finp+min(infp,maxinfp),Truncate,TRUE) IN
-    pp_decstr(str,finp,infp > maxinfp)
+    LET  precision = val(PRECISION),
+         (finp,infp) = decimal_precision(r,precision),
+	 str = rat2decstr_with_zeros(r,min(precision,finp+infp),Truncate,TRUE) IN
+    pp_decstr(str,finp,finp+infp > precision)
 
   %% Converts real number r to string using a given precision and rounding, where the precision represents
   %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,

@@ -36,7 +36,7 @@ is replaced with replacement."
 
 ;; Oveline: <char> Ctrl-x 8 305 
 (defparameter *ol-digits* '("0̅" "1̅" "2̅" "3̅" "4̅" "5̅" "6̅" "7̅" "8̅" "9̅"))
-(defparameter *ellipsis* "¨̅")
+(defparameter *ellipsis* '("¨" . "¨̅"))
 
 (defun replace-ol-digits (acc &optional (n 0) (ol *ol-digits*))
   (if (null ol) acc
@@ -49,10 +49,11 @@ is replaced with replacement."
   (let ((pos (position #\. str)))
     (if pos
 	(let* ((fixp (+ pos finp 1))
-	       (pre  (subseq str 0 fixp))
-	       (pos  (subseq str fixp (length str)))
-	       (ell  (when truncated *ellipsis*)))
-	  (format nil "~a~a~@[~a~]" pre (replace-ol-digits pos) ell))
+	       (pre  (subseq str 0 (min fixp (length str))))
+	       (pos  (when (< fixp (length str)) (subseq str fixp (length str))))
+	       (npos (when pos (replace-ol-digits pos)))
+	       (ell  (when truncated (if (>= fixp (length str)) (car *ellipsis*) (cdr *ellipsis*)))))
+	  (format nil "~a~@[~a~]~@[~a~]" pre npos ell))
       str)))
 
 (defun pp-rat (r &optional (maxinfp 6))
