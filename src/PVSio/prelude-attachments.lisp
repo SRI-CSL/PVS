@@ -56,17 +56,14 @@ is replaced with replacement."
 	  (format nil "~a~@[~a~]~@[~a~]" pre npos ell))
       str)))
 
-(defun pp-rat (r &optional (maxinfp 6))
+(defun pp-rat (r &optional (precision 6))
   "Pretty prints rational numbers using overline to indicate repeating digits and ellipsis when decimal
 expansion is truncated. If maxinfp is negative, the rational is printed in decimal representation if the
 representation is finite. Otherwise, it prints its rational form."
-  (let ((prec (max 0 maxinfp)))
-    (multiple-value-bind (finp infp)
-	(decimal-precision-of-rat r prec)
-      (if (and (< maxinfp 0) (> infp 0))
-	  (format nil "~a" r)
-	(let ((str (ratio2decimal-with-rounding-mode r 0 (+ finp (min infp prec)) t)))
-	  (pp-decstr str finp (> infp prec)))))))
+  (multiple-value-bind (finp infp)
+      (decimal-precision-of-rat r precision)
+    (let ((str (ratio2decimal-with-rounding-mode r 0 (min precision (+ finp infp)) t)))
+	(pp-decstr str finp (> (+ finp infp) precision)))))
 
 (defun stdstr-attachments ()
 
