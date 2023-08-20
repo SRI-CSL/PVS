@@ -209,30 +209,6 @@ BEGIN
 
 END stdglobal
 
-%% stdpvs.pvs
-%% PVS printing and parsing
-
-stdpvs[T:TYPE+] : THEORY
-BEGIN
-
-  type_of_domain_lisp(f:[T->void]): string
-
-  dummy_fun(t:T) :void = skip
-
-  %% t may be an uninterpreted constant
-  typeof(t:T) : MACRO string =
-    type_of_domain_lisp(dummy_fun)
-
-  str2pvs(s:string):T 
-
-  pvs2str_lisp(t:T) : string
-
-  %% May throw exception CantTranslateBack 
-  pvs2str(t:T) : MACRO string =
-    pvs2str_lisp(t)
-
-END stdpvs
-
 %% stdmath.pvs
 %% PVSio math library 
 
@@ -485,6 +461,30 @@ BEGIN
   trim_right(s:string):string
 
  END stdstr
+
+%% stdpvs.pvs
+%% PVS printing and parsing
+
+stdpvs[T:TYPE+] : THEORY
+BEGIN
+
+  type_of_domain_lisp(f:[T->void]): string
+
+  dummy_fun(t:T) :void = skip
+
+  %% t may be an uninterpreted constant
+  typeof(t:T) : MACRO string =
+    type_of_domain_lisp(dummy_fun)
+
+  str2pvs(s:string):T 
+
+  pvs2str_lisp(t:T) : string
+
+  %% May throw exception CantTranslateBack 
+  pvs2str(t:T) : MACRO string =
+    pvs2str_lisp(t)
+    
+END stdpvs
 
 %% stdio.pvs
 %% Input/output operations
@@ -1198,7 +1198,7 @@ BEGIN
     format(" ~2,'0d ",day(t))+year(t)+
     format(", ~2,'0d:~2,'0d:~2,'0d ",{|(hour(t),minute(t),second(t))|})+
     format("(GMT~@d)",-tz(t))
-
+    
   get_time : Time     % Get current time
 
   today : string =
@@ -1208,11 +1208,46 @@ BEGIN
   date : string =
     tostr(get_time)
 
+  real_time : nat % Realtime in internal units
+  run_time  : nat % Realtime in internal units
+  internal_time_units : posreal % Internal units
+
+  Stamp : Global[[nat,nat],(0,0)]  % (realtime,runtime)
+
+  tic : void =
+    set[[nat,nat]](Stamp,(real_time,run_time))
+
+  Toc : TYPE = [nnreal,nnreal]
+  
+  %% Return times in seconds
+  toc : Toc = 
+    LET (ret,rut) = (real_time,run_time),
+        (re0,ru0) = val[[nat,nat]](Stamp) IN
+      (max(0,(ret-re0))/internal_time_units,
+       max(0,(rut-ru0)/internal_time_units))
+
+  % t is in secods; returns formatted string in the form "<h>h:<m>m:<s>s"
+  hms(t:real) : string =
+    LET ts : int = floor(t),
+	ms : real = t-ts,
+	h  : int = floor(ts/3600),
+        m  : int = floor(mod(ts,3600)/60),
+        s  : real = mod(mod(ts,3600),60)+ms IN
+    format("~ah:~am:~,3fs",{|h,m,s|})
+
+  str_toc(atoc:Toc) : MACRO string =
+    LET (realtime,runtime) = atoc IN 
+    format("Real Time: ~a (~,3f sec). Run Time: ~a (~,3f sec)~%",
+	  {| hms(realtime), realtime, hms(runtime), runtime |})
+
   sleep(n:nat): void  % Sleep n seconds 
 
   get_env(name,default:string):string % Get environment variable (default)
 
   get_env(name:string): MACRO string = get_env(name,emptystr)
+
+  % Make a system call and return status and output string
+  system_call(call:string) : [nat,string]
 
   printf(s:string) : MACRO void =
     print(format(s,""))
@@ -1221,3 +1256,17 @@ BEGIN
     fprint(f,format(s,""))
 
 END stdsys
+
+%% stdprofiler.pvs
+%% Time profiler
+
+stdprofiler[T:TYPE+] : THEORY
+BEGIN
+
+  %% Time profiler of a function
+  time_profiler(fun:T) : MACRO T =
+    LET (result,atoc) = prog[[T,Toc]](tic,(fun,toc)) IN
+      prog(print(str_toc(atoc)),
+    	   result)
+
+END stdprofiler

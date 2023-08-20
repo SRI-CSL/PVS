@@ -644,32 +644,6 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 )))
 
-(defun stdpvs-attachments ()
-
-(eval '(attachments |stdpvs|
-
-(defattach |type_of_domain_lisp| (e)
-  (declare (ignore e))		      
-  "Returns the string value of the type of E"
-  (let* ((the-domain (domain (domain the-pvs-type_))))
-    (format nil "~a" (or (print-type the-domain) the-domain))))
-
-(defattach |str2pvs| (s)
-  "Translates string S to PVS format"
-  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
-
-(defattach |pvs2str_lisp| (e)
-  "Translates PVS expresion E to a string"
-  (let ((the-domain (domain the-pvs-type_)))
-    (handler-case 
-	(str (cl2pvs e (pc-typecheck the-domain)))
-      (pvseval-error
-       (condition)
-       (throw-pvsio-exc "CantTranslateBack"
-			(format nil "~a" condition))))))
-
-)))
-
 (defun stdpvsio-attachments ()
  
 (eval '(attachments |stdpvsio|
@@ -705,6 +679,18 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   (multiple-value-bind (s mi h d mo y dow dst tz) (get-decoded-time)
     (the (simple-array *) (pvs2cl_record d dow dst h mi mo s tz y))))
 
+(defattach |real_time| ()
+   "Real time"
+   (get-internal-real-time))
+
+(defattach |run_time| ()
+  "Run time"
+  (get-internal-run-time))
+
+(defattach |internal_time_units| ()
+  "Units of internal time"
+  internal-time-units-per-second)
+
 (defattach |sleep| (n)
   "Sleeps n seconds"
   (or (sleep n) t))
@@ -713,15 +699,46 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   "Gets environment variable NAME. Returns DEFAULT if undefined"
   (or (environment-variable (string name)) default))
 
+(defattach |system_call| (call)
+  "Make a system call and return status and output string"
+  (let ((output (extra-system-call call)))
+    (pvs2cl_record (car output) (cdr output))))
+
+)))
+
+(defun stdpvs-attachments ()
+
+(eval '(attachments |stdpvs|
+
+(defattach |type_of_domain_lisp| (e)
+  (declare (ignore e))		      
+  "Returns the string value of the type of E"
+  (let* ((the-domain (domain (domain the-pvs-type_))))
+    (format nil "~a" (or (print-type the-domain) the-domain))))
+
+(defattach |str2pvs| (s)
+  "Translates string S to PVS format"
+  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
+
+(defattach |pvs2str_lisp| (e)
+  "Translates PVS expresion E to a string"
+  (let ((the-domain (domain the-pvs-type_)))
+    (handler-case 
+	(str (cl2pvs e (pc-typecheck the-domain)))
+      (pvseval-error
+       (condition)
+       (throw-pvsio-exc "CantTranslateBack"
+			(format nil "~a" condition))))))
+
 )))
 
 (defun initialize-prelude-attachments ()
   (stdstr-attachments)
+  (stdpvs-attachments)
   (stdio-attachments)
   (stdmath-attachments)
   (stdindent-attachments)
   (stdprog-attachments)
   (stdcatch-attachments)
-  (stdpvs-attachments)
   (stdpvsio-attachments)
   (stdsys-attachments))
