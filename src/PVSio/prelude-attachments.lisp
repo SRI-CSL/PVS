@@ -608,14 +608,18 @@ In either case, if the second value is 0, the rational has a finite decimal repr
    (type :accessor type :initarg :type))
   (:report
    (lambda (condition stream)
-     (let ((val-str (str (cl2pvs (val condition) (pc-typecheck (type condition))))))
-       (format stream "Value ~a was returned outside the scope of a function" val-str)))))
+     (let ((val-str (handler-case
+			(str (cl2pvs (val condition) (pc-typecheck (type condition))))
+		      (error (condition) (declare (ignore condition))))))
+       (format stream "Value~@[ ~a~] was returned outside the scope of a function" val-str)))))
 
 (define-condition pvsio-break (pvsio-return) ()
   (:report
    (lambda (condition stream)
-     (let ((val-str (str (cl2pvs (val condition) (pc-typecheck (type condition))))))
-       (format stream "Value ~a was returned outside the scope of a loop" val-str)))))
+     (let ((val-str (handler-case
+			(str (cl2pvs (val condition) (pc-typecheck (type condition))))
+		      (error (condition) (declare (ignore condition))))))
+       (format stream "Value~@[ ~a~] was returned outside the scope of a loop" val-str)))))
 
 (defun stdcatch-attachments ()
 
