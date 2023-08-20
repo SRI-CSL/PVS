@@ -1196,17 +1196,29 @@ BEGIN
   tostr(t:Time): string =
     days_of_week(dow(t))+" "+months(month(t))+
     format(" ~2,'0d ",day(t))+year(t)+
-    format(", ~2,'0d:~2,'0d:~2,'0d ",{|(hour(t),minute(t),second(t))|})+
+    format(", ~2,'0d:~2,'0d:~2,'0d ",{| hour(t),minute(t),second(t) |})+
     format("(GMT~@d)",-tz(t))
     
   get_time : Time     % Get current time
 
+  %% Today in US format mm/dd/yy
   today : string =
-    let t = get_time in
-    format("~d/~2,'0d/~d",{|(month(t),day(t),year(t))|})
+    LET t = get_time IN
+    format("~2,'0d/~2,'0d/~d",{| month(t), day(t), year(t) |})
 
+  %% Today in long format
   date : string =
     tostr(get_time)
+
+  %% Today in yyyy-mm-dd format
+  date_yyyy_mm_dd : string =
+    LET t = get_time IN
+    format("~d-~2,'0d-~2,'0d",{| year(t), month(t), day(t) |})
+
+  %% Today in dd-mm-yyyy format
+  date_dd_mm_yyyy : string =
+    LET t = get_time IN
+    format("~2,'0d-~2,'0d-~d",{| day(t), month(t), year(t) |})
 
   real_time : nat % Realtime in internal units
   run_time  : nat % Realtime in internal units
