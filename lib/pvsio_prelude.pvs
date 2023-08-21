@@ -725,7 +725,7 @@ BEGIN
       ENDIF
 
   %% Filename without extension
-  filename_name(name:string) : string =
+  filename_without_extension(name:string) : string =
     split_filename(name,".")`1
 
   %% Extension of filename
@@ -1252,6 +1252,12 @@ BEGIN
     format("Real Time: ~a (~,3f sec). Run Time: ~a (~,3f sec)~%",
 	  {| hms(realtime), realtime, hms(runtime), runtime |})
 
+  %% Time profiler of a function
+  time_profiler[T:TYPE+](fun:T) : MACRO T =
+    LET (result,atoc) = prog[[T,Toc]](tic,(fun,toc)) IN
+      prog(print(strtoc(atoc)),
+    	   result)
+
   sleep(n:nat): void  % Sleep n seconds 
 
   get_env(name,default:string):string % Get environment variable (default)
@@ -1268,17 +1274,3 @@ BEGIN
     fprint(f,format(s,""))
 
 END stdsys
-
-%% stdprofiler.pvs
-%% Time profiler
-
-stdprofiler[T:TYPE+] : THEORY
-BEGIN
-
-  %% Time profiler of a function
-  time_profiler(fun:T) : MACRO T =
-    LET (result,atoc) = prog[[T,Toc]](tic,(fun,toc)) IN
-      prog(print(strtoc(atoc)),
-    	   result)
-
-END stdprofiler
