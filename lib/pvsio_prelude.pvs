@@ -1247,7 +1247,7 @@ BEGIN
         s  : real = mod(mod(ts,3600),60)+ms IN
     format("~ah:~am:~,3fs",{|h,m,s|})
 
-  str_toc(atoc:Toc) : MACRO string =
+  strtoc(atoc:Toc) : MACRO string =
     LET (realtime,runtime) = atoc IN 
     format("Real Time: ~a (~,3f sec). Run Time: ~a (~,3f sec)~%",
 	  {| hms(realtime), realtime, hms(runtime), runtime |})
@@ -1278,7 +1278,7 @@ BEGIN
   %% Time profiler of a function
   time_profiler(fun:T) : MACRO T =
     LET (result,atoc) = prog[[T,Toc]](tic,(fun,toc)) IN
-      prog(print(str_toc(atoc)),
+      prog(print(strtoc(atoc)),
     	   result)
 
 END stdprofiler
