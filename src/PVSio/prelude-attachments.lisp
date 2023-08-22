@@ -187,8 +187,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
   (integerp (read-from-string s)))
 
 (defattach |strcmp| (s1 s2 sensitive)
-  "Returns 0 if s1 = s2, < 0 if s1 < s2, > 0 if s1 > s2. ~
-   Comparison is case sensitive according to sensitive"
+  "Returns 0 if s1 = s2, -1 if s1 < s2, 1 if s1 > s2. If sensitive is TRUE, comparise is case sensitive."
   (if sensitive
       (cond ((string= s1 s2) 0)
 	    ((string< s1 s2) -1)
