@@ -133,7 +133,7 @@ if called."
 	       (act   (actuals mod))
 	       (doc (format nil "Global mutable variable of type ~a" 
 			    (car act)))
-	       (arg (if (eq 'stdprog (id mod))
+	       (arg (if (eq '|stdprog| (id mod))
 			'(cons nil t)
 		      `(list ,(pvs2cl (expr (cadr act))))))
 	       (fbody `(progn 
