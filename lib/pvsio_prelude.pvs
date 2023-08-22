@@ -15,6 +15,8 @@ BEGIN
   try(s:void)           : MACRO void = try(s,skip)
   ifthen(b:bool,s:void) : MACRO void = IF b THEN s ELSE skip ENDIF
   ifelse(b:bool,s:void) : MACRO void = IF b THEN skip ELSE s ENDIF
+  do_when(b:bool,s:void)    : MACRO void = ifthen(b,s)
+  do_unless(b:bool,s:void)  : MACRO void = ifelse(b,s)
 
   Dummy : TYPE  = bool
   dummy : MACRO Dummy = false
@@ -45,19 +47,22 @@ END stdexc
 stdexc_tags : THEORY
 BEGIN
 
-% PVSioError Exception Tag
+  % PVSioError Exception Tag
   PVSioError : ExceptionTag[string] = "PVSioError"
 
-% Mutable Exception Tag
+  % Mutable Exception Tag
   UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
 
-% Math Exception Tags
+  % Boolean Exception Tag
+  NotABoolean : ExceptionTag[string] ="NotABoolean"
+
+  % Math Exception Tags
   NotARealNumber : ExceptionTag[string] = "NotARealNumber"
   NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
 
   MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
 
-%% I/O Exception Tags
+  % I/O Exception Tags
   FileNotFound          : ExceptionTag[string] = "FileNotFound"
   FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
   WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
@@ -70,7 +75,7 @@ BEGIN
        FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
        ClosedStream, EndOfFile :)
 
-%% PVS2CL Exception Tag
+  % PVS2CL Exception Tag
   CantTranslateBack	       : ExceptionTag[string] = "CantTranslateBack"
 
 END stdexc_tags
@@ -196,6 +201,12 @@ BEGIN
   ;>> : [list[T]->list[Lisp[T]]] = list2listlisp
 
   {||}(t:T) : Lisp = to_lisp(t)
+
+  unwind_protect_lift(ft:[Dummy->T],fcu:[Dummy->void]) : T
+
+  % Evaluate t, returning its value. The cleanup code will be evaluated if control leaves t.
+  unwind_protect(t:T,cleanup:void) : MACRO T =
+    unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
 
 END stdprog
 
@@ -402,6 +413,13 @@ BEGIN
   str2int(s:string) : int
   
   str2bool(s,answer:string):bool = downcase(s) = downcase(answer)
+
+  %% May throw NotABoolean                              
+  str2boolean(s:string): bool =
+    IF str2bool(s,"TRUE")  THEN TRUE
+    ELSIF str2bool(s,"FALSE") THEN FALSE
+    ELSE throw(NotABoolean,s)
+    ENDIF
 
   %% String is a number
   number?(s:string):bool

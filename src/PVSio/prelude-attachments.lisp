@@ -583,6 +583,12 @@ In either case, if the second value is 0, the rational has a finite decimal repr
    (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
      (apply #'format (cons nil (cons s (formatargs e the-type))))))
 
+(defattach |unwind_protect_lift| (ft fcu)
+  "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
+  (unwind-protect
+      (pvs-funcall ft nil)
+    (pvs-funcall fcu nil)))
+
 )))
 
 (define-condition pvsio-exception (simple-error)
