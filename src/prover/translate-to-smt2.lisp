@@ -201,6 +201,7 @@
 	      (setf (gethash obj *translate-to-smt2-hash*)
 		    result)
 	      (loop for tc in rtype-constraints
+		    when (null (freevars tc))
 		    do (let* ((smt2tc (translate-to-smt2* tc bindings))
 			      (smt2clause (if *smt2-conditions*
 					      (format nil "(assert (implies (and ~{ ~a~}) ~a))"
@@ -410,29 +411,26 @@
 				    (cons (list smt2name smt2type) vartypepairs))))
 	(t (values bindings prefix-string vartypepairs))))
 
-
 (defmethod translate-to-smt2* ((expr binding-expr) bindings)
   (with-slots ((expr-bindings bindings) expression) expr
     (let ((stype (find-supertype (type (car expr-bindings)))))
-      (multiple-value-bind (newbindings bindstring vartypepairs)
-	  (translate-smt2-bindings expr-bindings bindings "" nil)
-	(let ((smt2expression (translate-to-smt2* expression newbindings)))
-	  (cond ;; ((lambda-expr? expr)) - don't care?
-	    ((forall-expr? expr)
-	     (loop for pair in vartypepairs
-		   do
-		   (push (format nil "(declare-const ~a ~a)" (car pair) (cadr pair))
-			 *smt2defns*))
-	     (format nil "(forall (~a) ~a)"
-		     bindstring smt2expression)
-	     )
-	    ((exists-expr? expr)
-	     (loop for pair in vartypepairs
-		   do
-		   (push (format nil "(declare-const ~a ~a)" (car pair) (cdr pair))
-			 *smt2defns*))
-	     (format nil "(exists (~a) ~a)"
-		     bindstring smt2expression))))))))
+      (cond ;; ((lambda-expr? expr)) - don't care?
+	((forall-expr? expr)
+	 (let* ((new-expr (lift-predicates-in-quantifier expr (list *integer* *real*)))
+		(newbindings (bindings new-expr)))
+	   (multiple-value-bind (newsmt2bindings new-prefix-string new-vartypepairs)
+	       (translate-smt2-bindings newbindings bindings "" nil)
+	     (let* ((tnew-expr (translate-to-smt2* (expression new-expr) (append newsmt2bindings bindings))))
+	       (format nil "(forall (~a) ~a)"
+		   new-prefix-string tnew-expr)
+	       ))))
+	((exists-expr? expr)
+	 (loop for pair in vartypepairs
+	       do
+	       (push (format nil "(declare-const ~a ~a)" (car pair) (cdr pair))
+		     *smt2defns*))
+	 (format nil "(exists (~a) ~a)"
+		 bindstring smt2expression))))))
 
 
 (defmethod translate-to-smt2* ((expr update-expr) bindings)
