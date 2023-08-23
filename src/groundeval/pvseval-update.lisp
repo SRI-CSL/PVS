@@ -110,7 +110,16 @@
 							 'destructive (make-instance 'eval-defn))))
 	   (eval-info decl))))
 
-
+;; Return module when expr is a PVSio global variable, i.e., of type stdprog.Global or stdglobal.Global
+(defun pvsio-global-variable (expr)
+  (let* ((decl       (declaration expr))
+	 (decltype   (when decl (declared-type decl))))
+    (and (type-name? decltype)
+	 (eq '|Global| (id decltype))
+	 (let* ((resolution (when decltype (car (resolutions decltype))))
+		(mod        (when resolution (module-instance resolution))))
+	   (when (and mod (member (id mod) '(|stdprog| |stdglobal|)))
+	     mod)))))
 
 (defun undefined (expr &optional message)
   "Creates and compiles a new function, returning the name.  If the expr is
@@ -120,16 +129,11 @@ if called."
   (let* ((th       (string (if (declaration? expr)
 			       (id (module expr))
 			     (id (current-theory)))))
-	 (nm       (when (const-decl? expr)
-		     (string (id expr))))
-	 (decl     (when nm (declaration expr)))
-	 (decltype (when decl (declared-type decl)))
-	 (nargs    (when nm (arity expr))))
-    (if (and nm (= nargs 0) (type-name? decltype)
-	     (eq '|Global| (id decltype)))
+	 (nm       (when (const-decl? expr) (string (id expr))))
+	 (nargs    (when nm (arity expr)))
+	 (mod      (and nm (= nargs 0) (pvsio-global-variable expr))))
+    (if mod
 	(let* ((fname (gentemp "global"))
-	       (mod   (module-instance 
-		       (car (resolutions decltype))))
 	       (act   (actuals mod))
 	       (doc (format nil "Global mutable variable of type ~a" 
 			    (car act)))
