@@ -425,12 +425,14 @@
 		   new-prefix-string tnew-expr)
 	       ))))
 	((exists-expr? expr)
-	 (loop for pair in vartypepairs
-	       do
-	       (push (format nil "(declare-const ~a ~a)" (car pair) (cdr pair))
-		     *smt2defns*))
-	 (format nil "(exists (~a) ~a)"
-		 bindstring smt2expression))))))
+	 (let* ((new-expr (lift-predicates-in-quantifier expr (list *integer* *real*)))
+		(newbindings (bindings new-expr)))
+	   (multiple-value-bind (newsmt2bindings new-prefix-string new-vartypepairs)
+	       (translate-smt2-bindings newbindings bindings "" nil)
+	     (let* ((tnew-expr (translate-to-smt2* (expression new-expr) (append newsmt2bindings bindings))))
+	       (format nil "(exists (~a) ~a)"
+		   new-prefix-string tnew-expr)
+	       ))))))))
 
 
 (defmethod translate-to-smt2* ((expr update-expr) bindings)
