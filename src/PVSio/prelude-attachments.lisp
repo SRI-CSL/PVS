@@ -551,6 +551,11 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   "Tests if a mutable variable V is undefined"
   (cdr v))
 
+(defattach |reset| (v)
+  "Reset the mutable variable V to undefined"
+  (setf (car v) nil)
+  (setf (cdr v) t))
+ 
 (defattach |val_lisp| (v)
   "Gets the current value of a mutable variable V"
   (pvsio_get_gvar v))

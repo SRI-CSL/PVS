@@ -65,15 +65,12 @@ BEGIN
   % I/O Exception Tags
   FileNotFound          : ExceptionTag[string] = "FileNotFound"
   FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
-  WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
-  WrongOutputStreamMode : ExceptionTag[string] = "WrongOutputStreamMode"
   ClosedStream          : ExceptionTag[string] = "ClosedStream"
   EndOfFile             : ExceptionTag[string] = "EndOfFile"
   
   IOExceptionTags : list[ExceptionTag[string]] = 
     (: NotARealNumber, NotAnInteger, FileNotFound,
-       FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
-       ClosedStream, EndOfFile :)
+       FileAlreadyExists, ClosedStream, EndOfFile :)
 
   % PVS2CL Exception Tag
   CantTranslateBack	       : ExceptionTag[string] = "CantTranslateBack"
@@ -157,7 +154,15 @@ BEGIN
 
   new      : Mutable 
 
+  reset(v:Mutable) : void
+
   undef(v:Mutable)    : bool
+
+  undefined?(v:Mutable) : MACRO bool =
+    undef(v)
+
+  defined?(v:Mutable) : MACRO bool =
+    NOT undef(v)
 
   val_lisp(v:Mutable) : T
 
@@ -219,6 +224,31 @@ BEGIN
   Global  : TYPE+ = Mutable[T]
 
 END stdglobal
+
+%% stdmutable.pvs
+%% Utility for mutable variables
+
+stdmutable[T,P:TYPE+] : THEORY
+BEGIN
+
+  save_lift(fp:[Dummy->P],gv:Mutable[T],val:T):P =
+    unwind_protect(fp(dummy),set(gv,val))
+
+  %% Save mutable variable gv of type T and restore its value after p of type P is evaluated,
+  %% even if control leaves p, e.g., due to an exception
+  with_mutable(gv:Mutable[T],p:P) : MACRO P =
+    IF undef(gv) THEN
+      unwind_protect(p,reset(gv))
+    ELSE
+      save_lift(LAMBDA(dummy:Dummy):p,gv,val(gv))
+    ENDIF
+
+  %% Set mutable variable gv to t and restore its value after p of type P is evaluated,
+  %% even if control leaves p, e.g., due to an exception
+  with_mutable(gv:Mutable[T],t:T,p:P) : MACRO P =
+   with_mutable(gv,prog(set(gv,t),p))
+ 
+END stdmutable
 
 %% stdmath.pvs
 %% PVSio math library 
@@ -588,6 +618,13 @@ BEGIN
 
   Mode   : TYPE = {input,output,create,append,overwrite,rename,str}
 
+  input_mode?(m:Mode) : bool =
+    (m = input OR m = str)
+
+  output_mode?(m:Mode) : bool =
+    (m = output OR m = create OR m = append OR m = overwrite OR
+     m = rename OR m = str)
+
   mode2str(m:Mode) : string = pvs2str[Mode](m)
 
   tostr(m:Mode) : MACRO string = mode2str(m) 
@@ -598,33 +635,51 @@ BEGIN
   sopenin(s:string)             : IStream
   sopenout(s:string)            : OStream
 
-  % Opens a file as an input stream
-  % May throw exceptions FileNotFound and WrongInputStreamMode
-  fopenin(m:Mode,s:string) : IStream = 
-    IF    m = input AND length(s)=0 THEN stdin 
-    ELSIF m = input THEN fopenin_lisp(s)
-    ELSIF m = str   THEN sopenin(s)
-    ELSE throw(WrongInputStreamMode,tostr(m))
+  fopenin(s:string) : IStream =
+    IF length(s) = 0 THEN stdin
+    ELSE 
+      fopenin_lisp(s)
     ENDIF
 
-  fopenin(s:string) : IStream = 
-    fopenin_lisp(s)
+  % Opens a file as an input stream
+  fopenin(m:(input_mode?),s:string) : IStream = 
+    IF m = input THEN fopenin(s)
+    ELSE sopenin(s) %% m = str
+    ENDIF
+
+  % Closes file when done (no matter what)
+  with_openin_file[P:TYPE+](m:(input_mode?),s:string,fp:[IStream->P]): P =
+    LET fin = fopenin(m,s) IN
+    unwind_protect(fp(fin),fclose(fin))
+
+  % Closes file when done (no matter what)
+  with_openin_file[P:TYPE+](s:string,fp:[IStream->P]): MACRO P =
+    with_openin_file(input,s,fp)
+
+  fopenout(s:string) : OStream =
+    IF length(s) = 0 THEN stdout
+    ELSE
+      fopenout_lisp(s,0)
+    ENDIF
 
   % Opens a file as an oput stream
-  % May throw exceptions FileAlreadyExists and WrongOutputStreamMode
-  fopenout(m:Mode,s:string): OStream =
-    IF    m = output AND length(s)=0 THEN stdout
-    ELSIF m = output    THEN fopenout_lisp(s,0) 
+  fopenout(m:(output_mode?),s:string): OStream =
+    IF m = output       THEN fopenout(s) 
     ELSIF m = create    THEN fopenout_lisp(s,1)
     ELSIF m = append    THEN fopenout_lisp(s,2)
     ELSIF m = overwrite THEN fopenout_lisp(s,3)
     ELSIF m = rename    THEN fopenout_lisp(s,4)
-    ELSIF m = str       THEN sopenout(s)
-    ELSE throw(WrongOutputStreamMode,tostr(m))
+    ELSE sopenout(s) %% m = str
     ENDIF
 
-  fopenout(s:string) : OStream =
-    fopenout(output,s)
+  % Closes file when done (no matter what)
+  with_openout_file[P:TYPE+](m:(output_mode?),s:string,fp:[OStream->P]): P =
+    LET fout = fopenout(m,s) IN
+    unwind_protect(fp(fout),fclose(fout))
+
+  % Closes file when done (no matter what)
+  with_openout_file[P:TYPE+](s:string,fp:[OStream->P]): MACRO P =
+    with_openout_file(output,s,fp)
 
   fname_lisp(f:Stream)           :string
   fgetstr_lisp(f:OStream)        :string
@@ -779,17 +834,15 @@ BEGIN
     ENDIF
     MEASURE n
 
-  % Iterates a function on a file n times until the end
+  % Iterates a function on a file until the end. Closes file when done (no matter what)
   fmap(f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
-    let l  = flength(f) in
-    let nt = fmap(f,fread,t,st,l) in  
-    prog(fclose(f),nt)
+    LET l = flength(f) IN
+    unwind_protect(fmap(f,fread,t,st,l),fclose(f))
 
-  % Iterates a function on a file line by line until the end
+  % Iterates a function on a file line by line until the end. Closes file when done (no matter what)
   fmap_line(f:IStream,t:T,st:[[string,T]->T]):T =
-    let l  = flength(f) in
-    let nt = fmap(f,fread_line,t,st,l) in  
-    prog(fclose(f),nt)
+    LET l = flength(f) IN
+    unwind_protect(fmap(f,fread_line,t,st,l),fclose(f))
 
   % Formatting text to a file
   printf(s:string,t:T): MACRO void =
