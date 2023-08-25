@@ -462,7 +462,7 @@ the possible types of name."
 (defun find-operator-conversion* (optype args)
   (let ((conversions nil))
     (dolist (conv (current-conversions))
-      (unless (eq (id conv) 'K_conversion) ; K_conversions only trigger lambda-conversions
+      (unless (eq (id conv) '|K_conversion|) ; K_conversions only trigger lambda-conversions
 	(let ((nconv (compatible-operator-conversion conv optype args)))
 	  (when (and nconv
 		     (not (member nconv (disabled-conversions *current-context*)
