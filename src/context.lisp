@@ -1563,7 +1563,10 @@ are all the same."
 	 (with-open-file (out prf-file :direction :output
 			      :if-exists :supersede)
 	   (mapc #'(lambda (prf)
-		     (write prf :stream out :length nil :level nil :readably t
+		     (write prf :stream out :length nil :level nil
+			    ;; In SBCL, :readably causes, e.g., "" to be printed as
+			    ;;   #A((0) BASE-CHAR . "")
+			    :readably #-sbcl t #+sbcl nil
 			    :pretty *save-proofs-pretty*)
 		     (when *save-proofs-pretty* (terpri out)))
 		 theory-proofs)
