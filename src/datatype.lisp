@@ -205,8 +205,9 @@ generated")
 ;;; invalid.
 
 (defun save-adt-file (adt)
-  (let* ((adt-file (concatenate 'string (string (id adt))
-				(if (datatype? adt) "_adt" "_codt")))
+  (let* ((adt-file (pvs-filename
+		    (concatenate 'string (string (id adt))
+				 (if (datatype? adt) "_adt" "_codt"))))
 	 (adt-path (make-specpath adt-file))
 	 (file-exists? (uiop:file-exists-p adt-path))
 	 (adt-theories (adt-generated-theories adt))
@@ -274,7 +275,7 @@ generated")
       (push 'typechecked (status adt))
       (dolist (th adt-theories)
 	(setf (filename th) adt-file))
-      (setf (gethash (pathname-name adt-file) (current-pvs-files))
+      (setf (gethash (pvs-filename (pathname-name adt-file)) (current-pvs-files))
 	    (cons fdate (adt-generated-theories adt)))
       (cond (ce2
 	     (setf (ce-write-date ce2) fdate)

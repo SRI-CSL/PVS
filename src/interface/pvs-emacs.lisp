@@ -804,6 +804,24 @@
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
+(defun protect-pvs-filename (x)
+  (let ((string (if (pathnamep x)
+		 (namestring x)
+		 x)))
+    (if (find #\? string)
+	(let ((in-escape? nil))
+	  (with-output-to-string (str)
+	    (loop for ch across string
+		  do (case ch
+		       (#\\ (write-char #\\ str) (setq in-escape? t))
+		       (#\? (if in-escape?
+				(setq in-escape? nil)
+				(write-char #\\ str))
+			    (write-char #\? str))
+		       (t   (when in-escape? (setq in-escape? nil))
+			    (write-char ch str))))))
+	string)))
+
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch* ; From with-no-parse-errors macro
@@ -1030,13 +1048,13 @@
 	       obj)
     conv?))
 
-(defun clear-hooks ()
-  (setq *pvs-message-hook* nil)
-  (setq *pvs-warning-hook* nil)
-  (setq *pvs-buffer-hook* nil)
-  (setq *pvs-y-or-n-hook* nil)
-  (setq *pvs-query-hook* nil)
-  (setq *pvs-dialog-hook* nil))
+;; (defun clear-hooks ()
+;;   (setq *pvs-message-hook* nil)
+;;   (setq *pvs-warning-hook* nil)
+;;   (setq *pvs-buffer-hook* nil)
+;;   (setq *pvs-y-or-n-hook* nil)
+;;   (setq *pvs-query-hook* nil)
+;;   (setq *pvs-dialog-hook* nil))
 
 (defmethod place ((obj cons))
   (let ((start (place (car obj)))

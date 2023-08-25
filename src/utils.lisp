@@ -930,7 +930,7 @@ is replaced with replacement."
       (pathname name)
       (let* ((path (parse-namestring name))
 	     (dir (pathname-directory path))
-	     (pname (pathname-name path))
+	     (pname (pvs-filename (pathname-name path)))
 	     (pext (pathname-type path)))
 	(when (and pext (not (string= pext ext)))
 	  (setq pname (format nil "~a.~a" pname pext)))
@@ -942,7 +942,7 @@ is replaced with replacement."
 				 :name pname :type ext)
 		  (pvs-error "Library reference error"
 		    (format nil "Could not find lib-path for ~a" pdir))))
-	    (make-pathname :defaults *default-pathname-defaults* :name name :type ext)))))
+	    (format nil "~a~a.~a" *default-pathname-defaults* name ext)))))
 
 (defmethod make-specpath ((name name) &optional (ext "pvs"))
   (make-specpath (id name) ext))
@@ -3616,8 +3616,11 @@ and get-print-type returns a funtype with type-name domain and range."
 ;;; copy-all makes copies all the way down the object.  Because it uses
 ;;; gensubst, *current-context* should be set.
 
+(defvar *copy-all-hash*)
+
 (defun copy-all (obj &optional parsing)
   (let ((*copy-print-type* t)
+	(*copy-all-hash* (make-hash-table))
 	;;(*gensubst-cache* nil)
 	(*parsing-or-unparsing* (or parsing (not (fully-typed? obj)))))
     (gensubst obj #'copy-all! #'copy-all?)))
@@ -3634,6 +3637,11 @@ and get-print-type returns a funtype with type-name domain and range."
 (defmethod copy-all? (obj)
   (declare (ignore obj))
   nil)
+
+(defmethod copy-all! :around (ex)
+  (or (gethash ex *copy-all-hash*)
+      (let ((copy (call-next-method)))
+	(setf (gethash ex *copy-all-hash*) copy))))
 
 (defmethod copy-all! ((ex name))
   (copy ex 'actuals
