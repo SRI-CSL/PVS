@@ -625,19 +625,23 @@ at face value."
 	 (nacts (when acts (compatible-parameters? acts fmls (eq dth (current-theory)))))
 	 (ndacts (when dacts (compatible-parameters? dacts dfmls
 						     (eq decl (current-declaration))))))
-    (when (and (iff acts nacts)
-	       (iff dacts ndacts))
-      (let* ((thinsts (resolve-theory-actuals decl nacts ndacts dth args mappings))
-	     (dreses (mapcar #'(lambda (thinst)
-				 (let ((pthinst
-					(lcopy thinst
-					  :actuals (when acts (actuals thinst))
-					  :dactuals (when dacts (dactuals thinst))
-					  :mappings (when mappings (mappings thinst)))))
-				   (assert (fully-typed? pthinst))
-				   (make-resolution decl pthinst)))
-		       thinsts)))
-	dreses))))
+    (if (and (iff acts nacts)
+	     (iff dacts ndacts))
+	(let* ((thinsts (resolve-theory-actuals decl nacts ndacts dth args mappings))
+	       (dreses (mapcar #'(lambda (thinst)
+				   (let ((pthinst
+					  (lcopy thinst
+					    :actuals (when acts (actuals thinst))
+					    :dactuals (when dacts (dactuals thinst))
+					    :mappings (when mappings (mappings thinst)))))
+				     (assert (fully-typed? pthinst))
+				     (make-resolution decl pthinst)))
+			 thinsts)))
+	  dreses)
+	(progn (if (not (iff acts nacts))
+		   (push (list :current-theory-actuals acts) *resolve-error-info*)
+		   (push (list :current-theory-dactuals dacts) *resolve-error-info*))
+	       nil))))
 
 (defun compat-params (acts fmls current-decl?)
   (and (length= acts fmls)
@@ -2124,8 +2128,8 @@ decl, args, and mappings."
 
 (defun disallowed-free-variable? (decl)
   (and (typep decl 'var-decl)
-       (or (and (not *tc-add-decl*)
-		*in-checker*)
+       (or (and (not *typechecking-module*)
+		(not *tc-add-decl*))
 	   (not (typep (current-declaration)
 		       '(or formula-decl subtype-judgement expr-judgement))))))
 
@@ -2338,8 +2342,8 @@ This forms a lattice, and we return the top ones."
 (defun filter-bindings (reses args)
   (or (remove-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
 	reses)
-      (and (not *in-checker*)
-	   (not *in-evaluator*)
+      (and ;;(not *in-checker*)
+	   ;;(not *in-evaluator*)
 	   ;; PVS does not generate formulas that rely on var-decls
 	   (not (generated-by (current-declaration)))
 	   (remove-if-not #'(lambda (r)
