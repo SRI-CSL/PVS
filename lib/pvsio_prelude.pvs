@@ -8,8 +8,8 @@ BEGIN
 
   void : TYPE = bool
 
-  skip : void = true
-  fail : void = false
+  skip : void = TRUE
+  fail : void = FALSE
 
   try(s1:void,s2:void)  : MACRO void = s1 OR s2
   try(s:void)           : MACRO void = try(s,skip)
@@ -19,7 +19,7 @@ BEGIN
   do_unless(b:bool,s:void)  : MACRO void = ifelse(b,s)
 
   Dummy : TYPE  = bool
-  dummy : MACRO Dummy = false
+  dummy : MACRO Dummy = FALSE
 
 END stdlang
 
@@ -51,7 +51,7 @@ BEGIN
   PVSioError : ExceptionTag[string] = "PVSioError"
 
   % Mutable Exception Tag
-  UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
+  UndefinedMutableVariable : ExceptionTag[string] = "UndefinedMutableVariable"
 
   % Boolean Exception Tag
   NotABoolean : ExceptionTag[string] ="NotABoolean"
@@ -150,12 +150,16 @@ BEGIN
 
   Mutable : TYPE+
 
+  % Creates a mutable variable and sets it to given value
   ref(t:T) : Mutable
 
+  % Creates a new mutable variable with an undefined value
   new      : Mutable 
 
+  % Sets mutable variable to undefined
   reset(v:Mutable) : void
 
+  % Returns TRUE if mutable variable is undefined"
   undef(v:Mutable)    : bool
 
   undefined?(v:Mutable) : MACRO bool =
@@ -164,19 +168,34 @@ BEGIN
   defined?(v:Mutable) : MACRO bool =
     NOT undef(v)
 
-  val_lisp(v:Mutable) : T
+  % Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(v)"
+  val(v:Mutable): T
 
-  val(v:Mutable): T = 
-    if undef(v) then 
-      throw(UndefinedMutableVariable)
-    else val_lisp(v)
-    endif
-
+  % Sets mutable variable gvar to given value
   def(v:Mutable,t:T) : T = t
 
   set(v:Mutable,t:T) : void = 
-    let nt = def(v,t) in
+    LET nt = def(v,t) IN
     skip
+
+  %% Mutable variables can be used as stacks, where val is the top of the stack.
+  %% Stack is empty when undef is true
+  
+  push_lisp(v:(defined?),t:T) : void
+
+  % Pushes value to the top of the mutable variable and skips
+  push(v:Mutable,t:T) : MACRO void =
+    IF undef(v) THEN set(v,t)
+    ELSE push_lisp(v,t)
+    ENDIF
+
+  pop_lisp(v:(defined?)) : void
+
+  % Pops value of the mutable variable and fails silently when mutable variable is undefined
+  pop(v:Mutable) : MACRO void =
+    IF undef(v) THEN fail
+    ELSE pop_lisp(v)
+    ENDIF
 
   CONVERSION val
 

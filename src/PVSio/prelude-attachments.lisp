@@ -536,30 +536,37 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   (error 'pvsio-error :message mssg))
 
 (defattach |new| ()
-  "Creates a new mutable variable without any current value"
-  (cons nil t))
+  "Creates a new mutable variable with an undefined value"
+  (pvsio_new_gvar))
 
-(defattach |ref| (e)
-  "Creates a mutable variable with a current value E"
-  (list e))
+(defattach |ref| (value)
+  "Creates a mutable variable and sets it to given value"
+  (pvsio_ref_gvar value))
 
-(defattach |def| (v e)
-  "Sets to E the value of a mutable variable V"
-  (pvsio_set_gvar v e))
+(defattach |def| (gvar value)
+  "Sets mutable variable gvar to given value"
+  (pvsio_def_gvar gvar value))
 
-(defattach |undef| (v)
-  "Tests if a mutable variable V is undefined"
-  (cdr v))
+(defattach |val| (gvar)
+  "Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(gvar)"
+  (pvsio_val_gvar gvar))
 
-(defattach |reset| (v)
-  "Reset the mutable variable V to undefined"
-  (setf (car v) nil)
-  (setf (cdr v) t))
+(defattach |undef| (gvar)
+  "Returns TRUE if mutable variable is undefined"
+  (pvsio_undef_gvar gvar))
+
+(defattach |reset| (gvar)
+  "Sets mutable variable to undefined"
+  (pvsio_reset_gvar gvar))
+
+(defattach |push_lisp| (gvar value)
+  "Pushes value to the top of the mutable variable and skips"
+  (pvsio_push_gvar gvar value))
+
+(defattach |pop_lisp| (gvar)
+  "Pops value of the mutable variable and fails silently when mutable variable is undefined"
+  (pvsio_pop_gvar gvar))
  
-(defattach |val_lisp| (v)
-  "Gets the current value of a mutable variable V"
-  (pvsio_get_gvar v))
-
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
    (handler-case 
