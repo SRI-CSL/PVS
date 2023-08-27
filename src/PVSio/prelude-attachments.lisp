@@ -220,6 +220,12 @@ non-repeating digits. Truncated indicates that the infinite representation was t
    "A substring of s, with all the space characters stripped of the end"
    (string-right-trim '(#\Space #\Tab #\Newline) s))
 
+(defattach |subtypeof?| (t1 t2)
+  "Returns TRUE if T1 is a subtype of T2 (types are represented using strings). Uses subtype judgements, but otherwise it's essentially syntactic"
+  (let ((the-type1 (pc-typecheck (pc-parse t1 'type-expr)))
+	(the-type2 (pc-typecheck (pc-parse t2 'type-expr))))
+    (subtype-of? the-type1 the-type2)))
+
 )))
 
 (defun prompt (s)
@@ -547,7 +553,7 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   "Sets mutable variable gvar to given value"
   (pvsio_def_gvar gvar value))
 
-(defattach |val| (gvar)
+(defattach |val_lisp| (gvar)
   "Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(gvar)"
   (pvsio_val_gvar gvar))
 

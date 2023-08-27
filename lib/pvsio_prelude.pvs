@@ -168,8 +168,12 @@ BEGIN
   defined?(v:Mutable) : MACRO bool =
     NOT undef(v)
 
-  % Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(v)"
-  val(v:Mutable): T
+  val_lisp(v:Mutable) : T
+
+  % Returns value of mutable variable.
+  % Throws exception UndefinedMutableVariable when undefined?(v)"
+  val(v:Mutable): T =
+    val_lisp(v)
 
   % Sets mutable variable gvar to given value
   def(v:Mutable,t:T) : T = t
@@ -534,6 +538,10 @@ BEGIN
   %% the end
   trim_right(s:string):string
 
+  %% Returns TRUE if T1 is a subtype of T2 (types are represented using strings).
+  %% Uses subtype judgements, but otherwise it's essentially syntactic
+  subtypeof?(T1,T2:string) : bool
+
  END stdstr
 
 %% stdpvs.pvs
@@ -546,18 +554,20 @@ BEGIN
 
   dummy_fun(t:T) :void = skip
 
-  %% t may be an uninterpreted constant
+  %% Return string representing the type of t (t may be an uninterpreted constant)
   typeof(t:T) : MACRO string =
     type_of_domain_lisp(dummy_fun)
 
+  %% Returns a PVS object represented by a string
   str2pvs(s:string):T 
 
+  %% Returns string representing a PVS object
   pvs2str_lisp(t:T) : string
 
   %% May throw exception CantTranslateBack 
   pvs2str(t:T) : MACRO string =
     pvs2str_lisp(t)
-    
+
 END stdpvs
 
 %% stdio.pvs
