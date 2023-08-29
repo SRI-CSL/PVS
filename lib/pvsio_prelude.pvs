@@ -645,8 +645,16 @@ BEGIN
   stdout   : OStream 
   stderr   : OStream
 
-  Mode   : TYPE = {input,output,create,append,overwrite,rename,str}
-
+  Mode   : TYPE = {
+    input,  % Open input file stream or throw exception FileNotFound if file doesn't exist
+    output, % Open output file stream or throw exception FileAlreadyExists if file does exist
+    create, % Create output file stream regardless of existence of the file
+    append, % Open output file stream and prepare for writing at end of stream (create file if it doesn't exist)
+    overwrite, % Open output file stream and prepare for writing at beggining of stream (create file if it doesn't exist)
+    rename, % Open output file stream (rename old file if file does exist)  
+    str     % Open string stream for input or output
+  }    
+ 
   input_mode?(m:Mode) : bool =
     (m = input OR m = str)
 
