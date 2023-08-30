@@ -1914,43 +1914,35 @@ the sequent is labeled LABEL.")
 LABEL. Otherwise, applies ELSE-STEP.")
 
 (defhelper for__ (n step)
-  (if (numberp n)
-      (if (<= n 0)
-	  (skip)
-	(let ((m (- n 1)))
-	  (then step
-		(for__$ m step))))
-    (unless n
-     (repeat* step)))
+  (let ((doit (or (null n) (and (numberp n) (> n 0)))))
+    (when doit
+      (let ((prevn (when (numberp n) (1- n))))
+	(try step (for__$ prevn step) (skip)))))
   "[Extrategies] Internal strategy." "")
 
 (defstep for (n &rest steps)
   (when steps
-    (let ((step (cons 'then steps)))
+    (let ((step `(then@ ,@steps)))
       (for__$ n step)))
-  "[Extrategies] Iterates N times STEP1 ... STEPn, or until it does nothing if N is nil,
-along all the branches."
-  "Iterating ~1@*~a ~@*~a times along all the branches")
+  "[Extrategies] Successively apply STEPS until it does nothing or, if N is not null, until N is reached."
+  "Applying steps ~a times")
 
 (defhelper for@__ (n step)
-  (if (numberp n)
-      (if (<= n 0)
-	  (skip)
-	(let ((m (- n 1)))
-	  (then@
-	   step
-	   (for@__$ m step))))
-    (unless@ n
-     (repeat step)))
+  (let ((doit (or (null n) (and (numberp n) (> n 0)))))
+    (when doit
+      (let ((prevn (when (numberp n) (1- n))))
+	(try step (if (equal (get-goalnum *ps*) 1)
+		      (for@__$ prevn step)
+		    (skip))
+	     (skip)))))
   "[Extrategies] Internal strategy." "")
 
 (defstep for@ (n &rest steps)
   (when steps
-    (let ((step (cons 'then@ steps)))
+    (let ((step `(then@ ,@steps)))
       (for@__$ n step)))
-  "[Extrategies] Iterates N times STEP1 ... STEPn, or until it does nothing if N is nil,
-along the first branch."
-  "Iterating ~1@*~a ~@*~a times along the first branch")
+  "[Extrategies] Successively apply STEPS along main branch until it does nothing or, if N is not null, until N is reached."
+  "Applying steps ~a times along main branch")
 
 ;; Skolem, let-in, let-def
 
