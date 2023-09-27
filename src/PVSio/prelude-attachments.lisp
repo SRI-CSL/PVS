@@ -434,6 +434,21 @@ non-repeating digits. Truncated indicates that the infinite representation was t
          (cons "/" (cdr dirs))
        (cdr dirs))))
 
+ (defattach |fwrite_lisp| (f typ pvs)
+   "Writes a PVS object to output stream, so that it can be retrieved afterwards by fread"
+   (or (format f "~s~%" (cons typ pvs)) t))
+
+ (defattach |fread_lisp| (f typ)
+   "Reads an PVS object of type T from an input stream written by fwrite"
+   (let* ((type-pvs (read f))
+	  (the-type1 (pc-typecheck (pc-parse (car type-pvs) 'type-expr)))
+	  (the-type2 (pc-typecheck (pc-parse typ 'type-expr))))
+     (if (subtype-of? the-type1 the-type2)
+	 (cdr type-pvs)
+       (throw-pvsio-exc
+	"CantTranslateBack"
+	(format nil "Read value has type ~a, which is not a sub-type of ~a" the-type1 the-type2)))))
+
 )))
 
 (defun rat2double (x) 
@@ -551,9 +566,13 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   (let ((the-type (domain the-pvs-type_)))
     (error 'pvsio-return :val e :type the-type)))
 
-(defattach |to_lisp| (e)
-  "Returns internal Lisp expression representing e. To be used exclusively in format function"
-  e)
+(defattach |to_lisp| (pvs)
+  "Translates PVS object to Lisp"
+  pvs)
+
+(defattach |to_lisp_| (pvs)
+  "Translates PVS object to Lisp"
+  pvs)
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"

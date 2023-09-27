@@ -871,8 +871,8 @@ BEGIN
   
   % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
   fwrite[T:TYPE+](f:OStream,t:T) : MACRO void =
-    LET the_type = typeof(t) IN
-    fwrite_lisp(f,the_type,to_lisp_(t))
+    LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
+    fwrite_lisp(f,the_type,to_lisp_[T](t))
 
   fread_lisp[T:TYPE+](f:IStream,typ:string) : T
 
