@@ -21,6 +21,8 @@ BEGIN
   Dummy : TYPE  = bool
   dummy : MACRO Dummy = FALSE
 
+  Lisp_ : TYPE+  %% Used for untyped lisp attachments
+
 END stdlang
 
 
@@ -219,9 +221,11 @@ BEGIN
   % Formatting text
   format(s:string,t:T):string
 
-  Lisp : TYPE+  
+  Lisp : TYPE+  %% Used for PVS-typed lisp attachments
 
-  to_lisp(t:T) : Lisp
+  to_lisp(t:T) : Lisp  % To PVS-typed lisp
+  
+  to_lisp_(t:T) : Lisp_ % To untyped lisp
 
   list2listlisp(l:list[T]) : list[Lisp[T]] =
     map(LAMBDA(t:T): to_lisp(t))(l)
@@ -344,9 +348,6 @@ BEGIN
 
   StringChar : TYPE = {str:string | length(str) = 1}
   
-% Char from code n
-  charcode(n:nat) : StringChar
-
 % Prints standard table of characters
   chartable     : void 
 
@@ -354,10 +355,13 @@ BEGIN
   space         : StringChar = " "
   newline       : StringChar 
   tab           : string 
-  doublequote   : StringChar = charcode(34)
   singlequote   : StringChar = "'"
   backquote     : StringChar = "`"
   spaces(n:nat) : {str : string | length(str)=n} 
+
+% Char from code n
+  charcode(n:nat) : StringChar
+  doublequote   : StringChar = charcode(34)
 
   upcase(s:string): {str: string | length(str)=length(s)}
   downcase(s:string): {str: string | length(str)=length(s)}
@@ -861,6 +865,22 @@ BEGIN
 
   fprintf(f:OStream,s:string): MACRO void =
     fprint(f,format(s,""))
+
+  % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
+  fwrite_lisp(f:OStream,typ:string,t:Lisp_) : void
+  
+  % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
+  fwrite[T:TYPE+](f:OStream,t:T) : MACRO void =
+    LET the_type = typeof(t) IN
+    fwrite_lisp(f,the_type,to_lisp_(t))
+
+  fread_lisp[T:TYPE+](f:IStream,typ:string) : T
+
+  % Reads a PVS object of type T from an input stream written by fwrite.
+  % Throws CantTranslateBack exception if read object is not of type T
+  fread[T:TYPE+](f:IStream) : MACRO T =
+    LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
+      fread_lisp(f,the_type)
 
 END stdio
 
