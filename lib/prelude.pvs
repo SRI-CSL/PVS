@@ -4619,9 +4619,9 @@ finite_sets[T: TYPE]: THEORY
 
   card_strict_subset: THEOREM strict_subset?(A,B) IMPLIES card(A) < card(B)
 
-  card_1_has_1    : THEOREM card(S) >= 1 IMPLIES (EXISTS (x: T): S(x))
+  card_1_has_1    : THEOREM card(S) >= 1 IFF (EXISTS (x: T): S(x))
 
-  card_2_has_2    : THEOREM card(S) >= 2 IMPLIES
+  card_2_has_2    : THEOREM card(S) >= 2 IFF
                               (EXISTS (x,y: T): x /= y AND S(x) AND S(y))
 
   card_intersection_le: THEOREM card(intersection(A,B)) <= card(A) AND
