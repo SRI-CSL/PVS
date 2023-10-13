@@ -1,6 +1,6 @@
 ;;
 ;; pvs-lib.lisp
-;; Release: PVSio-8.0 (08/04/2023)
+;; Release: PVSio-8.0 (10/13/2023)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
