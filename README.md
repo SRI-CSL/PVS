@@ -11,7 +11,7 @@ Making PVS 8.0 from sources
 ---------------------------
 
 In short:
-0. For Macs, you'll need to install xcode, in Ubuntu, apt-get build-essential
+0. For Macs, you'll need to install xcode, in Ubuntu, apt-get install build-essential
 1. Use your favorite package manager to get SBCL and Emacs
 2. git clone https://github.com/SRI-CSL/PVS.git
 3. cd PVS
