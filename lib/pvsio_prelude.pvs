@@ -8,16 +8,20 @@ BEGIN
 
   void : TYPE = bool
 
-  skip : void = true
-  fail : void = false
+  skip : void = TRUE
+  fail : void = FALSE
 
   try(s1:void,s2:void)  : MACRO void = s1 OR s2
   try(s:void)           : MACRO void = try(s,skip)
   ifthen(b:bool,s:void) : MACRO void = IF b THEN s ELSE skip ENDIF
   ifelse(b:bool,s:void) : MACRO void = IF b THEN skip ELSE s ENDIF
+  do_when(b:bool,s:void)    : MACRO void = ifthen(b,s)
+  do_unless(b:bool,s:void)  : MACRO void = ifelse(b,s)
 
   Dummy : TYPE  = bool
-  dummy : MACRO Dummy = false
+  dummy : MACRO Dummy = FALSE
+
+  Lisp_ : TYPE+  %% Used for untyped lisp attachments
 
 END stdlang
 
@@ -42,24 +46,62 @@ BEGIN
 
 END stdexc
 
+stdexc_tags : THEORY
+BEGIN
+
+  % PVSioError Exception Tag
+  PVSioError : ExceptionTag[string] = "PVSioError"
+
+  % Mutable Exception Tag
+  UndefinedMutableVariable : ExceptionTag[string] = "UndefinedMutableVariable"
+
+  % Boolean Exception Tag
+  NotABoolean : ExceptionTag[string] ="NotABoolean"
+
+  % Math Exception Tags
+  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
+  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
+
+  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
+
+  % I/O Exception Tags
+  FileNotFound          : ExceptionTag[string] = "FileNotFound"
+  FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
+  ClosedStream          : ExceptionTag[string] = "ClosedStream"
+  EndOfFile             : ExceptionTag[string] = "EndOfFile"
+  
+  IOExceptionTags : list[ExceptionTag[string]] = 
+    (: NotARealNumber, NotAnInteger, FileNotFound,
+       FileAlreadyExists, ClosedStream, EndOfFile :)
+
+  % PVS2CL Exception Tag
+  CantTranslateBack	       : ExceptionTag[string] = "CantTranslateBack"
+
+END stdexc_tags
+
 %% stdcatch.pvs
 %% Definition of catch and throw 
 
-stdcatch[T1,T2:TYPE+] : THEORY
+stdcatch[ResultType,ExcTagType:TYPE+] : THEORY
 BEGIN
 
-  catch_lift(tag:ExceptionTag[T2],
-             t1:[Dummy->T1],
-             t2:[Exception[T2]->T1]) : T1
+  catch_lift(tag:ExceptionTag[ExcTagType],
+             result:[Dummy->ResultType],
+             handler:[Exception[ExcTagType]->ResultType]) : ResultType
 
-  catch(tag:ExceptionTag[T2],
-        t1:T1,
-        t2:[Exception[T2]->T1]) : MACRO T1 =
-    catch_lift(tag,LAMBDA(d:Dummy):t1,t2)
+  % Catch with a handler
+  catch(tag:ExceptionTag[ExcTagType],
+        result:ResultType,
+        handler:[Exception[ExcTagType]->ResultType]) : MACRO ResultType =
+    catch_lift(tag,LAMBDA(d:Dummy):result,handler)
 
-  catch_list_lift(l:list[ExceptionTag[T2]],
-                  f1:[Dummy->T1],
-                  f2:[Exception[T2]->T1]) : RECURSIVE T1 =
+  % Catch with an exceptional result
+  catch(tag:ExceptionTag[ExcTagType],result,exc_result:ResultType): MACRO ResultType =
+    catch(tag,result,LAMBDA(e:Exception[ExcTagType]):exc_result)
+
+  catch_list_lift(l:list[ExceptionTag[ExcTagType]],
+                  f1:[Dummy->ResultType],
+                  f2:[Exception[ExcTagType]->ResultType]) : RECURSIVE ResultType =
     CASES l OF
       null : f1(dummy),
       cons(e,r) : catch_lift(e,
@@ -68,13 +110,19 @@ BEGIN
     ENDCASES
     MEASURE l BY <<  
 
-  catch(l:list[ExceptionTag[T2]],t1:T1,t2:[Exception[T2]->T1]) : MACRO T1 =
-    catch_list_lift(l,LAMBDA(d:Dummy):t1,t2)
+  % Catch list with a handler
+  catch(l:list[ExceptionTag[ExcTagType]],
+        result:ResultType,handler:[Exception[ExcTagType]->ResultType]) : MACRO ResultType =
+    catch_list_lift(l,LAMBDA(d:Dummy):result,handler)
 
-  throw(tag:ExceptionTag[T2],e:Exception[T2]):T1
+  % Catch list with an execptional result
+  catch(l:list[ExceptionTag[ExcTagType]],result,exc_result:ResultType) : MACRO ResultType =
+    catch(l,result,LAMBDA(e:Exception[ExcTagType]):exc_result)
 
-  throw(tag:ExceptionTag[T2],val:T2) : MACRO T1 =
-    throw(tag,make_exc(tag,val))
+  throw(e:Exception[ExcTagType]):ResultType
+
+  throw(tag:ExceptionTag[ExcTagType],exc_val:ExcTagType) : MACRO ResultType =
+    throw(make_exc(tag,exc_val))
 
 END stdcatch
 
@@ -86,44 +134,74 @@ BEGIN
 
   prog(s:void,t:T): T = t
 
-  % Errors and Exceptions
+  % Throw a PVSio error with a message provided by the user
   error(mssg:string):T 
 
-  % Exists the current evaluation and returns to the Ground Evaluator
+  % Exit the current evaluation and return to PVSio
   exit : T
+
+  throw(tag:ExceptionTag[void]): MACRO T = throw[T,void](tag,fail)
 
   catch(tag:ExceptionTag[void],t1,t2:T): MACRO T =
     catch_lift[T,void](tag,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
-
-  throw(tag:ExceptionTag[void]): MACRO T = throw[T,void](tag,fail)
 
   catch(l:list[ExceptionTag[void]],t1,t2:T) : MACRO T =
     catch_list_lift[T,void](l,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
 
   % Mutable data
-  UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
 
   Mutable : TYPE+
 
+  % Creates a mutable variable and sets it to given value
   ref(t:T) : Mutable
 
+  % Creates a new mutable variable with an undefined value
   new      : Mutable 
 
+  % Sets mutable variable to undefined
+  reset(v:Mutable) : void
+
+  % Returns TRUE if mutable variable is undefined"
   undef(v:Mutable)    : bool
+
+  undefined?(v:Mutable) : MACRO bool =
+    undef(v)
+
+  defined?(v:Mutable) : MACRO bool =
+    NOT undef(v)
 
   val_lisp(v:Mutable) : T
 
-  val(v:Mutable): T = 
-    if undef(v) then 
-      throw(UndefinedMutableVariable)
-    else val_lisp(v)
-    endif
+  % Returns value of mutable variable.
+  % Throws exception UndefinedMutableVariable when undefined?(v)"
+  val(v:Mutable): T =
+    val_lisp(v)
 
+  % Sets mutable variable gvar to given value
   def(v:Mutable,t:T) : T = t
 
   set(v:Mutable,t:T) : void = 
-    let nt = def(v,t) in
+    LET nt = def(v,t) IN
     skip
+
+  %% Mutable variables can be used as stacks, where val is the top of the stack.
+  %% Stack is empty when undef is true
+  
+  push_lisp(v:(defined?),t:T) : void
+
+  % Pushes value to the top of the mutable variable and skips
+  push(v:Mutable,t:T) : MACRO void =
+    IF undef(v) THEN set(v,t)
+    ELSE push_lisp(v,t)
+    ENDIF
+
+  pop_lisp(v:(defined?)) : void
+
+  % Pops value of the mutable variable and fails silently when mutable variable is undefined
+  pop(v:Mutable) : MACRO void =
+    IF undef(v) THEN fail
+    ELSE pop_lisp(v)
+    ENDIF
 
   CONVERSION val
 
@@ -135,14 +213,19 @@ BEGIN
 
   loop(s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
 
-  return(t:T):void = fail
+  % Last breaks a loop with a given value
+  last(t:T):T
+
+  return(t:T):T 
 
   % Formatting text
   format(s:string,t:T):string
 
-  Lisp : TYPE+  
+  Lisp : TYPE+  %% Used for PVS-typed lisp attachments
 
-  to_lisp(t:T) : Lisp
+  to_lisp(t:T) : Lisp  % To PVS-typed lisp
+  
+  to_lisp_(t:T) : Lisp_ % To untyped lisp
 
   list2listlisp(l:list[T]) : list[Lisp[T]] =
     map(LAMBDA(t:T): to_lisp(t))(l)
@@ -150,6 +233,12 @@ BEGIN
   ;>> : [list[T]->list[Lisp[T]]] = list2listlisp
 
   {||}(t:T) : Lisp = to_lisp(t)
+
+  unwind_protect_lift(ft:[Dummy->T],fcu:[Dummy->void]) : T
+
+  % Evaluate t, returning its value. The cleanup code will be evaluated if control leaves t.
+  unwind_protect(t:T,cleanup:void) : MACRO T =
+    unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
 
 END stdprog
 
@@ -163,24 +252,30 @@ BEGIN
 
 END stdglobal
 
-%% stdpvs.pvs
-%% PVS printing and parsing
+%% stdmutable.pvs
+%% Utility for mutable variables
 
-stdpvs[T:TYPE+] : THEORY
+stdmutable[T,P:TYPE+] : THEORY
 BEGIN
 
-  typeof(t:T) : string
+  save_lift(fp:[Dummy->P],gv:Mutable[T],val:T):P =
+    unwind_protect(fp(dummy),set(gv,val))
 
-  str2pvs(s:string):T 
+  %% Save mutable variable gv of type T and restore its value after p of type P is evaluated,
+  %% even if control leaves p, e.g., due to an exception
+  with_mutable(gv:Mutable[T],p:P) : MACRO P =
+    IF undef(gv) THEN
+      unwind_protect(p,reset(gv))
+    ELSE
+      save_lift(LAMBDA(dummy:Dummy):p,gv,val(gv))
+    ENDIF
 
-  pvs2str_lisp(t:T) : string
-
-  pvs2str(t:T) : MACRO string =
-    catch("cant-translate",	
-	  pvs2str_lisp(t),
-          LAMBDA(e:Exception[void]):"<?>")
-
-END stdpvs
+  %% Set mutable variable gv to t and restore its value after p of type P is evaluated,
+  %% even if control leaves p, e.g., due to an exception
+  with_mutable(gv:Mutable[T],t:T,p:P) : MACRO P =
+   with_mutable(gv,prog(set(gv,t),p))
+ 
+END stdmutable
 
 %% stdmath.pvs
 %% PVSio math library 
@@ -201,27 +296,46 @@ BEGIN
   %% ln, exp, e:lnexp@ln_exp
   %% sinh, cosh, tanh: lnexp@hyperbolic
 
-% Math Exceptions
-  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
-  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
-
-  MathExceptions : list[ExceptionTag[string]] = (: NotARealNumber, NotAnInteger :)
-
   % Rounding Modes
-  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty} 
+  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty}
+  Truncate     : MACRO RoundingMode = TowardsZero
   AwayFromZero : MACRO RoundingMode = TowardsInfnty
   Ceiling      : MACRO RoundingMode = TowardsPosInfnty
   Floor        : MACRO RoundingMode = TowardsNegInfnty
 
-  % set(PRECISION,n) sets default precision to 10^(-val(PRECISION)) for computations and printing
+  % set(PRECISION,<precision>) sets default precision to 10^(-val(PRECISION)) for computations and printing
   PRECISION : Global[nat,6] 
 
-  % set(ROUNDING,mode) sets default rounding mode for computation and printing
+  % set(ROUNDING,<mode>) sets default rounding mode for computation and printing
   ROUNDING  : Global[RoundingMode,TowardsZero]
+
+  %% set(PP_RATIONALS,<bool>) sets default for pretty printing rational numbers in PVSio
+  PP_RATIONALS : Global[bool,TRUE]
 
   RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
   NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
   BRANDOM           : bool = (NRANDOM(2) = 0)
+
+  % Returns a rational number that is close to the real number (identity when input is rational)
+  rational(x:real) : rat
+
+  % Returns numerator,denominator of rational number
+  rat2numden(r:rat) : {nd:[int,posnat] | LET (num,den) = nd IN r = num/den}
+
+  % Returns numerator of rational number
+  numerator(r:rat) : int =
+    rat2numden(r)`1
+
+  % Returns denominator of rational number
+  denominator(r:rat): posnat =
+    rat2numden(r)`2
+
+  % Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+  % non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
+  % digits. Computing the period is expensive for rationals with large denominators. Therefore, if
+  % maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
+  % In either case, if the second value is 0, the rational has a finite decimal representation.
+  decimal_precision(r:rat,maxperiod:int) : [nat,nat] 
 
 END stdmath
 
@@ -232,46 +346,111 @@ END stdmath
 stdstr: THEORY
 BEGIN
 
-% Char from code n
-  charcode(n:nat) : string
-
+  StringChar : TYPE = {str:string | length(str) = 1}
+  
 % Prints standard table of characters
-  chartable       : void 
+  chartable     : void 
 
   emptystr      : string = ""
-  space         : string = " "
-  newline       : string 
+  space         : StringChar = " "
+  newline       : StringChar 
   tab           : string 
-  doublequote   : string = charcode(34)
-  singlequote   : string = "'"
-  backquote     : string = "`"
-  spaces(n:nat) : string 
+  singlequote   : StringChar = "'"
+  backquote     : StringChar = "`"
+  spaces(n:nat) : {str : string | length(str)=n} 
 
-  upcase(s:string):string
-  downcase(s:string):string
-  capitalize(s:string):string
+% Char from code n
+  charcode(n:nat) : StringChar
+  doublequote   : StringChar = charcode(34)
+
+  upcase(s:string): {str: string | length(str)=length(s)}
+  downcase(s:string): {str: string | length(str)=length(s)}
+  capitalize(s:string): {str: string | length(str)=length(s)}
   
-  %% Index of leftmost occurrence of s1 in s2, 2, starting from 0, or -1 if none
-  strfind(s1,s2:string):int
+  %% Index of leftmost occurrence of s1 in s2 or -1 if s1 doesn't occur in s2
+  strfind(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
 
-  %% Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range
-  substr(s:string,i,j:nat):string
+  %% Index of rightmost occurrence of s1 in s2 or -1 if s1 doesn't occur in s2
+  strfind_from_end(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
 
-  %% Real to string - % r is a real number, precision represents the precision 10^-n, and rounding is the rounding mode 
-  real2decstr(r:real,precision:nat,rounding:RoundingMode) : string
+  %% If i <= j returns substring S[i..j]. Otherwise, returns substring
+  %% S[j..i]. Empty if indices are out of range    
+  %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
+  %% with charstring.substr. stdstr.substr is still available but requires full
+  %% qualification
+  substring(s:string,i,j:int) : string
 
-  %% Real to string 
-  real2str(r:real) :string = real2decstr(r,val(PRECISION),val(ROUNDING))
+  substr(s:string,i,j:int) : string =
+    substring(s,i,j)
 
-  %% String representing a decimal number to rational number
-  decstr2rat(s:string) : real
+  %% Reverse string
+  strreverse(s:string) : string =
+    IF length(s) = 0 THEN s
+    ELSE 
+      substring(s,length(s)-1,0)
+    ENDIF
 
-  %% Rational number to string representing decimal number
-  rat2decstr(r:real,precision:nat) : string
+  %% Returns a new string in which all the occurences of part in s 
+  %% is replaced with replacement."
+  strreplace(s,part,replacement:string): string
 
-  %% Rational number to string 
-  rat2str(r:real) : string =
+  %% Split str using separator
+  strsplit(str: string, separator: StringChar): list[string]
+
+  %% Converts real number to string decimal representation using given precision, i.e., natural
+  %% number n denoting 10^(-n), rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
+  %% TowardsPosInfnty. Displays trailing zeros when zeros is set to TRUE
+  rat2decstr_with_zeros(r:rat,precision:nat,rounding:RoundingMode,zeros:bool) : string
+
+  rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string =
+    rat2decstr_with_zeros(r,precision,rounding,FALSE)
+
+  %% Converts rational number to string decimal representation, truncating at precision, and with
+  %% trailing zeros when significant
+  rat2decstr(r:rat,precision:nat) : string =
+    LET (finp,infp) = decimal_precision(r,precision),
+        prec = IF infp = 0 AND finp <= precision THEN finp ELSE precision ENDIF IN
+    rat2decstr_with_zeros(r,prec,Truncate,TRUE)    
+ 
+  rat2decstr(r:rat) : string =
     rat2decstr(r,val(PRECISION))
+
+  %% Converts rational number to string. The rational is printed in decimal representation if the
+  %% representation is finite. Otherwise, it prints its rational form.
+  rat2str(r:rat) : string =
+    LET (finp,infp) = decimal_precision(r,0) IN
+    IF infp = 0 THEN
+      rat2decstr(r,finp,Truncate)
+    ELSE
+      format("~a",r)
+    ENDIF
+      
+  %% Pretty prints decimal using overline to indicate repeating digits. Finp is the number of 
+  %% non-repeating digits. Truncated indicates that the infinite representation was truncated.
+  pp_decstr(str:string,finp:nat,truncated:bool) : string 
+
+  %% Pretty prints rational numbers upto precision using overline to indicate repeating digits
+  %% and ellipsis when decimal expansion is truncated.
+  pp_rat(r:rat) : string =
+    LET  precision = val(PRECISION),
+         (finp,infp) = decimal_precision(r,precision),
+	 str = rat2decstr_with_zeros(r,min(precision,finp+infp),Truncate,TRUE) IN
+    pp_decstr(str,finp,finp+infp > precision)
+
+  %% Converts real number r to string using a given precision and rounding, where the precision represents
+  %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,
+  %% TowardsPosInfnty.
+  real2decstr(r:real,precision:nat,rounding:RoundingMode) : string =
+    LET rat  = rational(r) IN
+      rat2decstr(rat,precision,rounding)
+
+  %% Converts real number to string decimal representation using default precision and rounding mode
+  real2str(r:real) :string =
+    real2decstr(r,val(PRECISION),val(ROUNDING))
+
+  %% Converts string representing a decimal number to rational number
+  %% May throw exception NotARealNumber
+  decstr2rat(s:string) : rat
 
   %% Bool to string
   bool2str(b:bool): string =
@@ -281,9 +460,21 @@ BEGIN
   tostr(b:bool): MACRO string = bool2str(b)
 
   %% String to real
+  %% May throw exception NotARealNumber
   str2real(s:string): rat
-  str2int(s:string) : int 
+
+  %% String to real
+  %% May throw exception NotAnInteger
+  str2int(s:string) : int
+  
   str2bool(s,answer:string):bool = downcase(s) = downcase(answer)
+
+  %% May throw NotABoolean                              
+  str2boolean(s:string): bool =
+    IF str2bool(s,"TRUE")  THEN TRUE
+    ELSIF str2bool(s,"FALSE") THEN FALSE
+    ELSE throw(NotABoolean,s)
+    ENDIF
 
   %% String is a number
   number?(s:string):bool
@@ -291,13 +482,19 @@ BEGIN
   %% String is an integer
   int?(s:string):bool
 
- %% String concatenation
-  concat(s1:string,s2:string):string = s1 o s2
-  ;+(s1:string,s2:string): MACRO string = concat(s1,s2)
-  ;+(r:real,s:string): MACRO string = concat(tostr(r),s)
-  ;+(s:string,r:real): MACRO string = concat(s,tostr(r))
-  ;+(b:bool,s:string): MACRO string = concat(tostr(b),s)
-  ;+(s:string,b:bool): MACRO string = concat(s,tostr(b))
+  %% String concatenation
+  strconcat(s1:string,s2:string):{ str:string | length(str)=length(s1)+length(s2) } =
+    s1 o s2
+
+  %% This name is DEPRECATED. Use strconcat instead
+  concat(s1:string,s2:string) : MACRO string =
+    strconcat(s1,s2)
+
+  ;+(s1:string,s2:string): MACRO string = strconcat(s1,s2)
+  ;+(r:real,s:string): MACRO string = strconcat(tostr(r),s)
+  ;+(s:string,r:real): MACRO string = strconcat(s,tostr(r))
+  ;+(b:bool,s:string): MACRO string = strconcat(tostr(b),s)
+  ;+(s:string,b:bool): MACRO string = strconcat(s,tostr(b))
 
   %% Concatenates n-times string s
   pad(n:nat,s:string): RECURSIVE string = 
@@ -306,15 +503,20 @@ BEGIN
     ENDIF
     MEASURE n
 
-  %% String comparison
+  %% String comparison, with case sensitivity
   %% = 0 if s1 = s2
   %% < 0 if s1 < s2
   %% > 0 if s1 > s2
+  strcmp(s1,s2:string,sensitive:bool):subrange(-1,1)
 
-  strcmp(s1,s2:string,sensitive:bool):int
+  %% NOTE: Name changed in PVS-8.0 from strcmp to strcompare to avoid clash
+  %% with charstring.strcmp. The function stdstr.strcmp is still available but
+  %% requires full qualification
+  strcompare(s1,s2:string): subrange(-1,1) = 
+    strcmp(s1,s2,TRUE)
 
-  strcmp(s1,s2:string): MACRO int = 
-    strcmp(s1,s2,true)
+  strcmp(s1,s2:string) : subrange(-1,1) =
+    strcmp(s2,s2,TRUE)  
 
   %% A substring of s2, with all the characters in s1 stripped of 
   %% the beginning and end
@@ -340,13 +542,37 @@ BEGIN
   %% the end
   trim_right(s:string):string
 
-  %% Returns the name part of a file name
-  filename(s:string):string
+  %% Returns TRUE if T1 is a subtype of T2 (types are represented using strings).
+  %% Uses subtype judgements, but otherwise it's essentially syntactic
+  subtypeof?(T1,T2:string) : bool
 
-  %% Returns the directory part of a file name
-  directory(s:string):string
+ END stdstr
 
-END stdstr
+%% stdpvs.pvs
+%% PVS printing and parsing
+
+stdpvs[T:TYPE+] : THEORY
+BEGIN
+
+  type_of_domain_lisp(f:[T->void]): string
+
+  dummy_fun(t:T) :void = skip
+
+  %% Return string representing the type of t (t may be an uninterpreted constant)
+  typeof(t:T) : MACRO string =
+    type_of_domain_lisp(dummy_fun)
+
+  %% Returns a PVS object represented by a string
+  str2pvs(s:string):T 
+
+  %% Returns string representing a PVS object
+  pvs2str_lisp(t:T) : string
+
+  %% May throw exception CantTranslateBack 
+  pvs2str(t:T) : MACRO string =
+    pvs2str_lisp(t)
+
+END stdpvs
 
 %% stdio.pvs
 %% Input/output operations
@@ -354,25 +580,12 @@ END stdstr
 stdio : THEORY
 BEGIN
 
-%% I/O Exceptions
-  FileNotFound          : ExceptionTag[string] = "FileNotFound"
-  FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
-  WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
-  WrongOutputStreamMode : ExceptionTag[string] = "WrongOutputStreamMode"
-  ClosedStream          : ExceptionTag[string] = "ClosedStream"
-  EndOfFile             : ExceptionTag[string] = "EndOfFile"
-  
-  IOExceptionTags : list[ExceptionTag[string]] = 
-    (: NotARealNumber, NotAnInteger, FileNotFound,
-       FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
-       ClosedStream, EndOfFile :)
-
 %% Assert
   assert(b:bool,str:string):void =
-    try(b,error[void]("[Assertion Failure] "+str) & fail)
+    try(b,error[void]("PVSio Assertion Failure: "+str) & fail)
 
 %% While loops
-  break : MACRO void = return(skip)
+  break : MACRO void = last(skip)
 
   while(b:bool,s:void) : MACRO void =
     loop(if b then s else break endif)
@@ -398,8 +611,13 @@ BEGIN
   query_token(mssg,s:string): string
   query_word(mssg:string)   : MACRO string = query_token(mssg,emptystr) 
   query_line(mssg:string)   : string
+
+  % May throw exception NotARealNumber
   query_real(mssg:string)   : rat
+
+  % May throw exception NotAnInteger
   query_int(mssg:string)    : int
+  
   query_bool(mssg,answer:string):bool = str2bool(query_word(mssg),answer)
 
   % Reads from stdin
@@ -431,50 +649,78 @@ BEGIN
   stdout   : OStream 
   stderr   : OStream
 
-  Mode   : TYPE = {input,output,create,append,overwrite,rename,str}
+  Mode   : TYPE = {
+    input,  % Open input file stream or throw exception FileNotFound if file doesn't exist
+    output, % Open output file stream or throw exception FileAlreadyExists if file does exist
+    create, % Create output file stream regardless of existence of the file
+    append, % Open output file stream and prepare for writing at end of stream (create file if it doesn't exist)
+    overwrite, % Open output file stream and prepare for writing at beggining of stream (create file if it doesn't exist)
+    rename, % Open output file stream (rename old file if file does exist)  
+    str     % Open string stream for input or output
+  }    
+ 
+  input_mode?(m:Mode) : bool =
+    (m = input OR m = str)
 
-  mode2str(m:Mode) : string = CASES m OF
-    input     : "input",
-    output    : "output",
-    create    : "create",
-    append    : "append",
-    overwrite : "overwrite",
-    rename    : "rename",
-    str       : "str"
-  ENDCASES
+  output_mode?(m:Mode) : bool =
+    (m = output OR m = create OR m = append OR m = overwrite OR
+     m = rename OR m = str)
+
+  mode2str(m:Mode) : string = pvs2str[Mode](m)
 
   tostr(m:Mode) : MACRO string = mode2str(m) 
 
   fopenin_lisp(s:string)        : IStream 
-  fopenout_lisp(s:string,n:nat) : OStream 
+  fopenout_lisp(s:string,n:nat) : OStream
+  
   sopenin(s:string)             : IStream
   sopenout(s:string)            : OStream
 
-  % Opens a file as an input stream
-  fopenin(m:Mode,s:string) : IStream = 
-    IF    m = input AND length(s)=0 THEN stdin 
-    ELSIF m = input THEN fopenin_lisp(s)
-    ELSIF m = str   THEN sopenin(s)
-    ELSE throw(WrongInputStreamMode,tostr(m))
+  fopenin(s:string) : IStream =
+    IF length(s) = 0 THEN stdin
+    ELSE 
+      fopenin_lisp(s)
     ENDIF
 
-  fopenin(s:string) : IStream = 
-    fopenin_lisp(s)
+  % Opens a file as an input stream
+  fopenin(m:(input_mode?),s:string) : IStream = 
+    IF m = input THEN fopenin(s)
+    ELSE sopenin(s) %% m = str
+    ENDIF
+
+  % Closes file when done (no matter what)
+  with_openin_file[P:TYPE+](m:(input_mode?),s:string,fp:[IStream->P]): P =
+    LET fin = fopenin(m,s) IN
+    unwind_protect(fp(fin),fclose(fin))
+
+  % Closes file when done (no matter what)
+  with_openin_file[P:TYPE+](s:string,fp:[IStream->P]): MACRO P =
+    with_openin_file(input,s,fp)
+
+  fopenout(s:string) : OStream =
+    IF length(s) = 0 THEN stdout
+    ELSE
+      fopenout_lisp(s,0)
+    ENDIF
 
   % Opens a file as an oput stream
-  fopenout(m:Mode,s:string): OStream =
-    IF    m = output AND length(s)=0 THEN stdout
-    ELSIF m = output    THEN fopenout_lisp(s,0) 
+  fopenout(m:(output_mode?),s:string): OStream =
+    IF m = output       THEN fopenout(s) 
     ELSIF m = create    THEN fopenout_lisp(s,1)
     ELSIF m = append    THEN fopenout_lisp(s,2)
     ELSIF m = overwrite THEN fopenout_lisp(s,3)
     ELSIF m = rename    THEN fopenout_lisp(s,4)
-    ELSIF m = str       THEN sopenout(s)
-    ELSE throw(WrongOutputStreamMode,tostr(m))
+    ELSE sopenout(s) %% m = str
     ENDIF
 
-  fopenout(s:string) : OStream =
-    fopenout(output,s)
+  % Closes file when done (no matter what)
+  with_openout_file[P:TYPE+](m:(output_mode?),s:string,fp:[OStream->P]): P =
+    LET fout = fopenout(m,s) IN
+    unwind_protect(fp(fout),fclose(fout))
+
+  % Closes file when done (no matter what)
+  with_openout_file[P:TYPE+](s:string,fp:[OStream->P]): MACRO P =
+    with_openout_file(output,s,fp)
 
   fname_lisp(f:Stream)           :string
   fgetstr_lisp(f:OStream)        :string
@@ -568,16 +814,73 @@ BEGIN
     prog(fcheck(f),fread_line_lisp(f))
 
   % Reads a real number from f
+  % May throw the exception NotARealNumber 
   fread_real(f:IStream) : rat =
     prog(fcheck(f),fread_real_lisp(f))
 
   % Reads an integer from f
+  % May throw the exception NotAnInteger 
   fread_int(f:IStream)  : int =
     prog(fcheck(f),fread_int_lisp(f))
 
   % Reads a boolean from f
   fread_bool(f:IStream,answer:string): MACRO bool=
     str2bool(fread_word(f),answer)
+
+  % Returns the name part of a file name
+  filename(s:string):string
+
+  % Returns the directory part of a file name
+  directory(s:string):string
+
+  %% Return path name as a list of directories
+  pathname_path(name:string) : list[string]
+
+  %% Split filename given a seprator
+  split_filename(name:string,separator:StringChar) : [string,string] =
+    LET pos = strfind_from_end(separator,name) IN
+      IF pos < 0 THEN
+        (name,"")
+       ELSE
+        (substring(name,0,pos-1),substring(name,pos+1,length(name)-1))
+      ENDIF
+
+  %% Filename without extension
+  filename_without_extension(name:string) : string =
+    split_filename(name,".")`1
+
+  %% Extension of filename
+  filename_extension(name:string) : string =
+    split_filename(name,".")`2
+
+  %% Formatting functions
+  center(col:nat,s:string):string = format("~"+col+":@<~a~>",s)
+
+  flushleft(col:nat,s:string) :string = format("~"+col+"a",s)
+
+  flushright(col:nat,s:string):string = format("~"+col+"@a",s)
+
+  printf(s:string) : MACRO void =
+    print(format(s,""))
+
+  fprintf(f:OStream,s:string): MACRO void =
+    fprint(f,format(s,""))
+
+  % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
+  fwrite_lisp(f:OStream,typ:string,t:Lisp_) : void
+  
+  % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
+  fwrite[T:TYPE+](f:OStream,t:T) : MACRO void =
+    LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
+    fwrite_lisp(f,the_type,to_lisp_[T](t))
+
+  fread_lisp[T:TYPE+](f:IStream,typ:string) : T
+
+  % Reads a PVS object of type T from an input stream written by fwrite.
+  % Throws CantTranslateBack exception if read object is not of type T
+  fread[T:TYPE+](f:IStream) : MACRO T =
+    LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
+      fread_lisp(f,the_type)
 
 END stdio
 
@@ -601,17 +904,15 @@ BEGIN
     ENDIF
     MEASURE n
 
-  % Iterates a function on a file n times until the end
+  % Iterates a function on a file until the end. Closes file when done (no matter what)
   fmap(f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
-    let l  = flength(f) in
-    let nt = fmap(f,fread,t,st,l) in  
-    prog(fclose(f),nt)
+    LET l = flength(f) IN
+    unwind_protect(fmap(f,fread,t,st,l),fclose(f))
 
-  % Iterates a function on a file line by line until the end
+  % Iterates a function on a file line by line until the end. Closes file when done (no matter what)
   fmap_line(f:IStream,t:T,st:[[string,T]->T]):T =
-    let l  = flength(f) in
-    let nt = fmap(f,fread_line,t,st,l) in  
-    prog(fclose(f),nt)
+    LET l = flength(f) IN
+    unwind_protect(fmap(f,fread_line,t,st,l),fclose(f))
 
   % Formatting text to a file
   printf(s:string,t:T): MACRO void =
@@ -623,349 +924,10 @@ BEGIN
 END stdfmap
 
 %% stdindent.pvs
-%% Indentations
-
-stdindent : THEORY
-BEGIN
-
-  %% Indentation
-  Indent : TYPE+
-  
-  create_indent(n:nat,s:string):Indent
-  push_indent(i:Indent,n:nat):void
-  pop_indent(i:Indent):void
-  top_indent(i:Indent):nat
-  get_indent(i:Indent):nat
-  set_indent(i:Indent,n:nat):void
-  get_prefix(i:Indent):string
-  set_prefix(i:Indent,s:string):void
-
-  create_indent(n:nat)         : MACRO Indent = create_indent(n,emptystr)
-  open_block(i:Indent,n:nat)   : MACRO void = push_indent(i,n)
-  open_block(i:Indent)         : MACRO void = push_indent(i,get_indent(i))
-  close_block(i:Indent)        : MACRO void = pop_indent(i)
-
-  indent(i:Indent):string = get_prefix(i)+spaces(top_indent(i))
-  indent(i:Indent,s:string):string = indent(i)+s
-
-  prindent(i:Indent,s:string):void = print(indent(i,s))
-  prindentln(i:Indent,s:string):void = println(indent(i,s))
-
-  fprindent(f:OStream,i:Indent,s:string):void = fprint(f,indent(i,s))
-  fprindentln(f:OStream,i:Indent,s:string):void = fprintln(f,indent(i,s))
-
-  %% Formatting functions
-
-  center(col:nat,s:string):string = format("~"+col+":@<~a~>",s)
-
-  flushleft(col:nat,s:string) :string = format("~"+col+"a",s)
-
-  flushright(col:nat,s:string):string = format("~"+col+"@a",s)
-
-END stdindent
+%% In PVS-8.0, this theory was moved to NASALib/pvsio_utils
 
 %% stdtokenizer.pvs
-%% Tokenizers
-
-stdtokenizer : THEORY
-BEGIN
- 
-  %% Error Codes
-  %% Negative numbers are user defined
-  NoError           : nat = 0
-  FileNotFound      : nat = 1
-  EndOfTokenizer    : nat = 2
-  InvalidToken      : nat = 3
-  ExpectingWord     : nat = 4
-  ExpectingTestWord : nat = 5
-  ExpectingInt      : nat = 6
-  ExpectingTestInt  : nat = 7
-  ExpectingReal     : nat = 8
-  ExpectingTestReal : nat = 9
-
-  Tokenizer : TYPE = [#
-    stream   : ARRAY[nat->string],
-    lines    : ARRAY[nat->nat],
-    casesen  : boolean,
-    separ    : string,
-    error    : int,
-    val_int  : int,
-    val_real : real,
-    length   : nat,
-    pos      : upto(length)
-  #]
-
-  init_tokenizer(casesen:bool,separ:string) : Tokenizer = (#
-    stream   := LAMBDA(x:nat):emptystr,
-    lines    := LAMBDA(x:nat):0,
-    casesen  := casesen,
-    separ    := separ,
-    error    := NoError,
-    val_int  := 0,
-    val_real := 0, 
-    length   := 0,
-    pos      := 0
-  #)
-
-  empty_tokenizer : Tokenizer = (#
-    stream   := LAMBDA(x:nat):emptystr,
-    lines    := LAMBDA(x:nat):0,
-    casesen  := true,
-    separ    := emptystr,
-    error    := NoError,
-    val_int  := 0,
-    val_real := 0, 
-    length   := 0,
-    pos      := 0
-  #)
-
-  TokenizerOfLength(l:int): TYPE = {t:Tokenizer | t`length = l}
-
-  set_casesen(t:Tokenizer,c:bool):Tokenizer =
-    t with [`casesen := c]
-
-  %% Error?
-  error?(t:Tokenizer): MACRO bool = 
-    t`error /= NoError
- 
-  %% Set Error
-  set_error(t:Tokenizer,code:int): TokenizerOfLength(t`length) =
-    t WITH [`error:= code]
-
-  %% Last processed token
-  last_token(t:Tokenizer): string =
-    IF t`pos = 0 THEN emptystr
-    ELSE t`stream(t`pos-1)
-    ENDIF
-
-  %% Peek token at current position + offset n
-  peek(t:Tokenizer,n:posnat): MACRO string = t`stream(t`pos+n-1)
-
-  %% Next unprocessed token
-  next_token(t:Tokenizer) : MACRO string = peek(t,1)
-
-  tostr(t:Tokenizer,i:upto(t`length)) : RECURSIVE string =
-    IF i = t`length THEN emptystr
-    ELSIF i=t`pos THEN
-      "["+t`stream(i)+"] " + tostr(t,i+1)
-    ELSE 
-      t`stream(i)+space + tostr(t,i+1)
-    ENDIF
-    MEASURE t`length - i
-
-  add_token(s:string,t:Tokenizer,l:nat): MACRO Tokenizer =
-    LET n = t`length IN
-    t WITH [`stream(n) := s,
-            `lines(n)  := l,
-            `length    := n + 1]
-
-  read_token(t:Tokenizer)(f:IStream):string = fread_token(f,t`separ)
-
-  line_tokenizer(s:string,tl:[Tokenizer,nat]):[Tokenizer,nat] =
-    LET (t,l) = tl IN
-    LET g = fopenin(str,s) IN
-    LET f = (LAMBDA(mys:string,myt:Tokenizer):add_token(mys,myt,l)) IN
-    LET nt = fmap(g,read_token(t),t,f,length(s)) IN
-    prog(fclose(g),(nt,l+1))
-
-  %% Create a tokenizer from a files
-  file2tokenizer(s:string,t:Tokenizer):Tokenizer=
-    IF fexists(s) THEN 
-      LET (nt,l) = fmap_line(fopenin(s),
-                             (t,1),
-                             line_tokenizer) IN 
-        nt
-    ELSE	
-      LET filename = s IN
-      t WITH [
-        `stream(0) := filename,
-        `error     := FileNotFound
-      ]
-    ENDIF
-
-  file2tokenizer(s:string):Tokenizer=
-    file2tokenizer(s,empty_tokenizer)
-
-  %% Create a tokenizer from a string
-  str2tokenizer(s:string,t:Tokenizer):Tokenizer= 
-    LET f = fopenin(str,s) IN
-    LET (nt,l) = fmap_line(f,(t,1),line_tokenizer) IN 
-        nt
-
-  str2tokenizer(s:string):Tokenizer=
-    str2tokenizer(s,empty_tokenizer)
-
-  % EOT = End of tokenizer
-  eot?(t:Tokenizer) : bool = t`pos = t`length
-
-  % Current line
-  get_line(t:Tokenizer) : MACRO nat = t`lines(t`pos) 
-
-  consume(t:Tokenizer,n:posnat) : TokenizerOfLength(t`length) = 
-    IF error?(t) THEN t
-    ELSIF eot?(t) OR t`pos + n > t`length THEN 
-      t WITH [`error := EndOfTokenizer]
-    ELSE 
-      t WITH [`pos := t`pos + n]
-    ENDIF
-
-  go_next(t:Tokenizer) : MACRO TokenizerOfLength(t`length) = 
-    consume(t,1)
- 
-  go_back(t:Tokenizer) : TokenizerOfLength(t`length) = 
-    IF t`pos = 0 THEN t
-    ELSE 
-      t WITH [`pos := t`pos - 1]
-    ENDIF
-
-  pos_go_next : LEMMA
-    FORALL (t1:Tokenizer):
-      LET t2= go_next(t1) IN
-      NOT error?(t2) IMPLIES t2`pos = t1`pos+1
-
-  %% Accepts a word that satisfies test
-  accept_word(t:Tokenizer,test:[string->bool])
-    : TokenizerOfLength(t`length) =
-    IF error?(t) THEN t
-    ELSIF eot?(t) THEN 
-      t WITH [`error := EndOfTokenizer]
-    ELSIF number?(t`stream(t`pos)) THEN
-      t WITH [`error := ExpectingWord]
-    ELSIF test(t`stream(t`pos)) THEN 
-      t WITH [`pos := t`pos + 1]
-    ELSE 
-      t WITH [`error := ExpectingTestWord]
-    ENDIF
-
-  pos_accept_word : LEMMA
-    FORALL (t1:Tokenizer,test:[string->bool]):
-      LET t2= accept_word(t1,test) IN
-      NOT error?(t2) IMPLIES t2`pos = t1`pos+1
-
-  the_word(s:string)(token:string):bool =
-     str2bool(s,token)
-
-  %% Accepts the word s
-  accept_word(t:Tokenizer,s:string) : MACRO TokenizerOfLength(t`length) =
-    accept_word(t,the_word(s))
-
-  any_word(token:string):bool = TRUE
-
-  %% Accepts any word
-  accept_word(t:Tokenizer) : MACRO TokenizerOfLength(t`length) =
-    accept_word(t,any_word)
-
-  %% Accepts an integer that satisfies test
-  accept_int(t:Tokenizer,test:[int->bool])
-    : TokenizerOfLength(t`length) =
-    IF error?(t) THEN t
-    ELSIF eot?(t) THEN 
-      t WITH [`error := EndOfTokenizer]
-    ELSIF NOT int?(t`stream(t`pos)) THEN
-      t WITH [`error := ExpectingInt]
-    ELSE
-      LET i = str2int(t`stream(t`pos)) IN
-      IF test(i) THEN 
-        t WITH [`pos := t`pos + 1, `val_int := i, `val_real := i]
-
-      ELSE 
-        t WITH [`error := ExpectingTestInt]
-      ENDIF
-    ENDIF
-
-  pos_accept_int : LEMMA
-    FORALL (t1:Tokenizer,test:[int->bool]):
-      LET t2= accept_int(t1,test) IN
-      NOT error?(t2) IMPLIES t2`pos = t1`pos+1
-
-  any_int(i:int):bool = TRUE
-
-  %% Accepts any integer 
-  accept_int(t:Tokenizer) : MACRO TokenizerOfLength(t`length) =
-    accept_int(t,any_int)
-
-  %% Accepts a real that satisfies test
-  accept_real(t:Tokenizer,test:[real->bool])
-    : TokenizerOfLength(t`length) =
-    IF error?(t) THEN t
-    ELSIF eot?(t) THEN 
-      t WITH [`error := EndOfTokenizer]
-    ELSIF NOT number?(t`stream(t`pos)) THEN
-      t WITH [`error := ExpectingReal]
-    ELSE
-      LET r = str2real(t`stream(t`pos)) IN
-      IF test(r) THEN 
-        t WITH [`pos := t`pos + 1, `val_real := r]
-
-      ELSE 
-        t WITH [`error := ExpectingTestReal]
-      ENDIF
-    ENDIF
-
-  pos_accept_real : LEMMA
-    FORALL (t1:Tokenizer,test:[real->bool]):
-      LET t2= accept_real(t1,test) IN
-      NOT error?(t2) IMPLIES t2`pos = t1`pos+1
-
-  any_real(r:real):bool = TRUE
-
-  %% Accepts any real
-  accept_real(t:Tokenizer) : MACRO TokenizerOfLength(t`length) =
-    accept_real(t,any_real)
-
-  %% Messengers
-
-  Messenger : TYPE = [int->string]
-
-  std_mssg(t:Tokenizer)(code:int):string =
-    IF    code <= 0 THEN emptystr
-    ELSIF code = FileNotFound THEN
-      "File not found: "+doublequote+next_token(t)+doublequote+"."
-    ELSIF code = EndOfTokenizer THEN
-      "Found EOT."
-    ELSIF code = InvalidToken THEN 
-      "Invalid Token: "+doublequote+next_token(t)+doublequote+"."
-    ELSIF code = ExpectingWord THEN 
-      "Expecting a word. Found: "+doublequote+next_token(t)+doublequote+"."
-    ELSIF code = ExpectingTestWord THEN 
-      "Expecting word that satisfies test. Found: "+doublequote+next_token(t)+
-      doublequote+"."
-    ELSIF code = ExpectingInt THEN 
-      "Expecting an integer. Found: "+doublequote+next_token(t)+doublequote+"."
-    ELSIF code = ExpectingTestInt THEN 
-      "Expecting integer that satisfies test. Found: "+
-      doublequote+next_token(t)+doublequote+"."
-    ELSIF code = ExpectingReal THEN 
-      "Expecting a real. Found: "+doublequote+next_token(t)+doublequote+"."
-    ELSIF code = ExpectingTestReal THEN 
-      "Expecting real that satisfies test. Found: "+doublequote+next_token(t)+
-      doublequote+"."
-    ELSE
-      emptystr
-    ENDIF
-
-  print_error(t:Tokenizer,m:Messenger): MACRO void = 
-    IF error?(t) THEN  
-      println("Syntax Error. "+"Line "+get_line(t)+": "+m(error(t))) &
-      fail
-    ELSE
-      skip
-    ENDIF
-
-  print_error(t:Tokenizer): MACRO void = 
-    print_error(t,std_mssg(t))
-
-  ;*(m:Messenger,cs:[int,string]) : Messenger =
-    LET (code,s) = cs IN m WITH [`code := s]
-  
-  tokenizer2str(t:Tokenizer):string = 
-    tostr(t,0)+newline+std_mssg(t)(t`error)
-
-  CONVERSION tokenizer2str
-
-  tostr(t:Tokenizer): MACRO string = tokenizer2str(t)
-
-END stdtokenizer
+%% In PVS-8.0, this theory was moved to NASALib/pvsio_utils
 
 %% stdpvsio.pvs
 %% PVSio interface
@@ -1043,17 +1005,67 @@ BEGIN
   tostr(t:Time): string =
     days_of_week(dow(t))+" "+months(month(t))+
     format(" ~2,'0d ",day(t))+year(t)+
-    format(", ~2,'0d:~2,'0d:~2,'0d ",{|(hour(t),minute(t),second(t))|})+
+    format(", ~2,'0d:~2,'0d:~2,'0d ",{| hour(t),minute(t),second(t) |})+
     format("(GMT~@d)",-tz(t))
-
+    
   get_time : Time     % Get current time
 
+  %% Today in US format mm/dd/yy
   today : string =
-    let t = get_time in
-    format("~d/~2,'0d/~d",{|(month(t),day(t),year(t))|})
+    LET t = get_time IN
+    format("~2,'0d/~2,'0d/~d",{| month(t), day(t), year(t) |})
 
+  %% Today in long format
   date : string =
     tostr(get_time)
+
+  %% Today in yyyy-mm-dd format
+  date_yyyy_mm_dd : string =
+    LET t = get_time IN
+    format("~d-~2,'0d-~2,'0d",{| year(t), month(t), day(t) |})
+
+  %% Today in dd-mm-yyyy format
+  date_dd_mm_yyyy : string =
+    LET t = get_time IN
+    format("~2,'0d-~2,'0d-~d",{| day(t), month(t), year(t) |})
+
+  real_time : nat % Realtime in internal units
+  run_time  : nat % Realtime in internal units
+  internal_time_units : posreal % Internal units
+
+  Stamp : Global[[nat,nat],(0,0)]  % (realtime,runtime)
+
+  tic : void =
+    set[[nat,nat]](Stamp,(real_time,run_time))
+
+  Toc : TYPE = [nnreal,nnreal]
+  
+  %% Return times in seconds
+  toc : Toc = 
+    LET (ret,rut) = (real_time,run_time),
+        (re0,ru0) = val[[nat,nat]](Stamp) IN
+      (max(0,(ret-re0))/internal_time_units,
+       max(0,(rut-ru0)/internal_time_units))
+
+  % t is in secods; returns formatted string in the form "<h>h:<m>m:<s>s"
+  hms(t:real) : string =
+    LET ts : int = floor(t),
+	ms : real = t-ts,
+	h  : int = floor(ts/3600),
+        m  : int = floor(mod(ts,3600)/60),
+        s  : real = mod(mod(ts,3600),60)+ms IN
+    format("~ah:~am:~,3fs",{|h,m,s|})
+
+  strtoc(atoc:Toc) : MACRO string =
+    LET (realtime,runtime) = atoc IN 
+    format("Real Time: ~a (~,3f sec). Run Time: ~a (~,3f sec)~%",
+	  {| hms(realtime), realtime, hms(runtime), runtime |})
+
+  %% Time profiler of a function
+  time_profiler[T:TYPE+](fun:T) : MACRO T =
+    LET (result,atoc) = prog[[T,Toc]](tic,(fun,toc)) IN
+      prog(print(strtoc(atoc)),
+    	   result)
 
   sleep(n:nat): void  % Sleep n seconds 
 
@@ -1061,10 +1073,7 @@ BEGIN
 
   get_env(name:string): MACRO string = get_env(name,emptystr)
 
-  printf(s:string) : MACRO void =
-    print(format(s,""))
-
-  fprintf(f:OStream,s:string): MACRO void =
-    fprint(f,format(s,""))
+  % Make a system call and return status and output string
+  system_call(call:string) : [nat,string]
 
 END stdsys

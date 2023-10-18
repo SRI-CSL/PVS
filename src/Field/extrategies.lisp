@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-7.1.0 (11/05/20)
+;; Release: Extrategies-8.0 (10/13/2023)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -63,7 +63,7 @@
       (setf (get-label torcl) nil))))
 
 (defun extra-trust-oracle (orcl info &optional internal?) ; Set a trusted oracle
-  (let ((torcl (make-TrustedOracle :name orcl :internal internal? :info info)))
+  (let ((torcl (make-TrustedOracle :name (string orcl) :internal internal? :info info)))
     (when (not (is-trusted-oracle orcl))
       (setf (gethash orcl *extra-trusted-oracles*) torcl))))
 
@@ -103,7 +103,7 @@
   (mapcar #'car (extra-list-oracles enabled)))
 
 (defmacro deforacle (name args step doc format &optional internal)
-  (let* ((info     (format nil "Try (help ~a)" name name))
+  (let* ((info     (format nil "Try (help ~a)" name))
 	 (dismsg   (format nil "~a has been disabled" name))
 	 (docmsg   (if internal doc (format nil "[Trusted Oracle] ~a" doc))))
   `(progn
@@ -121,17 +121,16 @@
 	   (sklisp (extra-reset-oracle-label ',name)))))
        ,docmsg ,format))))
 
-;; Load file from library
+;; Load filename from dir relative to a path in *pvs-library-path*
 (defun extra-load-from-lib (lib filename)
-  (let* ((dir 
-	  (loop for d in *pvs-library-path*
-		for p = (merge-pathnames (make-pathname :name lib) d)
-		when (file-exists-p p) return p)))
+  (let* ((dir
+         (loop for d in *pvs-library-path*
+               for p = (merge-pathnames (make-pathname :name lib) d)
+               when (file-exists-p p) return p)))
     (when dir
       (libload (format nil "~a/~a" dir filename)))))
 
 ;; Executes command in the operating system and returns a pair (status . string)
-
 (defun extra-system-call (command)
   (multiple-value-bind (out err status)
       (uiop:run-program command
@@ -139,11 +138,12 @@
 	:output '(:string :stripped t)
 	:error-output :output ; shared out string; err will be nil
 	:ignore-error-status t)
+    (declare (ignore err))
     (cons status (string-trim '(#\Space #\Newline) out))))
 
-;; Get the absolute path to the PVS NASA library
-(defun extra-pvs-nasalib ()
-  (loop for path in *pvs-library-path* when (probe-file (format nil "~aRELEASE/nasalib.lisp" path)) return path))
+;; Get the absolute path to the PVS NASA library -- DEPRECATED use (nasalib-path) instead
+;;(defun extra-pvs-nasalib ()
+;;  (loop for path in *pvs-library-path* when (probe-file (format nil "~a.nasalib" path)) return path))
 
 ;;; Utility functions and additional strategies
 
@@ -225,27 +225,66 @@
 	 (loop for e in (exprs expr)
 	       append (get-vars-from-expr-rec e but)))))
 
-;; The parameter numbr is a lisp number (ratio), over is a boolean,
-;; and n is the number of decimals in the output. The output is a string representing
+;; The parameter rat is a rational number, over is a boolean, and precision
+;; is the number of decimals in the output. The output is a string representing
 ;; a decimal number that is exact to the original one up to the n-1 decimal.
 ;; Furthermore, if over is t, then the output is an over-approximation. Otherwise, the
 ;; output is an under-approximation.
-(defun ratio2decimal (numbr over n)
-  (cond ((integerp numbr)
-	 (format nil "~d" numbr))
-	((numberp numbr)
-	 (let* ((r (abs (* numbr (expt 10 n))))
-		(i (truncate r)))
-	   (if (= i r)
-	       (format nil "~:[-~;~]~a" (>= numbr 0) (exact-fp (abs numbr)))
-	     (let* ((f (format nil "~~~a,'0d" (1+ n)))
-		    (s (format nil f (+ i (if (iff over (< numbr 0)) 0 1))))
-		    (d (- (length s) n)))
-	       (format nil "~:[-~;~]~a~:[.~;~]~a"
-		       (>= numbr 0)
-		       (subseq s 0 d)
-		       (= n 0)
-		       (subseq s d))))))))
+(defun ratio2decimal (rat over precision &optional zeros)
+  (assert (rationalp rat))
+  (let ((rounder (if (>= rat 0)
+		     (if over #'cl:ceiling #'cl:truncate)
+		   (if over #'cl:truncate #'cl:floor))))
+    (decimals:format-decimal-number
+     rat :rounder rounder :round-magnitude (- precision) :show-trailing-zeros zeros)))
+
+;; Converts rational number to decimal string representation using rounding mode and precision.
+;; Rounding modes are
+;; 0: towards zero (truncate), 1: towards infinity (away from zero),
+;; 2: towards negative infinity (floor), 3: towards positive infinity (ceiling)
+;; Displays trailing zeroes when zeros is set to TRUE
+(defun ratio2decimal-with-rounding-mode (rat rounding precision &optional zeros)
+  (assert (and (<= rounding 3) (>= rounding 0)))
+  (let ((over (or (= rounding 3) (and (= rounding 1) (> rat 0))
+		  (and (= rounding 0) (< rat 0)))))
+    (ratio2decimal rat over precision zeros)))
+
+;; Compute the multiplicative order of n and r, when n and r are co-primes. Return 0 if they are
+;; not co-prime. The period of an infinite fraction m/n is the (mult-ord n 10), 
+;; assuming that n doesn't have factors of 2 or 5. This operation is expensive, for that reason
+;; a maxperiod is provided. If this value is non-negative, the function returns the minimum between
+;; period and maxperiod+1. 
+(defun mult-ord (n r &optional (maxperiod 0))
+  (if (> (gcd r n) 1) 0
+      (loop for k from 1
+	    for v = r then (* v r)
+	    when (or (= 1 (mod v n)) (and (>= maxperiod 0) (> k maxperiod)))
+	    do (return k))))
+
+;; Count the numbers of 10,5,2 factors in den. Return 2 values, the count and the reminder
+(defun count-div-10-5-2 (den &optional (div 10) (acc 0))
+  (multiple-value-bind (d m)
+      (floor den div)
+    (cond ((= m 0)    (count-div-10-5-2 d div (1+ acc)))
+	  ((= div 10) (count-div-10-5-2 den 5 acc))
+	  ((= div 5)  (count-div-10-5-2 den 2 acc))
+	  ((= den 1)  (values acc 0))
+	  (t          (values acc den)))))
+
+;; Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+;; non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
+;; digits. Computing the period is expensive for rationals with large denominators. Therefore, if
+;; maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
+;; In either case, if the second value is 0, the rational has a finite decimal representation.
+;; This function assumes that rat is a rational number
+(defun decimal-precision-of-rat (rat &optional (maxperiod 0))
+  (assert (rationalp rat))
+  (let ((den (denominator rat)))
+    (if (= den 1) (values 0 0) ;; An integer
+      (multiple-value-bind (fprec rem)
+	  (count-div-10-5-2 den)
+	(if (= rem 0) (values fprec 0)
+	  (values fprec (mult-ord rem 10 maxperiod)))))))
 
 (defun is-var-decl-expr (expr)
   (and (name-expr? expr)
@@ -587,7 +626,7 @@
 	     (/ (number (args1 expr)) (number (args2 expr))))
 	    ((not shallow?)
 	     (let ((val (evalexpr expr)))
-	       (when (expr? val)
+	       (when val
 		 (extra-get-number-from-expr val t))))))))
 
 (defun is-bool-type (type)
@@ -736,7 +775,7 @@
       (let ((val  (assoc expr *extra-evalexprs* :test #'compare*)))
 	(or (cdr val)
 	    (let ((exval (evalexpr expr)))
-	      (when (expr? exval) 
+	      (when exval 
 		(unless (or (compare* expr exval)
 			    (same-neg fmexpr exval)
 			    (same-div fmexpr exval))
@@ -846,7 +885,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 ;; Return the list of variables.
 (defun extra-get-var-ranges (fms vars)
   (setq *extra-varranges* (make-hash-table :test #'equal)) 
-  (let ((uvars  (remove-if #'listp vars)))
+  (let ((uvars (remove-if #'listp vars)))
     (loop for fm in fms
 	  do (if (negation? fm)
 		 (get-var-range-from-formula (args1 fm) uvars t)
@@ -940,6 +979,7 @@ arguments ARGS. ARGS can only have constant values.")
   (let ((dummy (multiple-value-bind
 		   (second minute hour date month year day-of-week dst-p tz)
 		   (get-decoded-time)
+		 (declare (ignore dst-p))
 		 (format t "~%TIME ~d/~2,'0d/~d  ~2,'0d:~2,'0d:~2,'0d~%"
 			 month
 			 date
@@ -947,6 +987,7 @@ arguments ARGS. ARGS can only have constant values.")
 			 hour
 			 minute
 			 second))))
+    (declare (ignore dummy))
     (skip))
   "[Extrategies] Prints current time.")
 
@@ -1873,43 +1914,35 @@ the sequent is labeled LABEL.")
 LABEL. Otherwise, applies ELSE-STEP.")
 
 (defhelper for__ (n step)
-  (if (numberp n)
-      (if (<= n 0)
-	  (skip)
-	(let ((m (- n 1)))
-	  (then step
-		(for__$ m step))))
-    (unless n
-     (repeat* step)))
+  (let ((doit (or (null n) (and (numberp n) (> n 0)))))
+    (when doit
+      (let ((prevn (when (numberp n) (1- n))))
+	(try step (for__$ prevn step) (skip)))))
   "[Extrategies] Internal strategy." "")
 
 (defstep for (n &rest steps)
   (when steps
-    (let ((step (cons 'then steps)))
+    (let ((step `(then@ ,@steps)))
       (for__$ n step)))
-  "[Extrategies] Iterates N times STEP1 ... STEPn, or until it does nothing if N is nil,
-along all the branches."
-  "Iterating ~1@*~a ~@*~a times along all the branches")
+  "[Extrategies] Successively apply STEPS until it does nothing or, if N is not null, until N is reached."
+  "Applying steps ~a times")
 
 (defhelper for@__ (n step)
-  (if (numberp n)
-      (if (<= n 0)
-	  (skip)
-	(let ((m (- n 1)))
-	  (then@
-	   step
-	   (for@__$ m step))))
-    (unless@ n
-     (repeat step)))
+  (let ((doit (or (null n) (and (numberp n) (> n 0)))))
+    (when doit
+      (let ((prevn (when (numberp n) (1- n))))
+	(try step (if (equal (get-goalnum *ps*) 1)
+		      (for@__$ prevn step)
+		    (skip))
+	     (skip)))))
   "[Extrategies] Internal strategy." "")
 
 (defstep for@ (n &rest steps)
   (when steps
-    (let ((step (cons 'then@ steps)))
+    (let ((step `(then@ ,@steps)))
       (for@__$ n step)))
-  "[Extrategies] Iterates N times STEP1 ... STEPn, or until it does nothing if N is nil,
-along the first branch."
-  "Iterating ~1@*~a ~@*~a times along the first branch")
+  "[Extrategies] Successively apply STEPS along main branch until it does nothing or, if N is not null, until N is reached."
+  "Applying steps ~a times along main branch")
 
 ;; Skolem, let-in, let-def
 
@@ -2172,6 +2205,7 @@ variables can be specified using VAR."
   "[Extrategies] Internal strategy." "")
 
 (defun skoletin-formula (fn expr)
+  (declare (ignore fn))
   (let-expr? expr))
 
 (defstep skoletin (&optional (fnum (+ -)) name (nth 1) var postfix hide?
@@ -2474,6 +2508,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
    "Rewriting recursively with ~a")
 
 (defun quantified-formula (fn expr)
+  (declare (ignore fn))
   (or (exists-expr? expr) (forall-expr? expr)))
 
 (defun get-suffices-expr (expr estr conseq forall var qn &optional (n 1) b)
@@ -2714,6 +2749,7 @@ quantifier, if provided."
 			(typetup (copy (type namexpr)
 				   'types
 				   (removepos p (types (type namexpr))))))
+		     (declare (ignore dummy))
 		     (progn
 		       (when ret (setf (ret-expr ret) (list mergename prj)))
 		       (setf (type argexpr) typetup)
@@ -2770,16 +2806,28 @@ quantifier, if provided."
 
 ;;; PVSio
 
-(define-condition eval-error (simple-condition) ())
-
 (define-condition pvsio-inprover (simple-condition) ())
+
+(defmacro handler-case-pvsio-eval (quiet prog2eval)
+  `(handler-case ,prog2eval
+     ;; At the moment, all errors simply print the condition, and evalexpr returns nil
+     (pvseval-error    (condition) (unless ,quiet (format t "~%[pvseval-error] ~a" condition)))
+     (groundeval-error (condition) (unless ,quiet (format t "~%[groundeval-error] ~a" condition)))
+     (cl2pvs-error     (condition) (unless ,quiet (format t "~%[cl2pvs-error] ~a" condition)))
+     (pvsio-inprover   (condition) (unless ,quiet (format t "~%[pvsio-inprover] ~a" condition)))
+     (pvsio-error      (condition) (unless ,quiet (format t "~%[pvsio-error] ~a" condition)))
+     (pvsio-break      (condition) (unless ,quiet (format t "~%[pvsio-break] ~a" condition)))
+     (pvsio-return     (condition) (unless ,quiet (format t "~%[pvsio-return] ~a" condition)))
+     (pvsio-exit       (condition) (declare (ignore condition)) (unless ,quiet (format t "~%[pvsio-exit]")))
+     (pvsio-exception  (condition) (unless ,quiet (format t "~a" condition)))))
 
 ;; Evaluates ground expression expr.
 ;; When safe is t, evaluation doesn't proceed when there are TCCs.
 ;; When timing is t, timing information of the ground evaluation is printed.
-(defun evalexpr (expr &optional safe timing)
+;; Returns a PVS expr or nil if evaluation raises an error
+(defun evalexpr (expr &optional safe timing quiet)
   (when expr
-    (handler-case
+    (handler-case-pvsio-eval quiet
 	(let* ((pr-input (extra-get-expr expr))
 	       (*tccforms* nil)
 	       (*generate-tccs* 'all)
@@ -2787,35 +2835,29 @@ quantifier, if provided."
 	  (when (and *tccforms* safe)
 	    (format t "~%Typechecking ~s produced TCCs:~%" expr)
 	    (evaluator-print-tccs *tccforms*)
-	    (error 'eval-error
-		   :format-control "Use option :safe? nil if TCCs are provable"))
-	  (let* ((cl-input (handler-case (pvs2cl tc-input)
-			     (pvseval-error (condition) nil)))
+	    (error 'groundeval-error
+		   :format-control "Ground evaluation is unsafe in the presence of TCCs. Use option :safe? nil if TCCs are provable"))
+	  (let* ((cl-input (pvs2cl tc-input))
 		 (cl-eval (if timing
 			      (time (eval cl-input))
 			      (eval cl-input)))
 		 (pvs-val (cl2pvs cl-eval (type tc-input))))
 	    (assert (expr? pvs-val))
-	    pvs-val))
-      ;; At the moment, all errors simply print the condition, and evalexpr returns nil
-      (groundeval-error (condition) (when *eval-verbose* (format t "~%~a" condition)))
-      (pvsio-inprover (condition) (format t "~%error2: ~a" condition)))))
+	    pvs-val)))))
 
 (deforacle eval-expr (expr &optional safe? (auto? t) quiet? timing?)
   (let ((e (extra-get-expr expr)))
     (when e
-	(let ((result (evalexpr e safe? timing?)))
-	  (if (stringp result)
-	      (unless quiet? (printf "Error: ~a~%" result))
-	    (when result
-	      (let ((casexpr (format nil "(~a) = ~a" e result)))
-		(with-fresh-labels
-		 (!evx)
-		 (trust-branch!
-		  eval-expr
-		  (discriminate (case casexpr) !evx)
-		  ((skip) !
-		   (when auto? (eval-formula !evx safe? quiet?)))))))))))
+      (let ((result (evalexpr e safe? timing? quiet?)))
+	(when result
+	  (let ((casexpr (format nil "(~a) = ~a" e result)))
+	    (with-fresh-labels
+	     (!evx)
+	     (trust-branch!
+	      eval-expr
+	      (discriminate (case casexpr) !evx)
+	      ((skip) !
+	       (when auto? (eval-formula !evx safe? quiet?))))))))))
   "[PVSio] Adds the hypothesis expr=eval(EXPR) to the current goal,
 where eval(EXPR) is the ground evaluation of EXPR. If SAFE? is t and
 EXPR generates TCCs, the expression is not evaluated. Otherwise, TCCs
@@ -2832,11 +2874,10 @@ evaluation."
   (let ((fexpr (extra-get-seqf fnum)))
     (when fexpr
       (let ((expr   (formula fexpr))
-	    (result (evalexpr expr safe? timing?))
-	    (doit   (extra-is-true result)))
-	(if (stringp result)
-	    (unless quiet? (printf "Error: ~a~%" result))
-	  (when doit (trust! eval-formula))))))
+	    (result (evalexpr expr safe? timing? quiet?)))
+	(when result
+	  (let ((doit (extra-is-true result)))
+	    (when doit (trust! eval-formula)))))))
   "[PVSio] Evaluates the formula FNUM in Common Lisp and adds the
 result to the antecedent of the current goal. If SAFE? is t and FNUM
 generates TCCs, the expression is not evaluated. The strategy is safe
@@ -2850,16 +2891,15 @@ information of the ground evaluation."
 (defrule eval (expr &optional safe? quiet? timing?)
   (let ((e (extra-get-expr expr)))
     (when e
-      (let ((*in-evaluator* t)
-	    (result (evalexpr e safe? timing?)))
-	(if (stringp result)
-	    (unless quiet? (printf "Error: ~a~%" result))
-	  (when result
-	    (printf "(~a) = ~a~%" e result))))))
+      (let ((*in-evaluator* (not safe?)) ;; When safe? doesn't evaluate semantic attachments
+	    (prompt (format nil *pvsio-promptout*))
+	    (result (evalexpr e safe? timing? quiet?)))
+	(when result
+	  (printf "~a~a~%" prompt result)))))
   "[PVSio] Prints the evaluation of expression EXPR. If SAFE? is t and EXPR 
 generates TCCs, the expression is not evaluated. This strategy evaluates
-semantic attachments. Therefore, it may not terminate properly. When QUIET? 
-is t, the strategy fails silently."
+semantic attachments unless safe? is set to t. When safe? is set to nil, the strategy may
+not terminate properly. When QUIET? is t, the strategy fails silently."
   "Printing the evaluation of ~a")
 
 (defstep eval-formula* (&optional (fnums *) safe? quiet?)
@@ -2888,8 +2928,10 @@ when the list of FNUMS is over. Options are as in eval-formula."
   (if (member :strat-debug *features*)
       (let ((dummy (setq *features* (remove :strat-debug *features*)))
 	    (dummy (load "pvs-strategies")))
+	(declare (ignore dummy))
 	(printf "~%Debug mode disabled.~%"))
     (let ((dummy (pushnew :strat-debug *features*))
 	  (dummy (load "pvs-strategies")))
+      (declare (ignore dummy))
       (printf "~%Debug mode enabled.~%")))
   "[Extrategies] Toggles debug mode on the current theory strategies.")

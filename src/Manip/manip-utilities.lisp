@@ -12,7 +12,6 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (in-package :pvs)
 
 (defconstant pat-match-symb      '?  )
@@ -89,25 +88,60 @@
 ;; Also substitute for %-variables and implement embedded extended
 ;; expression shortcuts.
 
+;; M3: Modified in order to
+;; - allow to use tilde commands in format control strings inside the step
+;;   parameters of the match strategy.
 (defun build-instan-cmd (cmd descriptors)
-  (labels ((build-cmd (expr)
-	     (cond ((stringp expr)
-		    (let ((str-values (mapcar #'virt-ee-string descriptors)))
-		      (percent-subst-ext (percent-subst-all
-					  (percent-subst expr str-values)
-					  str-values)
-					 str-values)))
-		   ((symbolp expr)
-		    (multiple-value-prog1 (cmd-symbol-subst expr descriptors)))
-		   ((and (consp expr) (member (car expr) ext-expr-symbols))
-		    (values-list (mapcar #'ee-fnum (eval-ext-expr expr))))
-		   ((consp expr)
-		    (mapcan #'(lambda (e)
-				(multiple-value-list (build-cmd e)))
-			    expr))
-		   (t expr))))
-    (handler-case (build-cmd cmd)
-      (error (c) (format t "~a" c)))))
+  (labels ((split-string (string &key (item #\space) (test #'char=))
+			 ;; Splits the string into substrings at spaces.
+			 (let ((len (length string))
+			       (index 0) result)
+			   (dotimes (i len
+				       (progn (unless (= index len)
+						(push (subseq string index) result))
+					      (reverse result)))
+			     (when (funcall test (char string i) item)
+			       (unless (= index i);; two spaces in a row
+				 (push (subseq string index i) result))
+			       (setf index (1+ i)))))))
+    (labels ((build-cmd (expr)
+			(cond ((stringp expr)
+			       ;; M3: the string contains a tilde (~) only if it is an argument
+			       ;;     to a format command. This tilde has to be removed (because the %
+			       ;;     are replaced by ~ to substitute the manip variables: %1, %2, etc).
+			       ;;     First, if there is a prefix formed by consecutive tildes it is temporarily
+			       ;;     stored. Then, the rest of the string is splited on tildes. Every % is
+			       ;;     replaced in each piece and finally the stored prefix and every instantiated
+			       ;;     part are concatenated.		  
+			       (let((expr-length (length expr)))
+				 (if (< 0 expr-length)
+				     (let*((prefix-limit (loop for char across expr
+							       for i from 0 to expr-length
+							       when (not (char= char #\~))
+							       return i))
+					   (prefix (subseq expr 0 prefix-limit))
+					   (expr (subseq expr prefix-limit expr-length))
+					   (results
+					    (loop for expr in (lisp (split-string expr :item #\~))
+						  collect (let*((str-values (mapcar #'virt-ee-string descriptors))
+								(res1  (percent-subst expr str-values))
+								(res2  (percent-subst-all res1 str-values))
+								(res3  (percent-subst-ext res2 str-values)))
+							    res3)))
+					   (res (format nil "~a~{~~~a~}" (car results) (cdr results))))
+				       (format nil "~a~a" prefix res))
+				   expr)))
+			      ((symbolp expr)
+			       (multiple-value-prog1 (cmd-symbol-subst expr descriptors)))
+			      ((and (consp expr) (member (car expr) ext-expr-symbols))
+			       (values-list (mapcar #'ee-fnum (eval-ext-expr expr))))
+			      ((consp expr)
+			       (mapcan #'(lambda (e)
+					   (multiple-value-list (build-cmd e)))
+				       expr))
+			      (t expr))))
+      (handler-case (build-cmd cmd)
+	(error (c) (format t "~a" c))))))
 
 ;; Embedded extended expressions are allowed in strings using the form
 ;; "%! ...%".  Extract these, convert to (! ...) form, evaluate them,
@@ -150,17 +184,20 @@
 			  num))
 	       (d-func (if (= (length name) 2) 
 			   #'identity
-;;;;; use downcased chars for new Allegro 6.2 case-sensitive Lisp
-			   (case (char-downcase (char name 2))
-			     ((#\s) #'virt-ee-string)
-			     ((#\n) #'ee-fnum)
-			     ((#\j) #'ee-pvs-obj)))))
+			 ;; use downcased chars for new Allegro 6.2 case-sensitive Lisp
+			 (case (char-downcase (char name 2))
+			   ((#\s) #'virt-ee-string)
+			   ((#\n) #'ee-fnum)
+			   ((#\j) #'ee-pvs-obj)))))
 	  (cond ((numberp index)
-		 (funcall d-func (nth index descriptors)))
+		 ;; M3: [bug fix] if there's no descriptor for the index, the funcall raises an error
+		 (if (< index (length descriptors))
+		     (funcall d-func (nth index descriptors))
+		   symb))
 		((eql index #\+)
 		 (values-list (remove-duplicates (mapcar d-func descriptors)
 						 :test #'equalp :from-end t)))
-;; note: equalp causes case of strings to be ignored
+		;; note: equalp causes case of strings to be ignored
 		(t (values-list (mapcar d-func descriptors)))))
       symb)))
 

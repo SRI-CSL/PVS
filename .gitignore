@@ -76,6 +76,7 @@ doc/release-notes/*.info
 orphaned-proofs.prf
 pvsbin
 *.err
+.DS_Store
 
 python/.DS_Store
 

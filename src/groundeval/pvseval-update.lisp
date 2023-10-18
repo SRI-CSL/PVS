@@ -22,15 +22,16 @@
 ;;The ground-eval step evaluates a ground PVS expression returning its value,
 ;;but has no effect on the proof
 ;;Modified such that printf is used insted of dummy format (Feb 20 2015) [CM]
-(defstep ground-eval (expr &optional destructive?)
-  (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
-	(cl-expr (let ((*destructive?* destructive?))
-		   (pvs2cl tc-expr)))
-	(val (time (handler-case (eval cl-expr)
-		     (pvseval-error (condition) (format t "~%~a" condition))))))
-    (printf "~%~a ~%translates to ~s~%evaluates to ~%~a" expr cl-expr val))
-  "Ground evaluation of expression EXPR."
-  "Ground evaluating ~a")
+;;[CM] This strategy have been replaced by (eval) in extrategies
+;;(defstep ground-eval (expr &optional destructive?)
+;;  (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
+;;	(cl-expr (let ((*destructive?* destructive?))
+;;		   (pvs2cl tc-expr)))
+;;	(val (time (handler-case (eval cl-expr)
+;;		     (pvseval-error (condition) (format t "~%~a" condition))))))
+;;    (printf "~%~a ~%translates to ~s~%evaluates to ~%~a" expr cl-expr val))
+;;  "Ground evaluation of expression EXPR."
+;;  "Ground evaluating ~a")
 
 ;;; Instead of (throw 'undefined), use (error 'pvseval-error :expr expr :fmt-str str)
 ;;; Note that the error happens at evaluation time, so the use is something like
@@ -109,7 +110,16 @@
 							 'destructive (make-instance 'eval-defn))))
 	   (eval-info decl))))
 
-
+;; Return module when expr is a PVSio global variable, i.e., of type stdprog.Global or stdglobal.Global
+(defun pvsio-global-variable (expr)
+  (let* ((decl       (declaration expr))
+	 (decltype   (when decl (declared-type decl))))
+    (and (type-name? decltype)
+	 (eq '|Global| (id decltype))
+	 (let* ((resolution (when decltype (car (resolutions decltype))))
+		(mod        (when resolution (module-instance resolution))))
+	   (when (and mod (member (id mod) '(|stdprog| |stdglobal|)))
+	     mod)))))
 
 (defun undefined (expr &optional message)
   "Creates and compiles a new function, returning the name.  If the expr is
@@ -119,22 +129,17 @@ if called."
   (let* ((th       (string (if (declaration? expr)
 			       (id (module expr))
 			     (id (current-theory)))))
-	 (nm       (when (const-decl? expr)
-		     (string (id expr))))
-	 (decl     (when nm (declaration expr)))
-	 (decltype (when decl (declared-type decl)))
-	 (nargs    (when nm (arity expr))))
-    (if (and nm (= nargs 0) (type-name? decltype)
-	     (eq '|Global| (id decltype)))
+	 (nm       (when (const-decl? expr) (string (id expr))))
+	 (nargs    (when nm (arity expr)))
+	 (mod      (and nm (= nargs 0) (pvsio-global-variable expr))))
+    (if mod
 	(let* ((fname (gentemp "global"))
-	       (mod   (module-instance 
-		       (car (resolutions decltype))))
 	       (act   (actuals mod))
-	       (doc (format nil "Global mutable variable of type ~a" 
-			    (car act)))
-	       (arg (if (eq 'stdprog (id mod))
-			'(cons nil t)
-		      `(list ,(pvs2cl (expr (cadr act))))))
+	       (doc (format nil "Global mutable variable ~a of type ~a" 
+			    nm (car act)))
+	       (arg (if (eq '|stdprog| (id mod))
+			`(pvsio_new_gvar ,nm)
+		      `(pvsio_ref_gvar ,(pvs2cl (expr (cadr act))) ,nm)))
 	       (fbody `(progn 
 			 (defparameter ,fname ,arg)
 			 (defattach-th-nm ,th ,(id expr) () ,doc ,fname))))

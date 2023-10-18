@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-7.1.0 (11/05/20)
+;; Release: PVSio-8.0 (10/13/2023)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -18,6 +18,54 @@
 
 (decimals:define-decimal-formatter c (:round-magnitude -6) (:show-trailing-zeros t))
 (decimals:define-decimal-formatter d (:round-magnitude -6))
+
+(defun replace-string (string part replacement &key (test #'char=))
+  "Returns a new string in which all the occurences of the part 
+is replaced with replacement."
+  (with-output-to-string (out)
+    (loop with part-length = (length part)
+          for old-pos = 0 then (+ pos part-length)
+          for pos = (search part string
+                            :start2 old-pos
+                            :test test)
+          do (write-string string out
+                           :start old-pos
+                           :end (or pos (length string)))
+          when pos do (write-string replacement out)
+          while pos)))
+
+;; Oveline: <char> Ctrl-x 8 305 
+(defparameter *ol-digits* '("0̅" "1̅" "2̅" "3̅" "4̅" "5̅" "6̅" "7̅" "8̅" "9̅"))
+(defparameter *ellipsis* '("¨" . "¨̅"))
+
+(defun replace-ol-digits (acc &optional (n 0) (ol *ol-digits*))
+  (if (null ol) acc
+    (replace-ol-digits (replace-string acc (format nil "~a" n) (car ol))
+		       (1+ n) (cdr ol))))
+
+;; Pretty prints decimal using overline to indicate repeating digits. Finp is the precision of the
+;; non-repeating digits. Truncated indicates that the infinite representation was truncated.
+(defun pp-decstr (str finp truncated)
+  (let ((pos (position #\. str)))
+    (if pos
+	(let* ((fixp (+ pos finp 1))
+	       (pre  (subseq str 0 (min fixp (length str))))
+	       (pos  (when (< fixp (length str)) (subseq str fixp (length str))))
+	       (npos (when pos (replace-ol-digits pos)))
+	       (ell  (when truncated (if (>= fixp (length str)) (car *ellipsis*) (cdr *ellipsis*)))))
+	  (format nil "~a~@[~a~]~@[~a~]" pre npos ell))
+      str)))
+
+(defun pp-rat (r &optional (precision 6))
+  "Pretty prints rational numbers using overline to indicate repeating digits and ellipsis when decimal
+expansion is truncated. If precision is negative, the rational is printed in decimal representation if the
+representation is finite. Otherwise, it prints its rational form."
+  (multiple-value-bind (finp infp)
+      (decimal-precision-of-rat r (max 0 precision))
+    (cond ((and (< precision 0) (= infp 0)) (ratio2decimal-with-rounding-mode r 0 finp))
+	  ((< precision 0) (format nil "~a" r))
+	  (t (let ((str (ratio2decimal-with-rounding-mode r 0 (min precision (+ finp infp)) t)))
+	       (pp-decstr str finp (> (+ finp infp) precision)))))))
 
 (defun stdstr-attachments ()
 
@@ -62,52 +110,75 @@
   "Capitalizes string S"
   (string-capitalize s))
 
-(defattach |substr| (s i j)
-  "Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range"   
+(defattach |substring| (s i j)
+  "If i <= j returns substring S[i..j]. Otherwise, returns substring
+S[j..i]. Empty if indices are out of range  
+NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
+with charstring.substr"
   (cond ((and (<= 0 i) (<= i j) (< j (length s)))
 	 (subseq s i (+ j 1)))
 	((and (<= 0 j) (<= j i) (< i (length s)))
 	 (reverse (subseq s j (+ i 1)))	 )
 	(t "")))
 
+(defattach |strreplace| (s part replacement)
+  "Returns a new string in which all the occurences of part in s 
+is replaced with replacement."
+  (replace-string s part replacement))
+
+(defattach |strsplit| (str separator)
+  "Splits the string STR using SEPARATOR as separator."
+  (split str (char separator 0)))
+
 (defattach |strfind| (s1 s2)
-  "Index of leftmost occurrence of S1 in S2, starting from 0, or -1 if none"
+  "Index of leftmost occurrence of S1 in S2 or -1 if S1 doesn't occur in S2"
   (or (search s1 s2 :test #'char=) -1))
 
-(defprimitive |concat| (s1 s2)
+(defattach |strfind_from_end| (s1 s2)
+  "Index of rightmost occurrence of S1 in S2 or -1 if S1 doesn't occur in S2"
+  (or (search s1 s2 :from-end t :test #'char=) -1))
+
+(defprimitive |strconcat| (s1 s2)
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
- (defattach |real2decstr| (r precision rounding)
-   "Converts real number r to string, where the integer precision represents the precision 10^-precision, and rounding is the rounding mode
-    (0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
-   (ratio2decimal r (or (= rounding 3) (and (= rounding 1) (> r 0)) (and (= rounding 0) (< r 0))) precision))
+(defattach |rat2decstr_with_zeros| (r precision rounding zeros)
+  "Converts rational number to string decimal representation using given precision, i.e., natural number n
+denoting 10^(-n), and rounding mode, i.e, TowardsZero, TowardsInfnty, TowardsNegInfnty, TowardsPosInfnty.
+Displays trailing zeroes when zeros is set to TRUE"
+  (ratio2decimal-with-rounding-mode r rounding precision zeros))
+
+(defattach |pp_decstr| (str finp truncated)
+  "Pretty prints decimal using overline to indicate repeating digits. Finp is the precision of the
+non-repeating digits. Truncated indicates that the infinite representation was truncated."
+  (pp-decstr str finp truncated))
 
 (defattach |decstr2rat| (s)
   "Converts string representing a decimal number to rational number"
-  (decimals:parse-decimal-number s))
-
-(defattach |rat2decstr| (r precision)
-  "Converts rational number to string representing decimal number using precision"
-  (multiple-value-bind (s x)
-      (decimals:format-decimal-number (rational r) :round-magnitude (- precision))
-    s))
+  (handler-case
+      (decimals:parse-decimal-number s)
+    (decimals:decimal-parse-error
+     (condition)
+     (declare (ignore condition))
+     (throw-pvsio-exc "NotARealNumber" s))))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
-  (let ((i (read-from-string s)))
-    (if (numberp i) (rational i) 
-      (throw '|NotARealNumber|
-	     (pvs2cl_record (the string "NotARealNumber")
-			    (the string s))))))
+  (handler-case
+      (decimals:parse-decimal-number s)
+    (decimals:decimal-parse-error
+     (condition)
+     (declare (ignore condition))
+     (let ((n (read-from-string s)))
+       (cond ((rationalp n) n)
+	     ((floatp n) (rationalize n))
+	     (t (throw-pvsio-exc "NotARealNumber" s)))))))
 
 (defattach |str2int| (s)
   "Integer denoted by S"
   (let ((i (read-from-string s)))
     (if (integerp i) i 
-      (throw '|NotAnInteger|
-	     (pvs2cl_record (the string "NotAnInteger")
-			    (the string s))))))
+      (throw-pvsio-exc "NotAnInteger" s))))
 
 (defattach |number?| (s)
   "Tests if S denotes a number"
@@ -118,8 +189,7 @@
   (integerp (read-from-string s)))
 
 (defattach |strcmp| (s1 s2 sensitive)
-  "Returns 0 if s1 = s2, < 0 if s1 < s2, > 0 if s1 > s2. ~
-   Comparison is case sensitive according to sensitive"
+  "Returns 0 if s1 = s2, -1 if s1 < s2, 1 if s1 > s2. If sensitive is TRUE, comparise is case sensitive."
   (if sensitive
       (cond ((string= s1 s2) 0)
 	    ((string< s1 s2) -1)
@@ -152,13 +222,11 @@
    "A substring of s, with all the space characters stripped of the end"
    (string-right-trim '(#\Space #\Tab #\Newline) s))
 
-(defattach |filename| (s)
-  "Returns the name part of a file name"
-  (file-namestring s))
-
-(defattach |directory| (s)
-  "Returns the directory part of a file name"
-  (directory-namestring s))
+(defattach |subtypeof?| (t1 t2)
+  "Returns TRUE if T1 is a subtype of T2 (types are represented using strings). Uses subtype judgements, but otherwise it's essentially syntactic"
+  (let ((the-type1 (pc-typecheck (pc-parse t1 'type-expr)))
+	(the-type2 (pc-typecheck (pc-parse t2 'type-expr))))
+    (subtype-of? the-type1 the-type2)))
 
 )))
 
@@ -171,23 +239,24 @@
 (defparameter *pvsio_length_str_stream* (make-hash-table))
 
 (defun read-token (f s)
-  (get-output-stream-string
-   (let ((c (read-char f nil nil)))
-     (when c
-       (do* ((str   (make-string-output-stream))
-	     (start t))
-	   ((not c) str)
-	 (let ((p (when c (position c s)))
-	       (m (when c (member c '(#\Space #\Tab #\Newline)))))
-	   (cond ((and start p)(write-char c str)
-		  (return str))
-		 (p (unread-char c f)
-		    (return str))
-		 ((and start m) (setq c (read-char f nil nil)))
-		 (m (return str))
-		 (t (setq start nil)
-		    (write-char c str)
-		    (setq c (read-char f nil nil))))))))))
+  (let* ((c (read-char f nil nil))
+	 (stream
+	  (when c
+	    (do* ((str   (make-string-output-stream))
+		  (start t))
+		((not c) str)
+	      (let ((p (when c (position c s)))
+		    (m (when c (member c '(#\Space #\Tab #\Newline)))))
+		(cond ((and start p)(write-char c str)
+		       (return str))
+		      (p (unread-char c f)
+			 (return str))
+		      ((and start m) (setq c (read-char f nil nil)))
+		      (m (return str))
+		      (t (setq start nil)
+			 (write-char c str)
+			 (setq c (read-char f nil nil)))))))))
+    (when stream (get-output-stream-string stream))))
 
 (defun stdio-attachments ()
 
@@ -212,18 +281,14 @@
   (prompt mssg)
   (let ((i (read)))
     (if (numberp i) (rational i)
-      (throw '|NotARealNumber|
-	     (pvs2cl_record (the string "NotARealNumber")
-			    (the string (format nil "~a" i)))))))
+      (throw-pvsio-exc "NotARealNumber" (format nil "~a" i)))))
 
 (defattach |query_int| (mssg) 
   "Queries an integer from standard input with prompt MSSG"
-  (prompt mssg)
+  (prompt mssg)       
   (let ((i (read)))
     (if (integerp i) i 
-      (throw '|NotAnInteger|
-	     (pvs2cl_record (the string "NotAnInteger")
-			    (the string (format nil "~a" i)))))))
+      (throw-pvsio-exc "NotAnInteger" (format nil "~a" i)))))
 
 (defattach |stdin| () 
   "Standard input stream"
@@ -240,9 +305,7 @@
 (defattach |fopenin_lisp| (s) 
   "Opens file input stream named S"
   (let ((f (open s :direction :input :if-does-not-exist nil)))
-    (or f (throw '|FileNotFound|
-		 (pvs2cl_record (the string "FileNotFound")
-				(the string s))))))
+    (or f (throw-pvsio-exc "FileNotFound" s))))
 
 (defattach |sopenin| (s) 
   "Opens string S as an input stream"
@@ -257,9 +320,7 @@
 		 ((= i 2) (open s :direction :output :if-exists :append))
 		 ((= i 3) (open s :direction :output :if-exists :overwrite))
 		 ((= i 4) (open s :direction :output :if-exists :rename)))))
-    (or f (throw '|FileAlreadyExists|
-		 (pvs2cl_record (the string "FileAlreadyExists")
-				(the string s))))))
+    (or f (throw-pvsio-exc "FileAlreadyExists" s))))
 
 (defattach |sopenout| (s) 
   "Opens string output stream"
@@ -349,18 +410,45 @@
   (let ((i (read f nil nil)))
     (when i 
       (if (numberp i) (rational i)
-	(throw '|NotARealNumber|
-	       (pvs2cl_record (the string "NotARealNumber")
-			      (the string (format nil "~a" i))))))))
+        (throw-pvsio-exc "NotARealNumber" (format nil "~a" i))))))
 
 (defattach |fread_int_lisp| (f)
   "Reads an integer from stream F"
   (let ((i (read f nil nil)))
     (when i 
       (if (integerp i) i
-	(throw '|NotAnInteger|
-	       (pvs2cl_record (the string "NotAnInteger")
-			      (the string (format nil "~a" i))))))))
+        (throw-pvsio-exc "NotAnInteger" (format nil "~a" i))))))
+
+(defattach |filename| (s)
+  "Returns the name part of a file name"
+  (or (file-namestring s) ""))
+
+(defattach |directory| (s)
+  "Returns the directory part of a file name"
+  (directory-namestring s))
+
+(defattach |pathname_path| (name)
+   "Path (list of directories) of pathname"
+   (let ((dirs (pathname-directory name)))
+     (if (equal (car dirs) ':absolute)
+         (cons "/" (cdr dirs))
+       (cdr dirs))))
+
+ (defattach |fwrite_lisp| (f typ pvs)
+   "Writes a PVS object to output stream, so that it can be retrieved afterwards by fread"
+   (or (format f "~s~%" (cons typ pvs)) t))
+
+ (defattach |fread_lisp| (f typ)
+   "Reads an PVS object of type T from an input stream written by fwrite"
+   (let* ((type-pvs (read f))
+	  (the-type1 (pc-typecheck (pc-parse (car type-pvs) 'type-expr)))
+	  (the-type2 (pc-typecheck (pc-parse typ 'type-expr))))
+     (if (subtype-of? the-type1 the-type2)
+	 (cdr type-pvs)
+       (throw-pvsio-exc
+	"CantTranslateBack"
+	(format nil "Read value has type ~a, which is not a sub-type of ~a" the-type1 the-type2)))))
+
 )))
 
 (defun rat2double (x) 
@@ -377,47 +465,24 @@
 (defattach |NRANDOM| (x)
   "Natural random number in the interval [0..X)"
   (random x))
-)))
 
-(defstruct indent stack n prefix)
+(defattach |rational| (x)
+  "Returns a rational number that is close to the real number (identity when input is rational)"
+  (if (floatp x) (rationalize x) x))
 
-(defun stdindent-attachments ()
+(defprimitive |rat2numden| (r)
+  "Returns numerator and denominator of rational number"
+  (pvs2cl_tuple (numerator r) (denominator r)))
 
-(eval '(attachments |stdindent|
-
-(defattach |create_indent| (n s) 
-  "Creates an ident structure with indentation N and prefix S"
-  (make-indent :stack nil :n n :prefix s))
-
-(defattach |pop_indent| (i)
-  "Pops one element of indent I"
-  (or (setf (indent-stack i) (cdr (indent-stack i))) t))
-
-(defattach |push_indent| (i n) 
-  "Pushes a N-indentation in indent I"
-  (setf (indent-stack i)
-	(cons (+ n (pvsio_stdindent_top_indent_1 i))
-	      (indent-stack i))))
-
-(defattach |top_indent| (i) 
-  "Top of I"
-  (or (car (indent-stack i)) 0))
-
-(defattach |get_indent| (i) 
-  "Gets current indentation value of indent I"
-  (indent-n i))
-  
-(defattach |set_indent| (i n) 
-  "Sets a new indentation value to indent I"
-  (setf (indent-n i) n))
-
-(defattach |get_prefix| (i)
-  "Gets prefix of indent I"
-  (indent-prefix i))
-
-(defattach |set_prefix| (i s) 
-  "Sets prefix S to indent I"
-  (setf (indent-prefix i) s))
+(defattach |decimal_precision| (r maxperiod)
+  "Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
+non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
+digits. Computing the period is expensive for rationals with large denominators. Therefore, if
+maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
+In either case, if the second value is 0, the rational has a finite decimal representation."
+  (multiple-value-bind (finp infp)
+      (decimal-precision-of-rat r maxperiod)
+    (pvs2cl_tuple finp infp)))
 
 )))
 
@@ -434,7 +499,9 @@
 		   append (formatargs ei ti)))
 	    ((numberp e) (list (rat2double e)))
 	    (t (list e)))))
-   ((or (stringp e) (numberp e)) (list e))
+   ((or (tc-eq (find-supertype type) *number*)
+	(tc-eq (find-supertype type) *string-type*))
+    (list e))
    (t (list (cl2pvs e type)))))
 
 (defun stdprog-attachments ()
@@ -443,50 +510,118 @@
 
 (defattach |exit| ()
   "Exits the current evaluation and returns to the ground evaluator"
-  (throw 'abort t))
+  (error 'pvsio-exit))
 
 (defattach |error| (mssg)
   "Signals the error message MSSG to the ground evaluator"
-  (error "~a" mssg))
+  (error 'pvsio-error :message mssg))
 
 (defattach |new| ()
-  "Creates a new mutable variable without any current value"
-  (cons nil t))
+  "Creates a new mutable variable with an undefined value"
+  (pvsio_new_gvar))
 
-(defattach |ref| (e)
-  "Creates a mutable variable with a current value E"
-  (list e))
+(defattach |ref| (value)
+  "Creates a mutable variable and sets it to given value"
+  (pvsio_ref_gvar value))
 
-(defattach |def| (v e)
-  "Sets to E the value of a mutable variable V"
-  (pvsio_set_gvar v e))
+(defattach |def| (gvar value)
+  "Sets mutable variable gvar to given value"
+  (pvsio_def_gvar gvar value))
 
-(defattach |undef| (v)
-  "Tests if a mutable variable V is undefined"
-  (cdr v))
+(defattach |val_lisp| (gvar)
+  "Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(gvar)"
+  (pvsio_val_gvar gvar))
 
-(defattach |val_lisp| (v)
-  "Gets the current value of a mutable variable V"
-  (pvsio_get_gvar v))
+(defattach |undef| (gvar)
+  "Returns TRUE if mutable variable is undefined"
+  (pvsio_undef_gvar gvar))
 
+(defattach |reset| (gvar)
+  "Sets mutable variable to undefined"
+  (pvsio_reset_gvar gvar))
+
+(defattach |push_lisp| (gvar value)
+  "Pushes value to the top of the mutable variable and skips"
+  (pvsio_push_gvar gvar value))
+
+(defattach |pop_lisp| (gvar)
+  "Pops value of the mutable variable and fails silently when mutable variable is undefined"
+  (pvsio_pop_gvar gvar))
+ 
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
-   (catch '|*pvsio-loop*|
-     (loop (pvs-funcall f 0))))
+   (handler-case 
+       (loop (pvs-funcall f nil))
+     (pvsio-break
+      (condition)
+      (val condition))))
+
+(defattach |last| (e)
+  "Breaks a loop with the value E"
+  (let ((the-type (domain the-pvs-type_)))
+    (error 'pvsio-break :val e :type the-type)))
 
 (defattach |return| (e)
-  "Returns E from an infinite loop"
-  (throw '|*pvsio-loop*| e))
+  "Returns E as the value of a function call"
+  (let ((the-type (domain the-pvs-type_)))
+    (error 'pvsio-return :val e :type the-type)))
 
- (defattach |to_lisp| (e)
-   "Returns internal Lisp expression representing e. To be used exclusively in format function"
-   e)
+(defattach |to_lisp| (pvs)
+  "Translates PVS object to Lisp"
+  pvs)
+
+(defattach |to_lisp_| (pvs)
+  "Translates PVS object to Lisp"
+  pvs)
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain (pc-parse *the-pvs-type* 'type)))))))
+   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
      (apply #'format (cons nil (cons s (formatargs e the-type))))))
+
+(defattach |unwind_protect_lift| (ft fcu)
+  "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
+  (unwind-protect
+      (pvs-funcall ft nil)
+    (pvs-funcall fcu nil)))
+
 )))
+
+(define-condition pvsio-exception (simple-error)
+  ((str-tag :accessor str-tag  :initarg :str-tag)
+   (val :accessor val :initarg :val))
+  (:report
+   (lambda (condition stream)
+     (format stream "PVSio Exception (~a)~@[: ~a~]" (str-tag condition) (val condition)))))
+
+(defun throw-pvsio-exc (str-tag val)
+  (error 'pvsio-exception :str-tag str-tag :val val))
+
+(define-condition pvsio-error (simple-error)
+  ((message :accessor message  :initarg :message))
+  (:report
+   (lambda (condition stream)
+     (format stream "~@[~a~]" (message condition)))))
+
+(define-condition pvsio-exit (simple-error) ())
+
+(define-condition pvsio-return (simple-error)
+  ((val :accessor val :initarg :val)
+   (type :accessor type :initarg :type))
+  (:report
+   (lambda (condition stream)
+     (let ((val-str (handler-case
+			(str (cl2pvs (val condition) (pc-typecheck (type condition))))
+		      (error (condition) (declare (ignore condition))))))
+       (format stream "Value~@[ ~a~] was returned outside the scope of a function" val-str)))))
+
+(define-condition pvsio-break (pvsio-return) ()
+  (:report
+   (lambda (condition stream)
+     (let ((val-str (handler-case
+			(str (cl2pvs (val condition) (pc-typecheck (type condition))))
+		      (error (condition) (declare (ignore condition))))))
+       (format stream "Value~@[ ~a~] was returned outside the scope of a loop" val-str)))))
 
 (defun stdcatch-attachments ()
 
@@ -494,33 +629,20 @@
 	     
 (defattach |catch_lift| (tag f1 f2)
   "If F1 throws the exception e tagged tag, then evaluates F2(e). Otherwise, returns F1"
-  (let ((e (catch (makesym tag) (cons '*pvsio-catch* (pvs-funcall f1 0)))))
-    (if (and (consp e) (eq (car e) '*pvsio-catch*))
-	(cdr e)
-      (pvs-funcall f2 e))))
+  (handler-case
+      (pvs-funcall f1 nil)
+    (pvsio-exception
+     (condition)
+     (if (equal tag (str-tag condition))
+	 (let* ((exc (pvs2cl_record tag (val condition))))
+	   (pvs-funcall f2 exc))
+       (error condition)))))
 
-(defattach |throw| (tag e)
-  "Throws the exception E"
-  (throw (makesym tag) e))
-)))
-
-(defun stdpvs-attachments ()
-
-(eval '(attachments |stdpvs|
-
-(defattach |typeof| (e)
-  "Returns the string value of the type of E"
-  (let* ((the-domain (domain *the-pvs-type*)))
-    (format nil "~a" (or (print-type the-domain) the-domain))))
-
-(defattach |str2pvs| (s)
-  "Translates string S to PVS format"
-  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
-
-(defattach |pvs2str_lisp| (e)
-  "Translates PVS expresion E to a string"
-  (let* ((the-domain (domain *the-pvs-type*)))
-    (format nil "~a" (cl2pvs e (pc-typecheck the-domain)))))
+(defattach |throw| (exc)
+  "Throws the exception EXC"
+  (let ((str-tag (elt exc 0))
+	(val     (elt exc 1)))
+    (throw-pvsio-exc str-tag val)))
 
 )))
 
@@ -559,6 +681,18 @@
   (multiple-value-bind (s mi h d mo y dow dst tz) (get-decoded-time)
     (the (simple-array *) (pvs2cl_record d dow dst h mi mo s tz y))))
 
+(defattach |real_time| ()
+   "Real time"
+   (get-internal-real-time))
+
+(defattach |run_time| ()
+  "Run time"
+  (get-internal-run-time))
+
+(defattach |internal_time_units| ()
+  "Units of internal time"
+  internal-time-units-per-second)
+
 (defattach |sleep| (n)
   "Sleeps n seconds"
   (or (sleep n) t))
@@ -567,15 +701,45 @@
   "Gets environment variable NAME. Returns DEFAULT if undefined"
   (or (environment-variable (string name)) default))
 
+(defattach |system_call| (call)
+  "Make a system call and return status and output string"
+  (let ((output (extra-system-call call)))
+    (pvs2cl_record (car output) (cdr output))))
+
+)))
+
+(defun stdpvs-attachments ()
+
+(eval '(attachments |stdpvs|
+
+(defattach |type_of_domain_lisp| (e)
+  (declare (ignore e))		      
+  "Returns the string value of the type of E"
+  (let* ((the-domain (domain (domain the-pvs-type_))))
+    (format nil "~a" (or (print-type the-domain) the-domain))))
+
+(defattach |str2pvs| (s)
+  "Translates string S to PVS format"
+  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
+
+(defattach |pvs2str_lisp| (e)
+  "Translates PVS expresion E to a string"
+  (let ((the-domain (domain the-pvs-type_)))
+    (handler-case 
+	(str (cl2pvs e (pc-typecheck the-domain)))
+      (pvseval-error
+       (condition)
+       (throw-pvsio-exc "CantTranslateBack"
+			(format nil "~a" condition))))))
+
 )))
 
 (defun initialize-prelude-attachments ()
   (stdstr-attachments)
+  (stdpvs-attachments)
   (stdio-attachments)
   (stdmath-attachments)
-  (stdindent-attachments)
   (stdprog-attachments)
   (stdcatch-attachments)
-  (stdpvs-attachments)
   (stdpvsio-attachments)
   (stdsys-attachments))

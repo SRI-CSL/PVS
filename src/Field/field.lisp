@@ -1,6 +1,6 @@
 ;;
 ;; field.lisp
-;; Release: Field-7.1.0 (11/05/20)
+;; Release: Field-8.0 (10/13/2023)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center

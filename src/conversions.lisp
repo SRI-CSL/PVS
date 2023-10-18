@@ -45,7 +45,7 @@
 		 (resolve name 'expr nil))))
     (when (let ((*ignored-conversions*
 		 (cons "K_conversion" *ignored-conversions*)))
-	    (argument-conversions (mapcar #'type reses) arguments))
+	    (argument-conversions (mapcar #'type reses) arguments (singleton? reses)))
       (resolve name 'expr arguments))))
 
 ;;; Called by typecheck* (name)
@@ -58,11 +58,12 @@ the possible types of name."
 				    (typep (find-supertype (type r)) 'funtype))
 		   (resolve name 'expr nil))))
       (let ((*only-use-conversions* (list "K_conversion")))
-	(when (argument-conversions (mapcar #'type (reverse reses)) arguments)
+	(when (argument-conversions
+	       (mapcar #'type (reverse reses)) arguments (singleton? reses))
 	  (reverse (resolve name 'expr arguments)))))))
 
 ;; Returns list of args for which conversions were added
-(defun argument-conversions (optypes arguments &optional conv-args)
+(defun argument-conversions (optypes arguments one-optype? &optional conv-args)
   (if (null optypes)
       conv-args
       (let* ((rtype (find-supertype (car optypes)))
@@ -70,12 +71,13 @@ the possible types of name."
 		       (domain-types rtype)))
 	     (dtypes-list (all-possible-instantiations dtypes arguments))
 	     (aconv-args (if (length= arguments dtypes)
-			     (argument-conversions* arguments dtypes-list conv-args)
+			     (argument-conversions* arguments dtypes-list
+						    one-optype? conv-args)
 			     conv-args)))
-	(argument-conversions (cdr optypes) arguments aconv-args))))
+	(argument-conversions (cdr optypes) arguments one-optype? aconv-args))))
 
 ;; Returns list of args for which conversions were added
-(defun argument-conversions* (arguments dtypes-list conv-args)
+(defun argument-conversions* (arguments dtypes-list one-optype? conv-args)
   (if (null dtypes-list)
       conv-args
       (let ((conversions (argument-conversions1 arguments (car dtypes-list))))
@@ -88,11 +90,12 @@ the possible types of name."
 			       convs)))
 			(unless (subsetp actypes (types arg) :test #'tc-eq)
 			  (setf (types arg)
-				(remove-duplicates (append (types arg) actypes)
+				(remove-duplicates
+				    (if one-optype? actypes (append (types arg) actypes))
 				  :test #'tc-eq :from-end t))
 			  (pushnew arg conv-args)))))
 		arguments conversions))
-	(argument-conversions* arguments (cdr dtypes-list) conv-args))))
+	(argument-conversions* arguments (cdr dtypes-list) one-optype? conv-args))))
 
 (defun argument-conversions1 (arguments dtypes &optional result)
   (if (null arguments)
@@ -426,8 +429,8 @@ the possible types of name."
   (let* ((op (operator expr))
 	 (arg (argument expr))
 	 (args (arguments expr))
-	 (arg-convs (or (argument-conversions (types op) args)
-			(argument-conversions (types op) (list arg)))))
+	 (arg-convs (or (argument-conversions (types op) args (singleton? (types op)))
+			(argument-conversions (types op) (list arg) (singleton? (types op))))))
     (if arg-convs
 	(unless (memq arg arg-convs)
 	  (setf (types arg)

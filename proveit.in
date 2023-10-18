@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # proveit.in
-# Release: ProofLite-7.1.0 (11/06/20)
+# Release: ProofLite-8.0 (10/13/2023)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -12,8 +12,7 @@
 # is claimed in the United States under Title 17, U.S.Code. All Other
 # Rights Reserved.
 #
-# Mariano Moscato (04/26/2021)
-# National Institute of Aerospace
+# Mariano Moscato (10/13/2023)
 #
 # Script for batch proving in PVS 
 #  
@@ -31,6 +30,26 @@ readVersion() {
     fi
 }
 
+type "$PVSPATH/pvs"  > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    PVSPATH=$PVSPATH/
+else
+    type pvs  > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+	PVSPATH="" # pvs is in the system path, then no path information is needed
+    else
+	PVSPATH=`dirname $0`
+	type "$PVSPATH/pvs"  > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+	    PVSPATH=$PVSPATH/
+	else
+	    printf "Error: PVS could not be located. Add it to the system path or run install-scripts in the PVS folder.\n"
+	    exit 1;
+	fi
+    fi
+fi
+
+PVS_RETURN_VALUE_MISSED_FORMS=142 # PVS' return value indicating missed (ie, not proved) formulas
 
 EXT=.summary # Extension for proof status summary file
 
@@ -60,6 +79,7 @@ OUTDIR=
 TOP=top
 NOFILE=yes
 BINARIESONLY=t
+LISPALTSUMMARIESMODE=nil
 
 reset_vars() {
   FILENOTFOUND=
@@ -101,49 +121,59 @@ all_opt() {
 compile_infile_name() {
   # If <dir>, set context to <dir> and pvsfile to top.pvs
   if [ -d $ARG ]; then
-    PVSCONTEXT=$ARG
-    if [ -z "$OUTFILE" ]; then
-	OUTFILE=$ARG$EXT
-    fi
-    PVSFILE=`basename $TOP .pvs`
-    if [ -f $PVSCONTEXT/$PVSFILE.pvs -o "$LISPAUTOTOP" = "t" ]; then
-	all_opt
-    else
-	FILENOTFOUND="$PVSCONTEXT/$PVSFILE.pvs"
-    fi
-    LISPDEPENDENCIES=relative
-  # If  <file>, set context to its dirname and pvsfile to its base name
+      PVSCONTEXT=$ARG
+
+      if [ -z "$OUTFILE" ]; then
+	  # if ARG contains a slash, it is replaced by '-' since PVS does not
+	  # accept library names containing that symbol ('-').
+	  OUTFILE=`echo $ARG | sed "s#/#-#g" `
+	  OUTFILE=$OUTFILE$EXT
+      fi
+
+      PVSFILE=`basename $TOP .pvs`
+      if [ -f $PVSCONTEXT/$PVSFILE.pvs -o "$LISPAUTOTOP" = "t" ]; then
+	  all_opt
+      else
+	  FILENOTFOUND="$PVSCONTEXT/$PVSFILE.pvs"
+      fi
+      LISPDEPENDENCIES=relative
+      # If  <file>, set context to its dirname and pvsfile to its base name
   else
-    PVSCONTEXT=$(cd "$(dirname $ARG)"; pwd -P)
-    PVSFILE=`basename $ARG .pvs`
-    if [ ! -f $PVSCONTEXT/$PVSFILE.pvs ]; then
-	case $ARG in
-	    *@*) predir=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
-		THFS=`echo $ARG | sed -e "s/[^@]*@//"`
-		if [ -z "$predir" ]; then
-		    PVSCONTEXT=$(pwd -P)
-		else 
-		    if [ -d "$predir" ]; then
-			PVSCONTEXT=$predir
-		    else
-			echo "Error: $predir is not a directory"
-			exit 1
-		    fi
-		fi
-		if [ "$THFS" ]; then
-		    PVSFILE=$THFS
-		    THEORIES=`echo $THFS | sed -e "s/\..*,/,/g" -e "s/\..*//"`
-		else
-		    echo "Error: At least one theory has to be specified in $ARG"
-		    exit 1
-		fi;;
-	    *)  FILENOTFOUND="$PVSCONTEXT/$PVSFILE.pvs"
-		if [ -z "$NOFILE" -a "$LISPAUTOTOP" != "t" ]; then
-		    echo "Error: File $FILENOTFOUND not found"
-		    exit 1;
-		fi;;
-	esac
-    fi
+      case $ARG in
+	  *@*@*)
+	      echo "Error: at most one @-sign can be provided in $ARG"
+	      exit 1;;
+	  *@*)
+	      predir=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
+	      THFS=`echo $ARG | sed  -e 's/,$//' -e "s/[^@]*@//"`
+	      if [ -z "$predir" ]; then
+		  PVSCONTEXT=$(pwd -P)
+	      else 
+		  if [ -d "$predir" ]; then
+		      PVSCONTEXT=$predir
+		  else
+		      echo "Error: $predir is not a directory"
+		      exit 1
+		  fi
+	      fi
+	      if [ "$THFS" ]; then
+		  PVSFILE=$THFS
+		  THEORIES=`echo $THFS | sed -e "s/\.[^,]*,/,/g" -e "s/\.[^,]*//"`
+	      else
+		  echo "Error: At least one theory has to be specified in $ARG"
+		  exit 1
+	      fi;;
+	  *)
+	      PVSCONTEXT=$(cd "$(dirname $ARG)" && pwd -P)
+	      PVSFILE=`basename $ARG .pvs`
+	      if [ ! -f $PVSCONTEXT/$PVSFILE.pvs ]; then
+		  FILENOTFOUND="$PVSCONTEXT/$PVSFILE.pvs"
+		  if [ -z "$NOFILE" ]; then
+		      echo "Error: File $FILENOTFOUND not found"
+		      exit 1;
+		  fi
+	      fi;;
+      esac
   fi
 }
 
@@ -177,6 +207,7 @@ compile_outfile_names() {
     if [ "$LISPTYPECHECK" = "t" ]; then 
 	OUTFILE=$OUTFILE-tc
     fi
+
 }
 
 # Translate a list l1,...,ln into (l1 .. ln)
@@ -270,6 +301,7 @@ OPTIONS
    --auto-fix [<num>]  try sibling proofs on unfinished branchs (<num> is the maximum 
                        acceptable distance between the current branch and the sibling 
                        which proof is to be tried; default value is 2)
+   --backup-summaries  backup summary files instead of replacing them (disable by default)
    -c|--clean          remove .pvscontext and binary files in the pvsbin folder before proving
    -C|--clean-only     just remove .pvscontext and binary files in the pvsbin folder 
                        (do not typecheck nor prove)
@@ -311,6 +343,7 @@ OPTIONS
    --version           print version information and exit
    -w|--write-scripts  write proofs as prooflite scripts into separate files (disabled by default,
                        this option is omitted in typecheck-only mode.)
+   --summary-mode [md] alternative summary mode
 
 SEE ALSO
   provethem -- for iterating proveit on a list of directories
@@ -390,8 +423,8 @@ quiet_output() {
     if [ -z "$QUIET" ] || [ "$LISPTYPECHECK" = "t" ]
     then
 	sed -n -e '/File/p'\
-	       -e '/Warning/p'\
-	       -e '/Error/p'\
+	       -e '/^\*\*\* Warning/p'\
+	       -e '/^Error/p'\
                -e '/Proof summary/h'\
                -e '/Proof summary/ !{
                     /unfinished/H
@@ -410,8 +443,8 @@ quiet_output() {
                   }'
     else
 	sed -n -e '/Proof summary/h'\
-	       -e '/Warning/p'\
-	       -e '/Error/p'\
+	       -e '/^\*\*\* Warning/p'\
+	       -e '/^Error/p'\
                -e '/Proof summary/ !{
                     /unfinished/H
                     /unchecked/H
@@ -555,6 +588,22 @@ proveit() {
 	  LOG=y
       fi
       compile_outfile_names
+
+      if [ $BACKUP_SUMMARIES ]; then
+	  # if $OUTFILE already exists, save it as old version
+	  if [ -f "$OUTFILE" ]; then
+	      OUTFILEBAK=`dirname $OUTFILE`"/"`basename $OUTFILE $EXT`"."`ls -lUD "%y%m%d%H%M%S" $OUTFILE | awk '{print $6}'`$EXT
+	      if [ -z "$QUIET" ]; then echo "Warning: Backing up $OUTFILE as $OUTFILEBAK"; fi
+	      mv $OUTFILE $OUTFILEBAK
+	  fi
+	  if [ "$LOG" ] && [ -f "$LOGFILE" ]; then
+	      LOGEXT=".log"
+	      LOGFILEBAK=`dirname $LOGFILE`"/"`basename $LOGFILE $LOGEXT`"."`ls -lUD "%y%m%d%H%M%S" $LOGFILE | awk '{print $6}'`$LOGEXT
+	      if [ -z "$QUIET" ]; then echo "Warning: Backing up $LOGFILE as $LOGFILEBAK"; fi
+	      mv $LOGFILE $LOGFILEBAK
+	  fi
+      fi
+
       cleanup
       
       if [ "$FILENOTFOUND" -a "$LISPAUTOTOP" != "t" ]; then
@@ -564,7 +613,7 @@ proveit() {
 	  exit 1
       fi
       
-      echo Processing $ARG. Writing output to file $OUTFILE
+      echo "Processing $ARG. Writing output to file $OUTFILE"
       if [ "$LOG" ]; then
 	  echo "Logging PVS information in $LOGFILE"
       fi
@@ -587,6 +636,9 @@ proveit() {
 	  fi 
 	  if [ "$LISPDEPENDENCIES" != "nil" ]; then
 	      echo "Saving theory dependencies ($LISPDEPENDENCIES) in directory pvsbin"
+	  fi
+	  if [ "$LISPALTSUMMARIESMODE" != "nil" ]; then
+	      echo "Summaries will be reported in alternative format ($LISPALTSUMMARIESMODE)."
 	  fi
 	  if [ "$LISPSCRIPTS" != "t" ]; then
 	      echo "ProofLite scripts won't be installed"
@@ -629,7 +681,7 @@ proveit() {
 	  export PROVEITPVSFILE="$PVSFILE"
       else
  	  export PROVEITPVSFILE=""
-      fi
+      fi      
       export PROVEITLISPIMPORT="$LISPIMPORT"
       export PROVEITLISPSCRIPTS="$LISPSCRIPTS"
       export PROVEITLISPWRITESCRIPTS="$LISPWRITESCRIPTS"
@@ -640,6 +692,7 @@ proveit() {
       export PROVEITLISPTXTPROOFS="$LISPTXTPROOFS"
       export PROVEITLISPTEXPROOFS="$LISPTEXPROOFS"
       export PROVEITLISPDEPENDENCIES="$LISPDEPENDENCIES"
+      export PROVEITLISPALTSUMMARIESMODE="$LISPALTSUMMARIESMODE"
       export PROVEITLISPPRELUDEXT="`list_to_lisp $PRELUDEXT`"
       export PROVEITLISPDISABLE="`list_to_lisp $DISABLE`"
       export PROVEITLISPENABLE="`list_to_lisp $ENABLE`"
@@ -648,45 +701,59 @@ proveit() {
       export PROVEITLISPAUTOFIX="$LISPAUTOFIX"
       export PROVEITLISPRETRYWITHTCCS="$LISPRETRYWITHTCCS"
       export PROVEITLISPDEFAULTPROOFSCRIPT="$LISPDEFAULTPROOFSCRIPT"
+
+      export PROVEITLISPOUTDIR=$dir
+      export PROVEITLISPOUTBASENAME=$BASEOUT
       
       if [ "$DEBUG" ]; then
 	  readVersion
-	  echo "QUIET: $QUIET"
-	  echo "PROVEITVERSION: $VERSION"
-	  echo "OUTFILE: $OUTFILE"
-	  echo "LOGFILE: $LOGFILE"
-	  echo "PROVEITARG: $PROVEITARG"
-	  echo "PROVEITPVSCONTEXT: $PROVEITPVSCONTEXT"
-	  echo "PROVEITPVSFILE: $PROVEITPVSFILE"
-	  echo "PROVEITLISPIMPORT: $PROVEITLISPIMPORT"
-	  echo "PROVEITLISPSCRIPTS: $PROVEITLISPSCRIPTS"
-	  echo "PROVEITLISPWRITESCRIPTS: $PROVEITLISPWRITESCRIPTS"
-	  echo "PROVEITLISPTRACES: $PROVEITLISPTRACES"
-	  echo "PROVEITLISPFORCE: $PROVEITLISPFORCE" 
-	  echo "PROVEITLISPAUTOTOP: $LISPAUTOTOP"
-	  echo "PROVEITLISPTYPECHECK: $PROVEITLISPTYPECHECK"
-	  echo "PROVEITLISPTXTPROOFS: $PROVEITLISPTXTPROOFS"
-	  echo "PROVEITLISPTEXPROOFS: $PROVEITLISPTEXPROOFS"
-	  echo "PROVEITLISPDEPENDENCIES: $PROVEITLISPDEPENDENCIES"
-	  echo "PROVEITLISPPRELUDEXT: $PROVEITLISPPRELUDEXT"
-	  echo "PROVEITLISPDISABLE: $PROVEITLISPDISABLE"
-	  echo "PROVEITLISPENABLE: $PROVEITLISPENABLE"
-	  echo "PROVEITLISPTHFS: $PROVEITLISPTHFS"
-	  echo "PROVEITLISPTHEORIES: $PROVEITLISPTHEORIES"
-	  echo "PROVEITLISPAUTOFIX: $PROVEITLISPAUTOFIX"
-	  echo "PROVEITLISPRETRYWITHTCCS: $PROVEITLISPRETRYWITHTCCS"
-	  echo "PROVEITLISPDEFAULTPROOFSCRIPT: $PROVEITLISPDEFAULTPROOFSCRIPT"
+	  export DEBUG
+	  echo "QUIET=$QUIET"
+	  echo "PROVEITVERSION=$VERSION"
+	  echo "OUTFILE=$OUTFILE"
+	  echo "LOGFILE=$LOGFILE"
+	  echo "export PROVEITARG=$PROVEITARG"
+	  echo "export PROVEITPVSCONTEXT=$PROVEITPVSCONTEXT"
+	  echo "export PROVEITPVSFILE=$PROVEITPVSFILE"
+	  echo "export PROVEITLISPIMPORT=$PROVEITLISPIMPORT"
+	  echo "export PROVEITLISPSCRIPTS=$PROVEITLISPSCRIPTS"
+	  echo "export PROVEITLISPWRITESCRIPTS=$PROVEITLISPWRITESCRIPTS"
+	  echo "export PROVEITLISPTRACES=$PROVEITLISPTRACES"
+	  echo "export PROVEITLISPFORCE=$PROVEITLISPFORCE" 
+	  echo "export PROVEITLISPAUTOTOP=$LISPAUTOTOP"
+	  echo "export PROVEITLISPTYPECHECK=$PROVEITLISPTYPECHECK"
+	  echo "export PROVEITLISPTXTPROOFS=$PROVEITLISPTXTPROOFS"
+	  echo "export PROVEITLISPTEXPROOFS=$PROVEITLISPTEXPROOFS"
+	  echo "export PROVEITLISPDEPENDENCIES=$PROVEITLISPDEPENDENCIES"
+	  echo "export PROVEITLISPALTSUMMARIESMODE=$PROVEITLISPALTSUMMARIESMODE"
+	  echo "export PROVEITLISPPRELUDEXT=$PROVEITLISPPRELUDEXT"
+	  echo "export PROVEITLISPDISABLE=$PROVEITLISPDISABLE"
+	  echo "export PROVEITLISPENABLE=$PROVEITLISPENABLE"
+	  echo "export PROVEITLISPTHFS=$PROVEITLISPTHFS"
+	  echo "export PROVEITLISPTHEORIES=$PROVEITLISPTHEORIES"
+	  echo "export PROVEITLISPAUTOFIX=$PROVEITLISPAUTOFIX"
+	  echo "export PROVEITLISPRETRYWITHTCCS=$PROVEITLISPRETRYWITHTCCS"
+	  echo "export PROVEITLISPDEFAULTPROOFSCRIPT=$PROVEITLISPDEFAULTPROOFSCRIPT"
       fi
-
+      
       if [ $PVSTIMEOUT ]; then
-	  $PVSPATH/pvs -raw $PVSLISP -timeout $PVSTIMEOUT -E "(proveit)" > $OUTFILE 2>&1
-	  ret_value=$?
+	  TIMEOUTARG="-timeout $PVSTIMEOUT"
       else
-	  $PVSPATH/pvs -raw $PVSLISP -E "(proveit)" > $OUTFILE 2>&1
-	  ret_value=$?
+	  TIMEOUTARG=
       fi
 
-      if [ $ret_value -ne 0 ]; then
+      if [ "$DEBUG" ]; then
+	  echo "About to run: ""$PVSPATH""pvs -raw $PVSLISP $TIMEOUTARG -E \"(proveit)\" > $OUTFILE 2>&1"
+      fi
+      
+      "$PVSPATH"pvs -raw $PVSLISP $TIMEOUTARG -E "(proveit)" > $OUTFILE 2>&1
+      ret_value=$?
+      
+      if [ "$DEBUG" ]; then
+	  echo "PVS return value: $ret_value"
+      fi
+
+      if [ $ret_value -ne 0 ] && [ $ret_value -ne $PVS_RETURN_VALUE_MISSED_FORMS ]; then
 	  error_output
 	  exit $ret_value 
       fi
@@ -706,49 +773,49 @@ while [ $# -gt 0 ]
 do
   case $1 in
     --debug)
-      DEBUG=yes;;
+	DEBUG=yes;;
     -h|-help|--help)    
-	  usage
-	  exit 0;;
+	usage
+	exit 0;;
     -version|--version)
-	  readVersion
-	  echo $VERSION
-	  exit 0;;
+	readVersion
+	echo $VERSION
+	exit 0;;
     .*) 
-      EXT=$1;;
+	EXT=$1;;
     -lisp|--lisp)    
-	  case $2 in
-	      allegro) 
-		  LISP='allegro';;
-	      cmulisp) 
-		  LISP='cmulisp'
-		  PVSBIN='PVSBIN';;
-	      sbclisp)
-		  LISP='sbclisp'
-		  PVSBIN='PVSBIN';;
-	      *) 
-		  echo "Error: Only allegro, cmulisp, and sbcl are currently available"
-		  exit 1;;
-	  esac
-	  if [ "$LISP" ]; then
-	      PVSLISP="-lisp $LISP"
-	  fi
-	  shift;;
+	case $2 in
+	    allegro) 
+		LISP='allegro';;
+	    cmulisp) 
+		LISP='cmulisp'
+		PVSBIN='PVSBIN';;
+	    sbclisp)
+		LISP='sbclisp'
+		PVSBIN='PVSBIN';;
+	    *) 
+		echo "Error: Only allegro, cmulisp, and sbcl are currently available"
+		exit 1;;
+	esac
+	if [ "$LISP" ]; then
+	    PVSLISP="-lisp $LISP"
+	fi
+	shift;;
     -d|-dir|--dir)           
-      OUTDIR=$2
-      if [ ! -e "$OUTDIR" ]; then
-        mkdir $OUTDIR
-      fi
-      if [ ! -d "$OUTDIR" ]; then
-        echo "Error: $OUTDIR is not a directory"
-        exit 1
-      fi
-	  shift;;
+	OUTDIR=$2
+	if [ ! -e "$OUTDIR" ]; then
+            mkdir $OUTDIR
+	fi
+	if [ ! -d "$OUTDIR" ]; then
+            echo "Error: $OUTDIR is not a directory"
+            exit 1
+	fi
+	shift;;
     -t|-top|--top)           
-	  TOP=$2
-	  shift;;
+	TOP=$2
+	shift;;
     -generate-top|--generate-top)           
-	  LISPAUTOTOP=t;;
+	LISPAUTOTOP=t;;
     -Clean|--Clean)
 	echo "The option $1 is not longer supported. Please use --clean-all instead."
 	exit 1;;
@@ -761,27 +828,28 @@ do
 	BINARIESONLY=
 	CLEAN=only;;
     -o|-out|--out)           
-	  if [ -d "$2" ]; then
-	      echo "Error: $2 is a directory"
-	      exit 1
-          else
- 	      OUTFILE=$2
-	  fi
-	  shift;;
-    -p|-prelude-ext|--prelude-ext) 
-	  PRELUDEXT=`append $2 $PRELUDEXT`
-	  shift;;
-    -disable|--disable) 
-	  DISABLE=`append $2 $DISABLE`
-	  shift;;
-    -disable-oracles|--disable-oracles) 
-	  DISABLE="_";;
-    -enable|--enable) 
-	  ENABLE=`append $2 $ENABLE`
-	  shift;;
-    --retry-with-tccs)
-	LISPRETRYWITHTCCS=t
+	if [ -d "$2" ]; then
+	    echo "Error: $2 is a directory"
+	    exit 1
+        else
+ 	    OUTFILE=$2
+	fi
 	shift;;
+    --backup-summaries)
+	BACKUP_SUMMARIES=t;;
+    -p|-prelude-ext|--prelude-ext) 
+	PRELUDEXT=`append $2 $PRELUDEXT`
+	shift;;
+    -disable|--disable) 
+	DISABLE=`append $2 $DISABLE`
+	shift;;
+    -disable-oracles|--disable-oracles) 
+	DISABLE="_";;
+    -enable|--enable) 
+	ENABLE=`append $2 $ENABLE`
+	shift;;
+    --retry-with-tccs)
+	LISPRETRYWITHTCCS=t;;
     --auto-fix)
 	LISPAUTOFIX=2
 	if echo $2 | grep -qE '^[+-]?[0-9]+$'; then
@@ -800,6 +868,14 @@ do
 	    shift
 	else
 	    echo "Error: --dependencies option must be followed by the options 'relative' or 'fullpath'. (See proveit --help for details.)"
+	    exit 1
+	fi;;
+    -summary-mode|--summary-mode)
+	if echo $2 | grep -qE '^md$'; then
+	    LISPALTSUMMARIESMODE=md
+	    shift
+	else
+	    echo "Error: --summary-mode option must be followed by the option 'md'. (See proveit --help for details.)"
 	    exit 1
 	fi;;
     --timeout)
