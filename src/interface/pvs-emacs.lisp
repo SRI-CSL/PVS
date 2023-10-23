@@ -1053,8 +1053,12 @@ list of interface names that are currently open."
 (defvar *skip-all-conversion-checks* nil)
 
 (define-condition tcerror (simple-error)
-  ((term :accessor term :initarg :term)
-   (msg :accessor msg :initarg :msg)))
+  ((term :reader term :initarg :term)
+   (msg :reader msg :initarg :msg))
+  (:report
+   (lambda (condition stream)
+     (format stream "Typecheck error: ~a"
+       (msg condition)))))
 
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))

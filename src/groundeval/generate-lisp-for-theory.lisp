@@ -101,7 +101,7 @@
     (unless thname
       (error "No theory name found in ~s" theoryref))
     (with-workspace dir
-      (let ((theory (get-typechecked-theory (or thname fname))))
+      (let ((theory (get-typechecked-theory thname)))
 	(unwind-protect
 	     (let ((*generate-tccs* 'all)
 		   (*current-context* (or (saved-context theory)
@@ -114,8 +114,7 @@
 	       (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
 	       (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
 	       (evaluate))
-	  (pvs-message "Theory ~a is not typechecked" theoryref))
-	(pvs-emacs-eval "(pvs-evaluator-ready)")))))
+	  (pvs-emacs-eval "(pvs-evaluator-ready)"))))))
 
 (defun gqread ()
   (format t "~%<GndEval> ")
@@ -268,7 +267,8 @@
 		   (format t "~%~a" condition)
 		   (throw 'abort t))
 		 (tcerror (condition)
-		   (declare (ignore condition)))))))))
+		   (format t "~%~a" condition)
+		   (throw 'abort t))))))))
     (when result
       (evaluate))))
 
