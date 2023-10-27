@@ -173,11 +173,11 @@ if called."
 
 ;;initialize context and translate to common-lisp with null bindings
 ;;and live-variables, i.e., still active in yet-to-be-evaluated expressions.  
-(defun pvs2cl (expr &optional context)
+(defun pvs2cl (expr &optional context bindings)
   (let ((*current-context*
 	 (if context context *current-context*))
 	(*generate-tccs* 'none))
-    (pvs2cl_up* expr nil nil)))
+    (pvs2cl_up* expr bindings nil)))
 
 ;;Should be a macro.  applied function name to argument list.
 (defun mk-funapp (fun args)
@@ -840,7 +840,8 @@ if called."
 	    (cdr bnd)) 
 	(if (const-decl? decl)
 	    (pvs2cl-constant expr bindings livevars)
-	    (let ((undef (undefined expr "Hit untranslateable expression ~a")))
+	  (let ((undef (undefined expr "Hit untranslateable expression ~a")))
+	    ;(break "untranslateable")
 	      `(funcall ',undef))))))
 
 (defmethod pvs2cl_up* ((expr list) bindings livevars)

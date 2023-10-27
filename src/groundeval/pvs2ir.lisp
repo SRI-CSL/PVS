@@ -769,13 +769,19 @@
   (mk-ir-string (string-value expr)))
 
 (defmethod pvs2ir* ((expr array-expr) bindings expected)
+  ;(break "pvs2ir*(array-expr)")
   (with-slots (exprs type) expr
     (let* ((type (or expected (type expr)))
-	   (elem-type (range (find-supertype type)))
-	   (ir-elem-type (pvs2ir-type elem-type bindings))
-	   (let-vars (loop for x in exprs collect (new-irvartype ir-elem-type)))
-	   (ir-exprs (loop for x in exprs collect (pvs2ir* x bindings elem-type))));(break "array-expr")
-      (mk-ir-let* let-vars ir-exprs  (mk-ir-array-literal let-vars)))))
+	   (stype (find-supertype type)))
+      (if (arraytype? type)
+	  (let* ((elem-type (range (find-supertype type)))
+		 (ir-elem-type (pvs2ir-type elem-type bindings))
+		 (let-vars (loop for x in exprs collect (new-irvartype ir-elem-type)))
+		 (ir-exprs (loop for x in exprs collect (pvs2ir* x bindings elem-type)))) ;(break "array-expr")
+	    (mk-ir-let* let-vars ir-exprs  (mk-ir-array-literal let-vars)))
+	(let ((lexpr (change-class (copy expr) 'lambda-expr)))
+					;(NSH:10/20/23) Why doesn't call-next-method work?
+	  (pvs2ir* lexpr bindings expected))))))
   
 
 (defmethod pvs2ir* ((expr actual) bindings expected)
@@ -1831,6 +1837,7 @@
 		      (mk-ir-ift arg-var-type1
 				 (cadr args-ir)
 				 (mk-ir-bool t))))
+	  ((restrict) (car args-ir))
 	(t (let ((arg-vartypes (loop for ir-var in arg-names
 				     as ir-typ in op-arg-types
 				     collect (mk-ir-variable ir-var ir-typ))))
@@ -1867,7 +1874,6 @@
 	 ;; 		     collect (mk-ir-variable ir-var ir-typ)))
 	 )				;(break "pvs2ir-application")
 					;(format t "~%op: ~a: ~{ ~a~}" (when (constant? op)(id op))(print-ir op-arg-types))
-    ;; (when (and (constant? op)(eq (id op) 'transpose_step)) (break "pvs2ir-application"))
     (if (constant? op)
 	(if (pvs2ir-primitive? op)
 	    (pvs2ir-primitive-application op arg-names op-arg-types args-ir ir-expr-type bindings)
@@ -2874,7 +2880,7 @@
 					;((subtype-of? type *number*) (break "pvs2ir-type*(subtype)"))
 	       (t (pvs2ir-type* (supertype type) tbinding)))))
 ;    (when (eq result 'mpq)(break "pvs2ir-type* (subtype)"))
-    (format t "~%PVS type: ~a => IR type: ~a" type (print-ir result))
+    ;(format t "~%PVS type: ~a => IR type: ~a" type (print-ir result))
     result))
 
 
@@ -3247,6 +3253,12 @@
 	   ;;then variable is live and this is not the last occurrence
       (mk-ir-last ir-var))))
 
+;;Since ir-fieldtype is also an ir-variable 
+(defmethod preprocess-ir* ((ir-expr ir-fieldtype) livevars bindings)
+  (let ((entry (assoc ir-expr bindings)))
+    (break "preproc(ir-fieldtype)")
+    (if entry (cdr entry) ir-expr)))
+
 ;;since rename-type introduces last variables, these have to be preprocessed as well
 (defmethod preprocess-ir* ((ir-expr ir-last) livevars bindings)
   (with-slots (ir-var) ir-expr
@@ -3453,6 +3465,14 @@
   (declare (ignore bindings))
   ir-type)
 
+(defun ir2c-tcompatible-but (texpr1 texpr2)
+  (let ((gtexpr1 (get-ir-type-value texpr1))
+	(gtexpr2 (get-ir-type-value texpr2)))
+    (if (ir-adt-constructor-recordtype? gtexpr1)
+	(and (ir-adt-constructor-recordtype? gtexpr2)
+	     (ir2c-tcompatible texpr1 texpr2))
+      (ir2c-tcompatible texpr1 texpr2))))
+	      
 
 ;Irrelevant let-bindings are discarded
 (defmethod preprocess-ir* ((ir-expr ir-let) livevars bindings)
@@ -3474,7 +3494,7 @@
 	      (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
 				(not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
 			   (ir-last? new-ir-bind-expr))
-		       (ir2c-tcompatible (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
+		       (ir2c-tcompatible-but (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
 		       )
 					;binds var to var with same type
 		  (preprocess-ir* ir-body livevars
@@ -3993,6 +4013,7 @@
 	    ))))
 
 (defmethod ir2c* ((ir-expr ir-array-literal) return-var return-type)
+  ;(break "ir2c*(ir-array-literal)")
   (with-slots (ir-array-literal-exprs) ir-expr
     (let* ((c-return-type (add-c-type-definition (ir2c-type return-type)))
 	   (rhs-exprs (loop for x in ir-array-literal-exprs collect (ir-name (get-ir-last-var x))))
@@ -5960,7 +5981,7 @@
 		     ;; 					      (ir2c-type (ir-vtype (get-ir-last-var ir-var)))
 		     ;; 					      (ir-name (get-ir-last-var ir-var)))))
 		     )
-		  (format t "~%*mpvar-parameters* = ~{~a, ~}" (print-ir *mpvar-parameters*))
+		  ;(format t "~%*mpvar-parameters* = ~{~a, ~}" (print-ir *mpvar-parameters*))
 		;(break "ir-apply")
 		  (nconc release-instrs invoke-instrs) ;nconc invoke-instrs mp-release-instrs
 					       )))))
@@ -6148,9 +6169,10 @@
 (defun ir2c-type-fields (ir-field-types)
   (cond ((consp ir-field-types)
 	 (with-slots (ir-id ir-vtype) (car ir-field-types)
-		     (cons (mk-ir-fieldtype ir-id
-					    (ir2c-type ir-vtype))
-			   (ir2c-type-fields (cdr ir-field-types)))))
+	   (setf (ir-vtype (car ir-field-types))
+		       (ir2c-type ir-vtype))
+	   (cons (car ir-field-types)
+		 (ir2c-type-fields (cdr ir-field-types)))))
 	(t nil)))
 
 (defmethod ir2c-type ((ir-type symbol))
@@ -6409,7 +6431,7 @@
 					(list (format nil "if (~a != NULL) ~a->count--"
 						      rhs-var-name rhs-var-name))
 				       nil))) ;(break "ir2c*(ir-update)")
-		;(when (ir-constructor-update? ir-expr)(break "ir2c*(ir-constructor-update)"))
+		;;(when (ir-constructor-update? ir-expr)(break "ir2c*(ir-constructor-update)"))
 		(if (ir-lvariable? ir-lhs)  ;;this doesn't work with names
 		                            ;;(ir-arraytype? (get-ir-type-value ir-ctype))
 		    (let* ((lhs-var (get-ir-last-var ir-lhs))
@@ -6945,7 +6967,7 @@
 ;;If we expand the definition of bytevector, this type information is lost and the expanded
 ;;definition is translated to a function type. 
 (defmethod add-c-type-definition ((ir2c-type ir-typename) &optional tname) ;;tname is ignored
-  (format t "~%add-c-type-def ~a" (print-ir ir2c-type))
+  ;(format t "~%add-c-type-def ~a" (print-ir ir2c-type))
   ;;(break "add-c-td ir-typename")
   (with-slots (ir-type-id ir-type-defn type-declaration) ir2c-type
     (if (ir-typename? ir-type-defn)
@@ -8271,44 +8293,63 @@
       (mk-c-assignment-with-count lhs ltype rhs rtype)
     (call-next-method)))
 
+(defun copy-field-types-instrs (ift1 ift2 lhs rhs)
+  (cond ((consp ift1)
+	 (let* ((ft1 (car ift1))
+		(id-ft1 (ir-id ft1))
+		(rft1  (ir-vtype ft1))
+		(ft2 (find id-ft1 ift2 :test #'eq :key #'ir-id))
+		(id-ft2 (ir-id ft2))
+		(rft2 (ir-vtype ft2))
+		(lhs-field (format nil "~a->~a" lhs id-ft1))
+		(rhs-field (format nil "~a->~a" rhs id-ft1))
+		(cft1 (add-c-type-definition rft1))
+		(cft2 (add-c-type-definition rft2))
+		(bind-instrs (make-c-decl-assignment-with-count
+				    (ir-name ft1)
+				    cft1
+				    lhs-field
+				    cft1))
+		(instrs1 (if (mpnumber-type? cft1)
+			     (cons (format nil "~a_init(~a)" cft1 lhs-field)
+				     (cons
+				      (make-c-assignment (format nil "~a" lhs-field)
+							 cft1 rhs-field
+							 cft2)
+				      bind-instrs
+				      ;; (make-c-decl-assignment-with-count
+				      ;; (intern (format nil "~a_~a" irl1 id-ft1))
+				      ;; (ir-ftype ft1)
+				      ;; lhs-field
+				      ;; cft1)
+				      ))
+			   (append (copy-type* rft1 rft2
+					       lhs-field
+					       rhs-field)
+				   bind-instrs)
+				   ;; (make-c-decl-assignment-with-count
+				   ;;  (intern (format nil "~a_~a" irl1 id-ft1))
+				   ;;  (ir-ftype ft1)
+				   ;;  lhs-field
+				   ;;  cft1)
+				   )))
+	   (append instrs1 (copy-field-types-instrs (cdr ift1) ift2
+						    lhs rhs))))
+	(t nil)))
+	 
 (defmethod copy-type* ((ltype ir-recordtype)(rtype ir-recordtype) lhs rhs)
   (with-slots ((ift1 ir-field-types)(irl1 ir-label)) ltype
     (with-slots ((ift2 ir-field-types)(irl2 ir-label)) rtype
       (let ((new-instr (format nil "~a = new_~a()" lhs (add-c-type-definition ltype)))
-	    (field-instrs (loop for ft1 in ift1
-				append (let* ((id-ft1 (ir-id ft1))
-					      (cft1 (add-c-type-definition (ir-vtype ft1)))
-					      (ft2 (find id-ft1 ift2 :test #'eq :key #'ir-id))
-					      (lhs-field (format nil "~a->~a" lhs id-ft1))
-					      (rhs-field (format nil "~a->~a" rhs id-ft1)))
-					 (if (mpnumber-type? cft1)
-					     (cons (format nil "~a_init(~a)" cft1 lhs-field)
-						   (cons
-						    (make-c-assignment (format nil "~a" lhs-field)
-								      cft1 rhs-field
-								      (add-c-type-definition (ir-vtype ft2)))
-						    nil
-						    ;; (make-c-decl-assignment-with-count
-						    ;; (intern (format nil "~a_~a" irl1 id-ft1))
-						    ;; (ir-ftype ft1)
-						    ;; lhs-field
-						    ;; cft1)
-						    ))
-					   (append (copy-type* (ir-vtype ft1)(ir-vtype ft2)
-							       lhs-field
-							       rhs-field)
-						   ;; (make-c-decl-assignment-with-count
-						   ;;  (intern (format nil "~a_~a" irl1 id-ft1))
-						   ;;  (ir-ftype ft1)
-						   ;;  lhs-field
-						   ;;  cft1)
-						   )))))
+	    (field-instrs (copy-field-types-instrs ift1 ift2 lhs rhs))
 	    (finalize-instrs nil) ;; (loop for ft1 in ift1
 				  ;;  append (decrement-or-clear-instrs (intern (format nil "~a_~a" irl1 (ir-id ft1)))
 				  ;; 				     (ir-ftype ft1)))
 	    )
+	;(break "copy-type* (record,record)")
 	(list (cons new-instr (append field-instrs finalize-instrs))) ;;make this a block
 	))))
+	
 
 (defun decrement-or-clear-instrs (var type)
   (if (ir-reference-type? type)

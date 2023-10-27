@@ -22,7 +22,7 @@
 
 (defun cl2pvs (sexpr type &optional context)
   (let* ((*current-context* (or context *current-context*))
-	 (pexpr (cl2pvs* sexpr type context)))
+	 (pexpr (cl2pvs* sexpr type context nil)))
     pexpr))
 
 ;;
@@ -42,7 +42,7 @@
 		   "~@<'~a' (of type '~a')~_  can't be translated to PVS syntax~:>"
 		 sexpr type)))))
   
-(defmethod cl2pvs* (sexpr (type type-name) context)
+(defmethod cl2pvs* (sexpr (type type-name) context bindings)
   (declare (ignore context))
   (if (tc-eq type *number*)
       (if (rationalp sexpr)
@@ -68,23 +68,29 @@
 	     (cons (number (car bnds))(number (cdr bnds)))))))
 
 
-(defmethod cl2pvs* (sexpr (type funtype) context)
+(defmethod cl2pvs* (sexpr (type funtype) context bindings)
   (declare (ignore context))
   (let* ((ub (domain-size (domtype type))) ;using domain-size (from pvseval-update) instead of simple-below?
-	 (ub-cl (when ub (pvs2cl ub)))
+	 (ub-cl (when ub (pvs2cl ub context bindings)))
 	 (ubval (when ub-cl
 		  (eval ub-cl))));;(when (number-expr? ub) (number ub))))(break "cl2pvs*(funtype)")
     (if  ubval
 	(if (tc-eq (range type) *boolean*)
 	;; We have a bitvector - create a form like bv(0b11001010)
 	    (let ((num 0))
-	      (dotimes (i (number ub))
+	      (dotimes (i ubval)
 		(when (pvs-funcall sexpr i)
-		  (incf num (expt 2 (- ubnum i 1)))))
+		  (incf num (expt 2 (- ubval i 1)))))
 	      ;; No easy way to find out if this came from a bitvector-conversion
 	      ;; Use the bv form to be on the safe side.
-	      (tc-expr (format nil "bv[~d](0b~b)" ubnum num)))
-	  (make-instance 'array-expr :exprs  (loop for i from 0 to (1- ubval) collect (cl2pvs* (pvs-funcall sexpr i) (range type) context))))
+	      (tc-expr (format nil "bv[~d](0b~b)" ubval num)))
+	  (make-instance 'array-expr
+			 :exprs  (loop for i from 0 to (1- ubval)
+				       collect
+				       (let ((rng (range type))
+					     )
+					 (cl2pvs* (pvs-funcall sexpr i) rng context
+						  (acons (domain type) `(quote ,i) bindings))))))
 	(let ((bnds (dom-subrange? sexpr type)))
 	  (if bnds
 	      (let* ((nvar (make-new-variable '|ii| type))
@@ -104,22 +110,24 @@
       (let* ((rty (if depbnd
 		      (substit rtype (acons depbnd (make!-number-expr lower) nil))
 		      rtype))
-	     (val (cl2pvs* (pvs-funcall sexpr idx) rty *current-context*))
+	     (val (cl2pvs* (pvs-funcall sexpr idx) rty *current-context* nil))
 	     (cnd (format nil "~a=~d -> ~a" nvar lower val)))
 	(make-subrange-conds (1+ lower) upper nvar sexpr rtype depbnd
 			       (1+ idx) (cons cnd conds)))))
 
-(defmethod cl2pvs* (sexpr (type subtype) context)
-  (cl2pvs* sexpr (find-supertype type) context))
+(defmethod cl2pvs* (sexpr (type subtype) context bindings)
+  (cl2pvs* sexpr (find-supertype type) context bindings))
 
-(defmethod cl2pvs* (sexpr (type tupletype) context)
-  (mk-tuple-expr (loop for typ in (types type)
-		       as i from 0
-		       collect (cl2pvs* (svref sexpr i)
-					typ
-					context))))
+(defmethod cl2pvs* (sexpr (type tupletype) context bindings)
+  (mk-tuple-expr (cl2pvs-record-fields (types type) sexpr 0 context bindings nil)))
 
-(defmethod cl2pvs* (sexpr (type recordtype) context)
+   ;; (loop for typ in (types type)
+   ;; 		       as i from 0
+   ;; 		       collect (cl2pvs* (svref sexpr i)
+   ;; 					typ
+   ;; 					context))
+
+(defmethod cl2pvs* (sexpr (type recordtype) context bindings)
   (cond ((string-type? type)
 	 (cl2pvs*-string sexpr))
 	((finseq-type? type)
@@ -138,12 +146,24 @@
 	   ;; (mk-application (mk-name-expr '|list2finseq|)
 	   ;; 		   chars)
 	(t ;;(format t "~%wrong branch")
-	 (mk-record-expr
-	  (loop for fld in (sorted-fields type)
-		as i from 0
-		collect (mk-assignment 'uni
-				       (list (list (mk-name-expr (id fld))))
-				       (cl2pvs* (svref sexpr i) (type fld) context)))))))
+	 (mk-record-expr (cl2pvs-record-fields (sorted-fields type) sexpr 0 context bindings nil)))))
+	 ;; (mk-record-expr
+	 ;;  (loop for fld in (sorted-fields type)
+	 ;; 	as i from 0
+	 ;; 	collect (mk-assignment 'uni
+	 ;; 			       (list (list (mk-name-expr (id fld))))
+	 ;; 			       (cl2pvs* (svref sexpr i) (type fld) context))))
+
+
+(defun cl2pvs-record-fields (fields sexpr i context bindings accum);fields is sorted
+  (cond ((consp fields)
+	 (let* ((entry (cl2pvs* (svref sexpr i)
+				(substit (type (car fields)) subst)
+				context))
+		 (newbindings (acons (car fields) `(quote ,entry) subst)))
+	    (cl2pvs-record-fields (cdr fields) (cdr sexpr) context newbindings
+				  (cons entry subst))))
+	(t (nrev accum))))
 
 (defmethod string-type? ((type recordtype))
   (let ((range (finseq-type? type)))
@@ -243,15 +263,15 @@
 
 
 
-(defmethod cl2pvs* (sexpr (type dep-binding) context)
-  (cl2pvs* sexpr (type type) context))
+(defmethod cl2pvs* (sexpr (type dep-binding) context bindings)
+  (cl2pvs* sexpr (type type) context bindings))
 
 (defun list-type? (type)
   (let ((sty (find-supertype type)))
     (and (type-name? sty)
 	 (eq (id (module-instance (resolution sty))) '|list_adt|))))
 
-(defmethod cl2pvs* (sexpr (type adt-type-name) context) 
+(defmethod cl2pvs* (sexpr (type adt-type-name) context bindings) 
   (cond ((char-list-type? type)
 	 (cl2pvs*-string (coerce sexpr 'string)))
 	((list-type? type)
@@ -284,8 +304,10 @@
 			    (loop for accfn in accessor-funs
 			      as acc in accessors
 			      collect 
-			      (cl2pvs* (funcall accfn sexpr) (range (type acc))
-				       context)))))
+			      (cl2pvs* (funcall accfn sexpr)
+				       (range (type acc))
+				       context
+				       (acons (domain (type acc)) `(quote ,sexpr) bindings))))))
 	     (if accessors
 		 (mk-application* constructor args)
 		 constructor))))))
