@@ -564,9 +564,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;attachments for file operations
 ;;(def-c-attach-primitive-type "file" "file_descriptor" "uint64_t")
-(def-c-attach-primitive-type "file" "void_action" "uint8_t")
+;;(def-c-attach-primitive-type "file" "void_action" "uint8_t")
 (def-c-attach-primitive-type "file" "file" "file_t")
-(def-c-attach-primitive "file" "null_action" "uint8" '() '() "{return 1;}" nil)
+;;(def-c-attach-primitive "file" "null_action" "uint8" '() '() "{return 1;}" nil)
 
 (def-c-attach-primitive "file" "file_size" "uint32" '(f) '(file__file)
   nil

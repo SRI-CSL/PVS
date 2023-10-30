@@ -987,12 +987,13 @@
 ;;intersects the subranges (if any) in ir-types; returns nil, otherwise. 
 (defun best-ir-subrange-list (ir-types)
   (cond ((consp ir-types)
-	 (if (ir-subrange? (car ir-types))
-	     (let ((cdr-subrange (best-ir-subrange-list (cdr ir-types))))
-	       (if cdr-subrange
-		   (intersect-subrange (car ir-types) cdr-subrange)
-		 (car ir-types)))
-	   (best-ir-subrange-list (cdr ir-types))))
+	 (let ((ir-typ1 (is-ir-subrange? (car ir-types))))
+	   (if ir-typ1
+	       (let ((cdr-subrange (best-ir-subrange-list (cdr ir-types))))
+		 (if cdr-subrange
+		     (intersect-subrange ir-typ1 cdr-subrange)
+		   ir-typ1))
+	     (best-ir-subrange-list (cdr ir-types)))))
 	(t nil)))
 
 ;;intersects the subranges in type and judgement-types; returns type if there are no subranges
@@ -1013,9 +1014,10 @@
 	(mk-ir-funtype ir-dom best-range))
     (let ((ir-jsubrange (best-ir-subrange-list ir-jtypes)))
       (if ir-jsubrange
-	  (if (ir-subrange? ir-type)
-	      (intersect-subrange ir-type ir-jsubrange)
-	    ir-jsubrange)
+	  (let ((ir-subrange-type (is-ir-subrange? ir-type)))
+	    (if ir-subrange-type
+		(intersect-subrange ir-subrange-type ir-jsubrange)
+	      ir-jsubrange))
 	ir-type))))
 
 (defun best-ir-subrange-pair (ty1 ty2)
@@ -3015,14 +3017,13 @@
 
 (defmethod pvs2ir-freevars* :around ((ir-expr ir-expr))
   (with-slots (ir-freevars) ir-expr
-	      (if (eq ir-freevars 'unbound)
-		  (let ((ir-freevars (call-next-method)))
-		    (setf (ir-freevars ir-expr) ir-freevars)
-		    ir-freevars)
-		ir-freevars)))
+    (if (eq ir-freevars 'unbound)    
+	(let ((new-ir-freevars (call-next-method)))
+	  (setf (ir-freevars ir-expr) new-ir-freevars)
+	  new-ir-freevars)
+    ir-freevars)))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-variable))
-;;  (when (ir-fieldtype? ir-expr) (break "pvs2ir-freevars*(ir-fieldtype)"))
   (with-slots (ir-vtype) ir-expr
     (union (list ir-expr) (pvs2ir-freevars* ir-vtype) :test #'eq)))
 
@@ -3044,9 +3045,9 @@
 	      (union (pvs2ir-freevars* ir-func)
 		     (union (pvs2ir-freevars* ir-params)
 			    (union (pvs2ir-freevars* ir-args)
-				   (pvs2ir-freevars* ir-atype) :test #'eq)
+				   (pvs2ir-freevars* (rename-type ir-atype) :test #'eq)
 			    :test #'eq)
-		     :test #'eq)))
+		     :test #'eq))))
 
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-let))
@@ -3061,7 +3062,7 @@
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
     (union (pvs2ir-freevars* ir-bind-expr)
 	   (union (pvs2ir-freevars* ir-bind-type)
-		  (union (pvs2ir-freevars* (ir-vtype ir-vartype))
+		  (union (pvs2ir-freevars*  (ir-vtype ir-vartype))
 			 (remove (ir-name ir-vartype) (pvs2ir-freevars* ir-body) :key #'ir-name)
 			 :test #'eq)
 		  :test #'eq)
@@ -3256,7 +3257,7 @@
 ;;Since ir-fieldtype is also an ir-variable 
 (defmethod preprocess-ir* ((ir-expr ir-fieldtype) livevars bindings)
   (let ((entry (assoc ir-expr bindings)))
-    (break "preproc(ir-fieldtype)")
+    ;;(break "preproc(ir-fieldtype)")
     (if entry (cdr entry) ir-expr)))
 
 ;;since rename-type introduces last variables, these have to be preprocessed as well
@@ -3413,7 +3414,8 @@
 (defun rename-variable (ir-vartype bindings)
   (if bindings
       (with-slots (ir-vtype) ir-vartype
-	(setf (ir-vtype ir-vartype) (rename-type ir-vtype bindings))
+	(setf (ir-vtype ir-vartype) (rename-type ir-vtype bindings)
+	      (ir-freevars ir-vartype) 'unbound)
 	ir-vartype)
     ir-vartype))
 
@@ -3537,11 +3539,15 @@
 
 (defun preprocess-ir-in-type (ir-type bindings)
   ;(when (consp bindings) (break "preprocess-ir-in-type"))
-  (when (ir-type? ir-type) (lcopy ir-type 'renamings  bindings)))
+  (when (ir-type? ir-type)
+    (lcopy ir-type 
+	   'renamings  bindings)))
 
 (defmethod preprocess-ir* ((ir-expr ir-offset) livevars bindings)
   (with-slots (expr) ir-expr
-    (lcopy ir-expr 'expr (preprocess-ir* expr livevars bindings))))
+    (lcopy ir-expr
+	   'ir-freevars 'unbound
+	   'expr (preprocess-ir* expr livevars bindings))))
 
 (defmethod preprocess-ir* ((ir-expr ir-array-literal) livevars bindings)
   (with-slots (ir-array-literal-exprs) ir-expr
@@ -3553,7 +3559,8 @@
 	  (body-freevars (pvs2ir-freevars* ir-body)))
       (if (memq ir-vartype body-freevars)
 	  (lcopy ir-expr 'ir-vartype new-ir-vartype
-		 'ir-body (preprocess-ir* ir-body livevars bindings))
+		 'ir-body (preprocess-ir* ir-body livevars bindings)
+		 'ir-freevars 'unbound)
 	(preprocess-ir* ir-body livevars bindings)))))
 
 (defmethod preprocess-ir* ((ir-expr ir-lambda) livevars bindings)
@@ -3601,7 +3608,7 @@
 	collect ir-var))
 
 
-(defmethod preprocess-ir* ((ir-expr ir-ift) livevars bindings);;(break "preprocess-ir* (ift)")
+(defmethod preprocess-ir* ((ir-expr ir-ift) livevars bindings);(break "preprocess-ir* (ift)")
   (with-slots (ir-condition ir-then ir-else) ir-expr
     (if (last-cond-expr? ir-expr)
 	(preprocess-ir* ir-else livevars bindings)

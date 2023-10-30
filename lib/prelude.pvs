@@ -6132,7 +6132,7 @@ BEGIN
   file: TYPE+ %= [# name: bytestring, capacity: index, 
                %   fd : file_descriptor, contents : bytestring #]
 
-  max_file_size: int32  %defined by semantic attachment in c-primitive-attachments
+%  max_file_size: uint32  %defined by semantic attachment in c-primitive-attachments
 
   lifted_file: DATATYPE
   BEGIN
@@ -6146,7 +6146,7 @@ BEGIN
 
   name(f): bytestring
 
-  file_size(f: file): uint32
+  file_size(f: file): index
 
 %The operations open, setbyte, and append can fail if the file parameter is live beyond the operation
   open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
@@ -6161,7 +6161,8 @@ BEGIN
 %These file operations are benign and can appear anywhere. 
   getbyte(f: file, (i : below(file_size(f)))): byte
 %The signature for the size parameter has to be detectably uint32 for the C attachment to work
-  getbytestring(f: file, (i : upto(file_size(f))), (size : upto(file_size(f)) | size <= file_size(f) - i)): bytestring
+  getbytestring(f: file, (i : upto(file_size(f))), (size : upto(file_size(f)) | size <= file_size(f) - i)):
+    {bystr: bytestring | bystr`length = size}
 
   readline(f: file, (i : below(file_size(f)))): bytestring
 
