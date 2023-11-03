@@ -567,7 +567,7 @@ etags : $(PVSPATH)TAGS
 
 $(PVSPATH)TAGS : $(lisp-files) $(emacs-src)
 	@echo Creating $@
-	@$(ETAGS) $^
+	@-$(ETAGS) $^
 
 fileutils = \
    $(PVSPATH)src/utils/file-utils.lisp \
