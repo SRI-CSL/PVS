@@ -1386,6 +1386,8 @@ are all the same."
   (apply #'get-referenced-declaration* declref))
 
 (defun get-referenced-declaration* (id class &optional type theory-id lib-ref)
+  (unless (find-class class nil)
+    (setq class (read-from-string (string class))))
   (if (eq class 'module)
       (let ((th (get-theory id)))
 	;;(assert th)
