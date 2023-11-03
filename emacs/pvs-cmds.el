@@ -215,7 +215,8 @@ M-x revert-buffer to return to the old version."
 	      (message "No changes were made"))))))
 
 (defpvs theory-element-string prettyprint (thref eltid)
-  "Gets the string associated with a theory element (e.g., declaration or importing)"
+  "Gets the string associated with a theory element,
+e.g., declaration or importing"
   (interactive (let* ((thref (car (complete-theory-name "Theory reference: ")))
 		      (eltid (complete-theory-element-id
 			      "Element (e.g., declaration) id: " thref)))
@@ -232,8 +233,7 @@ C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
   (pvs-bury-output)
   (save-some-pvs-buffers t)
-  (pvs-send-and-wait (format "(prettyprint-theory \"%s\" %s)"
-			 theoryname (format "\"%s\"" file))
+  (pvs-send-and-wait (format "(prettyprint-theory \"%s\")" theoryref)
 		     "Prettyprinting"
 		     (pvs-get-abbreviation 'prettyprint-theory)
 		     'dont-care)
@@ -844,46 +844,46 @@ exiting PVS, buffers not saved will be deleted."
   (interactive)
   (message "This command is no longer used - just use your own mail program"))
 
-(defpvs smail-pvs-files mail-files (pvs-file libraries-p to cc subject)
-  "Dump files in transitive closure of import lists to a tar file, base64
-it, and mail it along with a message as a MIME attachment.
+;; (defpvs smail-pvs-files mail-files (pvs-file libraries-p to cc subject)
+;;   "Dump files in transitive closure of import lists to a tar file, base64
+;; it, and mail it along with a message as a MIME attachment.
 
-The smail-pvs-files command prompts for a PVS file name, an email address, a
-CC address, and a subject.  It then opens up a simple mail buffer, where you
-maty write a message.  When finished, type C-c C-c to send it, along with a
-MIME-attached tar file containing all the files needed to recreate the context
-of a given file, including library files, if desired.  Included in the tar
-file are the specification files, the associated proof files, the .pvscontext,
-pvs-strategies, and pvs-tex.sub files, and a newly created subdirectory named
-PVSHOME that contains the .pvs.lisp, .pvsemacs, pvs-strategies, and
-pvs-tex.sub files from your home directory."
-  (interactive (append (complete-pvs-file-name
-			"Name of root file (CR for this one): ")
-		       (list (y-or-n-p "Include libraries? "))
-		       (list (read-from-minibuffer
-			      (format "Mail to: ")
-			      pvs-last-email-address))
-		       (list (read-string "CC: "))
-		       (list (read-string "Subject: "))))
-  (unless (equal to pvs-last-email-address)
-    (setq pvs-last-email-address to))
-  (unless (mail)
-    (error "Can't send files until mail buffer is empty"))
-  (insert to)
-  (unless (or (null cc) (equal cc ""))
-    (insert (format "\nCc: %s" cc)))
-  (search-forward "Subject: ")
-  (insert subject)
-  (search-forward (concat "\n" mail-header-separator "\n"))
-  (save-excursion
-    (insert pvs-email-info-string))
-  (let* ((lkeymap (copy-keymap (current-local-map)))
-	 (file-string (pvs-dump-files-string pvs-file libraries-p)))
-    (define-key lkeymap "\C-c\C-c"
-      `(lambda ()
-	 (interactive)
-	 (pvs-mail-send-and-exit ,to ,subject ,file-string)))
-    (use-local-map lkeymap)))
+;; The smail-pvs-files command prompts for a PVS file name, an email address, a
+;; CC address, and a subject.  It then opens up a simple mail buffer, where you
+;; maty write a message.  When finished, type C-c C-c to send it, along with a
+;; MIME-attached tar file containing all the files needed to recreate the context
+;; of a given file, including library files, if desired.  Included in the tar
+;; file are the specification files, the associated proof files, the .pvscontext,
+;; pvs-strategies, and pvs-tex.sub files, and a newly created subdirectory named
+;; PVSHOME that contains the .pvs.lisp, .pvsemacs, pvs-strategies, and
+;; pvs-tex.sub files from your home directory."
+;;   (interactive (append (complete-pvs-file-name
+;; 			"Name of root file (CR for this one): ")
+;; 		       (list (y-or-n-p "Include libraries? "))
+;; 		       (list (read-from-minibuffer
+;; 			      (format "Mail to: ")
+;; 			      pvs-last-email-address))
+;; 		       (list (read-string "CC: "))
+;; 		       (list (read-string "Subject: "))))
+;;   (unless (equal to pvs-last-email-address)
+;;     (setq pvs-last-email-address to))
+;;   (unless (mail)
+;;     (error "Can't send files until mail buffer is empty"))
+;;   (insert to)
+;;   (unless (or (null cc) (equal cc ""))
+;;     (insert (format "\nCc: %s" cc)))
+;;   (search-forward "Subject: ")
+;;   (insert subject)
+;;   (search-forward (concat "\n" mail-header-separator "\n"))
+;;   (save-excursion
+;;     (insert pvs-email-info-string))
+;;   (let* ((lkeymap (copy-keymap (current-local-map)))
+;; 	 (file-string (pvs-dump-files-string pvs-file libraries-p)))
+;;     (define-key lkeymap "\C-c\C-c"
+;;       `(lambda ()
+;; 	 (interactive)
+;; 	 (pvs-mail-send-and-exit ,to ,subject ,file-string)))
+;;     (use-local-map lkeymap)))
 
 (defpvs tar-pvs-workspace dump-files (&optional workspace)
   "Creates a tar file of the workspace (defaults to current workspace).  If
@@ -920,21 +920,21 @@ excluding binfiles, of the pvs-test subdirectory."
 ;;     		  "--exclude=binfile" wsname)))
       
 
-(defun pvs-mail-send-and-exit (to subject file-string)
-  (let ((homedir (or (pvs-copy-home-directory-files) "")))
-    (goto-char (point-min))
-    (when (search-forward pvs-email-info-string nil t)
-      (delete-region (match-beginning 0) (match-end 0)))
-    (goto-char (point-min))
-    (search-forward (concat "\n" mail-header-separator "\n"))
-    (let* ((body (buffer-substring-no-properties (point) (point-max)))
-	   (info (format "\n\n Patch version: %s"
-		     (get-pvs-version-information)))
-	   (message (concat body info)))
-      (let ((default-directory pvs-current-directory))
-	(shell-command (format "tar-b64-mail %s \"%s\" \"%s\" %s %s"
-			   to subject message file-string homedir))))
-    (mail-bury nil)))
+;; (defun pvs-mail-send-and-exit (to subject file-string)
+;;   (let ((homedir (or (pvs-copy-home-directory-files) "")))
+;;     (goto-char (point-min))
+;;     (when (search-forward pvs-email-info-string nil t)
+;;       (delete-region (match-beginning 0) (match-end 0)))
+;;     (goto-char (point-min))
+;;     (search-forward (concat "\n" mail-header-separator "\n"))
+;;     (let* ((body (buffer-substring-no-properties (point) (point-max)))
+;; 	   (info (format "\n\n Patch version: %s"
+;; 		     (get-pvs-version-information)))
+;; 	   (message (concat body info)))
+;;       (let ((default-directory pvs-current-directory))
+;; 	(shell-command (format "tar-b64-mail %s \"%s\" \"%s\" %s %s"
+;; 			   to subject message file-string homedir))))
+;;     (mail-bury nil)))
 
 
 ;;; Returns a string that expands to the files to be dumped, for example
@@ -1058,7 +1058,7 @@ making use of outline mode."
 (defun insert-pvs-patch-information ()
   (let ((versions (get-pvs-version-information)))
     (insert "\n%% " (pvs-version-string))
-    (insert "\n%% " (sixth versions))
+    (insert "\n%% " (cl-sixth versions))
     (unless (member (cadr versions) '(nil NIL))
       (insert (format "%%Patch files loaded: patch version %s\n"
 		  (cadr versions))))
@@ -1199,13 +1199,13 @@ ESC or `q' to not overwrite any of the remaining files,
 	  (push (cons dir ldir) pvs-libdirs)
 	  ldir))))
 
-(defpvs report-pvs-bug help (subject)
-  "Report a bug in PVS."
-  (interactive "sPVS Subject: ")
-  (mail)
-  (mail-to) (insert "pvs-bugs@csl.sri.com")
-  (mail-subject) (insert (format "PVS Bugs: %s" subject))
-  )
+;; (defpvs report-pvs-bug help (subject)
+;;   "Report a bug in PVS."
+;;   (interactive "sPVS Subject: ")
+;;   (mail)
+;;   (mail-to) (insert "pvs-bugs@csl.sri.com")
+;;   (mail-subject) (insert (format "PVS Bugs: %s" subject))
+;;   )
 
 ;;;---------------------------------------------
 ;;; Context Commands
@@ -1267,7 +1267,8 @@ workspace."
 			 (unless (equal workspace "") workspace))))
 
 (defpvs clear-all-workspaces context ()
-  "Clears all workspaces. Basically clears the internal tables, as if restarting PVS."
+  "Clears all workspaces. Basically clears the internal tables,
+as if restarting PVS."
   (interactive)
   (pvs-send-and-wait (format "(clear-workspaces t)")))
   
@@ -1735,8 +1736,9 @@ only lists the unproved decls, though the totals include all the formulas."
   "Returns a summary of the status of the proofs in the current file
 
 The status-proof-pvs-file command provides a summary of the status of the
-proofs in the current PVS file in the PVS Status buffer.  With an argument (C-u),
-only lists the unproved decls, though the totals include all the formulas."
+proofs in the current PVS file in the PVS Status buffer.
+With an argument (e.g., C-u), only lists the unproved decls, though the
+totals include all the formulas."
   (interactive (list (current-pvs-file)))
   (pvs-send-and-wait (format "(status-proof-pvs-file \"%s\" %s)"
 			 filename (and current-prefix-arg t))
