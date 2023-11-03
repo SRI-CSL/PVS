@@ -209,6 +209,7 @@
                         thinst))
            (cthinst (copy athinst :mappings nil)))
       ;;(check-type-lhs-mappings (mappings thinst) cthinst) ; Not needed, can't generate TCCs
+      (assert (every #'resolution (mapcar #'lhs (mappings thinst))))
       (let* ((smappings (sort-mappings (mappings thinst)))
              (entry (get-importings theory))
              (there? (member thinst entry :test #'tc-eq))
@@ -257,7 +258,7 @@
      (let* ((theory (module (declaration lhs)))
 	    (lthinst (module-instance lhs))
 	    (ltype (subst-mod-params (type (declaration lhs)) lthinst theory lhs))
-	    (mapthinst (lcopy thinst
+	    (mapthinst (lcopy lthinst
 			 :mappings (append mappings (mappings thinst))
 			 :dactuals (dactuals lhs)))
 	    ;; Need mapthinst to match theory
