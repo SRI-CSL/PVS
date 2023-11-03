@@ -259,6 +259,7 @@
 (defcl adt-constructor (syntax)
   (recognizer #| :type symbol |# :parse t)
   (ordnum #| :type (or null fixnum) |# :restore-as nil)
+  generated
   generated-by)
 
 (defcl constructor-with-subtype (simple-constructor)
@@ -301,6 +302,7 @@
 
 (defcl rectype-theory (module)
   ;; The module instances generated from a non-inline recursive type
+  rectype
   positive-types ; speeds up tc-eq, and allows restore-object* to work
                  ; properly with store-print-types
   single-constructor?)
@@ -527,6 +529,8 @@
   (eval-info :fetch-as nil))
 
 (defcl macro-decl (const-decl))
+
+(defcl const-number-decl (const-decl))
 
 ;;; mapped-decls are created for mappings, e.g.,
 ;;; importing th {{c := 1}} creates a mapped-decl that is added to the context
