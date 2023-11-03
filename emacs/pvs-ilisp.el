@@ -158,7 +158,7 @@ intervenes."
   (setq ilisp-program (format "%s -qq" (pvs-program)))
   (let* ((prompt-pre "\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\|\\[ldb.*\\] \\)?")
 	 (old-prompt "\\(<?[-A-Za-z]* ?[0-9]*>\\)") ;  'yices >', '<PVSio>', etc
-	 (new-prompt "\\([-A-Za-z0-9]+([0-9]+):\\)")
+	 (new-prompt "\\([-A-Za-z0-9/]+([0-9]+):\\)")
 	 (pvs-added "Rule\\?\\|.*(Y or N)\\|.*(Yes or No)\\|.*process\\?\\|Please enter.*:"))
     (setq comint-prompt-regexp
 	  (format "^\\(%s\\(%s\\|%s\\|%s\\)\\)+:? "
@@ -166,8 +166,7 @@ intervenes."
     (setq pvs-top-regexp
 	  (format "^\\(%s\\(%s\\|%s\\) \\)+" prompt-pre old-prompt new-prompt)))
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
-  (setq ilisp-error-regexp
-	"^[ \t]\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
+  (setq ilisp-error-regexp "^[ \t]*\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
   (setq pvs-gc-end-regexp ";;; Finished GC")
   ;; (setq font-lock-defaults
   ;; 	`((pvs-lisp-font-lock-keywords
@@ -269,7 +268,6 @@ intervenes."
 	 (file (pvs-send-and-wait fstring message status 'tmp-file)))
     (with-temp-buffer
       (insert-file-contents file)
-      ;;(setq jjj (buffer-string))
       (goto-char (point-min))
       (json-read))))
 
