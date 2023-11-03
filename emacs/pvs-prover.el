@@ -408,7 +408,7 @@ proof scripts, including those already proved."
 ;;; buffer, and point are always set, the others depend on the buffer and/or
 ;;; contents.  The kind is one of prelude-theory, prelude, pvs, ppe,
 ;;; tccs, or proof-status.
-(defun pvs-formula-origin ()
+(defun pvs-formula-origin (&optional noerror)
   (let* ((file (current-pvs-file t))
 	 (buf (buffer-name))
 	 (fname (unless pvs-buffer-kind
@@ -451,8 +451,12 @@ proof scripts, including those already proved."
 			       (pvs-fref-kind fref) 'proof-status
 			       (pvs-fref-theory fref) theory
 			       (pvs-fref-formula fref) formula))
-		       (error "Not at a formula line")))
-		 (error "Not in a Proof summary - run one of the status-proof- commands"))))
+		       (if noerror
+			   (setf fref nil)
+			   (error "Not at a formula line"))))
+		 (if noerror
+		     (setf fref nil)
+		     (error "Not in a Proof summary - run one of the status-proof- commands")))))
 	  ((equal ext "tccs")
 	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
 		  (setf (pvs-fref-kind fref) 'tccs)
@@ -462,18 +466,26 @@ proof scripts, including those already proved."
 			    (pvs-fref-formula fref) (substring fname (1+ dotpos))))))
 		 ((yes-or-no-p "TCC buffer is stale (PVS file was modified) regenerate?")
 		  (show-tccs from-pvs-theory)
-		  (error "TCC buffer was stale, has been updated"))
-		 (t (error "TCC buffer is stale (PVS file was modified)"))))
+		  (if noerror
+		      (setf fref nil)
+		      (error "TCC buffer was stale, has been updated")))
+		 (t (if noerror
+			(setf fref nil)
+			(error "TCC buffer is stale (PVS file was modified)")))))
 	  ((equal ext "ppe")
 	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
 		  (setf (pvs-fref-kind fref) 'ppe))
 		 ((yes-or-no-p "PPE buffer is stale (PVS file was modified) regenerate?")
 		  (prettyprint-expanded from-pvs-theory)
-		  (error "PPE buffer was stale, has been updated"))
-		 (t (error "PPE buffer is stale (PVS file was modified)"))))
-	  ((equal ext "pvs")
-	   (error "File is not in the current context"))
-	  (t (error "Cannot determine formula from this buffer")))
+		  (if noerror
+		      (setf fref nil)
+		      (error "PPE buffer was stale, has been updated")))
+		 (t (if noerror
+			(setf fref nil)
+			(error "PPE buffer is stale (PVS file was modified)")))))
+	  (t (if noerror
+		 (setf fref nil)
+		 (error "Cannot determine formula from this buffer"))))
     fref))
 
 (defvar-local pvs-valid-formula-buffer :unbound)
