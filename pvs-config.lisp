@@ -277,7 +277,8 @@ targets and copying them to the corresponding bin directory."
 	 (platform-dir (format nil "./bin/~a/" platform))
 	 (build-dir (format nil "~a~a/"
 		     platform-dir (if runtime? "runtime" "devel")))
-	 (foreign-ext #-(or macosx os-macosx) "so" #+(or macosx os-macosx) "dylib"))
+	 (foreign-ext #-(or macosx os-macosx) "so" #+(or macosx os-macosx) "dylib")
+	 (allegro-home (or (sys:getenv "ALLEGRO_HOME") "~/acl")))
     ;; (setq *pvs-path* nil)
     (ensure-directories-exist build-dir)
     ;; (ensure-directories-exist platform-dir)
@@ -364,11 +365,11 @@ targets and copying them to the corresponding bin directory."
 	(format t "~%Copying ~a to ~a" libsrc libdest)
 	(sys:copy-file libsrc libdest :overwrite t)))
     ;; Now copy files.bu and libacli10196s.so from ALLEGRO_HOME
-    (let ((fsrc (format nil "~a/files.bu" (sys:getenv "ALLEGRO_HOME")))
+    (let ((fsrc (format nil "~a/files.bu" allegro-home))
 	  (fdest (format nil "bin/~a/~a/files.bu" platform (if runtime? "runtime" "devel"))))
       (format t "~%Copying ~a to ~a" fsrc fdest)
       (sys:copy-file fsrc fdest :overwrite t))
-    (let ((src (format nil "~a/libacli10196s.~a" (sys:getenv "ALLEGRO_HOME") foreign-ext))
+    (let ((src (format nil "~a/libacli10196s.~a" allegro-home foreign-ext))
 	  (dest (format nil "bin/~a/~a/libacli10196s.~a"
 		  platform (if runtime? "runtime" "devel") foreign-ext)))
       (sys:copy-file src dest :overwrite t))
