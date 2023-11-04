@@ -29,14 +29,6 @@
 
 (in-package :pvs)
 
-(export '(make!-application make!-conjunction* make!-disjunction*
-          make!-equation make!-field-application make-bind-decl
-	  make-new-variable make-variable-expr mk-application
-	  mk-bind-decl mk-const-decl mk-conversionplus-decl
-	  mk-field-decl mk-funtype mk-lambda-expr mk-modname
-	  mk-name-expr mk-number-expr mk-resolution mk-resolution
-	  mk-subtype mk-type-name))
-
 (def-pvs-term not-operator "NOT" "booleans")
 (def-pvs-term and-operator "AND" "booleans")
 (def-pvs-term or-operator "OR" "booleans")
@@ -308,15 +300,18 @@
     :semi t))
 
 (defun mk-mapped-axiom-tcc (id expr theory-instance axiom-decl dfmls)
-  (make-instance 'mapped-axiom-tcc
-    :id id
-    :decl-formals dfmls
-    :spelling 'OBLIGATION
-    :kind 'tcc
-    :definition expr
-    :theory-instance theory-instance
-    :generating-axiom axiom-decl
-    :semi t))
+  (let ((tccdecl (make-instance 'mapped-axiom-tcc
+		   :id id
+		   :decl-formals dfmls
+		   :spelling 'OBLIGATION
+		   :kind 'tcc
+		   :definition expr
+		   :theory-instance theory-instance
+		   :generating-axiom axiom-decl
+		   :semi t)))
+    (dolist (fml dfmls)
+      (setf (associated-decl fml) tccdecl))
+    tccdecl))
 
 (defun mk-mapped-eq-def-tcc (id expr theory-instance dfmls)
   (make-instance 'mapped-eq-def-tcc
@@ -2378,10 +2373,11 @@
 	:argument (make!-arg-tuple-expr ex1 ex2)
 	:type *number_field*)))
 
-(defun make!-minus (ex)
+(defun make!-minus (ex &optional appl?)
   (assert (type ex))
   (assert (tc-eq (find-supertype (type ex)) *number*))
-  (if (rational-expr? ex)
+  (if (and (null appl?)
+	   (rational-expr? ex))
       (make!-number-expr (- (number ex)))
       (make-instance 'unary-application
 	:operator (minus-operator)
