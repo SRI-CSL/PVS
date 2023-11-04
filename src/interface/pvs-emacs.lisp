@@ -439,11 +439,12 @@
 		   (or *from-buffer* file-name))))
     (cond (*rerunning-proof*
 	   (restore))
-	  (t (error 'pvs-error
-		    :message msg
-		    :error-string err
-		    :file-name buff
-		    :place place)))))
+	  (*pvs-initialized* (error 'pvs-error
+				    :message msg
+				    :error-string err
+				    :file-name buff
+				    :place place))
+	  (t (warn err)))))
 
 (defun pvs-abort ()
   #-allegro (abort)
@@ -897,8 +898,12 @@
 (defvar *skip-all-conversion-checks* nil)
 
 (define-condition tcerror (simple-error)
-  ((term :accessor term :initarg :term)
-   (msg :accessor msg :initarg :msg)))
+  ((term :reader term :initarg :term)
+   (msg :reader msg :initarg :msg))
+  (:report
+   (lambda (condition stream)
+     (format stream "Typecheck error: ~a"
+       (msg condition)))))
 
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))
@@ -1369,7 +1374,8 @@ very slow, really only good for error messages over small lists of names."
   (let ((jstr (if (stringp contents)
 		  contents
 		  (pvs-encode-json-to-string contents))))
-    (when (stringp contents)
+    (when (and (stringp contents)
+	       (not (member contents '("[]" "{}" "null") :test #'string=)))
       (assert (pvs-decode-json-from-string contents)))
     (write-to-temp-file jstr t)))
 
