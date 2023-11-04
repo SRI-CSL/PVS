@@ -4285,6 +4285,7 @@ subgoal is proved)."
   (let* ((thinst (module-instance res))
 	 (th (module (declaration res)))
 	 (lres (if (and (lib-datatype-or-theory? th)
+			(not (from-prelude-library? th))
 			(null (library thinst)))
 		   (let ((lib-id (get-library-id (context-path th))))
 		     (assert (and lib-id (symbolp lib-id)))
