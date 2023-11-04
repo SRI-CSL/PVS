@@ -148,6 +148,11 @@ parsing or typechecking - used by pvs-error.")
   "A list of the prelude theories; more useful than *prelude* when the
 order is important")
 
+(defvar *global-prelude-libraries* nil
+  "A list of libraries to be treated as extensions to the prelude.
+These are not associated with a workspace, and usually done through
+.pvs.lisp files, either in the home directory or in the PVS_LIBRARY_PATH.")
+
 (defvar *all-workspace-sessions* nil
   "List of all workspace-session instances, see classes-decl.lisp for details.")
 
@@ -368,6 +373,8 @@ collected in *tccforms*")
 (defvar *allow-free-variables* nil)
 (defvar *bound-variables* nil)
 
+;;(defvar *set-type-exprs*)
+
 ;;; *decl-bound-parameters* is used in fully-instantiated?
 ;;; Normally the current-declaration is used, but, e.g., in generating
 ;;; datatype accessor declarations the formals are needed before the
@@ -409,6 +416,8 @@ rather than the generated declaration.")
 (defvar *ignore-exportings* nil)
 
 (defvar *typecheck-using* nil)
+
+(defvar *importing-axioms* nil)
 
 ;; (defun pprint-comment-strings (stream string)
 ;;   (let ((lines (uiop:split-string string :separator "#\newline"))
@@ -495,7 +504,7 @@ current proof is suspect.")
    allow typechecking without side effects.")
 
 
-;;; Set when typechecking add- and mod-decls
+;;; Set when typechecking for add- and mod- decl commands
 (defvar *tc-add-decl* nil)
 
 ;;; A list of (type . gensym) pairs, where type is a subtype.  Needed in
