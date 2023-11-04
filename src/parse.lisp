@@ -3443,27 +3443,28 @@
       (> (char-code char) 127)))
   
 (defun valid-pvs-id** (idstr start end)
-  (or (and (unialpha-char-p (char idstr start))
-	   (every #'(lambda (ch)
-		      (or (unialpha-char-p ch)
-			  (digit-char-p ch)
-			  (and *in-checker*
-			       (char= ch #\!))
-			  ;; Note that periods are allowed in identifiers
-			  ;; in general, but not in declarations - see
-			  ;; xt-check-periods
-			  (member ch '(#\_ #\?) :test #'char=)))
-		  (subseq idstr (1+ start) end)))
-      (and (null end)
-	   (or (assq (intern (subseq idstr start) :pvs) *pvs-operators*)
-	       (if (and (> (length idstr) (1+ start))
-			(char= (char idstr start) #\0)
-			(memq (char idstr (1+ start))
-			      '(#\x #\X #\o #\O #\b #\B)))
-		   (let ((radix (case (char idstr (1+ start))
-				  ((#\x #\X) 16)
-				  ((#\o #\O) 8)
-				  ((#\b #\B) 2))))
-		     (every #'(lambda (ch) (digit-char-p ch radix))
-			    (subseq idstr (+ start 2))))
-		   (every #'digit-char-p (subseq idstr start)))))))
+  (and (plusp (length idstr))
+       (or (and (unialpha-char-p (char idstr start))
+		(every #'(lambda (ch)
+			   (or (unialpha-char-p ch)
+			       (digit-char-p ch)
+			       (and *in-checker*
+				    (char= ch #\!))
+			       ;; Note that periods are allowed in identifiers
+			       ;; in general, but not in declarations - see
+			       ;; xt-check-periods
+			       (member ch '(#\_ #\?) :test #'char=)))
+		       (subseq idstr (1+ start) end)))
+	   (and (null end)
+		(or (assq (intern (subseq idstr start) :pvs) *pvs-operators*)
+		    (if (and (> (length idstr) (1+ start))
+			     (char= (char idstr start) #\0)
+			     (memq (char idstr (1+ start))
+				   '(#\x #\X #\o #\O #\b #\B)))
+			(let ((radix (case (char idstr (1+ start))
+				       ((#\x #\X) 16)
+				       ((#\o #\O) 8)
+				       ((#\b #\B) 2))))
+			  (every #'(lambda (ch) (digit-char-p ch radix))
+				 (subseq idstr (+ start 2))))
+			(every #'digit-char-p (subseq idstr start))))))))
