@@ -737,6 +737,20 @@
 (defmethod tc-eq* ((e1 rational-expr) (e2 unary-application) bindings)
   (tc-eq* e2 e1 bindings))
 
+(defmethod tc-eq* ((e1 name-expr) (e2 name-expr-from-number) bindings)
+  (let ((num (if (numberp (id e1))
+		 (id e1)
+		 (when (valid-number? (string (id e1)))
+		   (parse-integer (string (id e1)))))))
+    (and num (= num (number e2)))))
+
+(defmethod tc-eq* ((e1 name-expr-from-number) (e2 name-expr) bindings)
+  (let ((num (if (numberp (id e2))
+		 (id e2)
+		 (when (valid-number? (string (id e2)))
+		   (parse-integer (string (id e2)))))))
+    (and num (= num (number e1)))))
+
 (defmethod tc-eq-ops ((op1 field-name-expr) (op2 field-name-expr)
 		      &optional bindings)
   (with-slots ((id1 id) (ty1 type)) op1
