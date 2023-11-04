@@ -140,8 +140,7 @@
     ;; remove above once term-lt is written
     (prove-decl expr-decl
 		:strategy (unless interactive?
-			    `(then (then ,strategy (postpone)) (quit)))
-		:context *current-context*)
+			    `(then (then ,strategy (postpone)) (quit))))
     (let ((mform (merge-subgoals *subgoals*)))
       (remove-skolem-constants
        (gensubst mform
@@ -186,8 +185,7 @@
 		      :spelling 'formula
 		      :definition closed-expr))
 	 (*start-proof-display* display?))
-    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit))
-		:context *current-context*)
+    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit)))
     *subgoals*))
 
 (defun merge-subgoals (subgoals)
@@ -211,8 +209,8 @@
 (defvar *dump-sequents-to-file* nil)
 (defvar *show-parens-in-proof* nil)
 
-(defmethod prove-decl :around ((decl formula-decl) &key strategy context)
-  (declare (ignore strategy context))
+(defmethod prove-decl :around ((decl formula-decl) &key strategy)
+  (declare (ignore strategy))
   (if (or *proof-timeout*
 	  (and *noninteractive*
 	       *noninteractive-timeout*))
@@ -229,113 +227,114 @@
       (call-next-method)))
 
 
-(defmethod prove-decl ((decl formula-decl) &key strategy context)
+(defmethod prove-decl ((decl formula-decl) &key strategy)
   (ensure-default-proof decl)
-  (unless (closed-definition decl)
-      (let ((*current-context* (context decl))
-	    (*generate-tccs* 'none))
+  (with-context (context decl)
+    (assert (eq (declaration *current-context*) decl) () "Strange context")
+    (unless (closed-definition decl)
+      (let ((*generate-tccs* 'none))
 	(with-current-decl decl
 	  (setf (closed-definition decl)
 		(universal-closure (definition decl))))))
-  (let* ((init-real-time (get-internal-real-time))
-	 (init-date (iso8601-date))
-	 (init-run-time (get-run-time))
-	 (*skovar-counter* nil)
-	 (*skofun-counter* nil)
-	 (*bind-counter* nil)
-	 (*recursive-prove-decl-call* *in-checker*)
-	 (*displaying-proof* nil)
-	 (*current-displayed* nil)
-	 (*flush-displayed* nil)
-	 (*auto-rewrites-names* nil)
-	 (*auto-rewrites-off* nil)
-	 (*assert-typepreds* nil)
-	 (*record-undone-proofstate* nil)
-	 (*pvs-bdd-hash* nil)
-	 (*bdd-pvs-hash* nil)
-	 (*bdd-counter* *bdd-counter*)
-	 (*track-rewrites* nil)
-	 (*context-modified* nil)
-	 (*generate-tccs* 'none)
-	 (*rewrite-msg-off* *rewrite-msg-off*)
-	 (*ruletrace* nil)
-	 (*ruletracedepth* 0)
-	 ;; Hash tables
-	 (*assert-if-arith-hash* (make-hash-table :test #'eq))
-	 (*auto-rewrites* (init-if-rec *auto-rewrites*))
-	 (*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
-	 (*all-rewrites-names* nil)
-	 ;;(*beta-cache* (init-if-rec *beta-cache*))
-	 ;;(*let-reduce-beta-cache* (init-if-rec *let-reduce-beta-cache*))
-	 (*match-cache* (init-if-rec *match-cache*))
-	 (*subtype-of-hash* (init-if-rec *subtype-of-hash*))
-	 (*create-formulas-cache* (init-if-rec *create-formulas-cache*))
-	 (*term-print-strings* (init-if-rec *term-print-strings*))
-	 ;;
-	 (*current-context* (or context (context decl)))
-	 (*in-checker* t) ; Make sure this follows setting of *current-context*
-	 (*current-decision-procedure* (determine-decision-procedure decl))
-	 (auto-rewrites-info (with-current-decl decl (initialize-auto-rewrites)))
-	 ;; The next section needed for translate-to-prove, which is used
-	 ;; by arith-order, make-prod, and arith-ord-translate.  This will
-	 ;; be removed once term-lt is written.
-	 (*translate-id-hash* (init-if-rec *translate-id-hash*))
-	 (*translate-id-counter* nil)
-	 (*subtype-names* nil)
-	 (*local-typealist* *local-typealist*)
-	 (*rec-type-dummies* nil)
-	 (*named-exprs* nil)
-	 (*tccs-proved* nil)
-	 (*query-input* nil)
-	 (*prover-log* nil))
-    (reset-pseudo-normalize-caches)
-    (reset-beta-cache)
-    (newcounter *translate-id-counter*)
-    (initprover)
-    ;; remove above once term-lt is written
-    (newcounter *skovar-counter*)
-    (newcounter *skofun-counter*)
-    (newcounter *bind-counter*)
-    (with-current-decl decl
-      (let* ((top-formula (closed-definition decl))
-	     (s-form (make-instance 's-formula :formula top-formula))
-	     (sequent (make-instance 'sequent :s-forms (list s-form)))
-	     (*init-dp-state* (dpi-empty-state))
-	     (*dp-state* (dpi-push-state *init-dp-state*))
-	     (*top-dp-state* (dpi-push-state *init-dp-state*))
-	     (*top-proofstate*
-	      (make-instance 'top-proofstate
-		:current-goal sequent
-		:label (string (id decl))
-		:strategy (if strategy
-			      strategy
-			      (query*-step))
-		:context *current-context*
-		:dp-state *dp-state*
-		:justification (justification decl)
-		:declaration decl
-		:current-auto-rewrites auto-rewrites-info))
-	     (cur-all-subst-mod-params-caches
-	      (all-subst-mod-params-caches *workspace-session*))
-	     (new-all-subst-mod-params-caches
-	      (copy-subst-mod-params-cache))
-	     ;; (*dump-proof-data-to-file*
-	     ;;  (or *dump-proof-data-to-file*
-	     ;; 	  (when *log-proofs* (format nil "~a/pvs-logs/prf-~a.json"
-	     ;; 			       (current-context-path) init-date))))
-	     )
-	(before-prove*)
-	(setf (all-subst-mod-params-caches *workspace-session*)
-	      new-all-subst-mod-params-caches)
-	(unwind-protect (dpi-start #'prove-decl-body)
+    (let* ((init-real-time (get-internal-real-time))
+	   ;;(init-date (iso8601-date))
+	   (init-run-time (get-run-time))
+	   (*skovar-counter* nil)
+	   (*skofun-counter* nil)
+	   (*bind-counter* nil)
+	   (*recursive-prove-decl-call* *in-checker*)
+	   (*displaying-proof* nil)
+	   (*current-displayed* nil)
+	   (*flush-displayed* nil)
+	   (*auto-rewrites-names* nil)
+	   (*auto-rewrites-off* nil)
+	   (*assert-typepreds* nil)
+	   (*record-undone-proofstate* nil)
+	   (*pvs-bdd-hash* nil)
+	   (*bdd-pvs-hash* nil)
+	   (*bdd-counter* *bdd-counter*)
+	   (*track-rewrites* nil)
+	   (*context-modified* nil)
+	   (*generate-tccs* 'none)
+	   (*rewrite-msg-off* *rewrite-msg-off*)
+	   (*ruletrace* nil)
+	   (*ruletracedepth* 0)
+	   ;; Hash tables
+	   (*assert-if-arith-hash* (make-hash-table :test #'eq))
+	   (*auto-rewrites* (init-if-rec *auto-rewrites*))
+	   (*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
+	   (*all-rewrites-names* nil)
+	   ;;(*beta-cache* (init-if-rec *beta-cache*))
+	   ;;(*let-reduce-beta-cache* (init-if-rec *let-reduce-beta-cache*))
+	   (*match-cache* (init-if-rec *match-cache*))
+	   (*subtype-of-hash* (init-if-rec *subtype-of-hash*))
+	   (*create-formulas-cache* (init-if-rec *create-formulas-cache*))
+	   (*term-print-strings* (init-if-rec *term-print-strings*))
+	   ;;
+	   (*in-checker* t) ; Make sure this follows setting of *current-context*
+	   (*current-decision-procedure* (determine-decision-procedure decl))
+	   (auto-rewrites-info (with-current-decl decl (initialize-auto-rewrites)))
+	   ;; The next section needed for translate-to-prove, which is used
+	   ;; by arith-order, make-prod, and arith-ord-translate.  This will
+	   ;; be removed once term-lt is written.
+	   (*translate-id-hash* (init-if-rec *translate-id-hash*))
+	   (*translate-id-counter* nil)
+	   (*subtype-names* nil)
+	   (*local-typealist* *local-typealist*)
+	   (*rec-type-dummies* nil)
+	   (*named-exprs* nil)
+	   (*tccs-proved* nil)
+	   (*query-input* nil)
+	   (*prover-log* nil))
+      (reset-pseudo-normalize-caches)
+      (reset-beta-cache)
+      (clrhash *subst-fields-hash*)
+      (newcounter *translate-id-counter*)
+      (initprover)
+      ;; remove above once term-lt is written
+      (newcounter *skovar-counter*)
+      (newcounter *skofun-counter*)
+      (newcounter *bind-counter*)
+      (with-current-decl decl
+	(let* ((top-formula (closed-definition decl))
+	       (s-form (make-instance 's-formula :formula top-formula))
+	       (sequent (make-instance 'sequent :s-forms (list s-form)))
+	       (*init-dp-state* (dpi-empty-state))
+	       (*dp-state* (dpi-push-state *init-dp-state*))
+	       (*top-dp-state* (dpi-push-state *init-dp-state*))
+	       (*top-proofstate*
+		(make-instance 'top-proofstate
+		  :current-goal sequent
+		  :label (string (id decl))
+		  :strategy (if strategy
+				strategy
+				(query*-step))
+		  :context *current-context*
+		  :dp-state *dp-state*
+		  :justification (justification decl)
+		  :declaration decl
+		  :current-auto-rewrites auto-rewrites-info))
+	       (cur-all-subst-mod-params-caches
+		(all-subst-mod-params-caches *workspace-session*))
+	       (new-all-subst-mod-params-caches
+		(copy-subst-mod-params-cache))
+	       ;; (*dump-proof-data-to-file*
+	       ;;  (or *dump-proof-data-to-file*
+	       ;; 	  (when *log-proofs* (format nil "~a/pvs-logs/prf-~a.json"
+	       ;; 			       (current-context-path) init-date))))
+	       )
+	  (before-prove*)
 	  (setf (all-subst-mod-params-caches *workspace-session*)
-		cur-all-subst-mod-params-caches)
-	  (after-prove*)
-	  (dpi-end *top-proofstate*)
-	  (unless *recursive-prove-decl-call*
-	    (save-proof-info decl init-real-time init-run-time))
-	  (finish-proofstate *top-proofstate*))
-	*top-proofstate*))))
+		new-all-subst-mod-params-caches)
+	  (unwind-protect (dpi-start #'prove-decl-body)
+	    (setf (all-subst-mod-params-caches *workspace-session*)
+		  cur-all-subst-mod-params-caches)
+	    (after-prove*)
+	    (dpi-end *top-proofstate*)
+	    (unless *recursive-prove-decl-call*
+	      (save-proof-info decl init-real-time init-run-time))
+	    (finish-proofstate *top-proofstate*))
+	  *top-proofstate*)))))
 
 (defun determine-decision-procedure (decl)
   (or (if (or *force-dp*
