@@ -3222,12 +3222,10 @@ found. "
 	 (theory (get-theory mod-inst))
 	 (current-mod? (eq theory (current-theory)))
 	 (actuals (unless current-mod? (actuals mod-inst)))
-	 (formals (unless current-mod?
-		    (formals-sans-usings theory)))
-	 (*modsubst*
-	  (if formals (if actuals t
-			  (mapcar #'(lambda (x) (list x)) formals))
-	      t)))
+	 (formals (unless current-mod? (formals-sans-usings theory)))
+	 (*modsubst* (if (and formals (null actuals))
+			 (mapcar #'list formals)
+			 t)))
     (forward-match* conc antec-fmlas formlist formlist nil)))
 
 (defvar *forward-match-dup?*)
@@ -3240,7 +3238,7 @@ found. "
 (defun forward-match*-rec (conc antec-fmlas formlist all-formlist subst)
   (cond ((null antec-fmlas)
 	 (cond ((subsetp (and+ (substit conc subst)) all-formlist
-			:test #'tc-eq)
+			 :test #'tc-eq)
 		(setq *forward-match-dup?* t)
 		(values 'fail t))
 	       (t subst)))
@@ -3248,17 +3246,24 @@ found. "
 	(t (let* ((antec1 (car antec-fmlas))
 		  (fmla1 (car formlist))
 		  ;;(*modsubst* t)
-		  (sub1 (match antec1 fmla1 nil subst)))
-	     (if (eq sub1 'fail)
-		 (forward-match*-rec conc antec-fmlas (cdr formlist)
-				 all-formlist subst)
-		 (let ((result (forward-match*-rec conc (cdr antec-fmlas)
-						   all-formlist
-						   all-formlist sub1)))
-		   (if (eq result 'fail)
-		       (forward-match*-rec conc antec-fmlas (cdr formlist)
-				       all-formlist subst)
-		       (values result *forward-match-dup?*))))))))
+		  )
+	     (multiple-value-bind (sub1 modsubst)
+		 (find-match antec1 fmla1 nil subst nil) ;; order could be 'out
+	       (if (eq sub1 'fail)
+		   (forward-match*-rec conc antec-fmlas (cdr formlist) all-formlist subst)
+		   (let* ((mod-subst-conc (if (listp modsubst)
+					      (subst-theory-params conc modsubst)
+					      conc))
+			  (mod-subst-fmlas (if (listp modsubst)
+					       (subst-theory-params (cdr antec-fmlas) modsubst)
+					       (cdr antec-fmlas)))
+			  (result (forward-match*-rec mod-subst-conc mod-subst-fmlas
+						      all-formlist
+						      all-formlist sub1)))
+		     (if (eq result 'fail)
+			 (forward-match*-rec conc antec-fmlas (cdr formlist)
+					     all-formlist subst)
+			 (values result *forward-match-dup?*)))))))))
 
 (defun find-trans-match (info)
   (let ((resolution (car info))
