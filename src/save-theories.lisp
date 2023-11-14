@@ -435,9 +435,9 @@ instances, e.g., other declarations within the theory, or self-references."
 		      (all-usings *saving-theory*)))
 	    () "Attempt to store declaration in illegal theory")
     (typecase obj
-      (number-declaration
+      (const-number-decl
        (reserve-space 2
-	 (push-word (store-obj 'number-declref))
+	 (push-word (store-obj 'const-number-decl))
 	 (push-word (store-obj (id obj)))))
       (t (let ((dpos (position obj (all-decls module))))
 	   (assert dpos () "no dpos?")
@@ -745,8 +745,8 @@ type-decls in classes-decl.lisp."
       (assert decl () "Declaration was not found")
       decl)))
 
-(setf (get 'number-declref 'fetcher) 'fetch-number-declref)
-(defun fetch-number-declref ()
+(setf (get 'const-number-decl 'fetcher) 'fetch-const-number-decl)
+(defun fetch-const-number-decl ()
   (let* ((number (fetch-obj (stored-word 1))))
     (number-declaration number)))
 
