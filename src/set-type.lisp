@@ -379,6 +379,12 @@ required a context.")
     (set-type-name-expr* ex res)
     (check-set-type-recursive-name ex)))
 
+(defmethod set-type* ((ex name-expr-from-number) expected)
+  (call-next-method)
+  (when (const-number-decl? (declaration ex))
+    (assert (numberp (number ex)))
+    (change-class ex 'number-expr :number (number ex))))
+
 (defun set-actuals-places (name &optional (res (resolutions name)))
   (when (place name)
     (dolist (r res)
@@ -687,6 +693,7 @@ resolution with a macro matching the signature of the arguments."
   (change-class expr 'field-name-expr))
 
 (defmethod change-name-expr-class-if-needed ((decl adt-constructor-decl) expr)
+  (assert (symbolp (id expr)))
   (change-class expr 'constructor-name-expr))
 
 (defmethod change-name-expr-class-if-needed ((decl adt-constructor-decl)
@@ -1118,7 +1125,10 @@ resolution with a macro matching the signature of the arguments."
                          (delete-if-not #'type-expr? (ptypes (expr act))))))
     (type-error act
       "Type provided where an expression is expected"))
-  (set-type* (expr act) (type formal))
+  (unless (and (fully-typed? (expr act))
+	       (fully-instantiated? (expr act))
+	       (eq *generate-tccs* 'none))
+    (set-type* (expr act) (type formal)))
   (setf (type-value act) nil)
   #+pvsdebug (assert (fully-instantiated? (type formal)))
   #+pvsdebug (assert (fully-instantiated? (type (expr act))))
@@ -1203,6 +1213,8 @@ resolution with a macro matching the signature of the arguments."
 
 ;;; Returns t if theory of map1 depends on theory of map2
 (defun theory-map-depends-on (map1 map2)
+  (assert (resolution (lhs map1)))
+  (assert (resolution (lhs map2)))
   (let ((th1 (declaration (lhs map1)))
         (th2 (declaration (lhs map2))))
     (cond ((from-prelude? th1)
@@ -1227,7 +1239,7 @@ resolution with a macro matching the signature of the arguments."
     (unless (typep d1 '(or type-decl datatype-or-module mod-decl
 			theory-abbreviation-decl))
       (let ((d2 (declaration (lhs map2)))
-            (refs (collect-references (type d1))))
+	    (refs (collect-references (type d1))))
         (and (memq d2 refs) t)))))
     
 
@@ -2666,6 +2678,7 @@ type of the lhs."
 	       (if (fully-instantiated? res)
 		   (or (not (fully-instantiated? opres))
 		       (recursive-defn-conversion? argument)
+		       (adt-constructor-decl? (declaration opres))
 		       (strict-compatible? (type (car res)) (type opres)))
 		   (and (not (fully-instantiated? res))
 			(strict-compatible? (type (car res)) (type opres)))))
@@ -3004,32 +3017,33 @@ type of the lhs."
         (unless coptypes
           (type-incompatible expr (mapcar #'range (ptypes operator))
                              expected argument))
+	;; coptypes are funtypes whose range is compatible with expected
         (let* ((optypes1 (if (cdr coptypes)
                              (or (delete-if-not
+				     ;; Remove those not compatible with some argument type
                                      #'(lambda (oty)
-                                         (let ((dty (domain
-                                                     (find-supertype oty))))
-                                           (some #'(lambda (aty)
-                                                     (compatible? dty aty))
+                                         (let ((dty (domain (find-supertype oty))))
+                                           (some #'(lambda (aty) (compatible? dty aty))
                                                  (ptypes argument))))
                                    coptypes)
                                  coptypes)
                              coptypes))
                (optypes2 (if (cdr optypes1)
+			     ;; Remove non-local optypes
                              (or (local-operator-types operator optypes1 argument)
                                  optypes1)
                              optypes1))
                (optypes3 (if (cdr optypes2)
+			     ;; Remove uninstantiated optypes
                              (or (delete-if-not #'fully-instantiated? optypes2)
                                  optypes2)
                              optypes2))
                (optypes4 (if (cdr optypes3)
+			     ;; Remove unequal domains
                              (or (delete-if-not
                                        #'(lambda (oty)
-                                           (let* ((dty (domtype
-                                                        (find-supertype oty))))
-                                             (some #'(lambda (aty)
-                                                       (tc-eq dty aty))
+                                           (let* ((dty (domtype (find-supertype oty))))
+                                             (some #'(lambda (aty) (tc-eq dty aty))
                                                    (ptypes argument))))
                                      optypes3)
                                    optypes3)
@@ -3060,14 +3074,20 @@ type of the lhs."
                                   expected)
                                  optypes8)
                              optypes8))
-               (optypes (if (cdr optypes9)
-                            (or (maximal-domain-optypes optypes9)
-                                optypes9)
-                            optypes9)))
+               (optypes10 (if (cdr optypes9)
+                              (or (maximal-domain-optypes optypes9)
+                                  optypes9)
+                              optypes9))
+	       (optypes (if (cdr optypes10)
+			    (or (delete-if #'(lambda (oty)
+                                               (free-params (domtype (find-supertype oty))))
+				  optypes10)
+				optypes10)
+			    optypes10)))
           (assert optypes)
           #+pvsdebug (assert (null (duplicates? optypes :test #'tc-eq)))
-          (when (typep operator 'name-expr)
-            (unless (singleton? (resolutions operator))
+	  (when (typep operator 'name-expr)
+	    (unless (singleton? (resolutions operator))
               (setf (resolutions operator)
                     (or (remove-if-not #'(lambda (r)
                                            (member (type r) optypes
@@ -5586,7 +5606,9 @@ type of the lhs."
   (declare (ignore expected))
   (assert (type (expr te)))
   ;;(assert (funtype? (find-supertype (type (expr te)))))
-  (set-type* (expr te) (type (expr te)))
+  (unless (and (eq *generate-tccs* 'none)
+	       (fully-typed? (expr te)))
+    (set-type* (expr te) (type (expr te))))
   (assert (fully-instantiated? (expr te)))
   ;; expr-as-type should only be a print-type, never a canonical type
   ;; hence the following should not be used, and causes problems.
