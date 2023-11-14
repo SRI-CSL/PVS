@@ -581,9 +581,12 @@
     (when *use-default-dp?*
       (setf (decision-procedure-used prinfo) *default-decision-procedure*))
     (setf (proof-status decl)
-	  (if (and (eq (status-flag *top-proofstate*) '!)
-		   (not *context-modified*))
-	      'proved
+	  (if (eq (status-flag *top-proofstate*) '!)
+	      (cond (*context-modified*
+		     (pvs-message "~a proved with modified context, so marked unchecked"
+		       (id decl))
+		     'unchecked)
+		    (t 'proved))
 	      'unfinished))
     (format-nif "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
     (format-nif "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
