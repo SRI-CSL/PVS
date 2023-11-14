@@ -671,16 +671,6 @@ use binfiles."
 	     (unless no-message?
 	       (pvs-message "~a is already parsed" filename))
 	     theories)
-	    ((and *in-checker*
-		  (not *tc-add-decl*))
-	     (if (pvs-yes-or-no-p "A proof is running; quit it now?")
-		 (if (find-restart 'quit-prover)
-		     (invoke-restart 'quit-prover)
-		     (throw 'quit nil))
-		 (pvs-error "Parse error" "Must exit the prover first")))
-	    ((and *in-evaluator*
-		  (not *tc-add-decl*))
-	     (pvs-error "Parse error" "Must exit the evaluator first"))
 	    ((and typecheck?
 		  (null theories)
 		  (not forced?)
@@ -714,6 +704,21 @@ use binfiles."
 		 (dolist (th theories)
 		   (remove-associated-buffers (id th)))
 		 (assert (gethash (pvs-filename filename) (current-pvs-files)))
+		 ;; If no changed-theories, then all current proofs are still OK
+		 (when changed-theories
+		   (when (and *in-checker*
+			      (some #'(lambda (cth)
+					(or (eq cth (current-theory))
+					    (memq cth (all-importings (current-theory)))))
+				    changed-theories))
+		     (setq *context-modified* t))
+		   (dolist (sess *all-sessions*)
+		     (let ((sess-th (module (formula-decl sess))))
+		       (when (some #'(lambda (cth)
+				       (or (eq cth sess-th)
+					   (memq cth (all-importings sess-th))))
+				   changed-theories)
+			 (prover-step (id sess) "(lisp (setq *context-modified* t))")))))
 		 (values theories nil changed-theories)))))))
 
 (defun parse-all-pvs-files (dir)
@@ -911,12 +916,28 @@ where each comment has the form
 	  (delete-file-from-workspace clfname))
 	(reset-typecheck-caches)))))
 
+#-sbcl
 (defmethod pvs-filename ((str string))
   "Extracts the filename from the string, assuming it is a pvs-file
 reference. Doesn't just blindly use pathname-name, in case filename has a
 period in it."
   (let ((fname (pathname-name str))
 	(ext (pathname-type str)))
+    (if (or (null ext)
+	    (string-equal ext "pvs"))
+	fname
+	(format nil "~a.~a" fname ext))))
+
+#+sbcl 
+(defmethod pvs-filename ((str string))
+  "Extracts the filename from the string, assuming it is a pvs-file
+reference. Doesn't just blindly use pathname-name, in case filename has a
+period in it.
+Filenames with ? in them are treated as patterns in sbcl pathname-name, so we add
+escapes here."
+  (let* ((pstr (protect-pvs-filename str))
+	 (fname (protect-pvs-filename (pathname-name pstr)))
+	 (ext (pathname-type pstr)))
     (if (or (null ext)
 	    (string-equal ext "pvs"))
 	fname
@@ -1438,12 +1459,6 @@ period in it."
 			    restored?
 			    (if (and prove-tccs? (not *in-checker*))
 				" - attempting proofs of TCCs" ""))))
-		       ((and *in-checker*
-			     (not *tc-add-decl*))
-			(pvs-message "Must exit the prover first"))
-		       ((and *in-evaluator*
-			     (not *tc-add-decl*))
-			(pvs-message "Must exit the evaluator first"))
 		       (t (pvs-message "Typechecking ~a" filename)
 			  (when forced?
 			    (delete-generated-adt-files theories))
