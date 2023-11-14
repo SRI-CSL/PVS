@@ -244,6 +244,7 @@
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
+	   (get-number-resolutions name kind args)
 	   dreses
 	   (when (and (eq kind 'module)
 		      (null dreses)
@@ -475,6 +476,25 @@
 					       (car (types (expr (rhs mapping)))))
 					     (break "No type here?")))))))
 	     names)))))
+
+(defun get-number-resolutions (name kind args)
+  (when (and (eq kind 'expr)
+	     (null args)
+	     (not (or (mod-id name)
+		      (actuals name)
+		      (dactuals name)
+		      (mappings name)
+		      (target name)))
+	     (or (numberp (id name))
+		 (valid-number? (string (id name)))))
+    (multiple-value-bind (num radix)
+	(if (numberp (id name))
+	    (id name)
+	    (parse-number (string (id name))))
+      (let ((ndecl (number-declaration num)))
+	(list (mk-resolution ndecl
+		(make-theoryname (module ndecl))
+		*number_field*))))))
 
 (defun get-decls-resolutions (decls name acts dacts thid mappings kind args
 				    &optional reses)
