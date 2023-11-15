@@ -393,11 +393,25 @@ it is nil in the substituted binding")
 					   (acons (domain stype)
 						  arg nil)))
 				(range stype)))))
-		 ;; Note: the copy :around (application) method takes care of
-		 ;; changing the class if it is needed.
-		 (if (strong-tc-eq nex expr)
-		     expr
-		     nex)))))))
+		 (cond ((not (application? nex))
+			(if (compatible? (type expr) (type nex))
+			    nex
+			    (let ((sexpr (subst-mod-params nex
+					 (theory-instance (current-declaration)))))
+			      sexpr)))
+		       ((and (not (compatible? (dep-binding-type (domain stype))
+					       (type (argument nex))))
+			     (tcc? (current-declaration))
+			     (theory-instance (current-declaration))
+			     (mappings (theory-instance (current-declaration))))
+			(let ((sexpr (subst-mod-params nex
+					 (theory-instance (current-declaration)))))
+			  sexpr))
+		       (t ;; Note: the copy :around (application) method takes care of
+			;; changing the class if it is needed.
+			(if (strong-tc-eq nex expr)
+			    expr
+			    nex)))))))))
 
 (defmethod substit* :around ((expr let-expr) alist)
   (declare (ignore alist))
