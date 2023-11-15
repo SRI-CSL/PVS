@@ -1344,39 +1344,7 @@ which is the transitive closure of the immediate assuming instances."
 			    (theory-reference? (declaration modinst))))
 		(push (list modinst nil (current-declaration))
 		      (assuming-instances (current-theory))))
-	      (dolist (axpair (collect-mapping-axioms modinst mod))
-		(let ((axiom (car axpair))
-		      (defn (cdr axpair)))
-		  (assert (axiom? axiom))
-		  (multiple-value-bind (ndecl mappings-alist)
-		      (make-mapped-axiom-tcc-decl axiom defn modinst mod)
-		    ;; ndecl is nil if mapped axion simplifies to *true*
-		    (let ((netype (when ndecl (nonempty-formula-type ndecl))))
-		      (if (and ndecl
-			       (or (null netype)
-				   (possibly-empty-type? netype)))
-			  (let ((needs-interp (mapcar #'id
-						(find-needs-interpretation
-						 (definition ndecl)
-						 modinst mod mappings-alist))))
-			    (if needs-interp
-				(unless *collecting-tccs*
-				  (pvs-warning
-				      "Axiom ~a is not mapped to a TCC because~%  ~?~% ~
-                                     ~:[is~;are~] not interpreted."
-				    (id axiom) *andusingctl* needs-interp (cdr needs-interp)))
-				(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
-			  ;;(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
-			  (if ndecl
-			      (add-tcc-comment
-			       'mapped-axiom modinst axiom
-			       (cons 'map-to-nonempty 
-				     (format nil
-					 "%~a~%  % was not generated because ~a is non-empty"
-				       (unpindent ndecl 2 :string t :comment? t)
-				       (unpindent netype 2 :string t :comment? t))))
-			      (add-tcc-comment
-			       'mapped-axiom modinst axiom)))))))))))))
+	      (collect-mapping-axioms modinst mod)))))))
 
 ;; (defun generate-mapped-axiom (modinst axiom-decl mapped-axiom-defn)
 ;;   (unless (some #'(lambda (decl)
@@ -1399,12 +1367,99 @@ which is the transitive closure of the immediate assuming instances."
 ;; of the closed-definitions of the axioms
 (defmethod collect-mapping-axioms (thinst theory)
   (assert theory)
-  (append (collect-mapping-axioms* (mappings thinst) thinst theory)
-	  (mapcan #'(lambda (d)
-		      (when (axiom? d)
-			(ensure-closed-definition d)
-			(list (cons d (closed-definition d)))))
-	    (all-decls theory))))
+  (let ((axioms (remove-if-not #'axiom? (all-decls theory))))
+    (mapcar #'(lambda (ax) (collect-mapping-axiom ax thinst theory)) axioms)))
+
+(defun collect-mapping-axiom (axiom thinst theory)
+  (multiple-value-bind (dfmls dacts)
+      (new-decl-formals axiom)
+    (let* ((id (make-tcc-name nil (id axiom)))
+	   (naxiom (mk-mapped-axiom-tcc id nil thinst axiom dfmls))
+	   (defn (definition axiom)))
+      (multiple-value-bind (ndefn mappings-alist)
+	  (with-current-decl naxiom
+	    (subst-mod-params defn (copy thinst :dactuals dacts) (module axiom) axiom))
+	(setf (definition naxiom) ndefn)
+	(let ((netype (nonempty-formula-type ndefn))
+	      (needs-interp (find-needs-interpretation ndefn thinst theory mappings-alist)))
+	  (cond ((and netype
+		      (not (possibly-empty-type? netype)))
+		 (add-tcc-comment 'mapped-axiom thinst axiom
+		   (cons 'map-to-nonempty
+			 (format nil "%~a~%  % was not generated because ~a ~
+                                        is known to be non-empty"
+			   (unpindent ndefn 2 :string t :comment? t)
+			   (unpindent netype 2 :string t :comment? t)))))
+		((ultimately-true? ndefn)
+		 (add-tcc-comment 'mapped-axiom thinst axiom))
+		(needs-interp
+		 ;; Keep as an axiom
+		 (change-class naxiom 'formula-decl
+		   :id (id axiom)
+		   :spelling 'AXIOM
+		   :kind nil)
+		 (if (importing? (current-declaration))
+		     (add-decl naxiom)
+		     (break "collect-mapping-axiom needs interp")))
+		(t (insert-tcc-decl 'mapped-axiom thinst axiom naxiom))))
+	naxiom))))
+
+(defmethod ultimately-true? ((ex forall-expr))
+  (ultimately-true? (expression ex)))
+
+(defmethod ultimately-true? ((ex exists-expr))
+  (unless (some #'(lambda (bd) (possibly-empty-type? (type bd))) (bindings ex))
+    (ultimately-true? (expression ex))))
+
+(defmethod ultimately-true? ((ex implication))
+  (or (ultimately-true? (args2 ex))
+      (ultimately-false? (args1 ex))))
+
+(defmethod ultimately-true? ((ex conjunction))
+  (and (ultimately-true? (args1 ex))
+       (ultimately-true? (args2 ex))))
+
+(defmethod ultimately-true? ((ex disjunction))
+  (or (ultimately-true? (args1 ex))
+      (ultimately-true? (args2 ex))))
+
+(defmethod ultimately-true? ((ex negation))
+  (ultimately-false? (args1 ex)))
+
+(defmethod ultimately-true? ((ex name-expr))
+  (tc-eq ex *true*))
+
+(defmethod ultimately-true? ((ex expr))
+  nil)
+
+(defmethod ultimately-false? ((ex forall-expr))
+  ;; need to check for possibly empty types
+  (unless (some #'(lambda (bd) (possibly-empty-type? (type bd))) (bindings ex))
+    (ultimately-false? (expression ex))))
+
+(defmethod ultimately-false? ((ex exists-expr))
+  (ultimately-false? (expression ex)))
+
+(defmethod ultimately-false? ((ex implication))
+  (and (ultimately-true? (args1 ex))
+       (ultimately-false? (args2 ex))))
+
+(defmethod ultimately-false? ((ex conjunction))
+  (or (ultimately-false? (args1 ex))
+      (ultimately-false? (args2 ex))))
+
+(defmethod ultimately-false? ((ex disjunction))
+  (and (ultimately-false? (args1 ex))
+       (ultimately-false? (args2 ex))))
+
+(defmethod ultimately-false? ((ex negation))
+  (ultimately-true? (args1 ex)))
+
+(defmethod ultimately-false? ((ex name-expr))
+  (tc-eq ex *false*))
+
+(defmethod ultimately-false? ((ex expr))
+  nil)
 
 (defmethod collect-mapping-axioms (thinst (decl mod-decl))
   (assert (fully-instantiated? thinst))
@@ -1418,7 +1473,7 @@ which is the transitive closure of the immediate assuming instances."
 
 ;;; collect-mapping-axioms* walks down mappings, looking for theory
 ;;; references.  Then collects axioms from the RHS, and tries to instantiate
-;;; them.  If successful they are returned.
+;;; them. If successful they are returned.
 
 (defun collect-mapping-axioms* (mappings thinst theory &optional axpairs)
   (if (null mappings)
@@ -1441,9 +1496,10 @@ which is the transitive closure of the immediate assuming instances."
 					    (generated rdecl))
 				(ensure-closed-definition ax)
 				(list (cons ax
-					    (with-current-decl ax
-					      (subst-mod-params
-						  (closed-definition ax) thinst theory))))))
+					    ;; (with-current-decl ax
+					    ;;   (subst-mod-params
+					    ;; 	  (closed-definition ax) thinst theory))
+					    (closed-definition ax)))))
 		    lhs-axioms)
 		  axpairs))
 	  (module
@@ -1454,9 +1510,10 @@ which is the transitive closure of the immediate assuming instances."
 					    (all-decls rdecl))
 				(ensure-closed-definition ax)
 				(list (cons ax
-					    (with-current-decl ax
-					      (subst-mod-params
-						  (closed-definition ax) thinst theory))))))
+					    ;; (with-current-decl ax
+					    ;;   (subst-mod-params
+					    ;; 	  (closed-definition ax) thinst theory))
+					    (closed-definition ax)))))
 		    lhs-axioms)
 		  axpairs)))))))
 
@@ -1535,6 +1592,7 @@ which is the transitive closure of the immediate assuming instances."
   (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
 		   (or (member ex needs-interp :test #'tc-eq)
+		       (print-type-expr? ex)
 		       (prelude-interpreted-type ex)
 		       (and (name-expr? ex)
 			    (resolution ex)
@@ -1549,7 +1607,7 @@ which is the transitive closure of the immediate assuming instances."
 			 (when (and (declaration? decl)
 				    (not (assq decl mappings-alist))
 				    (not (eq (module decl) (current-theory)))
-				    ;;(eq (module decl) theory)
+				    (eq (module decl) theory)
 				    (interpretable? decl))
 			   (push ex needs-interp)))))
 	       expr)
@@ -1567,6 +1625,7 @@ which is the transitive closure of the immediate assuming instances."
   nil)
 
 (defun make-mapped-axiom-tcc-decl (axiom defn modinst mod)
+  ;; defn has not yet applied subst-mod-params
   (multiple-value-bind (dfmls dacts thinst)
       (unless (or *in-checker* *in-evaluator*)
 	(new-decl-formals axiom))
@@ -1577,9 +1636,9 @@ which is the transitive closure of the immediate assuming instances."
 	   (id (make-tcc-name nil (id axiom)))
 	   (tccdecl (mk-mapped-axiom-tcc id nil modinst axiom dfmls)))
       (multiple-value-bind (expr mappings-alist)
-	  (subst-mod-params defn
-	      (lcopy modinst :dactuals dacts)
-	    mod axiom)
+	  (with-current-decl axiom
+       	    (subst-mod-params defn (lcopy modinst :dactuals dacts) mod axiom))
+	(break "make-mapped-axiom-tcc-decl")
 	(if (every #'(lambda (fp)
 		       (or (memq fp dfmls)
 			   (memq fp (formals-sans-usings cth))))
@@ -2218,6 +2277,9 @@ the same id for the substitution."
 	   (tcc-evaluates-to-true* (cdr exprs)))))
 
 (defun add-tcc-comment (kind expr type &optional reason subsumed-by)
+  "Creates a TCC comment string, and updates the tcc-comments slot of the
+current-theory associated with the current-declaration. This is called during
+TCC generation when the TCC is found to be trivial or subsumed."
   (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
     (let* ((decl (current-declaration))
 	   (theory (current-theory))
