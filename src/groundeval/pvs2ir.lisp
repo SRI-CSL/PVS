@@ -1228,11 +1228,17 @@
        (ir-type-name (ir-type-value decl))))
 
 (defmethod pvs2ir-decl* ((decl formal-type-decl))
-  (let ((ir-type-name (mk-ir-formal-typename (pvs2ir-unique-decl-id decl))))
-    (push ir-type-name *ir-type-info-table*)
-    (setf (ir-type-value decl)
-	  (mk-eval-type-info ir-type-name))
-    ir-type-name))
+  (let ((ir-type-value (ir-type-value decl)))
+    (or (and ir-type-value (ir-type-name ir-type-value))
+	(let* ((ir-type-name-id (pvs2ir-unique-decl-id decl))
+	       (ir-type-name (mk-ir-formal-typename ir-type-name-id)))
+	  (push ir-type-name *ir-type-info-table*)
+	  (setf (ir-const-formal ir-type-name)
+		(mk-ir-const-formal ir-type-name-id
+				    *type-actual-ir-name*))
+	  (setf (ir-type-value decl)
+		(mk-eval-type-info ir-type-name))
+	  ir-type-name))))
 
 (defmethod pvs2ir-decl* ((decl formal-const-decl))
   (let* ((einfo (eval-info decl))
@@ -3017,6 +3023,7 @@
 
 (defmethod pvs2ir-freevars* :around ((ir-expr ir-expr))
   (with-slots (ir-freevars) ir-expr
+    ;(when (not (eq ir-freevars 'unbound)) (break "pvs2ir-freevars*(around)"))
     (if (eq ir-freevars 'unbound)    
 	(let ((new-ir-freevars (call-next-method)))
 	  (setf (ir-freevars ir-expr) new-ir-freevars)
@@ -3045,9 +3052,10 @@
 	      (union (pvs2ir-freevars* ir-func)
 		     (union (pvs2ir-freevars* ir-params)
 			    (union (pvs2ir-freevars* ir-args)
-				   (pvs2ir-freevars* (rename-type ir-atype) :test #'eq)
+				   (pvs2ir-freevars* (rename-type ir-atype nil))
+				   :test #'eq)
 			    :test #'eq)
-		     :test #'eq))))
+		     :test #'eq)))
 
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-let))
@@ -6473,6 +6481,14 @@
 		 :op-header (format nil "extern ~a" op-header)
 		 :op-defn op-defn))
 
+(defun mk-c-noextern-defn-info (op-name op-header op-defn &optional op-arg-types op-return-type)
+  (make-instance 'c-defn-info
+		 :op-name op-name
+		 :op-arg-types op-arg-types
+		 :op-return-type op-return-type
+		 :op-header op-header ;(format nil "extern ~a" op-header)
+		 :op-defn op-defn))
+
 
 
 
@@ -6753,7 +6769,7 @@
 		;; 	      bvar-fvar-args
 		;; 	      )))
 		))
-	       (closure-fptr-definition (mk-c-defn-info closure-fptr-name closure-fptr-header
+	       (closure-fptr-definition (mk-c-noextern-defn-info closure-fptr-name closure-fptr-header
 							closure-fptr-defn))
 	       (closure-mptr-defn
 		(format nil "~a_t ~a(struct ~a * closure, ~{~a~^, ~}){~%~8Treturn ~a(~a);}"
@@ -6777,7 +6793,7 @@
 		;; 	      bvar-fvar-args
 		;; 	      )))
 		)
-	       (closure-mptr-definition (mk-c-defn-info closure-mptr-name closure-mptr-header
+	       (closure-mptr-definition (mk-c-noextern-defn-info closure-mptr-name closure-mptr-header
 							closure-mptr-defn))
 	       (fptr-cast (format nil "~a_t (*)(~a_t, ~a_t)" (mppointer-type c-rangetype)
 				  c-funtype (mppointer-type c-domaintype)))
@@ -6847,7 +6863,7 @@
 ~%~24Tif ((new_htbl->data[j].key != 0) || new_htbl->data[j].keyhash != 0) new_htbl->data[j].value->count++;}")
 			     (format nil ""))			   
 			   )))
-	 (mk-c-defn-info new-name new-header new-defn (list type-name-root) type-name-root )))
+	 (mk-c-noextern-defn-info new-name new-header new-defn (list type-name-root) type-name-root )))
 
 (defun make-closure-new-info (type-name-root ftbl-type-name fptr-cast mptr-cast rptr-cast cptr-cast ir-freevars)
     (let* ((new-name (intern (format nil "new_~a" type-name-root)))
@@ -6860,7 +6876,7 @@
 			       type-name-root type-name-root
 			       ftbl-type-name fptr-cast type-name-root mptr-cast type-name-root rptr-cast type-name-root cptr-cast type-name-root
 			       type-name-root type-name-root type-name-root gmp-freevars-init)))
-      (mk-c-defn-info new-name new-header new-defn nil type-name-root)))
+      (mk-c-noextern-defn-info new-name new-header new-defn nil type-name-root)))
 
 (defun make-closure-release-info (funtype-root closure-name-root ir-fvar-types ir-fvar-ctypes
 					       c-param-arg-string
@@ -6880,7 +6896,7 @@
 			 (format nil "void release_~a(~a_t closure~a){~%~8T~a_t x = (~a_t)closure;~%~8Tx->count--;~%~8Tif (x->count <= 0){~{~%~8T~8T~a;~}~%~8T//printf(\"\\nFreeing\\n\");~%~8Tsafe_free(x);}}"
 				 closure-name-root funtype-root c-param-decl-string closure-name-root closure-name-root
 				 release-fields))))
-    (mk-c-defn-info release-name release-header release-defn (list funtype-root) 'void)))
+    (mk-c-noextern-defn-info release-name release-header release-defn (list funtype-root) 'void)))
 
 (defmacro push-new-type-info (c-type-info info-table)
   `(let ((c-type-info ,c-type-info))
@@ -8604,7 +8620,7 @@
 	 (header (if definition (format nil "~a_t ~a~a;" return-type thname arg-string)
 		   (format nil "static inline ~a_t ~a~a~a" return-type thname arg-string header-defn)))
 	 (c-definition (when definition (format nil "~a_t ~a~a~a" return-type thname arg-string definition)))
-	 (c-defn-info (mk-c-defn-info thname header c-definition arg-types return-type)))
+	 (c-defn-info (mk-c-noextern-defn-info thname header c-definition arg-types return-type)))
     (setf (gethash thname *c-primitive-attachments-hash* ) c-defn-info)
     thname))
 
@@ -8851,7 +8867,7 @@
 	 (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory))
 	 ;; (theory-instances (when (ht-instance-clone theory)
 	 ;; 		     (maphash #'(lambda (x y) x) (ht-instance-clone theory))))
-	 )
+	 );(break "print-header-file")
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
@@ -8872,22 +8888,36 @@
 		    (format output "~%~%#include \"pvslib.h\"")
 		    (loop for thy in  preceding-prelude-theories
 			  when (not (same-id thy theory-id))
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
+			  do (format output "~%~%#include \"~a_c.h\"" (id thy))
+			  (when (ht-instance-clone thy)
+			    (maphash #'(lambda (x y)(format output  "~%~%#include \"~a_c.h\"" x))
+				     (ht-instance-clone thy))))
 		    (loop for thy in  preceding-theories
 			  when (not (same-id thy theory-id))
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
-		    (loop for thy in  *preceding-mono-theories*
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
+			  do (format output "~%~%#include \"~a_c.h\"" (id thy))
+			  (when (ht-instance-clone thy)
+			    (maphash #'(lambda (x y)(format output  "~%~%#include \"~a_c.h\"" x))
+				     (ht-instance-clone thy))))
+		    (format t "mono-theories: ~{ ~a~^,~}" *preceding-mono-theories*)
+		    ;; (loop for thy in  *preceding-mono-theories*
+		    ;; 	  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
 		    (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
 		    (format output " -I ~a/include" *pvs-path*)
 		    (format output " ~a/lib/pvslib.c " *pvs-path*)
 		    (format output " -I ~alib" *pvs-path*)
 		    (loop for thy in preceding-prelude-theories
 			  do (format output " ~alib/~a_c.c" *pvs-path* (id thy)))
+		    (loop for thy in preceding-prelude-theories
+			  do (when (ht-instance-clone thy)
+			       (maphash #'(lambda (x y)(format output  " ~a_c.c" x))
+					(ht-instance-clone thy))))
 		    (loop for thy in preceding-theories
-			  do (format output " ~a_c.c" (id thy)))
-		    (loop for thy in  *preceding-mono-theories*
-			  do (format output " ~a_c.c" (id thy)))
+			  do (format output " ~a_c.c" (id thy))
+			  (when (ht-instance-clone thy)
+			    (maphash #'(lambda (x y)(format output  " ~a_c.c" x))
+				     (ht-instance-clone thy))))
+		    ;; (loop for thy in  *preceding-mono-theories*
+		    ;; 	  do (format output " ~a_c.c" (id thy)))
 		    (format output " -lgmp ")
 		    (when (formals theory) (format t "~%typedef pointer_t"))
 		    (loop for formal in (formals theory)
@@ -9220,12 +9250,15 @@ successful."
 				    do (let ((*current-context* (decl-context formal))
 					     (*var-counter* nil))
 					 (newcounter *var-counter*)
-					 (pvs2ir-decl* formal))
+					 (pvs2c-decl formal force?))
 				    collect (cond ((formal-const-decl? formal)
 						   (ir-defn (ir (eval-info formal))))
 						  ((formal-type-decl? formal)
-						   (mk-ir-const-formal (ir-type-id (ir-type-name (ir-type-value formal)))
-								       *type-actual-ir-name*)))))
+						   (let ((ir-type-value (ir-type-value formal)))
+						     (or (ir-const-formal (ir-type-name ir-type-value))
+							 (setf (ir-const-formal (ir-type-name ir-type-value))
+							       (mk-ir-const-formal (ir-type-id (ir-type-name (ir-type-value formal)))
+								       *type-actual-ir-name*))))))))
 	 (*ir-theory-tbindings* (pairlis *theory-formals* *ir-theory-formals*))
 	 ;; (*c-theory-formals*
 	 ;;  (ir2c-theory-formals *ir-theory-formals* *theory-formals*))

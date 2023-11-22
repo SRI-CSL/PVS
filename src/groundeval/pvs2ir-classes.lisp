@@ -151,7 +151,8 @@
   ir-type-id
   type-declaration)
 
-(defcl ir-formal-typename (ir-root-typename))
+(defcl ir-formal-typename (ir-root-typename)
+  ir-const-formal)
 
 
 (defcl ir-typename (ir-root-typename);;ir-formal-typename with ir-type-defn
