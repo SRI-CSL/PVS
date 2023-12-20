@@ -438,16 +438,15 @@
 (defmethod typecheck* ((expr number-expr) expected kind arguments)
   (declare (ignore expected kind))
   ;;(assert (typep *number* 'type-expr))
-  (let* ((nm (mk-name-expr (makesym "~d" (number expr))))
-	 (reses (resolve* nm 'expr arguments)))
+  (let* ((num-id (makesym "~d" (number expr)))
+	 (nm (when (get-declarations num-id) (mk-name-expr num-id)))
+	 (reses (when nm (resolve* nm 'expr arguments))))
     (when reses
       (change-class expr 'name-expr-from-number
-		    'id (id nm)
-		    'resolutions reses
-		    'number (number expr)))
-    (assert *number_field*)
+	:id num-id
+	:resolutions reses))
     (setf (types expr)
-	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
+	  (cons (get-expr-number-type (number expr)) (mapcar #'type reses)))))
 
 (defmethod typecheck* ((expr rational-expr) expected kind arguments)
   (declare (ignore expected kind arguments))
@@ -1739,17 +1738,26 @@ field-decls, etc."
       (let ((type (typecheck* (declared-type bd) nil nil nil)))
 	(set-type (declared-type bd) nil)
 	type)
-      (let ((type (get-let-binding-type-from-arg bindings arg anum)))
-	(pvs-info "LET/WHERE variable ~a~@[~a~] is ~
+      (multiple-value-bind (type vdecl)
+	  (get-let-binding-type-from-arg bd bindings arg anum)
+	(if vdecl
+	    (pvs-info "LET/WHERE variable ~a~@[~a~] is given ~
+                          type~%  ~a from a preceding variable declaration."
+		 (id bd)
+		 (when (place bd)
+		   (format nil " at line ~d, col ~d"
+		     (starting-row (place bd)) (starting-col (place bd))))
+		 (type vdecl))
+	    (pvs-info "LET/WHERE variable ~a~@[~a~] is ~
                               given type~%  ~a from its value expression."
-	  (id bd)
-	  (when (place bd)
-	    (format nil " at line ~d, col ~d"
-	      (starting-row (place bd)) (starting-col (place bd))))
-	  type)
+	      (id bd)
+	      (when (place bd)
+		(format nil " at line ~d, col ~d"
+		  (starting-row (place bd)) (starting-col (place bd))))
+	      type))
 	type)))
 
-(defun get-let-binding-type-from-arg (bindings arg anum)
+(defun get-let-binding-type-from-arg (bd bindings arg anum)
   (if (or (cdr bindings)
 	  (> anum 0))
       (let ((atypes (remove-if-not #'fully-instantiated?
@@ -1759,19 +1767,38 @@ field-decls, etc."
 			    (types arg))
 			:test #'tc-eq))))
 	(if (cdr atypes)
-	    (if (typep arg 'tuple-expr)
-		(type-ambiguity (nth anum (exprs arg)))
-		(type-ambiguity arg))
+	    (multiple-value-bind (atype vdecl)
+		(find-matching-var-decl bd atypes)
+	      (if atype
+		  (values atype vdecl)
+		  (if (typep arg 'tuple-expr)
+		      (type-ambiguity (nth anum (exprs arg)))
+		      (type-ambiguity arg))))
 	    (car atypes)))
       (let ((atypes (remove-if-not #'fully-instantiated? (types arg))))
 	(if (cdr atypes)
-	    (type-ambiguity arg)
+	    (multiple-value-bind (atype vdecl)
+		(find-matching-var-decl bd atypes)
+	      (if atype
+		  (values atype vdecl)
+		  (type-ambiguity arg)))
 	    (if (and (fully-instantiated? (car atypes))
 		     (not (coercion? arg)))
 		(let ((carg (typecheck* (copy-untyped arg)
 					(car (types arg)) nil nil)))
 		  (best-judgement-type carg))
 		(car (types arg)))))))
+
+(defun find-matching-var-decl (bd atypes)
+  (let ((vdecl (find-if #'(lambda (v)
+			    (and (var-decl? v)
+				 (eq (module v) (current-theory))))
+		 (get-declarations (id bd)))))
+    (when vdecl
+      (let ((atype (car (member (type vdecl) atypes :test #'tc-eq))))
+	(when atype
+	  (values atype vdecl))))))
+	  
 
 (defun set-dep-projections (projections types)
   (when projections
