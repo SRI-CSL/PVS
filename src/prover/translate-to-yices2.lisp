@@ -844,6 +844,16 @@
 		     (concatenate 'string
 		       *yices2-flags* " --logic=QF_UFNIRA")
 		     *yices2-flags*)))
+	    ;;; From yices2/include/yices_exit_codes.h
+	    ;; #define YICES_EXIT_OUT_OF_MEMORY   16
+	    ;; #define YICES_EXIT_SYNTAX_ERROR    17
+	    ;; #define YICES_EXIT_FILE_NOT_FOUND  18
+	    ;; #define YICES_EXIT_USAGE           19
+	    ;; #define YICES_EXIT_ERROR           20
+	    ;; #define YICES_EXIT_INTERRUPTED     21
+	    ;; #define YICES_EXIT_INTERNAL_ERROR  22
+	    ;; #define YICES_EXIT_SYSTEM_ERROR    23
+	    ;; #define YICES_EXIT_TLS_ERROR       24
 	    (multiple-value-bind (output err-output status)
 		(uiop:run-program
 		    (format nil "~a ~a ~a"
@@ -852,6 +862,7 @@
 		      (namestring file))
 		  :input "//dev//null"
 		  :output '(:string :stripped t)
+		  :error-output '(:string :stripped t)
 		  :ignore-error-status t)
 	      (when *y2datatype-warning*
 		(format t "~70,,,'*A" "")
@@ -866,13 +877,15 @@ Please check your results with a proof that does not rely on Yices. ~%")
 			    (values '! nil nil))
 			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
 			      (values 'X nil nil))))
-		    (t (format t
-			   "~%Error running yices - you may need to do one or more of:~
+		    ((= status 127)
+		     (format t "~%Error running yices - you may need to do one or more of:~
                           ~% 1. Download yices from http://yices.csl.sri.com~
                           ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
-			 err-output)
-		       (values 'X nil)))))))))
+		       err-output))
+		     (values 'X nil))
+		    (t (format t "Error running Yices2:~%  ~a" err-output)
+		       (values 'X nil))))))))
 
 	
 (addrule 'yices2 () ((fnums *) nonlinear?)
