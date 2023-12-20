@@ -1763,6 +1763,12 @@ type of the lhs."
         (expr act)
         act)))
 
+(defmethod subst-acts-in-form! ((ex mapping-lhs) alist)
+  (let ((act (cdr (assoc (declaration ex) alist :test #'subst-formal-eq))))
+    (if (typep act 'actual)
+        (actual-value act)
+        act)))
+
 (defmethod subst-acts-in-form! ((ex actual) alist)
   (let ((act (cdr (assoc (declaration (expr ex)) alist
                          :test #'subst-formal-eq))))
