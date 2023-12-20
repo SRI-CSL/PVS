@@ -656,8 +656,8 @@
 			    (number-judgements-alist (current-judgements))
 			    :test #'=))))
     (values
-     (append (mapcar #'type jdecls)
-	     (list (least-available-numeric-type (number ex))))
+     (let ((numty (get-expr-number-type (number ex))))
+       (append (mapcar #'type jdecls) (list numty)))
      ;; TODO: make a judgement-decl for this
      ;; nil is a placeholder for now
      (append jdecls (list nil)))))
@@ -668,23 +668,8 @@
 			    :test #'=))))
     (values
      (append (mapcar #'type jdecls)
-	     (list (least-available-numeric-type (number ex))))
+	     (list (get-expr-number-type (number ex))))
      (append jdecls (list nil)))))
-
-(defun least-available-numeric-type (num)
-  (assert (rationalp num))
-  (if (integerp num)
-      (if (and *even_int* *odd_int*)
-	  (if (and *even_nat* *even_posnat* *odd_posnat*
-		   *even_negint* *odd_negint*)
-	      (cond ((zerop num) *even_nat*)
-		    ((plusp num)
-		     (if (evenp num) *even_posnat* *odd_posnat*))
-		    (t (if (evenp num) *even_negint* *odd_negint*)))
-	      (if (evenp num) *even_int* *odd_int*))
-	  (available-numeric-type num))
-      ;; rational, but not integer
-      (available-numeric-type num)))
 
 (defmethod judgement-types* :around ((ex name-expr))
   (when (or (not (variable? ex))
@@ -806,7 +791,7 @@
   (let* ((op (operator* ex))
 	 (args (arguments* ex))
 	 (decl (declaration op))
-	 (th (module decl))
+	 (th (when decl (module decl)))
 	 (formals (when th (formals-sans-usings th))))
     (when (and formals (not (constructor-name-expr? op)))
       (let* ((th (module decl))
@@ -1361,6 +1346,7 @@
 (defun compute-application-judgement-types (ex graph)
   #+pvsdebug (assert (every #'fully-instantiated? (mapcar #'car graph)))
   (let* ((args-list (argument* ex))
+	 (argtypes (mapcar #'judgement-types* args-list)) ;; Not judgement-types+
 	 (op (operator* ex))
 	 (thinst (module-instance op))
 	 (theory (module (declaration op)))
@@ -1368,11 +1354,8 @@
 			     #'(lambda (x)
 				 (compatible? (type (car x)) (type ex))))
 		   graph)))
-    (compute-appl-judgement-types
-     args-list
-     (mapcar #'judgement-types* args-list) ;; Not judgement-types+
-     (operator-domain ex)
-     (type ex) thinst theory cgraph)))
+    (compute-appl-judgement-types args-list argtypes
+     (operator-domain ex) (type ex) thinst theory cgraph)))
 
 (defun operator-domain (ex)
   (operator-domain* (type (operator* ex)) (argument* ex) nil))
@@ -2582,6 +2565,19 @@
 	preds
 	(type-predicates-recordtype cpreds (fields te) te preds all?))))
 
+;; (defun type-predicates-recordtype (cpreds fields te preds all?)
+;;   (let ((funargs (list cpreds fields te preds all?)))
+;;     (or (gethash funargs *type-predicates-recordtype-hash*)
+;; 	(let* ((vid (make-new-variable 'R te))
+;; 	       (lrectype (lift-recordtype-field-types te all?))
+;; 	       (bd (make-bind-decl vid te))
+;; 	       (var (make-variable-expr bd))
+;; 	       (lbd (make-bind-decl vid lrectype))
+;; 	       (lvar (make-variable-expr lbd))
+;; 	       (opred (type-predicates-recordtype* cpreds fields te var lvar)))
+;; 	  (setf (gethash funargs *type-predicates-recordtype-hash*)
+;; 		(cons opred preds))))))
+
 (defun type-predicates-recordtype (cpreds fields te preds all?)
   (let* ((vid (make-new-variable 'R te))
 	 (lrectype (lift-recordtype-field-types te all?))
@@ -3446,7 +3442,8 @@
 					   (memq (declaration fp)
 						 (formals-sans-usings (current-theory)))))
 				   (free-params elt))))
-		   (subst-mod-params elt theoryname theory)
+		   (remove-duplicates (subst-mod-params elt theoryname theory)
+		     :test #'tc-eq)
 		   elt)))
 	  (unless (member th-subtype-elt (current-known-subtypes)
 			  :test #'equal)
@@ -3667,11 +3664,15 @@
 		      'fail)
 		  (if (assq (declaration ex) bindings)
 		      subst
-		      (let ((stype (substit (type (declaration ex)) subst)))
+		      (let* ((etype (type (declaration ex)))
+			     (msubst (simple-match* etype (type inst) bindings subst))
+			     (stype (if (eq msubst 'fail)
+					(substit etype subst)
+					(substit etype msubst))))
 			(if (some #'(lambda (jty)
 				      (subtype-of? jty stype))
 				  (judgement-types+ inst))
-			    (acons (declaration ex) inst subst)
+			    (acons (declaration ex) inst (if (eq msubst 'fail) subst msubst))
 			    'fail)))))))
       (if (and (typep inst 'name-expr)
 	       (eq (declaration ex) (declaration inst)))
