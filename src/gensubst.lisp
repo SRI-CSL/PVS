@@ -697,6 +697,19 @@ behavior:
     'formals (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
 				(formals map))))
 
+(defmethod gensubst* ((ex mapping-lhs) substfn testfn)
+  (declare (ignore substfn testfn))
+  (if (or *parsing-or-unparsing*
+	  *visible-only*
+	  (and (not *gensubst-reset-types*)
+	       (eq ex nex)))
+      nex
+      (let ((ntype (type (resolution nex))))
+	(if (eq ntype (type ex))
+	    nex
+	    (lcopy nex
+	      'type ntype)))))
+
 (defmethod gensubst* ((res resolution) substfn testfn)
   (with-slots (declaration module-instance type) res
     (let* ((mi (theory-instance-with-lib res))
