@@ -636,9 +636,6 @@
 	"Identifier ~a is already in use as a theory" (id decl))))
   (let ((*generate-tccs* 'none))
     (typecheck* (modname decl) nil nil nil))
-  ;; Note that this updates the declarations-hash, before creating the
-  ;; inlined theory.
-  (typecheck-using (modname decl))
   (typecheck-inlined-theory decl)
   (unless (fully-instantiated? (modname decl))
     (type-error (modname decl)
@@ -659,6 +656,7 @@
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
       (type-error (theory-name thdecl)
 	"Formal theory declarations may not refer to the containing theory"))
+    (typecheck-using theory-name)
     (let* ((thname (expanded-theory-name theory-name)) ; walks down theory references
 	   (theory (declaration thname))
 	   (tgt-name (target thname))
@@ -1013,8 +1011,7 @@ bindings."
       (type-error (cdar (formals decl))
 	"Type applications may not be curried"))
     (typecheck* (formals decl) nil nil nil)
-    ;;(set-formals-types (apply #'append (formals decl)))
-    ))
+    (set-formals-types (apply #'append (formals decl)))))
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-def-decl))
   (assert (type-value decl))
@@ -1209,8 +1206,7 @@ bindings."
   (declare (ignore expected kind arguments))
   (when (formals decl)
     (typecheck* (formals decl) nil nil nil)
-    ;;(set-formals-types (apply #'append (formals decl)))
-    )
+    (set-formals-types (apply #'append (formals decl))))
   (assert (fully-instantiated? (formals decl)))
   (assert (fully-typed? (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
@@ -1593,7 +1589,7 @@ The dependent types are created only when needed."
 (defmethod typecheck* ((decl def-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck* (formals decl) nil nil nil)
-  ;;(set-formals-types (apply #'append (formals decl)))
+  (set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil)))
@@ -2123,7 +2119,7 @@ The dependent types are created only when needed."
 (defmethod typecheck* ((decl fixpoint-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck* (formals decl) nil nil nil)
-  ;;(set-formals-types (apply #'append (formals decl)))
+  (set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
@@ -3671,15 +3667,34 @@ The dependent types are created only when needed."
 	     *bound-variables*))
 	(*generate-tccs* 'none))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
-    (set-type (type decl) nil)
+    (unless (and (fully-instantiated? (type decl))
+		 (fully-typed? (type decl)))
+      (set-type (type decl) nil))
     (assert (or (null (print-type (type decl)))
 		(tc-eq (print-type (type decl)) (declared-type decl)))))
   (let ((*checking-conversions* t)) ;; Disable optimization using subtype-conjuncts
     (if (subtype-of? (subtype decl) (type decl))
-	(pvs-warning
-	    "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
-	  (id decl) (line-begin (place decl))
-	  (declared-subtype decl) (declared-type decl))
+	(if (and (id decl)
+		 ;; Could generate FORALL (x: st): EXISTS (y: t): x = y
+		 ;; even if (type decl) is not a subtype
+		 ;; Will punt for now.
+		 (subtype? (type decl)))
+	    (let* ((bd (make-new-bind-decl (subtype decl)))
+		   (bvar (make-variable-expr bd))
+		   (tcc-expr (make!-forall-expr (list bd)
+			       (make!-application (predicate (type decl)) bvar)))
+		   (tcc-decl (mk-judgement-tcc (id decl) tcc-expr nil)))
+	      (insert-tcc-decl 'subtype (declared-subtype decl) (declared-type decl) tcc-decl)
+	      (pvs-warning
+		  "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ ~
+                   is already known to be a subtype of~%  ~a,~%  ~
+                          but generated anyway since it was given a name"
+		(id decl) (line-begin (place decl))
+		(declared-subtype decl) (declared-type decl)))
+	    (pvs-warning
+		"In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
+	      (id decl) (line-begin (place decl))
+	      (declared-subtype decl) (declared-type decl)))
 	(let* ((bd (make-new-bind-decl (subtype decl)))
 	       (bvar (make-variable-expr bd)))
 	  (setf (place bvar) (place (declared-subtype decl)))
@@ -3753,8 +3768,7 @@ The dependent types are created only when needed."
       (when dup
 	(type-error dup
 	  "May not use duplicate arguments in judgements")))
-    ;;(set-formals-types fmlist)
-    )
+    (set-formals-types fmlist))
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
     (let ((*generate-tccs* 'none))
       (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
@@ -3914,8 +3928,7 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
       (when dup
 	(type-error dup
 	  "May not use duplicate arguments in judgements")))
-    ;;(set-formals-types fmlist)
-    )
+    (set-formals-types fmlist))
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
     (let ((*generate-tccs* 'none))
       (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
