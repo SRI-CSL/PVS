@@ -60,7 +60,8 @@
 	 (nnames (mapcar #'(lambda (n)
 			     (let ((nn (pc-parse n 'bname)))
 			       (when (number-expr? nn)
-				 (change-class nn 'name-expr 'id (number nn)))
+				 (change-class nn 'name-expr
+				   'id (intern (str (number nn)) :pvs)))
 			       (when (symbolp n)
 				 ;; Symbols are accepted for names, but SBCL
 				 ;; will read/store them in uppercase.
