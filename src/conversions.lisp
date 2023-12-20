@@ -91,7 +91,11 @@ the possible types of name."
 			(unless (subsetp actypes (types arg) :test #'tc-eq)
 			  (setf (types arg)
 				(remove-duplicates
-				    (if one-optype? actypes (append (types arg) actypes))
+				    ;; one-optype? doesn't work for
+				    ;; bugs/2004-03-16_TamarahArons
+				    (if nil ;;one-optype?
+					actypes
+					(append (types arg) actypes))
 				  :test #'tc-eq :from-end t))
 			  (pushnew arg conv-args)))))
 		arguments conversions))
@@ -663,7 +667,6 @@ the possible types of name."
       (make-implicit-conversion (expr (from-conversion ctype)) ctype expr)
       ;; expr now has been modified to have the conversion applied
       (typecheck* expr expected nil nil))
-     ;;(t (break "change-to-conversion"))
      )))
 
 ;;; make-implicit-conversion converts the ex according to the following table:
