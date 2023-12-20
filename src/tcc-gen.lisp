@@ -1375,7 +1375,7 @@ which is the transitive closure of the immediate assuming instances."
       (new-decl-formals axiom)
     (let* ((id (make-tcc-name nil (id axiom)))
 	   (naxiom (mk-mapped-axiom-tcc id nil thinst axiom dfmls))
-	   (defn (definition axiom)))
+	   (defn (closed-definition axiom)))
       (multiple-value-bind (ndefn mappings-alist)
 	  (with-current-decl naxiom
 	    (subst-mod-params defn (copy thinst :dactuals dacts) (module axiom) axiom))
