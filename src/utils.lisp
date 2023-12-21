@@ -433,6 +433,12 @@ is replaced with replacement."
   (run-program "ls" :arguments (list "-CF" (namestring (working-directory))))
   nil)
 
+;; (defun grep (&optional options patterns file-ref)
+;;   (let ((cmd (format nil "~a ~a ~a" options patterns file-ref)))
+;;     (uiop:run-program cmd
+;;       :output '(:string :stripped t)
+;;       :ignore-error-status t)))
+
 #+harlequin-common-lisp
 (defun working-directory ()
   (system::get-working-directory))
@@ -1740,7 +1746,6 @@ prove itself from the mapped axioms."
 	     (same-root-elts (remove-if-not
 				 #'(lambda (e) (eq (id-root e) rid))
 			       th-elts)))
-	(when (eq rid '==) (break))
 	(if (cdr same-root-elts)
 	    (let ((cnt 1))
 	      ;; First the user defined elements - makes it more predictable
@@ -1928,12 +1933,11 @@ prove itself from the mapped axioms."
 	     (varlist (mapcar #'mk-name-expr rhs-bindings))
 	     (newbindings (append forall-vars rhs-bindings))
 	     (*bound-variables* newbindings)
-	     (new-lhs (typecheck (mk-application* (args1 equality) varlist)
-			:expected (find-supertype (type (expression rhs)))))
+	     (new-lhs (make!-application* (args1 equality) varlist))
 	     (new-rhs (expression rhs))
 	     (new-appl (make!-equation new-lhs new-rhs))
-	     (def-form (close-freevars new-appl *current-context*
-				       newbindings nil nil)))
+	     (def-form ;;(close-freevars new-appl *current-context* newbindings nil nil)
+	      (make!-forall-expr newbindings new-appl)))
 	#+pvsdebug (assert (every #'(lambda (fv) (typep fv 'field-name-expr))
 				  (freevars def-form)))
 	#+pvsdebug (assert (equation? (expression def-form)))
@@ -2095,8 +2099,6 @@ prove itself from the mapped axioms."
 		    ;;(sbindings (minimal-sort-bindings
 			;;	(reverse newbindings) (bindings nform)))
 		    (ibindings (insert-bindings (reverse newbindings) (bindings nform))))
-	       ;;(unless (equal sbindings ibindings)
-		 ;;(break "Unequal"))
 	       (when (and (not (eq (car (last newbindings))
 				   (declaration (car (last freevars-form)))))
 			  (tc-eq (type (car (last newbindings)))
@@ -2387,6 +2389,7 @@ prove itself from the mapped axioms."
 
 (defmethod constructor? ((fn name-expr))
   (when (constructor? (resolution fn))
+    (assert (symbolp (id fn)))
     (change-class fn 'constructor-name-expr)
     t))
 
@@ -2427,7 +2430,7 @@ prove itself from the mapped axioms."
   nil)
 
 (defmethod accessor? ((fn name-expr))
-  (when (accessor? (resolution fn))
+  (when (and (resolution fn) (accessor? (resolution fn)))
     (change-class fn 'accessor-name-expr)
     t))
 
@@ -2492,7 +2495,8 @@ prove itself from the mapped axioms."
 
 (defmethod recognizer ((fn constructor-name-expr))
   (or (recognizer-name fn)
-      (let* ((con (car (member fn (constructors (adt (adt fn)))
+      (let* ((id (if (symbolp (id fn)) (id fn) (intern (str (id fn)))))
+	     (con (car (member id (constructors (adt (adt fn)))
 			       :test #'same-last-id)))
 	     (rd (rec-decl con))
 	     (res (make-resolution rd (module-instance fn))))
@@ -3087,6 +3091,20 @@ and get-print-type returns a funtype with type-name domain and range."
 
 (defmethod raise-actuals! (x) x)
 
+(defmethod eq-ineq-expr? ((ex application))
+  (and (name-expr? (operator ex))
+       (eq-ineq-expr? (operator ex))))
+
+(defmethod eq-ineq-expr? ((ex name-expr))
+  (let ((ndecl (declaration ex)))
+    (and (not (binding? ndecl))
+	 (from-prelude? (module ndecl))
+	 (or (and (eq (id ex) '=) (eq (id (module ndecl)) '|equalities|))
+	     (and (memq (id ex) '(/= ≠)) (eq (id (module ndecl)) '|notequal|))))))
+
+(defmethod eq-ineq-expr? (ex)
+  nil)
+
 
 #+(or lucid allegro)
 (defmethod ppr (obj)
@@ -3228,7 +3246,7 @@ and get-print-type returns a funtype with type-name domain and range."
 	expr)))
 
 (defmethod translate-update-to-if* ((op name-expr) args)
-  (when (eq (id (module-instance (resolution op))) '|if_def|)
+  (when (and (resolution op) (eq (id (module-instance (resolution op))) '|if_def|))
     ;; Note that (car args) are the cond, then, and else parts of the IF
     (let* ((if-args (car args))
 	   (cond (car if-args))
@@ -3681,6 +3699,9 @@ and get-print-type returns a funtype with type-name domain and range."
 (defmethod decl-formals ((imp importing))
   nil)
 
+(defmethod decl-formals ((ex number-expr))
+  nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(9.2.93) pseudo-normalize uses assert-if to simplify the given
 ;;expression, but does not really normalize.  Equivalent expressions can
@@ -3781,8 +3802,6 @@ space")
 				   (newcounter *translate-id-counter*)
 				   (assert-if-simplify expr)))))
 		 (setf (gethash key *pseudo-normalize-hash*) result)
-		 ;; (unless (tc-eq result (partial-normalize expr))
-		 ;;   (break "Different pseudo-normalize results"))
 		 result)))))))
 
 ;; (defun partial-normalize (expr)
@@ -4092,18 +4111,8 @@ space")
 	 (decls (all-decls theory))
 	 (not-visible (cdr (memq decl decls))))
     (remove-if #'(lambda (ai)
-		   ;;(unless (caddr ai) (break "Figure this out"))
 		   (memq (caddr ai) not-visible))
       (assuming-instances theory))))
-
-;; (defmethod assuming-instances ((imp importing))
-;;   (let* ((theory (module imp))
-;; 	 (decls (all-decls theory))
-;; 	 (not-visible (cdr (memq imp decls))))
-;;     (remove-if #'(lambda (ai)
-;; 		   ;;(unless (caddr ai) (break "Figure this out"))
-;; 		   (memq (caddr ai) not-visible))
-;;       (assuming-instances theory))))
 
 (defmethod assuming-instances ((imp importing))
   nil)
@@ -4808,6 +4817,12 @@ space")
 	  :unproved)
       :untried))
 
+(defun formulas (&optional (ps *ps*))
+  (typecase ps
+    (null (error "Must be in the prover or provide a proofstate"))
+    (proofstate (mapcar #'formula (s-forms (current-goal proofstate))))
+    (t (error "Proofstate expected: given type ~a" (type-of proofstate)))))
+
 (defmethod id ((ex number-expr)) (number ex))
 (defmethod mod-id ((ex number-expr)) nil)
 (defmethod actuals ((ex number-expr)) nil)
@@ -4820,7 +4835,8 @@ space")
 		   (library name)
 		   (mappings name)))
 	 (th (get-theory thname))
-	 (res (when th (mk-resolution th thname nil))))
+	 (res (when (and th (fully-typed? name))
+		(mk-resolution th thname nil))))
     (when res
       (setf (resolutions thname) (list res)))
     thname))
