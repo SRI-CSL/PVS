@@ -155,8 +155,11 @@
   (declare (ignore expected kind arguments))
   (unless (and (memq 'typechecked (status m)) (typechecked? m))
     (let ((*subtype-of-hash* (make-hash-table :test #'equal))
+	  (*subtype-names* nil)
 	  (*assert-if-arith-hash* (make-hash-table :test #'eq))
-	  (*bound-variables* *bound-variables*))
+	  (*bound-variables* *bound-variables*)
+	  ;;(*set-type-exprs* nil)
+	  )
       (reset-pseudo-normalize-caches)
       (reset-beta-cache)
       (if (boundp '*subst-fields-hash*)
@@ -813,29 +816,41 @@ TCCs are generated, and finally exportings are updated."
 	  (unless (mapping-subst? map)
 	    (check-for-importing-conflicts decl)
 	    (pushnew decl (get-lhash (id decl) dhash) :test #'eq)))))
-    (maphash #'(lambda (id decls)
-		 (dolist (decl decls)
-		   (when (and (declaration? decl)
-			      (visible? decl)
-			      (exportable? decl theory)
-			      (not (unimported-mapped-theory?
-				    (module decl) theory theoryname)))
-		     (let ((map (unless (mod-decl? (current-declaration))
-				  (find decl (mappings theoryname)
-					:key #'(lambda (m)
-						 (declaration (lhs m)))))))
-		       ;; Only IMPORTINGs with mappings with decl-formals generate decls
-		       (cond ((mapping-subst? map)
-			      (unless (or (null map) (mapped-decl map))
-				(let ((mdecl (make-mapped-decl decl map theoryname theory)))
-				  ;;(pushnew mdecl (get-lhash id dhash) :test #'eq)
-				  (add-decl mdecl)
-				  #+badassert
-				  (assert (or *in-checker* *in-evaluator*
-					      (memq mdecl (all-decls (current-theory))))))))
-			     (t (check-for-importing-conflicts decl)
-				(pushnew decl (get-lhash id dhash) :test #'eq)))))))
-	     (lhash-table (declarations-hash (saved-context theory))))))
+    (let ((mapped-decls nil))
+      (maphash #'(lambda (id decls)
+		   (dolist (decl decls)
+		     (when (and (declaration? decl)
+				(visible? decl)
+				(exportable? decl theory)
+				(not (unimported-mapped-theory?
+				      (module decl) theory theoryname)))
+		       (let ((map (unless (mod-decl? (current-declaration))
+				    (find decl (mappings theoryname)
+					  :key #'(lambda (m)
+						   (declaration (lhs m)))))))
+			 ;; Only IMPORTINGs with mappings with decl-formals generate decls
+			 (cond ((mapping-subst? map)
+				(unless (or (null map) (mapped-decl map))
+				  (let ((mdecl (make-mapped-decl decl map theoryname theory)))
+				    ;;(pushnew mdecl (get-lhash id dhash) :test #'eq)
+				    ;; (add-decl mdecl)
+				    (push mdecl mapped-decls)
+				    #+badassert
+				    (assert (or *in-checker* *in-evaluator*
+						(memq mdecl (all-decls (current-theory))))))))
+			       (t (check-for-importing-conflicts decl)
+				  (pushnew decl (get-lhash id dhash) :test #'eq)))))))
+	       (lhash-table (declarations-hash (saved-context theory))))
+      (when mapped-decls
+	(let ((mth (module (generated-by (car mapped-decls)))))
+	  (assert (every #'(lambda (md) (eq (module (generated-by md)) mth))
+			 (cdr mapped-decls)))
+	  (let ((sorted (sort mapped-decls
+			      #'(lambda (x y)
+				  (memq (generated-by y)
+					(memq (generated-by x) (all-decls mth)))))))
+	    (dolist (mdecl sorted)
+	      (add-decl mdecl))))))))
 
 (defmethod make-mapped-decl ((decl mod-decl) map theory theoryname)
   (let ((mdecl (change-class
@@ -886,20 +901,18 @@ TCCs are generated, and finally exportings are updated."
 (defmethod make-mapped-decl ((decl type-decl) map theory theoryname)
   (let* ((typeval (subst-mod-params (type-value decl) theory theoryname))
 	 (typex (type-value (rhs map)))
-	 (mdecl (change-class
-		    (copy decl
-		      :place nil
-		      :decl-formals (mapcar #'(lambda (df)
-						(make-mapped-decl
-						 df map theory theoryname))
-				      (decl-formals decl))
-		      :formals nil
-		      :module (current-theory)
-		      :generated nil
-		      :generated-by decl
-		      :type-value typeval
-		      :type typex)
-		    'mapped-type-decl)))
+	 (mdecl (change-class (copy decl) 'mapped-type-decl
+		  :place nil
+		  :decl-formals (mapcar #'(lambda (df)
+					    (make-mapped-decl
+					     df map theory theoryname))
+				  (decl-formals decl))
+		  :formals nil
+		  :module (current-theory)
+		  :generated nil
+		  :generated-by decl
+		  :type-value typeval
+		  :type-expr typex)))
     (let ((*generate-xref-declaration* mdecl))
       (generate-xref mdecl))
     (dolist (df (decl-formals mdecl))
@@ -1262,6 +1275,7 @@ be typechecked when set-type selects a resolution."
 	 (ass (assert (eq (current-theory) lhs-theory)))
 	 (*generate-tccs* 'none)
 	 (dfmls (decl-formals mapping))
+	 (lhs (lhs mapping))
 	 (tres (unless (and (kind mapping)
 			    (not (eq (kind mapping) 'type)))
 		 (let ((tr (delete-if-not
@@ -1270,7 +1284,7 @@ be typechecked when set-type selects a resolution."
 					(memq (declaration r) lhs-theory-decls)
 					(length= (decl-formals (declaration r)) dfmls)))
 			     (with-no-type-errors
-				 (resolve* (lhs mapping) 'type nil)))))
+				 (resolve* lhs 'type nil)))))
 		   (if (cdr tr)
 		       (or (remove-if-not
 			       #'(lambda (res)
@@ -1284,66 +1298,84 @@ be typechecked when set-type selects a resolution."
 		       tr))))
 	 (eres (unless (and (kind mapping)
 			    (not (eq (kind mapping) 'expr)))
-		 (let ((res (with-no-type-errors (resolve* (lhs mapping) 'expr nil))))
+		 (let ((res (with-no-type-errors (resolve* lhs 'expr nil))))
 		   (delete-if-not
 		       #'(lambda (r)
 			   (and (interpretable? (declaration r))
 				(memq (declaration r) lhs-theory-decls)
 				;; Need to make sure it's not already mapped
 				;; This may already be done
-				(length= (decl-formals (declaration r)) dfmls)))
+				(length= (decl-formals (declaration r)) dfmls)
+				(or (null (type mapping))
+				    (tc-eq (type mapping) (type r)))))
 		     res))))
-	 (nres (unless (or eres
+	 (nres (unless (or ;; eres
 			   (and (kind mapping)
 				(not (eq (kind mapping) 'expr))))
-		 (when (and (or (integerp (id (lhs mapping)))
+		 (when (and (or (integerp (id lhs))
 				(every #'digit-char-p
-				       (string (id (lhs mapping)))))
-			    (or (null (mod-id (lhs mapping)))
-				(eq (mod-id (lhs mapping))
-				    '|numbers|)))
-		   (list (mk-resolution
-			     (number-declaration
-			      (if (integerp (id (lhs mapping)))
-				  (id (lhs mapping))
-				  (parse-integer
-				   (string (id (lhs mapping))))))
-			   (make-theoryname (module (declaration *number*)))
-			   *number*)))))
+				       (string (id lhs))))
+			    (or (null (mod-id lhs))
+				(eq (mod-id lhs) '|numbers|)))
+		   (let* ((num (if (integerp (id lhs))
+				   (id lhs)
+				   (parse-integer (string (id lhs)))))
+			  (ndecl (number-declaration num)))
+		     (list (mk-resolution ndecl
+			     (make-theoryname (module ndecl))
+			     (type ndecl)))))))
 	 (thres (unless (and (kind mapping)
 			     (not (eq (kind mapping) 'theory)))
 		  (delete-if-not
 		      #'(lambda (r)
-			  (and (memq (declaration r) lhs-theory-decls)
+			  (and ;;(memq (declaration r) lhs-theory-decls)
 			       (length= (decl-formals (declaration r)) dfmls)
 			       (interpretable? (declaration r))))
 		    (with-no-type-errors
-			(resolve* (lhs mapping) 'module nil))))))
+			(resolve* lhs 'module nil))))))
     (unless (or eres nres tres thres)
-      (type-error (lhs mapping)
+      (type-error lhs
 	"Map lhs~%  ~a~%does not resolve to an uninterpreted ~
                    type, constant, or theory declaration in theory:~%  ~a~
           ~@[~%Note: ~a is not allowed to be interpreted~]"
-	(lhs mapping) (id lhs-theory)
-	(car (memq (id (lhs mapping)) '(boolean number)))))
+	lhs (id lhs-theory)
+	(car (memq (id lhs) '(boolean number)))))
     (if (cdr tres)
 	(cond ((or eres nres)
-	       (setf (resolutions (lhs mapping)) (nconc eres nres)))
-	      (t (setf (resolutions (lhs mapping)) tres)
-		 (type-ambiguity (lhs mapping))))
+	       (setf (resolutions lhs) (nconc eres nres)))
+	      (t (setf (resolutions lhs) tres)
+		 (type-ambiguity lhs)))
 	(let* ((reses (nconc tres eres nres thres))
 	       (mreses (remove-if-not #'(lambda (res)
 					  (memq (declaration res) lhs-theory-decls))
 			 reses)))
 	  ;; (unless mreses (break "typecheck-mapping-lhs: why no mreses?"))
 	  ;; have theory-abbreviation-decl in nasalib float
-	  (setf (resolutions (lhs mapping)) (or mreses reses))))
-    (assert (resolutions (lhs mapping)))
+	  (setf (resolutions lhs) (or mreses reses))))
+    ;; (when (and (name? lhs)
+    ;; 	       (not (or (mod-id lhs)
+    ;; 			(actuals lhs)
+    ;; 			(dactuals lhs)
+    ;; 			(mappings lhs)
+    ;; 			(target lhs)))
+    ;; 	       (valid-number? (string (id lhs)))
+    ;; 	       (compatible? (type (resolution lhs)) *number*))
+    ;;   (multiple-value-bind (num radix)
+    ;; 	  (parse-number (string (id lhs)))
+    ;; 	(if radix
+    ;; 	    (change-class lhs 'number-expr-with-radix
+    ;; 	      :number num
+    ;; 	      :radix radix
+    ;; 	      :type (get-expr-number-type num))
+    ;; 	    (change-class lhs 'number-expr
+    ;; 	      :number num
+    ;; 	      :type (get-expr-number-type num)))))
+    (assert (resolutions lhs))
     (when (mapping-rename? mapping)
-      (if (cdr (resolutions (lhs mapping)))
-	  (type-ambiguity (lhs mapping))
+      (if (cdr (resolutions lhs))
+	  (type-ambiguity lhs)
 	  (check-duplication (copy (declaration
-				    (car (resolutions (lhs mapping))))
+				    (car (resolutions lhs)))
 			       :id (id (expr (rhs mapping)))
 			       :module 'unbound))))))
 
@@ -1428,6 +1460,9 @@ declarations"
 (defmethod already-typed? ((name name))
   (resolution name))
 
+(defmethod already-typed? ((ex number-expr))
+  (type ex))
+
 (defmethod already-typed? ((act actual))
   (or (type-value act)
       (already-typed? (expr act))))
@@ -1496,10 +1531,12 @@ declarations"
 (defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
   (assert (or (null (type ex)) (null type) (compatible? (type ex) type)))
   (unless (type ex)
-    (let* ((tres (unless (and kind
-			      (not (eq kind 'type)))
+    (let* ((decls (get-declarations (id ex)))
+	   (tres (unless (or (null decls)
+			     (and kind (not (eq kind 'type))))
 		   (with-no-type-errors (resolve* ex 'type nil))))
-	   (eres (unless (and kind (not (eq kind 'expr)))
+	   (eres (unless (or (null decls)
+			     (and kind (not (eq kind 'expr))))
 		   (if (or tres (null (mod-id ex)))
 		       (with-no-type-errors (get-resolutions ex 'expr nil))
 		       (get-resolutions ex 'expr nil))))
@@ -1608,15 +1645,19 @@ declarations"
   (interpretable-declarations (declaration thref)))
 
 (defmethod interpretable? ((thref module))
-  nil)
+  (interpretable-declarations thref))
 
 (defmethod interpretable? ((ty recursive-type))
   t)
 
 (defmethod interpretable? ((d type-decl))
   ;;(not (adt-type-name? (type-value d)))
-  (not (memq d (list (declaration *boolean*)
-		     (declaration *number*)))))
+  ;; (not (memq d (list (declaration *boolean*)
+  ;; 		     (declaration *number*))))
+  t)
+
+(defmethod interpretable? ((d type-from-decl))
+  t)
 
 (defmethod interpretable? ((d type-def-decl))
   nil)
