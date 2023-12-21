@@ -57,7 +57,8 @@
 
 (defun dom-subrange? (sexpr type)
   (if #+allegro (excl::simple-array-p sexpr)
-      #-allegro (simple-array-p sexpr)
+      #+sbcl (sb-kernel:simple-array-p sexpr)
+      #-(or allegro sbcl) (simple-array-p sexpr)
       (let* ((typeof (type-of sexpr))
 	     ;(elemtype (cadr typeof))
 	     (length (caaddr typeof)))

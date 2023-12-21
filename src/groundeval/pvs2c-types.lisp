@@ -15,10 +15,12 @@
 (in-package :pvs)
 
 ;; Classes to represent C types
+(eval-when (:compile-toplevel :load-toplevel :execute)
 (defcl C-type ())
 (defcl C-base    (C-type)) ;; represents int, long, ...
 (defcl C-pointer (C-type) (bang))   ;; The bang type is 
 (defcl C-gmp     (C-type))
+)
 
 (defcl C-number ())
 (defcl C-integer (C-number) (range))
@@ -81,6 +83,7 @@
 
 ;; Translating PVS types to C types
 (defmethod pvs2C-type ((type recordtype) &optional tbindings)
+  (declare (ignore tbindings))
   (with-slots (print-type) type
      (if (type-name? print-type)
 	(let ((entry (assoc (declaration print-type) *C-record-defns*)))
@@ -102,6 +105,7 @@
        (pvs2C-error "~%Record type ~a must be declared." type))))
 
 (defmethod pvs2C-type ((type tupletype) &optional tbindings)
+  (declare (ignore tbindings))
   (with-slots (print-type) type
      (if (type-name? print-type)
 	(let ((entry (assoc (declaration print-type) *C-record-defns*)))
@@ -124,6 +128,7 @@
        (pvs2C-error "~%Tuple type ~a must be declared." type))))
 
 (defmethod pvs2C-type ((type funtype) &optional tbindings)
+  (declare (ignore tbindings))
   (if (C-updateable? type)
       (let ((range (subrange-index (domain type))))
 	(make-instance 'C-array
@@ -142,6 +147,7 @@
 (defmethod bang ((e C-type)) nil) ;; The default bang method
 
 (defmethod pvs2C-type ((type subtype) &optional tbindings)
+  (declare (ignore tbindings))
   (cond ((subtype-of? type *boolean*) *C-int*)
 	((subtype-of? type *integer*)
 	 (let ((range (C-range type)))
@@ -174,6 +180,7 @@
 
 
 (defmethod pvs2C-type ((e lambda-expr) &optional tbindings)
+  (declare (ignore tbindings))
   (with-slots (type expression) e
   (if (C-updateable? type)   ;; extend this function to work with more than below
       (let ((range (subrange-index (domain type))))
@@ -184,6 +191,7 @@
     (make-instance 'C-closure))))
 
 (defmethod pvs2C-type ((e expr) &optional tbindings)
+  (declare (ignore tbindings))
   (if (C-integer-type? e)
       (let ((range (C-range e)))
 	(cond ((range-included range *C-int-range*) *C-int*)
@@ -192,11 +200,13 @@
     (pvs2C-type (type e))))
 
 (defmethod pvs2C-type ((l list) &optional tbindings)
+  (declare (ignore tbindings))
   (when (consp l)
     (cons (pvs2C-type (car l))
 	  (pvs2C-type (cdr l)))))
 
 (defmethod pvs2C-type ((type type-name) &optional tbindings)
+  (declare (ignore tbindings))
   (if (eql (id type) 'boolean) *C-int*
     (pvs2C-type (type (car (resolutions type))))))
        ;; (or (call-next-method)

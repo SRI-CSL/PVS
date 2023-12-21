@@ -43,52 +43,52 @@
 
 
 ;; --------------- Classe to describe a range ----------------
-(defcl C-range () (inf) (sup))
-(defmethod C-range ((l list))
-  (if (consp l)
-      (make-instance 'C-range
-		     :inf (if (and (car l) (not (eql (car l) '*)))
-			      (car l) '-)
-		     :sup (if (consp (cdr l))
-			      (if (and (cadr l) (not (eql (cadr l) '*)))
-				  (cadr l) '+)
-			    (if (and (cdr l) (not (eql (cdr l) '*)))
-				(cdr l) '+)))
-    (make-instance 'C-range :inf '- :sup '+)))
+;;(defcl C-range () (inf) (sup))
+;; (defmethod C-range ((l list))
+;;   (if (consp l)
+;;       (make-instance 'C-range
+;; 		     :inf (if (and (car l) (not (eql (car l) '*)))
+;; 			      (car l) '-)
+;; 		     :sup (if (consp (cdr l))
+;; 			      (if (and (cadr l) (not (eql (cadr l) '*)))
+;; 				  (cadr l) '+)
+;; 			    (if (and (cdr l) (not (eql (cdr l) '*)))
+;; 				(cdr l) '+)))
+;;     (make-instance 'C-range :inf '- :sup '+)))
 
-;; Useful for debugging
-(defmethod print-object ((obj C-range) out)
-  (format out "[~a ; ~a]" (inf obj) (sup obj)))
+;; ;; Useful for debugging
+;; (defmethod print-object ((obj C-range) out)
+;;   (format out "[~a ; ~a]" (inf obj) (sup obj)))
 
 ;; ------------------- Basic manipulations ---------------------
-(defun inter-range (ranges)
-  (C-range (when (consp ranges)
-	     (let ((tl (inter-range (cdr ranges))))
-	       (cons (max-zb (inf (car ranges)) (inf tl))
-		     (min-zb (sup (car ranges)) (sup tl)))))))
+;; (defun inter-range (ranges)
+;;   (C-range (when (consp ranges)
+;; 	     (let ((tl (inter-range (cdr ranges))))
+;; 	       (cons (max-zb (inf (car ranges)) (inf tl))
+;; 		     (min-zb (sup (car ranges)) (sup tl)))))))
 
 ;; Returns a range containing the union of the given ranges
-(defun union-range (ranges)
-  (C-range (when (consp ranges)
-	     (let ((tl (union-range (cdr ranges))))
-	       (cons (min-zb (inf (car ranges)) (inf tl))
-		     (max-zb (sup (car ranges)) (sup tl)))))))
+;; (defun union-range (ranges)
+;;   (C-range (when (consp ranges)
+;; 	     (let ((tl (union-range (cdr ranges))))
+;; 	       (cons (min-zb (inf (car ranges)) (inf tl))
+;; 		     (max-zb (sup (car ranges)) (sup tl)))))))
 
 ;; Return a range containing the complementary of the given range
-(defun compl-range (range)
-  (with-slots (inf sup) range
-  (C-range
-   (cond ((and (eq inf '-) (eq sup '+))   ;; if range is all
-	  (list 0 0))   ;; Singleton 0
-	 ((eq inf '-)
-	  (list (1+ sup)  '+))
-	 ((eq sup '+)
-	  (list '- (1- inf)))
-	 (t nil)))))
+;; (defun compl-range (range)
+;;   (with-slots (inf sup) range
+;;   (C-range
+;;    (cond ((and (eq inf '-) (eq sup '+))   ;; if range is all
+;; 	  (list 0 0))   ;; Singleton 0
+;; 	 ((eq inf '-)
+;; 	  (list (1+ sup)  '+))
+;; 	 ((eq sup '+)
+;; 	  (list '- (1- inf)))
+;; 	 (t nil)))))
 
-(defun range-included (rangeA rangeB)
-  (and (<=zb (inf rangeB) (inf rangeA))
-       (<=zb (sup rangeA) (sup rangeB))))
+;; (defun range-included (rangeA rangeB)
+;;   (and (<=zb (inf rangeB) (inf rangeA))
+;;        (<=zb (sup rangeA) (sup rangeB))))
 
 
 
@@ -97,142 +97,143 @@
 ;; --------------------------------------------------------------------
 
 ;; ---------- Is the given type the PVS integer type ? ----------
-(defmethod PVS-int? ((type type-name))
-  (PVS-int? (type (car (resolutions type)))))
-(defmethod PVS-int? ((type subtype))
-  (and (predicate type)
-       (name-expr? (predicate type))
-       (eq 'integer_pred (id (predicate type)))))
-(defmethod PVS-int? (type) nil)
+;; (defmethod PVS-int? ((type type-name))
+;;   (PVS-int? (type (car (resolutions type)))))
+;; (defmethod PVS-int? ((type subtype))
+;;   (and (predicate type)
+;;        (name-expr? (predicate type))
+;;        (eq 'integer_pred (id (predicate type)))))
+;; (defmethod PVS-int? (type) nil)
 
 ;; ----------------- Is it a subtype of it ? ---------------------
-(defmethod subtype-PVS-int? ((type type-name))
-  (subtype-PVS-int? (type (car (resolutions type)))))
-(defmethod subtype-PVS-int? ((type type-application))
-  (eql (id (type type)) 'mod))
-(defmethod subtype-PVS-int? ((type null)) nil)
-(defmethod subtype-PVS-int? (type)
-  (or (PVS-int? type) (subtype-of? type *integer*)))
+;; (defmethod subtype-PVS-int? ((type type-name))
+;;   (subtype-PVS-int? (type (car (resolutions type)))))
+;; (defmethod subtype-PVS-int? ((type type-application))
+;;   (eql (id (type type)) 'mod))
+;; (defmethod subtype-PVS-int? ((type null)) nil)
+;; (defmethod subtype-PVS-int? (type)
+;;   (or (PVS-int? type) (subtype-of? type *integer*)))
 
 ;; ------- C range computations ------------------
-(defmethod C-range ((type type-name))
-  (C-range (type (car (resolutions type)))))
-(defmethod C-range ((type subtype))
-  (if (or (not (subtype-PVS-int? type)) (PVS-int? type))
-      (C-range nil)  ;; if this is bigger than an int (or not an int at all)
-    (let* ((pred (predicate type))
-	   (bind (car (bindings pred))) ;;bindings is a singleton
-	   (decl-type (declared-type bind))
-	   (id (id bind)))
-      (when (and (not (null decl-type))
-		 (not (subtype-PVS-int? decl-type)) (break)))
-      (inter-range
-       (list (C-range (supertype type))
-	     (C-range decl-type)
-	     (get-C-range (expression pred) id))))))
+;; (defmethod C-range ((type type-name))
+;;   (C-range (type (car (resolutions type)))))
+;; (defmethod C-range ((type subtype))
+;;   (if (or (not (subtype-PVS-int? type)) (PVS-int? type))
+;;       (C-range nil)  ;; if this is bigger than an int (or not an int at all)
+;;     (let* ((pred (predicate type))
+;; 	   (bind (car (bindings pred))) ;;bindings is a singleton
+;; 	   (decl-type (declared-type bind))
+;; 	   (id (id bind)))
+;;       (when (and (not (null decl-type))
+;; 		 (not (subtype-PVS-int? decl-type)) (break)))
+;;       (inter-range
+;;        (list (C-range (supertype type))
+;; 	     (C-range decl-type)
+;; 	     (get-C-range (expression pred) id))))))
 
 
-(defmethod get-C-range ((expr conjunction) id)
-  (let ((args (arguments expr)))
-    (inter-range (list (get-C-range (car args) id)
-		       (get-C-range (cadr args) id)))))
-(defmethod get-C-range ((expr disjunction) id)
-  (let ((args (arguments expr)))
-    (union-range (list (get-C-range (car args) id)
-		       (get-C-range (cadr args) id)))))
-;; This could actually give wrong results...
-;; (defmethod get-C-range ((expr negation) id)
+;; (defmethod get-C-range ((expr conjunction) id)
 ;;   (let ((args (arguments expr)))
-;;     (compl-range (get-C-range (car args) id))))
+;;     (inter-range (list (get-C-range (car args) id)
+;; 		       (get-C-range (cadr args) id)))))
+;; (defmethod get-C-range ((expr disjunction) id)
+;;   (let ((args (arguments expr)))
+;;     (union-range (list (get-C-range (car args) id)
+;; 		       (get-C-range (cadr args) id)))))
+;; ;; This could actually give wrong results...
+;; ;; (defmethod get-C-range ((expr negation) id)
+;; ;;   (let ((args (arguments expr)))
+;; ;;     (compl-range (get-C-range (car args) id))))
 
-(defmethod get-C-range ((expr infix-application) id)
-  (let ((args (arguments expr))
-	(oper (operator  expr)))
-    (C-range
-     (when (and (eql (length args) 2)
-		(name-expr? oper))
-       (let ((a1 (get-value (car  args)))
-	     (a2 (get-value (cadr args)))
-	     (op (id oper)))
-	 (when (and (or (numberp a1) (numberp a2))   ;; one is a number
-		    (or (eq id   a1) (eq id   a2)))  ;; and one is the id
-	   (cond ((and (numberp a1) (eq op '<=))
-		  (list a1 '+))
-		 ((and (numberp a1) (eq op '<))
-		  (list (1+ a1) '+))
-		 ((and (numberp a1) (eq op '>=))
-		  (list '- a1))
-		 ((and (numberp a1) (eq op '>))
-		  (list '- (1- a1)))
-		 ((and (numberp a1) (eq op '=))
-		  (list a1 a1))
-		 ((and (numberp a2) (eq op '<=))
-		  (list '- a2))
-		 ((and (numberp a2) (eq op '<))
-		  (list '- (1- a2)))
-		 ((and (numberp a2) (eq op '>=))
-		  (list a2 '+))
-		 ((and (numberp a2) (eq op '>))
-		  (list (1+ a2) '+))
-		 ((and (numberp a2) (eq op '=))
-		  (list a2 a2))
-		 (t (C-range nil)))))))))
+;; (defmethod get-C-range ((expr infix-application) id)
+;;   (let ((args (arguments expr))
+;; 	(oper (operator  expr)))
+;;     (C-range
+;;      (when (and (eql (length args) 2)
+;; 		(name-expr? oper))
+;;        (let ((a1 (get-value (car  args)))
+;; 	     (a2 (get-value (cadr args)))
+;; 	     (op (id oper)))
+;; 	 (when (and (or (numberp a1) (numberp a2))   ;; one is a number
+;; 		    (or (eq id   a1) (eq id   a2)))  ;; and one is the id
+;; 	   (cond ((and (numberp a1) (eq op '<=))
+;; 		  (list a1 '+))
+;; 		 ((and (numberp a1) (eq op '<))
+;; 		  (list (1+ a1) '+))
+;; 		 ((and (numberp a1) (eq op '>=))
+;; 		  (list '- a1))
+;; 		 ((and (numberp a1) (eq op '>))
+;; 		  (list '- (1- a1)))
+;; 		 ((and (numberp a1) (eq op '=))
+;; 		  (list a1 a1))
+;; 		 ((and (numberp a2) (eq op '<=))
+;; 		  (list '- a2))
+;; 		 ((and (numberp a2) (eq op '<))
+;; 		  (list '- (1- a2)))
+;; 		 ((and (numberp a2) (eq op '>=))
+;; 		  (list a2 '+))
+;; 		 ((and (numberp a2) (eq op '>))
+;; 		  (list (1+ a2) '+))
+;; 		 ((and (numberp a2) (eq op '=))
+;; 		  (list a2 a2))
+;; 		 (t (C-range nil)))))))))
 
 ;; ------------- Get the value of an expression -------------	  
-(defmethod get-value ((e name-expr))   (id e))
-(defmethod get-value ((e number-expr)) (number e))
-(defmethod get-value ((e unary-application))
-  (when (eq (id (operator e)) '-)
-    (let ((aux (get-value (argument e))))
-      (when (numberp aux) (- aux)))))
-(defmethod get-value (e) nil)
+;; (defmethod get-value ((e name-expr))   (id e))
+;; (defmethod get-value ((e number-expr)) (number e))
+;; (defmethod get-value ((e unary-application))
+;;   (when (eq (id (operator e)) '-)
+;;     (let ((aux (get-value (argument e))))
+;;       (when (numberp aux) (- aux)))))
+;; (defmethod get-value (e) nil)
 
-(defmethod get-C-range (expr id)
-  (C-range nil))
-
-
-
-(defmethod C-range ((type type-expr))
-  (C-range (when (subtype-PVS-int? type)
-	     (subrange-index type))))
-
-(defmethod C-range ((expr number-expr))
-  (C-range (cons (number expr) (number expr))))
-;; Intersection of all bounds given by judgement-types
-(defmethod C-range ((expr expr))
-  (inter-range (mapcar #'C-range (get-PVS-types expr))))
-
-(defmethod C-range ((expr application))
-  (inter-range (list (C-range (type expr))
-		     (C-range
-   (when (pvs2cl-primitive? (operator expr))
-     (let* ((op (pvs2C-primitive-op (operator expr)))
-	    (args (mapcar #'C-range (arguments expr))))
-       (cond ((negation-function? op args)
-	      (cons (neg-zb (sup (car args)))
-		    (neg-zb (inf (car args)))))
-	     ((= (length args) 2)
-	      (let ((i1 (inf (car  args)))
-		    (s1 (sup (car  args)))
-		    (i2 (inf (cadr args)))
-		    (s2 (sup (cadr args))))
-		(cond ((eql op 'pvsAdd)
-		       (cons (add-zb i1 i2) (add-zb s1 s2)))
-		      ((eql op 'pvsSub)
-		       (cons (sub-zb i1 s2) (sub-zb s1 i2)))
-		      ((eql op 'pvsTimes)
-		       (cons (min-zb (min-zb (mul-zb i1 i2)
-					     (mul-zb i1 s2))
-				     (min-zb (mul-zb s1 i2)
-					     (mul-zb s1 s2)))
-			     (max-zb (max-zb (mul-zb i1 i2)
-					     (mul-zb i1 s2))
-				     (max-zb (mul-zb s1 i2)
-					     (mul-zb s1 s2)))))
-		      (t nil))))
-	     (t nil))))))))
+;; (defmethod get-C-range (expr id)
+;;   (C-range nil))
 
 
+
+;; (defmethod C-range ((type type-expr))
+;;   (C-range (when (subtype-PVS-int? type)
+;; 	     (subrange-index type))))
+
+;; (defmethod C-range ((expr number-expr))
+;;   (C-range (cons (number expr) (number expr))))
+;; ;; Intersection of all bounds given by judgement-types
+;; (defmethod C-range ((expr expr))
+;;   (inter-range (mapcar #'C-range (get-PVS-types expr))))
+
+;; (defmethod C-range ((expr application))
+;;   (inter-range (list (C-range (type expr))
+;; 		     (C-range
+;;    (when (pvs2cl-primitive? (operator expr))
+;;      (let* ((op (pvs2C-primitive-op (operator expr)))
+;; 	    (args (mapcar #'C-range (arguments expr))))
+;;        (cond ((negation-function? op args)
+;; 	      (cons (neg-zb (sup (car args)))
+;; 		    (neg-zb (inf (car args)))))
+;; 	     ((= (length args) 2)
+;; 	      (let ((i1 (inf (car  args)))
+;; 		    (s1 (sup (car  args)))
+;; 		    (i2 (inf (cadr args)))
+;; 		    (s2 (sup (cadr args))))
+;; 		(cond ((eql op 'pvsAdd)
+;; 		       (cons (add-zb i1 i2) (add-zb s1 s2)))
+;; 		      ((eql op 'pvsSub)
+;; 		       (cons (sub-zb i1 s2) (sub-zb s1 i2)))
+;; 		      ((eql op 'pvsTimes)
+;; 		       (cons (min-zb (min-zb (mul-zb i1 i2)
+;; 					     (mul-zb i1 s2))
+;; 				     (min-zb (mul-zb s1 i2)
+;; 					     (mul-zb s1 s2)))
+;; 			     (max-zb (max-zb (mul-zb i1 i2)
+;; 					     (mul-zb i1 s2))
+;; 				     (max-zb (mul-zb s1 i2)
+;; 					     (mul-zb s1 s2)))))
+;; 		      (t nil))))
+;; 	     (t nil))))))))
+
+(defun negation-function? (name args)
+  (and (eq name 'pvsSub) (= (length args) 1)))
 
 ;; -------- Simple indentation function ---------
 (defun indent (bloc)
@@ -247,9 +248,6 @@
 (defun range-arr (max &key (min 0) (step 1))
    (loop for n from min below max by step
       collect n))
-
-(defun uli (&optional (str "~a"))
-  (format nil str (if *Crename-uli* "uli" "unsigned long int")))
 
 
 ;; --------------------------------------------------------------------
@@ -266,14 +264,17 @@
 (defvar *C-analysis*         t   )
 (defvar *C-replace-analysis* t   )
 
-(defun test-cases (tests &optional runnable)
-  (when runnable (set-runnable-C))
-  (loop for tst in tests
-	do (progn (tc tst)
-		  (format t "~2%Translating ~a..." tst)
-		  (generate-C-for-pvs-file tst)
-		  (format t "~%~a translated.~2%" tst)))
-  (format t "All tests: done.~%"))
+(defun uli (&optional (str "~a"))
+  (format nil str (if *Crename-uli* "uli" "unsigned long int")))
+
+;; (defun test-cases (tests &optional runnable)
+;;   (when runnable (set-runnable-C))
+;;   (loop for tst in tests
+;; 	do (progn (tc tst)
+;; 		  (format t "~2%Translating ~a..." tst)
+;; 		  (generate-C-for-pvs-file tst)
+;; 		  (format t "~%~a translated.~2%" tst)))
+;;   (format t "All tests: done.~%"))
 
 ;; Set flags so that runnable C is generated
 (defun set-runnable-C ()
@@ -302,15 +303,15 @@
 ;;                 Draft / old functions
 ;; --------------------------------------------------------------------
 
-(defun C_type (op)
-  (let ((hashentry (gethash (declaration op) (C-hashtable))))
-    (when hashentry (format nil "~a -> ~a"
-	 (C-info-type-arg hashentry)
-	 (C-info-type-out hashentry)))))
+;; (defun C_type (op)
+;;   (let ((hashentry (gethash (declaration op) (C-hashtable))))
+;;     (when hashentry (format nil "~a -> ~a"
+;; 	 (C-info-type-arg hashentry)
+;; 	 (C-info-type-out hashentry)))))
 
-(defun C_definition (op)
-  (let ((hashentry (gethash (declaration op) (C-hashtable))))
-    (when hashentry (C-info-definition hashentry))))
+;; (defun C_definition (op)
+;;   (let ((hashentry (gethash (declaration op) (C-hashtable))))
+;;     (when hashentry (C-info-definition hashentry))))
 
 
 

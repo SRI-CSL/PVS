@@ -261,7 +261,7 @@
 	(C-expr (C-var type)
 		(list (Cfuncall-mp "mpz_set_str"
 				   (list (C-var type)
-					 (C-var nil (format "\"~a\"" (number expr))))
+					 (C-var nil (format nil "\"~a\"" (number expr))))
 				   type)))
       (C-expr (C-var type (number expr) t)))))
 

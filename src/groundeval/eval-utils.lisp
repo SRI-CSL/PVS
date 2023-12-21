@@ -29,10 +29,6 @@
 
 (in-package :pvs) 
 
-;
-; Consider moving this stuff to pvs2.3/src/utils.lisp
-;
-
 (defun mk-translate-cases-to-if (cases-expr)
   (mk-translate-cases-to-if* (expression cases-expr)
 			     (selections cases-expr)
@@ -70,7 +66,8 @@
 (defmethod print-object ((obj eval-info) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "~@<#<eval-info ~2I~_~0:Iinternal: ~W~:@_external: ~W>~:>"
+      (format stream "~@<#<eval-info ~2I~_~0:Iir: ~a~:@_cdefn: ~a~:@_c-type-info-table: ~a~:@_internal: ~W~:@_external: ~W>~:>"
+	(ir obj) (cdefn obj) (c-type-info-table obj)
 	(internal obj) (external obj))))
 
 (defmethod print-object ((obj eval-defn-info) stream)
@@ -84,3 +81,19 @@
   (if *debugging-print-object*
       (call-next-method)
       (format stream "~@<#<eval-defn ~W>~:>" (name obj))))
+
+;; These should only be necessary for debugging
+
+(defun clear-all-eval-infos ()
+  "Walks down all theories in the current workspace session, including the prelude
+and libraries that have been loaded, and calls clear-theory-eval-infos."
+  (clrhash *c-primitive-type-attachments-hash*)
+  (do-all-theories #'clear-theory-eval-infos))
+
+(defun clear-theory-eval-infos (th)
+  "Clears the eval-info slots of all const-decls of the theory th."
+  (when (module? th)
+    (setf (ht-instance-clone th) nil))
+  (dolist (decl (all-decls th))
+    (when (typep decl '(or formal-const-decl const-decl))
+      (setf (eval-info decl) nil))))

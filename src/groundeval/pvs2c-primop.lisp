@@ -14,7 +14,7 @@
 
 (in-package :pvs)
 
-(defparameter *C-primitives* '(Eq Neq 1 0 pvsImplies pvsImplies == && && || 
+(defparameter *C-primitives* '(Eq Neq 1 0 pvsImplies pvsImplies == && && \|\| 
  ! pvsWhen pvsIff pvsAdd pvsSub pvsTimes pvsDiv pvsNumberFieldPred < <= >
  >= pvsRealPred pvsIntegerPred pvsIntegerPred pvsRationalsPred pvsFloor pvsCeiling
  nrem rem pvsNDiv isEven isOdd pvsCons hd tl isCons null isNull pvsRestrict
