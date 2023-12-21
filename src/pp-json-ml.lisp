@@ -27,7 +27,7 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-;;PVS pretty-printer for machine learning
+;; PVS JSON generation
 
 (in-package :pvs)
 
@@ -992,10 +992,7 @@
 	(typecheck-file fname))
       (maphash #'(lambda (thid th)
 		   (declare (ignore thid))
-		   (theory-to-json-file th force?)
-		   (let ((formulas (provable-formulas th)))
-		     (dolist (formula formulas)
-		       (collect-json-proof formula))))
+		   (theory-to-json-file th force?))
 	       (current-pvs-theories)))))
 
 (defvar *testing-json* nil)
@@ -1022,7 +1019,10 @@
 	      (format t "~%Wrote ~a" (truename json-path))
 	      (when *testing-json*
 		(let ((json:*identifier-name-to-key* 'string-downcase))
-		  (json:decode-json-from-source (pathname json-path))))))))))
+		  (json:decode-json-from-source (pathname json-path))))
+	      (let ((formulas (provable-formulas th)))
+		(dolist (formula formulas)
+		  (collect-json-proof formula)))))))))
 
 (defvar *prover-input-list*)
 
@@ -1346,26 +1346,29 @@
 (defmethod tokenize ((ex field-application))
   `(,@(tokenize (argument ex)) "`" ,(string (id ex))))
 
+(defmethod tokenize ((ex projection-expr))
+  (list (str (id ex))))
+
 (defmethod tokenize ((ex projection-application))
   `(,@(tokenize (argument ex)) "`" ,(str (index ex))))
+
+(defmethod tokenize ((ex injection-expr))
+  (list (str (id ex))))
 
 (defmethod tokenize ((ex injection-application))
   `(,(str (id ex)) "(" ,@(tokenize (argument ex)) ")"))
 
+(defmethod tokenize ((ex injection?-expr))
+  (list (str (id ex))))
+
 (defmethod tokenize ((ex injection?-application))
   `(,(str (id ex)) "(" ,@(tokenize (argument ex)) ")"))
 
+(defmethod tokenize ((ex extraction-expr))
+  (list (str (id ex))))
+
 (defmethod tokenize ((ex extraction-application))
   `(,(str (id ex)) "(" ,@(tokenize (argument ex)) ")"))
-
-(defmethod tokenize ((ex injection-expr))
-  `(,(str (id ex))))
-
-(defmethod tokenize ((ex injection?-expr))
-  `(,(str (id ex))))
-
-(defmethod tokenize ((ex extraction-expr))
-  `(,(str (id ex))))
 
 (defun tokenize* (list &optional tokens)
   (cond ((null list) nil)
