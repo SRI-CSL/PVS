@@ -68,13 +68,16 @@
 				     nil nil 'list)))
     (pvs-message "")
     (unless pvs-error
-      (dolist (c-file (reverse c-files))
-	(cl-assert (file-exists-p c-file))
-	(let ((buf (find-file-noselect c-file t)))
-	  (with-current-buffer buf
-	    (set (make-local-variable 'pvs-context-sensitive) t)
-	    (c-mode))))
-      (pvs-message "Generated C files %s" c-files))))
+      ;; Ignoring c-files for now, as debugging code gets in the way
+      ;; (dolist (c-file (reverse c-files))
+      ;; 	(cl-assert (file-exists-p c-file))
+      ;; 	(let ((buf (find-file-noselect c-file t)))
+      ;; 	  (with-current-buffer buf
+      ;; 	    (set (make-local-variable 'pvs-context-sensitive) t)
+      ;; 	    (c-mode))))
+      ;; (pvs-message "Generated C files %s" c-files)
+      (pvs-message "Generated C files")
+      )))
 
 (defun pvs-find-C-file (filename)
   (let ((buf (get-buffer (format "%s.c" filename))))
