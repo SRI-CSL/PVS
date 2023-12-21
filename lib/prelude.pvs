@@ -4118,41 +4118,50 @@ integertypes: THEORY
      int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
 
      % Provide some intersection types, so that judgements can find a minimal type
-     pos_uint8: TYPE = {x: uint8 | x > 0}
+     pos_uint8:  TYPE = {x: uint8 | x > 0}
      pos_uint16: TYPE = {x: uint16 | x > 0}
      pos_uint32: TYPE = {x: uint32 | x > 0}
      pos_uint64: TYPE = {x: uint64 | x > 0}
-     neg_int8: TYPE = {x: int8 | x < 0}
-     neg_int16: TYPE = {x: int16 | x < 0}
-     neg_int32: TYPE = {x: int32 | x < 0}
-     neg_int64: TYPE = {x: int64 | x < 0}
+     neg_int8:   TYPE = {x: int8 | x < 0}
+     neg_int16:  TYPE = {x: int16 | x < 0}
+     neg_int32:  TYPE = {x: int32 | x < 0}
+     neg_int64:  TYPE = {x: int64 | x < 0}
      % Now the even and odd forms of these
      even_uint8: TYPE = {x: uint8 | even?(x)} % Only needed for 0, hence no odd_uint8
-     even_pos_uint8: TYPE = {x: uint8 | x > 0 and even?(x)}
+     even_pos_uint8:  TYPE = {x: uint8 | x > 0 and even?(x)}
      even_pos_uint16: TYPE = {x: uint16 | x > 0 and even?(x)}
      even_pos_uint32: TYPE = {x: uint32 | x > 0 and even?(x)}
      even_pos_uint64: TYPE = {x: uint64 | x > 0 and even?(x)}
-     even_neg_int8: TYPE = {x: int8 | x < 0 and even?(x)}
-     even_neg_int16: TYPE = {x: int16 | x < 0 and even?(x)}
-     even_neg_int32: TYPE = {x: int32 | x < 0 and even?(x)}
-     even_neg_int64: TYPE = {x: int64 | x < 0 and even?(x)}
-     odd_pos_uint8: TYPE = {x: uint8 | x > 0 and odd?(x)}
-     odd_pos_uint16: TYPE = {x: uint16 | x > 0 and odd?(x)}
-     odd_pos_uint32: TYPE = {x: uint32 | x > 0 and odd?(x)}
-     odd_pos_uint64: TYPE = {x: uint64 | x > 0 and odd?(x)}
-     odd_neg_int8: TYPE = {x: int8 | x < 0 and odd?(x)}
-     odd_neg_int16: TYPE = {x: int16 | x < 0 and odd?(x)}
-     odd_neg_int32: TYPE = {x: int32 | x < 0 and odd?(x)}
-     odd_neg_int64: TYPE = {x: int64 | x < 0 and odd?(x)}
+     even_neg_int8:   TYPE = {x: int8 | x < 0 and even?(x)}
+     even_neg_int16:  TYPE = {x: int16 | x < 0 and even?(x)}
+     even_neg_int32:  TYPE = {x: int32 | x < 0 and even?(x)}
+     even_neg_int64:  TYPE = {x: int64 | x < 0 and even?(x)}
+     odd_pos_uint8:   TYPE = {x: uint8 | x > 0 and odd?(x)}
+     odd_pos_uint16:  TYPE = {x: uint16 | x > 0 and odd?(x)}
+     odd_pos_uint32:  TYPE = {x: uint32 | x > 0 and odd?(x)}
+     odd_pos_uint64:  TYPE = {x: uint64 | x > 0 and odd?(x)}
+     odd_neg_int8:    TYPE = {x: int8 | x < 0 and odd?(x)}
+     odd_neg_int16:   TYPE = {x: int16 | x < 0 and odd?(x)}
+     odd_neg_int32:   TYPE = {x: int32 | x < 0 and odd?(x)}
+     odd_neg_int64:   TYPE = {x: int64 | x < 0 and odd?(x)}
 
-     odd_pos_uint8_is_nzint: JUDGEMENT odd_pos_uint8 SUBTYPE_OF nzint
-     odd_pos_uint16_is_nzint: JUDGEMENT odd_pos_uint16 SUBTYPE_OF nzint
-     odd_pos_uint32_is_nzint: JUDGEMENT odd_pos_uint32 SUBTYPE_OF nzint
-     odd_pos_uint64_is_nzint: JUDGEMENT odd_pos_uint64 SUBTYPE_OF nzint
-     odd_neg_int8_is_nzint: JUDGEMENT odd_neg_int8 SUBTYPE_OF nzint
-     odd_neg_int16_is_nzint: JUDGEMENT odd_neg_int16 SUBTYPE_OF nzint
-     odd_neg_int32_is_nzint: JUDGEMENT odd_neg_int32 SUBTYPE_OF nzint
-     odd_neg_int64_is_nzint: JUDGEMENT odd_neg_int64 SUBTYPE_OF nzint
+     even_pos_uint8_is_nzint:  JUDGEMENT even_pos_uint8 SUBTYPE_OF nzint
+     even_pos_uint16_is_nzint: JUDGEMENT even_pos_uint16 SUBTYPE_OF nzint
+     even_pos_uint32_is_nzint: JUDGEMENT even_pos_uint32 SUBTYPE_OF nzint
+     even_pos_uint64_is_nzint: JUDGEMENT even_pos_uint64 SUBTYPE_OF nzint
+     even_neg_int8_is_nzint:   JUDGEMENT even_neg_int8 SUBTYPE_OF nzint
+     even_neg_int16_is_nzint:  JUDGEMENT even_neg_int16 SUBTYPE_OF nzint
+     even_neg_int32_is_nzint:  JUDGEMENT even_neg_int32 SUBTYPE_OF nzint
+     even_neg_int64_is_nzint:  JUDGEMENT even_neg_int64 SUBTYPE_OF nzint
+
+     odd_pos_uint8_is_nzint:   JUDGEMENT odd_pos_uint8 SUBTYPE_OF nzint
+     odd_pos_uint16_is_nzint:  JUDGEMENT odd_pos_uint16 SUBTYPE_OF nzint
+     odd_pos_uint32_is_nzint:  JUDGEMENT odd_pos_uint32 SUBTYPE_OF nzint
+     odd_pos_uint64_is_nzint:  JUDGEMENT odd_pos_uint64 SUBTYPE_OF nzint
+     odd_neg_int8_is_nzint:    JUDGEMENT odd_neg_int8 SUBTYPE_OF nzint
+     odd_neg_int16_is_nzint:   JUDGEMENT odd_neg_int16 SUBTYPE_OF nzint
+     odd_neg_int32_is_nzint:   JUDGEMENT odd_neg_int32 SUBTYPE_OF nzint
+     odd_neg_int64_is_nzint:   JUDGEMENT odd_neg_int64 SUBTYPE_OF nzint
 
      mini8: int8 = -exp2(7)
      mini16: int16 = -exp2(15)
@@ -4963,6 +4972,9 @@ finite_sequences [T: TYPE]: THEORY
 
   CONVERSION finseq_appl;
 
+  every(P: [T->bool])(fs): bool = (FORALL (i: below(fs`length)): P(fs`seq(i)));
+  some(P: [T->bool])(fs): bool = (EXISTS (i: below(fs`length)): P(fs`seq(i)));
+
   o(fs1, fs2): finseq =
      LET l1 = fs1`length,
          lsum = l1 + fs2`length
@@ -4972,6 +4984,13 @@ finite_sequences [T: TYPE]: THEORY
                          THEN fs1`seq(n)
                          ELSE fs2`seq(n-l1)
                       ENDIF) #);
+
+  P: VAR [T -> bool]
+  every_compose: LEMMA
+    every(P)(fs1 o fs2) = (every(P)(fs1) AND every(P)(fs2))
+
+  some_compose: LEMMA
+    some(P)(fs1 o fs2) = (some(P)(fs1) OR some(P)(fs2))
 
   p: VAR [nat, nat]
 
@@ -5024,6 +5043,28 @@ more_finseq [T: TYPE]: THEORY
               `seq(rr`length) |-> x]
 
   END more_finseq
+
+
+array_sequences [T: TYPE]: THEORY
+ BEGIN
+  arrayseq: TYPE = [# length: index, seq: ARRAY[below[length] -> T] #]
+  aseq: TYPE = arrayseq
+
+  a, b, c: VAR aseq
+  m, n: VAR nat
+
+  empty_aseq: aseq =
+    (# length := 0,
+       seq := (LAMBDA (x: below[0]): epsilon! (t:T): true) #)
+
+  aseq_appl(a): [below[length(a)] -> T] = a`seq;
+
+  % Causes problems with finseq_appl conversion
+  % CONVERSION aseq_appl;
+
+  aseq_finseq: JUDGEMENT aseq SUBTYPE_OF finseq[T]
+
+END array_sequences
 
 
 % ordstruct provides the building blocks for defining the
@@ -6152,7 +6193,7 @@ BEGIN
   file: TYPE+ %= [# name: bytestring, capacity: index, 
                %   fd : file_descriptor, contents : bytestring #]
 
-  max_file_size: int32  %defined by semantic attachment in c-primitive-attachments
+%  max_file_size: uint32  %defined by semantic attachment in c-primitive-attachments
 
   lifted_file: DATATYPE
   BEGIN
@@ -6164,18 +6205,30 @@ BEGIN
 
   open?(f): bool % semantically attached predicate that checks if a file handle is open
 
+  name(f): bytestring
+
+  file_size(f: file): index
+
+%The operations open, setbyte, and append can fail if the file parameter is live beyond the operation
   open(name: bytestring): lifted_file  %uninterpreted with semantic attachment
 % don't need to close the file.  This is handled by reference counting.
 
+%Same as open, but creates a new file or overwrites an existing one
+  create(name: bytestring): lifted_file  %uninterpreted with semantic attachment
+
+  setbyte(f: file, (i : below(file_size(f))), (b: byte)): lifted_file
+
   append(f: file, b : bytestring): lifted_file % adds to the end of a writable file by remapping if needed.
 
-  file_size(f: file): uint32
 
+%These file operations are benign and can appear anywhere. 
   getbyte(f: file, (i : below(file_size(f)))): byte
 
-  getbytestring(f: file, (i : below(file_size(f))), size: below(file_size(f) - i)): bytestring
+%The signature for the size parameter has to be detectably uint32 for the C attachment to work
+  getbytestring(f: file, (i : upto(file_size(f))), (size : upto(file_size(f)) | size <= file_size(f) - i)):
+    {bystr: bytestring | bystr`length = size}
 
-  setbyte(f: file, (i : below(file_size(f))), (b: byte)): file
+  readline(f: file, (i : below(file_size(f)))): bytestring
 
   printc(b : bytestring): bytestring %prints characters
 
