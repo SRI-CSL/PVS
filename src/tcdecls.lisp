@@ -928,7 +928,7 @@ bindings."
 	    (when dacts
 	      (change-class thinst 'declparam-modname
 		:dactuals (dactuals tn)
-		:declaration decl))
+		:from-decl decl))
 	    (setf (resolutions tn) (list (mk-resolution decl thinst tn))))
 	  tn))
   (when *loading-prelude*
