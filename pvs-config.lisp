@@ -278,6 +278,7 @@ targets and copying them to the corresponding bin directory."
 	 (build-dir (format nil "~a~a/"
 		     platform-dir (if runtime? "runtime" "devel")))
 	 (foreign-ext #-(or macosx os-macosx) "so" #+(or macosx os-macosx) "dylib")
+	 (bin-dir (format nil "bin/~a/~a/" platform (if runtime? "runtime" "devel")))
 	 (allegro-home (or (sys:getenv "ALLEGRO_HOME") "~/acl")))
     ;; (setq *pvs-path* nil)
     (ensure-directories-exist build-dir)
@@ -289,28 +290,28 @@ targets and copying them to the corresponding bin directory."
     (excl:generate-application
      "pvs-allegro"
      tmp-dir
-     (list "./src/make-allegro-pvs.lisp")
-     :additional-arguments nil
-     :additional-forms nil
-     :additional-plus-arguments nil
+     (list "./src/make-allegro-pvs.lisp" :list2)
+     ;; :additional-arguments nil
+     ;; :additional-forms nil
+     ;; :additional-plus-arguments nil
      :allow-existing-directory (not runtime?)
      ;; :application-files nil
      ;; :application-administration nil
      ;; :application-type :exe
-     :autoload-warning t ;; Default t  ; Not much difference
-     :build-debug t ;;:interactive ; No difference
+     ;; :autoload-warning t ;; Default nil  ; Not much difference
+     ;; :build-debug t ;;:interactive ; No difference
      ;; :build-executable mlisp
      ;;#-(or macosx x86-64) :aclmalloc-heap-start #-(or macosx x86-64) "2752512K"	;; (/ #xa8000000 1024)
-     ;; :build-input "idout" :verbose t
+     ;; :build-input nil ;; "idout" :verbose t
      :case-mode :case-sensitive-lower
      ;; :copy-shared-libraries t ; new ; Makes no difference by itself
-     :discard-arglists nil
-     :discard-compiler nil
+     ;; :discard-arglists nil
+     ;; :discard-compiler nil
      :discard-local-name-info nil
      :discard-source-file-info runtime?
      :discard-xref-info runtime?
-     :dst t ;; daylight savings time
-     :generate-fonts nil
+     ;; :dst t ;; daylight savings time
+     ;; :generate-fonts nil
      :image-only (not runtime?) ;; Commenting causes Error: nil is an illegal :runtime value.
      :include-clim nil
      :include-compiler t
@@ -324,7 +325,7 @@ targets and copying them to the corresponding bin directory."
      #-x86-64 :lisp-heap-size #-x86-64 300000000
      ;;#-(or macosx x86-64) :lisp-heap-start #-(or macosx x86-64) #x20000000
      #+(or macosx x86-64) :aclmalloc-heap-start #+(or macosx x86-64) #xa0000000000
-     :load-local-names-info nil
+     ;; :load-local-names-info *load-local-names-info*
      :load-source-file-info (not runtime?)
      :load-xref-info (not runtime?)
 ;;     :newspace 4000000
@@ -334,19 +335,17 @@ targets and copying them to the corresponding bin directory."
      :opt-space 1
      :opt-speed 3
      :post-load-form (unless runtime? '(excl::translate-shlib-filenames t))
-     :pre-dump-form nil
-     :pre-load-form nil
+     ;; :pre-dump-form nil
+     ;; :pre-load-form nil
      :preserve-documentation-strings t
-     :presto nil
-     :presto-flush-to-code-file nil
      :read-init-files nil
      :record-source-file-info (not runtime?)
      :record-xref-info (not runtime?)
-     :restart-app-function nil
+     ;; :restart-app-function nil
      :restart-init-function 'startup-pvs
      :runtime (when runtime? :dynamic) ; 
      :runtime-bundle runtime?
-     :server-name nil
+     ;; :server-name nil
      :temporary-directory "/tmp/"
      :us-government nil
      :verbose t)
@@ -364,14 +363,17 @@ targets and copying them to the corresponding bin directory."
 			platform (if runtime? "runtime" "devel") file)))
 	(format t "~%Copying ~a to ~a" libsrc libdest)
 	(sys:copy-file libsrc libdest :overwrite t)))
-    ;; Now copy files.bu and libacli10196s.so from ALLEGRO_HOME
+    ;; Now copy files.bu and libacli10196s.{so,dylib} from ALLEGRO_HOME
     (let ((fsrc (format nil "~a/files.bu" allegro-home))
-	  (fdest (format nil "bin/~a/~a/files.bu" platform (if runtime? "runtime" "devel"))))
+	  (fdest (format nil "~a/files.bu" bin-dir)))
       (format t "~%Copying ~a to ~a" fsrc fdest)
       (sys:copy-file fsrc fdest :overwrite t))
     (let ((src (format nil "~a/libacli10196s.~a" allegro-home foreign-ext))
-	  (dest (format nil "bin/~a/~a/libacli10196s.~a"
-		  platform (if runtime? "runtime" "devel") foreign-ext)))
+	  (dest (format nil "~a/libacli10196s.~a" bin-dir foreign-ext)))
+      (sys:copy-file src dest :overwrite t))
+    ;; Copy mlisp to pvs-allegro
+    (let ((src (format nil "~a/mlisp" allegro-home))
+	  (dest (format nil "~a/pvs-allegro" bin-dir)))
       (sys:copy-file src dest :overwrite t))
     (unless runtime?
       (copy-devel-license build-dir))
@@ -385,7 +387,7 @@ targets and copying them to the corresponding bin directory."
 
 #+sbcl
 (defun make-pvs-program ()
-  (let* ((tmp-dir "/tmp/pvs-allegro-build/")
+  (let* ((tmp-dir "/tmp/pvs-sbcl-build/")
 	 (platform (pvs-platform))
 	 (platform-dir (format nil "./bin/~a/" platform))
 	 (lext #-(or macosx os-macosx) "so" #+(or macosx os-macosx) "dylib")
