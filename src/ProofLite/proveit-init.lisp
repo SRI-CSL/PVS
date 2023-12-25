@@ -263,11 +263,11 @@
 	 (disable (remove-duplicates 
 		      (let ((envstr (environment-variable "PROVEITLISPDISABLE")))
 			(when envstr (read-from-string envstr)))
-		    :test #'string=))
+		    :test #'string-equal))
 	 (enable (remove-duplicates
 		     (let ((envstr (environment-variable "PROVEITLISPENABLE")))
 		       (when envstr (read-from-string envstr)))
-		   :test #'string=))
+		   :test #'string-equal))
 	 (auto-fix? (let ((envstr (environment-variable "PROVEITLISPAUTOFIX")))
 		      (when envstr (read-from-string envstr))))
 	 (default-proof (let ((envstr (environment-variable
@@ -303,7 +303,7 @@
       (when default-proof
 	(setq *proof-for-unexpected-branches* default-proof)
 	(format  t "*** Using default proof for open branches: ~a~%" default-proof))
-      (extra-disable-oracles-but disable enable)
+      (extra-disable-oracles disable enable)
       (let ((orcls (extra-list-oracles)))
 	(when orcls 
 	  (format  t "*** Trusted Oracles~%")

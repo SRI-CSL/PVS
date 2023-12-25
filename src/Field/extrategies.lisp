@@ -39,86 +39,88 @@
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
-  (internal nil :read-only t)  ; Internal oracle
-  (info nil :read-only t)      ; Information
+  (internal nil :read-only t)  ; Internal oracle (always enabled)
+  (info nil :read-only t)      ; Information, e.g., documentation
+  (enabled t)                  ; Whether or not the oracle is enabled (internal oracles disrgard this setting)
   label)                       ; Label of sub-goal where oracle can be applied
   
-(defparameter *extra-trusted-oracles* (make-hash-table)) ; Hashtable of trusted oracles
-(defparameter *extra-disabled-oracles* (make-hash-table)) ; Hashtable of disabled oracles
+;; Associaltion list of oracles indexed by name of oracle. Keys should be compared with string-equal since
+;; oracles names are case insensitive. This is one of the reasons why a hash is not used. 
+(defparameter *extra-trusted-oracles* nil) 
 
-(defun is-trusted-oracle (orcl)
-  (gethash orcl *extra-trusted-oracles*))
+(defun extra-get-trusted-oracle (orcl)
+  (let* ((pair  (assoc orcl *extra-trusted-oracles* :test #'string-equal))
+	 (torcl (cdr pair)))
+    (when (and pair (or (get-internal torcl) (get-enabled torcl)))
+      torcl)))
 
-(defun is-disabled-oracle (orcl)
-  (gethash orcl *extra-disabled-oracles*))
+(defun extra-make-trusted-oracle (orcl info &optional internal) 
+  (let ((pair  (assoc orcl *extra-trusted-oracles* :test #'string-equal))
+	(torcl (make-TrustedOracle :name orcl :internal internal :info info)))
+    (if pair
+	(rplacd pair torcl)
+      (push (cons orcl torcl) *extra-trusted-oracles*))))
 
 (defun extra-set-oracle-label (orcl)
-  (let ((torcl (is-trusted-oracle orcl)))
+  (let ((torcl (extra-get-trusted-oracle orcl)))
     (when torcl
       (setf (get-label torcl) (label *ps*)))))
 
 (defun extra-reset-oracle-label (orcl)
-  (let ((torcl (is-trusted-oracle orcl)))
+  (let ((torcl (extra-get-trusted-oracle orcl)))
     (when torcl
       (setf (get-label torcl) nil))))
 
-(defun extra-trust-oracle (orcl info &optional internal?) ; Set a trusted oracle
-  (let ((torcl (make-TrustedOracle :name (string orcl) :internal internal? :info info)))
-    (when (not (is-trusted-oracle orcl))
-      (setf (gethash orcl *extra-trusted-oracles*) torcl))))
-
-(defun extra-disable-oracle (orcl)
-  (let ((torcl (gethash orcl *extra-trusted-oracles*)))
-    (when torcl
-      (remhash orcl *extra-trusted-oracles*)
-      (setf (gethash orcl *extra-disabled-oracles*) torcl))))
-
 (defun extra-enable-oracle (orcl)
-  (let ((torcl (gethash orcl *extra-disabled-oracles*)))
+  (let* ((pair  (assoc orcl *extra-trusted-oracles* :test #'string-equal))
+	 (torcl (cdr pair)))
     (when torcl
-      (remhash orcl *extra-disabled-oracles*)
-      (setf (gethash orcl *extra-trusted-oracles*) torcl))))
+      (setf (get-enabled torcl) t))))
 
-(defun extra-disable-oracles-but (orcls &optional but) 
-  (let ((disables (if (member "_" orcls :test #'string=)
-		      (extra-list-oracle-names)
-		    orcls)))
-    (loop for name in (remove-if #'(lambda (n) (member n but :test #'string=))
-				 disables)
-	  do (extra-disable-oracle (intern name :pvs)))))
+(defun extra-disable-oracles (orcls &optional but)
+  (let ((orcls (enlist-it orcls)))
+    (loop for pair in *extra-trusted-oracles*
+	  for name  = (car pair)
+	  for torcl = (cdr pair)
+	  when (and (not (get-internal torcl))
+		    (member name orcls
+			    :test #'(lambda (x y) (or (string-equal y '_) (string-equal x y))))
+		    (not (member name but :test #'string-equal)))
+	  do (setf (get-enabled torcl) nil))))
 
 (defun extra-disable-all-oracles ()
-    (loop for name in (extra-list-oracle-names t)
-	  do (extra-disable-oracle (intern name :pvs))))
+  (extra-disable-oracles '_))
 
 (defun extra-list-oracles (&optional (enabled t))
   (sort 
-   (loop for orcl being the hash-values of 
-	 (if enabled *extra-trusted-oracles* *extra-disabled-oracles*)
-	 unless (get-internal orcl)
-	 collect (cons (get-name orcl) (get-info orcl)))
+   (loop for pair in *extra-trusted-oracles*
+	 for name  = (string (car pair))
+	 for torcl = (cdr pair)
+	 unless (get-internal torcl)
+	 when (iff enabled (get-enabled torcl))
+	 collect (cons name (get-info torcl)))
    #'(lambda (a b) (string< (car a) (car b)))))
 
 (defun extra-list-oracle-names (&optional (enabled t))
   (mapcar #'car (extra-list-oracles enabled)))
 
-(defmacro deforacle (name args step doc format &optional internal)
+(defmacro deforacle (name args step doc format &key internal)
   (let* ((info     (format nil "Try (help ~a)" name))
 	 (dismsg   (format nil "~a has been disabled" name))
 	 (docmsg   (if internal doc (format nil "[Trusted Oracle] ~a" doc))))
   `(progn
-     (extra-trust-oracle ',name ,info ,internal)
+     (extra-make-trusted-oracle ',name ,info ,internal)
      (defrule ,name ,args
-       (if (is-disabled-oracle ',name)
-	   (printf ,dismsg)
-	 (then@
-	  (sklisp (extra-set-oracle-label ',name))
-	  (unwind-protect$
-	   (else ,step
-		 (then
-		  (sklisp (extra-reset-oracle-label ',name))
-		  (fail)))
-	   (sklisp (extra-reset-oracle-label ',name)))))
+       (if (extra-get-trusted-oracle ',name)
+	   (then@
+	    (sklisp (extra-set-oracle-label ',name))
+	    (unwind-protect$
+	     (else ,step
+		   (then
+		    (sklisp (extra-reset-oracle-label ',name))
+		    (fail)))
+	     (sklisp (extra-reset-oracle-label ',name))))
+	 (printf ,dismsg))
        ,docmsg ,format))))
 
 ;; Load filename from dir relative to a path in *pvs-library-path*
@@ -732,8 +734,11 @@
 
 ;; Extended interval
 
-(defparameter *extra-varranges* nil) ;; List of extended intervals (xterval), one per variable
-(defparameter *extra-evalexprs* nil) ;; Association list of PVS ground expressions and evaluations
+;; List of extended intervals (xterval), one per variable
+(defparameter *extra-varranges* (make-hash-table :test #'equal))
+
+;; Association list of PVS ground expressions and evaluations
+(defparameter *extra-evalexprs* nil) 
 
 (defun extra-reset-evalexprs ()
   (setq *extra-evalexprs* nil))
@@ -772,8 +777,8 @@
 (defun extra-add-evalexpr (fmexpr)
   (let ((expr (extra-get-expr fmexpr)))
     (if (number-expr? expr) expr
-      (let ((val  (assoc expr *extra-evalexprs* :test #'compare*)))
-	(or (cdr val)
+      (let ((val (cdr (assoc expr *extra-evalexprs* :test #'compare*))))
+	(or val
 	    (let ((exval (evalexpr expr)))
 	      (when exval 
 		(unless (or (compare* expr exval)
@@ -884,7 +889,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 
 ;; Return the list of variables.
 (defun extra-get-var-ranges (fms vars)
-  (setq *extra-varranges* (make-hash-table :test #'equal)) 
+  (clrhash *extra-varranges*)
   (let ((uvars (remove-if #'listp vars)))
     (loop for fm in fms
 	  do (if (negation? fm)
@@ -1619,7 +1624,7 @@ defines a tactic that behaves as (myfirsttactic) when used without parameters, e
 ;; This function performs a miracle on behalf of the trusted oracle ORCL. 
 (defun trust! (orcl)
   #'(lambda (ps)
-      (let* ((torcl    (is-trusted-oracle orcl))
+      (let* ((torcl    (extra-get-trusted-oracle orcl))
 	     (labl     (when torcl (get-label torcl)))
 	     (idx      (when labl (search labl (label ps))))
 	     (prefix   (equal idx 0)))
@@ -1639,7 +1644,7 @@ This strategy *must* only be used in the definition of the oracle ORCL."
 
 (defstrat trust-branch! (orcl step &optional steps)
   (let ((steps (if (equal steps '!) (list steps) steps))
-	(torcl (is-trusted-oracle orcl)))
+	(torcl (extra-get-trusted-oracle orcl)))
     (if torcl
 	(let ((mrcl  `(trust! ,orcl))
 	      (stps  (mapcar #'(lambda (x) (or (and (equal x '!) mrcl) x)) steps)))
@@ -1690,7 +1695,7 @@ are labeled LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t. When
 expression is considered in fully-expanded form. This is sometimes necessary due to PVS overloading feature.
 TCCs generated during the execution of the command are discharged with the proof command TCC-STEP. 
 If TCC-STEP is nil, the strategy does nothing."
-  "Adding TCCs of expression ~a as hypotheses" t)
+  "Adding TCCs of expression ~a as hypotheses" :internal t)
 
 (defhelper tccs-formula__ (fn)
   (let ((tccs  (get-tccs-expression (extra-get-formula-from-fnum fn)))
@@ -1718,7 +1723,7 @@ If TCC-STEP is nil, the strategy does nothing."
    (relabel-hide__ (skip) label !tcfs hide?))
   "[Extrategies] Adds TCCs of formulas FNUMS as hypotheses to the current sequent. Added hypotheses
 are labeled LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t."
-  "Adding TCCs of formulas ~a as hypotheses" t)
+  "Adding TCCs of formulas ~a as hypotheses" :internal t)
 
 (defstep tccs-formula (&optional (fnum 1) label hide?)
   (tccs-formula* fnum label hide?)
@@ -1748,7 +1753,7 @@ are labeled LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t."
 subgoals are added as hypotheses to the first subgoal. Added
 hypotheses are labeled LABEL(s), if LABEL is not nil. They are hidden
 when HIDE? is t."
- "Adding TCCs of step ~a as hypotheses" t)
+ "Adding TCCs of step ~a as hypotheses" :internal t)
 
 ;; Return t if current branch is a TCC sequent. When ancestor? is t, it checks if any of its
 ;; ancestor is a TCC sequent
@@ -2868,7 +2873,7 @@ is nil, the strategy may not terminate properly in the presence of
 unproven TCCs. When QUIET? is t, the strategy fails silently. When
 TIMING? is t, strategy prints timing information of the ground
 evaluation."
-  "Evaluating expression ~a in the current sequent" t)
+  "Evaluating expression ~a in the current sequent" :internal t)
 
 (deforacle eval-formula (&optional (fnum 1) safe? quiet? timing?)
   (let ((fexpr (extra-get-seqf fnum)))
@@ -2886,7 +2891,7 @@ evaluated. However, if SAFE? is nil, the strategy may not terminate
 properly in the presence of unproven TCCs.  When QUIET? is t, the
 strategy fails silently. When TIMING? is t, strategy prints timing
 information of the ground evaluation."
-  "Evaluating formula ~a" t)
+  "Evaluating formula ~a" :internal t)
 
 (defrule eval (expr &optional safe? quiet? timing?)
   (let ((e (extra-get-expr expr)))
