@@ -213,8 +213,8 @@ BEGIN
 
   loop(s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
 
-  % Last breaks a loop with a given value
-  last(t:T):T
+  % last_iteration breaks a loop with a given value
+  last_iteration(t:T):T
 
   return(t:T):T 
 
@@ -585,7 +585,7 @@ BEGIN
     try(b,error[void]("PVSio Assertion Failure: "+str) & fail)
 
 %% While loops
-  break : MACRO void = last(skip)
+  break : MACRO void = last_iteration(skip)
 
   while(b:bool,s:void) : MACRO void =
     loop(if b then s else break endif)

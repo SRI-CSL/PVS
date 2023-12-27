@@ -556,7 +556,7 @@ In either case, if the second value is 0, the rational has a finite decimal repr
       (condition)
       (val condition))))
 
-(defattach |last| (e)
+(defattach |last_iteration| (e)
   "Breaks a loop with the value E"
   (let ((the-type (domain the-pvs-type_)))
     (error 'pvsio-break :val e :type the-type)))
