@@ -750,6 +750,11 @@
 	:bindings (mk-bindings vars)
 	:expression expr)))
 
+(defun mk-array-expr (exprs &optional ret-type)
+  (let ((aexpr (make-instance 'array-expr :exprs exprs)))
+    (when ret-type (setf (return-type aexpr) ret-type))
+    aexpr))
+
 (defun mk-let-expr (bindings expr)
   (change-class
    (mk-application* (mk-lambda-expr (mapcar #'car bindings) expr)

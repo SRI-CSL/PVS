@@ -367,7 +367,7 @@
 	    (let* ((result (call-next-method))
 		   (type-constraints (type-constraints obj :none))
 		   (rtype-constraints (loop for fmla in type-constraints
-					 nconc (and+ fmla))))
+					 nconc (and+ fmla))));(break "translate-to-yices2(around)")
 	      (setf (gethash obj *translate-to-yices2-hash*)
 		    result)
 	      (loop for tc in rtype-constraints
@@ -593,20 +593,24 @@
 					   prefix-string yname ytype))))
 	    (t (values bindings prefix-string))))
 
-(defmethod translate-to-yices2* ((expr binding-expr) bindings)
-  (with-slots ((expr-bindings bindings) expression) expr
-    (let ((stype (find-supertype (type (car expr-bindings)))))
-      (multiple-value-bind (newbindings bindstring)
-	  (translate-yices2-bindings  expr-bindings bindings "")
-	(let ((yexpression (translate-to-yices2* expression newbindings)))
-	  (cond ((lambda-expr? expr)
-		 (format nil "(lambda (~a) ~a)" bindstring yexpression))
-		((forall-expr? expr)
-		 (format nil "(forall (~a) ~a)"
-			 bindstring yexpression))
-		((exists-expr? expr)
-		 (format nil "(exists (~a) ~a)"
-			 bindstring yexpression))))))))
+(defmethod translate-to-yices2* ((expr binding-expr) bindings);(break)
+  (let ((new-expr (if (quant-expr? expr)
+		      (lift-predicates-in-quantifier expr (list *integer* *real*))
+		    expr)))
+    (with-slots ((expr-bindings bindings) expression) new-expr
+      (let ((*bindings* (append expr-bindings *bindings*))
+	    (stype (find-supertype (type (car expr-bindings)))));(when bindings (break "bindings"))
+	    (multiple-value-bind (newbindings bindstring)
+		(translate-yices2-bindings  expr-bindings bindings "")
+	      (let ((yexpression (translate-to-yices2* expression newbindings)))
+		(cond ((lambda-expr? expr)
+		       (format nil "(lambda (~a) ~a)" bindstring yexpression))
+		      ((forall-expr? expr)
+		       (format nil "(forall (~a) ~a)"
+			       bindstring yexpression))
+		      ((exists-expr? expr)
+		       (format nil "(exists (~a) ~a)"
+			       bindstring yexpression)))))))))
 
   ;; (let ((entry (gethash expr *y2name-hash*)))
   ;;   (or entry 
@@ -804,7 +808,7 @@
 
 (defun yices2 (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
   #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
-      ;;functions
+                                   ;;functions
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*y2defns* nil)
@@ -820,13 +824,13 @@
 		     (let ((fmla (formula sf)))
 		       (if (negation? fmla)
 			   (format nil "(assert ~a)"
-				   (translate-to-yices2* (args1 fmla) nil))
+			     (translate-to-yices2* (args1 fmla) nil))
 			   (format nil "(assert (not ~a))"
-				   (translate-to-yices2* fmla  nil))))))
+			     (translate-to-yices2* fmla  nil))))))
 	      (revdefns (nreverse *y2defns*))
 	      (file (make-pathname :defaults (working-directory)
 				   :name (label ps) :type "yices")))
-	  (format-if "~%ydefns = ~% ~{~a~%~}, file= ~a" revdefns file)
+	  (format-if "~%ydefns = ~% ~{~a~%~}" revdefns)
 	  (format-if "~%ysubtypes = ~% ~{~a~%~}" *yices2-subtype-constraints*)
 	  (format-if "~%yforms = ~% ~{~a~%~}" yices-forms)
 	  (with-open-file (stream  file :direction :output
@@ -836,47 +840,56 @@
 	      (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
-	    ;; (unless nonlinear? (format stream "(status)"))
+	    ;(unless nonlinear? (format stream "(status)"))
 	    )
 	  (let ((*yices2-flags*
 		 (if nonlinear?
 		     (concatenate 'string
-				  *yices2-flags* " --logic=QF_UFNIRA")
+		       *yices2-flags* " --logic=QF_UFNIRA")
 		     *yices2-flags*)))
+	    ;; From yices2/include/yices_exit_codes.h
+	    ;; #define YICES_EXIT_OUT_OF_MEMORY   16
+	    ;; #define YICES_EXIT_SYNTAX_ERROR    17
+	    ;; #define YICES_EXIT_FILE_NOT_FOUND  18
+	    ;; #define YICES_EXIT_USAGE           19
+	    ;; #define YICES_EXIT_ERROR           20
+	    ;; #define YICES_EXIT_INTERRUPTED     21
+	    ;; #define YICES_EXIT_INTERNAL_ERROR  22
+	    ;; #define YICES_EXIT_SYSTEM_ERROR    23
+	    ;; #define YICES_EXIT_TLS_ERROR       24
 	    (multiple-value-bind (output err-output status)
 		(uiop:run-program
-		 (format nil "~a ~a ~a"
-			 *yices2-executable*
-			 *yices2-flags*
-			 (namestring file))
-		 :input "//dev//null"
-		 :output '(:string :stripped t)
-		 :ignore-error-status t)
+		    (format nil "~a ~a ~a"
+		      *yices2-executable*
+		      *yices2-flags*
+		      (namestring file))
+		  :input "//dev//null"
+		  :output '(:string :stripped t)
+		  :error-output '(:string :stripped t)
+		  :ignore-error-status t)
 	      (when *y2datatype-warning*
 		(format t "~70,,,'*A" "")
 		(format t "~%Warning: The Yices datatype theory is not currently trustworthy.
 Please check your results with a proof that does not rely on Yices. ~%")
 		(format t "~70,,,'*A" ""))
 	      (cond ((zerop status)
+		     ;;(break "yices result")
+		     (format-if "~%Result = ~a" output)
 		     (cond ((search "unsat"  output :from-end t)
 			    (format-if "~%Yices translation of negation is unsatisfiable")
-
-			    (format-if "~%Removing generated .yices queries")
-			    (uiop:run-program
-			     (format nil "rm *.yices")
-			     :input "//dev//null"
-			     :output '(:string :stripped t)
-			     :ignore-error-status t)
-			    
 			    (values '! nil nil))
 			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
 			      (values 'X nil nil))))
+		    ((<= 16 status 24)
+		     (format t "Yices2 error:~%  ~a" err-output))
 		    (t (format t
-			       "~%Error running yices2 - either:~
-                          ~% 1. Download yices2 from http://yices.csl.sri.com~
-                          ~% 2. add yices2 to your path and restart PVS.~
-                          ~% 3. Check the generated yices2 query at ~a and see that it confirms to the yices2 language spec (https://yices.csl.sri.com/papers/manual.pdf)" (namestring file))
+			   "~%Error running yices - you may need to do one or more of:~
+                          ~% 1. Download yices from http://yices.csl.sri.com~
+                          ~% 2. add yices to your path and restart PVS.
+                          ~%The error message is:~% ~a"
+			 err-output)
 		       (values 'X nil)))))))))
+
 
 	
 (addrule 'yices2 () ((fnums *) nonlinear?)
@@ -936,4 +949,6 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
    invokes YICES.  See BASH for more explanation."
 "Repeatedly simplifying with decision procedures, rewriting,
   propositional reasoning, quantifier instantiation, skolemization, Yices")
+
+
 
