@@ -1,0 +1,16 @@
+ex21_theory: THEORY
+BEGIN
+
+x1: VAR integer
+
+x2: VAR integer
+
+p: VAR boolean
+
+ex21_thm: THEOREM x1 /= 0 AND
+                   (NOT p OR x1 = 1 - x2) AND
+                    (p OR x1 + x2 = 1) AND x2 = 1
+                   IMPLIES FALSE
+
+
+END ex21_theory

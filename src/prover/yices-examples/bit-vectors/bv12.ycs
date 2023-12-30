@@ -1,0 +1,7 @@
+
+
+(define b1::(bitvector 32))
+(define b2::(bitvector 32))
+
+(assert (and (= (bv-add b1 (mk-bv 32 1)) b2)
+             (/= (bv-add (mk-bv 32 0) (bv-add (mk-bv 32 1) b1)) b2)))

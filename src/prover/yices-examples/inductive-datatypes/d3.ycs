@@ -1,0 +1,22 @@
+
+
+(define-type T (datatype c1
+                         c2
+                         (c3 val::bool)))
+
+(define x1::T)
+(define x2::T)
+(define x3::T)
+(define x4::T)
+(define x5::T)
+(assert (/= x1 x2))
+(assert (/= x1 x3))
+(assert (/= x1 x4))
+(assert (/= x1 x5))
+(assert (/= x2 x3))
+(assert (/= x2 x4))
+(assert (/= x2 x5))
+(assert (/= x3 x4))
+(assert (/= x3 x5))
+(assert (/= x4 x5))
+(check)

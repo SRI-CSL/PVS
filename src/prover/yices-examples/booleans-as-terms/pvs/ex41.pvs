@@ -1,0 +1,23 @@
+ex41_theory: THEORY
+BEGIN
+
+f1: VAR [boolean -> boolean]
+
+f2: VAR [boolean -> boolean]
+
+f3: VAR [boolean -> boolean]
+
+f4: VAR [boolean -> boolean]
+
+f5: VAR [boolean -> boolean]
+
+ex41_thm: THEOREM f4 /= f5 AND
+                   f3 /= f4 AND
+                    f2 /= f5 AND
+                     f2 /= f4 AND
+                      f2 /= f3 AND
+                       f1 /= f5 AND f1 /= f4 AND f1 /= f3 AND f1 /= f2
+                   IMPLIES FALSE
+
+
+END ex41_theory

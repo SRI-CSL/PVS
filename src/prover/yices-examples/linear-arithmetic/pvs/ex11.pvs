@@ -1,0 +1,15 @@
+ex11_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+z: VAR integer
+
+f: VAR [integer -> integer]
+
+ex11_thm: THEOREM x = y - 3 AND f(x + 2) /= f(y - 1) IMPLIES FALSE
+
+
+END ex11_theory

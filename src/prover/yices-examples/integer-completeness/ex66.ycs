@@ -1,0 +1,9 @@
+
+
+(define x::int)
+(define y::int)
+(define z::int)
+
+(assert (= (+ (* 3 x) (* 6 y)) 1))
+(check)
+

@@ -1,0 +1,6 @@
+
+
+(define t::(tuple int int))
+
+(assert (= (select t 1) 10))
+(check)

@@ -1,0 +1,9 @@
+
+
+(define x::int)
+(define y::real)
+
+(assert (= (+ (* 3 x) (* 3 y)) 1))
+(check)
+(dump-context)
+

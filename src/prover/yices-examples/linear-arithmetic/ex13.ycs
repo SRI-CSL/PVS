@@ -1,0 +1,14 @@
+(define x1::int)
+(define x2::int)
+(define x3::int)
+(define x4::int)
+(define y1::real)
+(define y2::real)
+(define y3::real)
+
+(assert (= x2 (+ x1 1)))
+(assert (= x4 (+ x2 1)))
+(assert (= x1 (+ y1 1/2)))
+(assert (= x3 (+ y2 1/3)))
+(assert (= y1 y2))
+

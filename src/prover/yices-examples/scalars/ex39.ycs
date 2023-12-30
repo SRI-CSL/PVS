@@ -1,0 +1,19 @@
+
+
+(define-type S (scalar s1 s2))
+(define f1::(-> S S))
+(define f2::(-> S S))
+(define f3::(-> S S))
+(define f4::(-> S S))
+(define f5::(-> S S))
+(assert (/= f1 f2))
+(assert (/= f1 f3))
+(assert (/= f1 f4))
+(assert (/= f1 f5))
+(assert (/= f2 f4))
+(assert (/= f2 f5))
+(assert (/= f3 f4))
+(assert (/= f3 f5))
+(assert (/= f4 f5))
+(check)
+

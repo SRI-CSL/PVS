@@ -1,0 +1,11 @@
+ex81_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+ex81_thm: THEOREM 17 * x + 1023 * y = 12 IMPLIES FALSE
+
+
+END ex81_theory

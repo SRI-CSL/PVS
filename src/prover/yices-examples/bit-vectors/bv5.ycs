@@ -1,0 +1,5 @@
+
+(define b::(bitvector 4))
+
+(assert (= b (bv-add 0b0010 0b0011)))
+(check)

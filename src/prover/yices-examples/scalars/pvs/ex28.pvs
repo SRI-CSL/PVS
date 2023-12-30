@@ -1,0 +1,11 @@
+ex28_theory: THEORY
+BEGIN
+
+PC: TYPE = {pc1, pc2, pc3}
+
+x: VAR PC
+
+ex28_thm: THEOREM x /= pc2 AND x /= pc1 IMPLIES FALSE
+
+
+END ex28_theory

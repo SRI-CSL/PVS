@@ -1,0 +1,15 @@
+ex77_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+z: VAR integer
+
+ex77_thm: THEOREM (3 * x + 3 * y >= 0 AND 3 * x + 6 * y = 2) AND
+                   3 * x + 3 * y >= 1
+                   IMPLIES FALSE
+
+
+END ex77_theory

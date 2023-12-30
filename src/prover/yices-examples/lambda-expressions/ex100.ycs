@@ -1,0 +1,5 @@
+
+
+(define a::(-> int int))
+(assert (= (update a (10) 0) (lambda (x::int) x)))
+(check)

@@ -1,0 +1,14 @@
+ex79_theory: THEORY
+BEGIN
+
+a: VAR integer
+
+q: VAR integer
+
+r: VAR integer
+
+ex79_thm: THEOREM a = 5 * q + r AND r >= 0 AND r < 5 AND a = 10002
+                   IMPLIES FALSE
+
+
+END ex79_theory

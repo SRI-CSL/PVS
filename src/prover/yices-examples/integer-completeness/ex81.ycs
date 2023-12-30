@@ -1,0 +1,5 @@
+
+(define x::int)
+(define y::int)
+(assert (= (+ (* 17 x) (* 1023 y)) 12))
+(check)

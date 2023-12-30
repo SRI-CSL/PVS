@@ -1,0 +1,5 @@
+
+
+(define t::(record x::int y::int))
+
+(assert (= (select t x) 1/2))

@@ -1,0 +1,11 @@
+
+
+(define x::int)
+(define y::int)
+(define z::int)
+(define f::(-> int int))
+
+(assert (= x (- y 4)))
+(assert (/= (f (+ x 2)) (f (- y 1))))
+(check)
+

@@ -1,0 +1,6 @@
+(define a::int)
+(define q::int)
+(define r::int)
+(assert (and (= a (+ (* 5 q) r)) (>= r 0) (< r 5)
+             (= a 10002) (<= r 1)))
+(check)

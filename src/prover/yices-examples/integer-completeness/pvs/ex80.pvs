@@ -1,0 +1,25 @@
+ex80_theory: THEORY
+BEGIN
+
+a: VAR [nil -> integer]
+
+b: VAR [nil -> integer]
+
+f: VAR [nil -> nil]
+
+i: VAR nil
+
+ex80_thm: THEOREM b(1) <= b(2) AND
+                   b(0) <= b(1) AND
+                    a(2) = 5 AND
+                     a(1) = 2 AND
+                      a(0) = 7 AND
+                       b(f(2)) = a(2) AND
+                        b(f(1)) = a(1) AND
+                         b(f(0)) = a(0) AND
+                          f(1) /= f(2) AND
+                           f(0) /= f(2) AND f(0) /= f(1)
+                   IMPLIES FALSE
+
+
+END ex80_theory

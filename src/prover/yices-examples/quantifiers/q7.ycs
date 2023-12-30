@@ -1,0 +1,12 @@
+
+
+(define f::(-> int int))
+(define g::(-> int int))
+(define a::int)
+
+(assert (forall (x::int) (= (f x) x)))
+(assert (forall (x::int) (= (g (g x)) x)))
+(assert (/= (g (f (g a))) a))
+(check)
+
+

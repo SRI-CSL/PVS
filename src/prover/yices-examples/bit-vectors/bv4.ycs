@@ -1,0 +1,8 @@
+(define b1::(bitvector 16))
+(define b2::(bitvector 16))
+(define b3::(bitvector 16))
+
+(assert (/= b1 b2))
+(assert (/= b3 b1))
+(assert (/= b3 b2))
+(check)

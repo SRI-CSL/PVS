@@ -1,0 +1,20 @@
+
+(define b1::(bitvector 2))
+(define b2::(bitvector 2))
+(define b3::(bitvector 2))
+(define b4::(bitvector 2))
+(define b5::(bitvector 2))
+
+
+(assert (/= b1 b2))
+(assert (/= b1 b3))
+(assert (/= b1 b4))
+(assert (/= b1 b5))
+(assert (/= b2 b3))
+(assert (/= b2 b4))
+(assert (/= b2 b5))
+(assert (/= b2 b3))
+(assert (/= b3 b4))
+(assert (/= b3 b5))
+;; (assert (/= b4 b5))
+(check)

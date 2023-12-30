@@ -1,0 +1,20 @@
+ex24_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2, s3}
+
+x1: VAR S
+
+x2: VAR S
+
+x3: VAR S
+
+x4: VAR S
+
+ex24_thm: THEOREM x3 /= x4 AND
+                   x2 /= x4 AND
+                    x2 /= x3 AND x1 /= x4 AND x1 /= x3 AND x1 /= x2
+                   IMPLIES FALSE
+
+
+END ex24_theory

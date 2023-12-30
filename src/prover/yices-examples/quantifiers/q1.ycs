@@ -1,0 +1,5 @@
+(define foo::(-> int int))
+(assert (forall (f::(-> int int)) (= (f 0) 0)))
+(assert (= (foo 0) 1))
+(check)
+

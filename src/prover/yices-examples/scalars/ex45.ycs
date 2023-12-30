@@ -1,0 +1,12 @@
+
+
+(define-type S (scalar s1 s2))
+(define-type T)
+(define f1::(-> S T))
+(define f2::(-> S T))
+(define g::(-> (-> S T) T))
+
+(assert (= (f1 s1) (f2 s1)))
+(assert (= (f1 s2) (f2 s2)))
+(assert (/= (g f1) (g f2)))
+(check)

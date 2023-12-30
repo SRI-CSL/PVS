@@ -1,0 +1,12 @@
+(define x1::int)
+(define x2::int)
+(define x3::int)
+(define x4::int)
+
+(assert (>= x1 0))
+(assert (>= x2 0))
+(assert (= x3 x1))
+(assert (= x4 (+ x2 1)))
+(assert (= x3 (+ x4 1)))
+(check)
+

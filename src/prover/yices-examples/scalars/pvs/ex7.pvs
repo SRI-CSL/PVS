@@ -1,0 +1,31 @@
+ex7_theory: THEORY
+BEGIN
+
+pc: TYPE = {sleeping, trying, critical}
+
+f: VAR [pc -> pc]
+
+x1: VAR pc
+
+x2: VAR pc
+
+x3: VAR pc
+
+x4: VAR pc
+
+x5: VAR pc
+
+x6: VAR pc
+
+x7: VAR pc
+
+x8: VAR pc
+
+ex7_thm: THEOREM x3 = x4 AND
+                  x4 = x7 AND
+                   x4 = x5 AND
+                    x2 = x4 AND x3 = x6 AND x1 = x3 AND x1 /= x2
+                  IMPLIES FALSE
+
+
+END ex7_theory

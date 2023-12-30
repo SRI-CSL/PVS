@@ -1,0 +1,7 @@
+
+
+(define f::(-> (bitvector 4) int))
+
+(assert (= (f 0b0000) 0))
+(assert (= (f 0b0000) 1))
+(check)

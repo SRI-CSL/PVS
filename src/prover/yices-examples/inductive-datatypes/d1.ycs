@@ -1,0 +1,10 @@
+
+
+(define-type T (datatype c1
+                         c2
+                         (c3 val::bool)))
+
+(define x1::T)
+(define x2::T)
+(assert (/= x1 x2))
+(check)

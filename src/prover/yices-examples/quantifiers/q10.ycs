@@ -1,0 +1,6 @@
+
+(define s::(-> int int bool))
+(define p::int)
+(assert (forall (x::int) (s p x)))
+(assert (not (s p p)))
+(check)

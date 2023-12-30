@@ -1,0 +1,9 @@
+
+
+(define f1::(-> int int))
+(define f2::(-> int int))
+
+(assert (= f2 (update f1 (0) 1)))
+(assert (/= (f2 0) 2))
+(check)
+

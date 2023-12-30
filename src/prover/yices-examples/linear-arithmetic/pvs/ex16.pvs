@@ -1,0 +1,19 @@
+ex16_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+z: VAR integer
+
+f: VAR [integer -> integer]
+
+g: VAR [integer -> integer]
+
+ex16_thm: THEOREM (g(x) /= g(y - 3) OR f(x + 2) /= f(y - 1)) AND
+                   x = y - 3
+                   IMPLIES FALSE
+
+
+END ex16_theory

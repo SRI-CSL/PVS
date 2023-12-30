@@ -1,0 +1,7 @@
+
+
+(define f::(-> int int))
+(define a::int)
+(assert (forall (x::int) (= (f (+ x 1)) x)))
+(assert (= (f a) a))
+(check)

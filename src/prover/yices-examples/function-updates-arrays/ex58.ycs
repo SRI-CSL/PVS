@@ -1,0 +1,23 @@
+
+
+(define f1::(-> int int))
+(define f2::(-> int int))
+(define f3::(-> int int))
+(define f4::(-> int int))
+(define f5::(-> int int))
+(define i1::int)
+(define i2::int)
+(define i3::int)
+(define v1::int)
+(define v2::int)
+(define v3::int)
+
+(assert (= (update f1 (i1) v1)
+           (update f2 (i2) v2)))
+(assert (= f3 f1))
+(assert (/= i1 i3))
+(assert (/= i2 i3))
+(assert (= f4 f3))
+(assert (= f5 f2))
+(assert (/= (f4 i3) (f5 i3)))
+(check)

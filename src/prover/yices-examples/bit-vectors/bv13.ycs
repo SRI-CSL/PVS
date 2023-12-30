@@ -1,0 +1,12 @@
+
+
+(define b1::(bitvector 4))
+(define b2::(bitvector 6))
+(define b3::(bitvector 6))
+
+(define c1::(bitvector 8))
+(define c2::(bitvector 3))
+(define c3::(bitvector 5))
+
+(assert (= (bv-concat b1 (bv-concat b2 (bv-concat 0b0010 b3)))
+           (bv-concat c1 (bv-concat 0b0010 (bv-concat c2 c3)))))

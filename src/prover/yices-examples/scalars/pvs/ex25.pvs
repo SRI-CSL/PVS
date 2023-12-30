@@ -1,0 +1,19 @@
+ex25_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2, s3}
+
+x1: VAR S
+
+x2: VAR S
+
+x3: VAR S
+
+x4: VAR S
+
+ex25_thm: THEOREM x3 /= x4 AND
+                   x2 /= x4 AND x2 /= x3 AND x1 /= x3 AND x1 /= x2
+                   IMPLIES FALSE
+
+
+END ex25_theory

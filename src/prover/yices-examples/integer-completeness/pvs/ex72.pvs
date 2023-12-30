@@ -1,0 +1,118 @@
+ex72_theory: THEORY
+BEGIN
+
+x_a_0: VAR integer
+
+x_a__pa_q1_0: VAR integer
+
+x_a_1: VAR integer
+
+x_a__pa_q1_1: VAR integer
+
+y_1_0: VAR integer
+
+z_p_0: VAR integer
+
+y_3_1: VAR integer
+
+y_6_1: VAR integer
+
+y_2_1: VAR integer
+
+y_7_1: VAR integer
+
+y_9_1: VAR integer
+
+z_pa_1: VAR integer
+
+z_q_1: VAR integer
+
+z_q1_1: VAR integer
+
+alpha_a: VAR integer
+
+alpha_a__pa_q1: VAR integer
+
+ex72_thm: THEOREM x_a_0 + 0 >= 0 AND
+                   x_a__pa_q1_0 + 0 >= 0 AND
+                    y_1_0 + 0 >= 0 AND
+                     z_p_0 + 0 >= 0 AND
+                      x_a_1 + 0 >= 0 AND
+                       x_a__pa_q1_1 + 0 >= 0 AND
+                        y_3_1 + 0 >= 0 AND
+                         y_6_1 + 0 >= 0 AND
+                          y_2_1 + 0 >= 0 AND
+                           y_7_1 + 0 >= 0 AND
+                            y_9_1 + 0 >= 0 AND
+                             z_pa_1 + 0 >= 0 AND
+                              z_q_1 + 0 >= 0 AND
+                               z_q1_1 + 0 >= 0 AND
+                                0 = 0 - y_1_0 + 1
+                                AND
+                                0 = 0 - x_a_0 + 0
+                                AND
+                                0 = 0 - x_a__pa_q1_0 + 0
+                                AND
+                                0 = z_p_0 + 0
+                                AND
+                                0 = z_p_0 + 0
+                                AND
+                                0
+                                =
+                                0 - y_6_1 + (y_9_1 + (0 - y_3_1 + 0))
+                                AND
+                                0 = y_9_1 + (0 - y_2_1 + 0)
+                                AND
+                                0 = 0 - y_7_1 + (0 - y_9_1 + 1)
+                                AND
+                                0 = 0 - x_a_1 + (y_3_1 + 0)
+                                AND
+                                0
+                                =
+                                y_6_1
+                                +
+                                (y_7_1 + (0 - x_a__pa_q1_1 + 0))
+                                AND
+                                (0 = y_3_1 + 0
+                                 OR
+                                 z_pa_1 + (0 - 1) >= 0)
+                                AND
+                                (0 = y_6_1 + 0
+                                 OR
+                                 z_pa_1 + (0 - 1) >= 0)
+                                AND
+                                (0 = y_2_1 + 0 OR z_q_1 + (0 - 1) >= 0)
+                                AND
+                                0 = z_q1_1 + 0
+                                AND
+                                0 = z_q1_1 + 0
+                                AND
+                                (0 = z_pa_1 + 0
+                                 OR
+                                 0 = z_pa_1 + (0 - 1)
+                                 AND
+                                 y_9_1 + (0 - 1) >= 0)
+                                AND
+                                (0 = z_q_1 + 0
+                                 OR
+                                 0 = z_q_1 + (0 - 1)
+                                 AND
+                                 y_9_1 + (0 - 1) >= 0)
+                                AND
+                                0 = z_q1_1 + 0
+                                AND
+                                0
+                                =
+                                0 - (alpha_a + alpha_a)
+                                +
+                                (x_a_0 + (x_a_1 + 0))
+                                AND
+                                0
+                                =
+                                0 - (alpha_a__pa_q1 + alpha_a__pa_q1)
+                                +
+                                (x_a__pa_q1_0 + (x_a__pa_q1_1 + 0))
+                   IMPLIES FALSE
+
+
+END ex72_theory

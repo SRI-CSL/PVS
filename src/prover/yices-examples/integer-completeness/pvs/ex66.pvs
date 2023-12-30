@@ -1,0 +1,13 @@
+ex66_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+z: VAR integer
+
+ex66_thm: THEOREM 3 * x + 6 * y = 1 IMPLIES FALSE
+
+
+END ex66_theory

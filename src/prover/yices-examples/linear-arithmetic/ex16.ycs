@@ -1,0 +1,10 @@
+
+
+(define x::int)
+(define y::int)
+(define z::int)
+(define f::(-> int int))
+(define g::(-> int int))
+
+(assert (= x (- y 3)))
+(assert (or (/= (g x) (g (- y 3))) (/= (f (+ x 2)) (f (- y 1)))))

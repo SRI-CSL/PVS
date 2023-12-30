@@ -1,0 +1,12 @@
+
+
+(define-type tree (datatype (mk-node val::int left::tree right::tree)
+                            leaf))
+
+(define x1::tree)
+(define x2::tree)
+(define x3::tree)
+(define x4::tree)
+(assert (= x1 (mk-node 10 x2 x3)))
+(assert (= x2 (mk-node 20 leaf x1)))
+

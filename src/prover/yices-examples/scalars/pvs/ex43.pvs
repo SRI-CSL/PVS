@@ -1,0 +1,28 @@
+ex43_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2}
+
+f1: VAR [S -> S]
+
+f2: VAR [S -> S]
+
+f3: VAR [S -> S]
+
+f4: VAR [S -> S]
+
+f5: VAR [S -> S]
+
+g: VAR [[S -> S] -> integer]
+
+ex43_thm: THEOREM g(f4) /= g(f5) AND
+                   g(f3) /= g(f5) AND
+                    f3 /= f4 AND
+                     f2 /= f5 AND
+                      f2 /= f4 AND
+                       f2 /= f3 AND
+                        f1 /= f5 AND f1 /= f4 AND f1 /= f3 AND f1 /= f2
+                   IMPLIES FALSE
+
+
+END ex43_theory

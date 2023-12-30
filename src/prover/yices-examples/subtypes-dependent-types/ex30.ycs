@@ -1,0 +1,7 @@
+
+(define-type non-neg (subtype (v::int) (>= v 0)))
+
+(define x::non-neg)
+
+(assert (= x 0))
+(check)

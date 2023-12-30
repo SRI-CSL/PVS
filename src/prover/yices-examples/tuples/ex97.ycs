@@ -1,0 +1,6 @@
+
+(define t::(tuple x::int (subtype (y::int) (> y x))))
+
+(assert (= (select t 1) 0))
+(assert (= (select t 2) 0))
+(check)

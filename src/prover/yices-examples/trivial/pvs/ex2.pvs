@@ -1,0 +1,7 @@
+ex2_theory: THEORY
+BEGIN
+
+ex2_thm: THEOREM false IMPLIES FALSE
+
+
+END ex2_theory
