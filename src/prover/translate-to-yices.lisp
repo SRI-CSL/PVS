@@ -681,36 +681,40 @@
 
 
 (defmethod translate-to-yices* ((expr binding-expr) bindings)
-  (with-slots ((expr-bindings bindings) expression) expr
-    (let ((stype (find-supertype (type (car expr-bindings)))))
-    (cond ((and (lambda-expr? expr)
-		(singleton? expr-bindings)
-		(tupletype? stype))
-	   (let* ((ytypes (translate-to-yices-list
-			   (types stype) nil nil bindings))
-		  (lamvar (yices-id-name "lamvar"))
-		  (lamlist (loop for i from 1 collect
-				 (format nil "~a_~a" lamvar i)))
-		  (yparams (loop for var in lamlist 
-				 as ty in ytypes
-				 collect (format nil "~a::~a" var  ty))))
-	     (format nil "(lambda (~{ ~a~}) (let ((~a (mk-tuple ~{ ~a~}))) ~a))"
-	       yparams lamvar
-	       lamlist
-	       (translate-to-yices* expression
-				    (cons (cons (car expr-bindings) lamvar)
-					  bindings)))))
-	  (t (multiple-value-bind (newbindings bindstring)
-		 (translate-yices-bindings  expr-bindings bindings "")
-	       (let ((yexpression (translate-to-yices* expression newbindings)))
-		 (cond ((lambda-expr? expr)
-			(format nil "(lambda (~a) ~a)" bindstring yexpression))
-		       ((forall-expr? expr)
-			(format nil "(forall (~a) ~a)"
-			  bindstring yexpression))
-		       ((exists-expr? expr)
-			(format nil "(exists (~a) ~a)"
-			  bindstring yexpression)))))))))) ;;no else case
+  (let ((new-expr (if (quant-expr? expr) ;;NSH: 12/28/23: Added predicate-lifting for bound variables
+		      (lift-predicates-in-quantifier expr (list *integer* *real*))
+		    expr)))
+    (with-slots ((expr-bindings bindings) expression) new-expr
+      (let ((*bindings* (append bindings *bindings*))
+	    (stype (find-supertype (type (car expr-bindings)))))
+	(cond ((and (lambda-expr? new-expr)
+		    (singleton? expr-bindings)
+		    (tupletype? stype))
+	       (let* ((ytypes (translate-to-yices-list
+			       (types stype) nil nil bindings))
+		      (lamvar (yices-id-name "lamvar"))
+		      (lamlist (loop for i from 1 collect
+				     (format nil "~a_~a" lamvar i)))
+		      (yparams (loop for var in lamlist 
+				     as ty in ytypes
+				     collect (format nil "~a::~a" var  ty))))
+		 (format nil "(lambda (~{ ~a~}) (let ((~a (mk-tuple ~{ ~a~}))) ~a))"
+			 yparams lamvar
+			 lamlist
+			 (translate-to-yices* expression
+					      (cons (cons (car expr-bindings) lamvar)
+						    bindings)))))
+	      (t (multiple-value-bind (newbindings bindstring)
+		     (translate-yices-bindings  expr-bindings bindings "")
+		   (let ((yexpression (translate-to-yices* expression newbindings)))
+		     (cond ((lambda-expr? new-expr)
+			    (format nil "(lambda (~a) ~a)" bindstring yexpression))
+			   ((forall-expr? new-expr)
+			    (format nil "(forall (~a) ~a)"
+				    bindstring yexpression))
+			   ((exists-expr? new-expr)
+			    (format nil "(exists (~a) ~a)"
+				    bindstring yexpression))))))))))) ;;no else case
 
 ;; (defmethod translate-to-yices* ((expr forall-expr) bindings)
 ;;   (call-next-method))
