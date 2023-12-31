@@ -136,18 +136,27 @@
 	     (cleaned-name (substitute #\_ #\- name))
 	     (cleaned-name-symb (intern cleaned-name))
 	     (type (caddr yices-typedef)))
-	(if (and (listp type) (eq (car type) 'scalar))
-	    (let* ((pvs-scalar (pc-parse (format nil "~a: TYPE = {~{~a~^, ~}}"
+	(cond ((and (listp type) (eq (car type) 'scalar))
+	       (let* ((pvs-scalar (pc-parse (format nil "~a: TYPE = {~{~a~^, ~}}"
 						 cleaned-name-symb (cdr type))
 					 'theory-elt)))
-	      (progn
-		(loop for enum-field in (cdr type)
-		      do (setf (gethash enum-field *enum-fields-context*) enum-field))
-		(setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
-		pvs-scalar))
-	    (progn (setf (gethash cleaned-name-symb *type-context*)
+		 (progn
+		   (loop for enum-field in (cdr type)
+			 do (setf (gethash enum-field *enum-fields-context*) enum-field))
+		   (setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
+		   pvs-scalar)))
+	      ((and (listp type) (eq (car type) 'datatype))
+	       (break "typedef datatype unimplemented~%"))
+	      ((and (listp type) (eq (car type) 'tuple))
+	       (mk-tupletype (cdr types)))
+	      ((and (listp type) (eq (car type) 'subtype))
+	       (break "typedef subtype unimplemented~%"))
+	      ((and (listp type) (eq (car type) 'record))
+	       (break "typedef record unimplemented~%"))
+	      (t
+	       (progn (setf (gethash cleaned-name-symb *type-context*)
 			 (translate-yices-type-to-pvs type))
-		   nil)))))
+		   nil))))))
 
 
 (defun translate-yices-type-to-pvs (yices-type)
@@ -183,10 +192,12 @@
     (|not| . "mk-negation")
     (|and| . "mk-conjunction")
     (|or| . "mk-disjunction")
-    (|ite| . "mk-if-expr")))
+    (|ite| . "mk-if-expr")
+    (|forall| . "mk-forall-expr")
+    (|exists| . "mk-exists-expr")))
 
 (defun translate-yices-expr-to-pvs (yices-expr)
-	    ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
+  ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
   (cond ((symbolp yices-expr) (mk-name-expr yices-expr))
 	((numberp yices-expr) (mk-number-expr yices-expr))
 	((eq yices-expr 'false) *false*)
@@ -202,11 +213,16 @@
 	   (let* ((uf-context-elem (gethash untranslated-fn-call *uf-context*)))
 	     (if uf-context-elem
 		 (mk-application* uf-context-elem translated-args) ;; found elem in uf-context
-		 ;; KN: what if it's not in both *uf-context* and *pvs-makes-table*?
 		 (let* ((pvs-makes-table-elem (assoc untranslated-fn-call *pvs-makes-table*)))
 		   ;; Handle mk-conjunction/disjunction differently since they expect a list
 		   (cond ((eq untranslated-fn-call 'and) (mk-conjunction translated-args))
 			 ((eq untranslated-fn-call 'or) (mk-disjunction translated-args))
+			 ((eq untranslated-fn-call 'mk-tuple) (mk-tuple-expr translated-args))
+			 ((eq untranslated-fn-call 'select)
+			  (make-instance 'projappl
+					 :id nil
+					 :index (cadr translated-args)
+					 :argument (car translated-args)))
 			 (t
 			  (apply (find-symbol (cdr pvs-makes-table-elem) 'pvs)
 				 translated-args))))))))))
@@ -226,11 +242,11 @@
 (defun translate-yices-var-decl-to-pvs (yices-var-decl)
   (let* ((name (cadr yices-var-decl))
 	 (type (translate-yices-type-to-pvs (caddr yices-var-decl))))
-    (if (and (listp (caddr yices-var-decl)) (eq (caaddr yices-var-decl) '->))
-	(progn ; (format t "function type! adding to *uf-context*~%")
-	  (setf (gethash name *uf-context*) name)
-	  (mk-var-decl name type))
-	(mk-var-decl name type))))
+    (cond ((and (listp (caddr yices-var-decl)) (eq (caaddr yices-var-decl) '->))
+	   (progn ; (format t "function type! adding to *uf-context*~%")
+	     (setf (gethash name *uf-context*) name)
+	     (mk-var-decl name type)))
+	  (t (mk-var-decl name type)))))
 
 (defun translate-yices-binding-to-pvs (yices-binding)
   (break "UNIMPLEMENTED - translate-yices-binding-to-pvs~%"))
@@ -251,7 +267,6 @@
 
 ;; emits the constructed PVS ast to a file with the same name as the input Yices file
 (defun emit-pvs-to-file (pvs-ast output-filename)
-	    ; (map 'list #'(lambda (x) (unparse x)) pvs-ast)
   (with-open-file (stream (ensure-directories-exist output-filename)
 			  :direction :output :if-exists :supersede)
     (let* ((basename (substitute #\_ #\- (pathname-name output-filename)))
@@ -261,14 +276,15 @@
 				     (mk-disjunction *succedents*)))
 	   (ante-succ-query (mk-implication conjoined-antecedents disjoined-succedents))
 	   (theorem-name (concatenate 'string basename "_thm")))
-	    ; (format t "c-antecedents: ~a~%" conjoined-antecedents)
-	    ; (format t "d-succedents (initially negated): ~a~%" disjoined-succedents)
-	    ; (format t "final query: ~a~%" ante-succ-query)
+      ; (format t "c-antecedents: ~a~%" conjoined-antecedents)
+      ; (format t "d-succedents (initially negated): ~a~%" disjoined-succedents)
+      ; (format t "final query: ~a~%" ante-succ-query)
       (format stream "~a: THEORY~%BEGIN~%~%" theory-name)
 
       (loop for pvs-term in pvs-ast
 	    until (not pvs-term)
-	    do (progn (unparse pvs-term :stream stream) (format stream "~%~%")))
+	    do (progn (unparse pvs-term :stream stream)
+		      (format stream "~%~%")))
       
       (format stream "~a: THEOREM ~a~%" theorem-name ante-succ-query)
       (format stream "~%~%END ~a" theory-name)
