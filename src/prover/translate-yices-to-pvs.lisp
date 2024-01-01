@@ -225,6 +225,12 @@
     (|forall| . "mk-forall-expr")
     (|exists| . "mk-exists-expr")))
 
+
+(defun nary-addition (arguments)
+  (if (= (length arguments) 1)
+      (car arguments)
+      (mk-addition (car arguments) (nary-addition (cdr arguments)))))
+
 (defun translate-yices-expr-to-pvs (yices-expr)
 	    ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
   (cond ((symbolp yices-expr) (mk-name-expr yices-expr))
@@ -249,6 +255,7 @@
 			 ((eq untranslated-fn-call 'mk-tuple) (mk-tuple-expr translated-args))
 			 ((eq untranslated-fn-call 'mk-record)
 			  (mk-record-expr (translate-record-field-assns translated-args)))
+			 ((eq untranslated-fn-call '+) (nary-addition translated-args))
 			 ((eq untranslated-fn-call 'select)
 			  (make-instance 'projappl
 					 :id nil
