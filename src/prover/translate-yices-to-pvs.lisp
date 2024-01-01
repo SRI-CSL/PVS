@@ -124,6 +124,24 @@
     ('help (format t "HELP~%") nil)))
 
 
+
+;; turns (a b c d ...) into ((a b) (c d) ...)
+(defun make-pairs-rec (list acc)
+  (if (consp list)
+      (make-pairs-rec (cddr list) (cons (list (car list) (cadr list)) acc))
+      acc))
+
+(defun make-pairs (list) (make-pairs-rec list nil))
+
+(defun translate-record-field-decls (field-decls)
+  (map 'list #'(lambda (x) (mk-field-decl (car x) (cadr x)))
+       (make-pairs field-decls)))
+
+(defun translate-record-field-assns (field-assns)
+  (map 'list #'(lambda (x) (mk-assignment nil (car x) (cadr x)))
+       (make-pairs field-assns)))
+
+
 ;; Type/enum definitions manipulate *type-context* and *enum-fields-context*
 (defun translate-yices-typedef-to-pvs (yices-typedef interpreted-p)
 	    ; (format t "(translate-yices-typedef-to-pvs ~a)~%" yices-typedef)
@@ -138,8 +156,8 @@
 	     (type (caddr yices-typedef)))
 	(cond ((and (listp type) (eq (car type) 'scalar))
 	       (let* ((pvs-scalar (pc-parse (format nil "~a: TYPE = {~{~a~^, ~}}"
-						 cleaned-name-symb (cdr type))
-					 'theory-elt)))
+						    cleaned-name-symb (cdr type))
+					    'theory-elt)))
 		 (progn
 		   (loop for enum-field in (cdr type)
 			 do (setf (gethash enum-field *enum-fields-context*) enum-field))
@@ -148,15 +166,24 @@
 	      ((and (listp type) (eq (car type) 'datatype))
 	       (break "typedef datatype unimplemented~%"))
 	      ((and (listp type) (eq (car type) 'tuple))
-	       (mk-tupletype (cdr types)))
+	       (setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
+	       (pc-parse (format nil "~a: TYPE = ~a"
+				 cleaned-name-symb
+				 (mk-tupletype (map 'list #'(lambda (x) (translate-yices-type-to-pvs x))
+				  (cdr type))))
+			 'theory-elt))
 	      ((and (listp type) (eq (car type) 'subtype))
 	       (break "typedef subtype unimplemented~%"))
 	      ((and (listp type) (eq (car type) 'record))
-	       (break "typedef record unimplemented~%"))
+	       (setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
+	       (pc-parse (format nil "~a: TYPE = ~a"
+				 cleaned-name-symb
+				 (mk-recordtype (translate-record-field-decls (cdr type)) nil))
+			 'theory-elt))
 	      (t
 	       (progn (setf (gethash cleaned-name-symb *type-context*)
-			 (translate-yices-type-to-pvs type))
-		   nil))))))
+			    (translate-yices-type-to-pvs type))
+		      nil))))))
 
 
 (defun translate-yices-type-to-pvs (yices-type)
@@ -170,6 +197,7 @@
 	('bitvector (progn (format t "UNIMPLEMENTED: BITVECTOR TRANSLATION~%") nil))
 	('tuple (mk-tupletype (map 'list #'(lambda (x) (translate-yices-type-to-pvs x))
 				   (cdr yices-type))))
+	('record (mk-recordtype (translate-record-field-decls (cdr yices-type)) nil))
 	;; KN: doesn't use mk-funtype because arguments aren't type-exprs
 	('-> (make-instance 'funtype
 			    :domain (translate-yices-type-to-pvs (cadr yices-type))
@@ -197,7 +225,7 @@
     (|exists| . "mk-exists-expr")))
 
 (defun translate-yices-expr-to-pvs (yices-expr)
-  ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
+	    ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
   (cond ((symbolp yices-expr) (mk-name-expr yices-expr))
 	((numberp yices-expr) (mk-number-expr yices-expr))
 	((eq yices-expr 'false) *false*)
@@ -218,6 +246,8 @@
 		   (cond ((eq untranslated-fn-call 'and) (mk-conjunction translated-args))
 			 ((eq untranslated-fn-call 'or) (mk-disjunction translated-args))
 			 ((eq untranslated-fn-call 'mk-tuple) (mk-tuple-expr translated-args))
+			 ((eq untranslated-fn-call 'mk-record)
+			  (mk-record-expr (translate-record-field-assns translated-args)))
 			 ((eq untranslated-fn-call 'select)
 			  (make-instance 'projappl
 					 :id nil
@@ -276,9 +306,9 @@
 				     (mk-disjunction *succedents*)))
 	   (ante-succ-query (mk-implication conjoined-antecedents disjoined-succedents))
 	   (theorem-name (concatenate 'string basename "_thm")))
-      ; (format t "c-antecedents: ~a~%" conjoined-antecedents)
-      ; (format t "d-succedents (initially negated): ~a~%" disjoined-succedents)
-      ; (format t "final query: ~a~%" ante-succ-query)
+	    ; (format t "c-antecedents: ~a~%" conjoined-antecedents)
+	    ; (format t "d-succedents (initially negated): ~a~%" disjoined-succedents)
+	    ; (format t "final query: ~a~%" ante-succ-query)
       (format stream "~a: THEORY~%BEGIN~%~%" theory-name)
 
       (loop for pvs-term in pvs-ast
