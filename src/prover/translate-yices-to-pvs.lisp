@@ -3,7 +3,7 @@
 ;; Author          : K. Nukala
 ;; Created On      : November 2023
 ;; Last Modified By: K. Nukala
-;; Last Modified On: 12/29/2023
+;; Last Modified On: 12/31/2023
 ;; Update Count    : 0
 ;; Status          : In-Progress
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -134,7 +134,8 @@
 (defun make-pairs (list) (make-pairs-rec list nil))
 
 (defun translate-record-field-decls (field-decls)
-  (map 'list #'(lambda (x) (mk-field-decl (car x) (cadr x)))
+  (map 'list #'(lambda (x) (mk-field-decl (car x)
+					  (translate-yices-type-to-pvs (cadr x))))
        (make-pairs field-decls)))
 
 (defun translate-record-field-assns (field-assns)
@@ -170,7 +171,7 @@
 	       (pc-parse (format nil "~a: TYPE = ~a"
 				 cleaned-name-symb
 				 (mk-tupletype (map 'list #'(lambda (x) (translate-yices-type-to-pvs x))
-				  (cdr type))))
+						    (cdr type))))
 			 'theory-elt))
 	      ((and (listp type) (eq (car type) 'subtype))
 	       (break "typedef subtype unimplemented~%"))
