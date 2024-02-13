@@ -228,9 +228,7 @@
 	  (format nil "~{/~a~}/" (subseq dir-names 0 (max 0 (- (length dir-names) 1)))))))
     (if collection-id
 	(format nil "~a/~{~a~}/"
-		;; replacing '/' by '-' in collection ids is safe because '-' is not
-		;; a legal character for libary names.
-		(substitute #\- #\/ collection-id)
+		collection-id
 		(last dir-names))
       (format nil "~{~a/~}" (subseq dir-names (max 0 (- (length dir-names) 2)))))))
 
