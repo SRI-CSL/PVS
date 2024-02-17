@@ -232,7 +232,7 @@ Disable external oracle."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (pvs-send-and-wait (format "(extra-disable-oracle '%s)" oracle)
+  (pvs-send-and-wait (format "(extra-disable-oracles '%s)" oracle)
 		     nil nil 'dont-care))
 
 (defpvs enable-oracle prove (oracle)

@@ -75,7 +75,7 @@
 
 (defparameter *fff* nil)
 
-(defrequest typecheck (filename &optional content)
+(defrequest typecheck (filename &optional content force?)
   "Typecheck a file"
   ;; (format t "~%Request tc ~s" filename)
   (when content
@@ -211,10 +211,10 @@
   #-allegro
   (break "Fix me"))
 
-;; Modified by M3 to allow restore to Rule? prompt when in-checker [Sept 2020]
 (defrequest interrupt ()
   "Interrupts PVS."
   (break "interrupt")
+  ;; @M3;; (loop for session in (pvs::all-proof-sessions) do (pvs:interrupt-session (pvs::id session)))
   )
 
 (defrequest interrupt-proof (id)
@@ -250,7 +250,8 @@ returning the unique id (within a PVS session)."
   (let* ((prf-result (pvs:prover-step proof-id form))
 	 (prf-alist (pvs2json-response prf-result))
 	 (prf-json (json:encode-json-to-string prf-alist)))
-    ;;(format t "~%proof-command: after prf-json")
+    ;; (format t "~%proof-command: after prf-json => ~a " prf-json) ;; debug
+    ;; (format t "~%proof => ~a " (pvs::script(pvs::default-proof(pvs::get-formula-decl "sq#sq_neg")))) ;; debug
     (values prf-alist prf-json)))
 
 (defrequest proof-help (cmd)
@@ -297,9 +298,9 @@ returning the unique id (within a PVS session)."
 				   (pvs:strim (if (stringp e) e (format nil "~a" e))))
 			 commentary)))
       (obj `(("id" . ,(string id))
-	     ("ps-id" . ,(unique-ps-id ps))
+	     ("ps-id" . ,(pvs::unique-ps-id ps))
 	     ("parent" . (if (parent-proofstate ps)
-			     (unique-ps-id (parent-proofstate ps))
+			     (pvs::unique-ps-id (parent-proofstate ps))
 			     "None"))
 	     ("status" . ,(string status))
 	     ,@(when commentary `(("commentary" . ,commentary)))
@@ -448,15 +449,28 @@ to the associated declaration."
 
 (defrequest delete-proof-of-formula (form-ref proof-id)
   "Deletes the proof-id of the formula."
-  (let* ((fdecl (pvs:get-formula-decl form-ref))
-	 (proofs (pvs:proofs fdecl))
-	 (proof (find proof-id proofs :test #'string= :key #'pvs:id)))
-    (unless proof
-      (error "proof-id ~s not found in formula ~a" proof-id form-ref))
-    (let ((nproofs (remove proof proofs)))
-      (when (eq proof (pvs:default-proof fdecl))
-	(setf (pvs:default-proof fdecl) (car (last nproofs)))) ; could be nil
-      (setf (pvs:proofs fdecl) nproofs))))
+  (let ((fdecl (pvs:get-formula-decl form-ref)))
+    (unless fdecl
+      (error "formula ~a not found" form-ref))
+    (let*((proofs (pvs:proofs fdecl))
+	  (proof (find proof-id proofs :test #'string= :key #'pvs:id)))
+      (unless proof
+	(error "proof-id ~s not found in formula ~a" proof-id form-ref))
+      (let ((nproofs (remove proof proofs)))
+	(when (eq proof (pvs:default-proof fdecl))
+	  (setf (pvs:default-proof fdecl) (car (last nproofs)))) ; could be nil
+	(setf (pvs:proofs fdecl) nproofs)))))
+
+(defrequest mark-proof-as-default (form-ref proof-id)
+  "Mark the proof with id PROOF-ID as the default proof for the formula identified by FORM-REF."
+  (let ((fdecl (pvs:get-formula-decl form-ref)))
+    (unless fdecl
+      (error "formula ~a not found" form-ref))
+    (let*((proofs (pvs:proofs fdecl))
+	  (proof (find proof-id proofs :test #'string= :key #'pvs:id)))
+      (unless proof
+	(error "proof-id ~s not found in formula ~a" proof-id form-ref))
+      (setf (pvs:default-proof fdecl) proof))))
 
 ;; M3: Request to save proofs to prf file [Sept 2020]
 (defrequest save-all-proofs (theoryref)
@@ -465,22 +479,6 @@ to the associated declaration."
     (unless theory
       (pvs:pvs-error "Save-all-proofs error" (format nil "Theory ~a cannot be found" theoryref)))
     (pvs:save-all-proofs theory)))
-
-(defrequest store-last-attempted-proof (proof-id &optional overwrite? new-script-id new-script-desc)
-  "Store current proof script in the provided formula, by default as the proof-id."
-  (declare (ignore proof-id overwrite? new-script-id new-script-desc))
-  (error "store-last-attempted-proof called")
-  ;; (let ((script (cdr pvs:*last-attempted-proof*)))
-  ;;   (if overwrite?
-  ;; 	(setf (pvs:script (pvs:default-proof dst-decl)) (car script))
-  ;; 	(let ((id (or new-script-id (pvs:next-proof-id dst-decl)))
-  ;; 	      (description (or new-script-desc "")))
-  ;; 	  (setf (pvs:default-proof dst-decl)
-  ;; 		(pvs:make-default-proof dst-decl (car script) id description)))))
-  ;; (pvs:pvs-error "store-last-attempted-proof error"
-  ;;   (format nil "Last attempted proof script was not meant for provided decl (script attempted for ~a, decl provided is ~a)."
-  ;;     (car pvs:*last-attempted-proof*) dst-decl))
-  )
 
 (defrequest add-pvs-library (string)
   "Just evaluate the string in lisp"

@@ -30,6 +30,9 @@
     {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}\vspace{0.1in}%
 }
 
+% [Added by CM  23/12/2023 to compile the following 2 custom verbatim environments
+\usepackage{fancyvrb}
+
 \CustomVerbatimEnvironment{pvsex}{Verbatim}{commandchars=\\\{\},frame=single,fontsize=\relsize{-1}}
 
 \CustomVerbatimCommand{\pvsinput}{VerbatimInput}{commandchars=\\\{\},frame=single,fontsize=\relsize{-1}}

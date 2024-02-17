@@ -1554,7 +1554,8 @@ are all the same."
 		  (setf (te-status te)
 			(delete 'invalid-proofs (te-status te))))))
 	    (pvs-log "Wrote proof file ~a"
-		     (file-namestring filestring)))))
+		     (file-namestring filestring))
+	    t)))
       (pvs-message
 	  "Do not have write permission for saving proof files")))
 
@@ -1941,7 +1942,7 @@ Note that the lists might not be the same length."
       pr))
 
 (defun convert-proof-form-to-lowercase (proof-form)
-  (cond ((symbolp proof-form)
+  (cond ((and proof-form (symbolp proof-form))
 	 (intern (string-downcase proof-form) (symbol-package proof-form)))
 	((consp proof-form)
 	 (cons (convert-proof-form-to-lowercase (car proof-form))
