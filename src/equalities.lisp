@@ -1188,6 +1188,14 @@
 (defmethod compatible?* ((atype type-expr) (etype dep-binding))
   (compatible?* atype (type etype)))
 
+(defmethod compatible? ((aname modname) (ename modname))
+  (assert (fully-instantiated? aname))
+  (assert (fully-instantiated? ename))
+  (and (eq (id aname) (id ename))
+       (compatible? (actuals aname) (actuals ename))
+       (compatible? (dactuals aname) (dactuals ename))
+       (tc-eq (mappings aname) (mappings ename))))
+
 ;;; We would like to use tc-eq for type-names, but since this can be
 ;;; called from tc-unify, the actuals may not be known yet.  Note that
 ;;; we return the instantiated type, if there is one.
