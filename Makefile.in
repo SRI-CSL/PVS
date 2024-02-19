@@ -516,9 +516,9 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
-.PHONY : all parser yices emacs prelude-files-and-regions
+.PHONY : all quicklisp parser yices emacs prelude-files-and-regions
 
-all : $(HOME)/quicklisp $(pvs-images) yices prelude-files-and-regions etags
+all : quicklisp $(pvs-images) yices prelude-files-and-regions etags
 
 devel : $(allegro-devel) 
 
@@ -526,38 +526,32 @@ runtime : $(sbcl-rt) # $(allegro-rt)
 
 prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
 
-# Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
-# This assumes quicklisp is installed in the default directory '~/quicklisp'
-# It will create that directory, and update the ~/.sbclrc init file to initialize
-# quicklisp automatically.
+# Quicklisp is a well-known package manager for Common Lisp; see
+# src/quicklisp.lisp for details.
 
-# First install ~/quicklisp; any Common Lisp will do that
-ifeq ("$(wildcard $(HOME)/quicklisp/.*)","")
+# If the user's Lisp initialization file (~/.sbclrc or ~/.clinit.cl)
+# already exists, then it is assumed to load quicklisp.  Otherwise
+# quicklisp will be installed in the default directory, ~/quicklisp,
+# and a default Lisp initialization file will be created.
 ifneq ($(SBCL),)
-$(HOME)/quicklisp : src/quicklisp.lisp
-	$(SBCL) --load src/quicklisp.lisp \
+quicklisp : $(HOME)/.sbclrc
+
+$(HOME)/.sbclrc :
+	$(SBCL) --load "src/quicklisp.lisp" \
                 --eval "(quicklisp-quickstart:install)" \
                 --quit
-else
-$(HOME)/quicklisp : src/quicklisp.lisp
-	$(ALLEGRO) -L "src/quicklisp.lisp" \
-                   -e "(quicklisp-quickstart:install)" \
-                   --kill
-endif
-endif
-
-# Now make sure init file is set up to automatically load quicklisp/setup.lisp
-# Note that if .sbclrc or .clinit.cl already exist, they are assumed to load
-# quicklisp
-ifneq ($(SBCL),)
-$(HOME)/.sbclrc : $(HOME)/quicklisp
 	$(SBCL) --load "$(HOME)/quicklisp/setup.lisp" \
                 --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
                 --quit
 endif
 
 ifneq ($(ALLEGRO),)
-$(HOME)/.clinit.cl : $(HOME)/quicklisp
+quicklisp : $(HOME)/.clinit.cl
+
+$(HOME)/.clinit.cl :
+	$(ALLEGRO) -L "src/quicklisp.lisp" \
+                   -e "(quicklisp-quickstart:install)" \
+                   --kill
 	$(ALLEGRO) -L "$(HOME)/quicklisp/setup.lisp" \
                    -e "(ql-util:without-prompting (ql:add-to-init-file))" \
                    --kill
