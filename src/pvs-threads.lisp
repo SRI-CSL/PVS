@@ -88,7 +88,7 @@
 ;;  sequent - (pvs2json-seq current-goal (parent-proofstate ps))
 
 (defmethod print-object ((ses session) stream)
-  (format stream "#<proof-session ~a>" (id ses)))
+  (format stream "#<session ~a>" (id ses)))
 
 (defvar *all-sessions* nil
   "list of sessions")
@@ -198,23 +198,6 @@ the input-queue, and return the lisp form of the string."
       ;;(format t "~%session-read: waiting on input-queue")
       (session-read* sess))))
 
-(defun session-read* (sess)
-  (let ((input (pop-queue (input-queue sess))))
-    ;; (format t "~%session-read*: input = ~s" input)
-    (multiple-value-bind (inp err)
-	(ignore-errors (read-from-string input))
-      (cond (inp
-	     (push inp (logs sess))
-	     (if (in-the-debugger)
-		 (if (and (consp inp)
-			  (symbolp (car inp))
-			  (string-equal (car inp) "lisp"))
-		     inp
-		     (list '(restore) inp))
-		 (if (quit-command-p inp) '(quit) inp)))
-	    (t (push err (logs sess))
-	       err)))))
-
 (defun session-finish ()
   "This should be called from the thread, to notify the output queue that
 the session is finished after this."
@@ -240,6 +223,26 @@ the session is finished after this."
   ;; e.g., (rerun) or (grind$). So output-proofstate pushes them onto the outputs list,
   ;; and prover-read uses it to construct the output for the output-queue.
   outputs)
+
+(defmethod print-object ((ses proof-session) stream)
+  (format stream "#<proof-session ~a>" (id ses)))
+
+(defmethod session-read* ((sess proof-session))
+  (let ((input (pop-queue (input-queue sess))))
+    ;; (format t "~%session-read*: input = ~s" input)
+    (multiple-value-bind (inp err)
+	(ignore-errors (read-from-string input))
+      (cond (inp
+	     (push inp (logs sess))
+	     (if (in-the-debugger)
+		 (if (and (consp inp)
+			  (symbolp (car inp))
+			  (string-equal (car inp) "lisp"))
+		     inp
+		     (list '(restore) inp))
+		 (if (quit-command-p inp) '(quit) inp)))
+	    (t (push err (logs sess))
+	       err)))))
 
 (defun all-proof-sessions ()
   (remove-if-not #'proof-session? *all-sessions*))
@@ -293,7 +296,13 @@ Returns a list of the form ((id . status) (id . status) ...)"
       (prove-formula fdecl :rerun? rerun?)
       (sb-ext:unschedule-timer timer))
     #-sbcl
-    (prove-formula fdecl :rerun? rerun?)))
+    ;; (progn (trivial-timer:initialize-timer)
+    ;; 	   (let ((timer (trivial-timer:register-timer-recurring-call
+    ;; 			 1000 #'handle-interrupt)))
+    ;; 	     (prove-formula fdecl :rerun? rerun?)
+    ;; 	     (trivial-timer:cancel-timer-call timer)))
+    (prove-formula fdecl :rerun? rerun?)
+    ))
 
 
 ;;; Both prover-init and prover-step return alists of the form
@@ -486,3 +495,96 @@ of objects of the form {\"proofId\":id,\"status\":status}"
 ;; 	      ))
 ;; 	(format t "~%PVS: have output ~a for ~a" out id)
 ;; 	(list id out)))))
+
+(defcl pvsio-session (session)
+  context
+  history)
+
+(defmethod print-object ((ses pvsio-session) stream)
+  (format stream "#<pvsio-session ~a>" (id ses)))
+
+(defmethod session-read* ((sess pvsio-session))
+  (let ((input (pop-queue (input-queue sess))))
+    ;; (format t "~%session-read*: input = ~s" input)
+    ;;(push input (logs sess))
+    input))
+
+(defun pvsio-init (context &key input-hook)
+  (let* ((id (get-new-session-id (id (theory context))))
+	 (sess (make-session id #'(lambda ()
+				    (pvsio-in-session id context input-hook)))))
+    (change-class sess 'pvsio-session :context context)))
+
+(defun pvsio-step (id pvs-ex)
+  (let ((sess (get-session id)))
+    (unless sess
+      (error "PVSio session ~a not found" id))
+    (push-queue pvs-ex (input-queue sess))
+    (let* ((out (pop-queue (output-queue sess))))
+      (push (cons pvs-ex out) (history sess))
+      out)))
+
+(defvar *pvsio-input-hooks* nil)
+
+(defun pvsio-in-session (id context input-hook)
+  (let ((*pvsio-input-hooks* (if input-hook
+				 (cons input-hook *pvsio-input-hooks*)
+				 *pvsio-input-hooks*))
+	(*pvs-message-hook* (list #'session-output))
+	(sess (current-session)))
+    (with-context context
+      #+sbcl
+      (let ((timer (sb-ext:make-timer #'handle-interrupt)))
+	(sb-ext:schedule-timer timer 1 :repeat-interval 1)
+	(evaluate-in-session sess)
+	(sb-ext:unschedule-timer timer))
+      #-sbcl
+      (progn (trivial-timer:initialize-timer)
+	     (let ((timer (trivial-timer:register-timer-recurring-call
+			   1000 #'handle-interrupt)))
+	       (evaluate-in-session sess)
+	       (trivial-timer:cancel-timer-call timer)))
+      )))
+
+(defun evaluate-in-session (sess)
+  (let* ((input (session-read)) ;; Waits for input
+	 (result (evaluate-in-session*
+		  input
+		  `(("id" . ,(string (id sess)))
+		    ("input" . ,input)))))
+    (push-queue result (output-queue sess)))
+  (evaluate-in-session sess))
+
+(defun isvoid (ex)
+  (and ex
+       (type-name? (type ex))
+       (eq (id (type ex)) '|void|)))
+
+(defun evaluate-in-session* (input result)
+  (let ((*tccforms* nil))
+    (multiple-value-bind (tc-input tc-err)
+	(ignore-errors (tc-expr input))
+      (cond (tc-input
+	     (nconc result `(("tc-input" . ,tc-input)))
+	     (multiple-value-bind (cl-input cl-err)
+		 (ignore-errors (pvs2cl tc-input))
+	       (cond (cl-input
+		      (nconc result `(("cl-input" . ,cl-input)))
+		      (multiple-value-bind (cl-eval eval-err)
+			  (if nil ;;*pvs-eval-do-timing*
+			      (time (eval cl-input))
+			      (eval cl-input))
+			(cond (cl-eval
+			       (nconc result `(("cl-eval" . ,cl-eval)))
+			       (if (isvoid tc-input)
+				   (nconc result '(("pvs-val" . "void")))
+				   (multiple-value-bind (pvs-val pvs-val-err)
+				       (cl2pvs cl-eval (type tc-input))
+				     (if pvs-val
+					 (nconc result `(("pvs-val" . ,pvs-val)))
+					 (let ((verr (format nil "~a" pvs-val-err)))
+					   (nconc result `(("pvs-val-err" . ,verr))))))))
+			      (t (nconc result `(("eval-err" . ,(format nil "~a" eval-err))))))))
+		     (t (nconc result `(("cl-err" . ,(format nil "~a" cl-err))))))))
+	    (t (nconc result `(("tc-error" . ,(format nil "~a" tc-err)))))))))
+				     
