@@ -129,10 +129,8 @@ behavior:
 	  ;; Note that npt could come from the *gensubst-cache*
 	  ;;#+pvsdebug
 	  (assert (typep (print-type te)
-			 '(or null type-name expr-as-type
-			   type-application)))
-	  (if (typep npt '(or null type-name
-			   expr-as-type type-application))
+			 '(or null type-name expr-as-type type-application)))
+	  (if (typep npt '(or null type-name expr-as-type type-application))
 	      (copy nte :print-type npt)
 	      (copy nte :print-type (print-type npt)))))))
 
@@ -697,18 +695,18 @@ behavior:
     'formals (apply-to-bindings #'(lambda (bd) (gensubst* bd substfn testfn))
 				(formals map))))
 
-(defmethod gensubst* ((ex mapping-lhs) substfn testfn)
-  (declare (ignore substfn testfn))
-  (if (or *parsing-or-unparsing*
-	  *visible-only*
-	  (and (not *gensubst-reset-types*)
-	       (eq ex nex)))
-      nex
-      (let ((ntype (type (resolution nex))))
-	(if (eq ntype (type ex))
-	    nex
-	    (lcopy nex
-	      'type ntype)))))
+;; (defmethod gensubst* ((ex mapping-lhs) substfn testfn)
+;;   (declare (ignore substfn testfn))
+;;   (if (or *parsing-or-unparsing*
+;; 	  *visible-only*
+;; 	  (and (not *gensubst-reset-types*)
+;; 	       (eq ex nex)))
+;;       nex
+;;       (let ((ntype (type (resolution nex))))
+;; 	(if (eq ntype (type ex))
+;; 	    nex
+;; 	    (lcopy nex
+;; 	      'type ntype)))))
 
 (defmethod gensubst* ((res resolution) substfn testfn)
   (with-slots (declaration module-instance type) res
@@ -1105,6 +1103,10 @@ behavior:
 (defmethod mapobject* (fn (map mapping))
   (mapobject* fn (lhs map))
   (mapobject* fn (rhs map)))
+
+(defmethod mapobject* (fn (res resolution))
+  (unless *parsing-or-unparsing*
+    (mapobject* fn (module-instance res))))
 
 (defmethod mapobject* (fn obj)
   (declare (ignore fn obj))
