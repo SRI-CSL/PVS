@@ -1510,14 +1510,15 @@ are all the same."
 ;;; (restore-proofs pvsfile theory)
 ;;; Gives the same proofs
 
-(defun save-all-proofs (&optional theory)
+(defun save-all-proofs (&optional theory force?)
   (assert (or theory *current-context*))
   (unless (or *loading-prelude*
 	      (and theory (from-prelude? theory)))
     (if theory
 	(with-context theory
 	  (save-proofs (make-prf-pathname (filename theory))
-		       (cdr (gethash (filename theory) (current-pvs-files)))))
+		       (cdr (gethash (filename theory) (current-pvs-files)))
+		       force?))
 	(maphash #'(lambda (file mods)
 		     (when (some #'has-proof? (cdr mods))
 		       (save-proofs (make-prf-pathname file) (cdr mods))))
@@ -1537,13 +1538,13 @@ are all the same."
 (defun toggle-proof-prettyprinting ()
   (setq *save-proofs-pretty* (not *save-proofs-pretty*)))
 
-(defun save-proofs (filestring theories)
+(defun save-proofs (filestring theories &optional force?)
   (if (write-permission?)
       (let* ((oldproofs (read-pvs-file-proofs filestring))
 	     (curproofs (collect-theories-proofs theories)))
 	#+pvsdebug
 	(current-proofs-contain-old-proofs curproofs oldproofs theories)
-	(unless (equal oldproofs curproofs)
+	(unless (or force? (equal oldproofs curproofs))
 	  (when (and (file-exists-p filestring)
 		     (> *number-of-proof-backups* 0))
 	    (backup-proof-file filestring))
@@ -1804,7 +1805,8 @@ are all the same."
   
 (defmethod make-proof-infos-from-sexp ((decl formula-decl) prf-entry)
   (mapcar #'(lambda (prf)
-	      (assert (= (length prf) 6))
+	      (assert (or (= (length prf) 6)
+			  (= (length prf) 7)))
 	      (apply #'mk-proof-info prf))
     (cddr prf-entry)))
 
@@ -1822,6 +1824,8 @@ declaration"
   (if (null decls)
       (values (cons tcc-decl (nreverse tccs)) (nreverse rem-decls))
       (if (and (tcc-decl? (car decls))
+	       (origin tcc-decl)
+	       (origin (car decls))
 	       (eq (root (origin tcc-decl))
 		   (root (origin (car decls)))))
 	  (decl-tccs tcc-decl (cdr decls) (cons (car decls) tccs) rem-decls)
@@ -1836,7 +1840,8 @@ declaration"
 	      (nreverse rem-proofs))
       (let* ((prfinfo (caddr (car proofs)))
 	     (prf-origin (nth 6 prfinfo)))
-	(if (eq (root (origin tcc)) (car prf-origin))
+	(if (and (origin tcc)
+		 (eq (root (origin tcc)) (car prf-origin)))
 	    (collect-tcc-proofs tcc (cdr proofs)
 				(cons (car proofs) tcc-proofs) rem-proofs)
 	    (collect-tcc-proofs tcc (cdr proofs)
