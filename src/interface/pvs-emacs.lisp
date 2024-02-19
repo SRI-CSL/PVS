@@ -1193,14 +1193,16 @@
 		  "(Neither of these is fully instantiated)"
 		  "(None of these are fully instantiated)"))))))
 
-(defun unique-full-names (names &optional depth)
+(defun unique-full-names (exprs &optional (depth 0))
   "Uses full-name on names till a difference shows up.  This is potentially
 very slow, really only good for error messages over small lists of names."
-  (let ((strings (mapcar #'(lambda (name)
-			     (str (if depth (full-name name depth) name)))
-		   names)))
-    (if (duplicates? strings :test #'string=)
-	(unique-full-names names (if depth (1+ depth) 1))
+  (split-on #'name? exprs)
+  (let ((strings (mapcar #'(lambda (ex)
+			     (str (if depth (full-name ex depth) ex)))
+		   exprs)))
+    (if (and (< depth 5)
+	     (duplicates? strings :test #'string=))
+	(unique-full-names exprs (1+ depth))
 	strings)))
 
 (defun format-resolution (res)
