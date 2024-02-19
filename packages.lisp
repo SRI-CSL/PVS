@@ -32,7 +32,11 @@
   (unless (find-package :anaphora)
     (ql:quickload :anaphora))
   (unless (find-package :cffi)
-    (ql:quickload :cffi)))
+    (ql:quickload :cffi))
+  ;; Causes problems with closer-mop-packages
+  (unless (find-package :trivial-timer)
+    (ql:quickload :trivial-timer))
+  )
 
 ;; #+:sbcl
 ;; (require :sb-rotate-byte)
@@ -999,6 +1003,7 @@
    #:check-arguments
    #:check-chained-syntax
    #:check-for-tccs*
+   #:children
    #:clear-theories
    #:clear-workspace
    #:collect-justification
