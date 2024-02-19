@@ -202,6 +202,8 @@ These are not associated with a workspace, and usually done through
 
 (defvar *expression-types* (make-hash-table :test 'eq))
 
+(defvar *resolve-name* nil)
+
 (defvar *set-type-formal* nil)
 
 (defvar *set-type-actuals-name* nil)
