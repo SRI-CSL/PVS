@@ -1688,7 +1688,7 @@ escapes here."
 		   :test #'string-equal)
 	   t)
       (when (mapped-formula-decl? fdecl)
-	(proved? (from-formula fdecl)))))
+	(proved? (generated-by fdecl)))))
 
 (defmethod unproved? ((fdecl formula-decl))
   (not (proved? fdecl)))
