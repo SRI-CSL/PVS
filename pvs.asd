@@ -41,6 +41,8 @@
 ;; dumping an image using clear-configuration.
 
 ;; (require "asdf")
+;; ASDF operations include compile-op, load-op, program-op, test-op
+;; (asdf:operate :compile-op :pvs)
 ;; (asdf:operate :load-op :pvs) same as (asdf:load-system :pvs)
 ;; (asdf:operate :program-op :pvs)
 
@@ -206,8 +208,9 @@
 		  (:file "pvs-threads" :depends-on ("defcl"))
 		  (:file "classes-decl" :depends-on ("defcl"))
 		  (:file "prover/estructures" :depends-on ("defcl"))
-		  ;;(:file "groundeval/pvs2c-utils" :depends-on ("defcl"))
-		  (:file "groundeval/pvs2ir-classes" :depends-on ("defcl"))))
+		  (:file "groundeval/pvs2ir-classes" :depends-on ("defcl"))
+		  (:file "groundeval/pvs2c-utils" :depends-on ("defcl"))
+		  ))
    (:module :macros
      :pathname "src/"
      :components ((:file "macros")
@@ -230,6 +233,7 @@
      :components(;; (:file "pvs2c-types")
 		 ;; (:file "pvs2c-code")
 		 ;; (:file "pvs2c-analysis")
+		 ;; (:file "pvs2rust")
 		 (:file "pvs2ir")
 		 ;; (:file "pvs2c-primop")
 		 ;; (:file "pvs2c")
