@@ -61,7 +61,8 @@ found for libref."
 	(or (unless *loading-prelude* ; find-workspace causes problems when building SBCL
 	      (let ((ws (find-workspace lib-path)))
 		(when ws
-		  (assert (pvs-context ws))
+		  (unless (pvs-context ws)
+		    (setf (pvs-context ws) (initial-context)))
 		  ws)))
 	    (let ((ws (make-instance 'workspace-session
 			:path lib-path)))
