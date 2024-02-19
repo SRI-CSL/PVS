@@ -29,8 +29,6 @@
 
 (in-package :pvs)
 
-(export '(get-decl-resolutions resolve))
-
 ;;; :arg-length . "Wrong number of arguments:~%  ~d provided, ~d expected"
 ;;; :arg-mismatch . "~:r argument to ~a has the wrong type~
 ;;;                    ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
@@ -63,7 +61,8 @@
 
 (defmethod typecheck* ((name name) expected kind argument)
   (declare (ignore expected))
-  (let* ((*resolve-error-info* nil)
+  (let* ((*resolve-name* name)
+	 (*resolve-error-info* nil)
 	 (*field-records* nil)
 	 (k (or kind 'expr))
 	 (args (if (and argument (eq k 'expr))
@@ -154,7 +153,8 @@
 	((not (or (null kind) (eq kind 'module)))
 	 (type-error name "Theory name ~a used where ~a expected" name kind))
 	(t (with-no-type-errors (get-typechecked-theory name))
-	   (let* ((*resolve-error-info* nil)
+	   (let* ((*resolve-name* name)
+		  (*resolve-error-info* nil)
 		  (res (resolve* name 'module nil)))
 	     (cond ((cdr res)
 		    (type-ambiguity name))
@@ -174,6 +174,7 @@
 			  (typecheck-mappings (mappings name) name))
 			(unless (member name (get-importings theory) :test #'tc-eq)
 			  (set-type-actuals-and-maps name theory))
+			;;(assert (fully-typed? name))
 			name)))))))
 
 
@@ -225,7 +226,9 @@
 	 (decls (if (mod-id name)
 		    (remove-if-not
 			#'(lambda (d) (and (declaration? d)
-					   (eq (id (module d)) (mod-id name))))
+					   (or (eq (id (module d)) (mod-id name))
+					       (and (not (rectype-theory? (module d)))
+						    (generated-by d)))))
 		      ldecls)
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
@@ -461,12 +464,12 @@
 	       (aliases (get-theory-aliases name))
 	       (names aliases))
 	   (mapcan #'(lambda (alias)
-		       (let ((mapping (find (id name) (mappings alias)
-					    :key #'id)))
-			 (assert (or (null mapping)
-				     (mapped-decl mapping)))
+		       (let* ((mapping (find (id name) (mappings alias) :key #'id))
+			      (mdecl (when mapping
+				       (or (mapped-decl mapping)
+					   (declaration (lhs mapping))))))
 			 (when (and mapping
-				    (eq (kind-of (mapped-decl mapping)) kind))
+				    (eq (kind-of mdecl) kind))
 			   (list (make-instance 'mapping-resolution
 				   :declaration mapping
 				   :module-instance alias
@@ -487,14 +490,13 @@
 		      (target name)))
 	     (or (numberp (id name))
 		 (valid-number? (string (id name)))))
-    (multiple-value-bind (num radix)
-	(if (numberp (id name))
-	    (id name)
-	    (parse-number (string (id name))))
-      (let ((ndecl (number-declaration num)))
-	(list (mk-resolution ndecl
-		(make-theoryname (module ndecl))
-		*number_field*))))))
+    (let* ((num (if (numberp (id name))
+		    (id name)
+		    (parse-number (string (id name)))))
+	   (ndecl (number-declaration num)))
+      (list (mk-resolution ndecl
+	      (make-theoryname (module ndecl))
+	      *number_field*)))))
 
 (defun get-decls-resolutions (decls name acts dacts thid mappings kind args
 				    &optional reses)
@@ -586,7 +588,11 @@
 						       :place (place ty))))
 				      (t ty))))
 		    (list (mk-resolution decl thname tynew)))))
-	      (let* ((modinsts (decl-args-compatible? decl args mappings))
+	      (let* ((modinsts (if (and (eq (module decl) (current-theory))
+					(typep decl '(or mod-decl formal-theory-decl)))
+				   (list (mk-modname (id (theory-copy decl))
+					   acts nil mappings dacts decl))
+				   (decl-args-compatible? decl args mappings)))
 		     (unint-modinsts
 		      (remove-if
 			  #'(lambda (mi)
@@ -639,6 +645,7 @@
   "Given a decl, and one or both acts or dacts is non-null, returns a list
 of resolutions.  Have already checked if acts could be dacts, so take them
 at face value."
+  (declare (ignore name))
   (assert (or acts dacts))
   (let* ((fmls (formals-sans-usings dth))
 	 (dfmls (decl-formals decl))
@@ -704,7 +711,7 @@ Note that the acts and dacts have been sorted out."
 	       ;; (when (and dacts (null (dactuals dthi)))
 	       ;;   (setf (dactuals dthi) dacts))
 	       (set-type-actuals-and-maps dthi dth decl)
-	       (assert (fully-typed? dthi))
+	       #+pvsdebug (assert (fully-typed? dthi))
 	       (when (visible-to-mapped-tcc? decl dthi dth)
 		 (compatible-arguments? decl dthi args (current-theory))))
 	      (t (let* ((cinsts (decl-args-compatible? decl args mappings))
@@ -880,7 +887,10 @@ acts1 is part of a name being typechecked."
 				:test #'same-id :key #'lhs))
 		    mappings))
 	 (unless (member thinst (get-importings (get-theory thinst)) :test #'tc-eq)
-	   (set-type-actuals-and-maps thinst (get-theory thinst)))
+	   (set-type-actuals-and-maps thinst
+				      (if (typep decl '(or mod-decl formal-theory-decl))
+					  (theory-copy decl)
+					  (get-theory thinst))))
 	 (make-resolution decl thinst))
 	(t 
 	 (let* ((nmappings (append (mappings thinst) mappings))
@@ -902,7 +912,10 @@ decl, args, and mappings."
 				       (or (module? (declaration (lhs m)))
 					   (memq (declaration (lhs m)) idecls)))
 				   mappings)
-			(get-importings (module decl))))
+			(cond ((eq (module decl) (current-theory))
+			       (assert (typep decl '(or formal-theory-decl mod-decl)))
+			       (list (mk-modname (id decl) nil nil mappings)))
+			      (t (get-importings (module decl))))))
 	     (mthinsts (if mappings
 			   (create-theorynames-with-name-mappings
 			    (module decl) thinsts mappings)
@@ -918,31 +931,41 @@ decl, args, and mappings."
 	new-result)))
 
 (defun decl-args-compatible* (decl mthinsts args &optional fixed-thinsts comp-thinsts)
-  "mthinsts is a list of theory instances; not all are fully-instantiated."
+  "mthinsts is a list of theory instances; not all are fully-instantiated.
+fixed-thinsts are the module-instances that were already fully-instantiated,
+comp-thinsts are the module-instances that were found through tc-match.
+Prefer fixed-thinsts over comp-thinsts."
   (if (null mthinsts)
-      (or (nreverse fixed-thinsts) (nreverse comp-thinsts))
-      (let ((cathinsts (compatible-arguments? decl (car mthinsts) args (current-theory))))
-	(assert (or (null cathinsts)
-		    (not (fully-instantiated? (car mthinsts)))
-		    ;;(and (decl-formals decl) (null (formals-sans-usings (module decl))))
-		    (every #'(lambda (cath)
-			       (or (tc-eq cath (car mthinsts))
-				   (fully-instantiated? cath)))
-			   cathinsts)))
-	(if (and (fully-instantiated? (car mthinsts))
+      (append (nreverse fixed-thinsts) (nreverse comp-thinsts))
+      (let* ((mthinst (car mthinsts))
+	     (mfinst? (fully-instantiated? mthinst))
+	     (cathinsts (compatible-arguments? decl mthinst args (current-theory))))
+	;; (assert (or (null cathinsts)
+	;; 	    (not (fully-instantiated? (car mthinsts)))
+	;; 	    ;;(and (decl-formals decl) (null (formals-sans-usings (module decl))))
+	;; 	    (every #'(lambda (cath)
+	;; 		       (or (tc-eq cath (car mthinsts))
+	;; 			   (fully-instantiated? cath)))
+	;; 		   cathinsts)))
+	(if (and nil mfinst?
 		 (null (dactuals (car cathinsts))))
 	    (when cathinsts
-	      (pushnew (car mthinsts) comp-thinsts :test #'tc-eq))
-	    (dolist (thinst cathinsts)
-	      (if (and (fully-instantiated? thinst)
-		       (or (member thinst (cdr mthinsts) :test #'tc-eq)
-			   (member thinst comp-thinsts :test #'tc-eq)))
-		  (pushnew thinst fixed-thinsts :test #'tc-eq)
-		  (pushnew thinst comp-thinsts :test #'tc-eq))))
+	      (if mfinst?
+		  (pushnew (car mthinsts) fixed-thinsts :test #'tc-eq)
+		  (pushnew (car mthinsts) comp-thinsts :test #'tc-eq)))
+	    (dolist (cathinst cathinsts)
+	      (if mfinst?
+		  (if (fully-instantiated? cathinst)
+		      (pushnew cathinst fixed-thinsts :test #'tc-eq)
+		      (pushnew cathinst comp-thinsts :test #'tc-eq))
+		  (if (fully-instantiated? cathinst)
+		      (unless (and ;; (null *get-all-resolutions*)
+				   (member cathinst fixed-thinsts :test #'compatible?))
+			(pushnew cathinst comp-thinsts :test #'tc-eq))
+		      (pushnew cathinst comp-thinsts :test #'tc-eq)))))
 	(decl-args-compatible* decl (cdr mthinsts) args fixed-thinsts comp-thinsts))))
 
-(defun create-theorynames-with-name-mappings (th thinsts mappings
-						 &optional mthinsts)
+(defun create-theorynames-with-name-mappings (th thinsts mappings &optional mthinsts)
   ;; Note that some instances may work, while others won't.
   ;; E.g., given mappings (x := 3), where x and y are interpretable
   ;; in theory th, the instances
@@ -959,7 +982,7 @@ decl, args, and mappings."
 				     (member (lhs m) (mappings (car thinsts))
 					     :key #'lhs :test #'same-id))
 			       mappings))
-		  (nmappings (copy-all rmappings))
+		  (nmappings (copy-all rmappings t))
 		  (nthinst (copy (car thinsts)
 			     'mappings (append (mappings (car thinsts))
 					       nmappings))))
@@ -1015,9 +1038,13 @@ decl, args, and mappings."
 	  (with-no-type-errors (resolve* name 'expr nil)))
       (declare (ignore error obj))
       (let ((thres (unless (mod-id name)
-		     (let ((*typechecking-actual* t))
-		       (with-no-type-errors
-			   (resolve* (name-to-modname name) 'module nil))))))
+		     (let* ((*typechecking-actual* t)
+			    (res (with-no-type-errors
+				     (resolve* (name-to-modname name) 'module nil))))
+		       (when res
+			 (set-type-maps (module-instance (car res))
+					(declaration (car res))))
+		       res))))
 	(unless (or tres eres thres)
 	  (if (mod-id name)
 	      (let* ((nact (copy act
@@ -1088,7 +1115,11 @@ decl, args, and mappings."
 		      (setf (place (type (car tres))) (place (expr act))))
 		    (unless (type-value act)
 		      (setf (type-value act) (type (car tres))))
-		    (push 'type (types (expr act))))))))))))
+		    (push 'type (types (expr act)))))))
+	  (when thres
+	    (when (datatype-or-module? (declaration (car thres)))
+	      (change-class (expr act) 'theory-name-expr))
+	    ))))))
 
 (defmethod typecheck-actual ((ex set-expr) act expected kind arguments)
   ;; with-no-type-errors not needed here;
@@ -1296,15 +1327,19 @@ decl, args, and mappings."
 	  (compatible-parameters?**
 	   actuals formals (cdr types) nacts alist)))))
 
-(defun compatible-parameter? (actual formal)
-  (if (formal-type-decl? formal)
-      (type-value actual)
-      (unless (type-expr? (expr actual))
-	(remove-if-not #'(lambda (ptype)
-			   (and (type-expr? ptype)
-				(compatible? ptype (type formal))))
-	      (ptypes (expr actual))))))
+(defmethod compatible-parameter? (actual (formal formal-type-decl))
+  (type-value actual))
 
+(defmethod compatible-parameter? (actual (formal formal-const-decl))
+  (unless (type-expr? (expr actual))
+    (remove-if-not #'(lambda (ptype)
+		       (and (type-expr? ptype)
+			    (compatible? ptype (type formal))))
+      (ptypes (expr actual)))))
+
+(defmethod compatible-parameter? (actual (formal formal-theory-decl))
+  (eq (declaration (expr actual))
+      (generated-by (theory-copy formal))))
 
 ;;; matching-actual is called to check that the actual from the
 ;;; name matches the actual from the theory instance.  This is
