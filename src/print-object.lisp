@@ -139,7 +139,7 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (let ((*print-escape* nil))
-	(format stream "~@<#<context ~w~@[~w.pvs~]~@[~_#~w~]~@[~_.~w~]>~:>"
+	(format stream "~@<#<context ~w~@[~w.pvs~]~@[#~w~]~@[.~w~]>~:>"
 	  (if (theory ctx)
 	      (context-path (theory ctx))
 	      *default-pathname-defaults*)
@@ -149,7 +149,7 @@ print object produces an error, and won't allow inspection of the object.")
 	    (id (theory ctx)))
 	  (when (declaration ctx)
 	    (if (importing? (declaration ctx))
-		(declaration ctx)
+		(str (declaration ctx))
 		(id (declaration ctx))))))))
 
 ;(defmethod print-object ((obj name-expr) stream)
