@@ -246,31 +246,33 @@ After exiting, all of these are reverted to their previous values."
 	    (,lib-path (if (workspace-session? ,lref)
 			   (path ,lref)
 			   (get-library-path ,lref))))
-       (if (uiop:directory-exists-p ,lib-path)
-	   (cond ((pathname-equal ,lib-path (current-context-path))
-		  ;; Already in workspace, just process forms
-		  (assert (pvs-context *workspace-session*))
-		  ,@forms)
-		 (t (let* ((,orig-dir (working-directory))
-			   (,truedir (truename ,lib-path))
-			   (*default-pathname-defaults* ,truedir)
-			   (*current-context* nil)
-			   (*workspace-session*
-			    (or (when (workspace-session? ,lref)
-				  ,lref)
-				(get-workspace-session ,lib-path)
-				(let ((,ws (make-instance 'workspace-session
-					     :path ,lib-path)))
-				  (push ,ws *all-workspace-sessions*)
-				  ,ws))))
-		      (assert (pvs-context *workspace-session*)
-			      () "Bad pvs-context")
-		      (unwind-protect 
-			   (prog1 (progn (set-working-directory ,truedir) ,@forms)
-			     (when (pvs-context-changed *workspace-session*)
-			       (save-context nil t)))
-			(set-working-directory ,orig-dir)))))
-	   (error "Library ~a does not exist" (or ,lib-path ,lref))))))
+       (cond ((null ,lib-path)
+	      ,@forms)
+	     ((uiop:directory-exists-p ,lib-path)
+	      (cond ((pathname-equal ,lib-path (current-context-path))
+		     ;; Already in workspace, just process forms
+		     (assert (pvs-context *workspace-session*))
+		     ,@forms)
+		    (t (let* ((,orig-dir (working-directory))
+			      (,truedir (truename ,lib-path))
+			      (*default-pathname-defaults* ,truedir)
+			      (*current-context* nil)
+			      (*workspace-session*
+			       (or (when (workspace-session? ,lref)
+				     ,lref)
+				   (get-workspace-session ,lib-path)
+				   (let ((,ws (make-instance 'workspace-session
+						:path ,lib-path)))
+				     (push ,ws *all-workspace-sessions*)
+				     ,ws))))
+			 (assert (pvs-context *workspace-session*)
+				 () "Bad pvs-context")
+			 (unwind-protect 
+			      (prog1 (progn (set-working-directory ,truedir) ,@forms)
+				(when (pvs-context-changed *workspace-session*)
+				  (save-context nil t)))
+			   (set-working-directory ,orig-dir))))))
+	     (t (error "Library ~a does not exist" (or ,lib-path ,lref)))))))
 
 (defmacro with-pvs-file (vars pvs-file-ref &rest body)
   "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
