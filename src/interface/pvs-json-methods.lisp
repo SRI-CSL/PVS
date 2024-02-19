@@ -73,8 +73,6 @@
     (pvs:save-context)
     (json-theories theories)))
 
-(defparameter *fff* nil)
-
 (defrequest typecheck (filename &optional content force?)
   "Typecheck a file"
   ;; (format t "~%Request tc ~s" filename)
@@ -294,23 +292,30 @@ returning the unique id (within a PVS session)."
 		       (cond (wish-rule (format nil "~s" wish-rule))
 			     (pps (format nil "~s" (pvs:current-rule pps)))
 			     (t nil))))
-	   (commentary (mapcar #'(lambda (e)
-				   (pvs:strim (if (stringp e) e (format nil "~a" e))))
+	   ;; commentary is a sequence of strings or proofstates
+	   ;; strings are left as-is, proofstates are translated recursively,
+	   ;; but with empty commentary, and carrying the id and status along.
+	   (comntry (mapcar #'(lambda (e)
+				   (if (pvs::proofstate? e)
+				       (pvs2json-ps e nil id status)
+				       (pvs:strim (if (stringp e) e (format nil "~a" e)))))
 			 commentary)))
       (obj `(("id" . ,(string id))
 	     ("ps-id" . ,(pvs::unique-ps-id ps))
-	     ("parent" . (if (parent-proofstate ps)
-			     (pvs::unique-ps-id (parent-proofstate ps))
-			     "None"))
+	     ("parent" . ,(if (pvs:parent-proofstate ps)
+			      (pvs::unique-ps-id (pvs:parent-proofstate ps))
+			      "None"))
 	     ("status" . ,(string status))
-	     ,@(when commentary `(("commentary" . ,commentary)))
+	     ,@(when comntry `(("commentary" . ,comntry)))
 	     ,@(when action `(("action" . ,action)))
 	     ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
 	     ("label" . ,pvs:label)
 	     ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
 	     ,@(when pvs:comment `(("comment" . ,pvs:comment)))
 	     ("path" . ,(format nil "~{~a~^.~}" (pvs:path-from-top ps)))
-	     ("sequent" . ,sequent))))))
+	     ("sequent" . ,sequent)
+	     ("children" . ,(mapcar #'pvs::unique-ps-id (pvs:children ps)))
+	     )))))
 
 (defun pvs2json-seq (seq parent-ps)
   (let* ((par-sforms (when parent-ps (pvs:s-forms (pvs:current-goal parent-ps))))
