@@ -767,6 +767,9 @@
 		  (mk-name-expr var))
       :argument expr)))
 
+(defun mk-array-expr (exprs)
+  (make-instance 'array-expr :exprs exprs))
+
 (defun mk-forall-expr (vars expr)
   (make-instance 'forall-expr
     :bindings (mk-bindings vars)
@@ -1054,7 +1057,10 @@
   ex)
 
 (defun mk-proof-info (id description create-date script refers-to
-			 &optional decision-procedure)
+			 &optional decision-procedure origin)
+  ;; origin may be provided if a TCC becomes a formula-decl
+  ;; Primarily related to mappings, where axioms may become TCCs.
+  (declare (ignore origin))
   (make-instance 'proof-info
     :id id
     :description description
@@ -1173,6 +1179,7 @@
   (assert (or (null (dactuals modinst))
 	      (typep decl '(or binding decl-formal datatype-or-module))
 	      (length= (decl-formals decl) (dactuals modinst))))
+  #+badassert
   (assert (or (not (module? decl))
 	      (same-id decl modinst)
 	      (eq (generated-by decl) (id modinst))))
@@ -1485,6 +1492,12 @@
       (let* ((expr (mk-negation arg)))
 	(assert *current-context*)
 	(typecheck expr :expected *boolean*))))
+
+(defun make-array-expr (exprs &optional range)
+  (let ((arrex (mk-array-expr exprs))
+	(expected (when range
+		    (tc-type (format nil "[below(~d) -> ~a]" (length exprs) range)))))
+    (typecheck arrex :expected expected)))
 
 (defun make-lambda-expr (vars expr &optional ret-type)
   (let ((nexpr (mk-lambda-expr vars expr ret-type)))
