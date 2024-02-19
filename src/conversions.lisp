@@ -29,8 +29,6 @@
 
 (in-package :pvs)
 
-(export '(argument-conversions))
-
 (defvar *only-use-conversions* nil)
 (defvar *ignored-conversions* nil)
 
@@ -40,13 +38,15 @@
 
 ;;; Called by typecheck* (name)
 (defun argument-conversion (name arguments)
-  (let ((reses (remove-if-not #'(lambda (r)
-				  (typep (find-supertype (type r)) 'funtype))
-		 (resolve name 'expr nil))))
-    (when (let ((*ignored-conversions*
-		 (cons "K_conversion" *ignored-conversions*)))
-	    (argument-conversions (mapcar #'type reses) arguments (singleton? reses)))
-      (resolve name 'expr arguments))))
+  (let* ((reses (remove-if-not #'(lambda (r)
+				   (typep (find-supertype (type r)) 'funtype))
+		  (resolve name 'expr nil)))
+	 (*ignored-conversions*
+	  (cons "K_conversion" *ignored-conversions*))
+	 (convs (argument-conversions (mapcar #'type reses) arguments)))
+    ;; Note that argument-conversions adds types to the arguments
+    (when convs
+      (values (resolve name 'expr arguments) convs))))
 
 ;;; Called by typecheck* (name)
 (defun argument-k-conversion (name arguments)
@@ -59,11 +59,11 @@ the possible types of name."
 		   (resolve name 'expr nil))))
       (let ((*only-use-conversions* (list "K_conversion")))
 	(when (argument-conversions
-	       (mapcar #'type (reverse reses)) arguments (singleton? reses))
+	       (mapcar #'type (reverse reses)) arguments)
 	  (reverse (resolve name 'expr arguments)))))))
 
 ;; Returns list of args for which conversions were added
-(defun argument-conversions (optypes arguments one-optype? &optional conv-args)
+(defun argument-conversions (optypes arguments &optional conv-args)
   (if (null optypes)
       conv-args
       (let* ((rtype (find-supertype (car optypes)))
@@ -71,13 +71,12 @@ the possible types of name."
 		       (domain-types rtype)))
 	     (dtypes-list (all-possible-instantiations dtypes arguments))
 	     (aconv-args (if (length= arguments dtypes)
-			     (argument-conversions* arguments dtypes-list
-						    one-optype? conv-args)
+			     (argument-conversions* arguments dtypes-list conv-args)
 			     conv-args)))
-	(argument-conversions (cdr optypes) arguments one-optype? aconv-args))))
+	(argument-conversions (cdr optypes) arguments aconv-args))))
 
 ;; Returns list of args for which conversions were added
-(defun argument-conversions* (arguments dtypes-list one-optype? conv-args)
+(defun argument-conversions* (arguments dtypes-list conv-args)
   (if (null dtypes-list)
       conv-args
       (let ((conversions (argument-conversions1 arguments (car dtypes-list))))
@@ -90,16 +89,11 @@ the possible types of name."
 			       convs)))
 			(unless (subsetp actypes (types arg) :test #'tc-eq)
 			  (setf (types arg)
-				(remove-duplicates
-				    ;; one-optype? doesn't work for
-				    ;; bugs/2004-03-16_TamarahArons
-				    (if nil ;;one-optype?
-					actypes
-					(append (types arg) actypes))
+				(remove-duplicates (append (types arg) actypes)
 				  :test #'tc-eq :from-end t))
 			  (pushnew arg conv-args)))))
 		arguments conversions))
-	(argument-conversions* arguments (cdr dtypes-list) one-optype? conv-args))))
+	(argument-conversions* arguments (cdr dtypes-list) conv-args))))
 
 (defun argument-conversions1 (arguments dtypes &optional result)
   (if (null arguments)
@@ -433,30 +427,61 @@ the possible types of name."
   (let* ((op (operator expr))
 	 (arg (argument expr))
 	 (args (arguments expr))
-	 (arg-convs (or (argument-conversions (types op) args (singleton? (types op)))
-			(argument-conversions (types op) (list arg) (singleton? (types op))))))
-    (if arg-convs
-	(unless (memq arg arg-convs)
-	  (setf (types arg)
-		(all-possible-tupletypes args)))
-	(let ((conversions (unless *no-conversions-allowed*
-			     (find-operator-conversions (types op) args))))
-	  (if conversions
-	      (let* ((conv (car conversions))
-		     (ctype (type (expr conv)))
-		     (dom (domain (find-supertype ctype)))
-		     ;;(ran (range (find-supertype ctype)))
-		     (nop (copy op)))
-		(add-conversion-info (expr conv) op)
-		(change-class op 'implicit-conversion)
-		(setf (argument op) nop)
-		(setf (types nop)
-		      (list (if (typep dom 'dep-binding) (type dom) dom)))
-		(setf (operator op) (copy (expr conv) :type nil))
-		(setf (types op) (list ctype))
-		(let ((*no-conversions-allowed* t))
-		  (typecheck* op nil nil nil)))
-	      (type-mismatch-error expr))))))
+	 (args-convs (argument-conversions (types op) args))
+	 (arg-convs (or args-convs
+			(argument-conversions (types op) (list arg)))))
+      (if arg-convs
+	  (unless (memq arg arg-convs)
+	    (let ((dtypes-list (mapcar #'(lambda (ty) (domain-types (find-supertype ty)))
+				 (ptypes op))))
+	      (all-possible-application-arg-types dtypes-list args))
+	      (setf (types arg)
+		  (all-possible-tupletypes args)))
+	  (let ((conversions (unless *no-conversions-allowed*
+			       (find-operator-conversions (types op) args))))
+	    (if conversions
+		(let* ((conv (car conversions))
+		       (ctype (type (expr conv)))
+		       (dom (domain (find-supertype ctype)))
+		       ;;(ran (range (find-supertype ctype)))
+		       (nop (copy op)))
+		  (add-conversion-info (expr conv) op)
+		  (change-class op 'implicit-conversion)
+		  (setf (argument op) nop)
+		  (setf (types nop)
+			(list (if (typep dom 'dep-binding) (type dom) dom)))
+		  (setf (operator op) (copy (expr conv) :type nil))
+		  (setf (types op) (list ctype))
+		  (let ((*no-conversions-allowed* t))
+		    (typecheck* op nil nil nil)))
+		(type-mismatch-error expr))))))
+
+(defun transpose-list (list-of-lists)
+  (assert (listp list-of-lists))
+  (assert (every #'listp list-of-lists))
+  (assert (every #'(lambda (ll) (length= ll (car list-of-lists))) (cdr list-of-lists)))
+  (apply #'mapcar #'list list-of-lists))
+
+(defun all-possible-application-arg-types (dtypes-list args)
+  (assert (every #'(lambda (dtypes) (length= args dtypes)) dtypes-list))
+  (let* ((dom-types (transpose-list dtypes-list)))
+    (all-possible-application-arg-types* dom-types args)))
+
+;; Only called for the side effect of resetting arg types
+(defun all-possible-application-arg-types* (dom-types args)
+  (when dom-types
+    (let* ((atypes (ptypes (car args)))
+	   (ptypes (remove-if-not #'(lambda (aty)
+				      (some #'(lambda (dty) (compatible? aty dty))
+					    (car dom-types)))
+		     atypes)))
+      (unless (length= ptypes atypes)
+	;; Possible to filter out resolutions but we'll let set-type deal with it
+	;; (when (name-expr? (car args))
+	;;   (break "all-possible-application-arg-types - should we set resolutions?"))
+	(setf (types (car args)) ptypes)))
+    (all-possible-application-arg-types* (cdr dom-types) (cdr args))))
+  
 
 (defun find-operator-conversions (optypes args &optional conversions)
   (if (null optypes)
