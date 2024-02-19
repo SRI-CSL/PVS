@@ -5409,7 +5409,7 @@ function, tuple, or record type")
 (defun get-adt-var (obj)
   (let ((var (gethash obj *adt-vars*)))
     (if (syntax? var)
-	(copy-all var)
+	(copy-all var t)
 	var)))
 
 (defmethod sequence? ((te funtype))
