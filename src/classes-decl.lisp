@@ -324,6 +324,7 @@
 ;; Currently importing, formal-theory-decl, mod-decl, theory-abbreviation-decl
 ;; The saved-context is the context including the imported theories.
 (defcl importing-entity (theory-element)
+  theory-copy
   saved-context)
 
 (defcl importing (importing-entity)
@@ -333,6 +334,7 @@
   (refers-to :restore-as nil)
   (generated :restore-as nil)
   (generated-by :restore-as nil)
+  (theory-mappings :restore-as nil)
   (tcc-form :fetch-as nil :ignore t))
 
 ;;; DECLARATION Classes.  Many of these have both a declared-type and a
@@ -598,12 +600,7 @@ restored, the TCCs are checked")
    :restore-as nil)
   importing-instance)
 
-(defcl mapped-formula-decl (formula-decl)
-  from-formula)
-
-(defcl mapped-assuming-decl (assuming-decl mapped-formula-decl))
-
-(defcl mapped-tcc-decl (tcc-decl mapped-formula-decl))
+(defcl mapped-formula-decl (formula-decl))
 
 (defcl subtype-tcc (tcc-decl))
 
@@ -622,11 +619,21 @@ restored, the TCCs are checked")
   theory-instance
   (generating-assumption :restore-as nil))
 
-(defcl mapped-axiom-tcc (tcc-decl)
-  theory-instance
-  (generating-axiom :restore-as nil))
+(defcl mapped-formula (formula-decl)
+  (generating-axiom :restore-as nil)
+  theory-instance)
 
-(defcl mapped-eq-def-tcc (tcc-decl))
+(defcl mapped-axiom-tcc (tcc-decl mapped-formula))
+
+;; Corresponds to a mapped-axiom-tcc; treat is as an axiom since it is
+;; subsumed by the TCC
+(defcl mapped-axiom (mapped-formula))
+
+;; Corresponds to a mapped-axiom-tcc; treat is as an axiom since it is
+;; subsumed by the TCC
+(defcl mapped-tcc-to-axiom (mapped-formula))
+
+(defcl mapped-eq-def-tcc (tcc-decl mapped-formula))
 
 (defcl cases-tcc (tcc-decl))
 
