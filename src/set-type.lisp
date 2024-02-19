@@ -29,11 +29,6 @@
 
 (in-package :pvs)
 
-(export '(set-type set-type* kind-of-name-expr set-type-actuals
-                   subst-actuals-in-next-formal set-lambda-dep-types
-                   free-formals
-                   subst-for-formals))
-
 (defvar *dont-worry-about-full-instantiations* nil)
 
 (defvar *ignore-for-tccs* nil)
@@ -71,9 +66,7 @@
 
 (defmethod typed? ((expr name-expr))
   (and (singleton? (resolutions expr))
-       (or (typep (declaration expr)
-                  '(or module mod-decl formal-theory-decl
-                       theory-abbreviation-decl))
+       (or (typep (declaration expr) '(or module theory-reference))
            (call-next-method))))
 
 (defmethod typed? ((act actual))
@@ -380,6 +373,7 @@ required a context.")
     (check-set-type-recursive-name ex)))
 
 (defmethod set-type* ((ex name-expr-from-number) expected)
+  (declare (ignore expected))
   (call-next-method)
   (when (const-number-decl? (declaration ex))
     (assert (numberp (number ex)))
@@ -789,11 +783,18 @@ resolution with a macro matching the signature of the arguments."
 				    (remove-if #'(lambda (res)
 						   (formals (module (declaration res))))
 				      ureses))
-			       ureses)))
-            (cond ((cdr unpreses)
-                   (setf (resolutions ex) unpreses)
+			       ureses))
+		 (last-reses (or (and (cdr unpreses)
+				      (mod-id ex)
+				      (remove-if-not #'(lambda (res)
+							 (eq (id (module (declaration res)))
+							     (mod-id ex)))
+					unpreses))
+				 unpreses)))
+            (cond ((cdr last-reses)
+                   (setf (resolutions ex) last-reses)
                    (type-ambiguity ex))
-                  (t (car unpreses)))))
+                  (t (car last-reses)))))
       (car resolutions)))
 
 ;;; Find the resolutions that are maximals subtypes of the expected type
@@ -896,6 +897,7 @@ resolution with a macro matching the signature of the arguments."
     (when (or acts dacts)
       (set-type-actuals* (if dacts (append acts dacts) acts)
 			 (if dfmls (append fmls dfmls) fmls))
+      (assert (fully-typed? acts))
       ;; Only true currently for acts whose exprs are names.
       #+badassert (assert (every #'typed? acts))
       )
@@ -1023,9 +1025,10 @@ resolution with a macro matching the signature of the arguments."
     (when (mappings modinst)
       (set-type-mappings modinst thry)
       ;; this only should occur in one of the two methods
-      (let ((nmodinst (simplify-modinst modinst)))
-        (generate-mapped-axiom-tccs nmodinst)
-        nmodinst))))
+      ;; (let ((nmodinst (simplify-modinst modinst)))
+      ;;   (generate-mapped-axiom-tccs nmodinst)
+      ;;   nmodinst)
+      )))
 
 (defun check-local-actuals (actuals formals)
   (when actuals
@@ -1046,6 +1049,7 @@ resolution with a macro matching the signature of the arguments."
       (multiple-value-bind (nform nalist)
           (subst-actuals-in-next-formal act form alist)
         (set-type-actual act nform)
+	(assert (fully-typed? act))
 	;; Only true for acts whose exprs are names.
         #+badassert (assert (typed? act))
         (set-type-actuals* (cdr actuals) (cdr formals) nalist)))))
@@ -1136,28 +1140,38 @@ resolution with a macro matching the signature of the arguments."
   #+pvsdebug (assert (fully-typed? (expr act))))
 
 (defmethod set-type-actual (act (formal formal-theory-decl))
-  (unless (name-expr? (expr act))
-    (type-error act "Theory name expected here"))
-  (setf (type-value act) nil)
-  (let ((threses (remove-if-not
-                     #'(lambda (r)
-                         (typep (declaration r)
-                                '(or module mod-decl formal-theory-decl
-                                     theory-abbreviation-decl)))
-                   (resolutions (expr act)))))
-    (cond ((cdr threses)
-           (type-error (expr act)
-             "Theory name ~a is ambiguous" (expr act)))
-          ((null threses)
-           (type-error (expr act)
-             "No resolution for theory name ~a" (expr act)))
-          (t (setf (resolutions (expr act)) threses)
+  ;; This is where the theory copy is made
+  (unless (and ;; (or (fully-typed? act)
+	       (eq *generate-tccs* 'none))
+    (unless (name-expr? (expr act))
+      (type-error act "Theory name expected here"))
+    (setf (type-value act) nil)
+    (let ((threses (remove-if-not
+		       #'(lambda (r) (typep (declaration r) '(or module theory-reference)))
+                     (resolutions (expr act)))))
+      (cond ((cdr threses)
+             (type-error (expr act) "Theory name ~a is ambiguous" (expr act)))
+            ((null threses)
+             (type-error (expr act) "No resolution for theory name ~a" (expr act)))
+            (t ;; Bad idea - loses information
+	     ;;(setf (declaration (car threses)) (theory-instance formal))
+	     (setf (resolutions (expr act)) threses)
              (change-class (expr act) 'theory-name-expr)))
-    (unless (eq (target-mapped-theory (declaration act))
-                (declaration (theory-name formal)))
-      (type-error act "Theory name should be (an alias of) ~a"
-                  (id (declaration (theory-name formal)))))
-    (set-type-actuals-and-maps (expr act) (declaration (theory-name formal)))))
+      (unless (eq (target-mapped-theory (declaration act))
+                  (declaration (theory-name formal)))
+	(type-error act "Theory name should be (an alias of) ~a"
+                    (id (declaration (theory-name formal)))))
+      ;; (set-type-actuals-and-maps (expr act) (declaration (theory-name formal)))
+      (assert (and (fully-typed? act) (fully-instantiated? act)))
+      ;; This is only allowed in happen when the current-declaration is an
+      ;; importing-entity, i.e., importing, mod-decl,
+      ;; theory-abbreviation-decl, and formal-theory-decl
+      ;; (unless (and (importing-entity? (current-declaration))
+      ;; 		 (memq act (actuals (theory-name (current-declaration)))))
+      ;;   (type-error act "Actual ~a should be in an importing entity only" act))
+      (unless (theory-copy formal)
+	(let ((stheory (typecheck-inlined-theory (expr act))))
+	  stheory)))))
 
 (defun set-type-mappings (thinst theory)
   (when (mappings thinst)
@@ -1675,13 +1689,15 @@ type of the lhs."
                        (theory-mappings mdecl))
                       (module nil)
                       (t (break "what now?"))))
-         (amappings (let ((*subst-mod-params-map-bindings* nil))
-                      (mapcar #'(lambda (mb)
-                                  (cons (car mb)
-                                        (or (type-value (cdr mb))
-                                            (expr (cdr mb)))))
-                        (make-subst-mod-params-map-bindings
-                         (expr act) (mappings (expr act)) nil)))))
+         (amappings (when (mappings (expr act))
+		      (let ((*subst-mod-params-theory* (current-theory))
+			    (*subst-mod-params-map-bindings* nil))
+			(mapcar #'(lambda (mb)
+                                    (cons (car mb)
+                                          (or (type-value (cdr mb))
+                                              (expr (cdr mb)))))
+                          (make-subst-mod-params-map-bindings
+                           (expr act) (mappings (expr act)) nil))))))
     ;;(compose-formal-to-actual-mapping
     ;; fmappings
     ;; (append amappings tmappings))
@@ -5532,8 +5548,8 @@ type of the lhs."
       (setf (place (print-type te)) (place te)))
     (let ((*generate-tccs* 'none))
       (set-type* (print-type te) nil)))
-  (assert (fully-typed? (print-type te)))
-  (assert (fully-instantiated? (print-type te))))
+  #+pvsdebug (assert (fully-typed? (print-type te)))
+  #+pvsdebug (assert (fully-instantiated? (print-type te))))
 
 (defmethod set-type* ((te type-name) expected)
   (declare (ignore expected))
@@ -5611,11 +5627,11 @@ type of the lhs."
 (defmethod set-type* ((te expr-as-type) expected)
   (declare (ignore expected))
   (assert (type (expr te)))
+  (assert (fully-typed? (expr te)))
   ;;(assert (funtype? (find-supertype (type (expr te)))))
-  (unless (and (eq *generate-tccs* 'none)
-	       (fully-typed? (expr te)))
+  (unless (eq *generate-tccs* 'none)
     (set-type* (expr te) (type (expr te))))
-  (assert (fully-instantiated? (expr te)))
+  #+pvsdebug (assert (fully-instantiated? (expr te)))
   ;; expr-as-type should only be a print-type, never a canonical type
   ;; hence the following should not be used, and causes problems.
   ;; (unless (supertype te)
