@@ -33,14 +33,9 @@
 ;;  make-well-founded-tcc-decl
 ;;  make-existence-tcc-decl
 ;;  make-assuming-tcc-decl
-;;  make-mapped-axiom-tcc-decl
 ;;  make-actuals-tcc-decl
 
 (in-package :pvs)
-
-(export '(generate-subtype-tcc generate-recursive-tcc
-			       generate-existence-tcc
-			       generate-assuming-tccs generate-actuals-tcc))
 
 (defvar *tccdecls* nil)
 
@@ -1623,48 +1618,6 @@ which is the transitive closure of the immediate assuming instances."
 
 (defmethod nonempty-formula-type ((ex expr))
   nil)
-
-(defun make-mapped-axiom-tcc-decl (axiom defn modinst mod)
-  ;; defn has not yet applied subst-mod-params
-  (multiple-value-bind (dfmls dacts thinst)
-      (unless (or *in-checker* *in-evaluator*)
-	(new-decl-formals axiom))
-    (let* ((*generate-tccs* 'none)
-	   (*generating-mapped-axiom-tcc* t)
-	   (cdecl (current-declaration))
-	   (cth (module cdecl))
-	   (id (make-tcc-name nil (id axiom)))
-	   (tccdecl (mk-mapped-axiom-tcc id nil modinst axiom dfmls)))
-      (multiple-value-bind (expr mappings-alist)
-	  (with-current-decl axiom
-       	    (subst-mod-params defn (lcopy modinst :dactuals dacts) mod axiom))
-	(break "make-mapped-axiom-tcc-decl")
-	(if (every #'(lambda (fp)
-		       (or (memq fp dfmls)
-			   (memq fp (formals-sans-usings cth))))
-		   (free-params expr))
-	    (let* ((tform expr)		;(add-tcc-conditions expr)
-		   (xform (if *simplify-tccs*
-			      (pseudo-normalize tform)
-			      (beta-reduce tform)))
-		   (sform (raise-actuals (expose-binding-types
-					  (universal-closure xform))
-					 t))
-		   (uform (if thinst
-			      (subst-mod-params sform thinst cth axiom) ;cdecl
-			      sform)))
-	      (setf (definition tccdecl) uform)
-	      (unless (tc-eq uform *true*)
-		(when (and *false-tcc-error-flag*
-			   (tc-eq uform *false*))
-		  (type-error axiom
-		    "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
-		    tform))
-		(values (typecheck* tccdecl nil nil nil) mappings-alist)))
-	    (pvs-warning
-		"Axiom ~a is not mapped to a TCC because it is not fully instantiated."
-	      (id axiom))
-	    )))))
 
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors
