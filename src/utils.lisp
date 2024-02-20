@@ -131,7 +131,8 @@ is replaced with replacement."
 
 (defun current-pvs-file ()
   (when *current-context*
-    (filename (theory *current-context*))))
+    (let ((cth (current-theory)))
+      (format nil "~a~a.pvs" (context-path cth) (filename cth)))))
 
 (defun current-theory ()
   (when *current-context*
@@ -217,6 +218,54 @@ is replaced with replacement."
 
 (defsetf current-conversions () (conversions)
   `(setf (conversions *current-context*) ,conversions))
+
+(defun current-sorted-importings ()
+  (assert (current-declaration))
+  (let* ((cth (current-theory))
+	 (cdecl (current-declaration))
+	 (all-decls (all-decls cth))
+	 (prev-decls (ldiff all-decls (memq cdecl all-decls)))
+	 (prev-imps (remove-if-not #'importing-entity? prev-decls))
+	 (*theories-seen* (list cth)))
+    (sorted-importings prev-imps prev-imps)))
+
+(defun sorted-importings (imps sorted-imps)
+  (if (null imps)
+      (nreverse sorted-imps)
+      (let* ((thname (theory-name (car imps)))
+	     (th (declaration thname))
+	     (thimps (remove-if-not #'importing-entity? (all-decls th)))
+	     (imp-entities (sorted-importings thimps thimps)))
+	(sorted-importings (cdr imps)
+			   (append imp-entities sorted-imps)))))
+
+(defun current-theory-hierarchy ()
+  ;; Returns the list of importings, in order (first is the "nearest" importing
+  (assert (current-declaration))
+  (let* ((cth (current-theory))
+	 (cdecl (current-declaration))
+	 (all-decls (all-decls cth))
+	 (prev-decls (ldiff all-decls (memq cdecl all-decls)))
+	 (prev-imps (remove-if-not #'importing-entity? prev-decls))
+	 (*theories-seen* (list cth))
+	 (imp-entities (theory-hierarchy prev-imps)))
+    `(("tag" . "declaration-theory-hierarchy")
+      ("declaration" . ,(string (ref-to-id cdecl)))
+      ("importing-entities" . ,imp-entities))))
+
+(defun theory-hierarchy (imps &optional imp-hier)
+  (if (null imps)
+      (nreverse imp-hier)
+      (let* ((thname (theory-name (car imps)))
+	     (th (declaration thname))
+	     (thimps (remove-if-not #'importing-entity? (all-decls th)))
+	     (imp-entities (theory-hierarchy thimps)))
+	(theory-hierarchy (cdr imps)
+			  (cons `(("tag" . "theory-hierarchy")
+				  ("theory" . ,(str (id th)))
+				  ("importing-entities" . ,imp-entities))
+				imp-hier)))))
+
 
 (defmethod initialize-instance :around ((obj syntax) &rest initargs)
   (let ((place (getf initargs 'place)))
@@ -719,7 +768,21 @@ is replaced with replacement."
 			     (id (car theories)))
 			   theories)
 		    (car theories))))
-	    ))))
+	    ;; theory-name could be of the form "thid.declid", where declid
+	    ;; is the id of a mod-decl or theory-formal-decl within theory thid
+	    ;; In this case we return the theory-copy associated with this decl.
+	    (let* ((th&decl (uiop:split-string (string id) :separator '(#\.)))
+		   (th (when (cdr th&decl) (get-theory (car th&decl))))
+		   (decl (when th (find (cadr th&decl) (all-decls th)
+					:test #'string-equal
+					:key #'(lambda (d)
+						 (when (typep d '(or mod-decl
+								  formal-theory-decl))
+						   (id d)))
+					:from-end t))))
+	      (when decl
+		(theory-copy decl)))))))
+
 
 (defun get-current-imported-theories (id)
   (let* ((idstr (string id))
@@ -3103,6 +3166,7 @@ and get-print-type returns a funtype with type-name domain and range."
 	     (and (memq (id ex) '(/= ≠)) (eq (id (module ndecl)) '|notequal|))))))
 
 (defmethod eq-ineq-expr? (ex)
+  (declare (ignore ex))
   nil)
 
 
@@ -3637,10 +3701,11 @@ and get-print-type returns a funtype with type-name domain and range."
 (defvar *copy-all-hash*)
 
 (defun copy-all (obj &optional parsing)
+  (assert (or parsing (fully-typed? obj)))
   (let ((*copy-print-type* t)
 	(*copy-all-hash* (make-hash-table))
 	;;(*gensubst-cache* nil)
-	(*parsing-or-unparsing* (or parsing (not (fully-typed? obj)))))
+	(*parsing-or-unparsing* parsing))
     (gensubst obj #'copy-all! #'copy-all?)))
 
 (defmethod copy-all? ((ex name))
@@ -4820,8 +4885,8 @@ space")
 (defun formulas (&optional (ps *ps*))
   (typecase ps
     (null (error "Must be in the prover or provide a proofstate"))
-    (proofstate (mapcar #'formula (s-forms (current-goal proofstate))))
-    (t (error "Proofstate expected: given type ~a" (type-of proofstate)))))
+    (proofstate (mapcar #'formula (s-forms (current-goal ps))))
+    (t (error "Proofstate expected: given type ~a" (type-of ps)))))
 
 (defmethod id ((ex number-expr)) (number ex))
 (defmethod mod-id ((ex number-expr)) nil)
@@ -5138,6 +5203,9 @@ space")
     (if type
 	(pc-typecheck term :expected type)
 	(pc-typecheck term))))
+
+(defun tc-modname (ex)
+  (tc-term ex :nt 'modname))
 
 (defun tc-expr (ex &key expected)
   (tc-term ex :expected expected))
