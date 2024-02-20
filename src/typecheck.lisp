@@ -29,9 +29,6 @@
 
 (in-package :pvs)
 
-(export '(typecheck typecheck* typecheck-uniquely set-dependent-formals
-	  theory-name))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Top level typechecking functions
@@ -352,6 +349,7 @@ TCCs are generated, and finally exportings are updated."
       ;; typecheck-mappings done by determine-implicit-mappings
       ;;(typecheck-mappings (mappings inst) inst)
       (setq nthinst (set-type-actuals inst th))
+      (assert (fully-typed? nthinst) () "typecheck-using*: after set-type-actuals")
       (unless (if (actuals inst)
 		  (fully-instantiated? (actuals inst))
 		  (fully-instantiated? (copy inst :mappings nil)))
@@ -368,10 +366,11 @@ TCCs are generated, and finally exportings are updated."
 	(if tgt-mappings
 	    ;; Note that tgt-mappings includes the (mappings inst)
 	    (setq nthinst (set-type-maps (lcopy inst
-					    :mappings tgt-mappings
-					    :target nil)
-					  th))
+					   :mappings tgt-mappings
+					   :target nil)
+					 th))
 	    (setq nthinst (set-type-maps inst th)))))
+    (assert (fully-typed? nthinst) () "typecheck-using*: after set-type-maps")
     (unless (resolution inst)
       (setf (resolutions inst) (list (make-resolution th inst))))
     (unless (resolution nthinst)
@@ -382,6 +381,7 @@ TCCs are generated, and finally exportings are updated."
 		    (library inst)))
 	(put-importing inst theory)
 	(setf (resolutions inst) (list (make-resolution th nthinst)))))
+    (assert (fully-typed? nthinst))
     (add-to-using nthinst th)
     ;;     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
     ;; 		(mappings nthinst))
@@ -389,10 +389,11 @@ TCCs are generated, and finally exportings are updated."
     ;;     (when (some #'formal-theory-decl? (formals th))
     ;;       (add-theory-parameters-importings th nthinst))
     (when (mappings nthinst)
-      (let* ((*subst-mod-params-map-bindings* (mappings nthinst))
+      (let* ((*subst-mod-params-theory* th)
+	     (*subst-mod-params-map-bindings* (mappings nthinst))
 	     (map-alist (make-subst-mod-params-map-bindings
 			 inst (mappings inst) nil)))
-	;; Note that we're simply appending here - should deal with
+	;; Note that we're simply appending here - maybe should deal with
 	;; duplicates somehow...
 	(setf (theory-mappings (current-theory))
 	      (append map-alist (theory-mappings (current-theory)))))
@@ -418,24 +419,25 @@ TCCs are generated, and finally exportings are updated."
 	  (actuals inst))))
 
 (defun add-theory-mappings-importings (theory inst)
+  "Looks for mappings in inst with lhs a mod-decl and adds the rhs theory as
+if imported."
   (declare (ignore theory))
-  (mapc #'(lambda (map)
-	    (when (and (not (mapping-rename? map))
-		       (mod-decl? (declaration (lhs map))))
-	      (let* ((thname (theory-ref (expr (rhs map))))
-		     (rth (target-mapped-theory (declaration (expr (rhs map)))))
-		     (mtheory rth)
-		     (ninst (make-theoryname
-			     mtheory
-			     (or (actuals (expr (rhs map)))
-				 (actuals thname))
-			     (or (library (expr (rhs map)))
-				 (library thname))
-			     (or (mappings (expr (rhs map)))
-				 (mappings thname)))))
-		#+pvsdebug (assert (same-id (get-theory thname) mtheory))
-		(add-to-using ninst mtheory))))
-	(mappings inst)))
+  (dolist (map (mappings inst))
+    (when (and (not (mapping-rename? map))
+	       (mod-decl? (declaration (lhs map))))
+      (let* ((thname (theory-ref (expr (rhs map))))
+	     (rth (target-mapped-theory (declaration (expr (rhs map)))))
+	     (mtheory rth)
+	     (ninst (make-theoryname
+		     mtheory
+		     (or (actuals (expr (rhs map)))
+			 (actuals thname))
+		     (or (library (expr (rhs map)))
+			 (library thname))
+		     (or (mappings (expr (rhs map)))
+			 (mappings thname)))))
+	#+pvsdebug (assert (same-id (get-theory thname) mtheory))
+	(add-to-using ninst mtheory)))))
 
 (defmethod typecheck-using* ((adt recursive-type) inst)
   (let* ((th1 (adt-theory adt))
@@ -673,6 +675,7 @@ TCCs are generated, and finally exportings are updated."
 (defun add-to-using (theoryname &optional itheory)
   (assert *current-context*)
   (assert (resolution theoryname))
+  (assert (fully-typed? theoryname))
   #+pvsdebug (assert (valid-importing-entry? theoryname))
   (let ((theory (or itheory (get-typechecked-theory theoryname))))
     (unless theory
@@ -829,7 +832,7 @@ TCCs are generated, and finally exportings are updated."
 					  :key #'(lambda (m)
 						   (declaration (lhs m)))))))
 			 ;; Only IMPORTINGs with mappings with decl-formals generate decls
-			 (cond ((mapping-subst? map)
+			 (cond ((mapping-subst-with-formals? map)
 				(unless (or (null map) (mapped-decl map))
 				  (let ((mdecl (make-mapped-decl decl map theoryname theory)))
 				    ;;(pushnew mdecl (get-lhash id dhash) :test #'eq)
@@ -1272,7 +1275,7 @@ expr, number, or theory reference.  They are appended together, set-type
 sorts it all out.  Note that the mapping may have a declared-type; this will
 be typechecked when set-type selects a resolution."
   (let* ((*current-context* lhs-context)
-	 (ass (assert (eq (current-theory) lhs-theory)))
+	 ;; (ass (assert (eq (current-theory) lhs-theory)))
 	 (*generate-tccs* 'none)
 	 (dfmls (decl-formals mapping))
 	 (lhs (lhs mapping))
@@ -1431,11 +1434,12 @@ be typechecked when set-type selects a resolution."
 declarations"
   (assert (mappings thname))
   (let* ((nomap-thname (copy thname :mappings nil))
-	 (res (resolve nomap-thname 'module nil))
-	 (thry (if (datatype-or-module? (declaration (car res)))
-		   (declaration (car res))
-		   (declaration (theory-ref (declaration (car res))))))
-	 (idecls (interpretable-declarations thry))
+	 (res (let ((r (resolve nomap-thname 'module nil)))
+		(or r (resolution-error thname 'module nil))))
+	 ;; (thry (if (datatype-or-module? (declaration (car res)))
+	 ;; 	   (declaration (car res))
+	 ;; 	   (declaration (theory-ref (declaration (car res))))))
+	 ;; (idecls (interpretable-declarations thry))
 	 (ncontext (copy-context *current-context*)))
     (setf (resolutions nomap-thname) res)
     ;; Add the thry, and then remove those idecls that have been
