@@ -824,20 +824,22 @@
 	       (every #'digit-char-p (subseq strid 3)))
       (parse-integer strid :start 3))))
 
-(defun typecheck-nat-selections (expr stype arguments expected)
-  (typecheck-nat-selections* (selections expr) expr stype arguments expected))
+;;; cases exprs over nats - just an unfinished experiment
 
-(defun typecheck-nat-selections* (sels expr stype arguments expected)
-  ;; sel has slots constructor, args, and expression
-  (let* ((sel (car sels))
-	 (num-expr (constructor sel))
-	 (num-str (string (id num-expr)))
-	 (num (when (valid-number? num-str) (parse-number num-str))))
-    (unless num
-      (type-error sel "CASES exprs over nat only work for number literals"))
-    (when (args sel)
-      (type-error sel "CASES selection args unexpected here"))
-    (change-class num-expr 'number-expr :number num :type *naturalnumber*)))
+;; (defun typecheck-nat-selections (expr stype arguments expected)
+;;   (typecheck-nat-selections* (selections expr) expr stype arguments expected))
+
+;; (defun typecheck-nat-selections* (sels expr stype arguments expected)
+;;   ;; sel has slots constructor, args, and expression
+;;   (let* ((sel (car sels))
+;; 	 (num-expr (constructor sel))
+;; 	 (num-str (string (id num-expr)))
+;; 	 (num (when (valid-number? num-str) (parse-number num-str))))
+;;     (unless num
+;;       (type-error sel "CASES exprs over nat only work for number literals"))
+;;     (when (args sel)
+;;       (type-error sel "CASES selection args unexpected here"))
+;;     (change-class num-expr 'number-expr :number num :type *naturalnumber*)))
 
 ;;; expr is a cases-expr, adt is recursive-type, type is the type instance,
 ;;; and args are the arguments to the expr
@@ -1306,7 +1308,7 @@
   ;;(unless (ptypes (operator expr))
     ;;(typecheck* (operator expr) nil nil nil))
   (unless (ptypes (argument expr))
-    (typecheck* (argument-list (argument expr)) nil nil nil))
+    (typecheck* (arguments expr) nil nil nil))
   ;;(assert (every #'types (argument-list expr)))
   (when (lambda-expr? (operator expr))
     (if (typep expr '(or let-expr where-expr))
@@ -1320,7 +1322,7 @@
 	       (list-expr? (expression (operator expr))))
       (let ((*bound-variables* (append (bindings (operator expr)) *bound-variables*)))
 	(typecheck* (expression (operator expr)) expected nil nil)))
-    (typecheck* (operator expr) nil nil (argument-list (argument expr))))
+    (typecheck* (operator expr) nil nil (arguments expr)))
   (set-possible-argument-types (operator expr) (argument expr))
   (unless (or (type (operator expr))
 	      (typep (operator expr) 'name-expr))
@@ -1768,7 +1770,7 @@ field-decls, etc."
 			:test #'tc-eq))))
 	(if (cdr atypes)
 	    (multiple-value-bind (atype vdecl)
-		(find-matching-var-decl bd atypes)
+		(find-matching-var-decl bd atypes arg)
 	      (if atype
 		  (values atype vdecl)
 		  (if (typep arg 'tuple-expr)
@@ -1778,7 +1780,7 @@ field-decls, etc."
       (let ((atypes (remove-if-not #'fully-instantiated? (types arg))))
 	(if (cdr atypes)
 	    (multiple-value-bind (atype vdecl)
-		(find-matching-var-decl bd atypes)
+		(find-matching-var-decl bd atypes arg)
 	      (if atype
 		  (values atype vdecl)
 		  (type-ambiguity arg)))
@@ -1789,15 +1791,20 @@ field-decls, etc."
 		  (best-judgement-type carg))
 		(car (types arg)))))))
 
-(defun find-matching-var-decl (bd atypes)
+(defun find-matching-var-decl (bd atypes arg)
   (let ((vdecl (find-if #'(lambda (v)
 			    (and (var-decl? v)
 				 (eq (module v) (current-theory))))
 		 (get-declarations (id bd)))))
     (when vdecl
       (let ((atype (car (member (type vdecl) atypes :test #'tc-eq))))
-	(when atype
-	  (values atype vdecl))))))
+	(if atype
+	    (values atype vdecl)
+	    (let ((ctypes (remove-if-not #'(lambda (ty) (compatible? (type vdecl) ty))
+			    (ptypes arg))))
+	      (if (and ctypes (null (cdr ctypes)))
+		  (values (type vdecl) vdecl)
+		  (break "find-matching-var-decl: ambiguous compatible"))))))))
 	  
 
 (defun set-dep-projections (projections types)
