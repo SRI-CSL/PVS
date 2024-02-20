@@ -391,7 +391,11 @@
     (when (and th (get-importings th))
       (type-error decl
 	"Identifier ~a is already in use as a theory" (id decl))))
-  (typecheck-inlined-theory decl)
+  ;; We create an inlined theory copy; this is instantiated
+  ;; when the containing theory is instantiated
+  ;; Note that we could optimize by only creating the copy if
+  ;; the (theory-name decl) has actuals or mappings.
+  (typecheck-inlined-theory decl) ;; New theory created as theory-copy in decl
   (unless (fully-instantiated? (theory-name decl))
     (type-error (theory-name decl)
       "Actual parameters must be provided for theory declarations"))
@@ -647,27 +651,35 @@
   ;; Need to allow id to be used as abbreviation
   )
 
-(defun typecheck-inlined-theory (thdecl)
-  (assert (typep thdecl '(or mod-decl formal-theory-decl modname)))
-  (let ((theory-name (if (modname? thdecl)
-			 thdecl
-			 (theory-name thdecl))))
-    (when (and (null (library (theory-name thdecl)))
-	       (eq (id (theory-name thdecl)) (id (current-theory))))
-      (type-error (theory-name thdecl)
+(defun typecheck-inlined-theory (thref)
+  "Creates a theory instance by getting the theory for thname, and, if
+target is given, expanding it into the thname as full-thname. Calls
+typecheck-inlined-theory* with theory and full-thname."
+  (assert (typep thref '(or importing-entity modname)))
+  ;; formal-theory-decl, mod-decl, theory-abbreviation-decl, importing
+  (let ((theory-name (if (modname? thref) thref (theory-name thref))))
+    (assert (modname? theory-name))
+    (when (and (null (library theory-name))
+	       (eq (id theory-name) (id (current-theory))))
+      (type-error theory-name
 	"Formal theory declarations may not refer to the containing theory"))
-    (typecheck-using theory-name)
+    ;; 2003-03-30_HendrikTews3/test{1,2,3}
+    ;; 2004-05-26_ViorelPreoteasa/bug - ambiguous with typecheck-using
+    ;; 2023-12-02_Shankar/Monad - needs typecheck-using
+    ;; (unless *typecheck-using* (typecheck-using theory-name))
+    ;; (break "typecheck-inlined-theory")
     (let* ((thname (expanded-theory-name theory-name)) ; walks down theory references
 	   (theory (declaration thname))
 	   (tgt-name (target thname))
 	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
-      (inlined-theory-info thdecl theory thname) ; info messages, e.g., no mappings given
+      (inlined-theory-info thref theory thname) ; info messages, e.g., no mappings given
       (let* ((mappings (determine-implicit-mappings
 			theory thname tgt-name tgt-theory))
 	     (full-thname (lcopy thname :mappings mappings :target nil)))
 	(when tgt-theory
 	  (typecheck-using tgt-name))
-	(set-type-actuals-and-maps full-thname theory)
+	;; (assert (and (fully-typed? full-thname) (fully-instantiated? full-thname)))
+	;; (set-type-actuals-and-maps full-thname theory)
 	;; (when (mappings full-thname)
 	;;   (unless (fully-instantiated? full-thname)
 	;;     (type-error theory-name
@@ -676,7 +688,7 @@
 	(unless (fully-instantiated? full-thname)
 	  (type-error theory-name
 	    "Theory name ~a must be fully instantiated" theory-name))
-	(typecheck-inlined-theory* theory full-thname thdecl)))))
+	(typecheck-inlined-theory* theory full-thname)))))
 
 (defun inlined-theory-info (thdecl theory thname)
   (let ((abbr-info
@@ -761,69 +773,76 @@
 ;; 	    (typecheck-mappings (mappings theory-name) modname)
 ;; 	    theory-name)))))
 
-(defmethod typecheck-inlined-theory* ((theory module) theory-name decl)
-  ;; (assert (typep thdecl '(or mod-decl formal-theory-decl)))
+(defmethod typecheck-inlined-theory* ((theory module) theory-name)
+  ;; (assert (modname? theory-name))
   (let ((*typecheck-using* theory-name)) ;; Provide information to tcc-gen
     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
 		(mappings theory-name))
       (add-theory-mappings-importings theory theory-name))
     (when (some #'formal-theory-decl? (formals theory))
       (add-theory-parameters-importings theory theory-name))
-    (when (mappings theory-name)
-      (generate-mapped-axiom-tccs theory-name))
+    ;; (when (mappings theory-name)
+    ;;   (generate-mapped-axiom-tccs theory-name))
     ;; Inline the generated decls, but with nested identifiers
-    (make-inlined-theory theory theory-name decl)))
+    (let ((stheory (make-inlined-theory theory theory-name)))
+      stheory)))
 
-(defun make-inlined-theory (theory theory-name thdecl)
-  (assert (typep thdecl '(or mod-decl formal-theory-decl)))
-  (let ((stheory (subst-mod-params-inlined-theory theory theory-name thdecl)))
+(defun make-inlined-theory (theory theory-name)
+  (assert (importing-entity? (current-declaration)))
+  (let* ((cdecl (current-declaration))
+	 (cth (current-theory))
+	 (cthname (current-theory-name))
+	 (stheory (subst-mod-params-inlined-theory theory theory-name cdecl)))
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
-    ;;(setf (theory-mappings thdecl) bindings)
-    (setf (theory-mappings thdecl)
+    (assert (importing-entity? cdecl))
+    ;;(setf (theory-mappings cdecl) bindings)
+    (setf (theory-copy cdecl) stheory)
+    (setf (theory-mappings cdecl)
 	  (mapcar #'(lambda (elt)
-	    (if (typep (cdr elt) '(or type-def-decl const-decl theory-reference))
-		(let* ((res (make-resolution (cdr elt) (current-theory-name)))
-		  (nm (mk-name-expr (id (cdr elt)) nil nil res))
-		  (act (make-instance 'actual :expr nm)))
-		  (cons (car elt) act))
-		elt))
+		      (if (typep (cdr elt) '(or type-def-decl const-decl theory-reference))
+			  (let* ((res (make-resolution (cdr elt) cthname))
+				 (nm (mk-name-expr (id (cdr elt)) nil nil res))
+				 (act (make-instance 'actual :expr nm)))
+			    (cons (car elt) act))
+			  elt))
 	    (theory-mappings stheory)))
-    (let ((fml-part (memq thdecl (formals (current-theory))))
-	  (ass-part (memq thdecl (assuming (current-theory))))
-	  (th-part (memq thdecl (theory (current-theory)))))
+    (let ((fml-part (memq cdecl (formals cth)))
+	  (ass-part (memq cdecl (assuming cth)))
+	  (th-part (memq cdecl (theory cth))))
       (assert (or fml-part ass-part th-part))
       ;; Splice in the declarations in the right place
       (cond (fml-part
 	     ;; Goes to the front of assuming or theory part
-	     (if (assuming (current-theory))
-		 (setf (assuming (current-theory))
-		       (append (all-decls stheory) (assuming (current-theory))))
-		 (setf (theory (current-theory))
-		       (append (all-decls stheory) (theory (current-theory))))))
+	     (if (assuming cth)
+		 (setf (assuming cth)
+		       (append (all-decls stheory) (assuming cth)))
+		 (setf (theory cth)
+		       (append (all-decls stheory) (theory cth)))))
 	    (ass-part
 	     (let* ((rest (cdr ass-part))
-		    (prev (ldiff (assuming (current-theory)) rest)))
-	       (setf (assuming (current-theory))
+		    (prev (ldiff (assuming cth) rest)))
+	       (setf (assuming cth)
 		     (append prev (all-decls stheory) rest))))
 	    (th-part
 	     (let* ((rest (cdr th-part))
-		    (prev (ldiff (theory (current-theory)) rest)))
-	       (setf (theory (current-theory))
+		    (prev (ldiff (theory cth) rest)))
+	       (setf (theory cth)
 		     (append prev (all-decls stheory) rest)))))
       (dolist (decl (all-decls stheory))
 	;; overwrite stheory
 	(when (declaration? decl)
-	  (setf (module decl) (current-theory)))
+	  (setf (module decl) cth))
 	(when (and fml-part (declaration? decl))
 	  (setf (visible? decl) nil))
-	(setf (generated-by decl) thdecl)
-	(push decl (generated thdecl))
+	(setf (generated-by decl) cdecl)
+	(push decl (generated cdecl))
 	;;(add-new-inlined-decl decl lastdecl part)
 	;;(make-inlined-theory-decl decl)
 	(when (declaration? decl)
 	  (put-decl decl)
 	  (assert (or (importing? decl)
-		      (memq decl (get-declarations (id decl))))))))))
+		      (memq decl (get-declarations (id decl)))))))
+      stheory)))
 
 (defun subst-mod-params-inlined-theory (theory theory-name thdecl)
   "Does subst-mod-params for the whole theory, but with a fresh
@@ -835,7 +854,9 @@ all-subst-mod-params-caches.  It does this by resetting this in
     ;; Need to ignore earlier substitutions, but restore after
     (setf (all-subst-mod-params-caches *workspace-session*)
   	  (make-pvs-hash-table :strong-eq? t))
-    (unwind-protect (subst-mod-params theory theory-name theory thdecl)
+    (unwind-protect
+	 (let ((stheory (subst-mod-params theory theory-name theory thdecl)))
+	   stheory)
       (setf (all-subst-mod-params-caches *workspace-session*)
   	    cur-all-subst-mod-params-caches))))
 
@@ -877,14 +898,13 @@ bindings."
 	     (apply-to-bindings*
 	      fn (cdr bindings-form) (nconc nbindings-form (list nex)) alist))))))
 
-(defmethod typecheck-inlined-theory* ((theory datatype) theory-name decl)
+(defmethod typecheck-inlined-theory* ((theory datatype) theory-name)
   ;; Need to inline the datatype as well
   (let* (;;(*all-subst-mod-params-caches* nil)
 	 (nadt (subst-mod-params theory theory-name theory)))
     (break "Need to deal with ~a" nadt)
     (typecheck-inlined-theory* (adt-theory theory)
-			     (copy theory-name :id (id (adt-theory theory)))
-			     decl)))
+			       (copy theory-name :id (id (adt-theory theory))))))
 
 
 (defmethod typecheck* ((decl theory-abbreviation-decl) expected kind arguments)
@@ -1207,8 +1227,8 @@ bindings."
   (when (formals decl)
     (typecheck* (formals decl) nil nil nil)
     (set-formals-types (apply #'append (formals decl))))
-  (assert (fully-instantiated? (formals decl)))
-  (assert (fully-typed? (formals decl)))
+  #+pvsdebug (assert (fully-instantiated? (formals decl)))
+  #+pvsdebug (assert (fully-typed? (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil))))
@@ -1216,11 +1236,11 @@ bindings."
     #+badassert
     (assert (or (null (print-type rtype))
 		(tc-eq (print-type rtype) (declared-type decl))))
-    (assert (fully-instantiated? (declared-type decl)))
-    (assert (fully-instantiated? rtype))
+    #+pvsdebug (assert (fully-instantiated? (declared-type decl)))
+    #+pvsdebug (assert (fully-instantiated? rtype))
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
-    (assert (fully-instantiated? (type decl)))
+    #+pvsdebug (assert (fully-instantiated? (type decl)))
     (assert (null (freevars (type decl))))
     (unless (typep decl 'adt-constructor-decl)
       (if (definition decl)
@@ -1973,7 +1993,8 @@ The dependent types are created only when needed."
     (cond ((some #'(lambda (ty) (compatible? ty expected)) (types ordering))
 	   (let* ((otype (lift-measure-type-for-ordering mtype ordering nil))
 		  (exp (mk-funtype (list otype otype) *boolean*)))
-	     (typecheck ordering :expected exp :tccs 'all)
+	     (let ((*generate-tccs* 'all))
+	       (set-type ordering exp))
 	     (generate-well-founded-tcc decl otype)))
 	  ((typep (find-supertype mtype) 'funtype)
 	   (typecheck-ordering* decl ordering (range (find-supertype mtype))))
@@ -3041,7 +3062,7 @@ The dependent types are created only when needed."
 		   (tc-eq (find-supertype (range ftype)) *boolean*))
 	(type-error (expr type) "Does not resolve to a predicate"))
       (set-type (expr type) ftype)
-      (assert (fully-typed? (expr type)))
+      #+pvsdebug (assert (fully-typed? (expr type)))
       (let* ((psexpr (pseudo-normalize (expr type)))
 	     (tval (mk-subtype (domain ftype) psexpr))
 	     (ptype (change-class (copy type) 'print-expr-as-type)))
@@ -3805,13 +3826,13 @@ The dependent types are created only when needed."
   (let* ((ctype (unless (forall-expr? (expr decl))
 		  (let ((*generate-tccs* 'none)
 			(*no-conversions-allowed* t)
-			(dtype (copy-all (declared-type decl))))
+			(dtype (copy-all (declared-type decl) t)))
 		    (copy-lex (declared-type decl) dtype)
 		    (typecheck* dtype nil nil nil))))
 	 (cexpr (when ctype
 		  (let ((*generate-tccs* 'none)
 			(*no-conversions-allowed* t)
-			(cex (copy-all (expr decl))))
+			(cex (copy-all (expr decl) t)))
 		    (copy-lex (expr decl) cex)
 		    (typecheck* cex ctype nil nil))))
 	 (mexpr (and cexpr (or (from-macro cexpr) cexpr))))
