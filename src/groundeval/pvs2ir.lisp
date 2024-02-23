@@ -148,6 +148,7 @@
   (intern (substitute #\p #\? (string (op-to-id id)))))
 
 (defmacro make-c-name (module-id decl-id)
+  ;(when (and (eql modue-id "BitVecSyntax")(eql decl-id "ordstruct_adt")) (break "make-c-name"))
   `(intern (format nil "~a__~a" ,module-id ,decl-id)))
 
 (defun pvs2ir-unique-decl-id (decl)
