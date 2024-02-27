@@ -1783,6 +1783,8 @@ prove itself from the mapped axioms."
 (defmethod id-root ((decl declaration))
   (op-to-id decl))
 
+(defmethod id-root ((dt datatype))
+  (id dt))
 
 ;;; lambda-depth - returns the number of lambdas in the
 ;;; right-hand-side of the given definition.  E.g.
