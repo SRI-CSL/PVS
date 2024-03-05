@@ -110,6 +110,7 @@
     ))
 
 (defun websocket-pvs-server (env)
+  (pushnew #'pvs-jsonrpc:pvs-message-hook pvs:*pvs-message-hook*)
   (let ((ws (wsd:make-server env))
 	(pvs:*pvs-message-hook* #'pvs-jsonrpc:pvs-message-hook))
     (wsd:on :open ws (lambda () (ws-open ws)))
