@@ -3,7 +3,7 @@
 ;; Author          : K. Nukala
 ;; Created On      : November 2023
 ;; Last Modified By: K. Nukala
-;; Last Modified On: 12/31/2023
+;; Last Modified On: 3/08/2023
 ;; Update Count    : 0
 ;; Status          : In-Progress
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,9 +36,11 @@
 (defvar *temp-file* nil)
 
 ;; hash tables/contexts for mid-translation use
+(defvar *def-var-context* (make-pvs-hash-table))
 (defvar *type-context* (make-pvs-hash-table))
 (defvar *uf-context* (make-pvs-hash-table))
 (defvar *enum-fields-context* (make-pvs-hash-table))
+(defvar *bound-var-context* (make-pvs-hash-table))
 
 ;; hash table utilities
 (defun hash-keys (table)
@@ -48,7 +50,6 @@
   (format t "(~S, ~S)" key value))
 
 (defun print-hash-table (table)
-  (format t "hash-table: ")
   (maphash #'print-hash-entry table))
 
 
@@ -79,7 +80,7 @@
         (case (length yices-term)
 	  (3 (format t "UNINTERPRETED~%") ;; (define name type)
 	     (translate-yices-var-decl-to-pvs yices-term))
-	  (4 (format t "INTERPRETED~%") ;; (define name type term)
+	  (4 (format t "INTERPRETED~%") ;; (define name type term) - TODO
 	     nil)))
     ('assert (format t "=====> ASSERT ~a~%" yices-term) ;; (assert formula)
 	     (if (not (listp (cadr yices-term))) ;; edge case - atom `(assert false)`/`(assert true)`
@@ -144,6 +145,7 @@
 
 
 ;; Type/enum definitions manipulate *type-context* and *enum-fields-context*
+;; TODO: do away with handcrafting declaration strings via `pc-parse`
 (defun translate-yices-typedef-to-pvs (yices-typedef interpreted-p)
 	    ; (format t "(translate-yices-typedef-to-pvs ~a)~%" yices-typedef)
   (if (not interpreted-p)
@@ -232,13 +234,51 @@
       (mk-addition (car arguments) (nary-addition (cdr arguments)))))
 
 (defun translate-yices-expr-to-pvs (yices-expr)
-	    ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
-  (cond ((symbolp yices-expr) (mk-name-expr yices-expr))
+  ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
+  ; (format t "*enum-fields-context*: ~a~%" (hash-keys *enum-fields-context*))
+  ; (format t "*uf-context*: ~a~%" (hash-keys *uf-context*))
+  ; (format t "*bound-var-context*: ~a~%" (hash-keys *bound-var-context*))
+  (cond ; ((symbolp yices-expr) (format t "symbolp ~%")(mk-name-expr yices-expr))
 	((numberp yices-expr) (mk-number-expr yices-expr))
 	((eq yices-expr 'false) *false*)
 	((eq yices-expr 'true) *true*)
 	((gethash yices-expr *enum-fields-context*) yices-expr)
-	((gethash yices-expr *uf-context*) yices-expr)
+	((gethash yices-expr *uf-context*)
+	 ; (format t "translating uninterpreted function ~a~%" yices-expr)
+	 (mk-name-expr yices-expr))
+	((gethash yices-expr *def-var-context*)
+	 ; (format t "translating defined variable ~a~%" yices-expr)
+	 (mk-name-expr yices-expr))
+	((gethash yices-expr *bound-var-context*)
+	 ; (format t "translating bound variable ~a~%" yices-expr)
+	 (mk-name-expr yices-expr))
+	((eq (car yices-expr) 'lambda)
+	 (let* ((var (caadr yices-expr))
+		(type (cadadr yices-expr))
+		(expr (prog2
+			  (setf (gethash var *bound-var-context*) var)
+			  (translate-yices-expr-to-pvs (caddr yices-expr))
+			(remhash var *bound-var-context*))))
+	   ; TODO: use mk-lambda-expr instead of handcrafting the string
+	   (pc-parse (format nil "LAMBDA (~a: ~a): ~a~%" var type expr) 'expr))
+	 ;; (format t "adding ~a to *bound-var-context*~%" (caadr yices-expr))
+	 ;; (setf (gethash (caadr yices-expr) *bound-var-context*) (caadr yices-expr))
+	 ;; (prog1 (mk-lambda-expr (list (caadr yices-expr))
+	 ;; 		 (translate-yices-expr-to-pvs (caddr yices-expr)))
+	 ;;   (format t "removing ~a from *bound-var-context*~%" (caadr yices-expr))
+	 ;;   (remhash (car yices-expr) *bound-var-context*))
+	 )
+	; KN: Currently only supports a single update expr, rather than a list
+	((eq (car yices-expr) 'update)
+	 ; (update expr (idx) value)
+	 (let* ((expr (cadr yices-expr))
+		(idx (caaddr yices-expr))
+		(value (cadddr yices-expr)))
+	   ;; (mk-update-expr-1 expr idx value)
+	   ; TODO: use mk-update-expr(-1) instead of handcrafting the string
+	   (pc-parse (format nil "~a WITH [(~a) := ~a]" (translate-yices-expr-to-pvs expr) idx value)
+		     'expr)
+	   ))
 	(t
 	 (let* ((untranslated-fn-call (car yices-expr))
 		(translated-args (map 'list #'(lambda (x)
@@ -253,6 +293,7 @@
 		   (cond ((eq untranslated-fn-call 'and) (mk-conjunction translated-args))
 			 ((eq untranslated-fn-call 'or) (mk-disjunction translated-args))
 			 ((eq untranslated-fn-call 'mk-tuple) (mk-tuple-expr translated-args))
+			 ; ((eq untranslated-fn-call 'lambda) (break "UNIMPLEMENTED - LAMBDA~%"))
 			 ((eq untranslated-fn-call 'mk-record)
 			  (mk-record-expr (translate-record-field-assns translated-args)))
 			 ((eq untranslated-fn-call '+) (nary-addition translated-args))
@@ -265,9 +306,6 @@
 			  (apply (find-symbol (cdr pvs-makes-table-elem) 'pvs)
 				 translated-args))))))))))
 
-(defun translate-yices-function-to-pvs (yices-function)
-  (break "UNIMPLEMENTED - translate-yices-function-to-pvs~%"))
-
 ;; KN: This currently generates a new variable definition for every
 ;; `(define ...)` declaration, resulting in
 ;; x1: VAR typ1
@@ -276,27 +314,17 @@
 ;; To make this more idiomatic PVS, we could group the declarations by type, enabling
 ;; x1, x2, ... : typ1
 ;; -------
-;; Variable definitions manipulate *uf-context*
+;; Function variable definitions manipulate *uf-context*
+;; Normal variable declarations manipulate *def-var-contextx*
 (defun translate-yices-var-decl-to-pvs (yices-var-decl)
   (let* ((name (cadr yices-var-decl))
 	 (type (translate-yices-type-to-pvs (caddr yices-var-decl))))
     (cond ((and (listp (caddr yices-var-decl)) (eq (caaddr yices-var-decl) '->))
-	   (progn ; (format t "function type! adding to *uf-context*~%")
+	   (progn ; (format t "function type! adding ~a to *uf-context*~%" name)
 	     (setf (gethash name *uf-context*) name)
 	     (mk-var-decl name type)))
-	  (t (mk-var-decl name type)))))
-
-(defun translate-yices-binding-to-pvs (yices-binding)
-  (break "UNIMPLEMENTED - translate-yices-binding-to-pvs~%"))
-
-(defun translate-yices-immediate-value-to-pvs (yices-immediate-value)
-  (break "UNIMPLEMENTED - translate-yices-immediate-value-to-pvs~%"))
-
-(defun translate-yices-number-to-pvs (yices-number)
-  (break "UNIMPLEMENTED - translate-yices-number-to-pvs~%"))
-
-(defun translate-yices-assumptions-to-pvs (yices-assumptions)
-  (break "UNIMPLEMENTED - translate-yices-assumptions-to-pvs~%"))
+	  (t (setf (gethash name *def-var-context*) name)
+	     (mk-var-decl name type)))))
 
 (defun translate-yices-commands-to-pvs (yices-terms)
   (loop for yices-term in yices-terms
@@ -335,11 +363,13 @@
   (setq *succedents* nil)
   (clrhash *type-context*)
   (clrhash *uf-context*)
-  (clrhash *enum-fields-context*))
+  (clrhash *enum-fields-context*)
+  (clrhash *def-var-context*)
+  (clrhash *bound-var-context*))
 
 ;; cleans up temp files
 (defun cleanup-files ()
-  (format t "cleanup-files: removing ~a~%" *temp-file*)
+  (format t "Removing temp-file ~a~%" *temp-file*)
   (let* ((remove-command (format nil "rm ~a" *temp-file*)))
     (uiop:run-program remove-command)))
 
@@ -347,7 +377,7 @@
   (clear-locals)
   (cleanup-files))
 
-(defun translate-yices-commands-to-pvs-stub (yices-ast) yices-ast)
+;; (defun translate-yices-commands-to-pvs-stub (yices-ast) yices-ast)
 
 (defun translate-yices-to-pvs (yices-file output-loc)
   (format t "Translating yices query located at ~a~%" yices-file)
