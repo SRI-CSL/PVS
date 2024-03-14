@@ -87,7 +87,8 @@
   (multiple-value-bind (reqfun reqsig)
       (get-json-request-function (jreq-method req))
     (check-params (jreq-params req) reqsig)
-    ;;(format t "~%process-jsonrpc request: ~a" req)
+    ;; (format t "~&[pvs-json-rpc.process-jsonrpc-object] received request: ~a~%" req) ;; #debug
+    ;; (format t "~&[process-jsonrpc-object] pvs:*pvs-message-hook* ~a~%" pvs:*pvs-message-hook*) ;; #debug
     ;; With id available we can handle json-rpc errors.
     (handler-case
 	(let ((*current-jsonrpc-request* req))
@@ -299,11 +300,11 @@
 	   (lreq `((:method . :pvs-message)
 		   ;; We include an id so it doesn't have to be broadcast
 		   ;; to all waiting requests
-		   ("params" . (("message" . ,msg)
-				("id" . ,id)))
+		   ("message" . ,msg)
+		   ("id" . ,id)
 		   ("jsonrpc" . "2.0")))
 	   (jreq (json:encode-json-alist-to-string lreq)))
-      ;;(format t "[pvs-message] ~a" jreq)
+      (format t "~&[pvs-json-rpc.pvs-message-hook] sending message >>> ~a <<<~%" jreq) ;; #debug
       (wsd:send (pvs-ws:ws-current-connection) jreq))))
 
 (defun pvs-y-or-n-hook (msg &optional yesno-p timeout-p)

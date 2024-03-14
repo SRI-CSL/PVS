@@ -83,8 +83,25 @@
 
 (defvar *ws* nil "The websocket structure")
 
-(defun start-pvs-server (&key (port 23456))
-  (setq *websocket-server* (clack:clackup #'websocket-pvs-server :port port)))
+(defun available-port-p (address port)
+  (let (socket)
+    (unwind-protect
+	(handler-case
+	    (progn
+	      (setq socket (usocket:socket-listen address port :reuse-address t))
+	      t)
+           (usocket:address-in-use-error () nil)
+           (usocket:socket-error (e)
+             (warn "USOCKET:SOCKET-ERROR: ~A" e)
+             nil))
+      (when socket
+        (usocket:socket-close socket)
+        t))))
+
+(defun start-pvs-server (&key (port 23456) (max-attempts 100))
+  (if (available-port-p "127.0.0.1" port)
+      (setq *websocket-server* (clack:clackup #'websocket-pvs-server :port port))
+    (start-pvs-server :port (1+ port) :max-attempts (1- max-attempts))))
 
 (defun stop-pvs-server ()
   (when *websocket-server*
@@ -93,6 +110,7 @@
     ))
 
 (defun websocket-pvs-server (env)
+  (pushnew #'pvs-jsonrpc:pvs-message-hook pvs:*pvs-message-hook*)
   (let ((ws (wsd:make-server env))
 	(pvs:*pvs-message-hook* #'pvs-jsonrpc:pvs-message-hook))
     (wsd:on :open ws (lambda () (ws-open ws)))

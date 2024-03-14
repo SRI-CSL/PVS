@@ -387,10 +387,10 @@
     (let* ((alllabels (union (extra-get-labels '*)
 			     (extra-get-labels '* t)))
 	   (counter   (incf *extra-label-counter*))
-	   (nn        (intern (format nil "~a:~a" prefix counter) :pvs)))
+	   (nn        (intern (format nil "~a_~a" prefix counter) :pvs)))
       (if (member nn alllabels)
 	  (loop for i from 1
-		for nn = (intern (format nil "~a_~a:~a" prefix i counter) :pvs)
+		for nn = (intern (format nil "~a_~a_~a" prefix i counter) :pvs)
 		unless (member nn alllabels)
 		return nn)
 	nn))))
