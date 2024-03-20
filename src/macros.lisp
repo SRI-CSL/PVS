@@ -616,6 +616,9 @@ obj may be of type:
 
 (defvar *current-declaration-stack* nil)
 
+(defsetf current-declaration () (decl)
+  `(setf (declaration *current-context*) ,decl))
+
 (defmacro with-current-decl (decl &rest body)
   (let ((cdecl (gensym))
 	(gdecl (gensym))
