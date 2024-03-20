@@ -227,8 +227,10 @@
 		    (remove-if-not
 			#'(lambda (d) (and (declaration? d)
 					   (or (eq (id (module d)) (mod-id name))
-					       (and (not (rectype-theory? (module d)))
-						    (generated-by d)))))
+					       (id-prefix (mod-id name) (id d))
+					       ;; (and (not (rectype-theory? (module d)))
+					       ;; 	    (generated-by d))
+					       )))
 		      ldecls)
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
