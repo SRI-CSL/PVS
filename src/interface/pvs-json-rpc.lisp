@@ -273,7 +273,7 @@
 		    *pvs-request-methods*))
        (defun ,pname ,args
 	 ,docstring
-	 (let ((,result ,@body))
+	 (let ((,result (progn ,@body)))
 	   ;; (push (format nil "[sent] ~a" ,result) *jsonrpc-log*)
 	   ,result)))))
 
