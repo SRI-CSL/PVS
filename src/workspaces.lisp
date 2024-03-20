@@ -37,19 +37,26 @@
   "Creates the initial *workspace-session*, and adds it to an empty
   *all-workspace-sessions*"
   (setq *all-workspace-sessions* nil)
+  ;; in case a prelude-workspace is useful, but it would only have the path and
+  ;; pvs-theories (same as *prelude-theories*)
+  ;; (init-prelude-workspace)
   (let ((ws (get-workspace-session (working-directory))))
     (assert (pvs-context ws))
     (setq *workspace-session* ws)))
 
-(defmethod get-workspace-ref ((wsref pathname))
-  (get-workspace-ref (namestring wsref)))
-
-(defmethod get-workspace-ref ((wsref string))
-  )
+(defun init-prelude-workspace ()
+  (assert (not *loading-prelude*))
+  (let* ((lib-path (merge-pathnames "lib/" *pvs-path*))
+	 (ws (make-instance 'workspace-session :path lib-path)))
+    (push ws *all-workspace-sessions*)
+    ;; Note that the prelude workspace has no pvs-context and no pvs-files
+    (setf (pvs-theories ws) *prelude*)
+    ws))
 
 (defun find-workspace (lib-path)
   "Given a path, finds the workspace, if it exists. Does not create it."
-  (find lib-path *all-workspace-sessions* :key #'path :test #'file-equal))
+  (or (find lib-path *all-workspace-sessions* :key #'path :test #'eq)
+      (find lib-path *all-workspace-sessions* :key #'path :test #'file-equal)))
 
 (defmethod get-workspace-session (libref)
   "get-workspace-session gets the absolute pathname associated with libref,
