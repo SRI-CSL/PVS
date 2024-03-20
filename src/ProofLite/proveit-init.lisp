@@ -149,14 +149,14 @@
 			(fe-id fe)
 			(fe-proof-status-string fe valid?))
 		      (incf tot)
-		      (case status
-			((proved-complete proved-incomplete)
-			 (if valid?
-			     (incf proved)
-			     (incf unfin)))
-			((unchecked unfinished)
-			 (incf unfin))
-			(t (incf untried)))))
+		      (cond ((member status '("proved-complete" "proved-incomplete")
+				     :test #'string=)
+			     (if valid?
+				 (incf proved)
+				 (incf unfin)))
+			    ((member status '("unchecked" "unfinished"))
+			     (incf unfin))
+			    (t (incf untried)))))
 		(te-formula-info te))))
     (format t "~%    Theory totals: ~d formulas, ~d attempted, ~d succeeded ~
                (~,2f s)"

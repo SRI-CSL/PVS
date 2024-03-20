@@ -391,13 +391,12 @@
 		  (format t "~%    ~52,1,0,'.a...~(~10a~)"
 		    (fe-id fe)
 		    (fe-proof-status-string fe valid?)))
-		(cond ((member status '(proved-complete proved-incomplete)
-			       :test #'string-equal)
+		(cond ((member status '("proved-complete" "proved-incomplete")
+			       :test #'string=)
 		       (if valid?
 			   (incf proved)
 			   (incf unfin)))
-		      ((member status '(unchecked unfinished)
-			       :test #'string-equal)
+		      ((member status '("unchecked" "unfinished") :test #'string=)
 		       (incf unfin))
 		      (t (incf untried)))))
 	    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
@@ -554,16 +553,17 @@
 ;;; untried, unfinished, unchecked, proved-incomplete, or proved-complete.
 
 (defun fe-proof-status-string (fe valid?)
-  (case (fe-status fe)
-    (proved-complete (if valid?
-			 "proved - complete"
-			 "unchecked"))
-    ((proved-incomplete proved) (if valid?
-				    "proved - incomplete"
-				    "unchecked"))
-    (unchecked "unchecked")
-    (unfinished "unfinished")
-    (t "untried")))
+  (cond ((string= (fe-status fe) "proved-complete")
+	 (if valid?
+	     "proved - complete"
+	     "unchecked"))
+	((member (fe-status fe) '("proved-incomplete" "proved") :test #'string=)
+	 (if valid?
+	     "proved - incomplete"
+	     "unchecked"))
+	((string= (fe-status fe) "unchecked") "unchecked")
+	((string= (fe-status fe) "unfinished") "unfinished")
+	(t "untried")))
 
 (defun proof-status-symbol (decl)
   (cond ((eq (proof-status decl) 'unchecked) 'unchecked)
@@ -797,7 +797,7 @@
 (defun show-all-proofs-theory-ctx (outstr proofs finfo thid valid?)
   (dolist (prf proofs)
     (let* ((fe (car (member (car prf) finfo
-			    :test #'(lambda (x y) (eq x (fe-id y))))))
+			    :test #'(lambda (x y) (string= x (fe-id y))))))
 	   (status (or (and fe (fe-proof-status-string fe valid?))
 		       "unchecked")))
       (format outstr "~3%~a.~a: ~a~2%" thid (car prf) status)

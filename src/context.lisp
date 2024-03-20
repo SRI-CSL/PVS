@@ -92,11 +92,11 @@
        (equal (ce-extension ce1) (ce-extension ce2))))
 
 (defun te-eq (te1 te2)
-  (and (eq (te-id te1) (te-id te2))
+  (and (string= (te-id te1) (te-id te2))
        (equal (te-status te1) (te-status te2))
        (length= (te-dependencies te1) (te-dependencies te2))
        (null (set-difference (te-dependencies te1) (te-dependencies te2)
-			     :test #'equal))
+			     :key #'str :test #'string=))
        ;; This one is tricky, since after parsing there are no TCCs, while
        ;; after typechecking they show up.  However, since the only way to
        ;; get a difference here that matters is to change the source file,
@@ -104,36 +104,36 @@
        ;; list that can be found on the other is fe-eq.
        (every #'(lambda (fe2)
 		  (let ((fe1 (find (fe-id fe2) (te-formula-info te1)
-				   :key #'fe-id)))
+				   :key #'fe-id :test #'string=)))
 		    (or (null fe1)
 			(fe-eq fe1 fe2))))
 	      (te-formula-info te2))))
 
 (defun fe-eq (fe1 fe2)
-  (and (eq (fe-id fe1) (fe-id fe2))
-       (equal (fe-status fe1) (fe-status fe2))
+  (and (string= (fe-id fe1) (fe-id fe2))
+       (string= (fe-status fe1) (fe-status fe2))
        (length= (fe-proof-refers-to fe1) (fe-proof-refers-to fe2))
        (every #'de-eq (fe-proof-refers-to fe1) (fe-proof-refers-to fe2))))
 
 (defun de-eq (de1 de2)
-  (and (eq (de-id de1) (de-id de2))
-       (eq (de-class de1) (de-class de2))
-       (equal (de-type de1) (de-type de2))
-       (eq (de-theory-id de1) (de-theory-id de2))))
+  (and (string= (de-id de1) (de-id de2))
+       (string= (de-class de1) (de-class de2))
+       (string= (de-type de1) (de-type de2))
+       (string= (de-theory-id de1) (de-theory-id de2))))
 
 #-gcl
 (defmethod id ((entry theory-entry))
-  (te-id entry))
+  (if (symbolp (te-id entry)) (te-id entry) (intern (te-id entry) :pvs)))
 
 #-gcl
 (defmethod id ((entry formula-entry))
-  (fe-id entry))
+  (if (symbolp (fe-id entry)) (fe-id entry) (intern (fe-id entry) :pvs)))
 
 #+gcl
 (defmethod id (entry)
   (typecase entry
-    (theory-entry (te-id entry))
-    (formula-entry (fe-id entry))
+    (theory-entry (intern (te-id entry) :pvs))
+    (formula-entry (intern (fe-id entry) :pvs))
     (t (error "Id not applicable here"))))
 
 (defvar *valid-entries* nil)
@@ -520,12 +520,13 @@ its dependencies."
     (let ((fe (get-context-formula-entry fdecl)))
       (if fe
 	  (let ((status (proof-status-symbol fdecl)))
-	    (unless (eq (fe-status fe) status)
-	      (setf (fe-status fe) status)
+	    (unless (string= (fe-status fe) status)
+	      (setf (fe-status fe) (format nil "~(~a~)" status))
 	      (setf (pvs-context-changed *workspace-session*) t))
-	    (assert (memq (fe-status fe)
-			  '(proved-complete proved-incomplete unchecked
-					    unfinished untried nil))))
+	    (assert (member (fe-status fe)
+			    '("proved-complete" "proved-incomplete" "unchecked"
+			      "unfinished" "untried" nil)
+			    :test #'string=)))
 	  (setf (pvs-context-changed *workspace-session*) t)))))
 
 (defun create-context-entry (pathname)
@@ -582,18 +583,20 @@ its dependencies."
 			(remove-if-not #'(lambda (d)
 					   (provable-formula? d))
 			  (append (assuming theory) (theory theory)))))
+	 (all-finfo (append finfo
+			    (unless (memq 'typechecked (status theory))
+			      (hidden-formula-entries tentry finfo valid?))))
 	 (status (if (and valid? tentry)
 		     (te-status tentry)
 		     (status theory))))
+    (assert (every #'formula-entry-p all-finfo))
     (make-theory-entry
-     :id (id theory)
+     :id (string (id theory))
      :status (if (generated-by theory)
 		 (cons 'generated status)
 		 status)
      :dependencies (get-binfile-dependencies theory)
-     :formula-info (append finfo
-			   (unless (memq 'typechecked (status theory))
-			     (hidden-formula-entries tentry finfo valid?))))))
+     :formula-info all-finfo)))
 
 (defun get-binfile-dependencies (theory)
   ;; Create a list of the form
@@ -632,15 +635,22 @@ its dependencies."
 	      (loop for (inm . lib-path) in inames
 		    do (if lib-path
 			   (let ((libentry (assoc lib-path libalist :test #'equalp))
-				 (nm (makesym "~a" (lcopy inm 'library nil))))
+				 (nm (format nil "~a" (lcopy inm 'library nil))))
 			     (if libentry
 				 (nconc libentry (list nm))
 				 (setq libalist
 				       (nconc libalist
 					      (list (list lib-path nm))))))
-			   (push (makesym "~a" (lcopy inm 'library nil))
+			   (push (format nil "~a" (lcopy inm 'library nil))
 				 thlist)))
-	      (nconc libalist (when thlist (list (cons nil (nreverse thlist)))))))))
+	      (let ((result (nconc libalist
+				   (when thlist (list (cons nil (nreverse thlist)))))))
+		(assert (every #'(lambda (elt)
+				   (and (listp elt)
+					(and (typep (car elt) '(or null pathname))
+					     (every #'stringp (cdr elt)))))
+			       result))
+		result)))))
       (let ((te (get-context-theory-entry (id theory))))
 	(when te
 	  (te-dependencies te)))))
@@ -692,24 +702,26 @@ its dependencies."
 (defun create-formula-entry (decl fentries valid?)
   (let ((fentry (find-if #'(lambda (fe)
 			     (and (typep fe 'formula-entry)
-				  (same-id fe decl)))
+				  (string= (fe-id fe) (id decl))))
 		  fentries)))
     (make-formula-entry
-     :id (id decl)
+     :id (string (id decl))
      :status (cond ((typechecked? decl)
-		    (proof-status-symbol decl))
+		    (format nil "~(~a~)" (proof-status-symbol decl)))
 		   (fentry
 		    (if valid?
 			(fe-status fentry)
-			(case (fe-status fentry)
-			  ((proved-complete proved-incomplete proved
-					    unchecked)
-			   'unchecked)
-			  (unfinished 'unfinished)
-			  (t 'untried))))
-		   (t 'untried))
+			(cond ((member (fe-status fentry)
+				       '("proved-complete" "proved-incomplete" "proved"
+					 "unchecked")
+				       :test #'string=)
+			       "unchecked")
+			      ((string= (fe-status fentry) "unfinished")
+			       "unfinished")
+			      (t "untried"))))
+		   (t "untried"))
      :decision-procedure-used (cond ((typechecked? decl)
-				     (decision-procedure-used decl))
+				     (format nil "~(~a~)" (decision-procedure-used decl)))
 				    (fentry
 				     (fe-decision-procedure-used fentry)))
      :proof-time (cond ((typechecked? decl)
@@ -739,15 +751,15 @@ its dependencies."
       (let ((fentries (remove-if #'(lambda (fi)
 				     (let ((id (feid fi)))
 				       (find-if #'(lambda (ffi)
-						    (eq id (feid ffi)))
+						    (string= id (feid ffi)))
 						finfo)))
 			(te-formula-info tentry))))
 	(unless valid?
 	  (mapc #'(lambda (fe)
 		    (if (consp fe)
-			(if (eq (cadr fe) t) (setf (cadr fe) 'unchecked))
-			(if (eq (fe-status fe) 'proved)
-			    (setf (fe-status fe) 'unchecked))))
+			(if (eq (cadr fe) t) (setf (cadr fe) "unchecked"))
+			(if (string= (fe-status fe) "proved")
+			    (setf (fe-status fe) "unchecked"))))
 		fentries))
 	fentries))))
   
@@ -757,15 +769,16 @@ its dependencies."
   ;; 	      (get-library-id decl))
   ;;   (break "create-declaration-entry"))
   (make-declaration-entry
-   :id (id decl)
-   :class (type-of decl)
+   :id (string (id decl))
+   :class (format nil "~(~a~)" (type-of decl))
    :type (when (and (typed-declaration? decl)
 		    (not (typep decl 'formal-type-decl)))
 	   (or (declared-type-string decl)
 	       (setf (declared-type-string decl)
 		     (unparse (declared-type decl) :string t))))
-   :theory-id (when (module decl) (id (module decl)))
-   :library (get-library-id decl)))
+   :theory-id (when (module decl) (string (id (module decl))))
+   :library (let ((libid (get-library-id decl)))
+	      (when libid (string libid)))))
 
 
 ;;; Returns the list of filenames on which the input file depends.  It
@@ -866,11 +879,11 @@ its dependencies."
     (labels ((usingchain (theoryids)
 	       (when theoryids
 		 (let ((tid (car theoryids)))
-		   (unless (or (memq tid uchain)
-			       (memq tid seen))
+		   (unless (or (member tid uchain :test #'string=)
+			       (member tid seen :test #'string=))
 		     (let ((te (get-context-theory-entry tid)))
 		       (if (or (null te)
-			       (memq 'generated (te-status te)))
+			       (member "generated" (te-status te) :test #'string=))
 			   (push tid seen)
 			   (push tid uchain)))
 		     (usingchain (cdr (assq nil (get-theory-dependencies tid)))))
@@ -934,15 +947,18 @@ are all the same."
   (assert ws)
   (let ((ctx-file (merge-pathnames *context-name*)))
     (if (uiop:file-exists-p ctx-file)
-	(handler-case
-	    (unless (pvs-context ws)
-	      (let ((context (read-context-file ctx-file)))
-		(setf (pvs-context ws) context)))
-	  (file-error (err)
-	    (pvs-message "PVS context problem - resetting")
-	    (pvs-log "  ~a" err)
-	    (setf (pvs-context ws) (initial-context))
-	    (write-context)))
+	(let ((ctx-file-date (file-write-time ctx-file)))
+	  (handler-case
+	      (unless (and (pvs-context ws)
+			   (= ctx-file-date (pvs-context-date ws)))
+		(let ((context (read-context-file ctx-file)))
+		  (setf (pvs-context-date ws) ctx-file-date)
+		  (setf (pvs-context ws) context)))
+	    (file-error (err)
+	      (pvs-message "PVS context problem - resetting")
+	      (pvs-log "  ~a" err)
+	      (setf (pvs-context ws) (initial-context))
+	      (write-context))))
 	(setf (pvs-context ws) (initial-context))))
   nil)
 
@@ -1016,7 +1032,7 @@ are all the same."
 
 (defun duplicate-theory-entries? (fe)
   (let ((thids (collect-theory-entry-ids fe)))
-    (duplicates? thids)))
+    (duplicates? thids :test #'string=)))
 
 (defun collect-theory-entry-ids (fe)
   (let ((thids nil))
@@ -1070,26 +1086,27 @@ are all the same."
 	(restore-theory th))))
 
 (defun restore-theory (thname)
-  (unless (gethash thname (current-pvs-theories))
-    (let ((theory (get-theory-from-binfile thname)))
-      (when theory
-	(let* ((tes (when (filename theory)
-		      (ce-theories (get-context-file-entry
-				    (filename theory)))))
-	       (theories (mapcar #'(lambda (te)
-				     (gethash (id te) (current-pvs-theories)))
-			   tes)))
-	  (assert (filename theory))
-	  (push theory *theories-restored*)
-	  (when (filename theory)
-	    (setf (gethash (pvs-filename (filename theory)) (current-pvs-files))
-		  (cons (file-write-time (make-specpath (filename theory)))
-			theories)))
-	  (dolist (th theories)
-	    (when (memq th *theories-restored*)
-	      (update-restored-theories th)
-	      ;;(assert (or (generated-by th) (typechecked? th)))
-	      )))))))
+  (let ((thid (if (symbolp thname) thname (intern thname :pvs))))
+    (unless (gethash thid (current-pvs-theories))
+      (let ((theory (get-theory-from-binfile thname)))
+	(when theory
+	  (let* ((tes (when (filename theory)
+			(ce-theories (get-context-file-entry
+				      (filename theory)))))
+		 (theories (mapcar #'(lambda (te)
+				       (gethash (id te) (current-pvs-theories)))
+			     tes)))
+	    (assert (filename theory))
+	    (push theory *theories-restored*)
+	    (when (filename theory)
+	      (setf (gethash (pvs-filename (filename theory)) (current-pvs-files))
+		    (cons (file-write-time (make-specpath (filename theory)))
+			  theories)))
+	    (dolist (th theories)
+	      (when (memq th *theories-restored*)
+		(update-restored-theories th)
+		;;(assert (or (generated-by th) (typechecked? th)))
+		))))))))
 
 ;;; Invoked after a bin file has been restored.
 (defmethod update-restored-theories ((theory module))
@@ -1312,7 +1329,7 @@ are all the same."
 (defun get-context-theory-entry (theoryname &optional file-entry)
   (if file-entry
       (car (member (ref-to-id theoryname) (ce-theories file-entry)
-		   :test #'(lambda (id e) (eq id (te-id e)))))
+		   :test #'(lambda (id e) (string= id (te-id e)))))
       (get-context-theory-entry* theoryname (pvs-context-entries))))
 
 (defun get-context-theory-entry* (theoryname file-entries)
@@ -1328,7 +1345,7 @@ are all the same."
 	(update-pvs-context)
 	(setq te (get-context-theory-entry (module fdecl))))
       (when te
-	(find-if #'(lambda (fe) (eq (id fdecl) (fe-id fe)))
+	(find-if #'(lambda (fe) (string= (id fdecl) (fe-id fe)))
 	  (te-formula-info te))))))
 
 (defun context-file-of (theoryref)
@@ -1349,7 +1366,7 @@ are all the same."
 (defun context-file-of* (theoryid entries)
   (when entries
     (if (member theoryid (ce-theories (car entries))
-		:test #'(lambda (x y) (eq x (te-id y))))
+		:test #'(lambda (x y) (string= x (te-id y))))
 	(values (ce-file (car entries)) (ce-extension (car entries)))
 	(context-file-of* theoryid (cdr entries)))))
 
@@ -1357,7 +1374,7 @@ are all the same."
   (labels ((entry (id entries)
 	     (when entries
 	       (if (member id (ce-theories (car entries))
-			   :test #'(lambda (x y) (eq x (te-id y))))
+			   :test #'(lambda (x y) (string= x (te-id y))))
 		   (car entries)
 		   (entry id (cdr entries))))))
     (entry (ref-to-id theoryref) (pvs-context-entries))))
@@ -1376,11 +1393,11 @@ are all the same."
 
 (defun get-declaration-entry-decl (de)
   (get-referenced-declaration*
-   (de-id de)
-   (de-class de)
+   (intern (de-id de) :pvs)
+   (intern (de-class de) :pvs)
    (de-type de)
-   (de-theory-id de)
-   (de-library de)))
+   (intern (de-theory-id de) :pvs)
+   (intern (de-library de) :pvs)))
 
 (defun get-referenced-declaration (declref)
   (apply #'get-referenced-declaration* declref))
@@ -1426,9 +1443,9 @@ are all the same."
 			    ;; set, so we look for a unique one
 			    (let ((theories (get-imported-theories theory-id)))
 			      (if (cdr theories)
-				  (pvs-message
-				      "Loading Proof Error: theory reference ambiguous - ~a"
-				    (id (car theories)))
+				  (let* ((imps (current-sorted-importings))
+					 (th (min-theory-wrt-imps theories imps)))
+				    th)
 				  (car theories)))))))
 	      (when theory
 		(let ((decls (remove-if-not
@@ -1450,6 +1467,17 @@ are all the same."
 			   (when (singleton? ndecls)
 			     (car ndecls))))))))))))
 
+(defun min-theory-wrt-imps (theories imps &optional min)
+  (cond ((null theories) (declaration (theory-name (car min))))
+	((member (car theories) min :key #'(lambda (imp) (declaration (theory-name imp))))
+	 (min-theory-wrt-imps (cdr theories) imps min))
+	(t (let ((new-min (member (car theories) imps
+				  :key #'(lambda (imp) (declaration (theory-name imp))))))
+	     (assert (or (null min)
+			 (member (declaration (theory-name (car min))) new-min
+				 :key #'(lambda (imp) (declaration (theory-name imp))))))
+	     (min-theory-wrt-imps (cdr theories) imps new-min)))))
+
 (defun invalidate-context-formula-proof-info (filename file nth)
   (unless (or (null (get-context-file-entry filename))
 	      (and (ce-write-date (get-context-file-entry filename))
@@ -1462,15 +1490,19 @@ are all the same."
 	(setf (ce-object-date ce) 0)
 	(setf (pvs-context-changed *workspace-session*) t))
       (dolist (te (ce-theories ce))
-	(when (and (member (string (id nth)) (te-dependencies te))
-		   (not (get-theory (te-id te))))
-	  (invalidate-theory-proofs te))))))
+	(let ((lib-deps (if (pathname-equal (context-path nth) (current-context-path))
+			    (assq nil (te-dependencies te))
+			    (assoc (context-path nth) (te-dependencies te)
+				   :test #'pathname-equal))))
+	  (when (and (member (string (id nth)) (cdr lib-deps) :test #'string=)
+		     (not (get-theory (te-id te))))
+	    (invalidate-theory-proofs te)))))))
 
 (defun invalidate-theory-proofs (te)
   (dolist (fe (te-formula-info te))
-    (when (memq (fe-status fe)
-		'(proved-complete proved-incomplete))
-      (setf (fe-status fe) 'unchecked)
+    (when (member (fe-status fe) '("proved-complete" "proved-incomplete")
+		  :test #'string=)
+      (setf (fe-status fe) "unchecked")
       (setf (pvs-context-changed *workspace-session*) t))))
   
 
@@ -1787,7 +1819,9 @@ are all the same."
 	   (let ((fe (get-context-formula-entry decl)))
 	     (setf (status (default-proof decl))
 		   (if fe
-		       (fe-status fe)
+		       (if (symbolp (fe-status fe))
+			   (fe-status fe)
+			   (intern (fe-status fe) :pvs))
 		       'unchecked)))
 	   (remove prf-entry proofs))
 	  (t ;; Decl has no associated proof in file
@@ -1804,11 +1838,12 @@ are all the same."
     (cddr prf-entry)))
   
 (defmethod make-proof-infos-from-sexp ((decl formula-decl) prf-entry)
-  (mapcar #'(lambda (prf)
-	      (assert (or (= (length prf) 6)
-			  (= (length prf) 7)))
-	      (apply #'mk-proof-info prf))
-    (cddr prf-entry)))
+  (with-current-decl decl
+    (mapcar #'(lambda (prf)
+		(assert (or (= (length prf) 6)
+			    (= (length prf) 7)))
+		(apply #'mk-proof-info prf))
+      (cddr prf-entry))))
 
 (defun decl-tccs-and-proofs (decls proofs)
   (assert (tcc? (car decls)))
@@ -2824,7 +2859,7 @@ each context, the theories are in alphabetic order."
     (mapc #'(lambda (fe)
 	      (mapc #'(lambda (te)
 			(let ((deps (cdr (assq nil (te-dependencies te)))))
-			  (when (memq tid deps)
+			  (when (member tid deps :test #'string=)
 			    (pushnew (id te) usedbys))))
 		    (ce-theories fe)))
 	  (pvs-context-entries))
@@ -2862,7 +2897,7 @@ each context, the theories are in alphabetic order."
     (when te
       (dolist (fe (te-formula-info te))
 	(when fe
-	  (setf (fe-status fe) 'untried)
+	  (setf (fe-status fe) "untried")
 	  (setf (fe-proof-refers-to fe) nil))))))
 
 (defvar *auto-save-proof-file* nil)
@@ -3049,7 +3084,7 @@ each context, the theories are in alphabetic order."
 		       (when (memq th max)
 			 (setq max (remove th max)))
 		       (push th nonmax)))))
-	(unless (memq (te-id te) nonmax)
+	(unless (member (te-id te) nonmax :test #'string=)
 	  (push (te-id te) max))))
     (values max nonmax)))
 
@@ -3083,55 +3118,6 @@ each context, the theories are in alphabetic order."
 		     (check-binfile thid ce))))
 	     theory-ids)))
 
-;; (defvar *binfile-contexts*)
-;; (defvar *ces-checked*)
-
-;; (defun check-binfiles (filename)
-;;   "Checks that the binfiles for filename and all its dependencies are valid,
-;; e.g., the binfile date matches the ce-object-date of the current-pvs-context.
-;; The dependencies come from ce-dependencies."
-;;   (let ((*binfiles-checked* nil)
-;; 	(*binfile-contexts* nil)
-;; 	(*ces-checked* nil))
-;;     (check-binfiles* filename)))
-
-;; (defun check-binfiles* (filename)
-;;   (let* ((lib-ref (simple-directory-namestring filename))
-;; 	 (lib-path (when lib-ref (get-library-path lib-ref))))
-;;     (unless (or (null lib-ref) lib-path)
-;;       (break "bad path for ~a?" filename))
-;;     (when (or (null lib-ref) lib-path) ; check-binfiles fails
-;;       (if lib-path
-;; 	  (with-workspace lib-path
-;; 	    (check-binfiles** (file-namestring filename)))
-;; 	  (check-binfiles** filename)))))
-
-;; (defun simple-directory-namestring (filename)
-;;   ;; if filename starts with a single ".", it is lost by directory-namestring
-;;   ;; so we use a simpler form.
-;;   (let ((pos (position #\/ filename :from-end t)))
-;;     (when pos
-;;       (subseq filename 0 (1+ pos)))))
-
-;; (defun check-binfiles** (filename)
-;;   (let ((ce (get-context-file-entry filename)))
-;;     ;; (unless ce (break "No ce for ~a?" filename))
-;;     (when ce
-;;       (if (and (boundp '*ces-checked*)
-;; 	       (assq ce *ces-checked*))
-;; 	  (cdr (assq ce *ces-checked*))
-;; 	  (let ((check (cond ((and (every #'check-binfiles* (ce-dependencies ce))
-;; 				   (check-binfile filename ce)))
-;; 			     (t ;;(when (assq 'sigma_l_adt (ce-object-date ce))
-;; 				  ;;(break "Failed check-binfile: resetting ce" filename))
-;; 				(if (listp (ce-object-date ce))
-;; 				    (dolist (objdate (ce-object-date ce))
-;; 				      (setf (cdr objdate) 0))
-;; 				    (setf (ce-object-date ce) nil))
-;; 				nil))))
-;; 	    (setq *ces-checked* (acons ce check *ces-checked*))
-;; 	    check)))))
-
 (defun check-binfile (theory-id ce)
   "Checks that the file write date is after the spec write date, and matches
 the ce-object-date for each theory in the file.  Note that each theory has a
@@ -3144,7 +3130,8 @@ binfile, not the filename."
       (or checked
 	  (let* ((spec-date (file-write-time spec-file))
 		 (expected-spec-date (ce-write-date ce))
-		 (expected-bin-date (cdr (assq theory-id (ce-object-date ce))))
+		 (expected-bin-date (cdr (assoc theory-id (ce-object-date ce)
+						:test #'string=)))
 		 (spec-ok? (and spec-date
 				expected-spec-date
 				(= spec-date expected-spec-date)))
@@ -3163,9 +3150,8 @@ binfile, not the filename."
       (delete-file file))))
 
 (defmethod proved? ((fe formula-entry))
-  (or (and (member (fe-status fe)
-		   '(proved proved-complete proved-incomplete)
-		   :test #'string-equal)
+  (or (and (member (fe-status fe) '("proved" "proved-complete" "proved-incomplete")
+		   :test #'string=)
 	   t)
       ;; TODO: formula-decl also has this; should fix for formula-entries
       ;; (when (mapped-formula-decl? fe)
@@ -3343,7 +3329,7 @@ binfile, not the filename."
 This is determined by git ls-files.  What this does is find an ancestor directory containing
 a .git repo, and list the files of the current context that have been added to that repo.
 If there is no such ancestor, this results in an error; this means it's safe create a repo.
-If there is no error, but the ls-files is empty, then "
+If there is no error, but the ls-files is empty"
   (or (directory-p (format nil "~@[~a/~].git" dir))
       (let ((lsf (handler-case
 		     (uiop:run-program (format nil "git ~@[-C ~a~] ls-files" dir)
@@ -3376,29 +3362,66 @@ If there is no error, but the ls-files is empty, then "
 		     "Would you like to create a new repo in the current directory?")
 		    (git-init)
 		    t))))))
-	     
-;; (defun pvs-context-info ()
-;;   `((:pvs-files ,(maphash #'(lambda (name info)
-;; 			      (declare (ignore info))
-;; 			      (let ((ce (create-context-entry name)))
-;; 				(when ce
-;; 				  (push ce context))))
-;; 			  (current-pvs-files)))
-;;   (append (pvs-meta-info)
-;; 	  (
-  
-(defun pvs-file-info (ce)
-  `((:pvs-file . ,(ce-file ce))
-    (:write-date . ,(ce-write-date ce))
-    (:proofs-date . ,(ce-proofs-date ce))
-    (:object-date . ,(ce-object-date ce))
-    (:dependencies . ,(ce-dependencies ce))
-    (:theories . ,(mapcar #'te-alist (ce-theories ce)))
-    (:extension . ,(ce-extension ce))
-    (:md5sum . ,(ce-md5sum ce))))
+
+(defun save-context-to-json (&optional (ws (current-workspace)))
+  (with-workspace ws
+    (let* ((ctx-file ".pvscontext.json")
+	   (ctx-alist (ctx-alist ws)))
+      (with-open-file (ctx-fd ctx-file
+			      :direction :output :if-exists :supersede
+			      :if-does-not-exist :create)
+	(json:encode-json ctx-alist ctx-fd))
+      ctx-alist)))
+
+(defun ctx-alist (&optional (ws (current-workspace)))
+  (with-workspace ws
+    (let ((ctx (pvs-context ws)))
+      `(("tag" . "pvs-context")
+	("version" . ,*pvs-version*)
+	("prelude-libraries" . ,(cadr ctx))
+	;; ("decision-procedure" . ,(caddr ctx))
+	("pvs-files" . ,(mapcar #'ce-alist (cdddr ctx)))))))
+
+(defun ce-alist (ce)
+  (let* ((fname (ce-file ce))
+	 (file (make-specpath fname))
+	 (sha1 (get-file-git-sha1 file)))
+    `(("tag" . "file-entry")
+      ("pvs-file" . ,fname)
+      ("write-date" . ,(ce-write-date ce))
+      ("proofs-date" . ,(ce-proofs-date ce))
+      ("object-date" . ,(ce-object-date ce))
+      ("dependencies" . ,(ce-dependencies ce))
+      ("theories" . ,(mapcar #'te-alist (ce-theories ce)))
+      ;; ("extension" . ,(ce-extension ce))
+      ("sha1-hash" . ,sha1))))
 
 (defun te-alist (te)
-  `((:id . ,(te-id te))
-    (:status . ,(te-status te))
-    (:dependencies . ,(te-dependencies te))
-    (:formula-info . ,(te-formula-info te))))
+  `(("tag" . "theory-entry")
+    ("id" . ,(te-id te))
+    ("status" . ,(te-status te))
+    ("dependencies" . ,(mapcar #'te-dependency (te-dependencies te)))
+    ("formula-info" . ,(mapcar #'te-formula (te-formula-info te)))))
+
+(defun te-dependency (dep)
+  (let ((lib-path (car dep))
+	(dep-theories (cdr dep)))
+    `(("path" . ,(when lib-path (namestring lib-path)))
+      ("dep-theories" . ,dep-theories))))
+
+(defun te-formula (fe)
+  `(("id" . ,(fe-id fe))
+    ("status" . ,(fe-status fe))
+    ("proof-refers-to" . ,(mapcar #'decl-entry (fe-proof-refers-to fe)))
+    ;; ("decision-procedure-used" . ,(fe-decision-procedure-used fe))
+    ;; ("proof-time" . ,(fe-proof-time fe))
+    ))
+
+(defun decl-entry (de)
+  ;; `(("id" . ,(de-id de))
+  ;;   ("class" . ,(de-class de))
+  ;;   ("type" . ,(de-type de))
+  ;;   ("theory-id" . ,(de-theory-id de))
+  ;;   ("library" . ,(de-library de)))
+  ;; For efficiency, we just create a list
+  (list (de-id de) (de-class de) (de-type de) (de-theory-id de) (de-library de)))
