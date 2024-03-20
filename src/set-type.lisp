@@ -103,6 +103,7 @@
 required a context.")
 
 (defmethod set-type* :around ((ex expr) expected)
+  ;; Deals with macros, places, 
   #+pvsdebug (assert (fully-typed? expected))
   #+pvsdebug (assert (fully-instantiated? expected))
   #+pvsdebug (assert (or (type ex) (types ex)))
@@ -406,11 +407,12 @@ required a context.")
 	      (set-extended-place act name "actual created for name ~a" name)))))))
 
 (defun check-set-type-recursive-name (ex)
-  ;; No need to do anything if not in a recursive decl
+  ;; No need to do anything if not in a recursive decl (def-decl)
   (when (and (not (eq *generate-tccs* 'none))
              (typep (current-declaration) '(and def-decl (not adt-def-decl)))
              (eq (declaration ex) (current-declaration))
              (not (memq ex *set-type-recursive-operator*)))
+    ;; Otherwise we create a 
     (let* ((cex (copy ex))
            (nex (recursive-def-conversion (current-declaration))))
       ;; Add conversion
@@ -2406,7 +2408,7 @@ type of the lhs."
           (unless (eq (domain foptype) (domain optype))
             (let ((*generate-tccs* 'none))
               (set-type* argument (domain optype))))
-          (set-type* argument (domain optype)))
+	  (set-type* argument (domain optype)))
       ;; On to the operator
       (let* ((*appl-tcc-conditions*
               (cons (appl-tcc-conditions operator argument)
@@ -2474,6 +2476,7 @@ type of the lhs."
           *set-type-recursive-operator*))))
 
 (defun recursive-def-conversion (recdecl)
+  ;; Uses the recursive-signature as the type of the  
   (let* ((res (make-resolution recdecl
                 (current-theory-name) (recursive-signature recdecl)))
          (name (make!-name-expr (id recdecl) nil nil res))
@@ -3917,8 +3920,7 @@ type of the lhs."
 		(null (ptypes ex))
 		(not (some #'(lambda (ty) (compatible? ty expected)) (ptypes ex))))
       (typecheck* ex etype nil nil))
-    (or (type ex)
-	(call-next-method))))
+    (call-next-method)))
 
 (defmethod set-type* ((ex string-expr) expected)
   (let ((*generate-tccs* (if (tc-eq expected (string-type))
