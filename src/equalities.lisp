@@ -1117,6 +1117,9 @@
 	       (tc-eq* dacts1 dacts2 bindings)
 	       (tc-eq* map1 map2 bindings))))))
 
+(defmethod tc-eq* ((imp1 importing-entity) (imp2 importing-entity) bindings)
+  (tc-eq* (theory-name imp1) (theory-name imp2) bindings))
+
 (defmethod tc-eq* ((a1 actual) (a2 actual) bindings)
   (or (eq a1 a2)
       (with-slots ((tv1 type-value) (ex1 expr)) a1
