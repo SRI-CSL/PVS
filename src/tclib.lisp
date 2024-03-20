@@ -29,8 +29,6 @@
 
 (in-package :pvs)
 
-(export '(all-decls))
-
 ;;; Load-prelude initializes the *prelude*, *prelude-context*, and
 ;;; *prelude-theories* variables
 
@@ -247,7 +245,7 @@
     (format t "~%Restoring the prelude proofs from ~a" prfile)
     (let ((proofs (read-pvs-file-proofs prfile)))
       (dolist (theory (core-prelude-theories))
-	(format t "~%Restoring proofs for ~a" (id theory))
+	;; (format t "~%Restoring proofs for ~a" (id theory))
 	(restore-proofs prfile theory proofs)
 	(mapc #'(lambda (decl)
 		  (if (justification decl)
@@ -397,38 +395,42 @@
 ;;; Loads the .pvscontext, associated PVS files, pvs-lib.lisp file
 ;;; (and any libloaded file), and pvs-lib.el.  Note that pvs-strategies is
 ;;; not loaded here, but when the prover is invoked.
-(defun load-prelude-library (lib-ref &optional force? quiet?)
+(defun load-prelude-library (lib-ref &optional force? quiet? globally?)
   "Given a lib-ref, determines the lib-path, and loads the library.  Note
 that a library consists of PVS files, lisp files, and/or emacs files.
 There's a function for each of these that says what files were loaded in
 each case.  This information is kept in the workspace-session of this
-lib-path, along with modification dates."
+lib-path, along with modification dates, unless globally? is set. Note that
+globally? should be set only in either your ~/.pvs.lisp or a .pvs.lisp file
+in your PVS_LIBRARY_PATH."
   (let ((lib-path (get-library-path lib-ref)))
-    (unless lib-path
-      (pvs-error "Load Prelude Error" (format nil "Directory for ~a not found" lib-ref)))
-    (assert (absolute-pathname-p lib-path))
-    (when (member lib-path *loading-libraries* :test #'file-equal)
-      (pvs-error "Load Prelude Error"
-	(format nil "Detected circular calls to load-prelude-library,~%~
+    (cond ((null lib-path)
+	   (pvs-error "Load Prelude Error"
+	     (format nil "Directory for ~a not found" lib-ref)))
+	  (t (assert (absolute-pathname-p lib-path))
+	     (when (member lib-path *loading-libraries* :test #'file-equal)
+	       (pvs-error "Load Prelude Error"
+		 (format nil "Detected circular calls to load-prelude-library,~%~
                      check pvs-lib.lisp files in ~{~a~^, ~}" *loading-libraries*)))
-    (let* ((*loading-libraries* (cons lib-path *loading-libraries*))
-	   (pvs-files-loaded (load-prelude-library-workspace lib-path force?))
-	   (lisp-files-loaded (load-pvs-lib-lisp-file lib-path force?))
-	   (emacs-files-loaded (load-pvs-lib-emacs-file lib-path force?)))
-      (when pvs-files-loaded
-	(pushnew lib-path (current-prelude-libraries)
-		 :test #'pathname-equal))
-      (if (or pvs-files-loaded
-	      lisp-files-loaded
-	      emacs-files-loaded)
-	  (unless (member lib-path (cadr (current-pvs-context)) :test #'file-equal)
-	    (if (cdr (current-pvs-context))
-		(push lib-ref (cadr (current-pvs-context)))
-		(nconc (current-pvs-context) (list (list lib-ref)))))
-	  (when (and (not quiet?)
-		     (not force?)
-		     (prelude-library-loaded? lib-path))
-	    (pvs-message "Prelude library ~a is already loaded." lib-ref))))))
+	     (let* ((*loading-libraries* (cons lib-path *loading-libraries*))
+		    (pvs-files-loaded (load-prelude-library-workspace
+				       lib-path force? globally?))
+		    (lisp-files-loaded (load-pvs-lib-lisp-file lib-path force?))
+		    (emacs-files-loaded (load-pvs-lib-emacs-file lib-path force?)))
+	       (when pvs-files-loaded
+		 (pushnew lib-path (current-prelude-libraries)
+			  :test #'pathname-equal))
+	       (if (or pvs-files-loaded
+		       lisp-files-loaded
+		       emacs-files-loaded)
+		   (unless (member lib-path (cadr (current-pvs-context)) :test #'file-equal)
+		     (if (cdr (current-pvs-context))
+			 (push lib-ref (cadr (current-pvs-context)))
+			 (nconc (current-pvs-context) (list (list lib-ref)))))
+		   (when (and (not quiet?)
+			      (not force?)
+			      (prelude-library-loaded? lib-path))
+		     (pvs-message "Prelude library ~a is already loaded." lib-ref))))))))
 
 (defvar *libloads* nil)
 
@@ -557,7 +559,7 @@ lib-path, along with modification dates."
 		(t (pvs-message "Error in loading ~a" emacs-file))))))))
 
 
-(defun load-prelude-library-workspace (lib-path force?)
+(defun load-prelude-library-workspace (lib-path force? globally?)
   "Within the workspace of lib-path, load the theories known in .pvscontext,
 which is loaded into (current-pvs-context) by restore-context.  (cddr (current-pvs-context))
 corresponds to the list of pvs-files which have at least been parsed at some
