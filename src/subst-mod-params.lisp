@@ -1717,8 +1717,9 @@
       (setf (default-proof ndecl) nil
 	    (proofs ndecl) nil
 	    (definition ndecl) ndef
-	    (closed-definition ndecl) ncdef
-	    (theory-instance ndecl) modinst)
+	    (closed-definition ndecl) ncdef)
+      (when (tcc-decl? ndecl)
+	(setf (theory-instance ndecl) modinst))
       (when (and ety (not (possibly-empty-type? ety)))
 	(set-nonempty-type ety ndecl))
       ndecl)))
@@ -1731,7 +1732,7 @@
   (cond ((mapped-axiom-tcc? ndecl)
 	 (change-class ndecl 'mapped-axiom :spelling 'AXIOM :kind nil))
 	((axiom? ndecl)
-	 (assert (axiom? (generated-by ndecl)))
+	 ;; (assert (axiom? (generated-by ndecl)))
 	 (change-class ndecl 'mapped-axiom-tcc
 	   :spelling 'OBLIGATION :kind 'tcc :generating-axiom (generated-by ndecl)))
 	((tcc? ndecl)
@@ -2320,21 +2321,19 @@
 	  ((actual? bdg)
 	   (if dacts
 	       (let* ((ex (expr bdg))
-		      (nex (break "subst-mod-params* name-expr")
-			;;(subst-acts-in-form ex bindings)
-			)
-		      ;; (adecl (when dacts
-		      ;; 	   (if (name-expr? ex)
-		      ;; 	       (declaration ex)
-		      ;; 	       (break "dacts1a"))))
-		      ;; (dfmls (when dacts (decl-formals adecl)))
-		      ;; (sdacts (when dacts (subst-mod-params* dacts modinst bindings)))
-		      ;; (nex (if dacts
-		      ;; 	   (subst-for-formals
-		      ;; 	    ex
-		      ;; 	    (mapcar #'(lambda (x y) (cons x (type-value y)))
-		      ;; 	      dfmls sdacts))
-		      ;; 	   ex))
+		      (nex (subst-acts-in-form ex bindings))
+		      (adecl (when dacts
+			       (if (name-expr? ex)
+				   (declaration ex)
+				   (break "dacts1a"))))
+		      (dfmls (when dacts (decl-formals adecl)))
+		      (sdacts (when dacts (subst-mod-params* dacts modinst bindings)))
+		      (nex (if dacts
+			       (subst-for-formals
+				ex
+				(mapcar #'(lambda (x y) (cons x (type-value y)))
+				  dfmls sdacts))
+			       ex))
 		      )
 		 #+badassert
 		 (assert (every #'(lambda (fp)
