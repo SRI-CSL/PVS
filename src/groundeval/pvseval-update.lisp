@@ -1917,20 +1917,29 @@ if called."
 		     (accessor-ids (mapcar #'id accessors))
 		     (struct-id (mk-newconstructor id accessor-ids))
 		     (recognizer-id (makesym "~a?" struct-id))
-		     (constructor-symbol (makesym "make-~a" struct-id))
-		     (defn `(defstruct (,struct-id
-					(:constructor ,constructor-symbol 
-						      ,accessor-ids)
+		     (make-struct (makesym "~a-~a" 'make struct-id))
+		     (mk-struct (makesym "mk-~a" struct-id))
+		     ;; Can't use :constructor in SBCL without losing
+		     ;; ability to read #s(...) forms. Instead we let SBCL
+		     ;; create the make- form as usual, and create a mk-
+		     ;; function that is used positionally.
+		     (defs `(defstruct (,struct-id
 					(:predicate ,recognizer-id))
-			      ,@accessor-ids)))
+			      ,@accessor-ids))
+		     (defn `(defun ,mk-struct ,accessor-ids
+			      (,make-struct ,@(mapcan #'(lambda (a)
+							  (list (intern (string a) :keyword)
+								a))
+						accessor-ids)))))
+		(eval defs)
 		(eval defn)
-		(cons struct-id defn)))
+		(cons struct-id defs)))
     constrs))
 
 (defun mk-newconstructor (id accessor-ids &optional (counter 0))
   (let* ((const-str (format nil "~a_~a" id counter))
 	 (const-str? (find-symbol const-str))
-	 (mk-str? (find-symbol (format nil "make-~a" const-str)))
+	 (mk-str? (find-symbol (format nil "mk-~a" const-str)))
 	 (rec-str? (find-symbol (format nil "~a?" const-str)))
 	 (acc-strs? (loop for acc in accessor-ids
 			 thereis
@@ -1968,7 +1977,7 @@ if called."
 	       pos))
 	    (t (let* ((accessors (accessors constructor))
 		      (struct-id (car struct))
-		      (constructor-symbol (makesym "make-~a" struct-id))
+		      (constructor-symbol (makesym "mk-~a" struct-id))
 		      (defn (cdr struct))
 		      (xvar (gentemp "x"))
 		      )
