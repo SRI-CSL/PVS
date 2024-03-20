@@ -129,6 +129,12 @@ is replaced with replacement."
 (defun current-context ()
   *current-context*)
 
+(defmethod context-path ((ctx context))
+  (context-path (theory ctx)))
+
+(defmethod context-path ((decl declaration))
+  (context-path (module decl)))
+
 (defun current-pvs-file ()
   (when *current-context*
     (let ((cth (current-theory)))
@@ -181,8 +187,8 @@ is replaced with replacement."
   (assert *current-context*)
   (declaration *current-context*))
 
-(defsetf current-declaration () (decl)
-  `(setf (declaration *current-context*) ,decl))
+;; (defsetf current-declaration () (decl)
+;;   `(setf (declaration *current-context*) ,decl))
 
 (defun current-declarations-hash ()
   (assert *current-context*)
@@ -227,17 +233,26 @@ is replaced with replacement."
 	 (prev-decls (ldiff all-decls (memq cdecl all-decls)))
 	 (prev-imps (remove-if-not #'importing-entity? prev-decls))
 	 (*theories-seen* (list cth)))
-    (sorted-importings prev-imps prev-imps)))
+    (sort-importings prev-imps)))
 
-(defun sorted-importings (imps sorted-imps)
-  (if (null imps)
-      (nreverse sorted-imps)
-      (let* ((thname (theory-name (car imps)))
+(defvar *sorted-importings*)
+
+(defun sort-importings (imps)
+  (let ((*sorted-importings* nil))
+    (sort-importings* imps)
+    (nreverse *sorted-importings*)))
+
+(defun sort-importings* (imps)
+  (let ((unseen (remove-if #'(lambda (imp) (member imp *sorted-importings* :test #'tc-eq))
+		  imps)))
+    (assert (or (null imps) (not (eq unseen imps)))) ;; Make sure it's a new list
+    (setf *sorted-importings*
+	  (nconc unseen *sorted-importings*))
+    (dolist (imp (reverse unseen))
+      (let* ((thname (theory-name imp))
 	     (th (declaration thname))
-	     (thimps (remove-if-not #'importing-entity? (all-decls th)))
-	     (imp-entities (sorted-importings thimps thimps)))
-	(sorted-importings (cdr imps)
-			   (append imp-entities sorted-imps)))))
+	     (thimps (remove-if-not #'importing-entity? (all-decls th))))
+	(sort-importings* thimps)))))
 
 (defun current-theory-hierarchy ()
   ;; Returns the list of importings, in order (first is the "nearest" importing
@@ -677,17 +692,19 @@ is replaced with replacement."
 		 (module? (declaration (car resolutions)))
 		 ;; resolution for a datatype is the generated theory
 		 (same-id (declaration (car resolutions)) name))
-	    (let* ((rth (declaration (car resolutions)))
-		   (ws (get-workspace-session (context-path rth)))
-		   (wth (gethash id (pvs-theories ws))))
-	      ;; Could have changed, in which case wth is correct
-	      (cond ((and rth wth)
-		     (if (eq rth wth)
-			 rth
-			 (setf (declaration (car resolutions)) wth)))
-		    (t (let ((th (get-theory* id library)))
-			 (when th
-			   (setf (declaration (car resolutions)) th))))))
+	    (let ((rth (declaration (car resolutions))))
+	      (if (from-prelude? rth)
+		  rth
+		  (let* ((ws (get-workspace-session (context-path rth)))
+			 (wth (gethash id (pvs-theories ws))))
+		    ;; Could have changed, in which case wth is correct
+		    (cond ((and rth wth)
+			   (if (eq rth wth)
+			       rth
+			       (setf (declaration (car resolutions)) wth)))
+			  (t (let ((th (get-theory* id library)))
+			       (when th
+				 (setf (declaration (car resolutions)) th))))))))
 	    (get-theory* id library)))))
 
 (defmethod get-theory ((name name))
@@ -1596,7 +1613,7 @@ prove itself from the mapped axioms."
 			   (copy (theory-name d)
 			     'library (get-library-id (context-path theory)))
 			   (theory-name d)))
-	      (thname (subst-mod-params lthname thinst theory))
+	      (thname (subst-mod-params lthname thinst theory (current-declaration)))
 	      (th (get-theory lthname)))
 	 (add-usings-to-context* th thname))))))
 
@@ -5102,6 +5119,25 @@ space")
     (defun class-slots (x)
       #+allegro (mop:class-slots x)
       #+sbcl (sb-mop:class-slots x))))
+
+(defun get-method (sig)
+  "sig is what is expected in a defmethod, e.g., for
+  (defmethod pp* ((ex rational-expr)) ...)
+we can get this method using
+  (get-method '(pp* ((ex rational-expr))))"
+  (let* ((gf (typecase (car sig)
+	       (symbol (symbol-function (car sig)))
+	       (function (car sig))
+	       (t (error "Generic function should be a symbol or function"))))
+	 (quals (butlast (cdr sig)))
+	 (specs (car (last (cdr sig))))
+	 (classes (mapcar #'(lambda (spec)
+			      (if (listp spec)
+				  (find-class (cadr spec))
+				  (find-class t)))
+		    specs))
+	 (method (find-method gf quals classes)))
+    method))
 
 ;;; equals is like equalp, but is case-sensitive
 (defun equals (x y)
