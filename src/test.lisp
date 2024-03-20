@@ -181,6 +181,8 @@
   `(trace ,@(expand-trace-form-methods trace-forms)))
 
 (defun expand-trace-form-methods (trace-forms &optional nforms)
+  "Given a list of the form expected by trace, e.g.,
+(method pp* (rational-expr))"
   (if (null trace-forms)
       (nreverse nforms)
       (let ((nform (expand-trace-form-method (car trace-forms))))
