@@ -411,9 +411,9 @@
 		(check-for-tccs* (operator expr) optype))))))
   (check-for-recursive-tcc expr))
 
-(defmethod check-for-tccs* ((ex list-expr) expected)
-  (declare (ignore expected))
-  (unless (type ex) (call-next-method)))
+;; (defmethod check-for-tccs* ((ex list-expr) expected)
+;;   (declare (ignore expected))
+;;   (call-next-method))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
   (declare (ignore expected))
