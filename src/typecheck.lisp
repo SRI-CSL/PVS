@@ -349,7 +349,6 @@ TCCs are generated, and finally exportings are updated."
       ;; typecheck-mappings done by determine-implicit-mappings
       ;;(typecheck-mappings (mappings inst) inst)
       (setq nthinst (set-type-actuals inst th))
-      (assert (fully-typed? nthinst) () "typecheck-using*: after set-type-actuals")
       (unless (if (actuals inst)
 		  (fully-instantiated? (actuals inst))
 		  (fully-instantiated? (copy inst :mappings nil)))
@@ -370,7 +369,6 @@ TCCs are generated, and finally exportings are updated."
 					   :target nil)
 					 th))
 	    (setq nthinst (set-type-maps inst th)))))
-    (assert (fully-typed? nthinst) () "typecheck-using*: after set-type-maps")
     (unless (resolution inst)
       (setf (resolutions inst) (list (make-resolution th inst))))
     (unless (resolution nthinst)
@@ -831,8 +829,8 @@ if imported."
 				    (find decl (mappings theoryname)
 					  :key #'(lambda (m)
 						   (declaration (lhs m)))))))
-			 ;; Only IMPORTINGs with mappings with decl-formals generate decls
-			 (cond ((mapping-subst-with-formals? map)
+			 ;; IMPORTINGs with mapping-substs generate mapped decls
+			 (cond ((mapping-subst? map)
 				(unless (or (null map) (mapped-decl map))
 				  (let ((mdecl (make-mapped-decl decl map theoryname theory)))
 				    ;;(pushnew mdecl (get-lhash id dhash) :test #'eq)
