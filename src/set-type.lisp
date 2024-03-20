@@ -412,7 +412,7 @@ required a context.")
              (typep (current-declaration) '(and def-decl (not adt-def-decl)))
              (eq (declaration ex) (current-declaration))
              (not (memq ex *set-type-recursive-operator*)))
-    ;; Otherwise we create a 
+    ;; Otherwise we create a recursive-def-conversion
     (let* ((cex (copy ex))
            (nex (recursive-def-conversion (current-declaration))))
       ;; Add conversion
@@ -2476,7 +2476,7 @@ type of the lhs."
           *set-type-recursive-operator*))))
 
 (defun recursive-def-conversion (recdecl)
-  ;; Uses the recursive-signature as the type of the  
+  ;; Uses the recursive-signature as the type of the conversion
   (let* ((res (make-resolution recdecl
                 (current-theory-name) (recursive-signature recdecl)))
          (name (make!-name-expr (id recdecl) nil nil res))
