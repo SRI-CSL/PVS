@@ -430,6 +430,9 @@
 ;;                     and this may cause a space leak
 ;;    (pushnew by-decl (referred-by to-decl) :test #'eq)))
 
+(defmethod from-prelude? ((ctx context))
+  (from-prelude? (theory ctx)))
+
 (defmethod from-prelude? ((th module))
   (gethash (id th) *prelude*))
 
