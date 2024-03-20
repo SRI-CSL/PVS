@@ -541,7 +541,7 @@ looking in bindings and substs."
 			(place *set-type-subtype*)
 			(and *adt* (place *adt*))
 			))
-	     (plstr (when place
+	     (plstr (when (and place (integerp (svref place 0)))
 		      (format nil "(at line ~d, column ~d) "
 			(starting-row place) (starting-col place))))
 	     (termstr (protect-format-string
