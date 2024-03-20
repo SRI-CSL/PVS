@@ -60,10 +60,12 @@
 
 (defvar *current-jsonrpc-request* nil)
 
+;; (defvar *jsonrpc-log* nil)
+
 (defvar *json-rpc-id-ctr* 0)
 
 (defun process-jsonrpc (message conn)
-  ;;(format t "~%[process-jsonrpc] message = ~a" message)
+  ;; (push (format t "~%[req] ~a" message) *jsonrpc-log*)
   (handler-case
       (let* ((msg-str (pvs:bytestring-to-string message))
 	     (cl-json:*identifier-name-to-key* #'string-downcase)
@@ -259,7 +261,8 @@
   (assert (symbolp methodname) () "defrequest method must be a symbol")
   (assert (listp args) () "defrequest args must be a list")
   (assert (stringp docstring) () "defrequest docstring must be a string")
-  (let* ((pname (intern (format nil "jsonrpc-~a" methodname) :pvs-jsonrpc)))
+  (let* ((pname (intern (format nil "jsonrpc-~a" methodname) :pvs-jsonrpc))
+	 (result (gentemp)))
     `(progn
        (let ((req (assoc ',methodname *pvs-request-methods*)))
 	 ;;(format t "~%Adding ~a" ',methodname)
@@ -270,7 +273,9 @@
 		    *pvs-request-methods*))
        (defun ,pname ,args
 	 ,docstring
-	 ,@body))))
+	 (let ((,result ,@body))
+	   ;; (push (format nil "[sent] ~a" ,result) *jsonrpc-log*)
+	   ,result)))))
 
 (defun get-json-request-function (method)
   (let ((entry (assoc method *pvs-request-methods* :test #'string-equal)))

@@ -80,7 +80,6 @@
     ;; Try to write the file
     (with-open-file (out filename :direction :output :if-exists :supersede)
       (write content :stream out :escape nil)))
-  (push filename *fff*)
   (let* ((theories (pvs:typecheck-file filename force?))
 	 (jtheories (json-theories theories)))
     ;; (format t "~%Saving context for tc ~s" filename)
