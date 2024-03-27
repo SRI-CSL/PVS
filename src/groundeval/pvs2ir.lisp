@@ -9146,8 +9146,8 @@ successful."
     |EquivalenceClosure| |QuotientDefinition| |KernelDefinition| |QuotientKernelProperties|
     |QuotientSubDefinition| |QuotientExtensionProperties| |QuotientDistributive|
     |QuotientIteration| |PartialFunctionDefinitions| |PartialFunctionComposition|
-    |stdlang| |stdexc| |stdexc_tags| |stdcatch| |stdprog| |stdglobal| |stdmutable|
-    |stdmath| |stdstr| |stdpvs| |stdio| |stdfmap| |stdpvsio| |stdsys|))
+    |stdpvs| |stdexc| |stdexc_tags| |stdcatch| |stdprog| |stdglobal| |stdmutable|
+    |stdmath| |stdstr| |stdio| |stdpvsio| |stdsys|))
 
 (defparameter *pvs2c-prelude-theories*
   ;; Sorted alphabetically

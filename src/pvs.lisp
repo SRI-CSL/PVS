@@ -1448,9 +1448,9 @@ escapes here."
 				 nomsg? outside-call?)
   (with-pvs-file (filename) fileref
     (cond ((string= filename "prelude")
-	   (ldiff *prelude-theories* (member 'stdlang *prelude-theories* :key #'id)))
+	   (ldiff *prelude-theories* (member 'stdpvs *prelude-theories* :key #'id)))
 	  ((string= filename "pvsio_prelude")
-	   (member 'stdlang *prelude-theories* :key #'id))
+	   (member 'stdpvs *prelude-theories* :key #'id))
 	  (t
 	   (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
 	     (multiple-value-bind (theories restored? changed-theories)
@@ -2638,7 +2638,7 @@ Note that even proved ones get overwritten"
 				  (list theory)
 				  (remove-if #'generated-by
 				    (if (string= name "pvsio_prelude")
-					(member '|stdlang| *prelude-theories*
+					(member '|stdpvs| *prelude-theories*
 						:key #'id)
 					*prelude-theories*))))
 		    (typespec (formula-typespec unproved?))
