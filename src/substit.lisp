@@ -196,11 +196,14 @@ it is nil in the substituted binding")
       (cond ((null binding)
 	     (let* ((res (substit* resolutions alist))
 		    (ntype (type (car res)))
+		    (nacts (substit* actuals alist))
+		    (ndacts (substit* dactuals alist))
 		    (nexpr (lcopy expr
 			     'type ntype
-			     'actuals (substit* actuals alist)
-			     'dactuals (substit* dactuals alist)
-			     'resolutions res)))
+			     'actuals nacts
+			     'dactuals ndacts
+			     'resolutions res
+			     'free-variables 'unbound)))
 	       #+pvsdebug
 	       (assert (or (eq nexpr expr)
 			   ;; nexpr and expr could be tc-eq, if constructor-name-exprs
