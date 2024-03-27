@@ -560,7 +560,7 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 (defun formatargs (e type)
   (cond
    ((and (type-name? type)(equal (id type) '|Lisp|))
-    (let ((ptype (find-supertype (type-value (car (actuals type))))))
+    (let ((ptype (find-supertype (type-value (car (dactuals type))))))
       (cond ((and (listp e) (type-name? ptype) (equal (id ptype) '|list|))
 	     (list (loop for ei in e
 			 append (formatargs ei (type-value (car (actuals ptype)))))))
