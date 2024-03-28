@@ -279,7 +279,7 @@ END stdprog
 %% stdglobal.pvs
 %% Global variables
 
-stdglobal[T:TYPE+,t:T] : THEORY
+stdglobal[T:TYPE,t:T] : THEORY
 BEGIN
 
   Global : TYPE+ = Mutable[T]
