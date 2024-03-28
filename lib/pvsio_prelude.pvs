@@ -95,7 +95,7 @@ BEGIN
 
   %% May throw exception CantTranslateBack 
   pvs2str[T:TYPE](t:T) : MACRO string =
-    pvs2str_lisp(t)
+    pvs2str_lisp[T](t)
 
 END stdpvs
 
