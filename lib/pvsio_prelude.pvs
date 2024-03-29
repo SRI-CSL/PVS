@@ -871,8 +871,8 @@ BEGIN
 
   FileWriter[T:TYPE]  : TYPE = [[OStream,T]->void]
 
-  %fwrite_writer[T:TYPE] : JUDGEMENT
-  %  fwrite[T] HAS_TYPE FileWriter
+  fwrite_writer[T:TYPE] : JUDGEMENT
+    fwrite[T] HAS_TYPE FileWriter
 
   fread_lisp[T:TYPE+](f:IStream,typ:string) : T
 
@@ -884,8 +884,8 @@ BEGIN
 
   FileReader[T:TYPE+] : TYPE = [[IStream]->T]
 
-  %fread_reader[T:TYPE+] : JUDGEMENT
-  %  fread[T] HAS_TYPE FileReader
+  fread_reader[T:TYPE+] : JUDGEMENT
+    fread[T] HAS_TYPE FileReader
 
   % Iterates a function on a file n times
   fmap[T:TYPE+](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
