@@ -658,7 +658,8 @@ resolution with a macro matching the signature of the arguments."
     (let ((def (subst-mod-params (args2 (car (last (def-axiom
                                                      (declaration ex)))))
                                  (module-instance ex)
-                                 (module (declaration ex))))
+                                 (module (declaration ex))
+				 (declaration ex)))
           (orig (copy ex)))
       (change-class ex (class-of def))
       (copy-slots ex def)

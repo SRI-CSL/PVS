@@ -272,7 +272,13 @@
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (declare (ignore quiet?))
   (assert (or (not *in-checker*) (not (eq (context *ps*) *current-context*))))
-  (let* ((decl (declaration (name jdecl)))
+  (let* ((jname (cond ((name-expr? (name jdecl))
+		       (name jdecl))
+		      ((from-macro (name jdecl))
+		       (assert (name-expr? (from-macro (name jdecl))))
+		       (from-macro (name jdecl)))
+		      (t (error "Bad name-judgement ~a" jdecl))))
+	 (decl (declaration jname))
 	 (entry (assq decl (name-judgements-alist (current-judgements)))))
     (let ((sjdecl (when entry
 		    (find-if #'(lambda (jd)
@@ -2738,13 +2744,14 @@
   (assert (every #'judgement? (minimal-judgements (cdr elt))))
   #+pvsdebug
   (assert (every #'judgement? (generic-judgements (cdr elt))))
-  (if (fully-instantiated? (minimal-judgements (cdr elt)))
-      elt
-      (cons (car elt)
-	    (make-instance 'name-judgements
-	      :minimal-judgements nil
-	      :generic-judgements (append (minimal-judgements (cdr elt))
-					  (generic-judgements (cdr elt)))))))
+  (with-current-decl (car elt)
+    (if (fully-instantiated? (minimal-judgements (cdr elt)))
+	elt
+	(cons (car elt)
+	      (make-instance 'name-judgements
+		:minimal-judgements nil
+		:generic-judgements (append (minimal-judgements (cdr elt))
+					    (generic-judgements (cdr elt))))))))
     
 (defun set-prelude-application-judgements (alist)
   (let ((nalist (set-prelude-application-judgements* alist nil)))
