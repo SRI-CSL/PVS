@@ -331,10 +331,10 @@ It cannot be evaluated in a formal proof."
     (pvsio_val_gvar gvar)))
 
 ;; Apply "PVSio" function pvsio (string), which maybe fully qualified,
-;; to the list of arguments provided by pvs-objs
-(defun pvsio-apply (pvsio &rest pvs-objs)
+;; to the list of arguments, e.g., (pvsio-funcall "f0" arg1 arg2 ... argn0)
+(defun pvsio-funcall (pvsio &rest args)
   (let* ((pvsio-obj  (tc-expr pvsio))
-	 (lisp-pvsio (pvs2cl pvsio-obj)))
-    (if pvs-objs
-	(eval (mk-funcall lisp-pvsio pvs-objs))
-	(eval lisp-pvsio))))
+	 (lisp-pvsio (eval (pvs2cl pvsio-obj))))
+    (cond ((null args) lisp-pvsio) ;; PVSio function is a constant
+	  ((null (cdr args)) (funcall lisp-pvsio (car args))) ;; PVSio function has only one argument
+	  (t (funcall lisp-pvsio (eval `(pvs2cl_tuple ,@args))))))) ;; PVSio function has more than one argument
