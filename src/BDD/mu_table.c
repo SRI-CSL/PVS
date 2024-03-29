@@ -80,7 +80,7 @@ Term mu___mu_mk_equiv_term (Term fml1, Term fml2)
 Term mu___mu_mk_implies_term (Term fml1, Term fml2)
   {return (Term) mu_mk_implies_term (fml1, fml2);}
 
-char* mu___get_mu_bool_var_name (bdd_idx)
+char* mu___get_mu_bool_var_name (int bdd_idx)
   {return (char *) get_mu_bool_var_name (bdd_idx);}
 
 LIST mu___append_cont(void *p, LIST list)

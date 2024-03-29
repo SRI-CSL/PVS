@@ -283,13 +283,6 @@ It cannot be evaluated in a formal proof."
 			`(function ,(car (pvs2cl-constant typed-expr nil nil)))))))
 	      (pvs-message "~a is not typechecked, or declaration can't be found" string))))))
 
-;; how to filter overloaded ids: requesting a coerced expression
-
-(defmacro using (defs . body)
-  `((lambda ,(mapcar (lambda (x) (if (listp x) (car x) x)) defs)
-      ,@body)
-    ,@(mapcar (lambda (x) (if (listp x) (pvs-lisp-decl (cadr x)))) defs)))
-
 ;; Reports running-time errors in attachments
 (defmacro attach-error (&optional msg)
   "Reports an error in the execution of a semantic attachment."
@@ -336,3 +329,12 @@ It cannot be evaluated in a formal proof."
   "Returns the current value of a PVSio Global variable. It assumes the variable is defined."
   (let ((gvar (eval (pvs2cl (extra-get-expr name)))))
     (pvsio_val_gvar gvar)))
+
+;; Apply "PVSio" function pvsio (string), which maybe fully qualified,
+;; to the list of arguments provided by pvs-objs
+(defun pvsio-apply (pvsio &rest pvs-objs)
+  (let* ((pvsio-obj  (tc-expr pvsio))
+	 (lisp-pvsio (pvs2cl pvsio-obj)))
+    (if pvs-objs
+	(eval (mk-funcall lisp-pvsio pvs-objs))
+	(eval lisp-pvsio))))
