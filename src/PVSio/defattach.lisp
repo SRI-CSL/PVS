@@ -331,10 +331,24 @@ It cannot be evaluated in a formal proof."
     (pvsio_val_gvar gvar)))
 
 ;; Apply "PVSio" function pvsio (string), which maybe fully qualified,
-;; to the list of arguments, e.g., (pvsio-funcall "f0" arg1 arg2 ... argn0)
+;; to the list of arguments, e.g., (pvsio-funcall "f0" arg1 arg2 ... argn)
 (defun pvsio-funcall (pvsio &rest args)
-  (let* ((pvsio-obj  (tc-expr pvsio))
-	 (lisp-pvsio (eval (pvs2cl pvsio-obj))))
-    (cond ((null args) lisp-pvsio) ;; PVSio function is a constant
-	  ((null (cdr args)) (funcall lisp-pvsio (car args))) ;; PVSio function has only one argument
-	  (t (funcall lisp-pvsio (eval `(pvs2cl_tuple ,@args))))))) ;; PVSio function has more than one argument
+  (let* ((expr  (tc-expr pvsio))
+	 (nargs (if (funtype? (type expr)) (arity expr) 0)))
+    (if (/= nargs (length args))
+	(attach-error (format nil "Lisp function attached to ~a expects ~a arguments" pvsio nargs))
+	(let ((lisp-pvsio (eval (pvs2cl expr))))
+	  (if (name-expr? expr)
+	      (let* ((pvsiosymb  (pvsio-symbol expr nargs))
+		     (funsymb    (or pvsiosymb (pvs2cl-resolution2 expr))))
+		(if funsymb
+		    (eval (mk-funapp funsymb args))
+		    (attach-error (format nil "No lisp function attached to ~a found" pvsio))))
+	      (cond ((= nargs 0)
+		     ;; It is a constant
+		     lisp-pvsio) 
+		    ((= nargs 1)
+		     ;; It is a function of arity 1
+		     (funcall lisp-pvsio (car args)))
+		    ;; It is a function of more than one argument
+		    (t (funcall lisp-pvsio (eval `(pvs2cl_tuple ,@args))))))))))
