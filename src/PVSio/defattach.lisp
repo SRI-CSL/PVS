@@ -283,13 +283,6 @@ It cannot be evaluated in a formal proof."
 			`(function ,(car (pvs2cl-constant typed-expr nil nil)))))))
 	      (pvs-message "~a is not typechecked, or declaration can't be found" string))))))
 
-;; how to filter overloaded ids: requesting a coerced expression
-
-(defmacro using (defs . body)
-  `((lambda ,(mapcar (lambda (x) (if (listp x) (car x) x)) defs)
-      ,@body)
-    ,@(mapcar (lambda (x) (if (listp x) (pvs-lisp-decl (cadr x)))) defs)))
-
 ;; Reports running-time errors in attachments
 (defmacro attach-error (&optional msg)
   "Reports an error in the execution of a semantic attachment."
@@ -336,3 +329,26 @@ It cannot be evaluated in a formal proof."
   "Returns the current value of a PVSio Global variable. It assumes the variable is defined."
   (let ((gvar (eval (pvs2cl (extra-get-expr name)))))
     (pvsio_val_gvar gvar)))
+
+;; Apply "PVSio" function pvsio (string), which maybe fully qualified,
+;; to the list of arguments, e.g., (pvsio-funcall "f0" arg1 arg2 ... argn)
+(defun pvsio-funcall (pvsio &rest args)
+  (let* ((expr  (tc-expr pvsio))
+	 (nargs (if (funtype? (type expr)) (arity expr) 0)))
+    (if (/= nargs (length args))
+	(attach-error (format nil "Lisp function attached to ~a expects ~a arguments" pvsio nargs))
+	(let ((lisp-pvsio (eval (pvs2cl expr))))
+	  (if (name-expr? expr)
+	      (let* ((pvsiosymb  (pvsio-symbol expr nargs))
+		     (funsymb    (or pvsiosymb (pvs2cl-resolution2 expr))))
+		(if funsymb
+		    (eval (mk-funapp funsymb args))
+		    (attach-error (format nil "No lisp function attached to ~a found" pvsio))))
+	      (cond ((= nargs 0)
+		     ;; It is a constant
+		     lisp-pvsio) 
+		    ((= nargs 1)
+		     ;; It is a function of arity 1
+		     (funcall lisp-pvsio (car args)))
+		    ;; It is a function of more than one argument
+		    (t (funcall lisp-pvsio (eval `(pvs2cl_tuple ,@args))))))))))

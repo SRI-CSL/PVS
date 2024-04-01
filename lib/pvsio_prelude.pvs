@@ -1,9 +1,12 @@
 % PVSio support theories
 
-%% stdlang 
+%% stdpvs 
 %% Basic language definitions
 
-stdlang : THEORY
+%% stdlang.pvs
+%% In PVS-8.0, stdlang theory was integrated into stdpvs
+
+stdpvs : THEORY
 BEGIN
 
   void : TYPE = bool
@@ -20,16 +23,87 @@ BEGIN
 
   Dummy : TYPE  = bool
   dummy : MACRO Dummy = FALSE
+  dummy_fun[T:TYPE](t:T): Dummy = dummy
 
-  Lisp_ : TYPE+  %% Used for untyped lisp attachments
+  prog[T:TYPE](s:void,t:T): T = t
 
-END stdlang
+%% Throw a PVSio error with a message provided by the user
+  error[T:TYPE+](mssg:string):T 
+
+%% Exit the current evaluation and return to PVSio
+  exit[T:TYPE+] : T
+
+%% last_iteration breaks a loop with a given value
+  last_iteration[T:TYPE](t:T):T
+
+  return[T:TYPE](t:T):T 
+
+%% Loops
+  loop_lift[T:TYPE+](f:[Dummy->void]): T
+
+  loop[T:TYPE+](s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
+
+%% While loops
+  break : MACRO void = last_iteration(skip)
+
+  while(b:bool,s:void) : MACRO void =
+    loop(if b then s else break endif)
+
+  for(si:void,b:bool,sinc,s:void): MACRO void =
+    si & while(b,s & sinc)
+
+%% Formatting text
+  format[T:TYPE](s:string,t:T):string
+
+%% Assert
+  assert(b:bool,str:string):void =
+    try(b,error[void](format("PVSio Assertion Failure: ~a",str)) & fail)
+
+%% Used for untyped lisp attachments
+  Lisp_ : TYPE+  
+
+  Lisp[T:TYPE] : TYPE+  %% Used for PVS-typed lisp attachments
+
+  to_lisp[T:TYPE](t:T) : Lisp  % To PVS-typed lisp
+  
+  to_lisp_[T:TYPE](t:T) : Lisp_ % To untyped lisp
+
+  list2listlisp[T:TYPE](l:list[T]) : list[Lisp[T]] =
+    map(LAMBDA(t:T): to_lisp(t))(l)
+
+  ;>>[T:TYPE] : [list[T]->list[Lisp[T]]] = list2listlisp
+
+  {||}[T:TYPE](t:T) : Lisp = to_lisp(t)
+
+  unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
+
+  % Evaluate t, returning its value. The cleanup code will be evaluated if control leaves t.
+  unwind_protect[T:TYPE+](t:T,cleanup:void) : MACRO T =
+    unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
+
+  type_of_domain_lisp[T:TYPE](f:[T->void]): string
+
+  %% Return string representing the type of t (t may be an uninterpreted constant)
+  typeof[T:TYPE](t:T) : MACRO string =
+    type_of_domain_lisp[T](dummy_fun)
+
+  %% Returns a PVS object represented by a string
+  str2pvs[T:TYPE+](s:string):T 
+
+  %% Returns string representing a PVS object
+  pvs2str_lisp[T:TYPE](t:T) : string
+
+  %% May throw exception CantTranslateBack 
+  pvs2str[T:TYPE](t:T) : MACRO string =
+    pvs2str_lisp[T](t)
+
+END stdpvs
 
 
 %% stdexc.pvs
 %% Definition of exception type
 
-stdexc[T:TYPE+] : THEORY
+stdexc[T:TYPE] : THEORY
 BEGIN
 
   ExceptionTag : TYPE = string
@@ -82,7 +156,7 @@ END stdexc_tags
 %% stdcatch.pvs
 %% Definition of catch and throw 
 
-stdcatch[ResultType,ExcTagType:TYPE+] : THEORY
+stdcatch[ResultType:TYPE+,ExcTagType:TYPE] : THEORY
 BEGIN
 
   catch_lift(tag:ExceptionTag[ExcTagType],
@@ -127,18 +201,10 @@ BEGIN
 END stdcatch
 
 %% stdprog.pvs
-%% Imperative aspects such as errors, exceptions, mutables and loops
+%% Imperative aspects such as exceptions and mutables 
 
 stdprog[T:TYPE+] : THEORY
 BEGIN
-
-  prog(s:void,t:T): T = t
-
-  % Throw a PVSio error with a message provided by the user
-  error(mssg:string):T 
-
-  % Exit the current evaluation and return to PVSio
-  exit : T
 
   throw(tag:ExceptionTag[void]): MACRO T = throw[T,void](tag,fail)
 
@@ -208,47 +274,15 @@ BEGIN
   % Global uninitilized variables
   Global : TYPE+ = Mutable
 
-  % Loops
-  loop_lift(f:[Dummy->void]): T
-
-  loop(s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
-
-  % last_iteration breaks a loop with a given value
-  last_iteration(t:T):T
-
-  return(t:T):T 
-
-  % Formatting text
-  format(s:string,t:T):string
-
-  Lisp : TYPE+  %% Used for PVS-typed lisp attachments
-
-  to_lisp(t:T) : Lisp  % To PVS-typed lisp
-  
-  to_lisp_(t:T) : Lisp_ % To untyped lisp
-
-  list2listlisp(l:list[T]) : list[Lisp[T]] =
-    map(LAMBDA(t:T): to_lisp(t))(l)
-
-  ;>> : [list[T]->list[Lisp[T]]] = list2listlisp
-
-  {||}(t:T) : Lisp = to_lisp(t)
-
-  unwind_protect_lift(ft:[Dummy->T],fcu:[Dummy->void]) : T
-
-  % Evaluate t, returning its value. The cleanup code will be evaluated if control leaves t.
-  unwind_protect(t:T,cleanup:void) : MACRO T =
-    unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
-
 END stdprog
 
 %% stdglobal.pvs
 %% Global variables
 
-stdglobal[T:TYPE+,t:T] : THEORY
+stdglobal[T:TYPE,t:T] : THEORY
 BEGIN
 
-  Global  : TYPE+ = Mutable[T]
+  Global : TYPE+ = Mutable[T]
 
 END stdglobal
 
@@ -548,50 +582,11 @@ BEGIN
 
  END stdstr
 
-%% stdpvs.pvs
-%% PVS printing and parsing
-
-stdpvs[T:TYPE+] : THEORY
-BEGIN
-
-  type_of_domain_lisp(f:[T->void]): string
-
-  dummy_fun(t:T) :void = skip
-
-  %% Return string representing the type of t (t may be an uninterpreted constant)
-  typeof(t:T) : MACRO string =
-    type_of_domain_lisp(dummy_fun)
-
-  %% Returns a PVS object represented by a string
-  str2pvs(s:string):T 
-
-  %% Returns string representing a PVS object
-  pvs2str_lisp(t:T) : string
-
-  %% May throw exception CantTranslateBack 
-  pvs2str(t:T) : MACRO string =
-    pvs2str_lisp(t)
-
-END stdpvs
-
 %% stdio.pvs
 %% Input/output operations
 
 stdio : THEORY
 BEGIN
-
-%% Assert
-  assert(b:bool,str:string):void =
-    try(b,error[void]("PVSio Assertion Failure: "+str) & fail)
-
-%% While loops
-  break : MACRO void = last_iteration(skip)
-
-  while(b:bool,s:void) : MACRO void =
-    loop(if b then s else break endif)
-
-  for(si:void,b:bool,sinc,s:void): MACRO void =
-    si & while(b,s&sinc)
 
 %% Print, Println 
 
@@ -868,11 +863,16 @@ BEGIN
 
   % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
   fwrite_lisp(f:OStream,typ:string,t:Lisp_) : void
-  
+
   % Writes a PVS object to an output stream, so that it can be retrieved afterwards by fread
-  fwrite[T:TYPE+](f:OStream,t:T) : MACRO void =
+  fwrite[T:TYPE](f:OStream,t:T) : MACRO void =
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
     fwrite_lisp(f,the_type,to_lisp_[T](t))
+
+  FileWriter[T:TYPE]  : TYPE = [[OStream,T]->void]
+
+  fwrite_writer[T:TYPE] : JUDGEMENT
+    fwrite[T] HAS_TYPE FileWriter
 
   fread_lisp[T:TYPE+](f:IStream,typ:string) : T
 
@@ -882,16 +882,13 @@ BEGIN
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
       fread_lisp(f,the_type)
 
-END stdio
+  FileReader[T:TYPE+] : TYPE = [[IStream]->T]
 
-%% stdfmap.pvs
-%% Iterations on files and format printing
-
-stdfmap[T:TYPE+] : THEORY
-BEGIN
+  fread_reader[T:TYPE+] : JUDGEMENT
+    fread[T] HAS_TYPE FileReader
 
   % Iterates a function on a file n times
-  fmap(f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
+  fmap[T:TYPE+](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
     RECURSIVE T =
     IF fopen?(f) THEN
       IF n=0 or eof?(f) THEN t
@@ -905,29 +902,32 @@ BEGIN
     MEASURE n
 
   % Iterates a function on a file until the end. Closes file when done (no matter what)
-  fmap(f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
+  fmap[T:TYPE+](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread,t,st,l),fclose(f))
 
   % Iterates a function on a file line by line until the end. Closes file when done (no matter what)
-  fmap_line(f:IStream,t:T,st:[[string,T]->T]):T =
+  fmap_line[T:TYPE+](f:IStream,t:T,st:[[string,T]->T]):T =
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread_line,t,st,l),fclose(f))
 
   % Formatting text to a file
-  printf(s:string,t:T): MACRO void =
+  printf[T:TYPE](s:string,t:T): MACRO void =
     print(format(s,t))
 
-  fprintf(f:OStream,s:string,t:T): MACRO void =
+  fprintf[T:TYPE](f:OStream,s:string,t:T): MACRO void =
     fprint(f,format(s,t))
 
-END stdfmap
+END stdio
+
+%% stdfmap.pvs
+%% In PVS-8.0, stdfmap was integrated into stdio
 
 %% stdindent.pvs
-%% In PVS-8.0, this theory was moved to NASALib/pvsio_utils
+%% In PVS-8.0, stdindent was moved to NASALib/pvsio_utils
 
 %% stdtokenizer.pvs
-%% In PVS-8.0, this theory was moved to NASALib/pvsio_utils
+%% In PVS-8.0, stdindent theory was moved to NASALib/pvsio_utils
 
 %% stdpvsio.pvs
 %% PVSio interface

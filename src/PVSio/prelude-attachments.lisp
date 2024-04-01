@@ -19,6 +19,77 @@
 (decimals:define-decimal-formatter c (:round-magnitude -6) (:show-trailing-zeros t))
 (decimals:define-decimal-formatter d (:round-magnitude -6))
 
+(defun stdpvs-attachments ()
+
+(eval '(attachments |stdpvs|
+
+(defattach |error| (mssg)
+  "Signals the error message MSSG to the ground evaluator"
+  (error 'pvsio-error :message mssg))
+
+(defattach |exit| ()
+  "Exits the current evaluation and returns to the ground evaluator"
+  (error 'pvsio-exit))
+
+(defattach |last_iteration| (e)
+  "Breaks a loop with the value E"
+  (let ((the-type (domain the-pvs-type_)))
+    (error 'pvsio-break :val e :type the-type)))
+
+(defattach |return| (e)
+  "Returns E as the value of a function call"
+  (let ((the-type (domain the-pvs-type_)))
+    (error 'pvsio-return :val e :type the-type)))
+
+(defattach |loop_lift| (f)
+   "Applies F in an infinite loop"
+   (handler-case 
+       (loop (pvs-funcall f nil))
+     (pvsio-break
+      (condition)
+      (val condition))))
+
+(defattach |format| (s e)
+   "Formats expression E using Common Lisp format string S"
+   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
+     (apply #'format (cons nil (cons s (formatargs e the-type))))))
+
+(defattach |to_lisp| (pvs)
+  "Translates PVS object to Lisp"
+  pvs)
+
+(defattach |to_lisp_| (pvs)
+  "Translates PVS object to Lisp"
+  pvs)
+
+(defattach |unwind_protect_lift| (ft fcu)
+  "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
+  (unwind-protect
+      (pvs-funcall ft nil)
+    (pvs-funcall fcu nil)))
+
+(defattach |type_of_domain_lisp| (e)
+  (declare (ignore e))		      
+  "Returns the string value of the type of E"
+  (let* ((the-domain (domain (domain the-pvs-type_))))
+    (format nil "~a" (or (print-type the-domain) the-domain))))
+
+(defattach |str2pvs| (s)
+  "Translates string S to PVS format"
+  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
+
+(defattach |pvs2str_lisp| (e)
+  "Translates PVS expresion E to a string"
+  (let ((the-domain (domain the-pvs-type_)))
+    (handler-case 
+	(str (cl2pvs e (pc-typecheck the-domain)))
+      (pvseval-error
+       (condition)
+       (throw-pvsio-exc "CantTranslateBack"
+			(format nil "~a" condition))))))
+
+)))
+
 (defun replace-string (string part replacement &key (test #'char=))
   "Returns a new string in which all the occurences of the part 
 is replaced with replacement."
@@ -489,7 +560,7 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 (defun formatargs (e type)
   (cond
    ((and (type-name? type)(equal (id type) '|Lisp|))
-    (let ((ptype (find-supertype (type-value (car (actuals type))))))
+    (let ((ptype (find-supertype (type-value (car (dactuals type))))))
       (cond ((and (listp e) (type-name? ptype) (equal (id ptype) '|list|))
 	     (list (loop for ei in e
 			 append (formatargs ei (type-value (car (actuals ptype)))))))
@@ -507,14 +578,6 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 (defun stdprog-attachments ()
 
 (eval '(attachments |stdprog|
-
-(defattach |exit| ()
-  "Exits the current evaluation and returns to the ground evaluator"
-  (error 'pvsio-exit))
-
-(defattach |error| (mssg)
-  "Signals the error message MSSG to the ground evaluator"
-  (error 'pvsio-error :message mssg))
 
 (defattach |new| ()
   "Creates a new mutable variable with an undefined value"
@@ -548,43 +611,6 @@ In either case, if the second value is 0, the rational has a finite decimal repr
   "Pops value of the mutable variable and fails silently when mutable variable is undefined"
   (pvsio_pop_gvar gvar))
  
-(defattach |loop_lift| (f)
-   "Applies F in an infinite loop"
-   (handler-case 
-       (loop (pvs-funcall f nil))
-     (pvsio-break
-      (condition)
-      (val condition))))
-
-(defattach |last_iteration| (e)
-  "Breaks a loop with the value E"
-  (let ((the-type (domain the-pvs-type_)))
-    (error 'pvsio-break :val e :type the-type)))
-
-(defattach |return| (e)
-  "Returns E as the value of a function call"
-  (let ((the-type (domain the-pvs-type_)))
-    (error 'pvsio-return :val e :type the-type)))
-
-(defattach |to_lisp| (pvs)
-  "Translates PVS object to Lisp"
-  pvs)
-
-(defattach |to_lisp_| (pvs)
-  "Translates PVS object to Lisp"
-  pvs)
-
-(defattach |format| (s e)
-   "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
-     (apply #'format (cons nil (cons s (formatargs e the-type))))))
-
-(defattach |unwind_protect_lift| (ft fcu)
-  "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
-  (unwind-protect
-      (pvs-funcall ft nil)
-    (pvs-funcall fcu nil)))
-
 )))
 
 (define-condition pvsio-exception (simple-error)
@@ -708,35 +734,9 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 )))
 
-(defun stdpvs-attachments ()
-
-(eval '(attachments |stdpvs|
-
-(defattach |type_of_domain_lisp| (e)
-  (declare (ignore e))		      
-  "Returns the string value of the type of E"
-  (let* ((the-domain (domain (domain the-pvs-type_))))
-    (format nil "~a" (or (print-type the-domain) the-domain))))
-
-(defattach |str2pvs| (s)
-  "Translates string S to PVS format"
-  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
-
-(defattach |pvs2str_lisp| (e)
-  "Translates PVS expresion E to a string"
-  (let ((the-domain (domain the-pvs-type_)))
-    (handler-case 
-	(str (cl2pvs e (pc-typecheck the-domain)))
-      (pvseval-error
-       (condition)
-       (throw-pvsio-exc "CantTranslateBack"
-			(format nil "~a" condition))))))
-
-)))
-
 (defun initialize-prelude-attachments ()
-  (stdstr-attachments)
   (stdpvs-attachments)
+  (stdstr-attachments)
   (stdio-attachments)
   (stdmath-attachments)
   (stdprog-attachments)

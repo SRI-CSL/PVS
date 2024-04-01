@@ -658,7 +658,8 @@ resolution with a macro matching the signature of the arguments."
     (let ((def (subst-mod-params (args2 (car (last (def-axiom
                                                      (declaration ex)))))
                                  (module-instance ex)
-                                 (module (declaration ex))))
+                                 (module (declaration ex))
+				 (declaration ex)))
           (orig (copy ex)))
       (change-class ex (class-of def))
       (copy-slots ex def)
@@ -5530,7 +5531,7 @@ type of the lhs."
             (let* ((mi (mk-modname (id (current-theory)) nil nil nil (mk-dactuals dfmls)
                                    (current-declaration)))
                    (nex (subst-mod-params ex mi (current-theory) adecl)))
-	      (break "maybe-instantiate-from-decl-formals*")
+	      ;;;; (break "maybe-instantiate-from-decl-formals*") CM 2024-03-27
               (when (fully-instantiated? nex)
                 (setf (resolutions ex) (resolutions nex)
                       (actuals ex) (actuals nex)

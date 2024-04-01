@@ -440,16 +440,17 @@ to the associated declaration."
       (declare (ignore containing-terms)) ; might be useful later
       (json-term term))))
 
+(defun pvs2alist-proof (proof)
+  `(("id" . ,(string (pvs:id proof)))
+    ("description" . ,(pvs:description proof))
+    ("script" . ,(pvs:script proof))
+    ("status" . ,(pvs:status proof))))
+
 (defrequest all-proofs-of-formula (form-ref)
   "Returns all the proofs associated with the given formula."
   (let* ((fdecl (pvs:get-formula-decl form-ref))
 	 (proofs (pvs:proofs fdecl)))
-    (mapcar #'(lambda (proof)
-		`(("id" . ,(string (pvs:id proof)))
-		  ("description" . ,(pvs:description proof))
-		  ("script" . ,(pvs:script proof))
-		  ("status" . ,(pvs:status proof))))
-      proofs)))
+    (mapcar #'pvs-jsonrpc::pvs2alist-proof proofs)))
 
 (defrequest delete-proof-of-formula (form-ref proof-id)
   "Deletes the proof-id of the formula."
@@ -463,7 +464,8 @@ to the associated declaration."
       (let ((nproofs (remove proof proofs)))
 	(when (eq proof (pvs:default-proof fdecl))
 	  (setf (pvs:default-proof fdecl) (car (last nproofs)))) ; could be nil
-	(setf (pvs:proofs fdecl) nproofs)))))
+	(mapcar #'pvs-jsonrpc::pvs2alist-proof
+		(setf (pvs:proofs fdecl) nproofs))))))
 
 (defrequest mark-proof-as-default (form-ref proof-id)
   "Mark the proof with id PROOF-ID as the default proof for the formula identified by FORM-REF."
