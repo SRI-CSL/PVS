@@ -949,6 +949,7 @@
    #:*pvs-directories*
    #:*pvs-emacs-interface*
    #:*pvs-error-hook*
+   #:*pvs-library-path*
    #:*pvs-lisp-process*
    #:*pvs-message-hook*
    #:*pvs-path*
@@ -1034,6 +1035,7 @@
    #:current-declarations-hash
    #:current-goal
    #:current-rule
+   #:current-session
    #:current-theory
    #:current-theory-name
    #:current-using-hash
@@ -1219,6 +1221,7 @@
    #:projection-application
    #:proofs
    #:proofstate
+   #:proofstate?
    #:proofstate-num-subgoals
    #:propax
    #:propositional-application
@@ -1293,6 +1296,7 @@
    #:save-proofs
    #:saved-context
    #:script
+   #:session-output
    #:set-dependent-formals
    #:set-lambda-dep-types
    #:set-pvs-tmp-file
@@ -1359,6 +1363,7 @@
    #:typecheck-uniquely
    #:typed-declaration
    #:types
+   #:unique-ps-id
    #:unparse
    #:untypecheck-theory
    #:update-context
@@ -1370,6 +1375,7 @@
    #:visible?
    #:whereis-declaration-used
    #:wish-current-rule
+   #:wish-parent-proofstate
    #:with-context
    #:with-pvs-file
    #:with-workspace
@@ -1379,6 +1385,7 @@
    #:write-pvs-version-file
    #:write-json-to-temp-file
    #:write-to-temp-file
+   #:x-subgoals
    #:xmlrpc-output-proofstate
    ;;sb-runtime:*abs-syn-package*
    ))
