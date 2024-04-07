@@ -1669,6 +1669,7 @@
 	     (nfact (mk-actual nfdecl)))
 	(assert (formal-decl? nfdecl))
 	(setf (associated-decl nfdecl) decl)
+	(setf (module nfdecl) (current-theory))
 	(subst-mod-params-formal-decls
 	 (cdr fdecls)
 	 decl
@@ -1726,15 +1727,30 @@
 
 (defmethod change-mapped-class ((ndecl formula-decl))
   ;; mapped-axiom-tcc => mapped-axiom
+  ;; existence axioms => if possibly-nonempty then TCC else stays axiom
   ;; axiom => mapped-axiom-tcc
   ;; tcc => mapped-tcc-to-axiom
   ;; formula-decl => mapped-formula-decl
   (cond ((mapped-axiom-tcc? ndecl)
 	 (change-class ndecl 'mapped-axiom :spelling 'AXIOM :kind nil))
+	((let ((netype (nonempty-formula-type (closed-definition ndecl))))
+	   (when (and netype
+		      ;; Formula has the form EXISTS (t: netype): true
+		      (eq (spelling (generated-by ndecl)) 'AXIOM)
+		      (not (possibly-empty-type? netype)))
+	     t))) ;; No need to change anything
 	((axiom? ndecl)
 	 ;; (assert (axiom? (generated-by ndecl)))
-	 (change-class ndecl 'mapped-axiom-tcc
-	   :spelling 'OBLIGATION :kind 'tcc :generating-axiom (generated-by ndecl)))
+	 (let* ((expr (definition (generated-by ndecl)))
+		(root (tcc-root-name (definition ndecl)))
+		(origin (make-instance 'tcc-origin
+			  :root (or root (break "No root?"))
+			  :kind 'mapped-axiom
+			  :expr (str (raise-actuals expr t :all) :char-width nil)
+			  :type "boolean")))
+	   (change-class ndecl 'mapped-axiom-tcc
+	     :spelling 'OBLIGATION :kind 'tcc :generating-axiom (generated-by ndecl)
+	     :origin origin)))
 	((tcc? ndecl)
 	 (change-class ndecl 'mapped-tcc-to-axiom :spelling 'AXIOM :kind nil))
 	(t (change-class ndecl 'mapped-formula-decl :spelling 'AXIOM :kind nil))))
