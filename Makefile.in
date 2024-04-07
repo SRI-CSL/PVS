@@ -81,6 +81,7 @@ endif
 ifneq ($(SBCL),)
 SBCL_VERSION = $(shell $(SBCL) --version)
 SBCL_SPACE_SIZE = 6000 # 6Gb, default is 1.8Gb
+SBCL_STACK_SIZE = 8 # 8Mb, default is 2Mb
 sbcl-rt = $(PVSPATH)bin/$(PLATFORM)/runtime/pvs-sbclisp
 pvs-images += $(HOME)/.sbclrc $(sbcl-rt)
 fasldirs += $(shell $(SBCL) --noinform \
@@ -635,6 +636,7 @@ ifneq ($(SBCL),)
 $(sbcl-rt) : $(PVSPATH)pvs.asd $(image-deps)
 	@-$(MKDIR_P) bin/$(PLATFORM)/runtime
 	$(SBCL) --dynamic-space-size $(SBCL_SPACE_SIZE) \
+	        --control-stack-size $(SBCL_STACK_SIZE) \
 		--eval "(require :asdf)" \
 		--eval "(ql:quickload (list :babel :clack :websocket-driver :hunchentoot :anaphora :lparallel :cl-json :cffi) :silent t)" \
 		--eval "(push *default-pathname-defaults* asdf:*central-registry*)" \
