@@ -353,7 +353,11 @@ nil."
 			   ((typep workspace '(or string pathname))
 			    (list (get-workspace-session workspace)))
 			   ((null workspace)
-			    (list *workspace-session*)))))
+			    (list *workspace-session*))))
+	 (ws-closure (if (eq workspaces *all-workspace-sessions*)
+			 workspaces
+			 ;;(close-workspace-dependencies workspaces)
+			 workspaces)))
     (dolist (ws workspaces)
       (cond ((uiop:directory-exists-p (path ws))
 	     (clrhash (pvs-files ws))
@@ -374,19 +378,63 @@ nil."
 	       (pvs-message "Directory ~a has disappeared" (path ws)))))
     t))
 
-;; (defvar *workspaces*)
+(defvar *workspace-deps*)
 
-;; (defun workspace-depends-on (workspace)
-;;   (let ((workspace-deps nil))
-;;     (maphash #'(lambda (id th)
-;; 		 (dolist (imp (all-usings th))
-;; 		   (let* ((cp (context-path (car imp)))
-;; 			  (ws (find-workspace cp)))
-;; 		     (assert (or ws (from-prelude? th))
-;; 		     (unless (eq ws workspace)
-;; 		       (pushnew ws workspace-deps)))))
-;; 	     (pvs-theories workspace))
-;;     workspace-deps))
+(defun workspace-depends-on (workspace)
+  (let ((*workspace-deps* nil))
+    (workspace-depends-on* workspace)
+    *workspace-deps*))
+
+(defun workspace-depends-on* (workspace)
+  (maphash #'(lambda (id th)
+	       (unless (from-prelude? th)
+		 (dolist (imp (all-usings th))
+		   (unless (from-prelude? (car imp))
+		     (let* ((cp (context-path (car imp)))
+			    (ws (get-workspace-session cp)))
+		       (assert ws)
+		       (unless (or (eq ws workspace)
+				   (memq ws *workspace-deps*))
+			 (push ws *workspace-deps*)
+			 (workspace-depends-on* ws)))))))
+	   (pvs-theories workspace)))
+
+(defun workspace-dependencies-alist ()
+  (let ((deps-alist nil))
+    (dolist (ws *all-workspace-sessions*)
+      (let ((ws-deps (workspace-dependencies ws)))
+	(push ws-deps deps-alist)))
+    deps-alist))
+
+(defun workspace-dependencies (workspace)
+  (let ((deps nil))
+    (maphash #'(lambda (id th)
+		 (unless (from-prelude? th)
+		   (dolist (imp-th (immediate-importings th))
+		     (unless (from-prelude? imp-th)
+		       (let* ((cp (context-path imp-th))
+			      (ws (get-workspace-session cp)))
+			 (assert ws)
+			 (unless (eq ws workspace)
+			   (pushnew ws deps)))))))
+	     (pvs-theories workspace))
+    (cons workspace deps)))
+
+;; workspaces is the list of workspaces to be cleared; need to also clear
+;; any workspace that has a theory referencing it.
+(defun workspace-upward-closure (workspaces)
+  ;; ws-alist is s.t. the cdr are all the workspaces directly referenced
+  ;; by any theory in the first workspace
+  (let ((ws-alist (workspace-dependencies-alist)))
+    (workspace-upward-closure* workspaces ws-alist nil)))
+
+(defun workspace-upward-closure* (workspaces ws-alist closure)
+  (let ((imm-workspaces (remove-if-not #'(lambda (ws-entry)
+					   (some #'(lambda (ws) (memq ws (cdr ws-entry)))
+						 workspaces))
+			  ws-alist)))
+    (break)))
+				  
 
 (defun intialize-workspace-session (ws)
   (with-workspace ws
@@ -1190,7 +1238,9 @@ escapes here."
 	 ;; Note that adt-generated theories are not importings
 	 )
     (dolist (ith imps)
-      (let* ((ith-nolib (get-theory (id ith)))
+      (let* ((ith-nolib (if (resolution ith)
+			    (declaration ith)
+			    (get-theory (id ith))))
 	     (lib (unless ith-nolib
 		    (or (library ith)
 			(and (lib-datatype-or-theory? theory)
@@ -3288,7 +3338,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 (defun read-preserving-comments-as-strings (stream)
   (let ((*readtable* (copy-readtable)))
     (set-macro-character #\; #'pvs-lisp-comment-reader t)
-    (read stream t nil t)))
+    (read stream t nil nil)))
 
 (defun pvs-lisp-comment-reader (stream char)
   (pvs-lisp-read-comment stream (list char)))
@@ -3297,7 +3347,7 @@ If formname is nil, then formref should resolve to a unique formula name."
   (let ((ch (read-char stream nil 'eof t)))
     (if (char= ch #\Newline)
 	(cons (coerce (nreverse chars) 'string)
-	      (read-preserving-comments-as-strings stream))
+	      (pvs-lisp-read-comment stream nil))
 	(pvs-lisp-read-comment stream (cons ch chars)))))
 
 (defun remove-leading-comments (sexpr)
