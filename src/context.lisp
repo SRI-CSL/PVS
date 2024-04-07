@@ -2387,13 +2387,13 @@ Note that the lists might not be the same length."
 	    (cons (cadr formula-proof)
 		  (mapcar #'convert-proof-if-needed** (cddr formula-proof))))
       (let* ((script (if (consp (cadr formula-proof))
-		     (cddr formula-proof)
-		     (cdr formula-proof)))
+			 (cddr formula-proof)
+			 (cdr formula-proof)))
 	     (prinfo (make-proof-info
 		      (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
 			  #-allegro nil
 			  (convert-proof-form-to-lowercase script)
-			  script)
+			  (upcase-symbols script))
 		      (makesym "~a-1" (car formula-proof)))))
 	(cons (car formula-proof)
 	      (cons 0 (list (sexp prinfo)))))))
