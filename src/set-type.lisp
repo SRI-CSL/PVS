@@ -5531,7 +5531,6 @@ type of the lhs."
             (let* ((mi (mk-modname (id (current-theory)) nil nil nil (mk-dactuals dfmls)
                                    (current-declaration)))
                    (nex (subst-mod-params ex mi (current-theory) adecl)))
-	      ;;;; (break "maybe-instantiate-from-decl-formals*") CM 2024-03-27
               (when (fully-instantiated? nex)
                 (setf (resolutions ex) (resolutions nex)
                       (actuals ex) (actuals nex)
