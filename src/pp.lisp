@@ -1664,7 +1664,13 @@ then uses unpindent* to add the indent to each line"
 	(t (call-next-method))))
 
 (defmethod pp* ((ex rational-expr))
-  (write (number ex)))
+  (let ((nbr (number ex)))
+    (if *in-evaluator*
+	(let* ((precision  (pvsio_get_gvar_by_name "stdmath.PRECISION"))
+	       (pp-rat     (pvsio_get_gvar_by_name "stdmath.PP_RATIONALS"))
+	       (rat-prec   (if pprat precision -1)))
+	  (write (pp-rat nbr rat-prec)))
+	(write nbr))))
 
 (defmethod pp* ((ex number-expr-with-radix))
   (assert (integerp (radix ex)))
