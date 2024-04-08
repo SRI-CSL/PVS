@@ -809,7 +809,7 @@
   (let ((string (if (pathnamep x)
 		 (namestring x)
 		 x)))
-    (if (find #\? string)
+    (if (or (find #\? string) #+sbcl (find #\* string))
 	(let ((in-escape? nil))
 	  (with-output-to-string (str)
 	    (loop for ch across string
@@ -819,6 +819,11 @@
 				(setq in-escape? nil)
 				(write-char #\\ str))
 			    (write-char #\? str))
+		       #+sbcl
+		       (#\* (if in-escape?
+				(setq in-escape? nil)
+				(write-char #\\ str))
+			    (write-char #\* str))
 		       (t   (when in-escape? (setq in-escape? nil))
 			    (write-char ch str))))))
 	string)))

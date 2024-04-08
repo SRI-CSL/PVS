@@ -1,13 +1,61 @@
-(sum
- (sum_TCC1 0
-  (sum_TCC1-2 "" 3581699332 ("" (skosimp) (("" (assert) nil nil)) nil)
-   nil shostak)
-  (sum_TCC1-1 nil 3581698126 ("" (subtype-tcc) nil nil)
-   ((int_minus_int_is_int application-judgement "int" integers nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil))
-   nil))
- (sum_TCC2 0
-  (sum_TCC2-1 nil 3581698126 ("" (termination-tcc) nil nil)
-   ((id const-decl "(bijective?[T, T])" identity nil)) nil)))
+(|sum|
+ (|sum_TCC1| 0
+  ((|sum_TCC1-2| "" 3581699332 ("" (SKOSIMP) (("" (ASSERT) NIL NIL)) NIL) NIL
+    SHOSTAK)
+   NIL NIL NIL NIL NIL (|sum| SUBTYPE "(number_fields.-)(sum.n, 1)" "nat")))
+ (|sum_TCC2| 0
+  ((|sum_TCC2-1| |nil| 3581698126 ("" (TERMINATION-TCC) NIL NIL)
+    ((|id| |const-decl| "(bijective?[T, T])" |identity| NIL)) NIL)
+   NIL NIL NIL NIL NIL
+   (|sum| TERMINATION "sum.sum((number_fields.-)(sum.n, 1))" "NIL")))
+ (|closed_form| 0
+  (|closed_form-0| "" 3918094354
+   ("" (INDUCT "n")
+    (("1" (GRIND) NIL NIL)
+     ("2" (SKEEP) (("2" (EXPAND "sum" +) (("2" (ASSERT) NIL NIL)) NIL)) NIL))
+    NIL)
+   NIL SHOSTAK)
+  (|closed_form-1| NIL 3918094300 ("" (POSTPONE) NIL NIL)
+   ((|posrat_div_posrat_is_posrat| APPLICATION-JUDGEMENT "posrat" |rationals|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|nnint_times_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|nnrat_div_posrat_is_nnrat| APPLICATION-JUDGEMENT "nonneg_rat" |rationals|
+     NIL)
+    (|times_u16_u16| APPLICATION-JUDGEMENT "uint32" |integertypes| NIL)
+    (|times_i16_u16| APPLICATION-JUDGEMENT "int32" |integertypes| NIL)
+    (|even_times_int_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|even_plus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|plus_u8_u8| APPLICATION-JUDGEMENT "uint16" |integertypes| NIL)
+    (|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|nat_induction| FORMULA-DECL NIL |naturalnumbers| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (* CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (/ CONST-DECL "[numfield, nznum -> numfield]" |number_fields| NIL)
+    (|nznum| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (/= CONST-DECL "boolean" |notequal| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (|sum| DEF-DECL "nat" |sum| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|pred| TYPE-EQ-DECL NIL |defined_types| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL))
+   SHOSTAK)))
 

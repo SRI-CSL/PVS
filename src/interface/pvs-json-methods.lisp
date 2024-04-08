@@ -211,7 +211,7 @@
 (defrequest interrupt ()
   "Interrupts PVS."
   (break "interrupt")
-  ;; @M3;; (loop for session in (pvs::all-proof-sessions) do (pvs:interrupt-session (pvs::id session)))
+  ;; @M3;; (loop for session in (pvs:all-proof-sessions) do (pvs:interrupt-session (pvs:id session)))
   )
 
 (defrequest interrupt-proof (id)
@@ -248,7 +248,7 @@ returning the unique id (within a PVS session)."
 	 (prf-alist (pvs2json-response prf-result))
 	 (prf-json (json:encode-json-to-string prf-alist)))
     ;; (format t "~%proof-command: after prf-json => ~a " prf-json) ;; debug
-    ;; (format t "~%proof => ~a " (pvs::script(pvs::default-proof(pvs::get-formula-decl "sq#sq_neg")))) ;; debug
+    ;; (format t "~%proof => ~a " (pvs:script(pvs:default-proof(pvs:get-formula-decl "sq#sq_neg")))) ;; debug
     (values prf-alist prf-json)))
 
 (defrequest proof-help (cmd)
@@ -283,38 +283,123 @@ returning the unique id (within a PVS session)."
 		    (setq last-space nil)))))))
 
 (defun pvs2json-ps (ps commentary id status)
+  (arr (pvs2alist-ps ps commentary id status)))
+
+(defun pvs2alist-ps  (ps commentary id status)
   (with-slots (pvs:label pvs:comment pvs:current-goal (pps pvs:parent-proofstate)) ps
-    (let* ((action (when pps (pvs:strim (pvs:format-printout pps t))))
+    (let* ((action (pvs:strim (pvs:format-printout ps t)))
 	   (num-subgoals (pvs:proofstate-num-subgoals ps))
-	   (sequent (pvs2json-seq pvs:current-goal pps))
-	   (prev-cmd (let* ((wish-rule (pvs:wish-current-rule ps)))
-		       (cond (wish-rule (format nil "~s" wish-rule))
-			     (pps (format nil "~s" (pvs:current-rule pps)))
-			     (t nil))))
-	   ;; commentary is a sequence of strings or proofstates
-	   ;; strings are left as-is, proofstates are translated recursively,
-	   ;; but with empty commentary, and carrying the id and status along.
-	   (comntry (mapcar #'(lambda (e)
-				   (if (pvs::proofstate? e)
-				       (pvs2json-ps e nil id status)
-				       (pvs:strim (if (stringp e) e (format nil "~a" e)))))
+	   (final-sequent (pvs2json-seq pvs:current-goal pps))
+	   (curr-cmd (let ((curr-rule (pvs:wish-current-rule ps)))
+		       (when curr-rule (remove #\Newline (format nil "~s" curr-rule)))))
+	   (prev-cmd (let ((parent-ps (pvs:wish-parent-proofstate ps)))
+	   	       (when parent-ps
+	   	     	 (let ((parent-rule (pvs:wish-current-rule parent-ps)))
+	   	     	   (when parent-rule (remove #\Newline (format nil "~s" parent-rule)))))))
+	   (comntry (let*((prev-com)
+			  (length-commentary-1 (1- (length commentary))))
+		      (loop for com in commentary
+			    for i from 0 to length-commentary-1
+			    if (stringp com)
+			    collect com
+			    else if (or (not (and (= i length-commentary-1) (pvs:proofstate? com)))
+				     (not
+				      (and
+				       (pvs:proofstate? prev-com)
+				       (pvs:proofstate? com)
+				       (string= (ps-display-id prev-com) (ps-display-id com)))))
+			    collect com
+			    do (setq prev-com com))))
+	   ;; (debug (format t "{pvs2alist-ps} filtered comntry (~a)~%" (length comntry))) ;; debug
+	   ;; (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug	   
+	   (intermediate-ps (when commentary
+			      (read-intermediate-proof-states
+			       (if (string= status "proved")
+				   ;; when status is 'proved', pvs returns the top-proofstate, adding it
+				   ;; to commentary would provoke to send all the proofstates in the proof
+				   ;; to the client.
+				   commentary
+				 (append commentary (list ps)))
+			       id)))
+	   ;; (debug (format t "{pvs2alist-ps} filtered comntry 2 (~a)~%" (length comntry))) ;; debug
+	   ;; (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug	   
+	   )
+      (or intermediate-ps
+	  (list
+	   (let((final-ps 
+		 `(("id" . ,(string id))
+		   ("unique-ps-id" . ,(pvs:unique-ps-id ps))
+		   ("display-id" . ,(ps-display-id ps))
+		   ("parent-display-id" . ,(let ((parent-proofstate (pvs:wish-parent-proofstate ps)))
+					     (if parent-proofstate
+						 (ps-display-id parent-proofstate)
+					       "None")))
+	      ("status" . ,(string status))
+	      ,@(when comntry `(("commentary" . ,comntry)))
+	      ,@(when action `(("action" . ,action)))
+	      ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
+	      ("label" . ,pvs:label)
+	      ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
+	      ,@(when curr-cmd `(("curr-cmd" . ,curr-cmd)))
+	      ,@(when pvs:comment `(("comment" . ,pvs:comment)))
+	      ("path" . ,(format nil "~{~a~^.~}" (pvs:path-from-top ps)))
+	      ("sequent" . ,final-sequent)
+	      ("children" . ,(loop for child in
+				   (pvs:x-subgoals ps)
+				   collect (ps-display-id child))))))
+		  final-ps))))))
+
+;; This function provides an unique id on the proof states that
+;; should be shown on a graphical display of the proof tree (like
+;; the whish printer or the vscode-pvs GUI).
+(defun ps-display-id (ps &optional (label (pvs:label ps)) (num 0))
+  (let ((par-ps (pvs:wish-parent-proofstate ps)))
+    (if (or (null par-ps) (not (string= (pvs:label par-ps) label)))
+	(format nil "~a-~d" label num)
+	(ps-display-id par-ps label (1+ num)))))
+
+(defun read-intermediate-proof-states (commentary id)
+  (let ((comntry (mapcar #'(lambda (e)
+				(pvs:strim (cond
+					    ((stringp e) e)
+					    ((pvs:proofstate? e)
+					     (format nil "~a" e))
+					    (t (format nil "~a" e)))))
 			 commentary)))
-      (obj `(("id" . ,(string id))
-	     ("ps-id" . ,(pvs::unique-ps-id ps))
-	     ("parent" . ,(if (pvs:parent-proofstate ps)
-			      (pvs::unique-ps-id (pvs:parent-proofstate ps))
-			      "None"))
-	     ("status" . ,(string status))
-	     ,@(when comntry `(("commentary" . ,comntry)))
-	     ,@(when action `(("action" . ,action)))
-	     ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
-	     ("label" . ,pvs:label)
-	     ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
-	     ,@(when pvs:comment `(("comment" . ,pvs:comment)))
-	     ("path" . ,(format nil "~{~a~^.~}" (pvs:path-from-top ps)))
-	     ("sequent" . ,sequent)
-	     ("children" . ,(mapcar #'pvs::unique-ps-id (pvs:children ps)))
-	     )))))
+    (let* ((intermediate-ps (filter-intermediate-proof-states-from-commentary commentary))
+	   ;; need to add the parent of the first reported proof state (the ps on
+	   ;; which the first proof command has been applied) when not reporting
+	   ;; 'done' and first proof state has no children @M3
+	   (intermediate-alists (when intermediate-ps
+				  (loop for ps in (let* ((first-ps (car intermediate-ps))
+							 (parent-of-first-ps
+							  (unless (and (string= (pvs:status-flag first-ps) "!")
+								       (null (pvs:x-subgoals first-ps)))
+							    (pvs:parent-proofstate first-ps))))
+						    (if parent-of-first-ps
+							(cons parent-of-first-ps intermediate-ps)
+							intermediate-ps))
+					append (pvs2alist-ps ps nil id (pvs:status-flag ps))))))
+      (when (and comntry intermediate-alists)
+	(setf (car (last intermediate-alists))
+	      (acons "commentary" comntry (car (last intermediate-alists)))))
+      intermediate-alists)))
+
+(defun filter-intermediate-proof-states-from-commentary (commentary)
+  (when commentary
+      (let ((current-proof-state (when (pvs:proofstate? (car commentary)) (car commentary))))
+	(if (and current-proof-state
+		 (or (pvs:wish-current-rule current-proof-state)
+		     (pvs:current-rule current-proof-state)
+		     (null (cdr commentary))))
+	    (let ((result (filter-intermediate-proof-states-from-commentary
+			   (append (pvs:x-subgoals current-proof-state) (cdr commentary)))))
+	      (pushnew
+	       current-proof-state
+	       result
+	       :key #'pvs:unique-ps-id
+	       :test 'string=))
+	  (filter-intermediate-proof-states-from-commentary (cdr commentary))))))
 
 (defun pvs2json-seq (seq parent-ps)
   (let* ((par-sforms (when parent-ps (pvs:s-forms (pvs:current-goal parent-ps))))
@@ -450,7 +535,7 @@ to the associated declaration."
   "Returns all the proofs associated with the given formula."
   (let* ((fdecl (pvs:get-formula-decl form-ref))
 	 (proofs (pvs:proofs fdecl)))
-    (mapcar #'pvs-jsonrpc::pvs2alist-proof proofs)))
+    (mapcar #'pvs2alist-proof proofs)))
 
 (defrequest delete-proof-of-formula (form-ref proof-id)
   "Deletes the proof-id of the formula."
@@ -464,7 +549,7 @@ to the associated declaration."
       (let ((nproofs (remove proof proofs)))
 	(when (eq proof (pvs:default-proof fdecl))
 	  (setf (pvs:default-proof fdecl) (car (last nproofs)))) ; could be nil
-	(mapcar #'pvs-jsonrpc::pvs2alist-proof
+	(mapcar #'pvs2alist-proof
 		(setf (pvs:proofs fdecl) nproofs))))))
 
 (defrequest mark-proof-as-default (form-ref proof-id)
@@ -489,7 +574,7 @@ to the associated declaration."
 (defrequest add-pvs-library (string)
   "Just evaluate the string in lisp"
   (let ((*package* (find-package :pvs)))
-    (push string pvs::*pvs-library-path*)))
+    (push string pvs:*pvs-library-path*)))
 
 
 (defrequest get-proof-scripts (pvsfilename)

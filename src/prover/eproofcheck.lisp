@@ -922,8 +922,9 @@
 		     (format-if "~%this simplifies to: ")))
 	      post-proofstate)
 	     ((eq (status-flag post-proofstate) '!) ;;rule-apply proved
-	      ;; (dolist (hook *success-proofstate-hooks*)
-	      ;; 	(funcall hook proofstate)) 
+	      ;; @M3 inform listeners about the closing of the branch [2024]
+	      (dolist (hook *success-proofstate-hooks*)
+	      	(funcall hook proofstate)) 
 	      (format-printout post-proofstate)
 	      (wish-done-proof post-proofstate)
 	      (dpi-end post-proofstate)
@@ -2356,8 +2357,6 @@
 		     (t (list value)))))))))
 
 
-
-
 (defun undo-proof (info ps)
   (if (eq info 'undo)
       (cond ((and *record-undone-proofstate*
@@ -2397,6 +2396,7 @@
 			    (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
 					  newps))))
 		   (cond (response
+			  (commentary "~&Undoing last proof command application,~%this simplifies to:") ;; [2024] @M3
 			  (when *displaying-proof*
 			    (setf *flush-displayed* newps))
 			  (setq *record-undone-proofstate*

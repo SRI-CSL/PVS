@@ -152,6 +152,9 @@
 ;;; Definitions to support :perform operations
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  #+sbcl
+  (declaim (optimize (compilation-speed 0) (space 1) (safety 2) (speed 3) (cl:debug 1)))
+  #+allegro
   (declaim (optimize (compilation-speed 0) (space 1) (safety 1) (speed 3) (cl:debug 1)))
   ;; Note that these do very little SBCL simply does not want to shut up
   ;; #+sbcl (declaim (sb-ext:muffle-conditions cl:warning))

@@ -111,6 +111,7 @@
 
 (defun websocket-pvs-server (env)
   (pushnew #'pvs-jsonrpc:pvs-message-hook pvs:*pvs-message-hook*)
+  (pushnew #'ws-output-proofstate pvs:*success-proofstate-hooks*)
   (let ((ws (wsd:make-server env))
 	(pvs:*pvs-message-hook* #'pvs-jsonrpc:pvs-message-hook))
     (wsd:on :open ws (lambda () (ws-open ws)))
@@ -122,6 +123,14 @@
     (lambda (responder)
       (declare (ignore responder))
       (wsd:start-connection ws))))
+
+(defun ws-output-proofstate (ps)
+  ;; (format t "~&[ws-output-proofstate] outputting ps: id ~a rule ~a~%" (pvs:ps-display-id ps) (pvs:wish-current-rule ps)) ;; debug
+  (let ((sess (pvs:current-session)))
+    (if sess
+	(when (not pvs:*in-apply*)
+	  (pvs:session-output ps))
+	(format t "~&[ws-output-proofstate] Warning: No current-session to report ps to~%"))))
 
 ;; (defun websocket-proof-server (env)
 ;;   (let ((ws (wsd:make-server env)))

@@ -3,7 +3,7 @@
   "description": "JSON schema for PVS GUIs",
   "definitions": {
     "pvs.request": {
-      "description": "This is an XML-RPC request, not really JSON",
+      "description": "This is a JSON-RPC request",
       "type": "array",
       "items": [ {"$ref": "#/definitions/pvs-json-request"},
 		 {"schema": {"format": "uri"}} ]
@@ -22,17 +22,36 @@
 	}
       },
       "oneOf": [
-	{"$ref": "#/definitions/list-methods-request"},
-	{"$ref": "#/definitions/list-client-methods-request"},
-	{"$ref": "#/definitions/help-request"},
-	{"$ref": "#/definitions/change-context-request"},
-	{"$ref": "#/definitions/parse-request"},
-	{"$ref": "#/definitions/typecheck-request"},
-	{"$ref": "#/definitions/prove-formula-request"},
-	{"$ref": "#/definitions/proof-command-request"},
-	{"$ref": "#/definitions/names-info-request"},
-	{"$ref": "#/definitions/find-declaration-request"},
-	{"$ref": "#/definitions/lisp-request"}
+	{"$ref": "#/definitions/list-methods"},
+	{"$ref": "#/definitions/list-client-methods"},
+	{"$ref": "#/definitions/help"},
+	{"$ref": "#/definitions/lisp"},
+	{"$ref": "#/definitions/change-workspace"},
+	{"$ref": "#/definitions/clear-workspace"},
+	{"$ref": "#/definitions/change-context"},
+	{"$ref": "#/definitions/parse"},
+	{"$ref": "#/definitions/typecheck"},
+	{"$ref": "#/definitions/names-info"},
+	{"$ref": "#/definitions/find-declaration"},
+	{"$ref": "#/definitions/reset"},
+	{"$ref": "#/definitions/interrupt"},
+	{"$ref": "#/definitions/interrupt-proof"},
+	{"$ref": "#/definitions/quit-all-proof-sessions"},
+	{"$ref": "#/definitions/prove-formula"},
+	{"$ref": "#/definitions/proof-command"},
+	{"$ref": "#/definitions/proof-help"},
+	{"$ref": "#/definitions/prover-status"},
+	{"$ref": "#/definitions/proof-status"},
+	{"$ref": "#/definitions/proof-script"},
+	{"$ref": "#/definitions/show-tccs"},
+	{"$ref": "#/definitions/prove-tccs"},
+	{"$ref": "#/definitions/term-at"},
+	{"$ref": "#/definitions/all-proofs-of-formula"},
+	{"$ref": "#/definitions/delete-proof-of-formula"},
+	{"$ref": "#/definitions/mark-proof-as-default"},
+	{"$ref": "#/definitions/save-all-proofs"},
+	{"$ref": "#/definitions/add-pvs-library"},
+	{"$ref": "#/definitions/get-proof-scripts"}
       ]
     },
     "pvs.response": {
@@ -94,7 +113,8 @@
       }
     },
     "list-methods-result": {
-      "oneOf": [{"$ref": "#/definitions/string-array-result"}]
+      "type": "array",
+      "items": { "type": "string" }
     },
     "list-client-methods-request": {
       "type": "object",
@@ -103,7 +123,8 @@
       }
     },
     "list-client-methods-result": {
-      "oneOf": [{"$ref": "#/definitions/string-array-result"}]
+      "type": "array",
+      "items": { "type": "string" }
     },
     "help-request": {
       "type": "object",
@@ -115,15 +136,48 @@
     },
     "help-result": {
       "type" : "object"
+      "properties": {
+	"argspec": { "type": "string" },
+	"docstring": { "type": "string" }
+      }
     },
-    "change-context-request": {
+    "lisp-request": {
       "type": "object",
       "properties": {
-	"method": { "enum": ["change-context"] },
+	"method": { "enum": ["lisp"] },
+	"params": {
+	  "type" : "array",
+	  "minItems": 1,
+	  "maxItems": 1,
+	  "items": { "type": "string" }
+	}
+      },
+      "required": ["params"]
+    },
+    "lisp-result": {
+      "type": "string"
+    },
+    "change-workspace-request": {
+      "type": "object",
+      "properties": {
+	"method": { "enum": ["change-workspace"] },
 	"params": { "type": "string" }
       }
     },
-    "change-context-result": {
+    "change-workspace-result": {
+      "type" : "string"
+    },
+    "clear-workspace-request": {
+      "type": "object",
+      "properties": {
+	"method": { "enum": ["clear-workspace"] },
+	"params": {
+	  "type": "array",
+	  "items": { "type": "string" }
+	}
+      }
+    },
+    "clear-workspace-result": {
       "type" : "string"
     },
     "parse-request": {
@@ -178,6 +232,32 @@
 	}
       }
     },
+    "names-info-request": {
+      "type": "object",
+      "properties": {
+	"method": { "enum": ["names-info"] },
+	"params": { "type": "string" }
+      }
+    },
+    "names-info-response": {
+      "type": "object",
+      "properties": {
+	"type": "array",
+	"items": { "type": "object",
+		   "properties": {
+		     "id": { "type": "string" },
+		     "place": { "type": "array",
+				"items": "integer" },
+		     "decl": { "type": "string" },
+		     "decl-file": { "type": "string" },
+		     "decl-place": { "type": "array",
+				     "items": "integer" }
+		   }
+		 }
+      }
+    },
+
+    
     "importing-decl": {
       "type": "object",
       "properties": {
@@ -258,12 +338,23 @@
     },
     "proofstate": {
       "type": "object",
-      "required": [ "current-goal", "tree-delta" ],
+      "required": [ "id", "ps-id", "parent", "status", "label", "path", "sequent" ],
       "properties": {
+	"id": { "type": "string" },
+	"ps-id": { "type": "string" },
+	"parent": { "type": "string" },
+	"status": { "type": "string" },
+	"commentary": { "type": "array",
+			"items": "string" or "proofstate" },
+	"action": { "type": "string" },
+	"num-subgoals": { "type": "integer" },
+	"label": { "type": "string" },
+	"prev-cmd": { "type": "string" },
+	"comment": { "type": "string" },
+	"path": { "type": "string" },
+	"sequent": { "type": "object",
 	"children": { "type": "array",
-		      "items": {"$ref": "#/definitions/proofstate-node"}},
-	"current-goal": { "type": "string" },
-	"tree-delta": { "type": "string" }
+		      "items": {"type": "string"} }},
       }
     },
     "proofstate-node": {
@@ -282,7 +373,8 @@
 	    "antecedents": {"$ref": "#/definitions/s-formulas"},
 	    "succedents": {"$ref": "#/definitions/s-formulas"},
 	    "hidden-antecedents": {"$ref": "#/definitions/s-formulas"},
-	    "hidden-succedents": {"$ref": "#/definitions/s-formulas"}
+	    "hidden-succedents": {"$ref": "#/definitions/s-formulas"},
+	    "info": { "type": "string" }
 	  }
 	}
       }
@@ -355,22 +447,6 @@
 	  "decl-ppstring": {"type": "string"}
 	}
       }
-    },
-    "lisp-request": {
-      "type": "object",
-      "properties": {
-	"method": { "enum": ["lisp"] },
-	"params": {
-	  "type" : "array",
-	  "minItems": 1,
-	  "maxItems": 1,
-	  "items": { "type": "string" }
-	}
-      },
-      "required": ["params"]
-    },
-    "lisp-result": {
-      "oneOf": [{"$ref": "#/definitions/string-result"}]
     },
     "string-result": {
       "type" : "string"
