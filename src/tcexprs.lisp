@@ -1298,7 +1298,7 @@
 	(set-extended-place disj (car hdngs) "making else disjunction")
 	disj)))
 
-;;; Application - First typecheck* the arguments.  Then typecheck* the
+;;; Application - First typecheck the arguments.  Then typecheck the
 ;;; operator with arguments.  Finally the types slot of the expr is set
 ;;; to the possible return types of the operator.
 
@@ -1307,65 +1307,57 @@
   ;; Can't do operator first - breaks when a field application is involved
   ;;(unless (ptypes (operator expr))
     ;;(typecheck* (operator expr) nil nil nil))
-  (let ((*generate-tccs* 'none))
-    (unless (ptypes (argument expr))
-      (typecheck* (argument expr) nil nil nil))
-    (assert (ptypes (argument expr)))
-    (when (lambda-expr? (operator expr))
-      (if (typep expr '(or let-expr where-expr))
-	  (let ((*generate-tccs* 'none))
-	    ;; (unless (tuple-expr? (argument expr))
-	    ;;   ;; Already typeckecked above
-	    ;;   (typecheck* (argument expr) nil nil nil))
-	    (typecheck-let-bindings (bindings (operator expr)) (argument expr)))
-	  (typecheck* (bindings (operator expr)) nil nil nil)))
-    (unless (ptypes (operator expr))
-      (when (and expected
-		 (lambda-expr? (operator expr))
-		 (list-expr? (expression (operator expr))))
-	(let ((*bound-variables* (append (bindings (operator expr)) *bound-variables*)))
-	  (typecheck* (expression (operator expr)) expected nil nil)))
-      (typecheck* (operator expr) nil nil (arguments expr)))
-    (set-possible-argument-types (operator expr) (argument expr))
-    (unless (or (type (operator expr))
-		(typep (operator expr) 'name-expr))
+  (let ((*generate-tccs* 'none)
+	(op (operator expr))
+	(arg (argument expr))
+	(arg-list (arguments expr)))
+    (unless (ptypes arg)
+      ;; Note that we're typechecking the argument list here
+      ;; Only sets (ptypes arg) if arg is not a tuple
+      (typecheck* arg-list  nil nil nil))
+    (assert (every #'ptypes arg-list))
+    (typecheck-operator op expr expected)
+    (set-possible-argument-types op arg)
+    (assert (ptypes arg))
+    ;; Now set the operator types; may need to look for conversions
+    ;; First for application-conversions, then for
+    ;; arguments with lambda-conversion-resolutions
+    (unless (or (type op) (typep op 'name-expr))
       (let ((optypes (delete-if-not #'(lambda (opty)
 					(let ((stype (find-supertype opty)))
 					  (and (typep stype 'funtype)
 					       (some #'(lambda (aty)
-							 (compatible? (domain stype)
-								      aty))
-						     (ptypes (argument expr))))))
-		       (types (operator expr)))))
+							 (compatible? (domain stype) aty))
+						     (ptypes arg)))))
+		       (types op))))
 	(if optypes
-	    (setf (types (operator expr)) optypes)
+	    (setf (types op) optypes)
 	    (find-application-conversion expr))))
-    (unless (type (argument expr))
+    (unless (type arg)
+      (assert (types arg))
       (let ((argtypes (delete-if-not
 			  #'(lambda (aty)
 			      (some #'(lambda (oty)
 					(let ((sty (find-supertype oty)))
 					  (and (typep sty 'funtype)
 					       (compatible? aty (domain sty)))))
-				    (ptypes (operator expr))))
-			(types (argument expr)))))
+				    (ptypes op)))
+			(types arg))))
 	(if argtypes
 	    ;; No conversion will be needed in this case
-	    (setf (types (argument expr)) argtypes)
-	    (when (and (typep (operator expr) 'name-expr)
-		       (some #'(lambda (r)
-				 (typep r 'lambda-conversion-resolution))
-			     (resolutions (operator expr))))
+	    (setf (types arg) argtypes)
+	    (when (and (typep op 'name-expr)
+		       (some #'lambda-conversion-resolution? (resolutions op)))
+	      ;; Creates a lambda-conversion (from a K-conversion)
 	      (change-application-to-conversion expr)))))
-    (unless (typep expr 'lambda-conversion)
+    ;; operator and argument have types, now for the application itself
+    (unless (typep expr 'lambda-conversion) ;; Done in previous step
       (let ((rtypes (application-range-types expr)))
-	(cond (rtypes
-	       (setf (types expr) rtypes))
+	(cond (rtypes (setf (types expr) rtypes))
 	      ((and (not (type expr))
-		    (typep (operator expr) 'name)
-		    (some #'(lambda (r)
-			      (typep r 'lambda-conversion-resolution))
-			  (resolutions (operator expr))))
+		    (typep op 'name)
+		    (some #'(lambda (r) (typep r 'lambda-conversion-resolution))
+			  (resolutions op)))
 	       (change-application-to-conversion expr))
 	      (t (type-mismatch-error expr)))))
     #+pvsdebug (assert (every #'(lambda (ty)
@@ -1374,8 +1366,29 @@
 					 (some #'(lambda (ety)
 						   (compatible? (range oty) ety))
 					       (ptypes expr)))))
-			      (ptypes (operator expr))))
+			      (ptypes op)))
     expr))
+
+(defmethod typecheck-operator ((op lambda-expr) expr expected)
+  (unless (ptypes op)
+    (let ((arg (argument expr))
+	  (args (arguments expr)))
+      (if (typep expr 'let-expr) ;; where-expr eis a subclass of let-expr
+	  ;; (unless (tuple-expr? (argument expr))
+	  ;;   ;; Already typeckecked above
+	  ;;   (typecheck* (argument expr) nil nil nil))
+	  (typecheck-let-bindings (bindings op) arg)
+	  (typecheck* (bindings op) nil nil nil))
+      (when (and expected
+		 (list-expr? (expression op)))
+	(let ((*bound-variables* (append (bindings op) *bound-variables*)))
+	  (typecheck* (expression op) expected nil nil)))
+      (call-next-method))))
+
+(defmethod typecheck-operator ((op expr) expr expected)
+  (declare (ignore expected))e
+  (unless (ptypes op)
+    (typecheck* op nil nil (argument expr))))
 
 (defun set-possible-argument-types (op arg)
   (unless (ptypes arg)
@@ -1433,8 +1446,8 @@
 
 (defmethod application-range-types ((expr application))
   (with-slots (operator argument) expr
-    (let* ((op-types (or (types operator) (list (type operator))))
-	   (arg-types (or (types argument) (list (type argument))))
+    (let* ((op-types (ptypes operator))
+	   (arg-types (ptypes argument))
 	   (rtypes (application-range-types-op
 		    op-types arg-types operator argument nil)))
       rtypes)))
@@ -1710,15 +1723,9 @@ field-decls, etc."
 ;;; expression, if it is uniquely determined.
 
 (defun typecheck-let-bindings (bindings arg)
-  (when (cdr bindings)
-    (let ((atypes (remove-if-not #'(lambda (ty)
-				     (let ((sty (find-supertype ty)))
-				       (and (typep sty 'tupletype)
-					    (length= bindings (types sty)))))
-		    (types arg))))
-      (if atypes
-	  (setf (types arg) atypes)
-	  (type-error arg "Wrong arity for ~d bindings" (length bindings)))))
+  ;; if arg is a tuple-expr, only its exprs have ptypes
+  (unless (ptypes arg)
+    (typecheck* arg nil nil nil))
   (typecheck-let-bindings* bindings arg 0))
 
 (defun typecheck-let-bindings* (bindings arg anum &optional substs)
@@ -1790,9 +1797,20 @@ field-decls, etc."
 		  (type-ambiguity arg)))
 	    (if (and (fully-instantiated? (car atypes))
 		     (not (coercion? arg)))
-		(let ((carg (typecheck* (copy-untyped arg)
-					(car (types arg)) nil nil)))
-		  (best-judgement-type carg))
+		(if (application? arg)
+		    (let ((op (operator* arg)))
+		      (if (and (name-expr? op)
+			       (resolution op)
+			       (assq (declaration op)
+				     (application-judgements-alist (current-judgements))))
+			  ;; Need a fully-typechecked arg in order to take judgements
+			  (let ((carg (typecheck* (copy-untyped arg)
+						  (car (types arg)) nil nil)))
+			    (best-judgement-type carg))
+			  (car (types arg))))
+		    (let ((carg (typecheck* (copy-untyped arg)
+					    (car (types arg)) nil nil)))
+		      (best-judgement-type carg)))
 		(car (types arg)))))))
 
 (defun find-matching-var-decl (bd atypes arg)
