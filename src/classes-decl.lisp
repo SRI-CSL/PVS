@@ -660,7 +660,8 @@ restored, the TCCs are checked")
   (number-expr :parse t))
 
 (defcl name-judgement (judgement)
-  (name :parse t))
+  (name :parse t)
+  (associated-macro :ignore t))
 
 (defcl application-judgement (judgement)
   (name :parse t)
