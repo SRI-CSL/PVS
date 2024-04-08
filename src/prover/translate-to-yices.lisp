@@ -992,8 +992,8 @@
 	      (multiple-value-bind (output err-output status)
 		  (uiop:run-program
 		      (format nil "~a ~a ~a"
-			*yices2-executable*
-			*yices2-flags*
+			*yices-executable*
+			*yices-flags*
 			(namestring file))
 		    :input "//dev//null"
 		    :output '(:string :stripped t)
