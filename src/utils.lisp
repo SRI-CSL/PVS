@@ -4311,9 +4311,10 @@ space")
   (argument ex))
 
 (defun file-equal (file1 file2)
-  (let ((finfo1 (get-file-info file1)))
-    (and finfo1
-	 (equal finfo1 (get-file-info file2)))))
+  (or (eq file1 file2)
+      (let ((finfo1 (get-file-info file1)))
+	(and finfo1
+	     (equal finfo1 (get-file-info file2))))))
 
 #+sbcl
 (defun get-file-info (file)
@@ -5814,6 +5815,13 @@ and the next method is called with this. Only \formula\" is required."
 	(when (eq stat :external)
 	  (push sym ext-symbs))))
     ext-symbs))
+
+#+sbcl
+(defun who-calls (symbol)
+  (let ((caller-info (sb-introspect:who-calls symbol)))
+    (dolist (cinfo caller-info)
+      (format t "~%~(~a~) - ~a" (car cinfo)
+	      (sb-introspect:definition-source-pathname (cdr cinfo))))))
 
 ;; Needs work
 (defun pkg-docs (pkg)
