@@ -4318,6 +4318,19 @@ space")
 
 #+sbcl
 (defun get-file-info (file)
+  ;; Somehow with optimization set in pvs-config.lisp this results in
+  ;; CORRUPTION WARNING in SBCL pid 2996740 tid 2996740:
+  ;; Memory fault at 0x838fffffff8 (pc=0x7efcf51236f0, fp=0x7efcf44bb6e8, sp=0x7efcf44bb650) tid 2996740
+  ;; The integrity of this image is possibly compromised.
+  ;; Continuing with fingers crossed.
+  ;; debugger invoked on a SB-SYS:MEMORY-FAULT-ERROR in thread
+  ;; #<THREAD "main thread" RUNNING {1008AA81B3}>:
+  ;; Unhandled memory fault at #x838FFFFFFF8.
+  ;; Type HELP for debugger help, or (SB-EXT:EXIT) to exit from SBCL.
+  ;; restarts (invokable by number or by possibly-abbreviated name):
+  ;; 0: [ABORT] Exit debugger, returning to top level.
+  ;; ("bogus stack frame")
+  (declare (optimize safety cl:debug))
   (let ((pfile (uiop:probe-file* file :truename t)))
     (and pfile
 	 (handler-case
