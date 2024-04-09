@@ -220,7 +220,8 @@ if called."
 ;;wraps (the type ..) around the translated lisp when the type is known
 (defmethod pvs2cl_up* :around ((expr expr) bindings livevars)
   (declare (ignore livevars bindings))
-  (let ((lisp-type (pvs2cl-lisp-type (type expr))))
+  (let ((lisp-type (unless (rational-expr? expr)
+		     (pvs2cl-lisp-type (type expr)))))
     (if lisp-type
 	`(the ,lisp-type
 	   ,(call-next-method))
@@ -1583,13 +1584,20 @@ if called."
 	(mk-newsymb x (1+ counter))
       (intern str :pvs))))
 
-(defun init-undef (&rest x) 0);;dummy function to initialize symbol-function of a new function symbol
+;;dummy function to initialize symbol-function of a new function symbol
+(defun init-undef (&rest x)
+  (declare (ignore x))
+  0)
 
 (defun mk-newfsymb (x &optional counter)
-  (let ((fsym (intern (format nil "~a~@[_~a~]" x counter) :pvs)))
-    (cond ((fboundp fsym)
-	   (mk-newfsymb x (if counter (1+ counter) 0)))
-	  (t (setf (symbol-function fsym) #'init-undef) fsym))))
+  (handler-case
+      (let ((fsym (intern (format nil "~a~@[_~a~]" x counter) :pvs)))
+	(cond ((fboundp fsym)
+	       (mk-newfsymb x (if counter (1+ counter) 0)))
+	      (t (setf (symbol-function fsym) #'init-undef) fsym)))
+    #+sbcl (sb-ext:symbol-package-locked-error () (mk-newfsymb x 0))
+    ;; Not sure the allegro error is necessary, but it's here just in case
+    #+allegro (excl:package-locked-error () (mk-newfsymb x 0))))
 
 (defun pvs2cl-id (x)
   (if (eq (id x) 'O)
