@@ -2833,10 +2833,10 @@ branch only) is rolled back to the point before the step was invoked."
 ;;; that completely prove one subgoal, thereby preventing proof state
 ;;; changes that are needed in parallel subgoals.  An example is the
 ;;; need to turn rewriting off after a proof attempt.
-
+;;; [Modified by MM to clean-step if main-step fails]
 (defstep unwind-protect (main-step cleanup-step)
   (spread (case "id(true)")
-	  ((then (delete -1) main-step)
+	  ((then (delete -1) (else main-step (then cleanup-step (fail))))
 	   (then cleanup-step (expand "id"))))
   "[Manip] Invoke MAIN-STEP followed by CLEANUP-STEP, which is performed
 even if MAIN-STEP leads to a proof of the current goal."
