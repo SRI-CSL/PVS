@@ -1465,6 +1465,12 @@
 (defmethod strict-compatible?* ((atype subtype) (etype subtype) bindings)
   (strict-compatible?* (supertype atype) (supertype etype) bindings))
 
+(defmethod strict-compatible?* ((atype dep-binding) (etype type-expr) bindings)
+  (strict-compatible?* (type atype) etype bindings))
+
+(defmethod strict-compatible?* ((atype type-expr) (etype dep-binding) bindings)
+  (strict-compatible?* atype (type etype) bindings))
+
 
 ;;; Note: no distinction between functions and arrays.
 
