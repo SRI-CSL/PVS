@@ -670,6 +670,9 @@
 (defmethod find-adt-supertype ((te datatype-subtype))
   te)
 
+(defmethod find-adt-supertype ((te dep-binding))
+  (find-adt-supertype (type te)))
+
 (defmethod find-adt-supertype (te)
   te)
 
@@ -1373,12 +1376,22 @@
   (unless (ptypes op)
     (let ((arg (argument expr))
 	  (args (arguments expr)))
-      (if (typep expr 'let-expr) ;; where-expr eis a subclass of let-expr
-	  ;; (unless (tuple-expr? (argument expr))
-	  ;;   ;; Already typeckecked above
-	  ;;   (typecheck* (argument expr) nil nil nil))
-	  (typecheck-let-bindings (bindings op) arg)
-	  (typecheck* (bindings op) nil nil nil))
+      (cond ((typep expr 'let-expr) ;; where-expr eis a subclass of let-expr
+	     ;; (unless (tuple-expr? (argument expr))
+	     ;;   ;; Already typeckecked above
+	     ;;   (typecheck* (argument expr) nil nil nil))
+	     (when (and (cdr (bindings op))
+			(null (cdr args))
+			(types arg))
+	       (let ((tuptypes (remove-if-not
+				   #'(lambda (pty)
+				       (let ((sty (find-supertype pty)))
+					 (and (tupletype? sty)
+					      (length= (types sty) (bindings op)))))
+				 (types arg))))
+		 (setf (types arg) tuptypes)))
+	     (typecheck-let-bindings (bindings op) arg))
+	    (t (typecheck* (bindings op) nil nil nil)))
       (when (and expected
 		 (list-expr? (expression op)))
 	(let ((*bound-variables* (append (bindings op) *bound-variables*)))
@@ -1807,11 +1820,11 @@ field-decls, etc."
 			  (let ((carg (typecheck* (copy-untyped arg)
 						  (car (types arg)) nil nil)))
 			    (best-judgement-type carg))
-			  (car (types arg))))
+			  (car atypes)))
 		    (let ((carg (typecheck* (copy-untyped arg)
-					    (car (types arg)) nil nil)))
+					    (car atypes) nil nil)))
 		      (best-judgement-type carg)))
-		(car (types arg)))))))
+		(car atypes))))))
 
 (defun find-matching-var-decl (bd atypes arg)
   (let ((vdecl (find-if #'(lambda (v)
