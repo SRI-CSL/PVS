@@ -366,9 +366,11 @@ See also HIDE, REVEAL"
 				internal-time-units-per-second)))
 	      (if (and timeout
 		       (null result))
-		  (progn (clear-strategy-errors)
-			 (format t "Apply timed out: treated as skip")
-			 (values 'X nil nil))
+		  (let ((*suppress-printing* nil))
+		    (clear-strategy-errors)
+		    (format-if "~%Apply timed out in ~a seconds: treated as skip"
+			       *tcc-timeout*)
+		    (values 'X nil nil))
 		  (let* ((subgoals (collect-subgoals newps))
 			 (justif (collect-justification newps))
 			 (xrule `(apply
@@ -376,7 +378,8 @@ See also HIDE, REVEAL"
 				      ,(editable-justification
 					justif nil t)))))
 		    (when time?
-		      (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
+		      (let ((*suppress-printing* nil))
+			(format-if "~%;;;Used ~,2F seconds in ~s." end-time step)))
 		    (if (eq (status-flag newps) 'XX)
 			(values 'X nil nil)
 			(if (or (eq (status-flag newps) 'X)

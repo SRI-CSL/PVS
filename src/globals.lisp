@@ -186,8 +186,11 @@ These are not associated with a workspace, and usually done through
 ;; which in turn comes from the -timeout arg
 (defvar *noninteractive-timeout* nil)
 
-(defvar *tcp-timeout* 10)
-(defvar *tcc-timeout* nil)
+;;; This timeout is used when proving a TCC using the default TCC strategies
+;;; as these can lead to infinite loops. Note that this has no effect on
+;;; TCCs with proofs other than the default TCC strategies (e.g., tcc,
+;;; subtype-tcc, etc.)
+(defvar *tcc-timeout* 30)
 
 ;; Doesn't seem to be set anywhere, but used in eproofcheck.lisp
 (defvar *proof-timeout* nil)
