@@ -5981,6 +5981,14 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 (defun dbg ()
   (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
 
+#+sbcl
+(defun control-stack-size ()
+  (let* ((cs-start (sb-vm::current-thread-offset-sap sb-vm::thread-control-stack-start-slot))
+	 (cs-end   (sb-int:descriptor-sap sb-vm:*control-stack-end*))
+	 (cs-size  (- (sb-sys:sap-int cs-end)
+		      (sb-sys:sap-int cs-start))))
+    cs-size))
+
 ;; Called with, e.g.,
 ;;   (library-proof-diffs "~/nasalib-6.0.9" "~/pvslib-7.1" "proof-diffs.json")
 
