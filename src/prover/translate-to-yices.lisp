@@ -45,41 +45,41 @@
 (defparameter *yices-interpreted-names*
   '((=  (|equalities| . =))
     (/=  (|notequal| . /=))
-    (TRUE (|booleans| . true))
-    (FALSE (|booleans| . false))
+    (TRUE (|booleans| . |true|))
+    (FALSE (|booleans| . |false|))
     (IMPLIES  (|booleans| . =>))
     (=>  (|booleans| . =>))
     (⇒ (|booleans| . =>))
     (IFF (|booleans| . =))
     (⇔ (|booleans| . =))
-    (AND (|booleans| . and) (|bv_bitwise| . bv-and))
-    (∧ (|booleans| . and))
-    (& (|booleans| . and))
-    (OR  (|booleans| . or) (|bv_bitwise| . bv-or))
-    (∨  (|booleans| . or))
-    (NOT  (|booleans| . not)(|bv_bitwise| . bv-not))
-    (¬ (|booleans| . not))
-    (+  (|number_fields| . +)(|bv_arith_nat| . bv-add))
-    (- (|number_fields| . -)(|bv_arithmetic_defs| . bv-sub))
+    (AND (|booleans| . |and|) (|bv_bitwise| . |bv-and|))
+    (∧ (|booleans| . |and|))
+    (& (|booleans| . |and|))
+    (OR  (|booleans| . |or|) (|bv_bitwise| . |bv-or|))
+    (∨  (|booleans| . |or|))
+    (NOT  (|booleans| . |not|)(|bv_bitwise| . |bv-not|))
+    (¬ (|booleans| . |not|))
+    (+  (|number_fields| . +)(|bv_arith_nat| . |bv-add|))
+    (- (|number_fields| . -)(|bv_arithmetic_defs| . |bv-sub|))
     (*   (|number_fields| . *))
     (/  (|number_fields| . /))
-    (rem (|modulo_arithmetic| . mod))
-    (ndiv (|modulo_arithmetic| . div))
-    (< (|reals| . <)(|bv_arith_nat| . bv-lt))
-    (<=  (|reals| . <=)(|bv_arith_nat| . bv-le))
-    (> (|reals| . >)(|bv_arith_nat| . bv-gt))
-    (>=  (|reals| . >=)(|bv_arith_nat| . bv-ge))
-    (O (|bv_concat_def| . bv-concat))
-    (& (|booleans| . and)(|bv_bitwise| . bv-and))
-    (XOR  (|bv_bitwise| . bv-xor))
+    (|rem| (|modulo_arithmetic| . |mod|))
+    (|ndiv| (|modulo_arithmetic| . |div|))
+    (< (|reals| . <)(|bv_arith_nat| . |bv-lt|))
+    (<=  (|reals| . <=)(|bv_arith_nat| . |bv-le|))
+    (> (|reals| . >)(|bv_arith_nat| . |bv-gt|))
+    (>=  (|reals| . >=)(|bv_arith_nat| . |bv-ge|))
+    (O (|bv_concat_def| . |bv-concat|))
+    (& (|booleans| . |and|)(|bv_bitwise| . |bv-and|))
+    (XOR  (|bv_bitwise| . |bv-xor|))
 ;    (^ (|bv_caret| .  bv-extract))
-    (sign_extend   (|bv_extend| . bv-sign-extend))
-    (|bv_slt| (|bv_arithmetic_defs| . bv-slt))
-    (|bv_sle| (|bv_arithmetic_defs| . bv-sle))
-    (|bv_sgt| (|bv_arithmetic_defs| . bv-sgt))
-    (|bv_sge| (|bv_arithmetic_defs| . bv-sge))
-    (|bv_splus| (|bv_arithmetic_defs| . bv-add))
-    (|bv_stimes| (|bv_arithmetic_defs| . bv-mul))
+    (|sign_extend| (|bv_extend| . |bv-sign-extend|))
+    (|bv_slt| (|bv_arithmetic_defs| . |bv-slt|))
+    (|bv_sle| (|bv_arithmetic_defs| . |bv-sle|))
+    (|bv_sgt| (|bv_arithmetic_defs| . |bv-sgt|))
+    (|bv_sge| (|bv_arithmetic_defs| . |bv-sge|))
+    (|bv_splus| (|bv_arithmetic_defs| . |bv-add|))
+    (|bv_stimes| (|bv_arithmetic_defs| . |bv-mul|))
     ))
 
 (defun clear-yices ()
@@ -986,41 +986,37 @@
 	    (format stream "~{~a ~%~}" revdefns)
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%"))
-	  (let ((tmp-file (pvs-tmp-file)))
-	    (with-open-file (out tmp-file
-				 :direction :output :if-exists :supersede)
-	      (multiple-value-bind (output err-output status)
-		  (uiop:run-program
-		      (format nil "~a ~a ~a"
-			*yices-executable*
-			*yices-flags*
-			(namestring file))
-		    :input "//dev//null"
-		    :output '(:string :stripped t)
-		    :ignore-error-status t)
-		(when *ydatatype-warning*
-		  (format t "~70,,,'*A" "")
-		  (format t "~%Warning: The Yices datatype theory is not currently trustworthy.
+	  (multiple-value-bind (output err-output status)
+	      (uiop:run-program
+		  (format nil "~a ~a ~a"
+		    *yices-executable*
+		    *yices-flags*
+		    (namestring file))
+		:input "//dev//null"
+		:output '(:string :stripped t)
+		:ignore-error-status t)
+	    (setq *aaa* (list (namestring file) output err-output status))
+	    (when *ydatatype-warning*
+	      (format t "~70,,,'*A" "")
+	      (format t "~%Warning: The Yices datatype theory is not currently trustworthy.
 Please check your results with a proof that does not rely on Yices. ~%")
-		  (format t "~70,,,'*A" ""))
-		(cond ((zerop status)
-		       (let ((result (file-contents tmp-file)))
-			 ;;		     (break "yices result")
-			 (delete-file tmp-file)
-			 (delete-file file)
-			 (format-if "~%Result = ~a" result)
-			 (cond ((search "unsat"  result :from-end t)
-				(format-if "~%Yices translation of negation is unsatisfiable")
-				(values '! nil nil))
-			       (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
-				  (values 'X nil nil)))))
-		      (t (format t
-			     "~%Error running yices - you may need to do one or more of:~
+	      (format t "~70,,,'*A" ""))
+	    (cond ((zerop status)
+		   (delete-file file)
+		   (format-if "~%Result = ~a" output)
+		   (cond ((search "unsat"  output :from-end t)
+			  (format-if "~%Yices translation of negation is unsatisfiable")
+			  (values '! nil nil))
+			 (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
+			    (values 'X nil nil))))
+		  (t (break "yices")
+		     (format t
+			 "~%Error running yices - you may need to do one or more of:~
                           ~% 1. Download yices from http://yices.csl.sri.com~
                           ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
-			   (file-contents tmp-file))
-			 (values 'X nil))))))))))
+		       (file-contents tmp-file))
+		     (values 'X nil))))))))
 
 	
 (addrule 'yices () ((fnums *))
