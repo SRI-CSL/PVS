@@ -526,7 +526,7 @@ its dependencies."
 	    (assert (member (fe-status fe)
 			    '("proved-complete" "proved-incomplete" "unchecked"
 			      "unfinished" "untried" nil)
-			    :test #'string=)))
+			    :test #'string-equal)))
 	  (setf (pvs-context-changed *workspace-session*) t)))))
 
 (defun create-context-entry (pathname)
@@ -1270,9 +1270,9 @@ are all the same."
   (get-context-file-entry (pathname-name filename)))
 
 (defmethod get-context-file-entry ((filename string))
-  (car (member filename (pvs-context-entries)
-	       :test #'(lambda (x y)
-			 (string= x (ce-file y))))))
+  (let ((fname (pathname-name filename)))
+    (car (member fname (pvs-context-entries)
+		 :test #'(lambda (x y) (string= x (ce-file y)))))))
 
 (defmethod get-context-file-entry ((decl declaration))
   (get-context-file-entry (theory decl)))
