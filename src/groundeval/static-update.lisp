@@ -217,46 +217,65 @@
 ;;would correspond to a closure value which might keep some variables
 ;;live in the value.   Used in updateable-free-formal-vars.
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr tupletype))
+(defvar *exprs-seen*)
+
+(defun contains-possibly-updateable-or-closure? (texpr)
+  (let ((*exprs-seen* nil))
+    (contains-possibly-updateable-or-closure?* texpr)))
+
+(defmethod contains-possibly-updateable-or-closure?* ((texpr tupletype))
   t)
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr funtype))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr funtype))
   t)
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr recordtype))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr recordtype))
   t)
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr subtype))
-  (contains-possibly-updateable-or-closure? (find-supertype texpr)))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr subtype))
+  (contains-possibly-updateable-or-closure?* (find-supertype texpr)))
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr adt-type-name))
-  (some #'(lambda (constr)
-	    (and (funtype? (type constr))
-		 (let* ((dom (domain (type constr)))
-			(types (if (tupletype? dom)
-				 (types dom)
-				 (list dom))))
-		 (loop for ty in types
-		       thereis (and (not (tc-eq (find-supertype ty)
-					texpr))
-				    (contains-possibly-updateable-or-closure? ty))))))
-	(constructors texpr)))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr adt-type-name))
+  ;; SO - infinite loop with
+  ;;   expr: datatype begin
+  ;;     application(idx: nat, args: list[expr]): app?
+  ;;  texpr = expr
+  ;;  constr = application
+  ;;  (type constr) = [[nat, list[expr]] -> (app?)]
+  ;;  types = (nat list[expr])
+  ;;  contains-possible-closure? list[expr]
+  ;;    constr = cons
+  ;;    (type constr) = [[expr, list[expr]] -> (cons?[expr])]
+  ;;    types = (expr list[expr])
+  ;;  recurse
+  (unless (member texpr *exprs-seen* :test #'tc-eq)
+    (push texpr *exprs-seen*)
+    (some #'(lambda (constr)
+	      (and (funtype? (type constr))
+		   (let* ((dom (domain (type constr)))
+			  (types (if (tupletype? dom)
+				     (types dom)
+				     (list dom))))
+		     (loop for ty in types
+			   thereis (and (not (tc-eq (find-supertype ty) texpr))
+					(contains-possibly-updateable-or-closure?* ty))))))
+	  (constructors texpr))))
 
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr list))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr list))
   (when (consp texpr)
-    (or (contains-possibly-updateable-or-closure? (car texpr))
-	(contains-possibly-updateable-or-closure? (cdr texpr)))))
+    (or (contains-possibly-updateable-or-closure?* (car texpr))
+	(contains-possibly-updateable-or-closure?* (cdr texpr)))))
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr actual))
-  (contains-possibly-updateable-or-closure? (type-value texpr)))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr actual))
+  (contains-possibly-updateable-or-closure?* (type-value texpr)))
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr type-name))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr type-name))
   (formal-type-decl? (declaration texpr)))
 ;;In the context, formal type parameters can later become
 ;;updateable.  
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr t))
+(defmethod contains-possibly-updateable-or-closure?* ((texpr t))
   nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
@@ -289,14 +308,12 @@
 	    (and (funtype? (type constr))
 		 (let* ((dom (domain (type constr)))
 			(types (if (tupletype? dom)
-				 (types dom)
-				 (list dom))))
-		 (loop for ty in types
-		       thereis (and (not (tc-eq (find-supertype ty)
-					texpr))
-				    (contains-possible-closure? ty))))))
+				   (types dom)
+				   (list dom))))
+		   (loop for ty in types
+			 thereis (and (not (tc-eq (find-supertype ty) texpr))
+				      (contains-possible-closure? ty))))))
 	(constructors texpr)))
-
 
 (defmethod contains-possible-closure? ((texpr list))
   (when (consp texpr)
