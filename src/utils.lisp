@@ -874,6 +874,12 @@ is replaced with replacement."
 (defmethod declaration ((obj declaration))
   obj)
 
+(defmethod declaration ((obj datatype-or-module))
+  obj)
+
+(defmethod declaration ((obj importing-entity))
+  nil)
+
 (defmethod module-instance ((name name))
   (let ((res (resolutions name)))
     (when (and res (null (cdr res)))
