@@ -106,105 +106,122 @@
   accum)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; SO - infinite loops were possible with adt-type-names in
+;;   expr: datatype begin
+;;     application(idx: nat, args: list[expr]): app?
+;; *exprs-seen* is used to control this.
 
-(defmethod contains-updateable? ((texpr tupletype))
+(defvar *exprs-seen*)
+
+(defun contains-updateable? (texpr)
+  (let ((*exprs-seen* nil))
+    (contains-updateable?* texpr)))
+
+(defmethod contains-updateable?* ((texpr tupletype))
   t)
 
-(defmethod contains-updateable? ((texpr funtype))
+(defmethod contains-updateable?* ((texpr funtype))
   (or (simple-below? (domain texpr))(simple-upto? (domain texpr))
-       (contains-updateable? (range texpr))))
+       (contains-updateable?* (range texpr))))
 
-(defmethod contains-updateable? ((texpr recordtype))
+(defmethod contains-updateable?* ((texpr recordtype))
   t)
 
-(defmethod contains-updateable? ((texpr subtype))
-  (contains-updateable? (find-supertype texpr)))
+(defmethod contains-updateable?* ((texpr subtype))
+  (contains-updateable?* (find-supertype texpr)))
 
 (defmethod types ((texpr type-expr))
   (list texpr))
 
-(defmethod contains-updateable? ((texpr adt-type-name))
-  (some #'(lambda (constr)
-	    (and (funtype? (type constr))
-		 (loop for ty in (types (domain (type constr)))
+(defmethod contains-updateable?* ((texpr adt-type-name))
+  (unless (member texpr *exprs-seen* :test #'tc-eq)
+    (push texpr *exprs-seen*)
+    (some #'(lambda (constr)
+	      (and (funtype? (type constr))
+		   (loop for ty in (types (domain (type constr)))
 		       
-		       thereis (and (not (tc-eq (find-supertype ty)
-					texpr))
-				    (contains-updateable? ty)))))
-	(constructors texpr)))
+			 thereis (and (not (tc-eq (find-supertype ty)
+						  texpr))
+				      (contains-updateable?* ty)))))
+	  (constructors texpr))))
 
 
-(defmethod contains-updateable? ((texpr list))
+(defmethod contains-updateable?* ((texpr list))
   (when (consp texpr)
-    (or (contains-updateable? (car texpr))
-	(contains-updateable? (cdr texpr)))))
+    (or (contains-updateable?* (car texpr))
+	(contains-updateable?* (cdr texpr)))))
 
 ;;This is subsumed by fall-through case.
-;(defmethod contains-updateable? ((texpr type-name))
+;(defmethod contains-updateable?* ((texpr type-name))
 ;  (not (or (eq texpr *boolean*)
 ;	   (eq texpr *number*))))
 
 
 
-(defmethod contains-updateable? ((texpr actual))
-  (contains-updateable? (type-value texpr)))
+(defmethod contains-updateable?* ((texpr actual))
+  (contains-updateable?* (type-value texpr)))
 
-(defmethod contains-updateable? ((texpr t))
+(defmethod contains-updateable?* ((texpr t))
   nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod contains-possibly-updateable? ((texpr tupletype))
+(defun contains-possibly-updateable? (texpr)
+  (let ((*exprs-seen* nil))
+    (contains-possibly-updateable?* texpr)))
+
+(defmethod contains-possibly-updateable?* ((texpr tupletype))
   t)
 
-(defmethod contains-possibly-updateable? ((texpr funtype))
+(defmethod contains-possibly-updateable?* ((texpr funtype))
   (or (simple-below? (domain texpr))(simple-upto? (domain texpr))
-       (contains-possibly-updateable? (range texpr))))
+       (contains-possibly-updateable?* (range texpr))))
 
 
-(defmethod contains-possibly-updateable? ((texpr recordtype))
+(defmethod contains-possibly-updateable?* ((texpr recordtype))
   t)
 
-(defmethod contains-possibly-updateable? ((texpr subtype))
-  (contains-possibly-updateable? (find-supertype texpr)))
+(defmethod contains-possibly-updateable?* ((texpr subtype))
+  (contains-possibly-updateable?* (find-supertype texpr)))
 
-(defmethod contains-possibly-updateable? ((texpr adt-type-name))
-  (some #'(lambda (constr)
-	    (and (funtype? (type constr))
-		 (let* ((dom (domain (type constr)))
-			(types (if (tupletype? dom)
-				 (types dom)
-				 (list dom))))
-		 (loop for ty in types
-		       thereis (and (not (tc-eq (find-supertype ty)
-					texpr))
-				    (contains-possibly-updateable? ty))))))
-	(constructors texpr)))
+(defmethod contains-possibly-updateable?* ((texpr adt-type-name))
+  (unless (member texpr *exprs-seen* :test #'tc-eq)
+    (push texpr *exprs-seen*)
+    (some #'(lambda (constr)
+	      (and (funtype? (type constr))
+		   (let* ((dom (domain (type constr)))
+			  (types (if (tupletype? dom)
+				     (types dom)
+				     (list dom))))
+		     (loop for ty in types
+			   thereis (and (not (tc-eq (find-supertype ty) texpr))
+					(contains-possibly-updateable?* ty))))))
+	  (constructors texpr))))
 
 
-(defmethod contains-possibly-updateable? ((texpr list))
+(defmethod contains-possibly-updateable?* ((texpr list))
   (when (consp texpr)
-    (or (contains-possibly-updateable? (car texpr))
-	(contains-possibly-updateable? (cdr texpr)))))
+    (or (contains-possibly-updateable?* (car texpr))
+	(contains-possibly-updateable?* (cdr texpr)))))
 
 ;;This is subsumed by fall-through case.
-;(defmethod contains-possibly-updateable? ((texpr type-name))
+;(defmethod contains-possibly-updateable?* ((texpr type-name))
 ;  (not (or (eq texpr *boolean*)
 ;	   (eq texpr *number*))))
 
 
 
-(defmethod contains-possibly-updateable? ((texpr actual))
-  (contains-possibly-updateable? (type-value texpr)))
+(defmethod contains-possibly-updateable?* ((texpr actual))
+  (contains-possibly-updateable?* (type-value texpr)))
 
-(defmethod contains-possibly-updateable? ((texpr type-name))
+(defmethod contains-possibly-updateable?* ((texpr type-name))
   (formal-type-decl? (declaration texpr)))
 ;;In the context, formal type parameters can later become
 ;;updateable.  
 
-(defmethod contains-possibly-updateable? ((texpr t))
+(defmethod contains-possibly-updateable?* ((texpr t))
   nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
@@ -216,8 +233,6 @@
 ;;updateable structure or because it included a function type which
 ;;would correspond to a closure value which might keep some variables
 ;;live in the value.   Used in updateable-free-formal-vars.
-
-(defvar *exprs-seen*)
 
 (defun contains-possibly-updateable-or-closure? (texpr)
   (let ((*exprs-seen* nil))
@@ -236,18 +251,6 @@
   (contains-possibly-updateable-or-closure?* (find-supertype texpr)))
 
 (defmethod contains-possibly-updateable-or-closure?* ((texpr adt-type-name))
-  ;; SO - infinite loop with
-  ;;   expr: datatype begin
-  ;;     application(idx: nat, args: list[expr]): app?
-  ;;  texpr = expr
-  ;;  constr = application
-  ;;  (type constr) = [[nat, list[expr]] -> (app?)]
-  ;;  types = (nat list[expr])
-  ;;  contains-possible-closure? list[expr]
-  ;;    constr = cons
-  ;;    (type constr) = [[expr, list[expr]] -> (cons?[expr])]
-  ;;    types = (expr list[expr])
-  ;;  recurse
   (unless (member texpr *exprs-seen* :test #'tc-eq)
     (push texpr *exprs-seen*)
     (some #'(lambda (constr)
@@ -289,46 +292,52 @@
 ;;would correspond to a closure value which might keep some variables
 ;;live in the value.   Used in updateable-free-formal-vars.
 
-(defmethod contains-possible-closure? ((texpr tupletype))
-  (contains-possible-closure? (types texpr)))
+(defun contains-possible-closure? (texpr)
+  (let ((*exprs-seen* nil))
+    (contains-possible-closure?* texpr)))
 
-(defmethod contains-possible-closure? ((texpr funtype))
+(defmethod contains-possible-closure?* ((texpr tupletype))
+  (contains-possible-closure?* (types texpr)))
+
+(defmethod contains-possible-closure?* ((texpr funtype))
   t)
 
-(defmethod contains-possible-closure? ((texpr recordtype))
+(defmethod contains-possible-closure?* ((texpr recordtype))
   ;; CM - Strings are internally represented as records, but they are updatable
   (and (not (tc-eq texpr *string-type*))
-       (contains-possible-closure? (mapcar #'type (fields texpr)))))
+       (contains-possible-closure?* (mapcar #'type (fields texpr)))))
 
-(defmethod contains-possible-closure? ((texpr subtype))
-  (contains-possible-closure? (find-supertype texpr)))
+(defmethod contains-possible-closure?* ((texpr subtype))
+  (contains-possible-closure?* (find-supertype texpr)))
 
-(defmethod contains-possible-closure? ((texpr adt-type-name))
-  (some #'(lambda (constr)
-	    (and (funtype? (type constr))
-		 (let* ((dom (domain (type constr)))
-			(types (if (tupletype? dom)
-				   (types dom)
-				   (list dom))))
-		   (loop for ty in types
-			 thereis (and (not (tc-eq (find-supertype ty) texpr))
-				      (contains-possible-closure? ty))))))
-	(constructors texpr)))
+(defmethod contains-possible-closure?* ((texpr adt-type-name))
+  (unless (member texpr *exprs-seen* :test #'tc-eq)
+    (push texpr *exprs-seen*)
+    (some #'(lambda (constr)
+	      (and (funtype? (type constr))
+		   (let* ((dom (domain (type constr)))
+			  (types (if (tupletype? dom)
+				     (types dom)
+				     (list dom))))
+		     (loop for ty in types
+			   thereis (and (not (tc-eq (find-supertype ty) texpr))
+					(contains-possible-closure?* ty))))))
+	  (constructors texpr))))
 
-(defmethod contains-possible-closure? ((texpr list))
+(defmethod contains-possible-closure?* ((texpr list))
   (when (consp texpr)
-    (or (contains-possible-closure? (car texpr))
-	(contains-possible-closure? (cdr texpr)))))
+    (or (contains-possible-closure?* (car texpr))
+	(contains-possible-closure?* (cdr texpr)))))
 
-(defmethod contains-possible-closure? ((texpr actual))
-  (contains-possible-closure? (type-value texpr)))
+(defmethod contains-possible-closure?* ((texpr actual))
+  (contains-possible-closure?* (type-value texpr)))
 
-(defmethod contains-possible-closure? ((texpr type-name))
+(defmethod contains-possible-closure?* ((texpr type-name))
   (formal-type-decl? (declaration texpr)))
 ;;In the context, formal type parameters can later become
 ;;updateable.  
 
-(defmethod contains-possible-closure? ((texpr t))
+(defmethod contains-possible-closure?* ((texpr t))
   nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.
