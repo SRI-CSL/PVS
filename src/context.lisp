@@ -1885,8 +1885,9 @@ declaration"
 (defun numeric-suffix (obj)
   (let* ((str (string obj))
 	 (pos (position-if-not #'digit-char-p str :from-end t)))
-    (assert (and pos (not (= (1+ pos) (length str)))))
-    (parse-integer str :start (1+ pos))))
+    (if (and pos (not (= (1+ pos) (length str))))
+	(parse-integer str :start (1+ pos))
+	0)))
 
 (defun restore-tcc-proofs (tccs proofs)
   "Restores proofs to TCCs, by trying to associate them based on origin.
