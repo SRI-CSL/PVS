@@ -82,7 +82,7 @@ intervenes."
 ;;;   ilisp-reset - string used to abort to the top level
 ;;;   comint-continue - string used to continue after an interrupt
 ;;;   comint-interrupt-regexp - a regexp that recognizes an interrupt
-;;;   ilisp-error-regexp - used to filter error output; if an error message
+;;;   pvs-error-filter - used to filter error output; if an error message
 ;;;          matches, then only that much will be output in the popup buffer
 ;;;          if no match then it all will be displayed.
 ;;;   comint-prompt-status - should evaluate to a function that given
@@ -166,7 +166,7 @@ intervenes."
     (setq pvs-top-regexp
 	  (format "^\\(%s\\(%s\\|%s\\) \\)+" prompt-pre old-prompt new-prompt)))
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
-  (setq ilisp-error-regexp "^[ \t]*\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
+  (setq pvs-error-filter 'allegro-error-filter)
   (setq pvs-gc-end-regexp ";;; Finished GC")
   ;; (setq font-lock-defaults
   ;; 	`((pvs-lisp-font-lock-keywords
@@ -177,21 +177,26 @@ intervenes."
   ;; 	   . lisp-font-lock-syntactic-face-function)))
   )
 
-(defdialect pvscmulisp "pvs-cmulisp"
-  cmulisp
-  (pvs-comint-init)
-  ;;(setq comint-send-newline nil)
-  (setq ilisp-binary-extension (pvs-cmulisp-binary-extension))
-  (setq ilisp-init-binary-extension ilisp-binary-extension)
-  (setq ilisp-load-inits nil)
-  (setq ilisp-program (format "%s -quiet -noinit" (pvs-program)))
-  (setq comint-prompt-regexp
-	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
-  (setq comint-interrupt-regexp  "^Interrupted at")
-  (setq ilisp-error-regexp "^[ \t]Restarts:$")
-  (setq pvs-top-regexp
-	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
-  (setq pvs-gc-end-regexp ";;; Finished GC"))
+(defun allegro-error-filter (output)
+  ;; Error: check for interrupt
+  ;; Break:
+  (let ((prefix-regex "^[ \t]*\\(Error\\|Break\\): "))
+    (when (string-match prefix-regex output)
+      (let* ((msg-start (match-end 0))
+	     (prefix (substring output (match-beginning 1) (match-end 1)))
+	     (msg-end (string-match "^Restart actions" output msg-start t))
+	     (type (if (equal prefix "Error")
+		       (if (string-match "Received signal number 2 (Interrupt)" output
+					 msg-start)
+			   'interrupt
+			   'error)
+		       'break)))
+	(cl-case type
+	  (interrupt "Error: Received signal number 2 (Interrupt)")
+	  (break (concat "Break in PVS Lisp:\n"
+			 (string-trim (substring output msg-start msg-end))))
+	  (t (concat "Error in PVS Lisp (probably a bug):\n"
+		     (string-trim (substring output msg-start msg-end)))))))))
 
 (defdialect pvssbclisp "pvs-sbclisp"
   cmulisp
@@ -216,10 +221,28 @@ intervenes."
   ;; 	"^\\([0-9]+\\]+\\|[0-9]+\\[[0-9]+\\]\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter\\|Defining.*\\* ")
   ;; (setq pvs-top-regexp
   ;; 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
-  (setq comint-interrupt-regexp  "^  Interactive interrupt at")
+  (setq pvs-error-filter 'sbcl-error-filter)
   (setq comint-continue ":continue")
-  (setq ilisp-error-regexp "^0\\(\\[[0-9]+\\)?\\] $")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
+
+(defun sbcl-error-filter (output)
+  (let* ((type-regex "\\(SIMPLE-ERROR\\|SIMPLE-CONDITION\\|SB-SYS:INTERACTIVE-INTERRUPT @[0-9A-F]+\\)")
+	 (prefix-regex (concat "debugger invoked on a "
+			       type-regex
+			      " in thread\n#<THREAD \"main thread\" RUNNING {"
+			      "[0-9A-F]+}>:")))
+    (when (string-match prefix-regex output)
+      (let* ((type-str (substring output (match-beginning 1) (match-end 1)))
+	     (msg-start (match-end 0))
+	     (msg-end (string-match "Type HELP" output msg-start t)))
+	(cond ((equal type-str "SIMPLE-ERROR")
+	       (concat "Error in PVS Lisp (probably a bug):\n"
+		       (string-trim (substring output msg-start msg-end))))
+	      ((equal type-str "SIMPLE-CONDITION")
+	       (concat "Break in PVS Lisp:\n"
+		       (string-trim (substring output msg-start msg-end))))
+	      (t ;; (string-match "SB-SYS:INTERACTIVE-INTERRUPT" type-str)
+	       "Error: Received signal number 2 (Interrupt)"))))))
 
 (defun pvs-allegro-binary-extension ()
   "fasl")
@@ -950,74 +973,71 @@ window."
 	  (car (read-from-string item-list))))
 
 (defun pvs-handler (error-p wait-p message output prompt)
-  "Given ERROR-P, WAIT-P, MESSAGE, OUTPUT and PROMPT, show the message
-and output if there is an error or the output is multiple lines and
-let the user decide what to do."
-  (if (and (stringp output)
-	   (let ((case-fold-search nil))
-	     (string-match (ilisp-value 'ilisp-error-regexp) output)))
-      (if (and (or (not wait-p) error-p)
-	       (setq output (comint-remove-whitespace output))
-	       (or error-p (string-match "\n" output)))
-	  (let* ((buffer (ilisp-output-buffer))
-		 (out (if error-p 
-			  (funcall ilisp-error-filter output)
-			  output))
-		 (key
-		  (if (and error-p (not (comint-interrupted)))
-		      (if noninteractive
-			  ?b
-			  (comint-handle-error
-			   out
-			   "SPC-scroll, I-ignore, K-keep, A-abort sends and keep or B-break: "
-			   '(?i ?k ?a ?b)))
-		      (if noninteractive
-			  ?i
-			  (comint-handle-error 
-			   out 
-			   "SPC-scroll, I-ignore, K-keep or A-abort sends and keep: "
-			   '(?i ?k ?a)))))
-		 (clear comint-queue-emptied))
-	    (if (= key ?i)
-		(progn
-		  (message "Ignore message")
-		  (if buffer 
-		      (if (ilisp-temp-buffer-show-function)
-			  (funcall (ilisp-temp-buffer-show-function)
-				   buffer)
-			  (view-buffer buffer))
-		      (pvs-bury-output))
-		  t)
-		(with-current-buffer (get-buffer-create "*Errors*")
-		  (define-pvs-key-bindings (current-buffer))
-		  (if clear (delete-region (point-min) (point-max)))
-		  (goto-char (point-max))
-		  (if message
-		      (insert message))
-		  (insert ?\n)
-		  (insert out) 
-		  (insert "\n\n"))
-		(if clear (setq comint-queue-emptied nil))
-		(if (= key ?a)
-		    (progn 
-		      (message "Abort pending commands and keep in *Errors*")
-		      (comint-abort-sends)
-		      t)
-		    (if (= key ?b)
-			(progn
-			  (comint-insert
-			   (concat comment-start comment-start comment-start
-				   message "\n"
-				   output "\n" prompt))
-			  (if noninteractive
-			      (if pvs-validating
-				  (progn (pvs-message "ERROR: %s" out) t)
-				  (error out))
-			      (message "Preserve break") nil))
-			(message "Keep error in *Errors* and continue")
-			t))))
-	  t)
-      t))
+  "Called from comint-process-filter. Mmmmmm
+Given ERROR-P, WAIT-P, MESSAGE, OUTPUT
+and PROMPT, show the message and output if there is an error or the output
+is multiple lines and let the user decide what to do."
+  (let ((err-output (when (stringp output) (funcall pvs-error-filter output))))
+    (if err-output
+	(if err-output
+	    (let* ((buffer (ilisp-output-buffer))
+		   (key
+		    (if (and error-p (not (comint-interrupted)))
+			(if noninteractive
+			    ?b
+			    (comint-handle-error
+			     err-output
+			     "SPC-scroll, I-ignore, K-keep, A-abort sends and keep or B-break: "
+			     '(?i ?k ?a ?b)))
+			(if noninteractive
+			    ?i
+			    (comint-handle-error 
+			     err-output 
+			     "SPC-scroll, I-ignore, K-keep or A-abort sends and keep: "
+			     '(?i ?k ?a)))))
+		   (clear comint-queue-emptied))
+	      (if (= key ?i)
+		  (progn
+		    (message "Ignore message")
+		    (if buffer 
+			(if (ilisp-temp-buffer-show-function)
+			    (funcall (ilisp-temp-buffer-show-function)
+				     buffer)
+			    (view-buffer buffer))
+			(pvs-bury-output))
+		    (pvs-send "(exit-debugger)")
+		    t)
+		  ;; Not ?i
+		  (with-current-buffer (get-buffer-create "*Errors*")
+		    (define-pvs-key-bindings (current-buffer))
+		    (if clear (delete-region (point-min) (point-max)))
+		    (goto-char (point-max))
+		    (if message
+			(insert message))
+		    (insert ?\n)
+		    (insert output)
+		    (insert "\n\n"))
+		  (if clear (setq comint-queue-emptied nil))
+		  (if (= key ?a)
+		      (progn 
+			(message "Abort pending commands and keep in *Errors*")
+			(comint-abort-sends)
+			t)
+		      (if (= key ?b)
+			  (progn
+			    (comint-insert
+			     (concat comment-start comment-start comment-start
+				     message "\n"
+				     output "\n" prompt))
+			    (if noninteractive
+				(if pvs-validating
+				    (progn (pvs-message "ERROR: %s" output) t)
+				    (error output))
+				(message "Preserve break") nil))
+			  (message "Keep error in *Errors* and continue")
+			  t))))
+	    t)
+	t)))
 
 (defun simple-status-pvs ()
   (with-current-buffer (ilisp-buffer)

@@ -425,6 +425,11 @@
   #+sbcl (lisp sb-debug:*in-the-debugger*)
   #+allegro (lisp (plusp (debug:debug-break-level))))
 
+(defun exit-debugger ()
+  (when (in-the-debugger)
+    #+sbcl (throw 'sb-int:toplevel-catcher nil)
+    #+allegro (debug:debug-reset)))
+
 (defun pvs-error (msg err &optional file-name place)
   ;; Indicates an error; no recovery possible.
   (assert (or (null file-name)
