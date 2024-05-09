@@ -34,6 +34,7 @@
   (unless (find-package :cffi)
     (ql:quickload :cffi))
   ;; Causes problems with closer-mop-packages
+  #-sbcl
   (unless (find-package :trivial-timer)
     (ql:quickload :trivial-timer))
   )
