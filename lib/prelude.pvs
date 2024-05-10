@@ -4172,8 +4172,9 @@ integertypes: THEORY
      maxi32: int32 = exp2(31) - 1
      maxi64: int64 = exp2(63) - 1
 
-     maxindex: MACRO uint32 = exp2(28) - 1 %max array index
-     index: TYPE = upto(maxindex) %array index supertype
+     maxsize: MACRO uint32 = exp2(28) %max array size
+     size: TYPE = upto(maxsize)
+     index: TYPE = below(maxsize) %array index supertype
 
      ux8, uy8, uz8: VAR uint8
      ux16, uy16, uz16: VAR uint16
@@ -4673,9 +4674,9 @@ finite_sets[T: TYPE]: THEORY
 
   card_strict_subset: THEOREM strict_subset?(A,B) IMPLIES card(A) < card(B)
 
-  card_1_has_1    : THEOREM card(S) >= 1 IMPLIES (EXISTS (x: T): S(x))
+  card_1_has_1    : THEOREM card(S) >= 1 IFF (EXISTS (x: T): S(x))
 
-  card_2_has_2    : THEOREM card(S) >= 2 IMPLIES
+  card_2_has_2    : THEOREM card(S) >= 2 IFF
                               (EXISTS (x,y: T): x /= y AND S(x) AND S(y))
 
   card_intersection_le: THEOREM card(intersection(A,B)) <= card(A) AND
@@ -5047,7 +5048,7 @@ more_finseq [T: TYPE]: THEORY
 
 array_sequences [T: TYPE]: THEORY
  BEGIN
-  arrayseq: TYPE = [# length: index, seq: ARRAY[below[length] -> T] #]
+  arrayseq: TYPE = [# length: size, seq: ARRAY[below[length] -> T] #]
   aseq: TYPE = arrayseq
 
   a, b, c: VAR aseq
@@ -5057,12 +5058,17 @@ array_sequences [T: TYPE]: THEORY
     (# length := 0,
        seq := (LAMBDA (x: below[0]): epsilon! (t:T): true) #)
 
+  full_aseq?(a): bool = (a`length = maxsize)
+
   aseq_appl(a): [below[length(a)] -> T] = a`seq;
 
   % Causes problems with finseq_appl conversion
   % CONVERSION aseq_appl;
 
   aseq_finseq: JUDGEMENT aseq SUBTYPE_OF finseq[T]
+
+  add_aseq: JUDGEMENT add(x : T, (a  | NOT full_aseq?(a))) HAS_TYPE aseq
+
 
 END array_sequences
 

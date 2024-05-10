@@ -1081,7 +1081,7 @@
 
 (defun make-ir-lett (vartype expr-type expr body)
   (let ((ir-vtype (ir-vtype vartype)))  
-    (if (or (ir2c-tcompatible ir-vtype expr-type)(ir-arraytype? expr-type)(ir-arraytype? ir-vtype))
+    (if  (ir2c-tcompatible ir-vtype expr-type);;(ir-arraytype? expr-type)(ir-arraytype? ir-vtype))
       (make-ir-let vartype expr body)
     (if (and (ir-funtype? expr-type)
 	     (ir-funtype? (ir-vtype vartype)))
@@ -1111,7 +1111,7 @@
 	  (mk-ir-lett vartype expr-type expr body)
 	(let* ((bind-var (new-irvar))
 	       (bind-vartype (mk-ir-variable bind-var expr-type)))
-	  (mk-ir-let bind-vartype expr
+	  (mk-ir-let bind-vartype expr;;ensures that mk-ir-lett always binds var to var'
 		     (mk-ir-lett vartype expr-type (mk-ir-last bind-vartype) body))))))))
   
 
@@ -2111,21 +2111,23 @@
 		(ir-type (pvs2ir-type type1 bindings))
 		(ir-arg-type (pvs2ir-expr-type (car args) bindings))
 		(ir-vartype (mk-ir-variable ir-var ir-type (id var1)));;NSH(1/17/20)
-		(ir-bind-expr (pvs2ir* (car args) bindings nil))
+		(ir-bind-expr (pvs2ir* (car args) bindings type1))
 		(ir-body (pvs2ir-let-expr (cdr let-bindings) (cdr args)
 				       expression
 				       (acons var1
 					      ir-vartype
 					      bindings)
 				       expected)));(break "pvs2ir(let-expr)")
-	   (if (or (ir-subrange? ir-type)
-		   (ir2c-tequal ir-type ir-arg-type))
-	       (mk-ir-let ir-vartype ir-bind-expr ir-body)
-	     (let* ((arg-var (new-irvar))
-		    (arg-vartype (mk-ir-variable arg-var ir-arg-type)))
-	     (make-ir-let  arg-vartype
-			 ir-bind-expr
-			 (mk-ir-lett ir-vartype ir-arg-type arg-vartype ir-body))))));;ir-type==>ir-var-type
+	   (mk-ir-let ir-vartype ir-bind-expr ir-body)
+	   ;; (if (or (ir-subrange? ir-type)
+	   ;; 	   (ir2c-tequal ir-type ir-arg-type))
+	   ;;     (mk-ir-let ir-vartype ir-bind-expr ir-body)
+	   ;;   (let* ((arg-var (new-irvar))
+	   ;; 	    (arg-vartype (mk-ir-variable arg-var ir-arg-type)))
+	   ;;   (make-ir-let  arg-vartype
+	   ;; 		 ir-bind-expr
+	   ;; 		 (mk-ir-lett ir-vartype ir-arg-type arg-vartype ir-body))))
+	   ));;ir-type==>ir-var-type
 	(t (pvs2ir* expression bindings expected))))
 
 (defun ir-type-name-with-actuals (declaration ir-actuals)
@@ -2229,6 +2231,7 @@
 	    (best-ir-subrange (type expr)(judgement-types+ expr) bindings)
 	  (pvs2ir-type (type expr) bindings))))))
 
+;Recurses through assignments a1 := e1, .., an := en
 (defun pvs2ir-field-assignments (assignments bindings expected 
 					     accum-ir-fieldvars
 					     accum-ir-assignments
@@ -2317,9 +2320,9 @@
 (defmethod pvs2ir* ((expr update-expr) bindings expected)
   (declare (ignore expected))  
   (with-slots (type expression assignments) expr
-	      (let ((ir-expression (pvs2ir* expression bindings nil)))
+	      (let ((ir-expression (pvs2ir* expression bindings expected)))
 		(pvs2ir-update assignments ir-expression
-			       (pvs2ir-type (type expression) bindings)
+			       (pvs2ir-type (or expected (type expression)) bindings)
 			       bindings))))
 
 (defmethod pvs2ir* ((expr forall-expr) bindings expected)
@@ -3029,8 +3032,9 @@
     ir-freevars)))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-variable))
-  (with-slots (ir-vtype) ir-expr
-    (union (list ir-expr) (pvs2ir-freevars* ir-vtype) :test #'eq)))
+  (with-slots (ir-vtype) ir-expr  ;;NSH(4-6-24): don't need to collect freevars from types
+    (list ir-expr)));; freevars in bound occurrences matter since it could be used for bound computation. 
+  ;;NSH(4-6-24):  (union (list ir-expr) (pvs2ir-freevars* ir-vtype) :test #'eq)))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-formal-typename))
   (let ((ir-const-formal (loop for entry in *ir-theory-tbindings*
@@ -3088,7 +3092,9 @@
   (with-slots (ir-vartypes ir-body ir-rangetype) ir-expr
     (set-difference (union (pvs2ir-freevars* ir-rangetype)
 			   (union (pvs2ir-freevars* ir-vartypes)
-				  (pvs2ir-freevars* ir-body)
+				  (union (pvs2ir-freevars* (mapcar #'ir-vtype ir-vartypes));;NSH(4-6-24)
+					 (pvs2ir-freevars* ir-body)
+					 :test #'eq)
 				  :test #'eq)
 			   :test #'eq)
 		    ir-vartypes
@@ -3499,13 +3505,13 @@
 				 bindings)));(break "preprocess ir-let: ~a" (ir-name ir-vartype))
 					;(when (eq (ir-name ir-vartype) 'ivar_13)(break "preprocess ir-let: ~a" (ir-name ir-vartype)))
 	    (if (eq ir-vartype ir-body)
-		new-ir-bind-expr
+		new-ir-bind-expr;;for let x = a in b, if x ~ b, then simplify to a
 	      (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
 				(not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
 			   (ir-last? new-ir-bind-expr))
 		       (ir2c-tcompatible-but (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
 		       )
-					;binds var to var with same type
+					;binds var to var' with same type, then replace var with var'
 		  (preprocess-ir* ir-body livevars
 				  (acons ir-vartype ; should be eq to new-ir-vartype
 					 (get-assoc (get-ir-last-var new-ir-bind-expr) bindings)
@@ -3546,9 +3552,11 @@
 
 (defun preprocess-ir-in-type (ir-type bindings)
   ;(when (consp bindings) (break "preprocess-ir-in-type"))
-  (when (ir-type? ir-type)
-    (lcopy ir-type 
-	   'renamings  bindings)))
+  (if (and (ir-type? ir-type)(pvs2ir-freevars* ir-type))
+      (with-slots (renamings) ir-type 
+	(lcopy ir-type 
+	       'renamings  (append bindings renamings)))
+    ir-type))
 
 (defmethod preprocess-ir* ((ir-expr ir-offset) livevars bindings)
   (with-slots (expr) ir-expr
@@ -4150,7 +4158,7 @@
   (with-slots (ir-fields ir-recordtype) ir-expr ;(break "ir2c*(ir-record)")
     (let ((ctype (add-c-type-definition (ir2c-type ir-recordtype)))
 	  (c-return-type (add-c-type-definition (ir2c-type return-type)))
-	  (tmpvar (gentemp "tmp")))
+	  (tmpvar (gentemp "tmp")))  ;;tmp is transfered to result with refcount 1.
       (cons (format nil "~a_t ~a = new_~a();" ctype tmpvar ctype)
 	    (cons (format nil "~a = (~a_t)~a" return-var c-return-type tmpvar)
 		  (loop for fld in ir-fields
@@ -6312,7 +6320,7 @@
 		 (index (ir-name (car ir-vartypes)))
 		 (index-c-type (add-c-type-definition (ir2c-type (ir-vtype (car ir-vartypes)))))
 		 (for-index (gentemp "index"))
-		 (return-location (format nil "~a->elems[~a]" return-var for-index))
+		 (return-location (format nil "~a->elems[~a]" return-var index)) ;(NSH:4/3/24):replaced for-index w/index
 		 (return-location-type (ir2c-type elemtype))
 		 (c-body (ir2c* ir-body return-location return-location-type))
 		 (mp-prelude (when (mpnumber-type? index-c-type)
@@ -7119,7 +7127,7 @@
 				(hashtype (ir-hashable-index? ir-domain))
 				;;need range to be a fixed-width int
 				(release-info (make-function-release-info type-name-root c-param-decl-string))
-				(copy-info (make-function-copy-info type-name-root)) ;;c-domain-root
+				(copy-info (make-function-copy-info type-name-root)) ;; c-domain-root
 				(lookup-info (when hashtype (make-function-lookup-info type-name-root c-domain-root hashtype)))
 				(dupdate-info (when hashtype (make-function-dupdate-info type-name-root c-domain-root hashtype c-range-root elemtype c-param-arg-string c-param-decl-string)))
 				(update-info (when hashtype (make-function-update-info type-name-root c-domain-root c-range-root c-param-arg-string c-param-decl-string)))
@@ -7299,14 +7307,15 @@
 				(list c-domain-root '|uint8|))
 	  (make-c-assignment "htbl->data[hashindex].key" c-domain-root "i" c-domain-root)
 	  (make-c-assignment-with-count "htbl->data[hashindex].value" c-range-root "v" c-range-root)
-	  (cons (format nil "~a_t tempvalue" (mppointer-type c-range-root))
-		(cons (mk-c-assignment "tempvalue" c-range-root "htbl->data[hashindex].value" c-range-root)
-		        (append (make-c-assignment-with-count "htbl->data[hashindex].value" c-range-root "v" c-range-root)
-				(when (ir-reference-type? elemtype)
+	  (if (ir-reference-type? elemtype)
+	      (cons (format nil "~a_t tempvalue" (mppointer-type c-range-root))
+		    (cons (mk-c-assignment "tempvalue" c-range-root "htbl->data[hashindex].value" c-range-root)
+		          (append (make-c-assignment-with-count "htbl->data[hashindex].value" c-range-root "v" c-range-root)
 				  (list (format nil "if (v != NULL) v->count++")
 					(if (ir-formal-typename? elemtype)
 					    (format nil "if (tempvalue != NULL)~a->release_ptr(tempvalue, ~a)" c-range-root  c-range-root)
-					  (format nil "if (tempvalue != NULL)release_~a(tempvalue~a)" c-range-root c-param-arg-string)))))))
+					  (format nil "if (tempvalue != NULL)release_~a(tempvalue~a)" c-range-root c-param-arg-string))))))
+	    (make-c-assignment-with-count "htbl->data[hashindex].value" c-range-root "v" c-range-root))
 	  ))
 
 (defun make-function-release-info (type-name-root c-param-decl-string)
@@ -7884,7 +7893,6 @@
 
 (defun make-record-release-ptr-header (release-name type-name-root c-param-decl-string)
   (declare (ignore c-param-decl-string))
-  ;;(format t "~%make-record-release-ptr-header:~%   void ~a_ptr(pointer_t x, type_actual_t ~a);" release-name type-name-root)
   (format nil "void ~a_ptr(pointer_t x, type_actual_t ~a);" release-name type-name-root))
 
 (defun make-record-release-ptr-defn (release-name type-name-root 
