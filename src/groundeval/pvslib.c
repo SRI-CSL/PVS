@@ -480,8 +480,7 @@ stringliteral_t mk_string(uint32_t length, uint32_t * instring){
  };
 
 char * byte2cstring(uint32_t length, uint8_t * bstring){
-  uint32_t slength = length++;
-  char * outstring = (char *) safe_malloc(slength++);
+  char * outstring = (char *) safe_malloc(length + 1);
   memcpy(outstring, bstring, length);
   outstring[length] = '\0';
   return outstring;
@@ -512,6 +511,14 @@ bool_t equal_file__file(file_t file1, file_t file2){
   release_file__file(file2);
   return result;
 }
+
+char * json_file__file(file_t file){
+  char * name = file->name;
+  char * out = safe_malloc(strlen(name) + 2);
+  sprintf(out, "\"%s\"", name);
+  return out;
+}
+
 //------------------------------------------------------------------
 //json printing routines for the various types
 
@@ -529,7 +536,13 @@ char * safe_strcat(char * s1, char * s2){
 //
 
 char * json_char(uint32_t x){
-  char * out = safe_malloc(8);
+  char * out = safe_malloc(4);
+  sprintf(out, "%"PRIu32"", x);
+  return out;
+}
+
+char * json_bool(bool_t x){
+  char * out = safe_malloc(4);
   sprintf(out, "%"PRIu32"", x);
   return out;
 }
