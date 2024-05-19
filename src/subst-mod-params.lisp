@@ -1174,9 +1174,13 @@
 		  imps))
 	  (assert (every #'cdr tbindings))
 	  (setf (theory-mappings nth) tbindings)
+	  (when (dependent-known-subtypes th)
+	    (setf (dependent-known-subtypes nth)
+		  (subst-mod-params* (dependent-known-subtypes th) modinst bindings)))
+	  (when (macro-expressions th)
+	    (setf (macro-expressions nth)
+		  (subst-mod-params-alist (macro-expressions th) modinst bindings)))
 	  (when (or (instances-used th)
-		    (dependent-known-subtypes th)
-		    (macro-expressions th)
 		    (macro-subtype-tcc-args-alist th))
 	    (break "subst-mod-params* module"))
 	  (values nth tbindings))))))
@@ -1733,7 +1737,8 @@
   ;; formula-decl => mapped-formula-decl
   (cond ((mapped-axiom-tcc? ndecl)
 	 (change-class ndecl 'mapped-axiom :spelling 'AXIOM :kind nil))
-	((let ((netype (nonempty-formula-type (closed-definition ndecl))))
+	((let ((netype (nonempty-formula-type (or (closed-definition ndecl)
+						  (definition ndecl)))))
 	   (when (and netype
 		      ;; Formula has the form EXISTS (t: netype): true
 		      (eq (spelling (generated-by ndecl)) 'AXIOM)
@@ -1755,11 +1760,16 @@
 	 (change-class ndecl 'mapped-tcc-to-axiom :spelling 'AXIOM :kind nil))
 	(t (change-class ndecl 'mapped-formula-decl :spelling 'AXIOM :kind nil))))
 
-(defmethod subst-mod-params* ((decl subtype-judgement) modinst bindings)
-  (with-slots (declared-subtype) decl
-    (break "Fill this in")
-    (copy decl
-      :declared-subtype (subst-mod-params* declared-subtype modinst bindings))))
+(defmethod subst-mod-params* ((ndecl subtype-judgement) modinst bindings)
+  (with-slots (declared-type type declared-subtype subtype) ndecl
+    (let ((ndtype (subst-mod-params* declared-type modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings))
+	  (ndsubtype (subst-mod-params* declared-subtype modinst bindings))
+	  (nsubtype (subst-mod-params* subtype modinst bindings)))
+      (setf declared-type ndtype
+	    type ntype
+	    declared-subtype ndsubtype
+	    subtype nsubtype))))
 
 (defmethod subst-mod-params* ((decl name-judgement) modinst bindings)
   (with-slots (name) decl
@@ -1871,6 +1881,15 @@
       (let* ((nelt (subst-mod-params* (car list) modinst bindings)))
 	(subst-mod-params-list (cdr list) modinst bindings
 			       (cons nelt rlist)))))
+
+(defun subst-mod-params-alist (alist modinst bindings &optional ralist)
+  (if (null alist)
+      (nreverse ralist)
+      (let* ((elt (car alist))
+	     (ncar (subst-mod-params* (car elt) modinst bindings))
+	     (ncdr (subst-mod-params* (cdr elt) modinst bindings)))
+	(subst-mod-params-alist (cdr alist) modinst bindings
+				(acons ncar ncdr ralist)))))
 
 (defmethod subst-mod-params* ((type type-name) modinst bindings)
   (let* ((res (car (resolutions type)))
