@@ -1,9 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; translate-yices-to-pvs.lisp -- 
 ;; Author          : K. Nukala
-;; Created On      : November 2023
+;; Created On      : May 2024
 ;; Last Modified By: K. Nukala
-;; Last Modified On: 3/08/2023
+;; Last Modified On: 05/20/2024
 ;; Update Count    : 0
 ;; Status          : In-Progress
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39,7 +39,7 @@
 (defvar *def-var-context* (make-pvs-hash-table))
 (defvar *type-context* (make-pvs-hash-table))
 (defvar *uf-context* (make-pvs-hash-table))
-(defvar *enum-fields-context* (make-pvs-hash-table))
+(defvar *enum-record-fields-context* (make-pvs-hash-table))
 (defvar *bound-var-context* (make-pvs-hash-table))
 
 ;; hash table utilities
@@ -144,15 +144,15 @@
        (make-pairs field-assns)))
 
 
-;; Type/enum definitions manipulate *type-context* and *enum-fields-context*
+;; Type/enum definitions manipulate *type-context* and *enum-record-fields-context*
 ;; TODO: do away with handcrafting declaration strings via `pc-parse`
 (defun translate-yices-typedef-to-pvs (yices-typedef interpreted-p)
-	    ; (format t "(translate-yices-typedef-to-pvs ~a)~%" yices-typedef)
+					; (format t "(translate-yices-typedef-to-pvs ~a)~%" yices-typedef)
   (if (not interpreted-p)
-	    ; Looks like `(define-type id)`, turn into `id: TYPE`
+					; Looks like `(define-type id)`, turn into `id: TYPE`
       (progn (setf (gethash (cadr yices-typedef) *type-context*) (cadr yices-typedef))
 	     (mk-type-decl (cadr yices-typedef)))
-	    ; Looks like `(define-type id T)`, turn into `id: translate-to-pvs(T)`
+					; Looks like `(define-type id T)`, turn into `id: translate-to-pvs(T)`
       (let* ((name (symbol-name (cadr yices-typedef)))
 	     (cleaned-name (substitute #\_ #\- name))
 	     (cleaned-name-symb (intern cleaned-name))
@@ -163,7 +163,7 @@
 					    'theory-elt)))
 		 (progn
 		   (loop for enum-field in (cdr type)
-			 do (setf (gethash enum-field *enum-fields-context*) enum-field))
+			 do (setf (gethash enum-field *enum-record-fields-context*) enum-field))
 		   (setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
 		   pvs-scalar)))
 	      ((and (listp type) (eq (car type) 'datatype))
@@ -178,16 +178,24 @@
 	      ((and (listp type) (eq (car type) 'subtype))
 	       (break "typedef subtype unimplemented~%"))
 	      ((and (listp type) (eq (car type) 'record))
-	       (setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
-	       (pc-parse (format nil "~a: TYPE = ~a"
-				 cleaned-name-symb
-				 (mk-recordtype (translate-record-field-decls (cdr type)) nil))
-			 'theory-elt))
+	       (progn
+		 (loop for record-field on (cdr type) by #'cddr
+		       do (setf (gethash (car record-field) *enum-record-fields-context*)
+				(car record-field)))
+		 (setf (gethash cleaned-name-symb *type-context*) cleaned-name-symb)
+		 (pc-parse (format nil "~a: TYPE = ~a"
+				   cleaned-name-symb
+				   (mk-recordtype (translate-record-field-decls (cdr type)) nil))
+			   'theory-elt)
+		 )
+	       )
 	      (t
 	       (progn (setf (gethash cleaned-name-symb *type-context*)
 			    (translate-yices-type-to-pvs type))
 		      nil))))))
 
+(defun mk-subrange (dom rng)
+  (pc-parse (format nil "subrange(~a, ~a)" dom rng) 'type-expr))
 
 (defun translate-yices-type-to-pvs (yices-type)
   (if (not (listp yices-type))
@@ -202,9 +210,23 @@
 				   (cdr yices-type))))
 	('record (mk-recordtype (translate-record-field-decls (cdr yices-type)) nil))
 	;; KN: doesn't use mk-funtype because arguments aren't type-exprs
-	('-> (make-instance 'funtype
-			    :domain (translate-yices-type-to-pvs (cadr yices-type))
-			    :range (translate-yices-type-to-pvs (caddr yices-type)))))))
+	('subrange (mk-subrange (cadr yices-type) (caddr yices-type)))
+	('-> ;; (make-instance 'funtype
+	     ;; 		    :domain (translate-yices-type-to-pvs (cadr yices-type))
+	     ;; 		    :range (translate-yices-type-to-pvs (cddr yices-type)))
+	 (funtype-translation yices-type)
+	     ))))
+
+(defun funtype-translation (yices-type)
+  (assert (eq (car yices-type) '->))
+  (let* ((rng (if (eq (length (cddr yices-type)) 1)
+		  (translate-yices-type-to-pvs (caddr yices-type))
+		  (translate-yices-type-to-pvs (cons '-> (cddr yices-type))))))
+    (make-instance 'funtype
+		   :domain (translate-yices-type-to-pvs (cadr yices-type))
+		   :range rng)
+    )
+  )
 
 ;; all the standard binops are binops only (no support for n-ary operations)
 (defparameter *pvs-makes-table*
@@ -223,9 +245,7 @@
     (|not| . "mk-negation")
     (|and| . "mk-conjunction")
     (|or| . "mk-disjunction")
-    (|ite| . "mk-if-expr")
-    (|forall| . "mk-forall-expr")
-    (|exists| . "mk-exists-expr")))
+    (|ite| . "mk-if-expr")))
 
 
 (defun nary-addition (arguments)
@@ -234,15 +254,15 @@
       (mk-addition (car arguments) (nary-addition (cdr arguments)))))
 
 (defun translate-yices-expr-to-pvs (yices-expr)
-  ; (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
-  ; (format t "*enum-fields-context*: ~a~%" (hash-keys *enum-fields-context*))
-  ; (format t "*uf-context*: ~a~%" (hash-keys *uf-context*))
-  ; (format t "*bound-var-context*: ~a~%" (hash-keys *bound-var-context*))
+  (format t "(translate-yices-expr-to-pvs ~a)~%" yices-expr)
+  (format t "*enum-record-fields-context*: ~a~%" (hash-keys *enum-record-fields-context*))
+  (format t "*uf-context*: ~a~%" (hash-keys *uf-context*))
+  (format t "*bound-var-context*: ~a~%" (hash-keys *bound-var-context*))
   (cond ; ((symbolp yices-expr) (format t "symbolp ~%")(mk-name-expr yices-expr))
 	((numberp yices-expr) (mk-number-expr yices-expr))
 	((eq yices-expr 'false) *false*)
 	((eq yices-expr 'true) *true*)
-	((gethash yices-expr *enum-fields-context*) yices-expr)
+	((gethash yices-expr *enum-record-fields-context*) yices-expr)
 	((gethash yices-expr *uf-context*)
 	 ; (format t "translating uninterpreted function ~a~%" yices-expr)
 	 (mk-name-expr yices-expr))
@@ -279,6 +299,26 @@
 	   (pc-parse (format nil "~a WITH [(~a) := ~a]" (translate-yices-expr-to-pvs expr) idx value)
 		     'expr)
 	   ))
+	((or (eq (car yices-expr) 'forall)
+	     (eq (car yices-expr) 'exists))
+	 (let* ((var (caadr yices-expr))
+		(type (translate-yices-type-to-pvs (cadadr yices-expr)))
+		(expr (if (typep type 'funtype)
+			  (prog2
+			      (setf (gethash var *uf-context*) var)
+			      (translate-yices-expr-to-pvs (caddr yices-expr))
+			    (remhash var *uf-context*))
+			  (prog2
+			      (setf (gethash var *bound-var-context*) var)
+			      (translate-yices-expr-to-pvs (caddr yices-expr))
+			    (remhash var *bound-var-context*)))))
+	   (if (eq (car yices-expr) 'forall)
+	       (prog2
+		   (format t "FORALL -- ~a~%"
+			   (format nil "(FORALL (~a: ~a): ~a)~%" var type expr))
+		   (pc-parse (format nil "(FORALL (~a: ~a): ~a)~%" var type expr) 'expr))
+	       (prog2 (format t "EXISTS~%")
+		   (pc-parse (format nil "(EXISTS (~a: ~a): ~a)~%" var type expr) 'expr)))))
 	(t
 	 (let* ((untranslated-fn-call (car yices-expr))
 		(translated-args (map 'list #'(lambda (x)
@@ -287,7 +327,8 @@
 				      (cdr yices-expr))))
 	   (let* ((uf-context-elem (gethash untranslated-fn-call *uf-context*)))
 	     (if uf-context-elem
-		 (mk-application* uf-context-elem translated-args) ;; found elem in uf-context
+		 (pc-parse (format nil "~a ~{(~a) ~}" uf-context-elem translated-args) 'expr)
+		 ;; (mk-application* uf-context-elem translated-args) ;; found elem in uf-context
 		 (let* ((pvs-makes-table-elem (assoc untranslated-fn-call *pvs-makes-table*)))
 		   ;; Handle mk-conjunction/disjunction differently since they expect a list
 		   (cond ((eq untranslated-fn-call 'and) (mk-conjunction translated-args))
@@ -363,7 +404,7 @@
   (setq *succedents* nil)
   (clrhash *type-context*)
   (clrhash *uf-context*)
-  (clrhash *enum-fields-context*)
+  (clrhash *enum-record-fields-context*)
   (clrhash *def-var-context*)
   (clrhash *bound-var-context*))
 
