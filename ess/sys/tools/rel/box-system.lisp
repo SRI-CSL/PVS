@@ -191,10 +191,10 @@ Other keys are allowed, but will be ignored."
     (when boot
       (load source-file))
     (let ((*readtable* (if readtable readtable *readtable*))
+	  #+(or sbcl cmu) (sb-ext:*compile-progress* messages)
 	  (cfile (asdf/output-translations:apply-output-translations compiled-file)))
       (compile-file source-file :output-file cfile
 		    #+(or lucid allegro) :messages #+(or lucid allegro) messages
-		    #+(or sbcl cmu) :progress #+(or sbcl cmu) messages
 		    ))
     )
   ;;  #+kcl (rename-file (merge-pathnames ".o" source-file) compiled-file)
