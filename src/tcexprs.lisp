@@ -1399,7 +1399,7 @@
       (call-next-method))))
 
 (defmethod typecheck-operator ((op expr) expr expected)
-  (declare (ignore expected))e
+  (declare (ignore expected))
   (unless (ptypes op)
     (typecheck* op nil nil (argument expr))))
 
