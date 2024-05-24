@@ -4428,7 +4428,7 @@
   (case (car c-arg-types)
     ((|int8| |int16| |int32| |int64| |__int128| |uint8| |uint16| |uint32| |uint64| |__uint128| |mpz| |mpq|)
      (ir2c-arith-relations '== return-var ir-arg-names c-arg-types))
-    (bool (list (format nil "~a == ~a" (car ir-arg-names)(cadr ir-arg-names))));;NSH(5-15-24)
+    (|bool| (list (format nil "~a = (~a == ~a)" return-var (car ir-arg-names)(cadr ir-arg-names))));;NSH(5-15-24)
     (t (if (ir-formal-typename? (car arg-types))
 	   (list (format nil "~a = (~a_t) ~a->equal_ptr(~a, ~a, ~a)"
 			 return-var c-return-type (car c-arg-types) (car ir-arg-names)

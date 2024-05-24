@@ -3303,10 +3303,11 @@
        (cdr theory-instances)
        (cdr theories))))
 
-(defun subst-mod-params-alist (ex alist)
-  (multiple-value-bind (instances theories)
-      (theory-insts-of-param-alist alist)
-    (subst-mod-params-instances ex instances theories)))
+;;NSH(5-23-24): Already defined above with a conflicting signature
+;; (defun subst-mod-params-alist (ex alist)
+;;   (multiple-value-bind (instances theories)
+;;       (theory-insts-of-param-alist alist)
+;;     (subst-mod-params-instances ex instances theories)))
 
 (defun subst-mod-params-substlist (alist inst theory)
   (let ((cars (subst-mod-params (mapcar #'car alist) inst theory)))
