@@ -380,8 +380,7 @@
 	(if args
 	    (let ((thinst (current-theory-name)))
 	      (mapcan #'(lambda (bd)
-			  (when (compatible-arguments? bd thinst args
-						       (current-theory))
+			  (when (compatible-arguments? bd thinst args (current-theory))
 			    (list (mk-resolution bd thinst (type bd)))))
 		bdecls))
 	    (mapcar #'(lambda (bd)
@@ -550,7 +549,8 @@
 	  (if (and (null mappings)
 		   (null args)
 		   (null (decl-formals decl))
-		   (null (decl-formals (current-declaration)))
+		   (or (null (current-declaration))
+		       (null (decl-formals (current-declaration))))
 		   (or (eq dth (current-theory))
 		       (and (null (formals-sans-usings dth))
 			    (every (complement #'mappings)
@@ -594,7 +594,7 @@
 					(typep decl '(or mod-decl formal-theory-decl)))
 				   (list (mk-modname (id (theory-copy decl))
 					   acts nil mappings dacts decl))
-				   (decl-args-compatible? decl args mappings)))
+				   (decl-args-compatible? decl args mappings dacts)))
 		     (unint-modinsts
 		      (remove-if
 			  #'(lambda (mi)
@@ -660,9 +660,9 @@ at face value."
 	       (dreses (mapcar #'(lambda (thinst)
 				   (let ((pthinst
 					  (lcopy thinst
-					    :actuals (when acts (actuals thinst))
-					    :dactuals (when dacts (dactuals thinst))
-					    :mappings (when mappings (mappings thinst)))))
+					    :actuals (or (actuals thinst) nacts)
+					    :dactuals (or (dactuals thinst) ndacts)
+					    :mappings (or (mappings thinst) mappings))))
 				     (assert (fully-typed? pthinst))
 				     (make-resolution decl pthinst)))
 			 thinsts)))
@@ -697,7 +697,10 @@ Note that the acts and dacts have been sorted out."
 		     :module-instance cthi)))
 	(setf (resolutions cthi) (list cres))
 	(compatible-arguments? decl cthi args (current-theory)))
-      (let* ((thinsts (get-importings dth))
+      (let* ((imps (get-importings dth))
+	     (thinsts (if ndacts
+			  (mapcar #'(lambda (imp) (copy imp :dactuals ndacts)) imps)
+			  imps))
 	     (generic? (when (formals-sans-usings dth)
 			 (find-if-not #'actuals thinsts)))
 	     (dthi (when generic?
@@ -716,7 +719,7 @@ Note that the acts and dacts have been sorted out."
 	       #+pvsdebug (assert (fully-typed? dthi))
 	       (when (visible-to-mapped-tcc? decl dthi dth)
 		 (compatible-arguments? decl dthi args (current-theory))))
-	      (t (let* ((cinsts (decl-args-compatible? decl args mappings))
+	      (t (let* ((cinsts (decl-args-compatible? decl args mappings ndacts))
 			(modinsts
 			 (mapcar #'(lambda (thinst)
 				     (assert (modname? thinst))
@@ -903,7 +906,7 @@ acts1 is part of a name being typechecked."
 	   (make-resolution decl nthinst)))))
 	
 
-(defun decl-args-compatible? (decl args mappings)
+(defun decl-args-compatible? (decl args mappings dacts)
   "Attempts to create theory instances of (module decl) compatible with
 decl, args, and mappings."
   (if (eq (module decl) (current-theory))
@@ -916,8 +919,12 @@ decl, args, and mappings."
 				   mappings)
 			(cond ((eq (module decl) (current-theory))
 			       (assert (typep decl '(or formal-theory-decl mod-decl)))
-			       (list (mk-modname (id decl) nil nil mappings)))
-			      (t (get-importings (module decl))))))
+			       (list (mk-modname (id decl) nil nil mappings dacts)))
+			      (t (let ((imps (get-importings (module decl))))
+				   (if dacts
+				       (mapcar #'(lambda (imp) (copy imp :dactuals dacts))
+					 imps)
+				       imps))))))
 	     (mthinsts (if mappings
 			   (create-theorynames-with-name-mappings
 			    (module decl) thinsts mappings)
@@ -2178,6 +2185,7 @@ Prefer fixed-thinsts over comp-thinsts."
 	       nil))))
 
 (defun compatible-args**? (atype etype)
+  ;;(break "compatible-args**?")
   (and (compatible? atype etype)
        (or (not (fully-instantiated? atype))
 	   (not (fully-instantiated? etype))
