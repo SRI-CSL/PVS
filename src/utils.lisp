@@ -1677,6 +1677,20 @@ prove itself from the mapped axioms."
 (defmethod add-conversions-to-context ((decl conversion-decl))
   (push decl (conversions *current-context*)))
 
+(defun make-background-theory ()
+  (make-instance 'module
+    :id 'pvs-background-theory
+    :context-path (current-context-path)))
+
+(defun make-background-context ()
+  (make-new-context (make-background-theory)))
+
+(defvar *background-context* nil)
+
+(defun background-context ()
+  (or *background-context*
+      (setq *background-context*
+	    (make-background-context))))
 
 (defun make-new-context (theory)
   (let ((pctx (or (prelude-context *workspace-session*)
@@ -5261,6 +5275,12 @@ we can get this method using
     (if type
 	(pc-typecheck term :expected type)
 	(pc-typecheck term))))
+
+(defun tc-decl (decl)
+  (with-context (background-context)
+    (let ((tdecls (tc-term decl :nt 'theory-elt)))
+      (dolist (tdecl tdecls)
+	(add-decl tdecl)))))
 
 (defun tc-modname (ex)
   (tc-term ex :nt 'modname))
