@@ -539,11 +539,12 @@ of objects of the form {\"proofId\":id,\"status\":status}"
 	(evaluate-in-session sess)
 	(sb-ext:unschedule-timer timer))
       #-sbcl
-      (progn (trivial-timer:initialize-timer)
-	     (let ((timer (trivial-timer:register-timer-recurring-call
-			   1000 #'handle-interrupt)))
-	       (evaluate-in-session sess)
-	       (trivial-timer:cancel-timer-call timer)))
+      ;; (progn (trivial-timer:initialize-timer)
+      ;; 	     (let ((timer (trivial-timer:register-timer-recurring-call
+      ;; 			   1000 #'handle-interrupt)))
+      ;; 	       (evaluate-in-session sess)
+      ;; 	       (trivial-timer:cancel-timer-call timer)))
+      nil
       )))
 
 (defun evaluate-in-session (sess)
