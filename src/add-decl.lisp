@@ -345,7 +345,7 @@ always t from there."
 	  (setf (module decl) thry)
 	  (when generated?
 	    (setf (generated-by decl) (or (generated-by cdecl) cdecl))))
-	(when generated?
+	(when (and curdecl generated?)
 	  (pushnew decl (generated curdecl))))
       (when (tcc? decl)
 	(setq atail (remove-previous-formal-tccs decl atail))
