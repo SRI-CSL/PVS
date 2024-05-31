@@ -2282,7 +2282,6 @@ Note that even proved ones get overwritten"
 	 (unproved-only? (and arg (not (minusp arg))))
 	 (include-trivial? (and arg (minusp arg)))
 	 (*xt-periods-allowed* t)
-	 (*no-comments* nil)
 	 (*comment-on-proof-status* t)
 	 (*no-comments* t)
 	 (*unparse-expanded* t)
