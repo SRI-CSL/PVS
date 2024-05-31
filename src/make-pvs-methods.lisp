@@ -33,22 +33,14 @@
   ;; This sets *pvs-path* and *pvs-fasl-type*
   (load "pvs-config.lisp"))
 
-(defpackage pvs (:use #+lucid :lucid-common-lisp #-sbcl :lisp #+sbcl :cl
-		      #-(or gcl cmu sbcl) :clos #+(or gcl cmu) :pcl
-		      #+sbcl :sb-pcl)
-	 #+sbcl (:shadowing-import-from :sb-int memq)
-	 #+sbcl (:export memq))
-
 (in-package :pvs)
-(import '(cl-user:*pvs-path*))
-(let (#+allegro (excl:*enable-package-locked-errors* nil))
-  #+sbcl (sb-ext:unlock-package "COMMON-LISP")
-  (load "src/defcl.lisp")
-  (load "src/store-object.lisp")
-  (load "src/classes-expr.lisp")
-  (load "src/classes-decl.lisp")
-  (load "src/prover/estructures.lisp"))
+
+(load "src/defcl.lisp")
+(load "src/store-object.lisp")
+(load "src/classes-expr.lisp")
+(load "src/classes-decl.lisp")
+(load "src/prover/estructures.lisp")
 
 (write-deferred-methods-to-file t)
 
-(cl-user:bye)
+(uiop:quit 0)
