@@ -144,7 +144,7 @@ ifeq ($(EMACS),)
 EMACS = $(shell which xemacs 2> /dev/null)
 endif
 ifeq ($(EMACS),)
-$(error "No Emacs or Xemacs found")
+$(warning "No Emacs or Xemacs found")
 endif
 endif # end of buildcmds check
 
@@ -517,9 +517,15 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
+ifeq ($(EMACS),)
+emacs-deps =
+else
+emacs-deps = prelude-files-and-regions etags
+endif
+
 .PHONY : all parser yices emacs prelude-files-and-regions
 
-all : $(HOME)/quicklisp $(pvs-images) yices prelude-files-and-regions etags
+all : $(HOME)/quicklisp $(pvs-images) yices $(emacs-deps)
 
 devel : $(allegro-devel) 
 
