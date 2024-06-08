@@ -882,10 +882,10 @@ Please check your results with a proof that does not rely on Yices. ~%")
                           ~% 1. Download yices from http://yices.csl.sri.com~
                           ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
-		       err-output))
+		       err-output)
 		     (values 'X nil))
 		    (t (format t "Error running Yices2:~%  ~a" err-output)
-		       (values 'X nil))))))))
+		       (values 'X nil)))))))))
 
 	
 (addrule 'yices2 () ((fnums *) nonlinear?)
