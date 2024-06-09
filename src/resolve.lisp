@@ -2820,7 +2820,7 @@ This forms a lattice, and we return the top ones."
 	     name
 	     (format nil
 		 "~v%Expecting a~a~%No resolution for ~a~
-                  ~@[ with arguments of possible types: ~:{~%  ~a~3i : ~{~:_~a~^,~}~}~]~
+                  ~@[ with arguments of possible types: ~:{~%  ~a~3i : ~{~%      ~a~^,~}~}~]~
                   ~@[~2% ~a~]~
                   ~:[~;~2% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]~
