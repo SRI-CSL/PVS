@@ -595,19 +595,23 @@
 	    (t (values bindings prefix-string))))
 
 (defmethod translate-to-yices2* ((expr binding-expr) bindings)
-  (with-slots ((expr-bindings bindings) expression) expr
-    (let ((stype (find-supertype (type (car expr-bindings)))))
-      (multiple-value-bind (newbindings bindstring)
-	  (translate-yices2-bindings  expr-bindings bindings "")
-	(let ((yexpression (translate-to-yices2* expression newbindings)))
-	  (cond ((lambda-expr? expr)
-		 (format nil "(lambda (~a) ~a)" bindstring yexpression))
-		((forall-expr? expr)
-		 (format nil "(forall (~a) ~a)"
-			 bindstring yexpression))
-		((exists-expr? expr)
-		 (format nil "(exists (~a) ~a)"
-			 bindstring yexpression))))))))
+  (let ((new-expr (if (quant-expr? expr)
+		      (lift-predicates-in-quantifier expr (list *integer* *real*))
+		    expr)))
+    (with-slots ((expr-bindings bindings) expression) new-expr
+      (let ((*bindings* (append expr-bindings *bindings*))
+	    (stype (find-supertype (type (car expr-bindings)))))
+	(multiple-value-bind (newbindings bindstring)
+			     (translate-yices2-bindings  expr-bindings bindings "")
+			     (let ((yexpression (translate-to-yices2* expression newbindings)))
+			       (cond ((lambda-expr? expr)
+				      (format nil "(lambda (~a) ~a)" bindstring yexpression))
+				     ((forall-expr? expr)
+				      (format nil "(forall (~a) ~a)"
+					      bindstring yexpression))
+				     ((exists-expr? expr)
+				      (format nil "(exists (~a) ~a)"
+					      bindstring yexpression)))))))))
 
   ;; (let ((entry (gethash expr *y2name-hash*)))
   ;;   (or entry 
@@ -785,7 +789,7 @@
 	     (setq *yices2-executable* "(pvs-context-yices2-executable)"))
 	    ((program-version "yices2 --version" "Yices 2")
 	     (setq *yices2-executable* "yices2"))
-	    ((program-version "yices --version" "Yices 2")
+	    ((program-version "yices --version" "Yices")
 	     (setq *yices2-executable* "yices"))
 	    (t (format t "~%Yices 1 cannot be found in your path")
 	       (when (program-version "yices --version" "1")
@@ -882,10 +886,10 @@ Please check your results with a proof that does not rely on Yices. ~%")
                           ~% 1. Download yices from http://yices.csl.sri.com~
                           ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
-		       err-output))
+		       err-output)
 		     (values 'X nil))
 		    (t (format t "Error running Yices2:~%  ~a" err-output)
-		       (values 'X nil))))))))
+		       (values 'X nil)))))))))
 
 	
 (addrule 'yices2 () ((fnums *) nonlinear?)
