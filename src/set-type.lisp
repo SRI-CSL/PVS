@@ -1089,7 +1089,7 @@ resolution with a macro matching the signature of the arguments."
   ;; Note that (expr act) now has its actuals and maps set,
   ;; but that (type-value act) and act itself may still not be fully typed.
   ;;(assert (fully-typed? (type-value act)))
-  (when (nonempty-type-decl? formal)
+  (when (typep formal '(and nonempty-type-decl (not decl-formal-type)))
     ;; May need to generate existence TCC
     (unless (eq *generate-tccs* 'none)
       (check-nonempty-type (type-value act) (current-declaration)))))
@@ -4090,7 +4090,7 @@ type of the lhs."
 (defmethod arithmetic-op? ((ex name-expr))
   (or (and (memq (id ex) '(+ - * /))
 	   (eq (id (module-instance (car (resolutions ex)))) '|number_fields|))
-      (and (eq (id ex) 'exp2)
+      (and (eq (id ex) '|exp2|)
 	   (eq (id (module-instance (car (resolutions ex)))) '|exp2|))))
 
 (defmethod arithmetic-op? (ex)
@@ -4121,7 +4121,7 @@ type of the lhs."
       (<= (<= a1 a2))
       (> (> a1 a2))
       (>= (>= a1 a2))
-      (exp2 (expt 2 a1)))))
+      (|exp2| (expt 2 a1)))))
 
 (defmethod get-arithmetic-value ((expr conjunction))
   (and (get-arithmetic-value (args1 expr))
