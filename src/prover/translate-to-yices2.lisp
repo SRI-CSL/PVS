@@ -51,6 +51,7 @@
     (TRUE (|booleans| . true))
     (FALSE (|booleans| . false))
     (IMPLIES  (|booleans| . =>))
+    (=>  (|booleans| . =>))
     (<=> (|booleans| . =))
     (=>  (|booleans| . =>))
     (⇒ (|booleans| . =>))
@@ -600,7 +601,7 @@
     (with-slots ((expr-bindings bindings) expression) new-expr
       (let ((*bindings* (append expr-bindings *bindings*))
 	    (stype (find-supertype (type (car expr-bindings)))));(when bindings (break "bindings"))
-	    (multiple-value-bind (newbindings bindstring)
+	(multiple-value-bind (newbindings bindstring)
 		(translate-yices2-bindings  expr-bindings bindings "")
 	      (let ((yexpression (translate-to-yices2* expression newbindings)))
 		(cond ((lambda-expr? expr)
@@ -880,15 +881,25 @@ Please check your results with a proof that does not rely on Yices. ~%")
 			    (values '! nil nil))
 			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
 			      (values 'X nil nil))))
-		    ((<= 16 status 24)
-		     (format t "Yices2 error:~%  ~a" err-output))
-		    (t (format t
-			   "~%Error running yices - you may need to do one or more of:~
+		    ((= status 127)
+		     (format t "~%Error running yices - you may need to do one or more of:~
                           ~% 1. Download yices from http://yices.csl.sri.com~
                           ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
-			 err-output)
-		       (values 'X nil)))))))))
+		       err-output)
+		     (values 'X nil))
+		    (t (format t "Error running Yices2:~%  ~a" err-output)
+		       (values 'X nil))
+		    ;; ((<= 16 status 24)
+		    ;;  (format t "Yices2 error:~%  ~a" err-output))
+		    ;; (t (format t
+		    ;; 	   "~%Error running yices - you may need to do one or more of:~
+                    ;;       ~% 1. Download yices from http://yices.csl.sri.com~
+                    ;;       ~% 2. add yices to your path and restart PVS.
+                    ;;       ~%The error message is:~% ~a"
+		    ;; 	 err-output)
+		    ;;    (values 'X nil))
+		    )))))))
 
 
 	
