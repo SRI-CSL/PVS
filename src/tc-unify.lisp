@@ -422,6 +422,25 @@ returns the updated bindings."
 			(let ((nbindings (tc-match* arg barg bindings)))
 			  (or nbindings bindings))))))))))
 
+;; (defmethod incompatibility ((r1 recordtype) (r2 recordtype))
+;;   (fields-incompatibility (fields r1) (fields r2)))
+
+;; (defun fields-incompatibility (fields1 fields2 &optional unmatched1 unmatched2 incompat)
+;;   (if (null fields1)
+;;       (values unmatched1 (append unmatched2 fields2) incompat)
+;;       (let ((fld1 (car fields1))
+;; 	    (fld2 (find (id fld1) fields2 :key #'id)))
+;; 	(cond ((null fld2)
+;; 	       (fields-incompatibility (cdr fields1) fields2
+;; 				       (cons fld1 unmatched1) unmatched2))
+;; 	      ((compatible? (type fld1) (type fld2))
+;; 	       (fields-incompatibility (cdr fields1) (remove fld2 fields2)
+;; 				       unmatched1 unmatched2 incompat))
+;; 	      (t (fields-incompatibility (cdr fields1) (remove fld2 fields2)
+;; 					 unmatched1 unmatched2
+;; 					 (acons fld1 fld2 incompat)))))))
+	    
+
 ;;; Assuming either atype or etype is fully-instantiated,
 ;;; Instantiates the other, if necessary, and returns the compatible-type
 (defun tc-match-compatible-type (atype etype)
