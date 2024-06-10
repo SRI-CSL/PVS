@@ -62,13 +62,13 @@ BEGIN
 %% Used for untyped lisp attachments
   Lisp_ : TYPE+  
 
-  Lisp[T:TYPE] : TYPE+  %% Used for PVS-typed lisp attachments
+  Lisp[T:TYPE+] : TYPE+  %% Used for PVS-typed lisp attachments
 
-  to_lisp[T:TYPE](t:T) : Lisp  % To PVS-typed lisp
+  to_lisp[T:TYPE+](t:T) : Lisp  % To PVS-typed lisp
   
-  to_lisp_[T:TYPE](t:T) : Lisp_ % To untyped lisp
+  to_lisp_[T:TYPE+](t:T) : Lisp_ % To untyped lisp
 
-  list2listlisp[T:TYPE](l:list[T]) : list[Lisp[T]] =
+  list2listlisp[T:TYPE+](l:list[T]) : list[Lisp[T]] =
     map(LAMBDA(t:T): to_lisp(t))(l)
 
   ;>>[T:TYPE] : [list[T]->list[Lisp[T]]] = list2listlisp
