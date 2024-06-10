@@ -969,22 +969,28 @@ bindings."
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals decl)
     (declare (ignore dacts))
+    (unless (every #'nonempty-type-decl? dfmls)
+      (type-error decl "Parameters to an uninterpreted nonempty type must be nonempty"))
     (let* ((id (makesym "~a_nonempty" (id decl)))
-	   (edecl (mk-formula-decl id nil 'AXIOM nil dfmls))
-	   (type (if thinst
-		     (with-current-decl edecl
-		       (subst-mod-params (type-value decl)
-			   thinst (current-theory) decl))
-		     (type-value decl)))
-	   (var (make-new-variable '|x| type))
-	   (form (mk-exists-expr (list (mk-bind-decl var type)) *true*))
-	   (tform (with-current-decl edecl
-		    (typecheck* form *boolean* nil nil))))
-      (setf (definition edecl) tform)
-      (typecheck* edecl nil nil nil)
-      (pvs-info "Added existence AXIOM for ~a:~%~a"
-	(id decl) (unparse edecl :string t))
-      (add-decl edecl))))
+	   (edecl (mk-formula-decl id nil 'AXIOM nil dfmls)))
+      (with-current-decl edecl
+	(let* ((type (if thinst
+			 (subst-mod-params (type-value decl)
+			     thinst (current-theory) decl)
+			 (type-value decl)))
+	       (var (make-new-variable (id decl) type))
+	       (preconds (mapcar #'(lambda (dfml)
+				     (let* ((var (make-new-variable (id dfml) (type dfml)))
+					    (bd (mk-bind-decl var (type dfml))))
+				       (make-exists-expr (list bd) *true*)))
+			   dfmls))
+	       (form (make-exists-expr (list (mk-bind-decl var type)) *true*))
+	       (tform (make-conjunction (nconc preconds (list form)))))
+	  (setf (definition edecl) tform)
+	  (typecheck* edecl nil nil nil)
+	  (pvs-info "Added existence AXIOM for ~a:~%~a"
+	    (id decl) (unparse edecl :string t))
+	  (add-decl edecl))))))
     
 
 (defmethod typecheck* ((decl type-def-decl) expected kind arguments)
