@@ -1275,6 +1275,7 @@ be typechecked when set-type selects a resolution."
   (let* ((*current-context* lhs-context)
 	 ;; (ass (assert (eq (current-theory) lhs-theory)))
 	 (*generate-tccs* 'none)
+	 (*resolve-error-info* nil)
 	 (dfmls (decl-formals mapping))
 	 (lhs (lhs mapping))
 	 (tres (unless (and (kind mapping)
