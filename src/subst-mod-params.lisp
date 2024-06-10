@@ -97,6 +97,8 @@
 
 (defvar *number-declarations* (make-hash-table :test 'eql))
 
+(defvar *nonempty-decl-formals*)
+
 ;;; This resets the (all-subst-mod-params-caches *workspace-session*) hash
 ;;; table.  It is called from the parser whenever a newly parsed theory
 ;;; replaces the old theory, to ensure that the garbage collector can remove
@@ -151,6 +153,148 @@
                      (make-hash-table :test 'eq))))
           (setf (gethash modinst (all-subst-mod-params-caches *workspace-session*)) ncaches)
           ncaches))))
+
+(defun instantiated-copy (modinst)
+  (assert (typep modinst '(or string modame)))
+  (let* ((*current-context* (or (current-context) (background-context)))
+	 (*collecting-tccs* t)
+	 (*tccforms* nil)
+	 (*generate-tccs* 'all)
+	 (modname (if (stringp modinst)
+		      (let ((*allowed-ids* '(_))) (pc-parse modinst 'modname))
+		      modinst))
+	 (theory (get-typechecked-theory (lcopy modname 'actuals nil))))
+    (unless (length= (formals-sans-usings theory) (actuals modname))
+      (error "instantiated-copy: theory expects ~d actuals, was given ~d:~
+              ~%  Use '_' (underscore) to copy the corresponding formals in the theory copy"
+	     (length (formals theory)) (length (actuals modname))))
+    (multiple-value-bind (new-fmls bindings)
+	;; Note that lib-decls and importings are allowed, so might be more
+	;; formals than actuals
+	(formals-and-bindings (formals theory) (actuals modname))
+      (break "instantiated-copy: not yet finished")
+      (let* (;; Need to bind subst-mod-params globals
+	     (nth (subst-mod-params* theory modinst bindings)))
+	(dolist (fml new-fmls)
+	  (setf (module fml) nth))
+	(setf (formals nth) new-fmls)
+	nth))))
+
+(defun formals-and-bindings (formals actuals &optional new-fmls bindings)
+  (if (null formals)
+      (values (nreverse new-fmls) (nreverse bindings))
+      (let ((fml (car formals))
+	    (act (car actuals)))
+	(cond ((and (name-expr? (expr act))
+		    (eq (id (expr act)) '_))
+	       (formals-and-bindings (cdr formals) (cdr actuals)
+				     (cons fml new-fmls) bindings))
+	      ((lib-decl? fml)
+	       (formals-and-bindings (cdr formals) actuals
+				     (cons fml new-fmls) bindings))
+	      ((importing? fml)
+	       (let ((new-imp (substit fml bindings)))
+		 (formals-and-bindings (cdr formals) actuals
+				       (cons new-imp new-fmls) bindings)))
+	      (t (typecheck-actual-wrt-formal act fml bindings)
+		 (multiple-value-bind (nfml nalist)
+		     (subst-actuals-in-next-formal act fml bindings)
+		   (set-type-actual act nfml)
+		   (assert (fully-typed? act))
+		   (assert (fully-instantiated? act))
+		   (formals-and-bindings (cdr formals) (cdr actuals) new-fmls
+					 (acons nfml (or (type-value act) (expr act))
+						bindings))))))))
+
+(defmethod typecheck-actual-wrt-formal (act (fml formal-const-decl) bindings)
+  (when (type-value act)
+    (type-error act "Type where expression expected"))
+  (typecheck* (expr act) nil 'expr nil))
+
+(defmethod typecheck-actual-wrt-formal (act (fml formal-theory-decl) bindings)
+  (if (type-value act)
+      (type-error act "Type where theory instance expected")
+      (typecheck* (expr act) 'module nil nil)))
+
+(defmethod typecheck-actual-wrt-formal (act (fml formal-type-decl) bindings)
+  (if (type-value act)
+      (typecheck* (type-value act) nil nil nil)
+      (let ((tval (typecheck-act-expr-as-type (expr act))))
+	(setf (type-value act) tval)))
+  (assert (and (type-value act)
+	       (fully-typed? (type-value act))
+	       (fully-instantiated? (type-value act)))))
+
+(defmethod typecheck-act-expr-as-type ((ex name-expr))
+  (let* ((*typechecking-actual* t)
+	 (tres (resolve* ex 'type nil)))
+    (cond ((null tres)
+	   (type-error ex "Type expected"))
+	  ((cdr tres)
+	   (type-ambiguity ex))
+	  (t (type (car tres))))))
+
+(defmethod typecheck-act-expr-as-type ((ex set-expr))
+  (typecheck* ex nil nil nil)
+  (let ((texpr (typecheck* (setsubtype-from-set-expr ex) nil nil nil)))
+    (or texpr
+	(type-error ex "Type expected"))))
+
+(defmethod typecheck-act-expr-as-type ((ex application))
+  (cond ((plusp (parens ex)) ;; treat as expr-as-type
+	 (let ((*typechecking-actual* t))
+	   (typecheck* ex nil nil nil))
+	 (let ((pred-types (remove-if-not #'(lambda (pty)
+					      (let ((sty (find-supertype pty)))
+						(and (funtype? sty)
+						     (tc-eq (find-supertype (range sty))
+							    *boolean*))))
+			     (ptypes ex))))
+	   (cond ((null pred-types)
+		  (type-error ex "Invalid expr-as-type"))
+		 ((cdr pred-types)
+		  (type-ambiguity ex))
+		 (t (let* ((tval (typecheck* (make-instance 'expr-as-type :expr ex)
+					     nil nil nil)))
+		      (assert tval)
+		      tval)))))
+	(t ;; Has to be a type-application
+	 (unless (typep (operator ex) 'name)
+	   (type-error ex "Not a valid type"))
+	 (let* ((tn (mk-type-name (operator ex)))
+		(args (arguments ex))
+		(*typechecking-actual* t)
+		(tval (typecheck*
+		       (make-instance 'type-application 
+			 :type tn
+			 :parameters (copy-untyped args))
+		       nil nil nil)))
+	   tval))))
+
+(defmethod typecheck-act-expr-as-type ((ex expr))
+  (unless (plusp (parens ex))
+    (type-error ex "Invalid type"))
+  (typecheck* (make-instance 'expr-as-type :expr ex) nil nil nil))
+
+(defmethod copy-formal ((fml formal-type-decl) bindings)
+  (copy fml :place nil :newline-comment nil))
+
+(defmethod copy-formal ((fml formal-subtype-decl) bindings)
+  (let ((ntype-expr (substit (type-expr fml) bindings)))
+    (copy fml :place nil :newline-comment nil
+	  :type-expr ntype-exor)))
+
+(defmethod copy-formal ((fml formal-struct-subtype-decl) bindings)
+  (copy fml :place nil :newline-comment nil
+	:type-expr (substit (type-expr fml) bindings)))
+
+(defmethod copy-formal ((fml formal-const-decl) bindings)
+  (copy fml :place nil :newline-comment nil
+	:declared-type (substit (declared-type fml) bindings)))
+
+(defmethod copy-formal ((fml formal-theory-decl) bindings)
+  (copy fml :place nil :newline-comment nil
+	:theory-name (substit (theory-name fml) bindings)))
 
 (defmethod subst-theory-params ((theory module) (alist cons))
   ;;(assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
@@ -327,7 +471,8 @@
 		      (formals-sans-usings *subst-mod-params-theory*)))
 	   (dformals (when decl (all-decl-formals decl))) ; includes mapping lhs
 	   ;;(decl-formals decl)))
-	   (*subst-mod-free-params* nil))
+	   (*subst-mod-free-params* nil)
+	   (*nonempty-decl-formals* nil))
       (unless (resolution modinst)
 	(setf (resolutions modinst)
 	      (list (mk-resolution *subst-mod-params-theory* modinst nil))))
@@ -984,6 +1129,12 @@
 			 (and (type-name? (print-type obj))
 			      (formal-subtype-decl? (declaration (print-type obj)))))
 		     (null (print-type nobj)))
+		(and (or (null (print-type obj))
+			 (and (type-name? (print-type obj))
+			      (not (every #'(lambda (df) (assq df bindings))
+					  (decl-formals (declaration
+							 (print-type obj)))))))
+		     (null (print-type nnobj)))
 		(print-type nnobj)
 		(type-name? nnobj)))
     nnobj))
@@ -1005,21 +1156,8 @@
 	     (assert (typep sptype '(or null print-type-expr)))
 	     ;;(assert (or (null sptype) (fully-instantiated? sptype)))
 	     sptype))
-	  ;; ((and (type-def-decl? pdecl)
-	  ;; 	(let* ((ptexpr (type-expr (declaration ptype)))
-	  ;; 	       (nptype (subst-mod-params* ptexpr modinst bindings))
-	  ;; 	       (ptclass (typecase nptype
-	  ;; 			  (type-name 'print-type-name)
-	  ;; 			  (type-application 'print-type-application)
-	  ;; 			  (expr-as-type 'print-expr-as-type))))
-	  ;; 	  (unless (or (eq nptype ptexpr)
-	  ;; 		      (null ptclass))
-	  ;; 	    (when (eq ptclass 'print-type-name)
-	  ;; 	      (setf (type (resolution nptype)) nil))
-	  ;; 	    (when (eq ptclass 'print-expr-as-type) (break))
-	  ;; 	    (change-class nptype ptclass)
-	  ;; 	    nptype))))
-	  (t (let ((nptype (subst-mod-params* ptype modinst bindings)))
+	  ((every #'(lambda (df) (assq df bindings)) (decl-formals pdecl))
+	   (let ((nptype (subst-mod-params* ptype modinst bindings)))
 	       (unless (print-type-name? nptype)
 		 (unless (type-name? nptype)
 		   (break "not type-name?"))
@@ -1027,44 +1165,6 @@
 		       (change-class (copy nptype) 'print-type-name
 			 :resolutions (list (copy (resolution nptype) :type nil)))))
 	       nptype)))))
-  ;; (let* ((decl (declaration ptype))
-  ;; 	 (atype (cdr (assq decl bindings))))
-  ;;   (break "subst-mod-params-print-type* print-type-name")
-  ;;   (unless (or atype
-  ;; 		(and ;;(eq ptype (print-type nobj))
-  ;; 		     (fully-instantiated? ptype)
-  ;; 		     (or (not *smp-include-actuals*)
-  ;; 			 (and (tc-eq (actuals ptype) (actuals modinst))
-  ;; 			      (tc-eq (dactuals ptype) (dactuals modinst))))))
-  ;;     (if (eq (id modinst) (id (module-instance ptype)))
-  ;; 	  (let ((nptype (lcopy ptype
-  ;; 			  :actuals (when (or (actuals ptype)
-  ;; 					     *smp-include-actuals*)
-  ;; 				     (actuals modinst))
-  ;; 			  :dactuals (when (or (dactuals ptype)
-  ;; 					      *smp-include-actuals*)
-  ;; 				     (dactuals modinst))
-  ;; 			  :resolutions (list (copy (resolution ptype)
-  ;; 					       :module-instance modinst)))))
-  ;; 	    #+pvsdebug
-  ;; 	    (assert (fully-instantiated? nptype))
-  ;; 	    nptype)
-  ;; 	  (let ((nmodinst (subst-mod-params* (module-instance ptype) modinst bindings)))
-  ;; 	    #+pvsdebug
-  ;; 	    (assert (fully-instantiated? nmodinst))
-  ;; 	    (unless (eq nmodinst (module-instance ptype))
-  ;; 	      (let ((nptype (lcopy ptype
-  ;; 			      :actuals (when (or (actuals ptype)
-  ;; 						 *smp-include-actuals*)
-  ;; 					 (actuals nmodinst))
-  ;; 			      :dactuals (when (or (dactuals ptype)
-  ;; 						  *smp-include-actuals*)
-  ;; 					  (dactuals nmodinst))
-  ;; 			      :resolutions (list (copy (resolution ptype)
-  ;; 						   :module-instance nmodinst)))))
-  ;; 		#+pvsdebug
-  ;; 		(assert (fully-instantiated? nptype))
-  ;; 		nptype)))))))
 
 (defmethod subst-mod-params-print-type* ((pt print-type-application) modinst bindings)
   (assert (null (print-type pt)))
@@ -1130,7 +1230,6 @@
     (when (some #'theory-reference? (formals th))
       (break "subst-mod-params* (module) with theory-references in formals"))
     (let* ((*subst-mod-params-module?* th)
-	   ;;(fthrefs (remove-if-not #'theory-reference? (formals th)))
 	   (nth (copy th
 		  :id (if (declaration? *subst-mod-params-declaration*)
 			  (makesym "~a.~a"
@@ -1179,7 +1278,7 @@
 		  (subst-mod-params* (dependent-known-subtypes th) modinst bindings)))
 	  (when (macro-expressions th)
 	    (setf (macro-expressions nth)
-		  (subst-mod-params-alist (macro-expressions th) modinst bindings)))
+		  (subst-mod-params-alist* (macro-expressions th) modinst bindings)))
 	  (when (or (instances-used th)
 		    (macro-subtype-tcc-args-alist th))
 	    (break "subst-mod-params* module"))
@@ -1224,6 +1323,9 @@
 				   (acons decl (or bval ndecl) bindings)))
 		    ;; dfbindings maps old decl-formals of decl to new
 		    (ndecl-bindings (append rbindings dfbindings bindings)))
+	       (unless (eq bindings nbindings)
+		 (clrhash *subst-mod-params-cache*)
+		 (clrhash *subst-mod-params-eq-cache*))
 	       (assert (every #'cdr nbindings) () "ass3")
 	       (assert (every #'cdr ndecl-bindings) () "ass4")
 	       (assert (or (not (mapping-lhs? bdecl)) (mapping-rhs? bval)))
@@ -1252,7 +1354,22 @@
 				  (change-class ndecl (if (nonempty-type-decl? ndecl)
 							  'nonempty-type-eq-decl
 							  'type-eq-decl)
-				    :type-value tval :type-expr texp))))
+				    :type-value tval :type-expr texp))
+			      (let ((exists-ax
+				     (find-if #'nonempty-formula-decl (generated decl))))
+				(when exists-ax
+				  (assert (length= (decl-formals exists-ax)
+						   (decl-formals bdecl)))
+				  ;; For each nonempty type decl of the
+				  ;; (decl-formals bdecl) coming from a mapping LHS,
+				  ;; e.g., Monad{{T[A : TYPE+] :=  [St -> [A, St]],...}}
+				  ;; shoudl lead to the TCC
+				  ;; ∃ (a: A): TRUE => ∃ (t: [St -> [A, St]]): TRUE
+				  (let ((ne-dfmls (decl-formals bdecl)))
+				    (when ne-dfmls
+				      (setq *nonempty-decl-formals*
+					    (acons exists-ax ne-dfmls
+						   *nonempty-decl-formals*))))))))
 			   ((const-decl? ndecl)
 			    (if (definition ndecl)
 				(break "Need to set const definition")
@@ -1294,8 +1411,23 @@
 					   (not (memq (car bdg) (decl-formals decl)))))
 				  nbindings))
 		       () "Bad dbindings after")
-	       (regenerate-xref ndecl)
-	       (subst-mod-params-decls (cdr decls) modinst nbindings nth (cons ndecl ndecls)))))))
+	       ;; Check if an ndecl is a subsumed TCC
+	       ;; (regenerate-xref ndecl)
+	       (let* ((tcc-cmts (when (tcc? ndecl)
+				  (cdr (assq (current-declaration)
+					     (tcc-comments (current-theory))))))
+		      (in-tcc-cmts (some #'(lambda (cmt) (eq (car decls) (caddr cmt)))
+					 tcc-cmts)))
+		 (subst-mod-params-decls (cdr decls) modinst nbindings nth
+					 (if in-tcc-cmts
+					     ndecls
+					     (cons ndecl ndecls)))))))))
+
+(defmethod nonempty-formula-decl ((decl formula-decl))
+  (nonempty-formula-type (or (closed-definition decl) (definition decl))))
+
+(defmethod nonempty-formula-decl (term)
+  nil)
 
 ;;; Create the importings needed to reference the bindings
 (defun create-importings-for-bindings (bindings &optional importings)
@@ -1366,16 +1498,17 @@
 
 (defmethod subst-mod-params* ((nrectype inline-recursive-type) modinst bindings)
   (assert (generated-by nrectype))
-  (let ((nconstr (subst-mod-params* (constructors nrectype) modinst bindings))
-	(ntype-name (subst-mod-params* (adt-type-name nrectype) modinst bindings)))
+  (let* ((*adt* nrectype)
+	 (nconstr (subst-mod-params* (constructors nrectype) modinst bindings))
+	 (ntype-name (subst-mod-params* (adt-type-name nrectype) modinst bindings)))
     ;; importings
     ;; adt-theory
     ;; decl-formals
-    (break "check this")
     (multiple-value-bind (nass abindings)
 	(subst-mod-params-decls (assuming nrectype) modinst bindings (module nrectype))
       (multiple-value-bind (ngen #| tbindings |#)
 	  (subst-mod-params-decls (generated nrectype) modinst abindings (module nrectype))
+	(break "check this")
 	(let ((gen-theories (subst-mod-params-decls (generated nrectype) modinst bindings
 						    (module nrectype))))
 	  (setf (assuming nrectype) nass
@@ -1385,18 +1518,26 @@
     nrectype))
 
 (defmethod subst-mod-params* ((adt recursive-type) modinst bindings)
-  (break "Needs work")
-  (let ((cadt
-	 (copy adt
-	   :constructors (subst-mod-params* (constructors adt) modinst bindings)
-	   :adt-type-name (subst-mod-params* (adt-type-name adt) modinst bindings)
-	   ;; set :generated later
-	   :generated-by nil
-	   :place nil
-	   :formals nil
-	   :formals-sans-usings nil
-	   )))
-    (change-class cadt (inlined-version adt))))
+  (let* ((nadt (copy adt :generated-by adt :place nil))
+	 (*adt* nadt)
+	 (nimps (subst-mod-params* (importings adt) modinst bindings))
+	 ;; positive-types
+	 (nthy (subst-mod-params* (adt-theory adt) modinst bindings))
+	 (nmap (subst-mod-params* (adt-map-theory adt) modinst bindings))
+	 (nreduce (subst-mod-params* (adt-reduce-theory adt) modinst bindings))
+	 (nconstrs (subst-mod-params* (constructors adt) modinst bindings))
+	 (ntype-name (subst-mod-params* (adt-type-name adt) modinst bindings))
+	 (remfmls (remove-if #'(lambda (fml) (assq fml bindings)) (formals adt)))
+	 (nfmls (subst-mod-params* remfmls modinst bindings)))
+    (setf (importings nadt) nimps
+	  (adt-theory nadt) nthy
+	  (adt-map-theory nadt) nmap
+	  (adt-reduce-theory nadt) nreduce
+	  (constructors nadt) nconstrs
+	  (adt-type-name nadt) ntype-name
+	  (formals nadt) nfmls
+	  (formals-sans-usings nadt) nfmls)
+    nadt))
 
 (defmethod subst-mod-params* ((c simple-constructor) modinst bindings)
   (lcopy c
@@ -1425,22 +1566,6 @@
   (declare (ignore modinst bindings))
   (break "More methods, please"))
 
-(defmethod subst-mod-params* ((ndecl type-decl) modinst bindings)
-  (with-slots (type-value contains) ndecl
-    (declare (ignore modinst bindings))
-    (assert (generated-by ndecl)) ;; Should be new
-    (let ((tn (if (adt-type-name? type-value)
-		  (progn (break "subst-mod-params* type-decl for adt-type-name")
-			 ;; (let ((sadt (cdr (assq (adt type-value) owlist))))
-			 ;;   (assert sadt)
-			 ;;   (mk-adt-type-name (id sd) nil nil nil sadt))
-			 (mk-adt-type-name (id ndecl)))
-		  (mk-type-name (id ndecl)))))
-      (setf (resolutions tn)
-	    (list (mk-resolution ndecl (current-theory-name) tn)))
-      (setf type-value tn))
-    ndecl))
-
 (defmethod subst-mod-params* ((ndecl type-def-decl) modinst bindings)
   (with-slots (type-value type-expr contains) ndecl
     (assert (generated-by ndecl))
@@ -1458,6 +1583,33 @@
 	    (type-expr ndecl) te
 	    (contains ndecl) co)
       ndecl)))
+
+;;; mapped-type-decl method not needed; subclass of type-def-decl
+
+(defmethod subst-mod-params* ((ndecl struct-subtype-decl) modinst bindings)
+  (let ((nproj (subst-mod-params* (projection ndecl) modinst bindings))
+	(nsuptype (subst-mod-params* (supertype ndecl) modinst bindings)))
+    (call-next-method)
+    (setf (projection ndecl) nproj
+	  (supertype ndecl) nsuptype)))
+
+(defmethod subst-mod-params* ((ndecl type-decl) modinst bindings)
+  ;; Sets ndecl type-value, 
+  (with-slots (type-value contains) ndecl
+    (let ((ntval (subst-mod-params* type-value modinst bindings)))
+      (setf type-value ntval))
+    (assert (generated-by ndecl)) ;; Should be new
+    (let ((tn (if (adt-type-name? type-value)
+		  (progn (break "subst-mod-params* type-decl for adt-type-name")
+			 ;; (let ((sadt (cdr (assq (adt type-value) owlist))))
+			 ;;   (assert sadt)
+			 ;;   (mk-adt-type-name (id sd) nil nil nil sadt))
+			 (mk-adt-type-name (id ndecl)))
+		  (mk-type-name (id ndecl)))))
+      (setf (resolutions tn)
+	    (list (mk-resolution ndecl (current-theory-name) tn)))
+      (setf type-value tn))
+    ndecl))
 
 (defmethod subst-mod-params* ((decl formal-theory-decl) modinst bindings)
   (with-slots (theory-name) decl
@@ -1718,47 +1870,90 @@
 		      (subst-mod-params* closed-definition modinst bindings)
 		      ndef))
 	   (ety (nonempty-formula-type ndef)))
-      (change-mapped-class ndecl)
       (setf (default-proof ndecl) nil
 	    (proofs ndecl) nil
 	    (definition ndecl) ndef
 	    (closed-definition ndecl) ncdef)
+      (change-mapped-class ndecl (generated-by ndecl) modinst)
       (when (tcc-decl? ndecl)
 	(setf (theory-instance ndecl) modinst))
       (when (and ety (not (possibly-empty-type? ety)))
 	(set-nonempty-type ety ndecl))
       ndecl)))
 
-(defmethod change-mapped-class ((ndecl formula-decl))
+(defmethod change-mapped-class ((ndecl formula-decl) axiom modinst)
   ;; mapped-axiom-tcc => mapped-axiom
   ;; existence axioms => if possibly-nonempty then TCC else stays axiom
   ;; axiom => mapped-axiom-tcc
   ;; tcc => mapped-tcc-to-axiom
   ;; formula-decl => mapped-formula-decl
   (cond ((mapped-axiom-tcc? ndecl)
-	 (change-class ndecl 'mapped-axiom :spelling 'AXIOM :kind nil))
+	 (change-class ndecl 'mapped-axiom :spelling 'AXIOM :kind nil)
+	 (setf (newline-comment ndecl)
+	       (format nil "% Changed mapped-axiom-tcc ~a to mapped-axiom" axiom)))
 	((let ((netype (nonempty-formula-type (or (closed-definition ndecl)
 						  (definition ndecl)))))
-	   (when (and netype
-		      ;; Formula has the form EXISTS (t: netype): true
-		      (eq (spelling (generated-by ndecl)) 'AXIOM)
-		      (not (possibly-empty-type? netype)))
-	     t))) ;; No need to change anything
+	   (when netype
+	     (cond ((and netype
+			;; Formula has the form EXISTS (t: netype): true
+			(eq (spelling axiom) 'AXIOM)
+			(not (possibly-empty-type? netype)))
+		    (add-tcc-comment
+			'mapped-axiom modinst axiom
+			(cons 'map-to-nonempty
+			      (format nil "%~a~%  % was not generated because ~a ~
+                                        is known to be non-empty"
+				(unpindent (definition ndecl) 2 :string t :comment? t)
+				(unpindent netype 2 :string t :comment? t))))
+		    t)
+		   ((every #'nonempty-type-decl? (decl-formals ndecl))
+		    (let ((ne-preconds
+			   (mapcar #'(lambda (ndfml)
+				       (let* ((var (make-new-variable '|x| (type ndfml))))
+					 (make-exists-expr (list (mk-bind-decl var (type ndfml))) *true*)))
+			     (decl-formals ndecl))))
+		      (when ne-preconds
+			(break "change-mapped-class preconds")))))
+	     ))) ;; No need to change classes
 	((axiom? ndecl)
 	 ;; (assert (axiom? (generated-by ndecl)))
-	 (let* ((expr (definition (generated-by ndecl)))
+	 (let* ((expr (definition axiom))
 		(root (tcc-root-name (definition ndecl)))
 		(origin (make-instance 'tcc-origin
 			  :root (or root (break "No root?"))
 			  :kind 'mapped-axiom
 			  :expr (str (raise-actuals expr t :all) :char-width nil)
-			  :type "boolean")))
+			  :type "boolean"))
+		(adecls (all-decls (current-theory)))
+		(post-decls (memq *subst-mod-params-declaration* adecls))
+		(prev-decls (ldiff adecls post-decls)))
 	   (change-class ndecl 'mapped-axiom-tcc
-	     :spelling 'OBLIGATION :kind 'tcc :generating-axiom (generated-by ndecl)
-	     :origin origin)))
+	     :id (make-mapped-tcc-name *subst-mod-params-declaration* (id axiom))
+	     :spelling 'OBLIGATION :kind 'tcc :generating-axiom axiom
+	     :origin origin)
+	   ;; Check for subsumption
+	   (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
+	   (let ((match (find-if #'(lambda (pdecl)
+				     (and (tcc? pdecl)
+					  (tcc-subsumed-by ndecl pdecl)))
+			  prev-decls)))
+	     (if match
+		 (add-tcc-comment 'mapped-axiom modinst axiom
+				  (list 'subsumed match) match
+				  *subst-mod-params-declaration*)
+		 ;; need to remove ndecl - do it in subst-mod-params-decls
+		 (let ((cmt-str (make-tcc-comment 'mapped-axiom modinst axiom
+						  *subst-mod-params-declaration* ndecl)))
+		   (add-comment ndecl cmt-str))))))
 	((tcc? ndecl)
 	 (change-class ndecl 'mapped-tcc-to-axiom :spelling 'AXIOM :kind nil))
 	(t (change-class ndecl 'mapped-formula-decl :spelling 'AXIOM :kind nil))))
+
+(defun make-mapped-tcc-name (thref axiom-id)
+  (make-tcc-name** (op-to-id thref)
+		   (remove-if-not #'declaration? (all-decls (current-theory)))
+		   (op-to-id axiom-id)
+		   1))
 
 (defmethod subst-mod-params* ((ndecl subtype-judgement) modinst bindings)
   (with-slots (declared-type type declared-subtype subtype) ndecl
@@ -1882,14 +2077,20 @@
 	(subst-mod-params-list (cdr list) modinst bindings
 			       (cons nelt rlist)))))
 
-(defun subst-mod-params-alist (alist modinst bindings &optional ralist)
+
+(defun subst-mod-params-alist* (alist modinst bindings &optional ralist)
   (if (null alist)
       (nreverse ralist)
       (let* ((elt (car alist))
 	     (ncar (subst-mod-params* (car elt) modinst bindings))
 	     (ncdr (subst-mod-params* (cdr elt) modinst bindings)))
-	(subst-mod-params-alist (cdr alist) modinst bindings
-				(acons ncar ncdr ralist)))))
+	(subst-mod-params-alist* (cdr alist) modinst bindings
+				 (acons ncar ncdr ralist)))))
+
+(defmethod subst-mod-params* ((type adt-type-name) modinst bindings)
+  (unless (adt type)
+    (setf (adt type) *adt*))
+  (call-next-method)) ;; bound in subst-mod-params* (recursive-type)
 
 (defmethod subst-mod-params* ((type type-name) modinst bindings)
   (let* ((res (car (resolutions type)))
@@ -1937,9 +2138,6 @@
 		     (decl-formals (car lhsmatch))
 		     (dactuals type)))))
 	     (subst-mod-params* stype modinst bindings)))
-	  ;; ((and *subst-mod-params-module?*
-	  ;; 	(eq (module decl) *subst-mod-params-module?*))
-	  ;;  type)
 	  (t (let* ((nacts (cond ((actuals mi)
 				  (subst-mod-params*
 				   (actuals mi) modinst bindings))
@@ -2018,7 +2216,7 @@
 	  (cond (ntype
 		 (assert (type-name? ntype))
 		 (if (strong-tc-eq ntype type) type ntype))
-		(t (assert (typep (current-declaration) '(or theory-reference type-decl)))
+		(t ;;(assert (typep (current-declaration) '(or theory-reference type-decl)))
 		   type)))
 	(let* (;;(dacts (dactuals (module-instance type)))
 	       ;;(bdg (cdr (assq decl bindings)))
@@ -3224,7 +3422,7 @@
 		      ((or expname typed-declaration simple-decl)
 		       (subst-mod-params (type decl) mi theory decl))))))
     ;;(assert (or (not (fully-instantiated? mi)) (fully-instantiated? rtype)))
-    (assert (current-declaration))
+    (assert (or (null (dactuals mi)) (current-declaration)))
     (assert theory)
     ;;(assert (get-theory mi))
     ;; (assert (let ((tifps (free-params modinst))
@@ -3303,11 +3501,10 @@
        (cdr theory-instances)
        (cdr theories))))
 
-;;NSH(5-23-24): Already defined above with a conflicting signature
-;; (defun subst-mod-params-alist (ex alist)
-;;   (multiple-value-bind (instances theories)
-;;       (theory-insts-of-param-alist alist)
-;;     (subst-mod-params-instances ex instances theories)))
+(defun subst-mod-params-alist (ex alist)
+  (multiple-value-bind (instances theories)
+      (theory-insts-of-param-alist alist)
+    (subst-mod-params-instances ex instances theories)))
 
 (defun subst-mod-params-substlist (alist inst theory)
   (let ((cars (subst-mod-params (mapcar #'car alist) inst theory)))
