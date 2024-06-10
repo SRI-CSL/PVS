@@ -68,23 +68,29 @@
 ;;; Provides the status of the specified theory; returns a string.
 
 (defun theory-status-string (theoryref)
-  (let ((theory (get-theory theoryref)))
-    (format nil "~a is ~a~@[~a~]~@[~a~]~@[~a~]"
-      theoryref
-      (cond ((null theory)
-	     (if (context-file-of theoryref)
-		 "not yet parsed"
-		 "not in the current context"))
-	    ((typechecked? theory) "typechecked")
-	    ((parsed? theory) "parsed")
-	    (t "not yet parsed"))
-      (when (and theory (memq 'modified (status theory)))
-	" (decls added)")
-      (when theory
-	(final-proof-summary theory))
-      (when theory
-	(format nil "; ~d warning~:p; ~d msg~:p"
-	  (length (warnings theory)) (length (info theory)))))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((theory (get-theory thname)))
+	(format nil "~a is ~a~@[~a~]~@[~a~]~@[~a~]"
+	  theoryref
+	  (cond ((null theory)
+		 (if (context-file-of theoryref)
+		     "not yet parsed"
+		     "not in the current context"))
+		((typechecked? theory) "typechecked")
+		((parsed? theory) "parsed")
+		(t "not yet parsed"))
+	  (when (and theory (memq 'modified (status theory)))
+	    " (decls added)")
+	  (when theory
+	    (final-proof-summary theory))
+	  (when theory
+	    (format nil "; ~d warning~:p; ~d msg~:p"
+	      (length (warnings theory)) (length (info theory)))))))))
 
 (defun final-proof-summary (theory)
   (let ((formnum 0) (tccnum 0) (provenum 0) (tccprovenum 0))
@@ -161,17 +167,23 @@
 		t))
 	    (pvs-message "~a is not in the current context" theoryref))))))
 
-(defun brief-status-importchain (tname &optional (indent 0))
-  (let* ((th (get-theory tname)))
-    (cond ((null th)
-	   (format t "~%~a is not parsed" tname))
-	  ((member tname *modules-visited* :test #'same-id)
-	   (format t "~%~vT~a ... shown above" indent (id tname)))
-	  (t (let ((usings (when th (get-immediate-usings th))))
-	       (when (and th usings) (push tname *modules-visited*))
-	       (format t "~%~vT~a" indent (id th))
-	       (mapc #'(lambda (m) (brief-status-importchain m (+ indent 2)))
-		     usings))))))
+(defun brief-status-importchain (theory-ref &optional (indent 0))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((th (get-theory tname)))
+	(cond ((null th)
+	       (format t "~%~a is not parsed" tname))
+	      ((member tname *modules-visited* :test #'same-id)
+	       (format t "~%~vT~a ... shown above" indent (id tname)))
+	      (t (let ((usings (when th (get-immediate-usings th))))
+		   (when (and th usings) (push tname *modules-visited*))
+		   (format t "~%~vT~a" indent (id th))
+		   (mapc #'(lambda (m) (brief-status-importchain m (+ indent 2)))
+			 usings))))))))
 
 (defun status-importchain* (tid &optional (indent 0))
   (let* ((th (get-theory tid)))
@@ -209,17 +221,23 @@
 		t))
 	    (pvs-message "~a is not in the current context" theoryref))))))
 
-(defun brief-status-importbychain (tname &optional (indent 0))
-  (let* ((th (get-theory tname)))
-    (cond ((null th)
-	   (format t "~a is not parsed" tname))
-	  ((member tname *modules-visited*)
-	   (format t "~vT~a... shown above~%" indent tname))
-	  (t (let ((usedbys (find-all-usedbys tname)))
-	       (push tname *modules-visited*)
-	       (format t "~%~vT~a" indent (id th))
-	       (mapc #'(lambda (m) (brief-status-importbychain m (+ indent 2)))
-		     usedbys))))))
+(defun brief-status-importbychain (theoryref &optional (indent 0))
+  (multiple-value-bind (dir file tname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless tname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((th (get-theory tname)))
+	(cond ((null th)
+	       (format t "~a is not parsed" theoryref))
+	      ((member tname *modules-visited*)
+	       (format t "~vT~a... shown above~%" indent tname))
+	      (t (let ((usedbys (find-all-usedbys tname)))
+		   (push tname *modules-visited*)
+		   (format t "~%~vT~a" indent (id th))
+		   (mapc #'(lambda (m) (brief-status-importbychain m (+ indent 2)))
+			 usedbys))))))))
 
 (defun status-importbychain* (tid &optional (indent 0))
   (let ((th (get-theory tid)))
@@ -513,16 +531,22 @@
 	    (pvs-message "Theory ~a not found" theoryref))))))
 
 
-(defun full-status-theory (theoryname)
-  (let ((theory (get-theory theoryname))
-	(*disable-gc-printout* t))
-    (if theory
-	(pvs-buffer "PVS Status"
-	  (with-output-to-string (*standard-output*)
-	    (full-status-theory* theory))
-	  t)
-	(pvs-message "Theory ~a has not been typechecked"
-	  theoryname))))
+(defun full-status-theory (theoryref)
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((theory (get-theory thname))
+	    (*disable-gc-printout* t))
+	(if theory
+	    (pvs-buffer "PVS Status"
+	      (with-output-to-string (*standard-output*)
+		(full-status-theory* theory))
+	      t)
+	    (pvs-message "Theory ~a has not been typechecked"
+	      theoryref))))))
 
 (defun full-status-theory* (theory)
   (let ((decls (remove-if-not #'(lambda (d) (typep d 'declaration))
@@ -1188,38 +1212,43 @@
   (remove-if #'(lambda (prf) (null (script prf)))
     (proofs decl)))
 
-(defun display-proofs-theory (theoryname)
-  (let ((theory (get-theory theoryname)))
-    (cond (theory
-	   (setq *show-proofs-info*
-		 (cons 'theory
-		       (cons theory
-			     (mapcan #'(lambda (d)
-					 (when (typep d 'formula-decl)
-					   (mapcar #'(lambda (p) (cons d p))
-					     (nontrivial-proofs d))))
-			       (all-decls theory)))))
-	   (display-proofs-buffer))
-	  (t (pvs-message "~a has not been typechecked" theoryname)))))
+(defun display-proofs-theory (theoryref)
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let ((theory (get-theory theoryname)))
+	(cond (theory
+	       (setq *show-proofs-info*
+		     (cons 'theory
+			   (cons theory
+				 (mapcan #'(lambda (d)
+					     (when (typep d 'formula-decl)
+					       (mapcar #'(lambda (p) (cons d p))
+						 (nontrivial-proofs d))))
+				   (all-decls theory)))))
+	       (display-proofs-buffer))
+	      (t (pvs-message "~a has not been typechecked" theoryname)))))))
 
 (defun display-proofs-pvs-file (filename)
-  (let ((theories (get-theories filename)))
-    (cond (theories
-	   (setq *show-proofs-info*
-		 (cons 'pvs-file
-		       (cons filename
-			     (mapcan
-				 #'(lambda (theory)
-				     (mapcan #'(lambda (d)
-						 (when (typep d 'formula-decl)
-						   (mapcar #'(lambda (p)
-							       (cons d p))
-						     (nontrivial-proofs d))))
-				       (all-decls theory)))
-			       theories))))
-	   (display-proofs-buffer))
-	  (t (pvs-message "PVS file ~a is not in the current context"
-	       filename)))))
+  (with-pvs-file (fname) filename
+    (let ((theories (get-theories fname)))
+      (cond (theories
+	     (setq *show-proofs-info*
+		   (cons 'pvs-file
+			 (cons filename
+			       (mapcan
+				   #'(lambda (theory)
+				       (mapcan #'(lambda (d)
+						   (when (typep d 'formula-decl)
+						     (mapcar #'(lambda (p)
+								 (cons d p))
+						       (nontrivial-proofs d))))
+					 (all-decls theory)))
+				 theories))))
+	     (display-proofs-buffer))))))
 
 (defun display-proofs-buffer (&optional line)
   (let ((idsize (max 8
@@ -1456,30 +1485,36 @@
 		  (cons decl (formula-proof-dependencies decl))))
 
 (defun unusedby-proofs-of-formulas (formularefs theoryref)
-  (let* ((theory (get-theory theoryref))
-	 (*current-context* (context theory))
-	 (fdecls (mapcar #'(lambda (fref)
-			     (let* ((fname (pc-parse fref 'name))
-				    (reses (formula-resolutions fname)))
-			       (cond ((null reses)
-				      (pvs-message "Cannot resolve ~a" fref))
-				     ((cdr reses)
-				      (pvs-message
-					  "Multiple resolutions for ~a"
-					fref))
-				     (t (declaration (car reses))))))
-		   formularefs))
-	 (unused (unused-by-proofs-of fdecls)))
-    (unless (some #'null fdecls)
-      (if unused
-	  (let* ((flist (mapcar #'(lambda (d)
-				    (json-decl-list
-				     d (ptype-of d) (module d)))
-			  unused))
-		 (json:*lisp-identifier-name-to-json* 'identity)
-		 (fdecl-string (json:encode-json-to-string flist)))
-	    fdecl-string)
-	  (pvs-message "No unused declarations found for ~a" formularefs)))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (declare (ignore file))
+    (unless thname
+      (error "No theory name found in ~s" theoryref))
+    (with-workspace dir
+      (let* ((theory (get-theory thname))
+	     (*current-context* (context theory))
+	     (fdecls (mapcar #'(lambda (fref)
+				 (let* ((fname (pc-parse fref 'name))
+					(reses (formula-resolutions fname)))
+				   (cond ((null reses)
+					  (pvs-message "Cannot resolve ~a" fref))
+					 ((cdr reses)
+					  (pvs-message
+					      "Multiple resolutions for ~a"
+					    fref))
+					 (t (declaration (car reses))))))
+		       formularefs))
+	     (unused (unused-by-proofs-of fdecls)))
+	(unless (some #'null fdecls)
+	  (if unused
+	      (let* ((flist (mapcar #'(lambda (d)
+					(json-decl-list
+					 d (ptype-of d) (module d)))
+			      unused))
+		     (json:*lisp-identifier-name-to-json* 'identity)
+		     (fdecl-string (json:encode-json-to-string flist)))
+		fdecl-string)
+	      (pvs-message "No unused declarations found for ~a" formularefs)))))))
 
 (defun unused-by-proofs-of (fdecls)
   (let* ((used-rewrites (used-auto-rewrites fdecls))
