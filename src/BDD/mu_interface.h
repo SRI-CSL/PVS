@@ -25,7 +25,7 @@ extern Term mu_mk_g_fixed_point (int relvar, Term fml1);
 extern Term mu_mk_rel_var_ (char *name);
 extern Formula mu_check_mk_bool_var (char *name);
 extern const char* get_mu_bool_var_name (int bdd_idx);
-extern LIST empty_list ();
+extern LIST empty_list (void);
 extern void pvs_mu_print_formula (Formula fml);
 extern void pvs_mu_print_term (Term t);
 
