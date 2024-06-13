@@ -1,0 +1,11 @@
+
+(define x::int)
+(define y::int)
+(define r::int)
+
+(assert (>= (+ (* 3 x) (* 3 y)) 1))
+(assert (<= (+ (* 3 x) (* 3 y) r) 2))
+(assert (= r 0))
+(check)
+
+

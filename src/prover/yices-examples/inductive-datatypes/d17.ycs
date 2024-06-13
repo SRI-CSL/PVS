@@ -1,0 +1,25 @@
+
+
+(define-type list (datatype (cons car::int cdr::list)
+                            nil))
+
+(define P::(-> list bool))
+
+(assert (forall (x::list) 
+          (implies (and (P x) (cons? x))
+                   (and (>= (car x) 0)
+                        (P (cdr x))))))
+
+(define x1::list)
+(define x2::list)
+(define x3::list)
+(define x4::list)
+(define i1::int)
+(define i2::int)
+(assert (P x1))
+(assert (= x1 (cons i1 x2)))
+(assert (= x2 x3))
+(assert (= x3 (cons i2 x4)))
+(assert (<= i1 1))
+(assert (< i2 i1))
+(check)

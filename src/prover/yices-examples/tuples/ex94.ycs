@@ -1,0 +1,9 @@
+
+
+(define t1::(tuple int int))
+(define t2::(tuple int int))
+
+(assert (= (select t1 1) (select t2 1)))
+(assert (= (select t1 2) (select t2 2)))
+(assert (/= t1 t2))
+(check)

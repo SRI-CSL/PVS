@@ -1,0 +1,7 @@
+
+(define-type tst (subtype (v::int) (= v (ite (> v 0) 1 -1))))
+
+(define x::tst)
+
+(assert (= x 1))
+(check)

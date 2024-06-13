@@ -701,6 +701,18 @@
 	:argument (make-instance 'arg-tuple-expr
 		    :exprs (list cond then else)))))
 
+(defun mk-addition (lhs rhs)
+  (mk-application '+ lhs rhs))
+
+(defun mk-subtraction (lhs rhs)
+  (mk-application '- lhs rhs))
+
+(defun mk-multiplication (lhs rhs)
+  (mk-application '* lhs rhs))
+
+(defun mk-division (lhs rhs)
+  (mk-application '/ lhs rhs))
+
 (defun mk-implication (ante succ)
   (mk-application 'IMPLIES ante succ))
 
@@ -750,6 +762,11 @@
 	:bindings (mk-bindings vars)
 	:expression expr)))
 
+(defun mk-array-expr (exprs &optional ret-type)
+  (let ((aexpr (make-instance 'array-expr :exprs exprs)))
+    (when ret-type (setf (return-type aexpr) ret-type))
+    aexpr))
+
 (defun mk-let-expr (bindings expr)
   (change-class
    (mk-application* (mk-lambda-expr (mapcar #'car bindings) expr)
@@ -775,6 +792,9 @@
 
 (defun mk-equation (lhs rhs)
   (mk-application '= lhs rhs))
+
+(defun mk-nequation (lhs rhs)
+  (mk-application '/= lhs rhs))
 
 (defun mk-update-expr (expr assignments)
   (make-instance 'update-expr

@@ -1,0 +1,6 @@
+
+
+(define t1::(tuple int int))
+(assert (forall (x::(tuple int int)) (> (select x 1) 0)))
+(assert (= (select t1 1) 0))
+(check)

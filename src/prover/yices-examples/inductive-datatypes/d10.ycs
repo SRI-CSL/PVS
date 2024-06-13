@@ -1,0 +1,10 @@
+
+
+(define-type list (datatype (cons car::int cdr::list)
+                            nil))
+
+(define x::list)
+(define y::list)
+(assert (= x (cons 10 y)))
+(assert (= y (cons 20 x)))
+

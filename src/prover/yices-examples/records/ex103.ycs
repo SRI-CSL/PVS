@@ -1,0 +1,7 @@
+
+(define t::(record idx::int value::int aflag::bool))
+
+
+(assert (= t (mk-record idx::10 value::20 aflag::true)))
+(assert (= (select t idx) 10))
+(check)

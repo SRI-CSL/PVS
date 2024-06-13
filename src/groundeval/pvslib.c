@@ -484,8 +484,7 @@ stringliteral_t mk_string(uint32_t length, uint32_t * instring){
  };
 
 char * byte2cstring(uint32_t length, uint8_t * bstring){
-  uint32_t slength = length++;
-  char * outstring = (char *) safe_malloc(slength++);
+  char * outstring = (char *) safe_malloc(length + 1);
   memcpy(outstring, bstring, length);
   outstring[length] = '\0';
   return outstring;

@@ -1,0 +1,12 @@
+ex70_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+ex70_thm: THEOREM 3 * x + 3 * y <= 2 AND 3 * x + 3 * y >= 1 IMPLIES
+                   FALSE
+
+
+END ex70_theory

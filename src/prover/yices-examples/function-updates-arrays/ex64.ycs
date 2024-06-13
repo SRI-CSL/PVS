@@ -1,0 +1,19 @@
+
+(define f::(-> int int))
+(define g::(-> int int))
+(define i1::int)
+(define i2::int)
+(define i3::int)
+(define i4::int)
+(define v1::int)
+(define v2::int)
+(define v3::int)
+
+(assert (= (update (update f (i1) v1) (i2) v2)
+           (update g (i3) v3)))
+(assert (/= i1 i4))
+(assert (/= i2 i4))
+(assert (/= i3 i4))
+(assert (/= (f i4) (g i4)))
+(check)
+

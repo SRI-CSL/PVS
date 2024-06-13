@@ -1,0 +1,9 @@
+(define x1::int)
+(define x2::int)
+(define p::bool)
+
+(assert (= x2 1))
+(assert (/= x1 0))
+(assert (or p (= (+ x1 x2) 1)))
+(check)
+

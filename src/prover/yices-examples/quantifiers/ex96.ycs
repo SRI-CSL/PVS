@@ -1,0 +1,8 @@
+
+
+(define t1::(tuple int int))
+(define f::(-> int int))
+(assert (forall (x::(tuple int int)) (= (mk-tuple (f (select x 2)) (f (select x 1)))
+                                        (mk-tuple 0 0))))
+(assert (= (f (select t1 1)) 1))
+(check)

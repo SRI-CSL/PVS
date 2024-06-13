@@ -1,0 +1,16 @@
+
+
+(define-type S (scalar s1 s2 s3))
+(define x1::S)
+(define x2::S)
+(define x3::S)
+(define x4::S)
+
+(assert (/= x1 x2))
+(assert (/= x1 x3))
+(assert (/= x2 x3))
+(assert (/= x2 x4))
+(assert (/= x3 x4))
+(dump-context)
+(check)
+

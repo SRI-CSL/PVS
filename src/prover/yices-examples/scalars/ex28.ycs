@@ -1,0 +1,9 @@
+
+
+
+(define-type PC (scalar pc1 pc2 pc3))
+(define x::PC)
+
+(assert (/= x pc1))
+(assert (/= x pc2))
+(check)

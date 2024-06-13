@@ -1,0 +1,8 @@
+
+
+(define f::(-> int int))
+(assert (forall (x::(subrange -3 3)) (>= (f x) 0)))
+(define x::int)
+(assert (< (f x) 0))
+(check)
+

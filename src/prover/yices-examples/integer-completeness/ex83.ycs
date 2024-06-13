@@ -1,0 +1,8 @@
+
+
+(define x::int)
+
+(assert (>= x 1/2))
+(assert (<= x 3/2))
+(assert (/= x 1))
+

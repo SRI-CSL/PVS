@@ -1,0 +1,20 @@
+
+
+;; This is based on an example in Section 6.2 of "A Decision
+;; Procedure for an Extensional Theory of Arrays" by Stump, Barrett, Dill, and
+;; Levitt.
+
+(define a::(-> int int))
+(define b::(-> int int))
+(define v::int)
+(define w::int)
+(define x::int)
+(define y::int)
+(define g::(-> (-> int int) int))
+(define f::(-> int int))
+
+(assert (= (update a (x) v) b))
+(assert (= (update a (y) w) b))
+(assert (/= (f x) (f y)))
+(assert (/= (g a) (g b)))
+(check)

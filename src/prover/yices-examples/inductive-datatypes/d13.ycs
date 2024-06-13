@@ -1,0 +1,18 @@
+
+
+(define-type list (datatype (cons car::int cdr::list)
+                            nil))
+
+(define x::list)
+(define y::list)
+(define y1::list)
+(define y2::list)
+(define y3::list)
+(define p::bool)
+(assert (or p (= x (cons 10 y))))
+(assert (= y y1))
+(assert (= y1 y2))
+(assert (= y2 y3))
+(assert (or p (= y3 (cons 20 x))))
+(check)
+

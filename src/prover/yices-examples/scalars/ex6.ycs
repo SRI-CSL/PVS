@@ -1,0 +1,18 @@
+
+(define-type pc (scalar sleeping trying critical))
+(define f::(-> pc pc))
+(define g::(-> pc pc))
+(define x1::pc)
+(define x2::pc)
+(define x3::pc)
+(define x4::pc)
+(define x5::pc)
+(define x6::pc)
+
+
+
+(assert (= x1 x3))
+(assert (= x1 x4))
+(assert (= x3 x2))
+(assert (/= (g (f x1)) (g (f x2))))
+

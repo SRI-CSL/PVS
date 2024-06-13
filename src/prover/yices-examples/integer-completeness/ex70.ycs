@@ -1,0 +1,13 @@
+
+(define x::int)
+(define y::int)
+
+(assert (>= (+ (* 3 x) (* 3 y)) 1))
+(assert (<= (+ (* 3 x) (* 3 y)) 2))
+;; (assert (or (<= x 0) (>= x 1)))
+;; (assert (or (<= y 0) (>= y 1)))
+;; (assert (or (= (+ (* 3 x) (* 3 y)) 1)
+;;            (= (+ (* 3 x) (* 3 y)) 2)))
+(check)
+;; (dump-context)
+

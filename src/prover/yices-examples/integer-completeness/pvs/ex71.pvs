@@ -1,0 +1,11 @@
+ex71_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR real
+
+ex71_thm: THEOREM 3 * x + 3 * y = 1 IMPLIES FALSE
+
+
+END ex71_theory

@@ -1,0 +1,26 @@
+ex38_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2, s3}
+
+f1: VAR [S -> S]
+
+f2: VAR [S -> S]
+
+f3: VAR [S -> S]
+
+f4: VAR [S -> S]
+
+f5: VAR [S -> S]
+
+ex38_thm: THEOREM f4 /= f5 AND
+                   f3 /= f5 AND
+                    f3 /= f4 AND
+                     f2 /= f5 AND
+                      f2 /= f4 AND
+                       f2 /= f3 AND
+                        f1 /= f5 AND f1 /= f4 AND f1 /= f3 AND f1 /= f2
+                   IMPLIES FALSE
+
+
+END ex38_theory

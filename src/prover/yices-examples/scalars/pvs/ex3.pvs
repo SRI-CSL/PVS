@@ -1,0 +1,24 @@
+ex3_theory: THEORY
+BEGIN
+
+pc: TYPE = {sleeping, trying, critical}
+
+x1: VAR pc
+
+x2: VAR pc
+
+z1: VAR pc
+
+z2: VAR pc
+
+w1: VAR pc
+
+w2: VAR pc
+
+ex3_thm: THEOREM x1 = trying AND
+                  z2 = w1 AND
+                   x2 = z2 AND x2 = critical AND x1 = z1 AND x1 = x2
+                  IMPLIES FALSE
+
+
+END ex3_theory

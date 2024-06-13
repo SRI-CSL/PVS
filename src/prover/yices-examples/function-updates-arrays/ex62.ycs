@@ -1,0 +1,13 @@
+
+(define f::(-> int int))
+(define g::(-> int int))
+(define i::int)
+(define x::int)
+(define j::int)
+(define i2::int)
+
+(assert (= (update f (i) x)
+           (update g (j) x)))
+(assert (/= x (f j)))
+(assert (/= i j))
+(check)

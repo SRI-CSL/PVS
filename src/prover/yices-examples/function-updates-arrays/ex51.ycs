@@ -1,0 +1,13 @@
+
+
+(define f1::(-> int int))
+(define f2::(-> int int))
+(define i1::int)
+(define i2::int)
+(define v1::int)
+(define v2::int)
+
+(assert (= f2 (update f1 (i2) v2)))
+(assert (= (f1 i1) v1))
+(assert (/= (f2 i1) v1))
+(check)

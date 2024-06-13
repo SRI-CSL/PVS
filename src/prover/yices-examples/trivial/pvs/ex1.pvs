@@ -1,0 +1,7 @@
+ex1_theory: THEORY
+BEGIN
+
+ex1_thm: THEOREM 0 = 1 IMPLIES FALSE
+
+
+END ex1_theory

@@ -1,0 +1,6 @@
+
+(define-type pos (subtype (v::int) (> v 0)))
+
+(define x::pos)
+
+(assert (= x 0))

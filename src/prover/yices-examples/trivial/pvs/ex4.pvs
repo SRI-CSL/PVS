@@ -1,0 +1,7 @@
+ex4_theory: THEORY
+BEGIN
+
+ex4_thm: THEOREM true IMPLIES FALSE
+
+
+END ex4_theory

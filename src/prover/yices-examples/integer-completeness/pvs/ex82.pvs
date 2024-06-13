@@ -1,0 +1,9 @@
+ex82_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+ex82_thm: THEOREM x <= 3/2 AND x >= 1/2 IMPLIES FALSE
+
+
+END ex82_theory

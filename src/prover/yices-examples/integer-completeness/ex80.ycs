@@ -1,0 +1,18 @@
+
+
+(define a::(-> (subrange 0 2) int))
+(define b::(-> (subrange 0 2) int))
+(define f::(-> (subrange 0 2) (subrange 0 2)))
+(define i::(subrange 0 2))
+(assert (/= (f 0) (f 1)))
+(assert (/= (f 0) (f 2)))
+(assert (/= (f 1) (f 2)))
+(assert (= (b (f 0)) (a 0)))
+(assert (= (b (f 1)) (a 1)))
+(assert (= (b (f 2)) (a 2)))
+(assert (= (a 0) 7))
+(assert (= (a 1) 2))
+(assert (= (a 2) 5))
+(assert (<= (b 0) (b 1)))
+(assert (<= (b 1) (b 2)))
+(check)

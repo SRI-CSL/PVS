@@ -1,0 +1,19 @@
+ex45_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2}
+
+T: TYPE
+
+f1: VAR [S -> T]
+
+f2: VAR [S -> T]
+
+g: VAR [[S -> T] -> T]
+
+ex45_thm: THEOREM g(f1) /= g(f2) AND
+                   f1(s2) = f2(s2) AND f1(s1) = f2(s1)
+                   IMPLIES FALSE
+
+
+END ex45_theory

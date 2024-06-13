@@ -1,0 +1,7 @@
+
+(define min::(-> x::int y::int (subtype (r::int) (and (or (= r x) (= r y)) (<= r x) (<= r y)))))
+
+(define x::int)
+(define y::int)
+
+(assert (> (min x y) x))

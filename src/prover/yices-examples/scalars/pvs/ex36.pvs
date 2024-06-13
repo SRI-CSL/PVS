@@ -1,0 +1,14 @@
+ex36_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2, s3}
+
+f1: VAR [S -> integer]
+
+f2: VAR [S -> integer]
+
+ex36_thm: THEOREM f1 /= f2 AND f1(s2) = f2(s2) AND f1(s1) = f2(s1)
+                   IMPLIES FALSE
+
+
+END ex36_theory

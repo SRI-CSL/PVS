@@ -1,0 +1,35 @@
+ex9_theory: THEORY
+BEGIN
+
+u: TYPE
+
+f1: VAR [u -> boolean]
+
+f2: VAR [u -> u]
+
+x1: VAR u
+
+x2: VAR u
+
+x3: VAR u
+
+x4: VAR u
+
+x5: VAR u
+
+x6: VAR u
+
+p0: VAR boolean
+
+p1: VAR boolean
+
+p2: VAR boolean
+
+foo: VAR [boolean -> u]
+
+ex9_thm: THEOREM foo(p1) /= foo(p2) AND
+                  foo(p0) /= foo(p2) AND foo(p0) /= foo(p1)
+                  IMPLIES FALSE
+
+
+END ex9_theory

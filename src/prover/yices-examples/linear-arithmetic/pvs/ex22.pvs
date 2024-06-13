@@ -1,0 +1,15 @@
+ex22_theory: THEORY
+BEGIN
+
+x1: VAR integer
+
+x2: VAR integer
+
+p: VAR boolean
+
+ex22_thm: THEOREM (NOT p OR x1 = 1 - x2) AND
+                   (p OR x1 + x2 = 1) AND x1 /= 0 AND x2 = 1
+                   IMPLIES FALSE
+
+
+END ex22_theory

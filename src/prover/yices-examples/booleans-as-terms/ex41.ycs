@@ -1,0 +1,18 @@
+
+
+(define f1::(-> bool bool))
+(define f2::(-> bool bool))
+(define f3::(-> bool bool))
+(define f4::(-> bool bool))
+(define f5::(-> bool bool))
+(assert (/= f1 f2))
+(assert (/= f1 f3))
+(assert (/= f1 f4))
+(assert (/= f1 f5))
+(assert (/= f2 f3))
+(assert (/= f2 f4))
+(assert (/= f2 f5))
+(assert (/= f3 f4))
+(assert (/= f4 f5))
+(check)
+

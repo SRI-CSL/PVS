@@ -1,0 +1,13 @@
+ex69_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+z: VAR integer
+
+ex69_thm: THEOREM 3 * x + 3 * y = 1 OR 3 * x + 3 * y = 2 IMPLIES FALSE
+
+
+END ex69_theory

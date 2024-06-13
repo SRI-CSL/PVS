@@ -1,0 +1,8 @@
+
+
+(define b1::(bitvector 16))
+(define b2::(bitvector 16))
+
+(assert (= (mk-bv 16 101) b1))
+(assert (= b2 b1))
+(check)

@@ -1,0 +1,16 @@
+ex35_theory: THEORY
+BEGIN
+
+S: TYPE = {s1, s2}
+
+T: TYPE
+
+f1: VAR [S -> T]
+
+f2: VAR [S -> T]
+
+ex35_thm: THEOREM f1 /= f2 AND f1(s2) = f2(s2) AND f1(s1) = f2(s1)
+                   IMPLIES FALSE
+
+
+END ex35_theory

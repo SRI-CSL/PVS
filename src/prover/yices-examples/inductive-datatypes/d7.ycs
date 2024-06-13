@@ -1,0 +1,15 @@
+
+
+(define-type list (datatype (cons car::int cdr::list)
+                            nil))
+
+(define x::list)
+(define y1::list)
+(define y2::list)
+(define i1::int)
+(define i2::int)
+(assert (> i2 i1))
+(assert (= x  (cons i1 y1)))
+(assert (= y1 (cons i2 y2)))
+(assert (> i1 0))
+(check)

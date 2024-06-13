@@ -1,0 +1,27 @@
+ex6_theory: THEORY
+BEGIN
+
+pc: TYPE = {sleeping, trying, critical}
+
+f: VAR [pc -> pc]
+
+g: VAR [pc -> pc]
+
+x1: VAR pc
+
+x2: VAR pc
+
+x3: VAR pc
+
+x4: VAR pc
+
+x5: VAR pc
+
+x6: VAR pc
+
+ex6_thm: THEOREM g(f(x1)) /= g(f(x2)) AND
+                  x3 = x2 AND x1 = x4 AND x1 = x3
+                  IMPLIES FALSE
+
+
+END ex6_theory

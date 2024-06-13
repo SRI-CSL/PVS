@@ -1,0 +1,8 @@
+(define x1::int)
+(define x2::int)
+
+(assert (<= x1 0))
+(assert (= x1 (+ x2 1)))
+(assert (>= x2 0))
+
+

@@ -1,0 +1,11 @@
+ex18_theory: THEORY
+BEGIN
+
+x1: VAR integer
+
+x2: VAR integer
+
+ex18_thm: THEOREM x2 >= 0 AND x1 <= 0 AND x1 = x2 + 1 IMPLIES FALSE
+
+
+END ex18_theory

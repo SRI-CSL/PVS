@@ -1,0 +1,6 @@
+
+(define-type Point (record x::int y::int))
+(define p1::Point)
+(assert (forall (p::Point) (> (select p x) 0)))
+(assert (= (select p1 x) 0))
+(check)

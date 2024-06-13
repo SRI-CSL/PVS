@@ -1,0 +1,7 @@
+
+(define t::(tuple int int bool))
+
+
+(assert (= t (mk-tuple 10 20 true)))
+(assert (= (select t 1) 10))
+(check)

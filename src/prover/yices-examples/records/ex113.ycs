@@ -1,0 +1,6 @@
+
+(define t::(record x::int y::(subtype (y::int) (> y x))))
+
+(assert (= (select t x) 0))
+(assert (= (select t y) 0))
+(check)

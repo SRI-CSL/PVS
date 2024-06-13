@@ -1,0 +1,9 @@
+
+
+(define t1::(record x::int y::int))
+(define t2::(record x::int y::int))
+
+(assert (= (select t1 x) (select t2 x)))
+(assert (= (select t1 y) (select t2 y)))
+(assert (/= t1 t2))
+(check)

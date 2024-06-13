@@ -1,0 +1,5 @@
+(define foo::(-> int int))
+(assert (= foo (lambda (x::int) (+ x 1))))
+(assert (/= foo (lambda (y::int) (+ 1 y))))
+
+

@@ -1,0 +1,15 @@
+ex12_theory: THEORY
+BEGIN
+
+x: VAR integer
+
+y: VAR integer
+
+z: VAR integer
+
+f: VAR [integer -> integer]
+
+ex12_thm: THEOREM x = y - 4 AND f(x + 2) /= f(y - 1) IMPLIES FALSE
+
+
+END ex12_theory
