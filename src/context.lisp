@@ -1308,9 +1308,9 @@ are all the same."
   (get-context-file-entry (pathname-name filename)))
 
 (defmethod get-context-file-entry ((filename string))
-  (car (member filename (pvs-context-entries)
-	       :test #'(lambda (x y)
-			 (string= x (ce-file y))))))
+  (let ((fname (pathname-name filename)))
+    (car (member fname (pvs-context-entries)
+		 :test #'(lambda (x y) (string= x (ce-file y)))))))
 
 (defmethod get-context-file-entry ((decl declaration))
   (get-context-file-entry (theory decl)))
@@ -1850,8 +1850,10 @@ are all the same."
   
 (defmethod make-proof-infos-from-sexp ((decl formula-decl) prf-entry)
   (mapcar #'(lambda (prf)
-	      (assert (= (length prf) 6))
-	      (apply #'mk-proof-info prf))
+	      ;;(assert (= (length prf) 6))
+	      (if (> (length prf) 6)
+		  (apply #'mk-proof-info (butlast prf (- (length prf) 6)))
+		  (apply #'mk-proof-info prf)))
     (cddr prf-entry)))
 
 (defun decl-tccs-and-proofs (decls proofs)
