@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-prn.el --
 ;;; ILISP paren handling.
@@ -35,27 +35,26 @@ This does move the point."
 		(t (setq done t)))))))
 
 ;;;
-(defun lisp-count-pairs (begin end left-delimiter right-delimiter)
-  "Return the number of top-level pairs of LEFT-DELIMITER and RIGHT-DELIMITER.
+(defun lisp-count-pairs (begin end left-delim right-delim)
+  "Return the number of top-level pairs of LEFT-DELIM and RIGHT-DELIM.
 Counting is done only between BEGIN and END.  If they don't match, the point
 will be placed on the offending entry."
   (let ((old-point (point))
-	(sexp 0)
-	left)
+	(sexp 0))
     (goto-char begin)
     (lisp-skip end)
     (while (< (point) end)
       (let ((char (char-after (point))))
-	(cond ((or (eq char left-delimiter)
+	(cond ((or (eq char left-delim)
 		   ;; For things other than lists
 		   (eq (char-after (1- (point))) ?\n))
 	       (setq sexp (1+ sexp))
 	       (if (condition-case ()
 		       (progn (forward-sexp) nil)
 		     (error t))
-		   (error "Extra %s" (char-to-string left-delimiter))))
+		   (error "Extra %s" (char-to-string left-delim))))
 	      ((eq char right-delimiter)
-	       (error "Extra %s" (char-to-string right-delimiter)))
+	       (error "Extra %s" (char-to-string right-delim)))
 	      ((< (point) end) (forward-char))))
       (lisp-skip end))
     (goto-char old-point)

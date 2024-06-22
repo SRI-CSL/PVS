@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 ;;;%Header
 ;;;
 ;;; Rcs_Info: completer.el,v 3.23 1993/09/03 02:05:07 ivan Rel $
@@ -150,12 +150,6 @@ string that matches the pattern will be used.")
 (defvar completer-mode nil "Last completer mode.")
 (defvar completer-result nil "Last completer result.")
 
-(eval-when-compile
-  (if (not (fboundp 'completion-display-completion-list-function))
-      (setf completion-display-completion-list-function
-	    'display-completion-list)))
-
-
 (unless (fboundp 'minibuffer-prompt-end)
   (defun minibuffer-prompt-end ()
     "Return the buffer position of the end of the minibuffer prompt.
@@ -241,9 +235,9 @@ Any delimiter in STRING that is the same as ANY will match any delimiter."
     count))
 
 ;;;%Matcher
-(defun completer-matches (string choices delimiters any)
+(defun completer-matches (string choices delimiters)
     "Return STRING's matches in CHOICES.
-DELIMITERS and the wildcard ANY are used  to segment the strings."
+DELIMITERS is used  to segment the strings."
     (let* ((regexp (concat "[" delimiters "]"))
 	   (from nil)
 	   (to 0)
@@ -348,14 +342,14 @@ The search is for the current buffer assuming that point is in it."
     end))
 
 ;;;
-(defun completer-match-record (string matches delimiters any dir mode)
+(defun completer-match-record (string matches delimiters dir)
   "Return (match lcs choices unique) for STRING in MATCHES.
 DELIMITERS or ANY wildcards and DIR if a filename when in MODE."
   (let ((pattern (if dir
 		     (substring string (completer-last-component string))
 		     string))
 	match)
-    (setq matches (completer-matches pattern matches delimiters any)
+    (setq matches (completer-matches pattern matches delimiters)
 	  match (try-completion pattern (mapcar 'list matches)))
     ;; If try-completion produced an exact match for an element in 'matches',
     ;; then remove any partial matches from 'matches' and set the unique
@@ -425,13 +419,13 @@ DELIMITERS or ANY wildcards and DIR if a filename when in MODE."
 
 (defun completer-file (string pred words any mode)
   "Return (match common-substring matches unique-p) for STRING.
-It uses 'READ-FILE-NAME-INTERNAL' for choices that pass PRED using WORDS to
+It uses READ-FILE-NAME-INTERNAL for choices that pass PRED using WORDS to
 delimit words.  Optional ANY is a delimiter that matches any of the
-delimiters in WORD.  If optional MODE is nil or 'help then possible
+delimiters in WORD.  If optional MODE is nil or \\='help then possible
 matches will always be returned."
   ;; Canonicalize slashes under windows-nt for proper completion
-  (when (eq system-type 'windows-nt)
-    (setq string (replace-in-string string "/" "\\\\")))
+  ;; (when (eq system-type 'windows-nt)
+  ;;   (setq string (replace-in-string string "/" "\\\\")))
   (let* ((case-fold-search completion-ignore-case)
 	 (last (and (eq mode 'exit-ok) (completer-last-component string)))
 	 (position
@@ -490,16 +484,16 @@ matches will always be returned."
 		   (let* ((choices
 			   (all-completions new 'read-file-name-internal))
 			  (choicep choices))
-		     (if (cl-member (first choicep) completer-dot-dot-list
+		     (if (cl-member (car choicep) completer-dot-dot-list
 				    :test #'string=)
 			 (cdr (cdr choicep))
 		       (while (cdr choicep)
-			 (if (cl-member (second choicep) completer-dot-dot-list
+			 (if (cl-member (cadr choicep) completer-dot-dot-list
 					:test #'string=)
 			     (rplacd choicep nil))
 			 (setq choicep (cdr choicep)))
 		       choices))
-		   words any new mode)
+		   words new)
 		(if (eq position last)
 		    (let ((new (concat new (substring string position))))
 		      (list new new nil t))
@@ -569,9 +563,8 @@ matches will always be returned."
 	      (setq choices
 		    (completer-match-record 
 		     (if end (substring string end) "")
-		     choiceb words any
-		     (file-name-directory (car (cdr choices)))
-		     mode)))))
+		     choiceb words
+		     (file-name-directory (car (cdr choices))))))))
     (if user
 	(let ((match (car choices))
 	      (lcs (car (cdr choices)))
@@ -588,10 +581,10 @@ matches will always be returned."
 			 &optional any mode file-p)
   "Return (match common-substring matches unique-p) for STRING in TABLE.
 The choices must also pass PRED using WORDS to delimit words.  If the
-flag 'COMPLETER-COMPLETE-FILENAMES' is T and the table is
-'READ-FILE-NAME-INTERNAL', then filename components will be individually
+flag COMPLETER-COMPLETE-FILENAMES is T and the table is
+READ-FILE-NAME-INTERNAL, then filename components will be individually
 expanded.  Optional ANY is a delimiter that can match any delimiter in
-WORDS.  Optional MODE is nil for complete, 'help for help and 'exit
+WORDS.  Optional MODE is nil for complete, \\='help for help and \\='exit
 for exit."
   (if (and (stringp completer-string) 
 	   (string= string completer-string)
@@ -649,7 +642,7 @@ for exit."
 		       (completer-match-record 
 			string 
 			(completer-deleter regexp choices t) 
-			words any dir mode)
+			words dir)
 		       (list nil nil nil nil))))))
        completer-string string)
       completer-result))
@@ -667,7 +660,7 @@ and should return a string."
   (if choices
       (with-output-to-temp-buffer "*Completions*"
 	(if (cdr choices) 
-	    (funcall completion-display-completion-list-function
+	    (display-completion-list
 		     (sort
 		      (if display
 			  (let ((old choices)
@@ -698,7 +691,7 @@ indicates if MATCH is unique.  DELIMITERS are possible bounding
 characters for the completion region.  WORDS are the characters that
 delimit the words for partial matches.  Replace the region bounded by
 delimiters with the match if unique and the lcs otherwise unless
-optional MODE is 'help.  Then go to the part of the string that
+optional MODE is \\='help.  Then go to the part of the string that
 disambiguates CHOICES using WORDS to separate words and display the
 possibilities if the string was not extended.  If optional DISPLAY is
 present then it will be called on each possible completion and should
@@ -735,8 +728,7 @@ return a string."
 			    (and file-p completer-path-separator-regexp-inside-brackets)
 			    "]")
 		    )
-		   (words (completer-words regexp lcs))
-		   (point nil))
+		   (words (completer-words regexp lcs)))
 	      ;; Go to where its ambiguous
 	      (goto-char start)
 	      (unless no-insert
@@ -1015,7 +1007,7 @@ See completer-minibuf for more information."
 (define-key minibuffer-local-must-match-map "\M-\r" 'completer-match-exit)
 
 ;;;%comint 
-(defun completer-comint-dynamic-list-completions (completions)
+(defun completer-comint-dynamic-list-completions ()
   "List in help buffer sorted COMPLETIONS.
 Typing SPC flushes the help buffer."
   (completer-comint-dynamic-complete-1 nil 'help))
@@ -1041,30 +1033,30 @@ twice in a row.  If called with a prefix, undo the last completion."
 			       default-directory
 			       mode)
       ;; lemacs change
-      (when (eq mode 'help) (comint-restore-window-config conf))
+      (when (eq mode 'help) (set-window-configuration conf))
       )))
 
-;(fset 'comint-dynamic-complete 'completer-comint-dynamic-complete)
+;;(fset 'comint-dynamic-complete 'completer-comint-dynamic-complete)
 (fset 'comint-dynamic-complete-filename
       'completer-comint-dynamic-complete-filename)
 (fset 'comint-dynamic-list-completions 
       'completer-comint-dynamic-list-completions)
 
 ;;; Set the functions again if comint is loaded.
-(setq comint-load-hook 
-      (cons (function (lambda ()
-			;; (fset 'comint-dynamic-complete 
-			;;       'completer-comint-dynamic-complete)
-			(fset 'comint-dynamic-complete-filename
-			      'completer-comint-dynamic-complete-filename)
-			(fset 'comint-dynamic-list-completions 
-			      'completer-comint-dynamic-list-completions)))
-	    (when (and (boundp 'comint-load-hook) comint-load-hook)
-	      (if (consp comint-load-hook)
-		  (if (eq (car comint-load-hook) 'lambda)
-		      (list comint-load-hook)
-		    comint-load-hook)
-		(list comint-load-hook)))))
+;; (setq comint-load-hook 
+;;       (cons (function (lambda ()
+;; 			;; (fset 'comint-dynamic-complete 
+;; 			;;       'completer-comint-dynamic-complete)
+;; 			(fset 'comint-dynamic-complete-filename
+;; 			      'completer-comint-dynamic-complete-filename)
+;; 			(fset 'comint-dynamic-list-completions 
+;; 			      'completer-comint-dynamic-list-completions)))
+;; 	    (when (and (boundp 'comint-load-hook) comint-load-hook)
+;; 	      (if (consp comint-load-hook)
+;; 		  (if (eq (car comint-load-hook) 'lambda)
+;; 		      (list comint-load-hook)
+;; 		    comint-load-hook)
+;; 		(list comint-load-hook)))))
 
 ;;;%lisp-complete-symbol
 (defun lisp-complete-symbol (&optional mode)
@@ -1119,7 +1111,7 @@ negative prefix, the last completion will be undone."
 			 (setq list (cdr list)))
 		       (setq list (nreverse new))))
 		 (with-output-to-temp-buffer "*Help*"
-		   (funcall completion-display-completion-list-function
+		   (display-completion-list
 		    (sort list (function (lambda (x y)
 					   (string-lessp
 					    (or (car-safe x) x)

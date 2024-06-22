@@ -1,17 +1,7 @@
-;;; -*-Emacs-Lisp-*-
-;;;
-;;;
-;;;%Header
-;;;
-;;; Rcs_Info: comint-ipc.el,v 1.20 1993/09/03 02:05:07 ivan Rel $
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 ;;;
 ;;; IPC extensions for comint
 ;;; Copyright (C) 1990 Chris McConnell, ccm@cs.cmu.edu.
-;;;
-;;; Send mail to ilisp@cons.org if you have problems.
-;;;
-;;; Send mail to majordomo@cons.org if you want to be on the
-;;; ilisp mailing list.
 
 ;;; This file is part of GNU Emacs.
 
@@ -47,6 +37,11 @@
 ;;;
 ;;; PROCESS OUTPUT: comint-display-output, comint-display-error-output
 
+(require 'comint)
+
+(declare-function ilisp-scroll-output "ilisp-out")
+
+(declare-function ilisp-show-output "ilisp-out")
 
 ;;;%Parameters
 (defvar comint-log nil
@@ -98,7 +93,7 @@ set comint-status to a status string in addition to whatever else it
 does.")
 
 (defvar comint-prompt-status 'comint-prompt-status
-  "Given the previous prompt and the last line output, return 'error
+  "Given the previous prompt and the last line output, return \\='error
 if an error, T if a prompt and nil otherwise.  If it is a prompt, also
 funcall comint-update-status to set the status.  If old is nil, then
 just return T if last line is a prompt.")
@@ -305,7 +300,7 @@ an error, the prompt will be a list."
 
 ;;;
 (defun comint-prompt-status (old line &optional equal)
-  "Called by comint-process filter with OLD and LINE, return 'error if
+  "Called by comint-process filter with OLD and LINE, return \\='error if
 LINE is an error, T if it is a prompt as determined by
 comint-prompt-regexp or nil otherwise.  Also set the status
 appropriately by funcalling comint-update-status.  If specified EQUAL
@@ -359,7 +354,7 @@ returned."
     (comint-display-error output)
     (set-buffer comint-original-buffer)
     ;; owre - added this extra test for XEmacs
-    (unless (memq +ilisp-emacs-version-id+ '(xemacs-20 xemacs-19))
+    (unless (memq +ilisp-emacs-version-id+ '(xemacs-20))
       (while (not (sit-for delay nil))
 	(execute-kbd-macro (read-key-sequence nil))))
     (if (not (get-buffer-window (get-buffer comint-error-buffer)))
@@ -368,19 +363,7 @@ returned."
 	  (echo-keystrokes 0)
 	  char)
       (while (progn (message prompt)
-		    ;; owre - added XEmacs test
-		    (if (memq +ilisp-emacs-version-id+ '(xemacs-20 xemacs-19))
-			(let ((event (next-command-event)))
-			  (setq char
-				(if (key-press-event-p event)
-				    (downcase (event-to-character event))
-				    0)))
-			(let ((event (read-event)))
-			  (setq char
-				(if (integerp event)
-				    (downcase event)
-				    0))))
-		    ;; owre - added extra test
+		    (setq char (get-event))
 		    (not (memq char keys)))
 	(if (= char ? ) 
 	    (ilisp-scroll-output)
@@ -392,6 +375,7 @@ returned."
 (defun comint-error-popup (error wait-p message output prompt)
   "If there is an ERROR pop up a window with MESSAGE and OUTPUT.
 Nothing is done with PROMPT or WAIT-P."
+  (ignore wait-p prompt)
   (if error
       (save-excursion
 	(with-output-to-temp-buffer comint-output-buffer
@@ -413,7 +397,7 @@ If the send is an interrupt, comint-interrupt-start is funcalled on
 the output and should return the start of the output of an interrupt.
 
 comint-prompt-status is called with the old prompt and the last line.
-It should return 'error if the last line is an error, T if it is a
+It should return \\='error if the last line is an error, T if it is a
 prompt and nil otherwise.  It should also update the process status by
 funcalling comint-update-status.
 
@@ -432,7 +416,7 @@ a regexp.
 Output to the process should only be done through the functions
 comint-send or comint-default-send, or results will be mixed up."
   (let* ((inhibit-quit t)
-	 (window (selected-window))
+	 ;; (window (selected-window))
 	 (comint-original-buffer (prog1 (current-buffer)
 				   (set-buffer (process-buffer process))))
 	 (match-data (match-data))
@@ -663,6 +647,7 @@ current send if done."
   "Interrupt PROCESS to send SEND if comint-continue is defined and
 the current send is not waiting.  Otherwise, SEND will be the next
 send."
+  (ignore process)
   (if (and comint-continue (not (car (cdr (cdr (car comint-send-queue))))))
       (let* ((current (car comint-send-queue))
 	     (interrupt
@@ -730,7 +715,7 @@ after the last send if AFTER, otherwise it will be put at the end of
 the queue. If WAIT is non-NIL or on the first send to a busy inferior,
 the inferior will be interrupted if possible, see comint-interrupt for
 more information.  Once the send is sent, the process status will be
-STATUS or 'run.  Output of the send will be inserted into the process
+STATUS or \\='run.  Output of the send will be inserted into the process
 buffer unless NO-INSERT.  This function returns a list of \(result .
 prompt).  If WAIT is a string, output will be inserted until one
 matches the string as a regexp.  If WAIT is T, then PROMPT will have
@@ -764,7 +749,7 @@ comint-update-status is a function \(status) that is called each time
 the process status changes.
 
 comint-prompt-status is called with the old prompt and the last line.
-It should return 'error if the last line is an error, T if it is a
+It should return \\='error if the last line is an error, T if it is a
 prompt and nil otherwise.  It should also update the process status by
 funcalling comint-update-status.
 
@@ -867,6 +852,7 @@ shows up in the output stream."
    start
    nil start-regexp 'sync "Start sync" 
    (function (lambda (error-p wait message output prompt)
+     (ignore error-p message prompt)
      (if (not (string-match wait output))
 	 (comint-sender 
 	  (get-buffer-process (current-buffer))
@@ -876,7 +862,7 @@ shows up in the output stream."
    process
    end
    t end-regexp 'sync "End sync"
-   (function (lambda (&rest args) nil))))
+   (function (lambda (&rest args) (ignore args) nil))))
 
 ;;;
 (defun comint-abort-sends (&optional process)
@@ -899,11 +885,11 @@ messages in *Aborted Commands*."
 		(if (consp (car vars))
 		    (progn (setq new (list send))
 			   (rplaca (cdr (cdr (cdr (cdr (cdr send)))))
-				   (function (lambda (&rest args) t))))
+				   (function (lambda (&rest args) (ignore args) t))))
 		    (setq new
 			  (list
 			   (list nil t nil 'interrupt "Interrupt"
-				 (function (lambda (&rest args) t))
+				 (function (lambda (&rest args) (ignore args) t))
 				 send (car (cdr (comint-send-variables send)))
 				 nil (cons nil nil))))
 		    (comint-interrupt-subjob)))) ;Already interrupting

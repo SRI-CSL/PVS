@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-ind.el --
 ;;; ILISP indentation

@@ -1,3 +1,5 @@
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
+
 ;;; Ilisp-easy-menu.el --- (easy)menu's on Emacs for Ilisp
 
 ;;; Copyright (C) 1996 Holger Schauer
@@ -7,8 +9,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 ;; Author: Holger Schauer <Holger.Schauer@gmd.de>
 ;; Maintainer: Holger.Schauer@gmd.de
@@ -58,18 +58,6 @@
 ;; menu, i.e. ilisp-menu and ilisp-mnb)
 ;; For ilisp.el:
 ;; 185c185,187
-;< (if (not (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
-;---
-;> (if (and
-;>      (not (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
-;>      (not (featurep 'ilisp-easy-menu)))
-;; For ilisp-utl.el:
-;127c127,129
-;<   (if (not (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
-;---
-;>   (if (and (not 
-;> 	    (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
-;> 	   (not (featurep 'ilisp-easy-menu)))
 
 (require 'cl-lib)
 (require 'easymenu)
@@ -221,6 +209,7 @@
 (defun ilisp-update-menu (status)
   ;; Backward compatibility with old keymap based menus.
   ;; A no-op for the time being.
+  (ignore status)
   )
 
 (defun ilisp-redefine-menu ()

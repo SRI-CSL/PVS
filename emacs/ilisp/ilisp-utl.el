@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-utl.el --
 ;;; ILISP misc tools.
@@ -8,8 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (defun lisp-show-send (string)
   "Show STRING in the *ilisp-send* buffer."
@@ -90,7 +88,7 @@ It considers all non alphanumerics as word delimiters."
 
 (defun ilisp-directory (file &optional dirs)
   "Return the directory of DIRS that FILE is found in.
-By default 'load-path' is used for the directories."
+By default \\='load-path\\=' is used for the directories."
   (let* ((dirs (or dirs (cons "" load-path)))
 	 (dir (car dirs)))
     (while (and dir (not (file-exists-p (expand-file-name file dir))))
@@ -113,13 +111,9 @@ By default 'load-path' is used for the directories."
 (defun ilisp-update-status (status)
   "Update process STATUS of the whole ILISP system.
 It updates the STATUS of the current buffer and let all lisp mode
-buffers know as well.  Also, do some 'exterior' things like make sure
+buffers know as well.  Also, do some \\='exterior\\=' things like make sure
 that the menubar is in a consistent state."
   (setq ilisp-status (if lisp-show-status (format " :%s" status)))
-;;   (when (and (not (member +ilisp-emacs-version-id+
-;; 			  '(xemacs lucid-19 lucid-19-new)))
-;; 	     (not (featurep 'ilisp-easy-menu)))
-;;     (ilisp-update-menu status))
   (comint-update-status status))
 
 (defun ilisp-last-input-char ()

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-mov.el --
 ;;;
@@ -7,9 +7,8 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
+(declare-function lisp-skip "ilisp-prn")
 
 ;;;%%Movement
 (defun bol-ilisp (arg)
@@ -66,12 +65,11 @@ prompt in an ILISP buffer and go to the end of the expression."
 ;;;
 (defun lisp-defun-begin ()
   "Go to the start of the containing defun and return point."
-  (let (begin)
-    (if (memq major-mode ilisp-modes)
-	(lisp-input-start)
-	(if (or (eobp) (not (and (bolp) (= (char-after (point)) ?\())))
-	    (beginning-of-defun))
-	(point))))
+  (if (memq major-mode ilisp-modes)
+      (lisp-input-start)
+      (if (or (eobp) (not (and (bolp) (= (char-after (point)) ?\())))
+	  (beginning-of-defun))
+      (point)))
 
 ;;;
 (defun lisp-defun-end (&optional no-errorp at-beginp)

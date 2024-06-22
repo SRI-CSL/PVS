@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-rng.el --
 ;;; ILISP match ring.
@@ -8,11 +8,10 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (defun match-ring (ring regexp start)
   "Return the index in RING of REGEXP starting at START."
+  (ignore start)
   (let ((n 0)
 	(len (ring-length ring)))
     (while (and (< n len) 

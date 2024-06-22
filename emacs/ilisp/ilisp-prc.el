@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-prc.el --
 ;;; ILISP process handling.
@@ -24,7 +24,7 @@
 
 ;;;%Buffer and process selection
 (defun ilisp-buffer ()
-  "Return the current ILISP buffer.  This is the buffer to whose process requests are sent."
+  "Return the current ILISP buffer to whose process requests are sent."
   (if (memq major-mode ilisp-modes)
       (current-buffer)
     (let ((buffer (funcall ilisp-buffer-function)))

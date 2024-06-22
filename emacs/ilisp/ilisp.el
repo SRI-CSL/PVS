@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp.el --
 ;;;
@@ -7,12 +7,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$     
-
-;;; Author: Chris McConnell <ccm@cs.cmu.edu>
-;;; Maintainer: The Net <ilisp@cons.org>
-;;; Created: 14 Jun 1994
 
 ;;; Keywords: lisp common-lisp scheme comint
 
@@ -40,7 +34,7 @@
 
 ;;; This file defines a generic LISP interface that can be customized
 ;;; to match a specific LISP dialect.  Support is already provided for
-;;; a number of common LISP dialects.  Lucid, Allegro and CMU are
+;;; a number of common LISP dialects.  Allegro and SBCL are
 ;;; fully supported.  Other LISP dialects are missing features like
 ;;; arglist and find-source.
 
@@ -78,10 +72,6 @@
 ;;; 
 ;;; If you get lisp output breaking up in weird places it almost
 ;;; certainly means that comint-prompt-regexp is not precise enough.
-;;;
-;;; I would like to eat Lucid's return from break in the process
-;;; filter, but I can't tell how many newlines to eat after.
-
 
 ;;;%%CONTRIBUTORS
 
@@ -140,7 +130,6 @@
 ;; (load "ilisp-chs")
 ;; (load "ilisp-hlw")
 ;; (load "ilisp-kcl")
-;; (load "ilisp-luc")
 ;; (load "ilisp-sch")
 ;; (load "ilisp-openmcl")
 ;; (load "ilisp-ccl")
@@ -175,19 +164,16 @@
 ;; (message "'ilisp-*enable-cl-easy-meny-p*' is %s"
 ;; 	 ilisp-*enable-cl-easy-menu-p*)
 
-(unless (and (member +ilisp-emacs-version-id+
-		     '(xemacs lucid-19 lucid-19-new fsf-20 fsf-21))
+(unless (and (member +ilisp-emacs-version-id+ '(xemacs fsf-20))
 	     (or ilisp-*enable-cl-easy-menu-p*
 		 ilisp-*enable-scheme-easy-menu-p*))
   (load "ilisp-mnb" nil noninteractive))
 
-(when (and (member +ilisp-emacs-version-id+
-		   '(xemacs lucid-19 lucid-19-new fsf-20 fsf-21))
+(when (and (member +ilisp-emacs-version-id+ '(xemacs fsf-20))
 	   ilisp-*enable-cl-easy-menu-p*)
   (load "ilisp-cl-easy-menu" nil noninteractive))
 
-(when (and (member +ilisp-emacs-version-id+
-		   '(xemacs lucid-19 lucid-19-new fsf-20 fsf-21))
+(when (and (member +ilisp-emacs-version-id+ '(xemacs fsf-20))
 	   ilisp-*enable-scheme-easy-menu-p*)
   (load "ilisp-scheme-easy-menu" nil noninteractive))
 

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-ext.el --
 ;;;
@@ -86,8 +86,7 @@ brackets will be replaced with left parentheses."
   (let* ((point (point))
 	 (begin (lisp-defun-begin))
 	 (end (lisp-end-defun-text))
-	 inserted
-	 (closed nil))
+	 inserted)
     (goto-char point)
     (if (or (car (cdr (cdr (lisp-in-string begin end))))
 	    (save-excursion (beginning-of-line)
@@ -111,7 +110,7 @@ brackets will be replaced with left parentheses."
 			   (progn (backward-sexp)
 				  (or arg 
 				      (not (eq (char-after (point)) ?\[))))
-			 (error (setq closed t) nil)))
+			 (error nil)))
 		;; With an arg replace all left brackets
 		(if (and arg (= (char-after (point)) ?\[))
 		    (progn
@@ -122,7 +121,7 @@ brackets will be replaced with left parentheses."
 		(insert ?\)))
 	      (if (< (point) point)
 		  ;; We are at a left bracket
-		  (let ((left (point)))
+		  (progn
 		    (delete-char 1)
 		    (insert ?\()
 		    (backward-char)
@@ -157,7 +156,7 @@ brackets will be replaced with left parentheses."
 					       (insert ?\()
 					       (backward-char)))
 					 (> (point) begin))
-				(error (delete-backward-char 1)
+				(error (delete-char -1)
 				       nil))))))))))))
 
 ;;;%Reindentation
@@ -259,6 +258,7 @@ region."
 (defun beginning-of-defun-lisp (&optional stay)
   "Go to the next left paren that starts at the left margin."
   (interactive)
+  (ignore stay)
   (beginning-of-defun))
 
 ;;;

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilxemacs.el --
 ;;;
@@ -26,16 +26,11 @@
 
 (defun ilisp-get-input-ring ()
   "Use instead of get-input-ring coming-input-ring or input-ring."
-  (if (eq +ilisp-emacs-version-id+ 'lucid-19)
-      (get-input-ring)
-      ;; else lucid-19-new
-      comint-input-ring))
+  comint-input-ring)
 
 
 (defun ilisp-ring-insert (ring input)
-  (if (eq +ilisp-emacs-version-id+ 'lucid-19)
-      (ring-insert-new ring input)
-      (ring-insert ring input)))
+  (ring-insert ring input))
 
 
 (defun ilisp-temp-buffer-show-function-symbol ()
@@ -51,32 +46,35 @@
 
 
 (defun ilisp-input-ring-index ()
-  (if (eq +ilisp-emacs-version-id+ 'lucid-19-new)
-      comint-input-ring-index
-      input-ring-index))
+  comint-input-ring-index)
 
 
 (defun set-ilisp-input-ring-index (n)
-  (if (eq +ilisp-emacs-version-id+ 'lucid-19-new)
-      (setq comint-input-ring-index n)
-      (setq input-ring-index n)))
+  (setq comint-input-ring-index n))
 
 
 (defun ilisp-input-ring-size ()
-  (if (eq +ilisp-emacs-version-id+ 'lucid-19-new)
-      comint-input-ring-size
-      input-ring-size))
-
+  comint-input-ring-size)
 
 (defun set-ilisp-input-ring-size (n)
-  (if (eq +ilisp-emacs-version-id+ 'lucid-19-new)
-      (setq comint-input-ring-size n)
-      (setq input-ring-size n)))
+  (setq comint-input-ring-size n))
 
+(defun get-event ()
+  (let ((event (next-command-event)))
+    (if (key-press-event-p event)
+	(downcase (event-to-character event))
+	0)))
 
-;;============================================================================
-;;; Epilogue
+(defun ilisp-byte-code-to-list (function)
+  "Returns a list suitable for passing to make-byte-code from FUNCTION."
+  (let ((function-object 
+	 (if (symbolp function)
+	     (symbol-function function)
+	   function)))
+    (read (concat "("
+		  (substring (let ((print-readably t))
+			       (prin1-to-string function-object))
+			     2 -1)
+		  ")"))))
 
-(provide 'il-luc19)
-
-;;; end of file -- ilxemacs.el --
+(provide 'ilxemacs)

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-bat.el --
 ;;; Inferior LISP interaction package batch submodule.
@@ -9,14 +9,12 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (require 'cl-lib)
 
 (defun mark-change-lisp (arg)
   "Mark the current defun as being changed.
-This is to make 'lisp-eval-changes' or 'lisp-compile-changes' work on
+This is to make \\='lisp-eval-changes\\=' or \\='lisp-compile-changes\\=' work on
 it.  With a prefix, unmark."
   (interactive "P")
   (let (point name)

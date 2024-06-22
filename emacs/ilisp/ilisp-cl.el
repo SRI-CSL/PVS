@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-cl.el --
 ;;; ILISP Common Lisp dialect definition
@@ -8,8 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (defvar ilisp-cl-ilisp-package-file "ilisp-pkg.lisp")
 

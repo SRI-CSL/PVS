@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-acl.el --
 ;;; ILISP Allegro Common Lisp dialect definition
@@ -12,8 +12,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 
 ;;;%%%Allegro
@@ -30,7 +28,7 @@
     (<= new-level old-level)))
  
 ;;;
-(defdialect allegro "Allegro Common LISP"
+(defdialect allegro "Allegro CL"
   common-lisp
   (ilisp-load-init 'allegro ilisp-allegro-init-file)
   (setq comint-fix-error ":pop"
@@ -47,7 +45,7 @@
 
   ;; Patch by kpc 94/8/30: allow prompts that look like this:
   ;; USER(23): USER(23):
-  (setq comint-prompt-regexp "^\\(\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(<?[-A-Za-z]* ?[0-9]*?>\\|[-A-Za-z0-9]+([0-9]+):\\) \\)+")
+  ;; (setq comint-prompt-regexp "^\\(\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(<?[-A-Za-z]* ?[0-9]*?>\\|[-A-Za-z0-9]+([0-9]+):\\) \\)+")
    
   (setq ilisp-error-regexp
 	"\\(ILISP:[^\"]*\\)\\|\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
@@ -82,20 +80,20 @@
 
   ;; ILD Support
 
-  (setq ild-abort-string ":pop"
-	ild-continue-string ":cont"
-	ild-next-string ":dn"
-	ild-next-string-arg ":dn %s"
-	ild-previous-string ":up"
-	ild-previous-string-arg ":up %s"
-	ild-top-string ":to"
-	ild-bottom-string ":bo"
-	ild-backtrace-string ":bt"
-	ild-locals-string ":local"
-	ild-local-string-arg ":local %s"
-	ild-return-string nil		;needs work
-	ild-retry-string ":rest"
-	ild-trap-on-exit-string ":boe")
+  ;; (setq ild-abort-string ":pop"
+  ;; 	ild-continue-string ":cont"
+  ;; 	ild-next-string ":dn"
+  ;; 	ild-next-string-arg ":dn %s"
+  ;; 	ild-previous-string ":up"
+  ;; 	ild-previous-string-arg ":up %s"
+  ;; 	ild-top-string ":to"
+  ;; 	ild-bottom-string ":bo"
+  ;; 	ild-backtrace-string ":bt"
+  ;; 	ild-locals-string ":local"
+  ;; 	ild-local-string-arg ":local %s"
+  ;; 	ild-return-string nil		;needs work
+  ;; 	ild-retry-string ":rest"
+  ;; 	ild-trap-on-exit-string ":boe")
   )
 
 (unless allegro-program (setq allegro-program "cl"))

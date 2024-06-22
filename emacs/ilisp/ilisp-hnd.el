@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-hnd.el --
 ;;; ILISP Error handler
@@ -8,9 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
-
 
 ;; Do not handle errors by default.
 (defvar ilisp-handle-errors nil)
@@ -55,8 +52,7 @@ let the user decide what to do."
 		     buffer)
 		  (ilisp-bury-output))
 		t)
-	    (save-excursion
-	      (set-buffer (get-buffer-create "*Errors*"))
+	    (with-current-buffer (get-buffer-create "*Errors*")
 	      (if clear (delete-region (point-min) (point-max)))
 	      (goto-char (point-max))
 	      (insert message)

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-cmu.el --
 ;;; ILISP CMU Common Lisp dialect definition
@@ -9,8 +9,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (defvar cmulisp-source-directory-regexp 
   "\\/afs\\/cs\\.cmu\\.edu\\/project\\/clisp\\/src\\/[0-9]*\\/"
@@ -96,23 +94,23 @@
 
   ;; ILD Support
 
-  (setq ild-abort-string ":abort"
-	ild-continue-string ":go"
-	ild-step-string ":step"
-	ild-step-string-arg nil
-	ild-next-string ":down"
-	ild-next-string-arg nil		; needs work
-	ild-previous-string ":up"
-	ild-previous-string-arg nil	; needs work
-	ild-top-string ":bottom"
-	ild-bottom-string ":top"
-	ild-backtrace-string ":backtrace"
-	ild-locals-string ":l"
-	ild-local-string-arg "(debug:arg %s)"
-	ild-return-string nil		; needs work (debug:debug-return x)
-	ild-retry-string nil		; needs work
-	ild-trap-on-exit-string nil	; needs work
-	)
+  ;; (setq ild-abort-string ":abort"
+  ;; 	ild-continue-string ":go"
+  ;; 	ild-step-string ":step"
+  ;; 	ild-step-string-arg nil
+  ;; 	ild-next-string ":down"
+  ;; 	ild-next-string-arg nil		; needs work
+  ;; 	ild-previous-string ":up"
+  ;; 	ild-previous-string-arg nil	; needs work
+  ;; 	ild-top-string ":bottom"
+  ;; 	ild-bottom-string ":top"
+  ;; 	ild-backtrace-string ":backtrace"
+  ;; 	ild-locals-string ":l"
+  ;; 	ild-local-string-arg "(debug:arg %s)"
+  ;; 	ild-return-string nil		; needs work (debug:debug-return x)
+  ;; 	ild-retry-string nil		; needs work
+  ;; 	ild-trap-on-exit-string nil	; needs work
+  ;; 	)
   )
 
 ;;; end of file -- ilisp-cmu.el --

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-out.el --
 ;;;
@@ -7,8 +7,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id: ilisp-imenu.el,v 1.5 2002/01/31 14:56:45 mna Exp $
 
 (require 'cl-lib)
 (require 'imenu)
@@ -105,7 +103,7 @@ ilisp-*user-function-defining-forms*")
 things of class KEY, which can be `:types' or `:variables'."
   (regexp-opt (mapcar #'symbol-name
 		      (cl-remove-duplicates
-		       (ecase key
+		       (cl-ecase key
 			 (:types (append ilisp-*type-defining-forms*
 					 ilisp-*user-type-defining-forms*))
 			 (:variables (append ilisp-*variable-defining-forms*
@@ -119,13 +117,13 @@ things of class KEY, which can be `:types' or `:variables'."
   ;; generates a nested index of definitions.
   (let ((index-fun-alist '())
 	(index-var-alist '())
-        (index-const-alist '())
+        ;; (index-const-alist '())
 	(index-type-alist '())
 	(index-unknown-alist '())
-	(prev-pos nil)
+	;; (prev-pos nil)
 	)
     (goto-char (point-max))
-    (imenu-progress-message prev-pos 0)
+    ;; (imenu-progress-message prev-pos 0) - obsolete
 
     ;; This will be a bit slower at runtime, but hey, we don't
     ;; rebuild the index very often, and at least this way,
@@ -135,7 +133,7 @@ things of class KEY, which can be `:types' or `:variables'."
 	  (function-defining-form-regexp (ilisp-build-optimal-regexp :functions)))
       ;; Search for the function
       (while (beginning-of-defun)
-	(imenu-progress-message prev-pos nil t)
+	;; (imenu-progress-message prev-pos nil t)
 	(save-match-data
 	  (and (looking-at ilisp-*defining-form-regexp*)
 	       (save-excursion
@@ -156,7 +154,7 @@ things of class KEY, which can be `:types' or `:variables'."
 			(forward-sexp 2)
 			(push (ilisp-imenu-general--name-and-position)
 			      index-unknown-alist)))))))
-      (imenu-progress-message prev-pos 100)
+      ;;(imenu-progress-message prev-pos 100)
       (when index-var-alist
 	(push (cons "Variables" index-var-alist) index-fun-alist))
       (when index-type-alist

@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-xfr.el --
 ;;; ILISP transfer commands Lisp <-> Emacs.
@@ -8,8 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (require 'cl-lib)
 
@@ -92,7 +90,7 @@ interactive-keys-ilisp is encountered.  See also io-bridge-ilisp."
 ;;;
 (defun ilisp-send-char ()
   "Send the last typed character to the current inferior LISP.
-If 'ilisp-raw-echo' is T then echo it."
+If \\='ilisp-raw-echo\\=' is T then echo it."
   (interactive)
   (when (ilisp-value 'ilisp-raw-echo t)
     (goto-char (point-max))
@@ -106,22 +104,24 @@ If 'ilisp-raw-echo' is T then echo it."
 ;;;
 (defun ilisp-raw-handler (process output)
   "Turn on raw keyboard mode."
+  (ignore process output)
   (raw-keys-ilisp))
 (defun ilisp-interactive-handler (process output)
   "Turn on interactive keyboard mode."
+  (ignore process output)
   (interactive-keys-ilisp))
 
 ;;;
-(defun io-bridge-ilisp ()
-  "Make it possible for the inferior LISP to turn on EMACS raw mode.
-When this function is called, the inferior LISP can turn on EMACS raw mode by
-sending ^[1^], and turn it off by sending ^[0^]."
-  (interactive)
-  (require 'bridge)
-  (install-bridge)
-  (setq bridge-handlers (cons '("1" . ilisp-raw-handler)
-			      (cons '("0" . ilisp-interactive-handler)
-				    bridge-handlers))))
+;; (defun io-bridge-ilisp ()
+;;   "Make it possible for the inferior LISP to turn on EMACS raw mode.
+;; When this function is called, the inferior LISP can turn on EMACS raw mode by
+;; sending ^[1^], and turn it off by sending ^[0^]."
+;;   (interactive)
+;;   (require 'bridge)
+;;   (install-bridge)
+;;   (setq bridge-handlers (cons '("1" . ilisp-raw-handler)
+;; 			      (cons '("0" . ilisp-interactive-handler)
+;; 				    bridge-handlers))))
 
 ;;;%%Debugger interface
 (defun delete-char-or-pop-ilisp (arg &optional killflag)

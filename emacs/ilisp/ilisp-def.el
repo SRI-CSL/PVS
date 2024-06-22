@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-def.el --
 ;;; ILISP defvar's
@@ -46,6 +46,11 @@
   `(progn (lisp-deflocal ',variable)
 	    (defvar ,variable ,default ,documentation)))
 
+;; (defgroup ilisp nil
+;;   "Ilisp group"
+;;   :prefix "ilisp-"
+;;   :group 'applications)
+
 ;;;%%Simple customization
 
 (defcustom ilisp-*prefix*
@@ -53,7 +58,9 @@
            ilisp-*use-fsf-compliant-keybindings*)
       "\C-c"
       "\C-z")
-  "Prefix sequence for ilisp commands.")
+  "Prefix sequence for ilisp commands."
+  :type 'string
+  :group 'ILisp-interaction)
 
 
 (deflocal ilisp-program nil
@@ -75,7 +82,7 @@ for just the next command.")
 
 (defvar lisp-no-popper 'message
   "*T if all output goes to the inferior LISP rather than in a pop-up window.
-'(quote message) if you want output of one line to go to the echo area
+\\='(quote message) if you want output of one line to go to the echo area
 (usually the Minibuffer) or to a pop-up window if more.  You should
 probably also set comint-always-scroll to T as well so that output is
 always visible.")
@@ -119,7 +126,7 @@ mode.")
 
 (deflocal ilisp-other-prompt nil
   "*Regexp to recognise \"other\" prompts in the inferior LISP.
-These 'prompts' are those of non-(read/eval/print) top-levels that
+These \\='prompts\\=' are those of non-(read/eval/print) top-levels that
 bol-ilisp skips them.")
 
 (deflocal ilisp-raw-echo nil
@@ -233,7 +240,7 @@ from the core.")
 (deflocal ilisp-complete-command nil
   "Format string for finding possibly matching symbols.
 Given SYMBOL, PACKAGE, FUNCTIONP, EXTERNALP and PARTIAL-MATCHP, it
-should print '((string) (string) ...)'.")
+should print \\='((string) (string) ...)'.")
 
 (deflocal ilisp-callers-command nil
   "Format for finding the callers of SYMBOL in PACKAGE.
@@ -298,10 +305,10 @@ backwards.")
 
 (deflocal ilisp-source-directory-fixup-alist
     nil
-  "*Alist of matchers to be used in conjuction with 'edit-definition-alist'.
+  "*Alist of matchers to be used in conjuction with \\='edit-definition-alist\\='.
 The elements of the alist have the form (REGEXP . FIXUP-FUNCTION)
 which will be applied to lists of source filenames to be used with
-'edit-definitions-list'.  FIXUP-FUNCTION takes no arguments and should
+\\='edit-definitions-list\\='.  FIXUP-FUNCTION takes no arguments and should
 use replace-match to fix the filenames.")
 
 
@@ -330,9 +337,6 @@ compile-file-lisp. Used by these commands to determine defaults.")
 
 ;;;%%Program
 (defvar ilisp-completion-map nil "Keymap for reading ilisp readers.")
-
-(defvar ilisp-epoch-running (and (boundp 'epoch::version) epoch::version)
-  "Non-nil if epoch is running.")
 
 (defvar ilisp-*version*
   "5.12.0" ;; ILISP-VERSION marker
@@ -453,8 +457,8 @@ By default the file will be loaded from the ilisp-directory.")
 
 (defvar lisp-prev-l/c-dir/file nil
   "Saves the (directory . file) pair used in the last file handling command.
-A \"file handling command\" may be 'find-file-lisp', 'load-file-lisp'
-or 'compile-file-lisp' command. Used for determining the default in
+A \"file handling command\" may be \\='find-file-lisp\\=', \\='load-file-lisp\\='
+or \\='compile-file-lisp\\=' command. Used for determining the default in
 the next one.")
 
 (defvar ilisp-last-buffer nil
@@ -465,13 +469,15 @@ the next one.")
 
 (defcustom ilisp-bindings-*bind-right-bracket-p*
   nil
-  "If non-nil the key ']' will be bound to #'close-all-lisp."
+  "If non-nil the key \\=']\\=' will be bound to #\\='close-all-lisp."
+  :type 'boolean
   :group 'ILisp-interaction)
 
 ;;; ilisp-bindings-*bind-space-p*
 (defcustom ilisp-bindings-*bind-space-p*
   nil
-  "If non-nil the 'SPACE' key will be bound to #'ilisp-arglist-message-lisp-space."
+  "If non-nil the \\='SPACE\\=' key will be bound to #\\='ilisp-arglist-message-lisp-space."
+  :type 'boolean
   :group 'ILisp-interaction)
 
 ;;; ilisp-arglist-message-space-lisp --
@@ -480,7 +486,7 @@ the next one.")
 
 (defvar ilisp-*arglist-message-lisp-space-p* t
   "If T display the arglist or value of a function/symbol after a #\\Space.
-Set to 'all if you want the arglist or value of a function/symbol
+Set to \\='all if you want the arglist or value of a function/symbol
 to be printed.")
 
 (defvar ilisp-*arglist-message-switch-back-p* nil
@@ -488,7 +494,7 @@ to be printed.")
 
 (defvar ilisp-*use-frame-for-arglist-output-p* t
   "If T, ILISP uses a distinct frame for its arglist output.
-Otherwise ILISP uses the default 'lisp-display-ouput'.
+Otherwise ILISP uses the default \\='lisp-display-ouput\\='.
 The output going to the frame is usually multiline. If no window
 system is running then the value of this variable is ininfluent.
 Default is T.
@@ -501,7 +507,7 @@ Only if both are t the output will be sent to a frame.")
 (defvar ilisp-*enable-ilisp-special-frame-p* nil
   "If T, the ILISP inferior lisp buffer-name will be in
 special-display-buffer-names; therefore the lisp-interaction buffer
-will be in a 'special' seperate frame.")
+will be in a \\='special\\=' seperate frame.")
 
 (defvar ilisp-*enable-imenu-p* t
   "Enables/disables loading/use of IMENU.
@@ -531,11 +537,11 @@ Default is T.")
 ;;; 19990820 Marco Antoniotti
 
 (defvar ilisp-*use-hyperspec-interface-p* t
-  "Enables/disables loading of the 'hyperspec' module provided with ILISP.
+  "Enables/disables loading of the \\='hyperspec\\=' module provided with ILISP.
 Default is T.")
 
 (defvar ilisp-*use-fi-clman-interface-p* nil
-  "Enables/disables use of Franz Inc's 'fi:clman' module.
+  "Enables/disables use of Franz Inc\\='s \\='fi:clman\\=' module.
 Default is NIL.")
 
 (defvar ilisp-*use-cltl2-interface-p* t

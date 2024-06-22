@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-val.el --
 ;;; ILISP buffer value interface
@@ -14,8 +14,7 @@
 (defun ilisp-value (variable &optional no-error-p)
   "Return the value of VARIABLE in the ILISP buffer.
 If NO-ERROR-P is NIL, then an error will be signalled if VARIABLE is nil."
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (let ((value (eval variable)))
       (if value
 	  value
@@ -26,8 +25,7 @@ If NO-ERROR-P is NIL, then an error will be signalled if VARIABLE is nil."
 
 (defun set-ilisp-value (variable value)
   "Set the value of VARIABLE in the ILISP buffer."
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (set variable value)))
 
 ;;; end of file -- ilisp-val.el --

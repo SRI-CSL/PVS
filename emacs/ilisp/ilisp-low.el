@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-low.el --
 ;;; ILISP low level interface functions Lisp <-> Emacs.
@@ -38,7 +38,8 @@ are allowed."
 (defun lisp-def-name (&optional namep)
   "Return the name of a definition assuming that you are at the start
 of the sexp.  If the form starts with DEF, the form start and the next
-symbol will be returned.  Optional NAMEP will return only the name without the defining symbol."
+symbol will be returned.  Optional NAMEP will return only the name
+without the defining symbol."
   (let ((case-fold-search t))
     (if (looking-at
 	 ;; (( \( (def*) (( \( (setf)) | \(?)) | \(?) (symbol)

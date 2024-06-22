@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-doc.el --
 ;;; ILISP mode documentation
@@ -38,7 +38,6 @@ partially supported):
        ecl
      ibcl
    lispworks
-   lucid
      liquid
    sbcl
  scheme
@@ -373,7 +372,7 @@ done if not found through the inferior Lisp.  The variable
 should be able to find the appropriate definition in the file.  There
 is often a flag to cause your Lisp to record source files that you
 will need to set in the initialization file for your Lisp.  The
-variable is `\*record-source-files*' in both Allegro and Lucid.  Once
+variable is `\*record-source-files*' in Allegro.  Once
 a definition has been found, `next-definition-lisp'
 \(\\[next-definition-lisp]) will find the next definition.  \(Or the
 previous definition with a prefix.)

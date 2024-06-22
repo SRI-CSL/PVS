@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 ;;; ilisp-hi.el --
 ;;; ILISP high level interface functions Lisp <-> Emacs
 ;;;
@@ -7,8 +7,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 ;;;%Eval/compile
 (require 'cl-lib)
@@ -123,6 +121,7 @@ a message to let the user know what is going on."
 (defun eval-next-sexp-and-go-lisp (&optional switch)
   "Evaluate the next sexp and switch to the current ILISP buffer."
   (interactive)
+  (ignore switch)
   (eval-next-sexp-lisp t))
 
 (defun eval-defun-and-go-lisp ()
@@ -155,7 +154,10 @@ With prefix, insert a call as well."
 (defun ilisp-compile-buffer ()
   (interactive)
   (let ((old-point (point)))
-    (mark-whole-buffer)
+    ;; (mark-whole-buffer) interactive, not meant for programs - replace by following
+    (push-mark (point))
+    (push-mark (point-max) nil t)
+    (goto-char (point-min))
     (unwind-protect
       (let ((result
               (compile-region-lisp (point) (mark) 'result
@@ -178,7 +180,10 @@ With prefix, insert a call as well."
 
 (defun ilisp-eval-buffer ()
   (interactive)
-  (mark-whole-buffer)
+  ;; (mark-whole-buffer) interactive, not meant for programs - replace by following
+  (push-mark (point))
+  (push-mark (point-max) nil t)
+  (goto-char (point-min))
   (eval-region-lisp (point) (mark)))
 
     
@@ -601,7 +606,7 @@ name of FILE and buffer match, select that buffer."
 
   (let* ((buffers (buffer-list))
 	 (position 0)
-	 (expand-symlinks t)
+	 ;; (expand-symlinks t)
 	 (expanded (expand-file-name file))
 	 filename)
     (if (not no-name)

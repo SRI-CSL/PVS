@@ -1,4 +1,4 @@
-;;; -*-Mode: Emacs-Lisp-*-
+;;; -*-Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-xls.el --
 ;;; ILISP Xlisp and Xlisp-Stat dialect definition
@@ -8,10 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
-
-;;; Thanks to John Walker for supplying this file.
 
 
 (defdialect xlisp "Xlisp" ilisp

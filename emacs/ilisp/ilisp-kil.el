@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-kil.el --
 ;;; ILISP Panic/Reset/Status commands.
@@ -8,8 +8,8 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
+
+(declare-function return-ilisp "ilisp-xfr")
 
 ;;;%% Panic/Reset/Status commands 
 ;;;
@@ -17,8 +17,7 @@
   "Show the message of the current command being executed in the
 inferior LISP.  With a prefix show pending sends as well."  
   (interactive "P")
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (comint-current-send showp)))
 
 
@@ -45,15 +44,14 @@ inferior LISP.  With a prefix show pending sends as well."
   (interactive)
   (save-excursion
     (if (y-or-n-p "Panic reset LISP? ")
-	(save-excursion
-	  (set-buffer (ilisp-buffer))
+	(with-current-buffer (ilisp-buffer)
 	  (comint-setup-ipc t)
 	  (message "LISP is reset, state is unknown"))
 	(message ""))))
 
 ;;;
 (defun repair-ilisp ()
-  "If ilisp is not listening to you in the lisp interaction buffer, you might try this."
+  "Try this if ilisp is not listening to you in the lisp interaction buffer."
   (interactive)
   (set-buffer (ilisp-buffer))
   (comint-setup-ipc t)

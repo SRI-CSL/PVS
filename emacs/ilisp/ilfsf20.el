@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilfsf20.el --
 ;;;
@@ -55,7 +55,21 @@
 ;;; Epilogue
 (setq-default confirm-nonexistent-file-or-buffer nil)
 
-(provide 'compat-fsf-20)
+(defun get-event ()
+  (let ((event (read-event)))
+    (if (integerp event)
+	(downcase event)
+	0)))
+
+(defun ilisp-byte-code-to-list (function)
+  "Returns a list suitable for passing to make-byte-code from FUNCTION."
+  (let ((function-object 
+	 (if (symbolp function)
+	     (symbol-function function)
+	   function)))
+    (append function-object nil)))
+
+(provide 'ilfsf20)
 
 ;;; end of file -- ifsf20.el --
 

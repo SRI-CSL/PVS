@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-chs.el --
 ;;; CLISP Common Lisp by Bruno Haible and Michael Stoll dialect definition.
@@ -8,8 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 (require 'cl-lib)
 
@@ -108,21 +106,22 @@
   ;; ILD Support. NIL values mean that more work is needed or that the
   ;; particular command is not available
 
-  (setq ild-abort-string "(sys::debug-unwind)"
-	ild-continue-string "continue"
-	ild-next-string "up"
-	ild-next-string-arg nil
-	ild-previous-string "down"
-	ild-previous-string-arg nil
-	ild-top-string "top"
-	ild-bottom-string "bottom"
-	ild-backtrace-string "backtrace"
-	ild-locals-string nil
-	ild-local-string-arg nil
-	ild-return-string "return"
-	ild-retry-string "redo"
-	ild-trap-on-exit-string "break+" ; I'm not sure about this
-	))
+  ;; (setq ild-abort-string "(sys::debug-unwind)"
+  ;; 	ild-continue-string "continue"
+  ;; 	ild-next-string "up"
+  ;; 	ild-next-string-arg nil
+  ;; 	ild-previous-string "down"
+  ;; 	ild-previous-string-arg nil
+  ;; 	ild-top-string "top"
+  ;; 	ild-bottom-string "bottom"
+  ;; 	ild-backtrace-string "backtrace"
+  ;; 	ild-locals-string nil
+  ;; 	ild-local-string-arg nil
+  ;; 	ild-return-string "return"
+  ;; 	ild-retry-string "redo"
+  ;; 	ild-trap-on-exit-string "break+" ; I'm not sure about this
+  ;; 	)
+  )
 
 (unless clisp-hs-program
   (setq clisp-hs-program "clisp -ansi -I")) ; ANSI mode, ILISP friendly

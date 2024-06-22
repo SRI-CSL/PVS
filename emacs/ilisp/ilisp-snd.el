@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-snd.el --
 ;;; ILISP send and support.
@@ -8,18 +8,13 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 
 ;;;%% Package / Symbol support
 
-;;;---------------------------------------------------------------------------
-;;; Package hacks by Martin Atzmueller
-;;;
-;;; 19990824 Marco Antoniotti
-
 (require 'cl-lib)
+
+(declare-function file-name-hack "ilisp-hi")
 
 (defvar *ILISP-default-package* "COMMON-LISP-USER")
 
@@ -85,7 +80,7 @@ or minus forms - as well as normal IN-PACKAGE or DEFPACKAGE forms."
     (and (re-search-forward hash-form-regexp)
 	 (let ((found (buffer-substring
 		       (progn
-			 (match-end 0)	; this is due to problems with
+			 ;;(match-end 0)	; this is due to problems with
 			 (backward-char) ; the #{+|-}-regexp.
 			 (backward-sexp) ; now we are in front of the exp
 			 (point))
@@ -134,7 +129,7 @@ Common Lisp."
 	 (defpackage-regexp (ilisp-value 'ilisp-defpackage-command-string t))
 	 (hash-in-package-forms-list nil)
 	 (hash-defpackage-forms-list nil)
-	 (package nil)
+	 ;; (package nil)
          (should-not-cache-p nil))
     (if (not hash-form-regexp)
         (cl-values nil nil)
@@ -209,7 +204,7 @@ The package is set whether the buffer has a package or not!"
 (defun lisp-buffer-package ()
   "Return the package for this buffer.
 The package name is a string. If there is none, return NIL.  This
-caches the package unless 'ILISP-DONT-CACHE-PACKAGE' is non-nil, so
+caches the package unless ILISP-DONT-CACHE-PACKAGE is non-nil, so
 calling this more than once is cheap."
   (cond ((and (not (eq buffer-package 'not-yet-computed))
 	      (null lisp-dont-cache-package))
@@ -284,7 +279,7 @@ specify manually."
 ;;;%%Symbols
 (defun lisp-string-to-symbol (string)
   "Convert STRING to a symbol, (package delimiter symbol).
-'package' is either package:symbol or from the current buffer."
+\\='package\\=' is either package:symbol or from the current buffer."
   (let* ((start (if (ilisp-value 'ilisp-package-separator-regexp t)
 		    (string-match (ilisp-value 'ilisp-package-separator-regexp t)
                                   string)))
@@ -387,7 +382,7 @@ is no current sexp, return NIL."
 ;;;
 (defun ilisp-load-init (dialect file)
   "Add FILE to the files to be loaded into the inferior LISP.
-The file(s) are 'init' files to be loaded when dialect is initialized.
+The file(s) are \\='init\\=' files to be loaded when dialect is initialized.
 If FILE is NIL, the entry will be removed."
   (let ((old (assoc dialect ilisp-load-inits)))
     (if file
@@ -489,7 +484,7 @@ If FILE is NIL, the entry will be removed."
 ;;;
 (defun ilisp-init (&optional waitp forcep sync)
   "Initialize the current inferior LISP.
-If necessary load the files in 'ilisp-load-inits'.  Optional WAITP
+If necessary load the files in \\='ilisp-load-inits\\='.  Optional WAITP
 waits for initialization to finish.  When called interactively, force
 reinitialization.  With a prefix, get the binary extensions again."
   (interactive 
@@ -500,7 +495,7 @@ reinitialization.  With a prefix, get the binary extensions again."
 	       nil))
 	 t))
   (when (or forcep (not (ilisp-initialized)))
-    (unless (and noninteractive (= pvs-verbose 0))
+    (unless noninteractive
       (message "Started initializing ILISP"))
     (unless ilisp-*directory*
       (setq ilisp-*directory* (or (ilisp-directory "ilisp.elc" load-path)
@@ -571,8 +566,8 @@ the buffer."
   "Send STRING to the ILISP buffer.
 Also print MESSAGE set STATUS and return the result if AND-GO is NIL,
 otherwise switch to ilisp if and-go is T and show message and results.
-If AND-GO is 'dispatch, then the command will be executed without
-waiting for results.  If AND-GO is 'call, then a call will be
+If AND-GO is \\='dispatch, then the command will be executed without
+waiting for results.  If AND-GO is \\='call, then a call will be
 generated. If this is the first time an ilisp command has been
 executed, the lisp will also be initialized from the files in
 ilisp-load-inits.  If there is an error, comint-errorp will be T and
@@ -653,6 +648,7 @@ the process interface."
 		    (format ilisp-block-command string)
 		    t nil 'send (format "Sending %s" file)
 		    (function (lambda (error wait message output last)
+		      (ignore wait message last)
 		      (if error
 			  (progn 
 			    (comint-display-error output)

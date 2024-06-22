@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-cmp.el --
 ;;; ILISP completion
@@ -11,8 +11,16 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
+
+(declare-function lisp-string-to-symbol "ilisp-snd")
+
+(declare-function lisp-buffer-package "ilisp-snd")
+
+(declare-function lisp-previous-symbol "ilisp-snd")
+
+(declare-function lisp-buffer-symbol "ilisp-snd")
+
+(declare-function ilisp-send "ilisp-snd")
 
 (defun ilisp-display-choices (symbol choices)
   "Display the possible choices for SYMBOL in alist CHOICES."
@@ -309,11 +317,11 @@ internal and exported symbols is considered."
 		      (= (or (char-after (point)) ?\") ?\")))
 	     )
 	(if filep
-	    (comint-dynamic-complete)
+	    (completer-comint-dynamic-complete-filename)
 	    ;; (ilisp-pathname-complete)
 	    (let* ((symbol-info (lisp-previous-symbol))
 		   (symbol (car symbol-info))
-		   (name (lisp-symbol-name symbol))
+		   ;;(name (lisp-symbol-name symbol))
 		   (choice (ilisp-completer 
 			    symbol 
 			    (if (not mode) (car (cdr symbol-info)))))
@@ -340,7 +348,7 @@ internal and exported symbols is considered."
 				    (= (char-after (point)) ?\:)))
 	)
     (if (not maybe-logical-pathname-p)
-	(comint-dynamic-complete)
+	(completer-comint-dynamic-complete-filename)
 	())))
 
 ;;; end of file -- ilisp-cmp.el --

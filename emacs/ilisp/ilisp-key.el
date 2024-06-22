@@ -1,30 +1,18 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-key.el --
 ;;; ILISP keybinding definitions.
 ;;;
 ;;; This file is part of ILISP.
-;;; Please refer to the file COPYING for copyrights and licensing
-;;; information.
+;;; Please refer to the file COPYING for copyrights and licensing information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
-
-;;; ilisp-where-is --
-;;; New version provided by yusuf@SPD-13.ils.nwu.edu (Yusuf Pisan)
-;;; Note: this used to be in 'ilisp-cpat'. Its definition did not make
-;;;       much sense. Yusuf noted this and I decided to move it in
-;;;       this file (where I think is more approriate).
-;;;       11/24/94: Marco Antoniotti
 
 (defun ilisp-where-is (command)
   (let ((cmd (where-is-internal command nil t)))
     (when cmd
       (key-description cmd))))
 
-
-;;;
 ;;;%Bindings
 (defun ilisp-safe-define-key (keymap key command &optional fsf-key)
   "In KEYMAP, bind KEY to COMMAND.
@@ -78,33 +66,12 @@ ilisp-*prefix* is set to the desired prefix."
           keymap "\C-c" 'compile-defun-and-go-lisp "\M-c")
 	 (define-key keymap "\C-m" 'newline-and-indent-lisp)))
 
-  ;; 19990901 Martin Atzmueller
-  ;; 20000203 Karl Fogel: it's already bound to M-TAB anyway:
   (ilisp-safe-define-key keymap "\C-c\t" 'complete-lisp 'no-fsf-key)
   (define-key keymap [?\C-c return] `complete)
 
-  ;; 20000401 Martin Atzmueller
-  ;; Reinstated the ilisp-arglist-message-lisp-space by adding
-  ;; a customization. C-c C-SPACE is _not_ the intended behavior.
-  
-  ;; 19991214 Martin Atzmueller
-
-  ;; 20000203 Karl Fogel: C-c C-SPACE in the FSF-universe, I guess.
-  ;; (ilisp-safe-define-key
-  ;; keymap " "  'ilisp-arglist-message-lisp-space [?\C-c?\C- ])
   (when ilisp-bindings-*bind-space-p*
     (define-key keymap " "  'ilisp-arglist-message-lisp-space))
 
-  ;; 20000203 Karl Fogel
-  ;; This binding of ] causes many complaints, because lisp hackers
-  ;; frequently need literal square braces in their code.  The
-  ;; 'close-all-lisp function is a neat idea, but I think it needs to
-  ;; be bound to something not used for any other purpose.  -karl
-  ;; (define-key   keymap "]"        'close-all-lisp)
-  ;;
-  ;; 20000213 Marco Antoniotti
-  ;; Reinstated the 'close-all' lisp by adding a programmable
-  ;; customization.
   (when ilisp-bindings-*bind-right-bracket-p*
     (define-key   keymap "]"        'close-all-lisp))
 
@@ -163,7 +130,6 @@ ilisp-*prefix* is set to the desired prefix."
 
   (ilisp-bind-ilisp-key-for-map keymap "P" 'set-package-lisp "\M-p")
   (ilisp-bind-ilisp-key-for-map keymap "w" 'compile-region-lisp "\C-w")
-  ;; MA 09/01/1999:
   (ilisp-bind-ilisp-key-for-map keymap "\C-b" 'ilisp-compile-buffer)
   (ilisp-bind-ilisp-key-for-map keymap "c"    'compile-defun-lisp     "\C-c")
   (ilisp-bind-ilisp-key-for-map keymap "\C-r" 'eval-region-and-go-lisp "\M-r")
@@ -194,11 +160,6 @@ ilisp-*prefix* is set to the desired prefix."
   (ilisp-bind-ilisp-key-for-map keymap "l" 'load-file-lisp "\C-l")
   (ilisp-bind-ilisp-key-for-map keymap "k" 'compile-file-lisp "\C-k")
 
-  ;; Conditionalized definitions of these keybindings, using the
-  ;; appropriate flags.
-  ;;
-  ;; 19990824 Marco Antoniotti
-
   (when ilisp-*use-fi-clman-interface-p*
     (ilisp-bind-ilisp-key-for-map keymap "A" 'fi:clman-apropos "\M-a")
     (ilisp-bind-ilisp-key-for-map keymap "D" 'fi:clman "\M-d"))
@@ -213,17 +174,7 @@ ilisp-*prefix* is set to the desired prefix."
 (defun ilisp-lispm-bindings ()
   "Setup additional Lisp Machine-like bindings for some ilisp commands"
   (interactive)
-  ;; Note: Changed the 'ilisp-emacs-version-id' to
-  ;;       '+ilisp-emacs-version-id+' and the 'gnu-*' to 'fsf-*'.
-  ;;       25/11/94 Marco Antoniotti
-  ;;
-  ;; Note: these bindings do not have to be FSF-compliant, because the
-  ;;       user doesn't get them unless she asks for them, in which
-  ;;       case she presumably knows what she wants. -Karl Fogel, 3 Feb 2000
-  (cond ((eq +ilisp-emacs-version-id+ 'fsf-18))
-	((or (eq +ilisp-emacs-version-id+ 'fsf-19)
-	     (eq +ilisp-emacs-version-id+ 'fsf-20)
-	     (eq +ilisp-emacs-version-id+ 'fsf-21))
+  (cond ((eq +ilisp-emacs-version-id+ 'fsf-20)
 	 (defkey-ilisp (read "[?\\S-\\C-a]") 'arglist-lisp)
 	 (defkey-ilisp (read "[?\\S-\\C-c]") 'compile-defun-lisp)
 	 (defkey-ilisp (read "[?\\S-\\C-d]") 'documentation-lisp)
@@ -238,13 +189,6 @@ ilisp-*prefix* is set to the desired prefix."
 	 (defkey-ilisp '(control M) 'macroexpand-1-lisp)
 	 (defkey-ilisp '(meta M) 'macroexpand-lisp))))
 
-;; Unfortunately, the read kludges are needed for this function to work
-;; for GNU emacs 19 when it was compiled by Lucid.
-
-
-
-
-;;;
 (defun ilisp-bindings ()
   "Set up the key bindings for LISP and ILISP buffers."
   (cond ((fboundp 'set-keymap-parent) 
@@ -274,21 +218,6 @@ ilisp-*prefix* is set to the desired prefix."
   (ilisp-bind-ilisp-key-for-map global-map "1" 'pvs-bury-output)
   (ilisp-bind-ilisp-key-for-map global-map "v" 'ilisp-scroll-output "\C-v")
   (ilisp-bind-ilisp-key-for-map global-map "G" 'ilisp-grow-output "\M-g")
-
-  ;; Added test to conditionalize the loading of the fi:clman map.
-  ;;
-  ;; 19990824 Marco Antoniotti
-
-  (when ilisp-*use-fi-clman-interface-p*
-    (unless (boundp 'fi:clman-mode-map)
-      (setq fi:clman-mode-map (make-sparse-keymap)))
-    (ilisp-bind-ilisp-key-for-map fi:clman-mode-map "D"
-                                  'fi:clman
-                                  "\M-d")
-    (ilisp-bind-ilisp-key-for-map fi:clman-mode-map "A"
-                                  'fi:clman-apropos
-                                  "\M-a")))
+  )
 
 (provide 'ilisp-key)
-
-;;; end of file -- ilisp-key.el --

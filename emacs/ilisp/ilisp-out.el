@@ -1,20 +1,14 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-out.el --
 ;;; ILISP output, including a popper replacement.
 ;;;
 ;;; This file is part of ILISP.
-;;; Please refer to the file COPYING for copyrights and licensing
-;;; information.
+;;; Please refer to the file COPYING for copyrights and licensing information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
-;;; Old history log.
-;;;
-;;; 2000-03-02: Martin Atzmueller: general rewrite to support
-;;; a general interface for multiple different output-frames.
+(declare-function ilisp-where-is "ilisp-key")
 
 (defvar ilisp-output-buffer " *Output*")
 (defvar ilisp-output-buffer-major-mode 'lisp-mode
@@ -27,7 +21,6 @@
   "The name of a function to display all ilisp output.  The function gets a 
  single argument, a string.")
 
-
 ;; Minor mode (just to get a pretty mode line).
 (defvar ilisp-output-mode-line nil)
 (defvar ilisp-output-mode nil "If T, then we are in the ilisp-output minor mode.")
@@ -36,7 +29,6 @@
 (or (assq 'ilisp-output-mode minor-mode-alist)
     (setq minor-mode-alist
 	  (cons '(ilisp-output-mode ilisp-output-mode-line) minor-mode-alist)))
-
 
 (defun ilisp-output-buffer (&optional create-p)
   (let ((buffer (if create-p
@@ -55,7 +47,6 @@
     (if buffer
 	(get-buffer-window buffer))))
 
-
 (defun lisp-display-output (output)
   "Display OUTPUT in the appropriate place.
  This calls the function given by the value of ilisp-display-output-function in
@@ -71,10 +62,7 @@
 				   output)))
 	 (funcall ilisp-display-output-function output))))
 
-
-
 ;;; Popper replacement
-
 
 (defun ilisp-bury-output (&optional buffer)
   "Delete the typeout window, if any"
@@ -88,7 +76,6 @@
     (if window
 	(ilisp-delete-window window))))
 
-
 (defun ilisp-show-output (&optional buffer)
   "Make typeout visible, if it is not already."
   (interactive)
@@ -96,23 +83,9 @@
     (if buffer
 	(ilisp-display-buffer-in-typeout-window buffer))))
 
-
 (defun ilisp-delete-window (window)
   "Delete a window with minimal redisplay."
-  (let ((height (window-height window))
-	(lower-window (ilisp-find-lower-window window)))
-    (delete-window window)
-    (if (and lower-window
-	     (not (eq lower-window window)))
-	(let ((old-window (selected-window)))
-	  (save-excursion
-	    (select-window lower-window)
-	    (set-buffer (window-buffer))
-	    (goto-char (window-start))
-	    (vertical-motion (- height))
-	    (set-window-start lower-window (point)))
-	  (select-window old-window)))))
-
+  (delete-window window))
 
 (defun ilisp-scroll-output (&optional lines)
   "Scroll the typeout-window, if any."
@@ -128,7 +101,6 @@
 	       (scroll-up lines))
 	  (select-window old-window)))))
 
-
 (defun ilisp-grow-output (&optional n)
   "Grow the typeout window by ARG (default 1) lines."
   (interactive "p")
@@ -143,7 +115,6 @@
 	  (if (ilisp-window-live-p old-window)
 	      (select-window old-window))))))
 
-
 (defun ilisp-trim-blank-lines ()
   ;; Delete leading blank lines
   (goto-char (point-min))
@@ -154,7 +125,6 @@
   (skip-chars-backward "\n")
   (if (< (point) (point-max))
       (delete-region (1+ (point)) (point-max))))
-
 
 (defun ilisp-write-string-to-buffer (buffer string)
   (with-current-buffer buffer
@@ -209,24 +179,6 @@
       (enlarge-window delta)
       (set-buffer buffer)
       (goto-char (point-min))
-      
-      ;; Now repair damage to the window below us, if it still exists.
-      (let ((lower-window (ilisp-find-lower-window window)))
-	(when lower-window
-	  (select-window lower-window)
-	  (when (or (> (window-height lower-window)
-		       (ilisp-needed-buffer-height (window-buffer lower-window)))
-		    (<= (point) (window-start)))
-	    (let ((old-point (point)))
-	      (goto-char (window-start))
-	      (vertical-motion (- desired-height))
-	      (set-window-start lower-window (point))
-	      (goto-char old-point)))))
-      
-      ;;(if (not (pos-visible-in-window-p old-point))
-      ;;    (recenter 0))))))
-      ;; If there was no lower window, then we ought to preserve
-      ;; the start of the window above us, if any.
 
       (if (ilisp-window-live-p previously-selected-window)
 	  (select-window previously-selected-window)))))
@@ -247,57 +199,6 @@
 		 (setq win nil)))))
     found))
 
-;; XEmacs change -- window-edges is gone in 19.12+ so use
-;; next-vertical-window instead.
-(defun ilisp-find-lower-window (window)
-  "Find the window directly below us, if any.  This is probably the 
- window from which enlarge-window would steal lines."
-  (unless (window-live-p window)
-     (error "the window was not live"))
-  (if (or (not (featurep 'xemacs))
-	  (and (= emacs-major-version 19)
-	       (< emacs-minor-version 12)))
-      (let* ((bottom (nth 3 (window-edges window)))
-	     (window* nil)
-	     (win window))
-	(while (not (eq (setq win (next-window win 'no))
-			window))
-	  (if (and (= (nth 1 (window-edges win))
-		      bottom)
-		   (null window*))
-	      (setq window* win)))
-	window*)
-      (next-vertical-window window)))
-
-;; XEmacs change -- There is now a primitive to do this.
-(defun ilisp-find-top-left-most-window ()
-  "Return the leftmost topmost window on the current screen."
-  (if (or (not (featurep 'xemacs))
-	  (and (= emacs-major-version 19)
-	       (< emacs-minor-version 12)))
-      (let* ((window* (selected-window))
-	     (edges* (window-edges window*))
-	     (win nil)
-	     (edges nil)
-	     (start-window window*))
-	(while (not (eq (setq win (next-window win 'no))
-			start-window))
-	  (setq edges (window-edges win))
-	  (if (or (< (car (cdr edges)) (car (cdr edges*))) ; top
-		  (and (= (car (cdr edges)) (car (cdr edges*)))
-		       (< (car edges) (car edges*)))) ; left
-	      (setq window* win
-		    edges* edges)))
-	window*)
-      (frame-highest-window (selected-frame) 0)))
-
-
-;; This causes the typeout window to be created by splitting or using the
-;; top-left-most window on the current screen.  That is different behavior
-;; from the popper, which always split the current window.
-(defun ilisp-window-to-use-for-typeout ()
-  (ilisp-find-top-left-most-window))
-
 (defun ilisp-display-buffer-in-typeout-window (buffer)
   "Display buffer in a window at the top of the screen."
   (let ((window (get-buffer-window buffer)))
@@ -306,7 +207,7 @@
       (delete-window window)))
 
   ;; Otherwise, find a window to split.
-  (let* ((top-window (ilisp-window-to-use-for-typeout))
+  (let* ((top-window (frame-first-window))
 	 (new-window nil)
 	 (previously-selected-window (selected-window))
 	 (desired-height (ilisp-desired-height buffer)))
@@ -352,12 +253,9 @@
  lisp-no-popper = t:  display output in the ilisp buffer
  otherwise: display one-line output in the echo area,
             multiline output in the ilisp buffer."
-  (cond ((null lisp-no-popper)
-	 (ilisp-display-output-in-typeout-window output))
-	((eq lisp-no-popper t)
+  (cond ((eq lisp-no-popper t)
 	 (ilisp-display-output-in-lisp-listener output))
-	(t
-	 (ilisp-display-output-in-typeout-window output ))))
+	(t (ilisp-display-output-adaptively output))))
 ;
 ; davesc
 ;	 (ilisp-display-output-adaptively output))))
@@ -372,20 +270,7 @@
 
 (defun ilisp-display-output-adaptively (output)
   "Display one-liners in the echo area, others in the typeout window"
-  (cond ((or (string-match "\n" output)
-	     (> (length output) (window-width (minibuffer-window))))
-	 (message "See above.")
-	 (ilisp-display-output-in-typeout-window output))
-	(t
-	 (ilisp-display-output-in-echo-area output))))
-
-
-(defun ilisp-display-output-in-typeout-window (output)
-  "Display output in a shrink-wrapped window at the top of the screen."
-  (let ((buffer (ilisp-output-buffer t)))
-    (ilisp-write-string-to-buffer buffer output)
-    (ilisp-display-buffer-in-typeout-window buffer)))
-
+  (ilisp-display-output-in-echo-area output))
 
 (defun ilisp-display-output-in-echo-area (output)
   "Display output as a message in the echo area."
@@ -449,24 +334,13 @@
 ;;; Changed according to suggestions by Robert P. Goldman
 (defun lisp-pop-to-buffer (buffer)
   "Like pop-to-buffer, but select a screen that buffer was shown in."
-  (let ((ilisp-window (if ilisp-epoch-running
-			  (epoch::get-buffer-window buffer)
-			(get-buffer-window buffer))))
+  (let ((ilisp-window (get-buffer-window buffer)))
     (if ilisp-window
 	(select-window ilisp-window)
       ;; It is not currently displayed, so find some place to display
       ;; it.
       (progn
-	(cond (ilisp-epoch-running
-	       ;; Select a screen that the buffer has been displayed in before
-	       ;; or the current screen otherwise.
-	       (epoch::select-screen
-		;; allowed-screens in epoch 3.2, was called screens before that
-		(or (car (with-current-buffer buffer
-			   (symbol-value 'allowed-screens)))
-		    (epoch::current-screen))))
-
-	      ;; Next clauses patterned after a suggestion by R. P. Goldman.
+	(cond ;; Next clauses patterned after a suggestion by R. P. Goldman.
 	      ((memq +ilisp-emacs-version-id+ '(fsf-19 fsf-20))
 	       (let* ((window (get-buffer-window buffer t))
 		      (frame (if window (window-frame window))))
@@ -474,11 +348,7 @@
 		     (progn
 		       (raise-frame frame)
 		       (select-frame frame)))))
-	      (t nil))			; fsf-18, but also lucid and
-					; xemacs.
-					; I do not know how to make
-					; them work
-					; Marco Antoniotti, Jan 4th 1995
+	      (t nil))
 	(ilisp-bury-output)
 	(pop-to-buffer buffer))))
   (set-buffer buffer))

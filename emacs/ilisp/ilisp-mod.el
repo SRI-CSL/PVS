@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-mod.el --
 ;;; ILISP mode top level definitions.
@@ -8,28 +8,14 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
 
 ;;;%ilisp-mode
 
 (require 'cl-lib)
 
-(defun ilisp-byte-code-to-list (function)
-  "Returns a list suitable for passing to make-byte-code from FUNCTION."
-  (let ((function-object 
-	 (if (symbolp function)
-	     (symbol-function function)
-	   function)))
-    (if (fboundp 'compiled-function-arglist)
-	;; XEmacs
-	(read (concat "("
-		      (substring (let ((print-readably t))
-				   (prin1-to-string function-object))
-				 2 -1)
-		      ")"))
-      ;; FSFmacs
-      (append function-object nil))))
+(declare-function ilisp-byte-code-to-list "ilfsf20")
+
+(declare-function run-ilisp "ilisp-dia")
 
 ;;;
 (defun ilisp-set-doc (function string)
@@ -95,7 +81,7 @@ Takes the program name from the variable ilisp-program.
 \(Type \\[describe-mode] in the process buffer for a list of commands.)"
   (set-buffer ilisp-buffer)
   (if (not (comint-check-proc ilisp-buffer))
-      (let* ((dialect (car ilisp-dialect))
+      (let* (;;(dialect (car ilisp-dialect))
 	     (program ilisp-program)
 	     (args (lisp-command-args program))
 	     ;; Use pipes so that strings can be long

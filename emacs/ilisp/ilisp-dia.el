@@ -1,4 +1,4 @@
-;;; -*- Mode: Emacs-Lisp -*-
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; ilisp-dia.el --
 ;;; ILISP Dialect definition code.
@@ -8,9 +8,6 @@
 ;;; information.
 ;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
 ;;; of present and past contributors.
-;;;
-;;; $Id$
-
 
 ;;;%%CUSTOMIZING DIALECTS
 ;;;
@@ -32,7 +29,6 @@
 ;;;   allegro
 ;;;   clisp     (Haible and Stoll)
 ;;;   lispworks (Harlequin)
-;;;   lucid
 ;;;   cmulisp
 ;;;   sbcl    (really a derivative of CMUCL)
 ;;;   kcl
@@ -62,7 +58,6 @@
 ;;;         (defkey-ilisp "\C-\M-a" 'arglist-lisp)
 ;;;         ;; Define a new subdialect to run on another machine.
 ;;;         (defdialect cmlisp "Connection Machine LISP."
-;;;           lucid
 ;;;           (setq ilisp-program
 ;;;            "rsh power /usr/local/cm/bin/starlisp"))))
 ;;;
@@ -83,6 +78,8 @@
 ;;;
 
 (require 'cl-lib)
+
+(declare-function lisp-read-program "ilisp-cmp")
 
 ;;;%Dialects
 (defun lisp-add-dialect (dialect)
