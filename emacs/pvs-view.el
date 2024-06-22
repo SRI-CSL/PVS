@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-view.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Sun Dec 24 16:14:03 1995
@@ -27,6 +27,12 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(defvar pvs-mode-map)
+(defvar pvs-mode-syntax-table)
+
+(declare-function pvs-print-buffer "pvs-print")
+(declare-function remove-buffer "pvs-mode")
+
 ;;; Key bindings for PVS view mode
 
 (defvar pvs-view-mode-map nil)
@@ -35,7 +41,7 @@
     (setq pvs-view-mode-map (copy-keymap pvs-mode-map))
     (suppress-keymap pvs-view-mode-map t)
     (define-key pvs-view-mode-map "q"
-      '(lambda () (interactive) (remove-buffer (current-buffer))))
+      #'(lambda () (interactive) (remove-buffer (current-buffer))))
     (define-key pvs-view-mode-map "\M-." 'show-declaration)
     (define-key pvs-view-mode-map "\M-," 'find-declaration)
     (define-key pvs-view-mode-map "\M-;" 'whereis-declaration-used)

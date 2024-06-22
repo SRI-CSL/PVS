@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-proofstate.el -- Shows the proofstate, providing different displays
 ;; Author          : Sam Owre
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,6 +19,22 @@
 
     
 (require 'json nil :noerror)
+
+(defvar pvs-in-checker)
+
+(declare-function pvs-mode "pvs-mode")
+(declare-function place-to-region "pvs-menu")
+(declare-function current-line-number "pvs-mode")
+
+(defvar default-proofstate-display-style nil)
+(defvar current-proofstate-display-style nil)
+(defvar proofstate-display-styles
+  '((no-frame . pvs-proofstate-no-frame)
+    (0-frame . pvs-proofstate-0-frame)
+    (1-frame . pvs-proofstate-1-frame)
+    (2-frame . pvs-proofstate-2-frame)
+    (3-frame . pvs-proofstate-3-frame)
+    (4-frame . pvs-proofstate-4-frame)))
 
 (defun pvs-proofstate (fname)
   ;; proofstate is:
@@ -182,16 +198,6 @@ windows are displayed properly."
   (interactive)
   (pvs-proofstate-display t))
 
-(defvar default-proofstate-display-style nil)
-(defvar current-proofstate-display-style nil)
-(defvar proofstate-display-styles
-  '((no-frame . pvs-proofstate-no-frame)
-    (0-frame . pvs-proofstate-0-frame)
-    (1-frame . pvs-proofstate-1-frame)
-    (2-frame . pvs-proofstate-2-frame)
-    (3-frame . pvs-proofstate-3-frame)
-    (4-frame . pvs-proofstate-4-frame)))
-
 (defpvs set-proofstate-display-style prove (style)
   (interactive (list (intern (completing-read "Display style: "
 			       proofstate-display-styles))))
@@ -210,9 +216,9 @@ windows are displayed properly."
 
 (defun remove-proofstate-frames ()
   (let* ((frame-names-alist (make-frame-names-alist))
-	 (pvs-frame (or (cdr (assoc "pvs" frame-names-alist))
-			;; Should be unlikely, but just take the first one if no pvs
-			(cdar frame-names-alist)))
+	 ;; (pvs-frame (or (cdr (assoc "pvs" frame-names-alist))
+	 ;; 		;; Should be unlikely, but just take the first one if no pvs
+	 ;; 		(cdar frame-names-alist)))
 	 (ps-frame (cdr (assoc "Proofstate" frame-names-alist)))
 	 (com-frame (cdr (assoc "Proofcommentary" frame-names-alist)))
 	 (cmd-frame (cdr (assoc "Proofcommand" frame-names-alist)))
@@ -321,8 +327,8 @@ windows are displayed properly."
 	   (pvs-frame (or (cdr (assoc "pvs" frame-names-alist))
 			  ;; Unlikely, but just take the first one if no pvs
 			  (cdar frame-names-alist)))
-	   (pvs-windows (window-list pvs-frame))
-	   (pvs-buffers (mapcar #'window-buffer pvs-windows)) ;; Visible buffers
+	   ;; (pvs-windows (window-list pvs-frame))
+	   ;; (pvs-buffers (mapcar #'window-buffer pvs-windows)) ;; Visible buffers
 	   (ps-frame (cdr (assoc "Proofstate" frame-names-alist)))
 	   (ps-windows (when ps-frame (window-list ps-frame)))
 	   (ps-buffers (mapcar #'window-buffer ps-windows))
@@ -383,8 +389,8 @@ windows are displayed properly."
 	   (pvs-frame (or (cdr (assoc "pvs" frame-names-alist))
 			  ;; Unlikely, but just take the first one if no pvs
 			  (cdar frame-names-alist)))
-	   (pvs-windows (window-list pvs-frame))
-	   (pvs-buffers (mapcar #'window-buffer pvs-windows)) ;; Visible buffers
+	   ;; (pvs-windows (window-list pvs-frame))
+	   ;; (pvs-buffers (mapcar #'window-buffer pvs-windows)) ;; Visible buffers
 	   (ps-frame (cdr (assoc "Proofstate" frame-names-alist)))
 	   (ps-windows (when ps-frame (window-list ps-frame)))
 	   (ps-buffers (mapcar #'window-buffer ps-windows))
@@ -486,8 +492,8 @@ windows are displayed properly."
 	      (select-frame cmd-frame)
 	      (delete-other-windows)
 	      (switch-to-buffer cmdbuf)
-	      (dolist (win (window-list cmd-frame)
-		       (set-window-dedicated-p win t))))))
+	      (cl-dolist (win (window-list cmd-frame))
+		(set-window-dedicated-p win t)))))
 	(select-frame-set-input-focus cmd-frame)))
     (setq current-proofstate-display-style '2-frame)))
 
@@ -534,15 +540,15 @@ windows are displayed properly."
 	      (select-frame cmd-frame)
 	      (delete-other-windows)
 	      (switch-to-buffer cmdbuf)
-	      (dolist (win (window-list cmd-frame)
-		       (set-window-dedicated-p win t)))))
+	      (cl-dolist (win (window-list cmd-frame))
+		(set-window-dedicated-p win t))))
 	  (unless (member (get-buffer "Proof") scr-buffers)
 	    (let ((scrbuf (get-buffer "Proof")))
 	      (select-frame scr-frame)
 	      (delete-other-windows)
 	      (switch-to-buffer scrbuf)
-	      (dolist (win (window-list scr-frame)
-		       (set-window-dedicated-p win t))))))
+	      (cl-dolist (win (window-list scr-frame))
+		(set-window-dedicated-p win t)))))
 	(select-frame-set-input-focus cmd-frame)))
     (setq current-proofstate-display-style '4-frame)))
 

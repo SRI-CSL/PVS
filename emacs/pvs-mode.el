@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-mode.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Sun Apr 30 13:46:32 1995
@@ -29,17 +29,24 @@
 
 (eval-when-compile (require 'pvs-macros))
 
+(defvar pvs-library-path)
+(defvar pvs-font-lock-keywords)
+(defvar pvs-font-lock-keywords-1)
+(defvar pvs-font-lock-keywords-2)
+
+(declare-function pvs-bury-output "pvs-ilisp")
+
 ;;; pvs-mode.el
 
 (unless (fboundp 'cl-pushnew)
   ;; using an early version of cl
   (fset 'cl-pushnew 'pushnew))
 
-(cl-pushnew '("\\.pvs\\'" . pvs-mode) auto-mode-alist)
-(cl-pushnew '("\\.ppe\\'" . pvs-mode) auto-mode-alist)
-(cl-pushnew '("\\.tccs\\'" . pvs-mode) auto-mode-alist)
-(cl-pushnew '("pvs-strategies\\'" . lisp-mode) auto-mode-alist)
-(cl-pushnew ".prf" completion-ignored-extensions)
+(cl-pushnew '("\\.pvs\\'" . pvs-mode) auto-mode-alist :test #'equal)
+(cl-pushnew '("\\.ppe\\'" . pvs-mode) auto-mode-alist :test #'equal)
+(cl-pushnew '("\\.tccs\\'" . pvs-mode) auto-mode-alist :test #'equal)
+(cl-pushnew '("pvs-strategies\\'" . lisp-mode) auto-mode-alist :test #'equal)
+(cl-pushnew ".prf" completion-ignored-extensions :test #'equal)
 
 (defgroup pvs nil
   "PVS Interaction"
@@ -88,7 +95,7 @@
     (define-key pvs-mode-map "\C-c\C-qt" 'prettyprint-theory)
     (define-key pvs-mode-map "\C-c\C-qr" 'prettyprint-region)
     (define-key pvs-mode-map "\C-c\C-qd" 'prettyprint-declaration)
-    (define-key pvs-mode-map "\C-c\C-qi" 'prettyprint-theory-instance)
+    ;; (define-key pvs-mode-map "\C-c\C-qi" 'prettyprint-theory-instance)
     (define-key pvs-mode-map "\C-c\C-sf" 'status-pvs-file)
     (define-key pvs-mode-map "\C-c\C-st" 'status-theory)
     (define-key pvs-mode-map "\C-c\C-si" 'status-importchain)
@@ -154,7 +161,9 @@
 
 (define-minor-mode pvs-minor-mode
     "Allows PVS key-bindings to take precedence when enabled."
-  nil nil pvs-minor-mode-map)
+  :init-value nil
+  :lighter nil
+  :keymap pvs-minor-mode-map)
 
 (defun pvs-font-lock-syntactic-face-function (state)
   "Return syntactic face given STATE."
@@ -285,7 +294,8 @@
 ;; Make sure our special speedbar major mode is loaded
 (if (featurep 'speedbar)
     (pvs-install-speedbar-variables)
-    (add-hook 'speedbar-load-hook 'pvs-install-speedbar-variables))
+    (with-eval-after-load 'speedbar-load-hook
+      (pvs-install-speedbar-variables)))
 
 ;;; pvs library display method
 ;;;###autoload
@@ -306,6 +316,7 @@ DIRECTORY is the current directory in the attached frame.
 DEPTH is the current indentation depth.
 NODE is an optional argument that is used to represent the
 specific node to expand."
+  (ignore directory)
   (if (and (not node)
 	   (save-excursion (goto-char (point-min))
 			   (let ((case-fold-search t))
@@ -332,6 +343,7 @@ specific node to expand."
 (defun pvs-speedbar-goto-library (text node indent)
   "When user clicks on TEXT, go to a PVS Library.
 The INDENT level is ignored."
+  (ignore text indent)
   (speedbar-select-attached-frame)
   (let* ((buff (or (get-buffer "*info*")
 		   (progn (info) (get-buffer "*info*"))))
@@ -346,7 +358,7 @@ The INDENT level is ignored."
 	(switch-to-buffer buff)))
     (if (not (string-match "^(\\([^)]+\\))\\([^.]+\\)$" node))
 	(error "Invalid node %s" node)
-      (pvs-find-node (match-string 1 node) (match-string 2 node))
+      ;; (pvs-find-node (match-string 1 node) (match-string 2 node))
       ;; If we do a find-node, and we were in info mode, restore
       ;; the old default method.  Once we are in info mode, it makes
       ;; sense to return to whatever method the user was using before.
@@ -397,6 +409,7 @@ INDENT is the current indentation depth."
       (directory-files dir nil ".*\.pvs$"))))
 
 (defun pvs-speedbar-goto-file (text fileinfo indent)
+  (ignore text indent)
   (let ((fname (concat (cdr fileinfo) "/" (car fileinfo))))
     (if (not (file-exists-p fname))
 	(error "%s does not exist." fname)
@@ -405,12 +418,15 @@ INDENT is the current indentation depth."
 	(pvs-mode))))
 
 (defun pvs-speedbar-expand-declarations (text token indent)
+  (ignore token)
   (cond ((string-match "+" text)	;we have to expand this library
 	 (speedbar-change-expand-button-char ?-)
 	 (if (speedbar-with-writable
 	       (save-excursion
 		 (end-of-line) (forward-char 1)
-		 (pvs-speedbar-declarations token (1+ indent))))
+		 ;; Not yet implemented
+		 ;; (pvs-speedbar-declarations token (1+ indent))
+		 ))
 	     (speedbar-change-expand-button-char ?-)
 	     (speedbar-change-expand-button-char ??)))
 	((string-match "-" text)	;we have to contract this node
@@ -419,19 +435,20 @@ INDENT is the current indentation depth."
 	(t (error "Ooops... not sure what to do")))
   (speedbar-center-buffer-smartly))
 
-(defun pvs-speedbar-declarations (token indent)
-  (let ((declsinfo (pvs-library-file-declarations token)))
-    (speedbar-select-attached-frame)
-    (select-frame (speedbar-current-frame))
-    (speedbar-with-writable
-      (dolist (declinfo declsinfo)
-	(speedbar-make-tag-line 'statictag ?? nil
-				declinfo
-				(car declinfo)
-				'pvs-speedbar-goto-file
-				declinfo
-				'pvs-function-type-face indent))
-      t)))
+;; (defun pvs-speedbar-declarations (token indent)
+;;   (let ((declsinfo (pvs-library-file-declarations token)))
+;;     (speedbar-select-attached-frame)
+;;     (select-frame (speedbar-current-frame))
+;;     (speedbar-with-writable
+;;       (dolist (declinfo declsinfo)
+;; 	(speedbar-make-tag-line 'statictag ?? nil
+;; 				declinfo
+;; 				(car declinfo)
+;; 				'pvs-speedbar-goto-file
+;; 				declinfo
+;; 				'pvs-function-type-face indent))
+;;       t)))
+
 
 (defun pvs-speedbar-fetch-library-entries ()
   "Fetch the library entries."
@@ -442,6 +459,7 @@ INDENT is the current indentation depth."
 (defun pvs-speedbar-buttons (buffer)
   "Create a speedbar display to help navigation in an pvs file.
 BUFFER is the buffer speedbar is requesting buttons for."
+  (ignore buffer)
   (if (save-excursion (goto-char (point-min))
 		      (let ((case-fold-search t))
 			(not (looking-at "PVS Libraries:"))))
@@ -629,14 +647,14 @@ BUFFER is the buffer speedbar is requesting buttons for."
 
 (unless (featurep 'xemacs)
   (add-hook 'pvs-mode-hook
-    '(lambda ()
-      (setq-local font-lock-defaults
-       (list pvs-font-lock-keywords nil t nil nil))))
+    #'(lambda ()
+	(setq-local font-lock-defaults
+		    (list pvs-font-lock-keywords nil t nil nil))))
   (add-hook 'pvs-view-mode-hook
-    '(lambda ()
-      (make-local-variable 'font-lock-defaults)
-      (setq font-lock-defaults '(pvs-font-lock-keywords nil t))
-      (font-lock-mode 1))))
+    #'(lambda ()
+	(make-local-variable 'font-lock-defaults)
+	(setq font-lock-defaults '(pvs-font-lock-keywords nil t))
+	(font-lock-mode 1))))
 
 
 (defun pvs-minimal-decoration ()

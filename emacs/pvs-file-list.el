@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-file-list.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Fri Mar 18 01:53:07 1994
@@ -50,8 +50,15 @@
     (define-key pvs-file-list-mode-map "h" 'describe-mode)
     (define-key pvs-file-list-mode-map "?" 'describe-mode)
     (define-key pvs-file-list-mode-map "q"
-      '(lambda () (interactive) (remove-buffer (current-buffer)))))
+      #'(lambda () (interactive) (remove-buffer (current-buffer)))))
 
+(declare-function import-pvs-file "pvs-cmds")
+(declare-function pvs-view-file "pvs-view")
+(declare-function find-pvs-file "pvs-cmds")
+(declare-function pvs-file-send-and-wait "pvs-ilisp")
+(declare-function optimize-window-height "pvs-mode")
+(declare-function pvs-mode "pvs-mode")
+(declare-function remove-buffer "pvs-mode")
 
 (define-derived-mode pvs-file-list-mode pvs-mode "Files"
   "Major mode for editing a list of files.

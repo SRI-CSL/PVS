@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-prover.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Fri Nov 12 11:49:20 1993
@@ -58,9 +58,39 @@
 ;; pvs-get-prove-input	-
 ;; step-proof           -
 
+(require 'cl-lib)
+
 (eval-when-compile (require 'pvs-macros))
 
-(require 'cl-lib)
+(defvar pvs-buffer-kind)
+(defvar pvs-path)
+(defvar pvs-prelude)
+(defvar pvs-theory-modtime)
+(defvar from-pvs-theory)
+(defvar pvs-proof-script-syntax-table)
+(defvar pvs-view-mode-map)
+(defvar pvs-mode-syntax-table)
+(defvar pvs-mode-map)
+(defvar pvs-in-evaluator)
+(defvar pvs-error)
+
+(declare-function pvs-ready "pvs-cmds")
+(declare-function pvs-busy "pvs-cmds")
+(declare-function pvs-browse-quit "pvs-browser")
+(declare-function find-pvs-file "pvs-cmds")
+(declare-function hilit-next-prover-command "pvs-prover-helps")
+(declare-function pvs-prover-goto-next-step "pvs-prover-helps")
+(declare-function pvs-regexp-opt "pvs-mode")
+(declare-function pvs-file-send-and-wait "pvs-ilisp")
+(declare-function remove-buffer "pvs-mode")
+(declare-function prettyprint-expanded "pvs-cmds")
+(declare-function show-tccs "pvs-cmds")
+(declare-function current-line-number "pvs-mode")
+(declare-function pvs-send "pvs-ilisp")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function wish-possible-p "pvs-cmds")
+(declare-function pvs-bury-output "pvs-ilisp")
+(declare-function confirm-not-in-checker "pvs-eval")
 
 (defvar pvs-in-checker nil
   "Indicates whether the proof checker is currently running.
@@ -155,7 +185,8 @@ the formula.  With an argument, runs the proof in the background."
 
 (defun pvs-prove-formula (fref &optional rerun-proof background display
 			       unproved)
-  (let* ((kind (pvs-fref-kind fref))
+  (let* ((pvs-error nil)
+	 (kind (pvs-fref-kind fref))
 	 (fname (pvs-fref-file fref))
 	 (buf (pvs-fref-buffer fref))
 	 (line (pvs-fref-line fref))
@@ -174,8 +205,8 @@ the formula.  With an argument, runs the proof in the background."
       (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
       (ilisp-send input nil 'pr (not background)))))
 
-(defun pvs-proof-thread (init-ps)
-  (setq xxx init-ps))
+;; (defun pvs-proof-thread (init-ps)
+;;   (setq xxx init-ps))
 
 (defpvs prove-next-unproved-formula prove ()
   "Invokes the prover on the next unproved formula.
@@ -414,7 +445,7 @@ proof scripts, including those already proved."
 	 (fname (unless pvs-buffer-kind
 		  (or file (pathname-name buf))))
 	 (ext (unless pvs-buffer-kind (pathname-type buf)))
-	 (point (point))
+	 ;; (point (point))
 	 (line (current-line-number))
 	 (fref (make-pvs-formula-reference
 		:buffer buf :file fname :line line
@@ -513,9 +544,9 @@ proof scripts, including those already proved."
     (define-key edit-proof-mode-map "\C-cs" 'install-and-step-proof)
     (define-key edit-proof-mode-map "\C-cx" 'install-and-x-step-proof)
     (define-key edit-proof-mode-map "\C-c\C-q"
-      '(lambda () (remove-buffer (current-buffer))))
+      #'(lambda () (remove-buffer (current-buffer))))
     (define-key edit-proof-mode-map "\C-cq"
-      '(lambda () (remove-buffer (current-buffer))))
+      #'(lambda () (remove-buffer (current-buffer))))
     ;; Undefine some of the lisp keys
     (define-key edit-proof-mode-map "\C-]" nil)
     (define-key edit-proof-mode-map "]" 'self-insert-command)
@@ -898,10 +929,10 @@ are (no longer) part of the corresponding .pvs files."
 		"Show proofs of importchain of theory named: "))
   (when (pvs-send-and-wait (format "(show-proofs-importchain \"%s\" %s)"
 			       theoryname (and current-prefix-arg t))
-			   nil nil 'bool))
+			   nil nil 'bool)
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
-    (use-local-map pvs-show-proofs-map))
+    (use-local-map pvs-show-proofs-map)))
 
 (defpvs show-proofs-pvs-file edit-proof (filename)
   "Displays all the default proof scripts of the PVS file
@@ -931,10 +962,10 @@ theory."
   (interactive (complete-theory-name "Show proofs of theory named: "))
   (when (pvs-send-and-wait (format "(show-proofs-theory \"%s\" %s)"
 			       theoryname (and current-prefix-arg t))
-			   nil nil 'bool))
+			   nil nil 'bool)
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
-    (use-local-map pvs-show-proofs-map))
+    (use-local-map pvs-show-proofs-map)))
 
 
 (defun pvs-select-proof ()
@@ -1002,7 +1033,7 @@ are invoked")
 (if add-declaration-mode-map ()
     (setq add-declaration-mode-map (copy-keymap pvs-mode-map))
     (define-key add-declaration-mode-map "\C-c\C-c"
-      '(lambda () (interactive) (install-add-declaration))))
+      #'(lambda () (interactive) (install-add-declaration))))
 
 (defun add-declaration-mode ()
   "Major mode for editing declarations"
@@ -1097,7 +1128,7 @@ declarations will not be installed."
 (if modify-declaration-mode-map ()
     (setq modify-declaration-mode-map (copy-keymap pvs-mode-map))
     (define-key modify-declaration-mode-map "\C-c\C-c"
-      '(lambda () (interactive) (install-modified-declaration))))
+      #'(lambda () (interactive) (install-modified-declaration))))
 
 (defun modify-declaration-mode ()
   "Major mode for editing proofs"
@@ -1290,7 +1321,7 @@ If it is 0 (zero), then there is no bound on the depth."
 		    (string-to-number depth))
 		   (t (error "set-print-depth: %s is not an integer" depth)))))
     (pvs-send (format "(setq *prover-print-depth* %s)"
-		  (when (plusp dep) dep)))))
+		  (when (cl-plusp dep) dep)))))
 
 
 (defpvs set-print-length edit-proof (length)
@@ -1313,7 +1344,7 @@ length."
 		   (t (error "set-print-length: %s is not an integer"
 			     length)))))
     (pvs-send (format "(setq *prover-print-length* %s)"
-		  (when (plusp len) len)))))
+		  (when (cl-plusp len) len)))))
 
 (defpvs set-print-lines edit-proof (lines)
   "Set the print lines for formulas displayed in a sequent
@@ -1333,15 +1364,15 @@ If it is 0 (zero), then the whole formula is printed."
 		    (string-to-number lines))
 		   (t (error "set-print-lines: %s is not an integer" lines)))))
     (pvs-send (format "(setq *prover-print-lines* %s)"
-		  (when (plusp dep) dep)))))
+		  (when (cl-plusp dep) dep)))))
 
 (defpvs set-print-right-margin edit-proof (margin)
   "Set the print right margin for formulas displayed in a sequent
 
-The set-print-right-margin command sets the right margin value to use for formulas
-in a sequent.  MARGIN should be a whole number or nil.  If it is a positive number,
-then it is used as a bound on the length of each line.  A value of nil means to
-use the value of *default-char-width*."
+The set-print-right-margin command sets the right margin value to use for
+formulas in a sequent.  MARGIN should be a whole number or nil.  If it is
+a positive number, then it is used as a bound on the length of each line.
+A value of nil means to use the value of *default-char-width*."
   (interactive "sEnter a number (default: nil = use value of *default-char-width*): ")
   (let ((dep (cond ((natnump margin)
 		    margin)
@@ -1353,7 +1384,7 @@ use the value of *default-char-width*."
 		    (string-to-number margin))
 		   (t (error "set-print-margin: %s is not an integer" margin)))))
     (pvs-send (format "(setq *prover-print-right-margin* %s)"
-		  (when (plusp dep) dep)))))
+		  (when (cl-plusp dep) dep)))))
 
 (defun pvs-get-prove-input ()
   "Gets the proof input of the prove command.  This is used primarily for
@@ -1842,7 +1873,7 @@ the current cursor position using the Tcl/Tk proof display facility."
       (let* ((fref (pvs-formula-origin))
 	     (kind (pvs-fref-kind fref))
 	     (fname (pvs-fref-file fref))
-	     (buf (pvs-fref-buffer fref))
+	     ;; (buf (pvs-fref-buffer fref))
 	     (line (pvs-fref-line fref))
 	     (poff (pvs-fref-prelude-offset fref))
 	     (fmla (pvs-fref-formula fref))
@@ -1987,29 +2018,29 @@ a lot longer to generate.  By default, proof files are prettyprinted."
     (setq pvs-browse-proofs-mode-map (make-keymap))
     (suppress-keymap pvs-browse-proofs-mode-map t)
     (define-key pvs-browse-proofs-mode-map "c"
-      '(lambda (description)
-	 (interactive "sEnter the new description: ")
-	 (pvs-proofs-change-description description)))
+      #'(lambda (description)
+	  (interactive "sEnter the new description: ")
+	  (pvs-proofs-change-description description)))
     (define-key pvs-browse-proofs-mode-map "d"
-      '(lambda () (interactive) (pvs-proofs-set-default)))
+      #'(lambda () (interactive) (pvs-proofs-set-default)))
     (define-key pvs-browse-proofs-mode-map "p"
-      '(lambda () (interactive) (pvs-proofs-rerun-proof)))
+      #'(lambda () (interactive) (pvs-proofs-rerun-proof)))
     (define-key pvs-browse-proofs-mode-map "q"
-      '(lambda () (interactive) (pvs-browse-quit)))
+      #'(lambda () (interactive) (pvs-browse-quit)))
     (define-key pvs-browse-proofs-mode-map "r"
-      '(lambda (id)
-	 (interactive "sEnter the new id for the proof: ")
-	 (pvs-proofs-rename id)))
+      #'(lambda (id)
+	  (interactive "sEnter the new id for the proof: ")
+	  (pvs-proofs-rename id)))
     (define-key pvs-browse-proofs-mode-map "s"
-      '(lambda () (interactive) (pvs-proofs-show)))
+      #'(lambda () (interactive) (pvs-proofs-show)))
     (define-key pvs-browse-proofs-mode-map "e"
-      '(lambda () (interactive) (pvs-proofs-edit-proof)))
+      #'(lambda () (interactive) (pvs-proofs-edit-proof)))
     (define-key pvs-browse-proofs-mode-map "\t"
-      '(lambda () (interactive) (scroll-left 16)))
+      #'(lambda () (interactive) (scroll-left 16)))
     (define-key pvs-browse-proofs-mode-map "\M-\t"
-      '(lambda () (interactive) (scroll-left -16)))
+      #'(lambda () (interactive) (scroll-left -16)))
     (define-key pvs-browse-proofs-mode-map "\177"
-      '(lambda () (interactive) (pvs-proofs-delete-proof)))
+      #'(lambda () (interactive) (pvs-proofs-delete-proof)))
     (define-key pvs-browse-proofs-mode-map "h" 'describe-mode)
     (define-key pvs-browse-proofs-mode-map "?" 'describe-mode)
     )
@@ -2044,7 +2075,7 @@ Letters do not insert themselves; instead, they are commands:
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (fname (or (pvs-fref-file fref) (pvs-fref-theory fref)))
-	 (buf (pvs-fref-buffer fref))
+	 ;; (buf (pvs-fref-buffer fref))
 	 (line (pvs-fref-line fref))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (fmla (pvs-fref-formula fref))

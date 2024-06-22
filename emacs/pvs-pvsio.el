@@ -1,4 +1,4 @@
-;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-pvsio.el
 ;; Release: PVSio-6.0 (12/12/12)
 ;;
@@ -13,6 +13,11 @@
 ;;
 ;; Emacs interface to PVSio utilities
 ;;
+
+(declare-function pvs-bury-output "pvs-ilisp")
+(declare-function pvs-evaluator-busy "pvs-eval")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function confirm-not-in-checker "pvs-eval")
 
 ; pvsio
 (defpvs pvsio prove (theory)

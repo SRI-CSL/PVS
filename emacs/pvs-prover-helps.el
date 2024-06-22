@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-prover-helps.el -- Helps for PVS prover
 ;; Author          : C. Michael Holloway <c.m.holloway@LaRC.NASA.GOV>
 ;; Created On      : Tue May 25 07:41:17 1993 (shemesh)
@@ -44,6 +44,13 @@
 ;;      TAB e    y 1 RET
 ;;      TAB a
 
+(defvar pvs-in-checker)
+(defvar edit-proof-mode-map)
+
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function complete-strategy-name "pvs-prover")
+(declare-function pvs-view-mode "pvs-view")
+
 ;;
 ;; Constants
 ;;
@@ -76,21 +83,13 @@
 (defun pvs-prover-report-bug ()
   "Sets up mail buffer for reporting bug."
   (interactive)
-  (mail)
-  (mail-to) (insert email-address)
-  (mail-subject) (insert "BUG in PVS cMH Helps V"
-			 pvs-prover-helps-version)  
-  (search-forward (concat "\n" mail-header-separator "\n")))
+  (pvs-message "Please send a bug report to pvs-bugs@csl.sri.com"))
 
 (defun pvs-prover-make-suggestion ()
   "Sets up mail buffer for making a suggestion."
   (interactive)
-  (mail)
-  (mail-to) (insert email-address)
-  (mail-subject) (insert "REQUEST for PVS cMH Helps V"
-			 pvs-prover-helps-version )
-  (search-forward (concat "\n" mail-header-separator "\n")))
-      
+  (pvs-message "Please send a suggestions to pvs-bugs@csl.sri.com"))
+
 (defun help-pvs-prover-emacs ()
   "Emacs extensions for the PVS prover commands.
 Developed by C. Michael Holloway, NASA Langley Research Center, Hampton VA.
@@ -244,7 +243,7 @@ Otherwise, prompts for a formula for which to install an auto-rewrite."
     (skip-chars-backward "a-zA-Z0-9_?")
     (if (looking-at "[a-zA-Z0-9_?]")
 	(let ((bpt (point))
-	      (tried-alist nil)
+	      ;; (tried-alist nil)
 	      (ept nil))
 	  (skip-chars-forward "a-zA-Z0-9_?")
 	  (setq ept (point))
@@ -254,14 +253,14 @@ Otherwise, prompts for a formula for which to install an auto-rewrite."
     (insert "(auto-rewrite " ?\" def2arw ?\" ")")
     (return-ilisp)))
 
-(defun pvs-prover-auto-rewrite-theory (theory)
+(defun pvs-prover-auto-rewrite-theory ()
   "Insert and send the AUTO-REWRITE-THEORY prover command.
 Prompts for the theory name."
   (interactive)
   (goto-pvs-proof-buffer)
   (let ((theory (read-from-minibuffer "Theory for auto-rewrite: "))) ; ###evw
-    (goto-char (point-max)))
-  (insert "(auto-rewrite-theory " ?\" theory ?\" ")")
+    (goto-char (point-max))
+    (insert "(auto-rewrite-theory " ?\" theory ?\" ")"))
   (return-ilisp))
 
 (defun pvs-prover-bddsimp ()
@@ -482,9 +481,9 @@ Prompts for the variable name.  Prefix arg gives formula number."
 Prompts for the variable name.  Prefix arg gives formula number."
   (interactive "sVariable on which to induct-and-simplify: \nP")
   (goto-pvs-proof-buffer)
-  (let ((fnum (if (not (null num))
-		  (int-to-string (prefix-numeric-value num))
-		  (read-from-minibuffer "Formula number: " "1")))
+  (let (;;(fnum (if (not (null num))
+	;;	  (int-to-string (prefix-numeric-value num))
+	;;	  (read-from-minibuffer "Formula number: " "1")))
 	(ischeme (read-from-minibuffer "Induction scheme [CR for default]: "
 				       ""))
 	(defs (read-from-minibuffer "DEFS flag: " "T"))
@@ -769,10 +768,11 @@ Prompts for the strategies comprising it."
 Move cursor to beginning of formula you want to expand, before calling
 this function.  If not looking at a formula, guesses at what to expand."
   (interactive "P")
+  (ignore prompt start end)
   (goto-pvs-proof-buffer)
   (skip-chars-backward "a-zA-Z_0-9?")
   (let ((def2expand "")
-	(fnum "")
+	;; (fnum "")
 	(bpt (point))
 	ept)
     (cond
@@ -856,7 +856,7 @@ branching proof step.  Key binding: TAB C-u."
 Assumes that a Proof buffer exists."
   (interactive "p")
   (goto-pvs-proof-buffer)
-  (let ((pvsbuf (current-buffer))
+  (let (;;(pvsbuf (current-buffer))
 	(editprfbuf (get-buffer "Proof"))
 	(cmd nil))
     (unless editprfbuf
@@ -889,16 +889,19 @@ Assumes that a Proof buffer exists."
 Assumes that an Proof buffer exists."
   (interactive "p")
   (goto-pvs-proof-buffer)
-  (let ((pvsbuf (current-buffer))
+  (let (;; (pvsbuf (current-buffer))
 	(editprfbuf (get-buffer "Proof"))
-	(cmd nil))
+	;; (cmd nil)
+	)
     (unless editprfbuf
       (error "Must have an Edit Proof Buffer."))
     (with-current-buffer editprfbuf
       (if (< num 0)
 	  (dotimes (i (- num))
+	    (ignore i)
 	    (pvs-prover-goto-prev-step))
 	  (dotimes (i num)
+	    (ignore i)
 	    (pvs-prover-goto-next-step)
 	    (forward-sexp 1)
 	    (pvs-prover-goto-next-step)))
@@ -952,6 +955,7 @@ step-pat. Error if no matching step found."
 	(pvs-prover-undo num)
 	(switch-to-buffer-other-window editprfbuf)
 	(dotimes (i num)
+	  (ignore i)
 	  (pvs-prover-goto-prev-step t))
 	(hilit-next-prover-command)
 	(switch-to-buffer pvsbuf)
@@ -1016,6 +1020,7 @@ anything but a left paren or a \", ignoring whitespace."
 (defun pvs-prover-goto-prev-step (&optional undop)
   "Called from an Edit Proof buffer, goes to prev step in proof."
   (interactive "p")
+  (ignore undop)
   (let ((cpoint (point)))
     (goto-char (point-min))
     (pvs-prover-goto-next-step)

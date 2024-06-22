@@ -1,4 +1,4 @@
-
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; PVS evaluator - emacs end.  dave_sc 10/12/98
 
 ;; --------------------------------------------------------------------
@@ -19,6 +19,13 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
+
+(defvar pvs-in-checker)
+
+(declare-function pvs-ready "pvs-cmds")
+(declare-function pvs-busy "pvs-cmds")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function pvs-bury-output "pvs-ilisp")
 
 (defpvs pvs-lisp-theory typecheck (theoryname)
   "Generates the Lisp code for a given theory and displays it in a buffer"
@@ -66,6 +73,7 @@
   (let* ((pvs-error nil)
 	 (c-files (pvs-send-and-wait (format "(pvs2c-pvs-file \"%s\")" filename)
 				     nil nil 'list)))
+    (ignore c-files)
     (pvs-message "")
     (unless pvs-error
       ;; Ignoring c-files for now, as debugging code gets in the way

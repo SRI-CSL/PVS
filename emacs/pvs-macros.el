@@ -1,3 +1,4 @@
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 ;;;
 ;;; pvs-macros.el   dave_sc, 12/3/98
 ;;;

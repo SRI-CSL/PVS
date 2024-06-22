@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;;
 ;; pvs-prover-manip.el -- Expression manipulation aids for PVS prover 
 ;; Author          : Ben Di Vito <b.divito@nasa.gov>
@@ -38,16 +38,26 @@
 
 ;; ================ Start-up actions ================
 
+(defvar edit-proof-mode-map)
+(defvar pvs-prover-helps-map)
+
+(declare-function pvs-formula-origin "pvs-prover")
+(declare-function install-proof* "pvs-prover")
+(declare-function install-pvs-proof-file "pvs-prover")
+(declare-function confirm-not-in-checker "pvs-eval")
+(declare-function pvs-send* "pvs-ilisp")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+
 (defvar pvs-prover-manip-version "1.3")
 
 ;; Account for differences between Emacs and XEmacs functions.
 
-;(eval-when-compile
+(cl-eval-when (compile)
   (if (featurep 'xemacs)
       (defun buffer-substring-text (beg end)
 	(buffer-substring beg end))
       (defun buffer-substring-text (beg end)
-	(buffer-substring-no-properties beg end))) ; )
+	(buffer-substring-no-properties beg end))))
 
 
 ;; ================ Prover command entry shortcuts  ================
@@ -138,18 +148,18 @@ expressions from current proof buffer."
 ;; function variables are introduced to silence some annoying warnings
 ;; from the byte compiler.
 
-;(eval-when-compile
+(cl-eval-when (compile)
   (if (featurep 'xemacs)
       (progn (defvar set-extent-face-fn #'set-extent-face)
 	     (defvar make-extent-fn #'make-extent))
       (progn (defvar set-extent-face-fn nil)
-	     (defvar make-extent-fn nil))) ; )
+	     (defvar make-extent-fn nil))))
 
 ;(when (featurep 'xemacs)
 ;  (defvar set-extent-face-fn #'set-extent-face)
 ;  (defvar make-extent-fn #'make-extent))
 
-;(eval-when-compile
+(cl-eval-when (compile)
   (if (featurep 'xemacs)
       (defun highlight-text-region (index beg end)
 	(let ((face-index (min index (- (length manip-fg-face-names) 1))))
@@ -157,8 +167,9 @@ expressions from current proof buffer."
 		   (funcall make-extent-fn beg end)
 		   (nth face-index manip-fg-face-names))))
       (defun highlight-text-region (index beg end)
+	(ignore index)
 	(overlay-put (make-overlay beg end)
-		     'face (cons 'foreground-color (car manip-fg-colors))))) ; )
+		     'face (cons 'foreground-color (car manip-fg-colors))))))
 
 (defvar deactivate-region-fn
   (if (featurep 'xemacs) #'zmacs-deactivate-region #'deactivate-mark))
@@ -182,8 +193,8 @@ expressions from current proof buffer."
 	       (goto-char (point-max))
 	       (push (point-marker) markers)
 	       (insert str)))
-    (do ((done nil) (mode 'collecting))
-	(done (dolist (m markers) (set-marker m nil)))
+    (cl-do ((done nil) (mode 'collecting))
+	   (done (dolist (m markers) (set-marker m nil)))
       (let* ((arg-spec (next-rule-arg index arglist)))
 	(cond ((not arg-spec) (setf done t))
 	      ((eq mode 'skipping)
@@ -206,9 +217,9 @@ expressions from current proof buffer."
 		       ((equal arg-val ";") (setf mode 'skipping))
 		       ((equal arg-val "")
 			(emit-arg t
-		          (if (and (listp arg-spec) (eq (car arg-spec) 'opt))
-			      (format " %s" (caddr arg-spec))
-			      " \"Skipped non-optional argument\"")))
+				  (if (and (listp arg-spec) (eq (car arg-spec) 'opt))
+				      (format " %s" (caddr arg-spec))
+				      " \"Skipped non-optional argument\"")))
 		       (t (emit-arg t (format " %s" arg-val)))))))))))
 
 (defun get-mixed-strat-arg (index arglist)
@@ -436,7 +447,7 @@ also be used to give a formula number."
 ;; The period at the end is recognized and discarded by the label parser.
 
 (defun pvs-prover-manip-find-node ()
-  "Sets cursor on node of proof buffer indicated by label from current proof buffer."
+  "Sets cursor on node indicated by label from current proof buffer."
   (interactive)
   (unwind-protect
       (let* ((start (point))
@@ -474,7 +485,7 @@ also be used to give a formula number."
     (forward-sexp 2)
     (backward-sexp 1)      ;; cursor at first s-expr after label
     (unless (null items)
-      (do ()               ;; skip ahead to branching point
+      (cl-do ()               ;; skip ahead to branching point
 	  ((not (symbolp (car next-step))))
 	(setf next-step (read (current-buffer))))
       (backward-sexp 1)

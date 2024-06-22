@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-utils.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Wed Sep 15 17:51:30 1993
@@ -27,22 +27,35 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(eval-when-compile (require 'pvs-macros))
 (require 'cl-lib)
-;; This generates warnings - with-no-warnings doesn't help
-;; Emacs 24 uses cl-lib instead, but all functions need
-;; to be prefixed with cl- so this isn't a good solution
-;;for PVS (at least not now).
 (require 'compare-w)
+(eval-when-compile (require 'pvs-macros))
 
 (defvar comint-status)
 (defvar ilisp-complete)
 (defvar ilisp-buffer)
+(defvar pvs-prelude)
+(defvar pvs-buffer-kind)
+
+(declare-function princ-nl "pvs-ilisp")
+(declare-function pvs-formula-origin "pvs-prover")
+(declare-function typecheck "pvs-cmds")
+(declare-function find-pvs-file "pvs-cmds")
+(declare-function pvs-remove-bin-files "pvs-cmds")
+(declare-function pvs-send "pvs-ilisp")
+(declare-function prove-pvs-file "pvs-prover")
+(declare-function prove-theory "pvs-prover")
+(declare-function prove-importchain "pvs-prover")
+(declare-function set-rewrite-depth "pvs-prover")
+(declare-function context-files "pvs-file-list")
+(declare-function pvs-bury-output "pvs-ilisp")
+(declare-function save-some-pvs-files "pvs-cmds")
+(declare-function pvs-send-and-wait "pvs-ilisp")
 
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
 (defvar pvs-path) ; Set in pvs-go.el
-(defvar *prelude-files-and-regions*)
+(defvar prelude-files-and-regions)
 (defvar pvs-library-path)
 (defvar pvs-in-checker)
 (defvar pvs-reserved-words-regexp)
@@ -180,18 +193,17 @@ beginning of the previous one."
 	(message "No earlier theories"))))
 
 (defun beginning-of-theory (&optional start)
-  (let ((limit (point)))
-    (if (find-theory-or-datatype-forward start)
-	(let ((opoint (point)))
-	  (re-search-backward-ignoring-comments ":" nil t)
+  (if (find-theory-or-datatype-forward start)
+      (progn
+	(re-search-backward-ignoring-comments ":" nil t)
+	(backward-sexp)
+	(while (in-pvs-comment) (backward-sexp))
+	(when (looking-at "\\[")
 	  (backward-sexp)
-	  (while (in-pvs-comment) (backward-sexp))
-	  (when (looking-at "\\[")
-	    (backward-sexp)
-	    (while (in-pvs-comment) (backward-sexp)))
-	  t)
-	(goto-char (or start (point)))
-	nil)))
+	  (while (in-pvs-comment) (backward-sexp)))
+	t)
+      (goto-char (or start (point)))
+      nil))
 
 
 ;;; Finds the next THEORY or DATATYPE keyword that does not occur in a
@@ -256,7 +268,7 @@ beginning of the previous one."
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
     (when (file-equal (buffer-file-name) prelude-file)
       (let ((prelude-regions
-	     (cdr (assoc prelude-file *prelude-files-and-regions*))))
+	     (cdr (assoc prelude-file prelude-files-and-regions))))
 	(while (and prelude-regions
 		    (< (caddr (car prelude-regions)) (point)))
 	  (pop prelude-regions))
@@ -377,8 +389,7 @@ beginning of the previous one."
 	(thregs nil))
     (save-excursion
       (dolist (file files)
-	(let* ((bufp (get-file-buffer file))
-	       (buf (find-file-noselect file)))
+	(let* ((buf (find-file-noselect file)))
 	  (set-buffer buf)
 	  (message "Processing %s" file)
 	  (let ((threg (theory-region-from-buffer theoryname)))
@@ -757,8 +768,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun short-file-name (file)
   (if (file-exists-p file)
-      (let* ((efile (expand-file-name file))
-	     (dirnames (string-split ?/ file))
+      (let* ((dirnames (string-split ?/ file))
 	     (shortname file)
 	     (lname file)
 	     (hname file))
@@ -1060,7 +1070,7 @@ theoryname."
 		     (and with-prelude-p
 			  (and (boundp 'pvs-prelude) pvs-prelude)
 			  (buffer-name))))
-	(theories (pvs-collect-theories with-prelude-p)))
+	(theories (pvs-collect-theories)))
     (if (null theories)
 	(error "No theories in context.")
 	(let ((theory (if (and (not no-timeout)
@@ -1125,8 +1135,7 @@ theoryname."
 	(t (find-current-theory-region (cdr trs)))))
 
 (defun get-theory-modtime (theoryref)
-  (let* ((theory (car (last (string-split ?# theoryref))))
-	 (thbuf (get-theory-buffer theoryref)))
+  (let* ((thbuf (get-theory-buffer theoryref)))
     (if thbuf
 	(with-current-buffer thbuf
 	  (visited-file-modtime))
@@ -1140,7 +1149,7 @@ theoryname."
 ;;; current state is unknown in the pvs context, but it is still a valid
 ;;; choice for many pvs commands.
 
-(defun pvs-collect-theories (&optional no-prelude-p)
+(defun pvs-collect-theories ()
   "Generates an alist of the form ((th file place) ...)"
   (let* ((theory-alist (pvs-send-and-wait "(collect-theories nil)" nil nil 'list))
 	 (file (current-pvs-file t))
@@ -1172,7 +1181,7 @@ theoryname."
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
     (when (file-equal (buffer-file-name) prelude-file)
       (let ((prelude-regions
-	     (cdr (assoc prelude-file *prelude-files-and-regions*))))
+	     (cdr (assoc prelude-file prelude-files-and-regions))))
 	(mapcar 'car prelude-regions)))))
 
 
@@ -1571,7 +1580,7 @@ Point will be on the offending delimiter."
 					       (char-to-string help-char)))
 				    " [Type y, n, q or !] ")))
 		 (minibuffer-help-form help-form)
-		 result elt)
+		 elt)
 	     ;;(apply 'message qprompt qs-args)
 	     ;;(setq char (set qs-var (read-char)))
 	     (setq char
@@ -1608,8 +1617,9 @@ Point will be on the offending delimiter."
 	 (file-directory-p dname)
 	 (file-writable-p dname))))
 
-(defadvice rename-buffer (after rename-buffer-pvs activate)
-  (makunbound 'current-pvs-file))
+(define-advice rename-buffer (:around (oldfun newname &optional unique))
+  (prog1 (funcall oldfun newname unique)
+    (makunbound 'current-pvs-file)))
 
 (defun real-current-column ()
   (- (point) (save-excursion (beginning-of-line) (point))))
@@ -1747,7 +1757,8 @@ Point will be on the offending delimiter."
 	       )
 	   ;;(fset 'pvs-handler 'pvs-handler-orig)
 	   (setq comint-handler 'pvs-handler)
-	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))
+	   ;;(fset 'ask-user-about-lock 'ask-user-about-lock-orig)
+	   ))
        (with-current-buffer ilisp-buffer
 	 (setq kill-buffer-query-functions nil)
 	 ;;(setq kill-emacs-hook nil)
@@ -1815,7 +1826,7 @@ Point will be on the offending delimiter."
   (typecheck filename)
   (run-hooks 'pvs-validate-hooks))
 
-(defun pvs-validate-start-proof (&optional rerun filename formula dont-show-proofp)
+(defun pvs-validate-start-proof (&optional rerun filename formula)
   ;; Starts a proof - by default in the current filename at the cursor
   ;; position, and the proof is displayed.
   (let* ((fref (pvs-formula-origin))
@@ -1823,7 +1834,7 @@ Point will be on the offending delimiter."
 	 (fname (pvs-fref-file fref))
 	 (buf (pvs-fref-buffer fref))
 	 (line (pvs-fref-line fref))
-	 (poff (pvs-fref-prelude-offset fref))
+	 ;; (poff (pvs-fref-prelude-offset fref))
 	 (theory (pvs-fref-theory fref))
 	 (fmla (pvs-fref-formula fref))
 	 (fmlastr (when fmla (format "\"%s\"" fmla)))
@@ -1872,6 +1883,7 @@ Point will be on the offending delimiter."
 (defun pvs-validate-handler (error-p wait-p message output prompt)
   ;; (message "pvs-validate-handler called: %s %s %s %s %s"
   ;; 	   error-p wait-p message output prompt)
+  (ignore error-p wait-p message prompt)
   (cond ((and (stringp output)
 	      (string-match (ilisp-value 'ilisp-error-regexp) output))
 	 (pvs-message "Lisp ERROR: %s\n" (comint-remove-whitespace output))
@@ -1884,6 +1896,7 @@ Point will be on the offending delimiter."
 	  (kill-process (ilisp-process))))
 
 (defun pvs-log-ignore-lock (file opponent)
+  (ignore file opponent)
   nil)
 
 (defvar *pvs-backup-logfiles* 4
@@ -2004,6 +2017,7 @@ existence and time differences to be whitespace")
 		     ;;(message "Waiting...%s %s %s"
 			;;      comint-status (process-status (ilisp-process))
 			;;      timeout)
+		     ;; (pvs-message "pvs-wait-for-it: %s" comint-status)
 		     (member comint-status '(" :ready" " :error")))))
 ;;     (when (and timeout (= timeout 90)
 ;; 	       (eq (process-status (ilisp-process)) 'signal))
@@ -2022,25 +2036,27 @@ existence and time differences to be whitespace")
   (terpri 'external-debugging-output))
 
 (when noninteractive
-(defadvice message (around pvs-batch-control activate)
-    (unless (and noninteractive (= pvs-verbose 0)) ad-do-it))
+(define-advice message (:around (oldmsg format-string &rest args))
+  (unless (and noninteractive (= pvs-verbose 0))
+    (apply oldmsg format-string args)))
 
-(defadvice yes-or-no-p (around pvs-batch-control activate)
+(define-advice yes-or-no-p (:around (oldfun prompt))
   (if noninteractive
       (let ((pvs-verbose 1))
-	(message (ad-get-arg 0))
+	(message prompt)
 	t)
-      ad-do-it))
+      (apply oldfun prompt)))
 
-(defadvice y-or-n-p (around pvs-batch-control activate)
+(define-advice y-or-n-p (:around (oldfun prompt))
   (if noninteractive
       (let ((pvs-verbose 1))
-	(message (ad-get-arg 0))
+	(message prompt)
 	t)
-      ad-do-it))
+      (apply oldfun prompt)))
 
 ;; (prompter actor list &optional help action-alist no-cursor-in-echo-area)
-(defadvice save-some-buffers (around pvs-batch-control activate)
+(define-advice save-some-buffers (:around (oldfun &optional arg pred))
+  (ignore oldfun arg pred)
   (save-window-excursion
     (dolist (buf (buffer-list))
       (when (and (buffer-modified-p buf)

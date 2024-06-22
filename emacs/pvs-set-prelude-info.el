@@ -1,3 +1,4 @@
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;;; This is used to create pvs-prelude-files-and-regions.el, which is just
 ;;; defines *pvs-files-and-regions* so that extracting prelude theories
 ;;; (e.g., using M-x vpt) is reasonably quick.
@@ -20,6 +21,8 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
+
+(defvar pvs-path)
 
 (defvar start-pvs nil) ; don't need to run pvs, just load the files
 
@@ -49,11 +52,13 @@
 	    files)))
     (set-buffer (find-file-noselect (concat pvs-path "/" region-file)))
     (erase-buffer)
-    (insert ";;; Generated from pvs-set-prelude-info.el - do not edit
-(defvar *prelude-files-and-regions*
+    (insert ";; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
+;;; Generated from pvs-set-prelude-info.el - do not edit
+
+(defvar prelude-files-and-regions
   (mapcar
       #'(lambda (x)
-	 (cons (format \"%s/lib/%s\" pvs-path (car x)) (cdr x)))
+	 (cons (format \"./lib/%s\" (car x)) (cdr x)))
     '")
     (insert (format "%S" files-and-regions))
     (insert "))")

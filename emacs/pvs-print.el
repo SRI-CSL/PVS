@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-print.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Fri Mar 18 01:57:06 1994
@@ -46,6 +46,17 @@
 
 (eval-when-compile (require 'pvs-macros))
 
+(defvar pvs-path)
+(defvar prelude-files-and-regions)
+
+(declare-function confirm-not-in-checker "pvs-eval")
+(declare-function pvs-send "pvs-ilisp")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function complete-prelude-name "pvs-cmds")
+(declare-function pvs-mode "pvs-mode")
+(declare-function current-line-number "pvs-mode")
+(declare-function get-prelude-file-and-region "pvs-cmds")
+
 ;;; The first few functions were extracted from the GNU distribution file
 ;;; lpr.el, because we needed more control over the switches.  (The
 ;;; default always adds the -T switch, which only makes sense to lpr, so
@@ -63,40 +74,40 @@ See the pvs-print-buffer command for details.")
 (defvar pvs-print-name nil "The name to use in headers.")
 
 (defpvs pvs-print-buffer print-buffer ()
-  "Print buffer contents as with Unix command `lpr'
+  "Print buffer contents as with Unix command \\='lpr\\='
 
 The pvs-print-buffer command prints out the current buffers contents.  Its
 behavior depends on the following variables:
-  `pvs-print-command' is a variable which specifies the shell command to
+  \\='pvs-print-command\\=' is a variable which specifies the shell command to
                       use for printing (default \"lpr\")
-  `pvs-print-switches' is a list of extra switches (strings) to pass to lpr.
-  `pvs-print-title-switches' is the switch which specifies the title to use
+  \\='pvs-print-switches\\=' is a list of extra switches (strings) to pass to lpr.
+  \\='pvs-print-title-switches\\=' is the switch which specifies the title to use
                   for the print command.  If nil, then no title is produced.
 
 For example, to use enscript to print in gaudy mode producing two column
 rotated output, add the following to your ~/.emacs file:
     (setq pvs-print-command \"enscript\")
-    (setq pvs-print-switches '(\"-G\" \"-2\" \"-r\"))
-    (setq pvs-print-title-switches '(\"-b\" \"-J\"))"
+    (setq pvs-print-switches \\='(\"-G\" \"-2\" \"-r\"))
+    (setq pvs-print-title-switches \\='(\"-b\" \"-J\"))"
   (interactive)
   (pvs-print-region-1 (point-min) (point-max) pvs-print-switches))
 
 (defpvs pvs-print-region print-buffer (start end)
-  "Print region contents as with Unix command `lpr'
+  "Print region contents as with Unix command \\=`lpr\\='
 
 The pvs-print-buffer command prints out the current region.  Its behavior
 depends on the following variables:
-  `pvs-print-command' is a variable which specifies the shell command to
+  \\='pvs-print-command\\=' is a variable which specifies the shell command to
                       use for printing (default \"lpr\")
-  `pvs-print-switches' is a list of extra switches (strings) to pass to lpr.
-  `pvs-print-title-switches' is the switch which specifies the title to use
+  \\='pvs-print-switches\\=' is a list of extra switches (strings) to pass to lpr.
+  \\='pvs-print-title-switches\\=' is the switch which specifies the title to use
                   for the print command.  If nil, then no title is produced.
 
 For example, to use enscript to print in gaudy mode producing two column
 rotated output, add the following to your ~/.emacs file:
     (setq pvs-print-command \"enscript\")
-    (setq pvs-print-switches '(\"-G\" \"-2\" \"-r\"))
-    (setq pvs-print-title-switches '(\"-b\" \"-J\"))"
+    (setq pvs-print-switches \\='(\"-G\" \"-2\" \"-r\"))
+    (setq pvs-print-title-switches \\='(\"-b\" \"-J\"))"
   (interactive "r")
   (pvs-print-region-1 start end pvs-print-switches))
 
@@ -287,9 +298,9 @@ the corresponding generated file is foo-alltt.tex."
 (defun alltt-prelude ()
   "Generate LaTeX files in alltt format for the PVS prelude."
   ;;(interactive)
-  (unless *prelude-files-and-regions*
+  (unless prelude-files-and-regions
     (complete-prelude-name))
-  (dolist (freg *prelude-files-and-regions*)
+  (dolist (freg prelude-files-and-regions)
     (let ((buf (find-file-noselect (car freg))))
       (dolist (treg (cdr freg))
 	(let* ((file (format "%s%s-alltt.tex" pvs-current-directory
@@ -429,7 +440,7 @@ example for including <theory>.tex in a document."
 
 (defpvs latex-prelude latex (dir)
   "LaTeX-prints the prelude.  As it has a large number of theories, by
-default it will print in a 'prelude-tex' subdirectory of the current context"
+default it will print in a \\='prelude-tex\\=' subdirectory of the current context"
   (interactive (let* ((cdir (pvs-current-directory t))
 		      (defdir (concat cdir "prelude-tex")))
 		 (confirm-not-in-checker)
@@ -549,7 +560,9 @@ provide a brief output, hiding many of the details."
 (defpvs latex-set-linelength latex (length)
   "Set the linelength for LaTeX text
 
-The latex-set-linelength command sets the linelength to be used for generating LaTeX files.  The right setting depends on the page size, margins, and fonts used, so cannot be determined by PVS.  The default is 100."
+The latex-set-linelength command sets the linelength to be used for LaTeX files.
+The right setting depends on the page size, margins, and fonts used,
+so cannot be determined by PVS.  The default is 100."
   (interactive "nSet Length to: ")
   (pvs-send-and-wait (format "(setq *latex-linelength* %d)" length)
 		     nil nil 'dont-care)
@@ -568,9 +581,13 @@ The latex-set-linelength command sets the linelength to be used for generating L
 (defpvs html-pvs-file html (filename)
   "Generate HTML for a PVS file, with names pointing to their declarations.
 
-Generates an HTML web corresponding to the filename, which must already be typechecked.  A pvshtml subdirectory of the current context is created if necessary, and the pvshtml/filename.html file is created.  If the file is already there, and newer than the source file, it is not regenerated.
+Generates an HTML web corresponding to the (already typechecked) filename.
+A pvshtml subdirectory of the current context is created if necessary,
+and the pvshtml/filename.html file is created.  If the file is already there,
+and newer than the source file, it is not regenerated.
 
-NOTE: There is no corresponding html-theory, as links to the given theory would become ambiguous."
+NOTE: There is no corresponding html-theory, as links to the given theory
+would become ambiguous."
   (interactive (complete-pvs-file-name "Generate HTML for PVS file named: "))
   (pvs-send (format "(html-pvs-file \"%s\" %s nil)"
 		filename (and current-prefix-arg t))
@@ -579,7 +596,10 @@ NOTE: There is no corresponding html-theory, as links to the given theory would 
 (defpvs html-pvs-files html (filename)
   "Generate HTML for a PVS file, with names pointing to their declarations.
 
-Generates an HTML web corresponding to the filename, which must already be typechecked.  A pvshtml subdirectory of the current context is created if necessary, and the pvshtml/filename.html file is created.  If the file is already there, and newer than the source file, it is not regenerated."
+Generates an HTML web corresponding to the (already typechecked) filename.
+A pvshtml subdirectory of the current context is created if necessary,
+and the pvshtml/filename.html file is created.  If the file is already there,
+and newer than the source file, it is not regenerated."
   (interactive (complete-pvs-file-name "Generate HTML files rooted at PVS file: "))
   (pvs-send (format "(html-pvs-file \"%s\" %s t)"
 		filename (and current-prefix-arg t))

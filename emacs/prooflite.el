@@ -1,4 +1,4 @@
-;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; prooflite.el
 ;; Release: ProofLite-7.0 (06/30/19)
 ;;
@@ -12,13 +12,22 @@
 ;; Rights Reserved.
 ;;
 
+(defvar pvs-mode-map)
+
+(declare-function set-proof-script-font-lock-keywords "pvs-prover")
+(declare-function pvs-formula-origin "pvs-prover")
+(declare-function current-line-number "pvs-mode")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function pvs-bury-output "pvs-ilisp")
+(declare-function confirm-not-in-checker "pvs-eval")
+
 (defpvs write-prooflite-scripts-to-file edit-proof ()
   "Write prooflite scripts for all the proof obligations in the current theory."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (let* ((theory (second (split-string (current-theory) "#")))
+  (let* ((theory (cadr (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
@@ -39,7 +48,7 @@ for formulas that are already proved."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (let* ((theory (second (split-string (current-theory) "#")))
+  (let* ((theory (cadr (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
@@ -86,7 +95,7 @@ default proofs even if formulas are already proved."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (let* ((theory (when (current-theory) (second (split-string (current-theory) "#"))))
+  (let* ((theory (when (current-theory) (cadr (split-string (current-theory) "#"))))
 	 (file   (current-pvs-file))
  	 (pvs-error nil))
     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"

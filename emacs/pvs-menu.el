@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-menu.el -- Provides menu and font-lock support for GNU Emacs 19 and
 ;;                XEmacs
 ;; Author          : Sam Owre
@@ -30,6 +30,15 @@
 
 (require 'easymenu)
 
+(defvar pvs-original-load-path)
+
+(declare-function current-line-number "pvs-mode")
+(declare-function row-col-to-point "pvs-menu")
+(declare-function pvs-add-tooltips "pvs-menu")
+(declare-function place-to-region "pvs-menu")
+(declare-function pvs-file-send-and-wait "pvs-ilisp")
+(declare-function pvs-goto-file-location "pvs-menu")
+
 (defconst pvs-mode-menus
   '("PVS"
     ("Editing PVS Files"
@@ -51,7 +60,7 @@
      ["prettyprint-pvs-file" prettyprint-pvs-file (current-pvs-file t)]
      ["prettyprint-declaration" prettyprint-declaration (current-pvs-file t)]
      ["prettyprint-region" prettyprint-region (current-pvs-file t)]
-     ["prettyprint-theory-instance" prettyprint-theory-instance (current-pvs-file t)]
+     ;; ["prettyprint-theory-instance" prettyprint-theory-instance (current-pvs-file t)]
      ["pvs-set-linelength" pvs-set-linelength t])
     ("Viewing TCCs"
      ["show-tccs" show-tccs (current-pvs-file t)]
@@ -76,7 +85,7 @@
      ["save-pvs-file" save-pvs-file t]
      ["save-some-pvs-files" save-some-pvs-files t]
      ["smail-pvs-files" smail-pvs-files (current-pvs-file t)]
-     ["rmail-pvs-files" rmail-pvs-files t]
+     ;; ["rmail-pvs-files" rmail-pvs-files t]
      ["dump-pvs-files" dump-pvs-files (current-pvs-file t)]
      ["undump-pvs-files" undump-pvs-files t]
      ["edit-pvs-dump-file" edit-pvs-dump-file t]
@@ -312,7 +321,8 @@
 
   (let ((easy-menu-fast-menus t))
     (easy-menu-define pvs-menus global-map "PVS menus" pvs-mode-menus)
-    (easy-menu-add pvs-menus global-map))
+    ;; (easy-menu-add pvs-menus global-map)
+    )
   )
 
 (when (featurep 'xemacs)
@@ -429,9 +439,9 @@
 					  nil 'subterms '(or string null)))
 		 (slist (when slist-json (json-read-from-string slist-json))))
 	    (if slist
-		(let ((sterm (x-popup-menu
-			      t (list "Subterms"
-				      (cons "Subterms"
-					    (cl-mapcar (lambda (x) (cons x x))
-						       slist))))))))))
+		(x-popup-menu
+		 t (list "Subterms"
+			 (cons "Subterms"
+			       (cl-mapcar (lambda (x) (cons x x))
+				 slist)))))))
   )

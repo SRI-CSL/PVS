@@ -1,3 +1,4 @@
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;;; This file provides the global key-bindings and abbreviations for
 ;;; most of the commands of PVS.  The pvs-abbreviate function checks
 ;;; whether the abbreviation clashes with any existing function and will

@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-browser.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Fri Mar 18 01:51:02 1994
@@ -29,6 +29,21 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'pvs-macros))
+(require 'json)
+
+(defvar pvs-path)
+
+(declare-function remove-buffer "pvs-mode")
+(declare-function view-prelude-theory "pvs-cmds")
+(declare-function get-prelude-file-and-region "pvs-cmds")
+(declare-function pvs-view-mode "pvs-view")
+(declare-function complete-formula-name-list "pvs-prover")
+(declare-function pvs-formula-origin "pvs-prover")
+(declare-function pvs-send-and-wait-for-json "pvs-ilisp")
+(declare-function current-line-number "pvs-mode")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function pvs-bury-output "pvs-ilisp")
+(declare-function save-some-pvs-files "pvs-cmds")
 
 ;;; PVS browse mode
 
@@ -46,11 +61,11 @@
 (defvar pvs-popup-windows nil
   "Controls behavior of browser functions.
   nil    = use current frame
-  'frame = use a (potentially new) browser frame
-  'x     = use dedicated X windows popups")
+  \\='frame = use a (potentially new) browser frame
+  \\='x     = use dedicated X windows popups")
 
 (defvar pvs-popup-browse-frame nil
-  "The frame to use for browse windows when pvs-popup-windows is 'frame")
+  "The frame to use for browse windows when pvs-popup-windows is \\='frame")
 
 (defvar pvs-popup-old-window-configuration nil
   "The window configuration to pop back to after quitting a brose window
@@ -223,7 +238,7 @@ and removes the declaration buffer."
 (defpvs unusedby-proof-of-formula browse ()
   "Produce list of declarations unused by the proof of the formula at point
 
-The unusedby-proof-of-formula command creates a 'Browse' buffer
+The unusedby-proof-of-formula command creates a \\='Browse\\=' buffer
 listing all the declarations that are unused in the proof of the given
 formula.  Removing all these declarations and those that follow the
 given formula should give a theory that typechecks and for which the
@@ -252,7 +267,7 @@ proofchain is still complete, if it was in the full theory."
   "Produce list of declarations unused by the proofs of the given formulas
 
 The unusedby-proofs-of-formulas command prompts for a list of formulas (just
-hit 'Return' when done) and a root theory, and creates a 'Browse' buffer
+hit \\='Return\\=' when done) and a root theory, and creates a \\='Browse\\=' buffer
 listing all the declarations that are unused in the proofs of the given
 formulas.  Removing all these declarations and those that follow the given
 formula should give a theory that typechecks and for which the proofchain is
@@ -368,7 +383,7 @@ still complete, if it was in the full theory."
       (error "Please select from list of choices below."))
   (let* ((decl-form (elt pvs-declarations (- (current-line-number) 3)))
 	 (declname (cdr (assq 'declname decl-form)))
-	 (type (cdr (assq 'type decl-form)))
+	 ;; (type (cdr (assq 'type decl-form)))
 	 (theoryid (cdr (assq 'theoryid decl-form)))
 	 (place (cdr (assq 'place decl-form)))
 	 (filename (cdr (assq 'filename decl-form)))
@@ -416,12 +431,12 @@ Returns to Declaration List when done."
 	   (buffer-name)))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
-  (let* ((cbuf (current-buffer))
+  (let* (;;(cbuf (current-buffer))
 	 (buf (get-buffer-create "Browse View"))
 	 (decl-form (elt pvs-declarations (- (current-line-number) 3)))
-	 (declname (cdr (assq 'declname decl-form)))
-	 (type (cdr (assq 'type decl-form)))
-	 (theoryid (cdr (assq 'theoryid decl-form)))
+	 ;; (declname (cdr (assq 'declname decl-form)))
+	 ;; (type (cdr (assq 'type decl-form)))
+	 ;; (theoryid (cdr (assq 'theoryid decl-form)))
 	 (decl-ppstring (cdr (assq 'decl-ppstring decl-form))))
     (set-buffer buf)
     (let ((inhibit-read-only t))

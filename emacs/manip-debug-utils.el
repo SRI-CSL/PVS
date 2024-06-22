@@ -1,3 +1,4 @@
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; Strategy-trace features may be invoked via TAB shortcuts using
 ;; the following Emacs Lisp functions.  These shortcuts are
 ;; entirely optional.
@@ -7,6 +8,12 @@
 ;; may be supplied to limit trace depth.  Place a complete command
 ;; after the "Rule? " prompt, then invoke TAB-$ with optional
 ;; depth argument (using C-u).
+
+(defvar pvs-in-checker)
+(defvar pvs-prover-helps-map)
+
+(declare-function hilit-next-prover-command "pvs-prover-helps")
+(declare-function pvs-prover-goto-next-step "pvs-prover-helps")
 
 (defun pvs-prover-trace-strat (&optional depth)
   "Invokes prover strategy with trace enabled to DEPTH levels."
@@ -28,7 +35,7 @@
   "Execute one step of proof with strategy trace enabled to DEPTH levels."
   (interactive "P")
   (goto-pvs-proof-buffer)
-  (let ((pvsbuf (current-buffer))
+  (let (;;(pvsbuf (current-buffer))
 	(editprfbuf (get-buffer "Proof"))
 	(cmd nil))
     (unless editprfbuf

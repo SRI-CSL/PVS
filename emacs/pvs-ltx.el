@@ -1,4 +1,5 @@
-;;; pvs-ltx.el --- Quail package for TeX-style input -*-coding: utf-8;-*-
+;; -*- Mode: Emacs-Lisp; lexical-binding: t; coding: utf-8 -*- ;;
+;;; pvs-ltx.el --- Quail package for TeX-style input
 ;;; Derived by Sam Owre from latin-ltx.el
 
 ;; Author: TAKAHASHI Naoto <ntakahas@m17n.org>
@@ -74,7 +75,8 @@ system, including many technical ones.  Examples:
           (`(,seq ,re)
            (let ((count 0)
                  (re (eval re t))
-		 (ucs-alist nil))
+		 ;;(ucs-alist nil)
+		 )
 	     (if (hash-table-p (ucs-names))
 		 (maphash #'(lambda (name char)
 			      (when (and (characterp char) ;; Ignore char-ranges.
@@ -119,10 +121,12 @@ system, including many technical ones.  Examples:
                   (setq rules (delq c rules)))
                 (message "Conflict for %S: %S"
                          (car rule) (apply #'string conflicts)))))))
-      (let ((inputs (mapcar #'car newrules)))
+      (let* ((inputs (mapcar #'car newrules))
+	     (conflict-num (- (length newrules) (length inputs))))
         (setq inputs (delete-dups inputs))
-        (message "pvs-ltx: %d rules (+ %d conflicts)!"
-                 (length inputs) (- (length newrules) (length inputs))))
+	(unless (zerop conflict-num)
+          (message "pvs-ltx: %d rules (+ %d conflicts)!"
+                   (length inputs) conflict-num)))
       `(quail-define-rules ,@(nreverse newrules)))))
 
 (pvs-ltx--define-rules

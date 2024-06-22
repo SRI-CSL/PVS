@@ -1,3 +1,4 @@
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;;; newcomment.el --- (un)comment regions of buffers
 
 ;; Copyright (C) 1999, 2000  Free Software Foundation Inc.
@@ -707,6 +708,7 @@ This is used for `extra-line' style (or `box' style if BLOCK is specified)."
   "Execute BODY with BEG..END narrowing.
 Space is added (and then removed) at the beginning for the text's
 indentation to be kept as it was before narrowing."
+  (ignore beg end)
   (let ((bindent (make-symbol "bindent")))
     `(let ((,bindent (save-excursion (goto-char beg) (current-column))))
        (save-restriction

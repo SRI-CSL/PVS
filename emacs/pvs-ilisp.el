@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-ilisp.el -- defines the interface between PVS and ILISP
 ;; Author          : Sam Owre
 ;; Created On      : Fri Dec 17 13:08:13 1993
@@ -33,6 +33,18 @@
 (require 'completion)
 (eval-when-compile (require 'pvs-macros))
 
+(defvar ilisp-prefix-match)
+(defvar pvs-image)
+(defvar pvs-error-filter)
+(defvar pvs-partial-line)
+(defvar pvs-in-evaluator)
+(defvar pvs-in-checker)
+(defvar expanded-form-overlay)
+
+(declare-function pvs-view-mode "pvs-view")
+(declare-function tcl-send-string* "pvs-tcl")
+(declare-function ensure-pvs-wish "pvs-tcl")
+
 ;;; FIXME - this may be related to changes in easymenu.el ???
 (when (featurep 'xemacs)
   (add-hook 'ilisp-mode-hook
@@ -45,30 +57,30 @@
 (defkey-ilisp "\M-s" 'comint-previous-matching-input-from-input)
 
 (add-hook 'comint-mode-hook
-    '(lambda ()
-       (defun comint-previous-input (arg)
-	 "Search backwards through input history for match for REGEXP.
+  #'(lambda ()
+      (defun comint-previous-input (arg)
+	"Search backwards through input history for match for REGEXP.
 \(Previous history elements are earlier commands.)
 With prefix argument N, search for Nth previous match.
 If N is negative, find the next or Nth next match.
 Modified from original to not delete earlier command if some other command
 intervenes."
-	 (interactive "*p")
-	 (setq arg (comint-search-arg arg))
-	 (unless (memq last-command
-		       '(comint-previous-input
-			 comint-next-input))
-	   (set-marker comint-last-input-start (point)))
-	 (let ((pos (comint-previous-matching-input-string-position "." arg)))
-	   ;; Has a match been found?
-	   (if (null pos)
-	       (error "Not found")
-	       (setq comint-input-ring-index pos)
-	       (message "History item: %d" (1+ pos))
-	       (delete-region 
-		;; Can't use kill-region as it sets this-command
-		comint-last-input-start (point))
-	       (insert (ring-ref comint-input-ring pos)))))))
+	(interactive "*p")
+	(setq arg (comint-search-arg arg))
+	(unless (memq last-command
+		      '(comint-previous-input
+			comint-next-input))
+	  (set-marker comint-last-input-start (point)))
+	(let ((pos (comint-previous-matching-input-string-position "." arg)))
+	  ;; Has a match been found?
+	  (if (null pos)
+	      (error "Not found")
+	      (setq comint-input-ring-index pos)
+	      (message "History item: %d" (1+ pos))
+	      (delete-region 
+	       ;; Can't use kill-region as it sets this-command
+	       comint-last-input-start (point))
+	      (insert (ring-ref comint-input-ring pos)))))))
 
 ;; (add-hook 'comint-input-filter-functions
 ;;   'update-pvs-history-file)
@@ -118,7 +130,7 @@ intervenes."
   (setq pvs-lisp (intern (getenv "PVSLISP")))
   (cl-case pvs-lisp
     (allegro (pvsallegro "pvs" nil))
-    (cmulisp (pvscmulisp "pvs" nil))
+    ;; (cmulisp (pvscmulisp "pvs" nil))
     (sbclisp (pvssbclisp "pvs" nil))
     (t (error "Unknown lisp - %s" (getenv "PVSLISP"))))
   (with-current-buffer (ilisp-buffer)
@@ -136,8 +148,8 @@ intervenes."
   (define-pvs-key-bindings (ilisp-buffer))
   (setq *default-char-width* (window-width))
   (add-hook 'kill-emacs-hook
-    '(lambda () (when (and (funcall ilisp-buffer-function) (ilisp-process))
-		  (kill-process (ilisp-process)))))
+    #'(lambda () (when (and (funcall ilisp-buffer-function) (ilisp-process))
+		   (kill-process (ilisp-process)))))
   ;; Set in pvs-init from the lisp image
   ;;(setq pvs-initialized t)
   )
@@ -491,7 +503,8 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		    )
 	      (sit-for 0)
 	      (let* ((remout (substring output 0 orig-string-end))
-		     (len (length remout)))
+		     ;;(len (length remout))
+		     )
 		(if (string-equal kind "err")
 		    (concat remout "\n")
 		    remout)))
@@ -655,79 +668,79 @@ window."
 (defun pvs-buffer* (bufname file display read-only &optional append kind)
   (if noninteractive
       (pvs-buffer-noninteractive bufname file display read-only append kind)
-      (let ((obuf (current-buffer)))
-	(if (lnull file) ;; Delete the buffer
-	    (when (get-buffer bufname)
-	      (delete-windows-on bufname)
-	      (kill-buffer bufname))
-	    (save-excursion
-	      (let* ((buf (get-buffer-create bufname))
-		     (cpoint (with-current-buffer buf (point)))
-		     (append-p (not (lnull append)))
-		     (at-end (with-current-buffer buf
-			       (= (point) (point-max)))))
-		(with-current-buffer buf
-		  (unless (lnull kind)
-		    (setq-local pvs-buffer-kind kind))
-		  (define-pvs-key-bindings buf)
-		  (let ((at-end (= (point) (point-max)))
-			(contents (buffer-string)))
-		    (pvs-set-buffer-mode)
-		    (setq buffer-read-only nil)
-		    (unless append-p
-		      (erase-buffer))
-		    (goto-char (point-max))
-		    (insert-file-contents file nil)
-		    (let ((same (equal (buffer-string) contents)))
-		      (delete-initial-blank-lines)
-		      (when same
-			(set-buffer-modified-p nil)))
-		    (when (not (lnull read-only))
-		      (set-buffer-modified-p nil)
-		      (setq buffer-read-only t))
-		    (when (eq major-mode 'fundamental-mode)
-		      (pvs-view-mode))
-		    (when (and append-p at-end)
-		      (goto-char (point-max)))))
-		(if (= (point-min) (point-max))
-		    (message "PVS sent an empty buffer")
-		    (cl-case (intern display)
-		      ((nil NIL) nil)
-		      ((popto POPTO)
+      (if (lnull file) ;; Delete the buffer
+	  (when (get-buffer bufname)
+	    (delete-windows-on bufname)
+	    (kill-buffer bufname))
+	  (save-excursion
+	    (let* ((buf (get-buffer-create bufname))
+		   (cpoint (with-current-buffer buf (point)))
+		   (append-p (not (lnull append)))
+		   (at-end (with-current-buffer buf
+			     (= (point) (point-max)))))
+	      (with-current-buffer buf
+		(unless (lnull kind)
+		  (setq-local pvs-buffer-kind kind))
+		(define-pvs-key-bindings buf)
+		(let ((at-end (= (point) (point-max)))
+		      (contents (buffer-string)))
+		  (pvs-set-buffer-mode)
+		  (setq buffer-read-only nil)
+		  (unless append-p
+		    (erase-buffer))
+		  (goto-char (point-max))
+		  (insert-file-contents file nil)
+		  (let ((same (equal (buffer-string) contents)))
+		    (delete-initial-blank-lines)
+		    (when same
+		      (set-buffer-modified-p nil)))
+		  (when (not (lnull read-only))
+		    (set-buffer-modified-p nil)
+		    (setq buffer-read-only t))
+		  (when (eq major-mode 'fundamental-mode)
+		    (pvs-view-mode))
+		  (when (and append-p at-end)
+		    (goto-char (point-max)))))
+	      (if (= (point-min) (point-max))
+		  (message "PVS sent an empty buffer")
+		  (cl-case (intern display)
+		    ((nil NIL) nil)
+		    ((popto POPTO)
+		     (pop-to-buffer buf)
+		     (cond (append-p
+			    (when at-end
+			      (goto-char (point-max))))
+			   (t (goto-char cpoint)
+			      (beginning-of-line))))
+		    ((temp TEMP)
+		     (with-output-to-temp-buffer bufname
+		       (set-buffer bufname)
+		       (insert-file-contents file nil))
+		     (ilisp-show-output buf)
+		     (pvs-add-to-buffer-list bufname)
+		     (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
+			   (s (substitute-command-keys "\\[ilisp-scroll-output]")))
+		       (message
+			(format 
+			    "%s removes help window, %s scrolls, M-- %s scrolls back"
+			    rh s s))))
+		    (t
+		     (when (member (intern display) '(t T))
 		       (pop-to-buffer buf)
+		       (ilisp-show-output buf)
 		       (cond (append-p
 			      (when at-end
 				(goto-char (point-max))))
-			     (t (goto-char cpoint)
-				(beginning-of-line))))
-		      ((temp TEMP)
-		       (with-output-to-temp-buffer bufname
-			 (set-buffer bufname)
-			 (insert-file-contents file nil))
-		       (ilisp-show-output buf)
-		       (pvs-add-to-buffer-list bufname)
-		       (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
-			     (s (substitute-command-keys "\\[ilisp-scroll-output]")))
-			 (message
-			  (format 
-			      "%s removes help window, %s scrolls, M-- %s scrolls back"
-			      rh s s))))
-		      (t
-		       (when (member (intern display) '(t T))
-			 (pop-to-buffer buf)
-			 (ilisp-show-output buf)
-			 (cond (append-p
-				(when at-end
-				  (goto-char (point-max))))
-			       (t (goto-char (point-min)) ;was cpoint
-				  (beginning-of-line)))
-			 (sit-for 0)
-			 ;;(pop-to-buffer obuf)
-			 ))))))
-	    (when (file-exists-p file)
-	      (delete-file file))))))
+			     (t (goto-char (point-min)) ;was cpoint
+				(beginning-of-line)))
+		       (sit-for 0)
+		       ;;(pop-to-buffer obuf)
+		       ))))))
+	  (when (file-exists-p file)
+	    (delete-file file)))))
 
 (defun pvs-buffer-noninteractive (bufname file display read-only append kind)
+  (ignore display read-only append kind)
   (when (not (lnull file))
     (let* ((buf (get-buffer-create bufname))
 	   (bufstr (with-current-buffer buf
@@ -883,6 +896,7 @@ window."
     (save-excursion
       (goto-char (point-min))
       (dotimes (i lines)
+	(ignore i)
 	(end-of-line)
 	(when (> (current-column) width)
 	  (cl-incf num))
@@ -977,6 +991,7 @@ window."
 Given ERROR-P, WAIT-P, MESSAGE, OUTPUT
 and PROMPT, show the message and output if there is an error or the output
 is multiple lines and let the user decide what to do."
+  (ignore wait-p)
   (let ((err-output (when (stringp output) (funcall pvs-error-filter output))))
     (if err-output
 	(if err-output
@@ -1252,9 +1267,9 @@ specified argument."
   "A function suitable for putting in the window-size-change-functions
 hook.  For example:
 
-(when (and (boundp 'window-size-change-functions)
+(when (and (boundp \\='window-size-change-functions)
            (not noninteractive))
-  (push 'pvs-auto-set-linelength window-size-change-functions))
+  (push \\='pvs-auto-set-linelength window-size-change-functions))
 
 This hook is not available with all versions of [X]Emacs, so is
 not automatically used in PVS.  See pvs-set-linelength function

@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-load.el -- Loads all the relevant PVS emacs files, and invokes the
 ;;                PVS image.  Displays the PVS Welcome buffer when done.
 ;; Author          : Sam Owre
@@ -31,6 +31,19 @@
 (eval-and-compile (require 'pvs-macros))
 (require 'pvs-utils)
 
+(declare-function pvs-mode "pvs-mode")
+(declare-function pvs-auto-set-linelength "pvs-ilisp")
+(declare-function init-change-workspace "pvs-cmds")
+(declare-function pvs-major-version-number "pvs-cmds")
+(declare-function simple-status-pvs "pvs-ilisp")
+(declare-function pvs-init "pvs-ilisp")
+(declare-function pvs-view-mode "pvs-view")
+(declare-function pvs-send "pvs-ilisp")
+(declare-function get-pvs-version-information "pvs-cmds")
+(declare-function exit-pvs-process "pvs-cmds")
+
+(defvar pvs-logo)
+
 ;;(find-file-noselect "~/PVS Log" t)
 (pvs-log-message 'LOG "Started loading Emacs files")
 
@@ -38,8 +51,9 @@
 ;; context using it; but defadvice still seems to work.  No need for this
 ;; outside of batch mode (noninteractive is set to 't' in that case).
 (when noninteractive
-  (defadvice kill-emacs (before pvs-batch-control activate protect)
-    (exit-pvs-process)))
+  (define-advice kill-emacs (:around (oldfun &optional arg restart))
+    (exit-pvs-process)
+    (funcall oldfun arg restart)))
 
 (if (pvs-getenv "PVSIMAGE")
     (defconst pvs-image (pvs-getenv "PVSIMAGE")
@@ -102,7 +116,7 @@
 (load "prooflite" nil noninteractive) ; ProofLite
 ;; (load "pvs-websocket" nil noninteractive)
 
-(or (let ((load-path pvs-original-load-path))
+(or (let ((load-path (if (boundp 'pvs-original-load-path) pvs-original-load-path load-path)))
       (load "newcomment" t noninteractive))
     (load "newcomment" nil noninteractive))
 (put 'comment-region 'pvs-command 'editing)
@@ -121,12 +135,15 @@
 
 ; fancy PVS logo for Emacs startup
 
-(when (and (not (featurep 'xemacs))
-	   (boundp 'emacs-major-version)
-	   (>= emacs-major-version 20)
-	   (boundp 'image-types)
-	   (memq 'xpm image-types))
-  (setq pvs-logo (create-image (concat pvs-path "/emacs/pvslogo.gif") nil nil)))
+(cl-eval-when (load eval)
+  (when (and (not (featurep 'xemacs))
+	     (boundp 'emacs-major-version)
+	     (>= emacs-major-version 20)
+	     (boundp 'image-types)
+	     (memq 'xpm image-types))
+    (setq pvs-logo (create-image (concat (if (boundp 'pvs-path) pvs-path ".")
+					 "/emacs/pvslogo.gif")
+				 nil nil))))
 
 (when (and (featurep 'xemacs)
 	   (boundp 'emacs-major-version)
@@ -240,13 +257,14 @@
 
 (defpvs load-pvs-emacs-patch-files environment ()
   (interactive)
-  (let ((pdir (format "%s/pvs-patches" pvs-path)))
+  (let ((pdir (format "%s/pvs-patches" (if (boundp 'pvs-path) pvs-path "."))))
     (when (file-directory-p pdir)
       (dolist (file (directory-files pdir t emacs-lisp-file-regexp))
 	;; With these args, will byte-compile if needed, and load after
 	;; file force elc-flag load
 	;;(pvs-log-log (format "loading %s" file))
-	(byte-recompile-file file nil 0 t)))))
+	(byte-recompile-file file nil 0)
+	(load file)))))
 
 (defpvs pvs environment ()
   "Starts the PVS process
@@ -273,7 +291,8 @@ get to the same state."
       (unless noninteractive
 	(message "Initializing PVS: please wait..."))
       (save-excursion
-	(setq pvs-initialized nil)
+	(when (boundp 'pvs-initialized)
+	  (setq pvs-initialized nil))
 	(pvs-init)
 	(while (and (not (equal (simple-status-pvs) "Done"))
 		    (equal (process-status (ilisp-process)) 'run))
@@ -285,7 +304,7 @@ get to the same state."
 	(unless noninteractive
 	  (make-local-variable 'kill-buffer-hook)
 	  (setq kill-buffer-hook (list 'dont-kill-pvs-buffer)))
-	(set-syntax-table pvs-mode-syntax-table)
+	;; (set-syntax-table pvs-mode-syntax-table)
 	(goto-char (point-min))
 	(let ((errst (re-search-forward "^Error executing \\(.*\\):$" nil t)))
 	  (when errst
@@ -293,13 +312,13 @@ get to the same state."
 	    (message "Problem in loading user lisp files or evaluating forms"))))
       (load (format "patch%s" (pvs-major-version-number)) t t)
       (setq debug-on-error nil)
-      (setq *pvs-version-information* nil)
+      ;; (setq pvs-version-information nil)
       ;; sets pvs-current-directory and pops up the welcome buffer
       (condition-case ()
 	  (init-change-workspace pvs-current-directory)
 	(quit nil))
-      (setq pvs-in-checker nil)
-      (setq pvs-in-evaluator nil)
+      ;; (setq pvs-in-checker nil)
+      ;; (setq pvs-in-evaluator nil)
       (unless noninteractive
 	(pvs-auto-set-linelength (selected-frame))
 	(pvs-welcome (equal (buffer-name) "*scratch*")))

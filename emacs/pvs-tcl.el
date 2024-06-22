@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-tcl.el -- 
 ;; Author          : Carl Witty
 ;; Created On      : Wed Feb 28 23:07:48 1996
@@ -27,16 +27,38 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-;; Try to get the default tcl, if it exists
-;; Otherwise get the one from the PVS path
-(or (let ((load-path pvs-original-load-path))
-      (load "tcl" t noninteractive))
-    (load "tcl" nil noninteractive))
+
+(require 'tcl)
+;; (or (let ((load-path pvs-original-load-path))
+;;       (load "tcl" t noninteractive))
+;;     (load "tcl" nil noninteractive))
+
+(defvar pvs-path)
+
+(declare-function pvs-convert-to-lisp-string "pvs-ilisp")
+(declare-function pvs-display "pvs-ilisp")
+(declare-function pvs-prompt "pvs-ilisp")
+(declare-function pvs-modify-buffer "pvs-ilisp")
+(declare-function pvs-locate "pvs-ilisp")
+(declare-function parse-pvs-message "pvs-ilisp")
+(declare-function pvs-buffer "pvs-ilisp")
+(declare-function pvs-query "pvs-ilisp")
+(declare-function pvs-error "pvs-ilisp")
+(declare-function pvs-log-log "pvs-ilisp")
 
 (setq tcl-prompt-regexp "^% ")
 
 (defvar pvs-wish-cmd "wish"
   "The name of the wish binary for PVS.")
+
+(defvar pvs-tcl-partial-line ""
+  "The part of the pvs line which has been received so far.")
+
+(defvar pvs-tcl-recursive-process-filter nil
+  "True if currently inside a call to pvs-process-filter.")
+
+(defvar pvs-tcl-process-output nil
+  "Pending output from the pvs tcl process.")
 
 ;; This is an edited version of inferior-tcl from tcl.el
 (defun pvs-wish ()
@@ -61,7 +83,7 @@
       (when (fboundp 'set-process-query-on-exit-flag)
 	(set-process-query-on-exit-flag (get-process "tcl-pvs") nil)))
   (setq inferior-tcl-buffer "*tcl-pvs*")
-  (setq *pvs-tcl-partial-line* "")
+  (setq pvs-tcl-partial-line "")
   ;;  (comint-setup-ipc)
   ;; (pvs-check-tcl-tk-versions)
   (tcl-load-file (concat pvs-path "/wish/pvs-support.tcl"))
@@ -113,15 +135,6 @@
   (if (not (comint-check-proc "*tcl-pvs*"))
       (pvs-wish)))
 
-(defvar *pvs-tcl-partial-line* ""
-  "The part of the pvs line which has been received so far.")
-
-(defvar *pvs-tcl-recursive-process-filter* nil
-  "True if currently inside a call to pvs-process-filter.")
-
-(defvar *pvs-tcl-process-output* nil
-  "Pending output from the pvs tcl process.")
-
 ;;; If anything called by pvs-process-filter does
 ;;; sit-for, sleep-for, or accept-process-output, then pvs-process-filter
 ;;; can get called recursively.  If it does, then it can't actually
@@ -130,31 +143,31 @@
 ;;; which is currently being processed by the top-level pvs-process-filter.
 (defun pvs-tcl-process-filter (process output)
   (comint-log process (format "\nrec:{%s}\n" output))
-  (if *pvs-tcl-recursive-process-filter*
-      (setq *pvs-tcl-process-output* (concat *pvs-tcl-process-output* output))
-      (let ((*pvs-tcl-recursive-process-filter* t))
-	(setq output (concat *pvs-tcl-partial-line* output))
-	(let ((*pvs-tcl-process-output* output)
+  (if pvs-tcl-recursive-process-filter
+      (setq pvs-tcl-process-output (concat pvs-tcl-process-output output))
+      (let ((pvs-tcl-recursive-process-filter t))
+	(setq output (concat pvs-tcl-partial-line output))
+	(let ((pvs-tcl-process-output output)
 	      line-end)
-	  (while (string-match "\n" *pvs-tcl-process-output*)
+	  (while (string-match "\n" pvs-tcl-process-output)
 	    (setq line-end (match-end 0))
-	    ;; Note that *pvs-tcl-process-output* can get longer
+	    ;; Note that pvs-tcl-process-output can get longer
 	    ;; during this next call.
 ;	    (comint-process-filter
 ;	     process (pvs-tcl-output-filter
-;		      (substring *pvs-tcl-process-output* 0 line-end)))
+;		      (substring pvs-tcl-process-output 0 line-end)))
 	    (tcl-filter
 	     process (pvs-tcl-output-filter
-		      (substring *pvs-tcl-process-output* 0 line-end)))
-	    (setq *pvs-tcl-process-output*
-		  (substring *pvs-tcl-process-output* line-end)))
+		      (substring pvs-tcl-process-output 0 line-end)))
+	    (setq pvs-tcl-process-output
+		  (substring pvs-tcl-process-output line-end)))
 	  (if (string-match tcl-prompt-regexp
-			    *pvs-tcl-process-output*)
+			    pvs-tcl-process-output)
 	      (progn
-;		(comint-process-filter process *pvs-tcl-process-output*)
-		(tcl-filter process *pvs-tcl-process-output*)
-		(setq *pvs-tcl-partial-line* ""))
-	      (setq *pvs-tcl-partial-line* *pvs-tcl-process-output*))))))
+;		(comint-process-filter process pvs-tcl-process-output)
+		(tcl-filter process pvs-tcl-process-output)
+		(setq pvs-tcl-partial-line ""))
+	      (setq pvs-tcl-partial-line pvs-tcl-process-output))))))
 
 (defun pvs-tcl-output-filter (output)
   (if (string-match

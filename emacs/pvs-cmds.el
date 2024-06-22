@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Emacs-Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-cmds.el -- 
 ;; Author          : Sam Owre
 ;; Created On      : Wed Sep 15 17:53:20 1993
@@ -79,8 +79,27 @@
 ;; pvs-remove-bin-files    - N/A
 
 (require 'cl-lib)
+(require 'outline)
 (eval-when-compile (require 'pvs-macros))
-(provide 'pvs-cmds)
+
+(defvar pvs-view-mode-map)
+(defvar from-pvs-file)
+(defvar pvs-path)
+(defvar prelude-files-and-regions)
+(defvar pvs-library-path)
+(defvar pvs-initialized)
+
+(declare-function confirm-not-in-checker "pvs-eval")
+(declare-function current-line-number "pvs-mode")
+(declare-function pvs-add-tooltips "pvs-menu")
+(declare-function pvs-bury-output "pvs-ilisp")
+(declare-function pvs-file-send-and-wait "pvs-ilisp")
+(declare-function pvs-formula-origin "pvs-prover")
+(declare-function pvs-mode "pvs-mode")
+(declare-function pvs-send "pvs-ilisp")
+(declare-function pvs-send-and-wait "pvs-ilisp")
+(declare-function pvs-view-mode "pvs-view")
+(declare-function pvs-welcome "pvs-load")
 
 ;;;----------------------------------------------------------------------
 ;;; Basic Commands
@@ -261,13 +280,13 @@ undo (C-x u or C-_) or M-x revert-buffer to return to the old version."
        "prettyprinted file - use C-x u to undo changes.")
       (message "No changes were made")))
 
-(defpvs prettyprint-theory-instance prettyprint (theoryname context-theoryname)
-  "Prettyprints the specified theory instance
+;; (defpvs prettyprint-theory-instance prettyprint (theoryname context-theoryname)
+;;   "Prettyprints the specified theory instance
 
-The prettyprint-theory-instance command prettyprints the specified theory
-instance.  No longer used - use prettyprint-expanded instead"
-  (interactive)
-  (message "prettyprint-theory-instance no longer used - use prettyprint-expanded instead"))
+;; The prettyprint-theory-instance command prettyprints the specified theory
+;; instance.  No longer used - use prettyprint-expanded instead"
+;;   (interactive)
+;;   (message "prettyprint-theory-instance no longer used - use prettyprint-expanded instead"))
 
 (defun complete-theory-instance-name (prompt)
   "Perform completion on PVS theory names"
@@ -560,7 +579,7 @@ formula and invoking the prove command."
 
 (defun get-prelude-file-and-region (theoryname)
   (let ((freg nil)
-	(pfregs *prelude-files-and-regions*))
+	(pfregs prelude-files-and-regions))
     (while (and (null freg)
 		pfregs)
       (let ((reg (cdr (assoc theoryname (cdr (car pfregs))))))
@@ -572,7 +591,7 @@ formula and invoking the prove command."
 
 (defun complete-prelude-name ()
   (let* ((names (apply 'append
-		      (mapcar 'cdr *prelude-files-and-regions*)))
+		      (mapcar 'cdr prelude-files-and-regions)))
 	 (th (completing-read "View prelude theory named: " names nil t)))
     (if (equal th "")
 	(error "No theory specified")
@@ -757,7 +776,7 @@ PVS buffer.  It is an error to invoke this command from any buffer other
 than a '.pvs' buffer."
   (interactive)
   (pvs-bury-output)
-  (let* ((file (current-pvs-file))
+  (let* (;; (file (current-pvs-file))
 	 (fromfile (read-file-name "Import theory from file: "
 				   pvs-last-import-dir nil t))
 	 (fbuf (find-file-noselect fromfile))
@@ -814,7 +833,7 @@ buffer, which must be associated with a PVS file."
 
 ;;; save-some-pvs-files
 
-(defpvs save-some-pvs-files save-files (&optional arg exiting)
+(defpvs save-some-pvs-files save-files (&optional arg)
   "Save some modified file-visiting theory buffers
 
 The save-some-pvs-files searches for modified buffers that are associated
@@ -839,10 +858,10 @@ exiting PVS, buffers not saved will be deleted."
 (defvar pvs-email-info-string
   "\n\nType your message and C-c C-c to send.\nThe specified PVS files will be included as a (base64, tar) MIME attachment.")
 
-(defpvs rmail-pvs-files mail-files (file)
-  "No longer used."
-  (interactive)
-  (message "This command is no longer used - just use your own mail program"))
+;; (defpvs rmail-pvs-files mail-files (file)
+;;   "No longer used."
+;;   (interactive)
+;;   (message "This command is no longer used - just use your own mail program"))
 
 ;; (defpvs smail-pvs-files mail-files (pvs-file libraries-p to cc subject)
 ;;   "Dump files in transitive closure of import lists to a tar file, base64
@@ -970,10 +989,10 @@ excluding binfiles, of the pvs-test subdirectory."
 
 (defun pvs-home-directory-files ()
   (let* ((default-directory (expand-file-name "~")))
-    (cl-remove-if '(lambda (ff) (not (file-exists-p ff)))
+    (cl-remove-if #'(lambda (ff) (not (file-exists-p ff)))
       '(".pvsemacs" "pvs-strategies" "pvs-tex.sub" ".pvs.lisp"))))
 
-(defun pvs-create-local-home-directory-name (&optional num)
+(defun pvs-create-local-home-directory-name ()
   (let ((dname "PVSHOME"))
     (if (file-exists-p dname)
 	(if (file-directory-p dname)
@@ -1086,7 +1105,8 @@ e.g., C-u or M-0."
   (interactive "fUndump file: \nDInto directory: ")
   (let ((buf (find-file-noselect filename))
 	(dname (file-name-as-directory directory))
-	(overwrite nil))
+	;; (overwrite nil)
+	)
     (unless (file-name-absolute-p dname)
       (error "Directory to undump into must be absolute, not relative"))
     (with-current-buffer buf
@@ -1157,7 +1177,8 @@ ESC or `q' to not overwrite any of the remaining files,
   (save-excursion
     (or (cdr (assoc dir pvs-libdirs))
 	(let ((ldir dir)
-	      (tried nil))
+	      ;;(tried nil)
+	      )
 	  (while (and (stringp ldir)
 		      (not (and (file-exists-p ldir)
 				(file-directory-p ldir))))
@@ -1775,9 +1796,9 @@ no circularities."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (fname (pvs-fref-file fref))
-	 (buf (pvs-fref-buffer fref))
+	 ;; (buf (pvs-fref-buffer fref))
 	 (line (pvs-fref-line fref))
-	 (poff (pvs-fref-prelude-offset fref))
+	 ;; (poff (pvs-fref-prelude-offset fref))
 	 (theory (pvs-fref-theory fref))
 	 (fmla (pvs-fref-formula fref))
 	 (fmlastr (when fmla (format "\"%s\"" fmla))))
@@ -2038,3 +2059,5 @@ With an argument, only performs a scavenge and not a full gc."
    (format "(excl:gc %s)" (and current-prefix-arg t))
    nil nil 'dont-care)
   (message "Garbage collection completed"))
+
+(provide 'pvs-cmds)
