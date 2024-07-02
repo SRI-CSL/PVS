@@ -321,7 +321,7 @@
 
 (defun cl2pvs*-list (exprs eltype context)  
   (if exprs
-      (let ((ex (cl2pvs* (car exprs) eltype context))
+      (let ((ex (cl2pvs* (car exprs) eltype context nil))
 	    (list (cl2pvs*-list (cdr exprs) eltype context)))
 	(make-instance 'list-expr
 	  'operator (make-instance 'name-expr

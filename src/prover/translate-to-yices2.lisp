@@ -594,24 +594,44 @@
 					   prefix-string yname ytype))))
 	    (t (values bindings prefix-string))))
 
-(defmethod translate-to-yices2* ((expr binding-expr) bindings);(break)
-  (let ((new-expr (if (quant-expr? expr)
-		      (lift-predicates-in-quantifier expr (list *integer* *real*))
-		    expr)))
-    (with-slots ((expr-bindings bindings) expression) new-expr
-      (let ((*bindings* (append expr-bindings *bindings*))
-	    (stype (find-supertype (type (car expr-bindings)))));(when bindings (break "bindings"))
-	(multiple-value-bind (newbindings bindstring)
-		(translate-yices2-bindings  expr-bindings bindings "")
-	      (let ((yexpression (translate-to-yices2* expression newbindings)))
-		(cond ((lambda-expr? expr)
-		       (format nil "(lambda (~a) ~a)" bindstring yexpression))
-		      ((forall-expr? expr)
-		       (format nil "(forall (~a) ~a)"
-			       bindstring yexpression))
-		      ((exists-expr? expr)
-		       (format nil "(exists (~a) ~a)"
-			       bindstring yexpression)))))))))
+(defmethod translate-to-yices2* ((expr binding-expr) bindings)
+  (let* ((expr-freevars (freevars expr))
+	 (ytypes-freevars (loop for fv in expr-freevars
+				collect (translate-to-yices2 (type fv) bindings)))
+	 (yices-freevars (translate-to-yices2* expr-freevars bindings))
+	 (type (type expr))
+	 (ytype (translate-to-yices2* type bindings))
+	 (yqop (gentemp "yqop"))
+	 (ysig (if expr-freevars
+		   (format nil "(-> ~{ ~a~} ~a)" ytypes-freevars ytype)
+		 ytype))
+	 (yexpr (if expr-freevars
+		    (format nil "(~a ~{ ~a~})" yqop yices-freevars)
+		  yqop))
+	 (opdefn (format nil "(define ~a::~a)" yqop ysig)))
+    (push opdefn *y2defns*)
+    yexpr))
+
+;;Old translate-to-yices2(binding-expr) saved here for using Yices2 with quantifiers,
+;;For now, quantified expressions are replaced with uninterpreted function symbols applied to freevars.
+;; (defmethod translate-to-yices2* ((expr binding-expr) bindings);(break)
+;;   (let ((new-expr (if (quant-expr? expr)
+;; 		      (lift-predicates-in-quantifier expr (list *integer* *real*))
+;; 		    expr)))
+;;     (with-slots ((expr-bindings bindings) expression) new-expr
+;;       (let ((*bindings* (append expr-bindings *bindings*))
+;; 	    (stype (find-supertype (type (car expr-bindings)))));(when bindings (break "bindings"))
+;; 	(multiple-value-bind (newbindings bindstring)
+;; 		(translate-yices2-bindings  expr-bindings bindings "")
+;; 	      (let ((yexpression (translate-to-yices2* expression newbindings)))
+;; 		(cond ((lambda-expr? expr)
+;; 		       (format nil "(lambda (~a) ~a)" bindstring yexpression))
+;; 		      ((forall-expr? expr)
+;; 		       (format nil "(forall (~a) ~a)"
+;; 			       bindstring yexpression))
+;; 		      ((exists-expr? expr)
+;; 		       (format nil "(exists (~a) ~a)"
+;; 			       bindstring yexpression)))))))))
 
   ;; (let ((entry (gethash expr *y2name-hash*)))
   ;;   (or entry 
