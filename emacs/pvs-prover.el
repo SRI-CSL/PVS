@@ -1087,13 +1087,17 @@ declarations will not be installed."
 	   (delete-initial-blank-lines)
 	   (add-final-newline)
 	   (write-region (point-min) (point-max) pvs-tmp-file nil))
-	 (pvs-send
-	  (format "(typecheck-add-declaration \"%s\" t)" pvs-tmp-file)))
+	 (let ((ret (pvs-send-and-wait
+		     (format "(typecheck-add-declaration \"%s\" t)" pvs-tmp-file)
+		     nil nil 'list)))
+	   (when (and ret (consp ret))
+	     (let ((file (car ret))
+		   (place (cadr ret)))
+	       (add-declaration-to-file file place)))))
 	(t (error "No declaration is currently being edited"))))
 
-(defun add-declaration-to-file (file placestr)
-  (let* ((place (car (read-from-string placestr)))
-	 (decls (with-current-buffer "Add Declaration"
+(defun add-declaration-to-file (file place)
+  (let* ((decls (with-current-buffer "Add Declaration"
 		  (goto-char (point-max))
 		  (delete-blank-lines)
 		  (substring (buffer-string) 0 -1))))
