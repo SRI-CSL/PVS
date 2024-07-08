@@ -42,7 +42,7 @@
 	(lisp-mode)))))
 
 (defun pvs-find-lisp-file (theoryref)
-  (let ((theoryname (car (last (string-split ?# theoryref)))))
+  (let ((theoryname (car (last (string-split theoryref "#")))))
     (let ((buf (get-buffer (format "%s.lisp" theoryname))))
       (when buf
 	(kill-buffer buf)))

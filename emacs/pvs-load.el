@@ -76,10 +76,6 @@
 (defvar-local pvs-prelude nil)
 (defvar-local pvs-buffer-kind nil)
 
-;; (let ((package-user-dir (concat pvs-path "/emacs/elpa")))
-;;   (package-install "promise")
-;;   (package-install "websocket"))
-
 (load "ilisp" nil noninteractive)
 (load "pvs-ilisp" nil noninteractive)
 (load "pvs-mode" nil noninteractive)
@@ -128,7 +124,7 @@
 			    (if (= (aref dir (1- (length dir))) ?/)
 				(substring dir 0 (1- (length dir)))
 				dir))
-		  (string-split ?: (pvs-getenv "PVS_LIBRARY_PATH")))))
+		  (string-split (pvs-getenv "PVS_LIBRARY_PATH") ":"))))
       (setq pvs-library-path dirs)
       (setq load-path
 	    (cons (car load-path) (append dirs (cdr load-path))))))

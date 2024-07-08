@@ -128,7 +128,7 @@
 
 (defun pvs-parse-version-numbers (vnum)
   (mapcar (function string-to-number)
-	  (string-split ?. vnum)))
+	  (string-split vnum "\\.")))
 
 (defun ensure-pvs-wish ()
   "Make sure an inferior wish is running for PVS."

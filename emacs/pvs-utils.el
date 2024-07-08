@@ -52,6 +52,15 @@
 (declare-function save-some-pvs-files "pvs-cmds")
 (declare-function pvs-send-and-wait "pvs-ilisp")
 
+(declare-function ilisp-value "ilisp/ilisp-val")
+(declare-function ilisp-process "ilisp/ilisp-prc")
+(declare-function ilisp-send "ilisp/ilisp-snd")
+(declare-function ilisp-switch-to-lisp "ilisp/ilisp-out")
+(declare-function comint-remove-whitespace "ilisp/comint-ipc")
+(declare-function comint-send "ilisp/comint-ipc")
+
+
+
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
 (defvar pvs-path) ; Set in pvs-go.el
@@ -656,7 +665,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (kill-buffer buff))))
 
 (defun get-theory-buffer (theoryref)
-  (let* ((theoryname (car (last (string-split ?# theoryref))))
+  (let* ((theoryname (car (last (string-split theoryref "#"))))
 	 (filoc (cdr (assoc theoryname (pvs-collect-theories))))
 	 (filename (car filoc))
 	 (place (cadr filoc)))
@@ -747,28 +756,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(file-attributes* (car attr))
 	attr)))
 
-(defun string-split (ch string)
-  (let ((chars nil)
-	(strings nil)
-	(pos 0))
-    (while (< pos (length string))
-      (let ((nch (aref string pos)))
-	(if (= nch ch)
-	    (let ((nstr (apply (function concat)
-			       (mapcar (function char-to-string)
-				       (nreverse chars)))))
-	      (setq strings (cons nstr strings))
-	      (setq chars nil))
-	    (setq chars (cons nch chars))))
-      (setq pos (1+ pos)))
-    (let ((nstr (apply (function concat)
-		       (mapcar (function char-to-string)
-			       (nreverse chars)))))
-      (nreverse (cons nstr strings)))))
-
 (defun short-file-name (file)
   (if (file-exists-p file)
-      (let* ((dirnames (string-split ?/ file))
+      (let* ((dirnames (string-split file "/"))
 	     (shortname file)
 	     (lname file)
 	     (hname file))
@@ -1603,7 +1593,7 @@ Point will be on the offending delimiter."
 
 (defun directory-writable-p (dirname)
   (let* ((edir (expand-file-name dirname))
-	 (dirnames (reverse (string-split ?/ edir)))
+	 (dirnames (reverse (string-split edir "/")))
 	 (dname edir))
     (while dirnames
       (if (file-exists-p dname)
@@ -1623,32 +1613,6 @@ Point will be on the offending delimiter."
 
 (defun real-current-column ()
   (- (point) (save-excursion (beginning-of-line) (point))))
-
-
-;;; The following doesn't work - after invoking the real debugger (with
-;;; ad-do-it), the code following isn't executed until the debugger is
-;;; exited, at which point the *Backtrace* buffer is gone.
-
-;(defadvice debug (around noninteractive-debug activate)
-;  ad-do-it
-;  (save-excursion
-;    (set-buffer "*Backtrace*")
-;    (print (buffer-string))))
-
-;(defadvice yes-or-no-p (around noninteractive activate)
-;  (if noninteractive
-;      (setq ad-return-value t)
-;      ad-do-it))
-;
-;(defadvice y-or-n-p (around noninteractive activate)
-;  (if noninteractive
-;      (setq ad-return-value t)
-;      ad-do-it))
-
-;;; Not all is lost, however.  To gain information when the debugger is
-;;; entered while in batch mode, type the following right after the
-;;; Entering debugger message:
-;;;  e (progn (set-buffer "*Backtrace*") (buffer-string))
 
 
 ;; NB - log file is deliberately in default-directory rather than the
@@ -2091,13 +2055,10 @@ existence and time differences to be whitespace")
 ;;       (message "PVS not running - context not saved"))
 ;;   (message "PVS Exited"))
 
-;; (defadvice comint-log (around pvs-batch-control activate)
-;;   (message "comint-log %s" (ad-get-arg 1))
-;;   ad-do-it)
 )
 
 (defun trailing-components (directory num)
-  (let ((comps (nreverse (string-split ?/ directory)))
+  (let ((comps (nreverse (string-split directory "/")))
 	(sdir "")
 	(n 0))
     (while (and (< n num) comps)
