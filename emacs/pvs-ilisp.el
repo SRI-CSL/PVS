@@ -942,6 +942,7 @@ window."
 
 
 (defun parse-pvs-message (output &optional result)
+  ;; Return the list of strings separated by &'s in the output
   (let ((pos (string-match "[^\\\\]&" output)))
     (if pos
 	(parse-pvs-message (substring output (+ pos 2))
