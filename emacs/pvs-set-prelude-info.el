@@ -55,10 +55,12 @@
     (insert ";; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;;; Generated from pvs-set-prelude-info.el - do not edit
 
+(defvar pvs-path)
+
 (defvar prelude-files-and-regions
   (mapcar
       #'(lambda (x)
-	 (cons (format \"./lib/%s\" (car x)) (cdr x)))
+	 (cons (format \"%s/lib/%s\" pvs-path (car x)) (cdr x)))
     '")
     (insert (format "%S" files-and-regions))
     (insert "))")
