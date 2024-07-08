@@ -1164,6 +1164,7 @@ generated")
 					tdom)))
 	     (dep-name (make-variable-expr dtype))
 	     (*bound-variables* (cons dtype *bound-variables*))
+	     (*generate-tccs* 'none)
 	     (subst-range (substit range
 			    (if (dep-binding? domain)
 				(pairlis
