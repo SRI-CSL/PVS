@@ -23,7 +23,7 @@
 
 (require 'cl-lib)
 
-(message "PVS: byte compilation starting")
+;;(message "PVS: byte compilation for Emacs %s" emacs-version)
 
 ; compile in the current directory
 (setq load-path (cons "." (cons "ilisp" load-path)))
@@ -34,7 +34,72 @@
 ; For debugging
 ;(setq byte-compile-generate-call-tree t)
 
-;; First compile and load ilisp files
+(defun pvs-compile (filename)
+  (let ((elisp-file (format "%s.el" filename))
+	;;(call-file (format "%s.call" filename))
+	)
+    (byte-compile-file elisp-file)))
+
+;    (when (get-buffer "*Call-Tree*")
+;      (save-excursion
+;	(set-buffer "*Call-Tree*")
+;	(write-file call-file nil)))))
+
+(let ((pvsfiles '(pvs-macros
+		  pvs-utils
+		  pvs-ltx
+		  pvs-load
+		  pvs-abbreviations
+		  pvs-browser
+		  pvs-cmds
+		  pvs-eval
+		  pvs-file-list
+		  pvs-ilisp
+		  pvs-menu
+		  pvs-mode
+		  pvs-print
+		  pvs-prover-helps
+		  pvs-prover-manip
+		  manip-debug-utils
+		  pvs-prover
+		  pvs-proofstate
+		  pvs-tcl
+		  pvs-utils
+		  pvs-view
+		  pvs-pvsio
+		  newcomment
+		  ;; tcl
+		  prooflite
+		  
+		  pvs-byte-compile
+		  pvs-prelude-files-and-regions
+		  pvs-set-prelude-info
+		  )))
+  (mapc #'(lambda (a) (pvs-compile a))
+    pvsfiles))
+
+(message "PVS: byte compilation done")
+
+
+;;; the rest of this is modified from ilisp-mak.el
+
+(load "ilcompat.el")		; Need to load this beforehand
+				; to use the +ilisp-emacs-version-id+
+				; constant.
+
+(message ";;; ILISP Compilation for Emacs Version %s" +ilisp-emacs-version-id+)
+
+;; Compile compatibility files
+(cond ((memq +ilisp-emacs-version-id+ '(xemacs-19 xemacs-20))
+       (byte-compile-file "ilisp/ilxemacs.el"))
+      ((eq +ilisp-emacs-version-id+ 'fsf-19)
+       (byte-compile-file "ilisp/ilfsf19.el"))
+      ((eq +ilisp-emacs-version-id+ 'fsf-20)
+       (byte-compile-file "ilisp/ilfsf20.el"))
+      (t (error "ILISP Compilation: unrecogninized Emacs version %s"
+		+ilisp-emacs-version-id+)))
+
+;; Other files in the distribution.
 
 (let ((files '(ilcompat
 	       completer
@@ -83,79 +148,10 @@
 	       )))
       (while files
 	(byte-compile-file (format "ilisp/%s.el" (car files)))
-	(load (format "ilisp/%s" (car files)))
+	;; (load (format "ilisp/%s" (car files)))
 	(setq files (cdr files))))
 
-(defun pvs-compile (filename)
-  (let ((elisp-file (format "%s.el" filename))
-	;; (call-file (format "%s.call" filename))
-	)
-    (byte-compile-file elisp-file)))
-
-;    (when (get-buffer "*Call-Tree*")
-;      (save-excursion
-;	(set-buffer "*Call-Tree*")
-;	(write-file call-file nil)))))
-
-(let ((pvsfiles '(pvs-macros
-		  ;; pvs-utils
-		  pvs-ltx
-		  pvs-load
-		  pvs-abbreviations
-		  pvs-browser
-		  pvs-cmds
-		  pvs-eval
-		  pvs-file-list
-		  pvs-ilisp
-		  pvs-menu
-		  pvs-mode
-		  pvs-print
-		  pvs-prover-helps
-		  pvs-prover-manip
-		  manip-debug-utils
-		  pvs-prover
-		  pvs-proofstate
-		  pvs-tcl
-		  pvs-utils
-		  pvs-view
-		  pvs-pvsio
-		  newcomment
-		  ;; tcl
-		  prooflite
-		  
-		  pvs-byte-compile
-		  pvs-prelude-files-and-regions
-		  pvs-set-prelude-info
-		  )))
-  (mapc #'(lambda (a) (pvs-compile a))
-    pvsfiles))
-
-(message "PVS: byte compilation done")
-
-
-;;; the rest of this is modified from ilisp-mak.el
-
-(load "ilcompat.el")		; Need to load this beforehand
-				; to use the +ilisp-emacs-version-id+
-				; constant.
-
-(message ";;; ILISP Compilation for Emacs Version %s" +ilisp-emacs-version-id+)
-
-;; Compile compatibility files
-(cond ((memq +ilisp-emacs-version-id+ '(xemacs-20))
-       (byte-compile-file "ilisp/ilxemacs.el"))
-      ((eq +ilisp-emacs-version-id+ 'fsf-19)
-       (error "Emacs 19 no longer supported"))
-      ((eq +ilisp-emacs-version-id+ 'fsf-20)
-       (byte-compile-file "ilisp/ilfsf20.el"))
-      (t (error "ILISP Compilation: unrecogninized Emacs version %s"
-		+ilisp-emacs-version-id+)))
-
-(when (get-buffer byte-compile-log-buffer)
-  (with-current-buffer byte-compile-log-buffer
-    (princ (buffer-string))))
-
-(message "ILISP: byte compilation Done")
+;; (message "ILISP: byte compilation Done")
 
 ;;; end of file -- pvs-byte-compile.el --
 
