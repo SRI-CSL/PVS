@@ -435,9 +435,9 @@
 
 (defmethod tc-eq* ((e1 projection-application) (e2 projection-application)
 		   bindings)
-  (or (eq e1 e2)
-      (with-slots ((id1 index) (arg1 argument) (ty1 type)) e1
-	(with-slots ((id2 index) (arg2 argument) (ty2 type)) e2
+  (with-slots ((id1 index) (arg1 argument) (ty1 type)) e1
+    (with-slots ((id2 index) (arg2 argument) (ty2 type)) e2
+      (or (eq e1 e2)
 	  (assert (and id1 id2))
 	  (and (= id1 id2)
 	       (tc-eq* ty1 ty2 bindings)
@@ -1081,10 +1081,11 @@
 			 (or (null (library mi1))
 			     (null (library mi2))
 			     (eq (library mi1) (library mi2)))
-			 (let ((act1 ;(unless (eq (module decl1) (current-theory)) (actuals mi1))
-				(actuals mi1))
-			       (act2 ;(unless (eq (module decl2) (current-theory)) (actuals mi2))
-				(actuals mi2)))
+			 ;; Ignore actuals for the current theory
+			 (let ((act1 (unless (eq (module decl1) (current-theory))
+				       (actuals mi1)))
+			       (act2 (unless (eq (module decl2) (current-theory))
+				       (actuals mi2))))
 			   (tc-eq* act1 act2 bindings))
 			 (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
 			 (tc-eq* (mappings mi1) (mappings mi2) bindings))
