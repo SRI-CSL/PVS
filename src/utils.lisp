@@ -117,6 +117,14 @@ is replaced with replacement."
     (setq *workspace-session* (get-workspace-session *default-pathname-defaults*)))
   (pvs-context *workspace-session*))
 
+(defmethod pvs-context :around ((ws workspace-session))
+  (let ((ctx-file (merge-pathnames ".pvscontext" (path ws))))
+    (when (and (file-exists-p ctx-file)
+	       (pvs-context-date ws)
+	       (< (pvs-context-date ws) (file-write-date ctx-file)))
+      (setf (pvs-context ws) (read-context-file ctx-file))))
+  (call-next-method))
+
 (defsetf current-pvs-context () (pvsctx)
   `(setf (pvs-context *workspace-session*) ,pvsctx))
 
