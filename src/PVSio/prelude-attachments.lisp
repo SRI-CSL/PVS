@@ -49,11 +49,6 @@
       (condition)
       (val condition))))
 
-(defattach |format| (s e)
-   "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
-     (apply #'format (cons nil (cons s (formatargs e the-type))))))
-
 (defattach |to_lisp| (pvs)
   "Translates PVS object to Lisp"
   pvs)
@@ -73,20 +68,6 @@
   "Returns the string value of the type of E"
   (let* ((the-domain (domain (domain the-pvs-type_))))
     (format nil "~a" (or (print-type the-domain) the-domain))))
-
-(defattach |str2pvs| (s)
-  "Translates string S to PVS format"
-  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
-
-(defattach |pvs2str_lisp| (e)
-  "Translates PVS expresion E to a string"
-  (let ((the-domain (domain the-pvs-type_)))
-    (handler-case 
-	(str (cl2pvs e (pc-typecheck the-domain)))
-      (pvseval-error
-       (condition)
-       (throw-pvsio-exc "CantTranslateBack"
-			(format nil "~a" condition))))))
 
 )))
 
@@ -213,6 +194,11 @@ is replaced with replacement."
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
+(defattach |format_lisp| (s e)
+   "Formats expression E using Common Lisp format string S"
+   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
+     (apply #'format (cons nil (cons s (formatargs e the-type))))))
+
 (defattach |rat2decstr_with_zeros| (r precision rounding zeros)
   "Converts rational number to string decimal representation using given precision, i.e., natural number n
 denoting 10^(-n), and rounding mode, i.e, TowardsZero, TowardsInfnty, TowardsNegInfnty, TowardsPosInfnty.
@@ -298,6 +284,20 @@ non-repeating digits. Truncated indicates that the infinite representation was t
   (let ((the-type1 (pc-typecheck (pc-parse t1 'type-expr)))
 	(the-type2 (pc-typecheck (pc-parse t2 'type-expr))))
     (subtype-of? the-type1 the-type2)))
+
+(defattach |str2pvs| (s)
+  "Translates string S to PVS format"
+  (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
+
+(defattach |pvs2str_lisp| (e)
+  "Translates PVS expresion E to a string"
+  (let ((the-domain (domain the-pvs-type_)))
+    (handler-case 
+	(str (cl2pvs e (pc-typecheck the-domain)))
+      (pvseval-error
+       (condition)
+       (throw-pvsio-exc "CantTranslateBack"
+			(format nil "~a" condition))))))
 
 )))
 
