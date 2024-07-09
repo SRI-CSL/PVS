@@ -289,6 +289,7 @@
   (with-pvs-file (fname) filename
     (let ((theories (get-context-theory-names fname))
 	  (*disable-gc-printout* t))
+      (break "status-proof-pvs-file")
       (if theories
 	  (pvs-buffer "PVS Status"
 	    (with-output-to-string (*standard-output*)
