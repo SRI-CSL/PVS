@@ -110,12 +110,7 @@ always t from there."
 		(setf (pvs-context-changed *workspace-session*) t))))
 	  ;; We've made all the changes, clear out the info as it isn't valid anymore.
 	  (setq *add-declaration-info* nil)
-	  (when *to-emacs*
-	    (let* ((*print-pretty* nil)
-		   (*output-to-emacs*
-		    (format nil ":pvs-addecl ~a&~a :end-pvs-addecl"
-		      fileref declplace)))
-	      (to-emacs))))))))
+	  (list fileref declplace))))))
 
 (defun add-new-decls-to-contexts (pdecl odecl new-decls theory cur-ctx)
   ;; First add to the contexts of the local theory - must update the
