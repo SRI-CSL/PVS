@@ -1013,7 +1013,7 @@ are all the same."
 		  (setq *default-decision-procedure*
 			(or (when (listp (caddr context))
 			      (getf (caddr context) :default-decision-procedure))
-			    'shostak))
+			    '|shostak|))
 		  (dolist (ce (cdddr context))
 		    (unless (listp (ce-object-date ce))
 		      (setf (ce-object-date ce) nil)))
