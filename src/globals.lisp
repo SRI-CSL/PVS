@@ -188,7 +188,7 @@ These are not associated with a workspace, and usually done through
 
 ;;; This timeout is used when running typecheck-prove
 ;;; the proof is not a tcc strategy
-(defvar *tcp-timeout* 120)
+(defvar *tcp-timeout* 300)
 
 ;;; This timeout is used when proving a TCC using the default TCC strategies
 ;;; as these can lead to infinite loops. Note that this has no effect on
