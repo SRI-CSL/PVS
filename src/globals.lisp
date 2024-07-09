@@ -186,14 +186,15 @@ These are not associated with a workspace, and usually done through
 ;; which in turn comes from the -timeout arg
 (defvar *noninteractive-timeout* nil)
 
+;;; This timeout is used when running typecheck-prove
+;;; the proof is not a tcc strategy
+(defvar *tcp-timeout* 120)
+
 ;;; This timeout is used when proving a TCC using the default TCC strategies
 ;;; as these can lead to infinite loops. Note that this has no effect on
 ;;; TCCs with proofs other than the default TCC strategies (e.g., tcc,
 ;;; subtype-tcc, etc.)
 (defvar *tcc-timeout* 30)
-
-;; Doesn't seem to be set anywhere, but used in eproofcheck.lisp
-(defvar *proof-timeout* nil)
 
 (defvar *use-rationals* nil)
 
@@ -561,7 +562,6 @@ Needed to generate the same dummy name for record literals.")
 (defvar *quietmodulesave* 'no)
 (defvar *autoimport* 'yes)
 (defvar *autotypecheck* 'yes)
-;(defvar *tctimeout* 1)
 (defvar *tcc-messages* 'no)
 (defvar *ppcase* nil
   "Indicates the prefered prettyprinting for PVS terms.
@@ -583,7 +583,6 @@ Allowed values are:
 ;(defvar *printerpmult* 'normal)
 ;(defvar *printerpdivide* 'no)
 ;(defvar *prhalt* 'error)
-;(defvar *prtimeout* 60)
 ;(defvar *prtrace* 'mixed)
 ;(defvar *prtried* 'ask)
 ;(defvar *prmode* 'checking)

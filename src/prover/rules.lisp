@@ -352,15 +352,9 @@ See also HIDE, REVEAL"
 		   (init-time (get-internal-run-time))
 		   (result (let ((*in-apply* ps))
 			     (if timeout
-				 #-sbcl
-				 (mp:with-timeout (timeout nil)
-						  (prove* newps)
-						  newps)
-				 #+sbcl
-				 (sb-ext:with-timeout timeout
-				   (handler-case
-				     (progn (prove* newps) newps)
-				     (sb-ext:timeout () nil)))
+				 (with-timeout (timeout nil)
+				   (prove* newps)
+				   newps)
 				 (prove* newps))))
 		   (end-time (/ (- (get-internal-run-time) init-time)
 				internal-time-units-per-second)))
@@ -368,8 +362,7 @@ See also HIDE, REVEAL"
 		       (null result))
 		  (let ((*suppress-printing* nil))
 		    (clear-strategy-errors)
-		    (format-if "~%Apply timed out in ~a seconds: treated as skip"
-			       *tcc-timeout*)
+		    (format-if "~%Apply timed out in ~a seconds: treated as skip" timeout)
 		    (values 'X nil nil))
 		  (let* ((subgoals (collect-subgoals newps))
 			 (justif (collect-justification newps))

@@ -53,7 +53,6 @@
 ;;; Called from pvs-send* in Emacs.  Name comes from ilisp's "ilisp-errors",
 ;;; which is their interface to Emacs.
 
-#-(or akcl harlequin-common-lisp)
 (defmacro pvs-errors (form)
   "Handle PVS errors when evaluating form"
   `(progn
@@ -62,20 +61,12 @@
 	 (let ((*to-emacs* t))
 	   (setq *print-length* nil)
 	   (setq *print-level* nil)
-	   (if (and #-(or multiprocessing mp) nil
-		    *noninteractive*
+	   (if (and *noninteractive*
 		    *noninteractive-timeout*
 		    ,(not (and (listp form)
 			       (memq (car form) *prover-invoking-commands*))))
-	       #-(or multiprocessing mp sbcl) nil
-	       #+(or multiprocessing mp)
-	       (mp:with-timeout (*noninteractive-timeout*
-				 (format t "Timed out!"))
-		   ,form)
-	       #+sbcl
-	       (sb-ext:with-timeout *noninteractive-timeout*
-		 (handler-case ,form
-		   (sb-ext:timeout () (format t "Timed out!"))))
+	       (with-timeout (*noninteractive-timeout* (format t "Timed out!"))
+		 ,form)
 	       ,form))
        (pvs-error (err)
 	 (let* ((*print-pretty* nil)

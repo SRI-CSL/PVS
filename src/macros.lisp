@@ -782,3 +782,14 @@ obj may be of type:
 	
 (defmacro cam (form)
   `(compute-applicable-methods (function ,(car form)) (list ,@(cdr form))))
+
+;;; Essentially the same as Allegro mp:with-timeout
+(defmacro with-timeout ((seconds &body timeout-body) &body body)
+  #+allegro
+  `(mp:with-timeout (,seconds ,@timeout-body)
+      ,@body)
+  #+sbcl
+  `(sb-ext:with-timeout ,seconds
+     (handler-case
+	 (progn ,@body)
+       (sb-ext:timeout () ,@timeout-body))))
