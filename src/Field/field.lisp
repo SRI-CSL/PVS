@@ -618,16 +618,15 @@ current branch using the proof command AUTO-STEP."
     (if rel
 	(with-fresh-labels
 	 ((!cf fn))
-	 (try (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
-	      (let ((form (extra-get-formula !cf))
-		    (l1   (get-mults-monom nil (args1 form)))
-		    (l2   (get-mults-monom nil (args2 form)))
-		    (l    (inter-polynom l1 l2 nil))
-		    (cb   (normal-mult l)))
-		(if cb
-		    (cancel-by !cf cb :tcc-step tcc-step)
-		  (finalize (grind-reals :dontdistrib !cf))))
-	      (finalize (grind-reals :dontdistrib !cf))))
+	 (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
+	 (let ((form (extra-get-formula !cf))
+	       (l1   (get-mults-monom nil (args1 form)))
+	       (l2   (get-mults-monom nil (args2 form)))
+	       (l    (inter-polynom l1 l2 nil))
+	       (cb   (normal-mult l)))
+	   (if cb
+	       (cancel-by !cf cb :tcc-step tcc-step)
+	     (finalize (grind-reals :dontdistrib !cf)))))
       (printf "No arithmetic relational formula in ~a" fnum)))
   "[Field] Factorizes common terms in FNUM and then cancels them.
 TCCs generated during the execution of the command are discharged 

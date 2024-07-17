@@ -52,13 +52,6 @@ BEGIN
   for(si:void,b:bool,sinc,s:void): MACRO void =
     si & while(b,s & sinc)
 
-%% Formatting text
-  format[T:TYPE](s:string,t:T):string
-
-%% Assert
-  assert(b:bool,str:string):void =
-    try(b,error[void](format("PVSio Assertion Failure: ~a",str)) & fail)
-
 %% Used for untyped lisp attachments
   Lisp_ : TYPE+  
 
@@ -86,16 +79,6 @@ BEGIN
   %% Return string representing the type of t (t may be an uninterpreted constant)
   typeof[T:TYPE](t:T) : MACRO string =
     type_of_domain_lisp[T](dummy_fun)
-
-  %% Returns a PVS object represented by a string
-  str2pvs[T:TYPE+](s:string):T 
-
-  %% Returns string representing a PVS object
-  pvs2str_lisp[T:TYPE](t:T) : string
-
-  %% May throw exception CantTranslateBack 
-  pvs2str[T:TYPE](t:T) : MACRO string =
-    pvs2str_lisp[T](t)
 
 END stdpvs
 
@@ -431,6 +414,13 @@ BEGIN
   %% Split str using separator
   strsplit(str: string, separator: StringChar): list[string]
 
+  %% Formatting text
+  format_lisp[T:TYPE](s:string,t:T):string
+
+  format[T:TYPE](s:string,t:T): MACRO string =
+    with_mutable(PP_RATIONALS,false,
+      format_lisp[T](s,t))
+ 
   %% Converts real number to string decimal representation using given precision, i.e., natural
   %% number n denoting 10^(-n), rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
   %% TowardsPosInfnty. Displays trailing zeros when zeros is set to TRUE
@@ -580,6 +570,17 @@ BEGIN
   %% Uses subtype judgements, but otherwise it's essentially syntactic
   subtypeof?(T1,T2:string) : bool
 
+  %% Returns a PVS object represented by a string
+  str2pvs[T:TYPE+](s:string):T 
+
+  %% Returns string representing a PVS object
+  pvs2str_lisp[T:TYPE](t:T) : string
+
+  %% May throw exception CantTranslateBack 
+  pvs2str[T:TYPE](t:T) : MACRO string =
+    with_mutable(PP_RATIONALS,false,
+      pvs2str_lisp[T](t))
+
  END stdstr
 
 %% stdio.pvs
@@ -587,6 +588,10 @@ BEGIN
 
 stdio : THEORY
 BEGIN
+
+%% Assert
+  assert(b:bool,str:string):void =
+    try(b,error[void](format("PVSio Assertion Failure: ~a",str)) & fail)
 
 %% Print, Println 
 
