@@ -72,7 +72,7 @@
 
 
 (defmethod cl2pvs* (sexpr (type funtype) context)
-  (declare (ignore context))(when (pvs-outer-array-p sexpr) (break "cl2pvs*(outer-array)"))
+  (declare (ignore context));(when (pvs-outer-array-p sexpr) (break "cl2pvs*(outer-array)"))
   (let* ((ub (simple-below? (domtype type)))
 	 (ubnum (when (number-expr? ub) (number ub))))
     (if (and ubnum
@@ -98,7 +98,7 @@
 							   nvar sexpr (range type)
 							   (when (dep-binding? (domain type))
 							     (domain type))
-							   0 nil))) (break "cl2pvs*(funtype)")
+							   0 nil))) ;(break "cl2pvs*(funtype)")
 							   (tc-expr (format nil "LAMBDA (~a: ~a): COND ~{~a~^, ~} ENDCOND"
 									    nvar (domtype type) conds)))))
 	      (error 'cl2pvs-error :sexpr sexpr :type type))))))
