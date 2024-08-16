@@ -35,7 +35,14 @@
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
 %  Strategy debugging (experts only): skip-steps, show-debug-mode, toggle-debug-mode")
 
-(defparameter *extrategies-version* "Extrategies-7.1.0 (11/05/20)")
+(defparameter *extrategies-version* "Extrategies-8.0 (08/15/24)")
+
+(defparameter *extrategies-debug* nil)
+
+(defun print-extra-debug (msg)
+  (when *extrategies-debug*
+    (format t "[*extrategies-debug*~%~a~%*extrategies-debug*]~%"
+	    msg)))
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -1292,7 +1299,7 @@ use.")
 			  for opts = (cdr b)
 			  when (when (extra-get-fnums (car opts))
 				 (enabled-option-flag ':tccs opts t))
-			  collect (let* ((tccs (format nil "*~a-tccs*" (car b)))
+			  collect (let* ((tccs (format nil "*~a-TCCS*" (car b)))
 					 (lccs (freshlabel tccs)))
 				    (list (car b) lccs (intern tccs :pvs) (list 'quote lccs)))))
 	  ;; Binds implict *var-tccs* variables to new labels
@@ -1321,7 +1328,8 @@ use.")
 			     (try ,thenstep (skip) (fail))
 			     (delete ,dlab)
 			     (touch (delabel ,nlab))
-			     (touch (delabel ,hlab :hide? t))))))
+			     (touch (delabel ,hlab :hide? t)))))
+	  (xxxx     (print-extra-debug step)))
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1459,7 +1467,8 @@ specified as in WITH-FRESH-LABELS.")
 			       (try ,thenstep (skip) (fail)))
 			(repeat (with-fresh-names-expand__$ ,vnms))
 			(delete ,lbtccs)
-			(touch (delabel ,allbs))))))
+			(touch (delabel ,allbs)))))
+	  (xxxx     (print-extra-debug step)))
       step))
   "[Extrategies] Internal strategy." "")
 
