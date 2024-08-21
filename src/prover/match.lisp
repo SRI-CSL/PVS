@@ -863,8 +863,7 @@
 	      (tc-eq (find-supertype (type lhs)) *number*)
 	      (tc-eq (find-supertype (type instance)) *number*))
 	 (if (is-addition? lhs)
-	     (if (and (number-expr? (args1 lhs))
-		      (not (zerop (number (args1 lhs)))))
+	     (if (number-expr? (args1 lhs))
 		 (let ((diff (make-assert-expr
 			      (make-difference
 			       instance (args1 lhs)
@@ -876,8 +875,7 @@
 		       (match* (args2 lhs) diff
 			      bind-alist subst)
 		       'fail))
-		 (if (and (number-expr? (args2 lhs))
-			  (not (zerop (number (args2 lhs)))))
+		 (if (number-expr? (args2 lhs))
 		     (let ((diff (make-assert-expr
 				  (make-difference instance (args2 lhs)
 						   (type (args1 lhs))))))
@@ -886,8 +884,7 @@
 			   'fail))
 		     'fail))
 	     (if (is-subtraction? lhs)
-		 (if (and (number-expr? (args2 lhs))
-			  (not (zerop (number (args2 lhs)))))
+		 (if (number-expr? (args2 lhs))
 		     (let ((sum (make-assert-expr
 				 (make-sum (list instance (args2 lhs))
 					   (type (args1 lhs))))))
