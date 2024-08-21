@@ -76,6 +76,10 @@
 (defvar *proving-tcc* nil)
 (defvar *assert-typepreds-off* nil)
 (defvar *assert-typepreds* nil)
+(defvar *auto-rewrite-stack* nil)
+(defvar *tracing-rewrites* nil
+  "Set to t to trace auto rewrites as they are attempted; as opposed to those that
+are accepted, which is what track-rewrites does")
 (defvar *auto-rewrite-tccs-seen* nil
   "To control auto-rewrite looping, generating the same TCC over and over")
 (defvar *prover-indent* 0)

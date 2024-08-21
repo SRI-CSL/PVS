@@ -250,7 +250,8 @@ subgoal is proved)."
 	    (t expr))))
 
 (defun assert-sform (sform &optional rewrite-flag simplifiable?)
-  (let ((*assert-typepreds* nil)
+  (let ((*auto-rewrite-stack* nil)
+	(*assert-typepreds* nil)
 	(*auto-rewrite-depth* 0)
 	(*use-rationals* t))
     (multiple-value-bind (signal asform)
@@ -3181,7 +3182,7 @@ subgoal is proved)."
   (id (declaration res)))
 
 (defun auto-rewrite* (expr oldsig hashentry &optional op*)
-    ;;hashentry is a list of rewrite rules for op*
+  ;;hashentry is a list of rewrite rules for op*
   (if (null hashentry)
       (values oldsig expr)
       (let* ((hashentry1 (car hashentry)) ;;get first rewrite rule
@@ -3189,7 +3190,7 @@ subgoal is proved)."
 	     (res-decl (unless (consp res) (declaration res)))
 	     ;;to handle antecedent rewrites.
 	     (mod-inst (when res-decl (module-instance res)))
-	     (modsubst (auto-rewrite-modsubst res-decl mod-inst))
+	     (modsubst1 (auto-rewrite-modsubst res-decl mod-inst))
 	     (lhs-hashentry (lhs hashentry1)))
 	(cond ((and (eq expr op*)
 		    (is-res-macro res)
@@ -3236,35 +3237,34 @@ subgoal is proved)."
 				     (or (def-decl? res-decl)
 					 (is-res-auto-rewrite-non! res))
 				     (is-res-auto-rewrite-non! res))))
-		   (multiple-value-bind (usubst modsubst)
-		       (auto-rewrite-get-substs defn expr lhs modsubst)
+		   (multiple-value-bind (usubst modsubst2)
+		       (auto-rewrite-get-substs defn expr lhs modsubst1)
 		     (let* ((psubst (if (eq usubst 'fail)
 					usubst
 					(sort-alist usubst)))
 			    (modsubst (unless (or (eq psubst 'fail)
-						  (eq modsubst t))
-					(if (every #'cdr modsubst)
+						  (eq modsubst2 t))
+					(if (every #'cdr modsubst2)
 					    (copy mod-inst
 					      'actuals
-					      (mapcar
-						  #'(lambda (x)
-						      (mk-actual (cdr x)))
-						modsubst))
+					      (mapcar #'(lambda (x)
+							  (mk-actual (cdr x)))
+						modsubst2))
 					    'fail)))
-			    (subst (if (or (eq psubst 'fail)
+			    (ssubst (if (or (eq psubst 'fail)
 					   (null modsubst)
 					   (eq modsubst 'fail))
 				       psubst
 				       (subst-mod-params-substlist
 					psubst modsubst (module res-decl))))
-			    (nsubst (when (consp subst)
+			    (nsubst (when (consp ssubst)
 				      (mapcan #'(lambda (p1 p2)
 						  (unless (eq (car p1) (car p2))
 						    (list (cons (car p1) (car p2)))))
-					psubst subst)))
+					psubst ssubst)))
 			    (hyp (substit (hyp hashentry1) nsubst))
 			    (hyp (unless (or (null hyp)
-					     (eq subst 'fail)
+					     (eq ssubst 'fail)
 					     (eq modsubst 'fail))
 				   (if (null modsubst)
 				       hyp
@@ -3275,12 +3275,12 @@ subgoal is proved)."
 			    ;; must be made aware of the flag settings.
 			    ;; Easier just to return *true*.
 			    (rhs (or (substit rhs nsubst) *true*))
-			    (rhs (unless (or (eq subst 'fail)
+			    (rhs (unless (or (eq ssubst 'fail)
 					      (eq modsubst 'fail))
 				    (if (null modsubst)
 					rhs
 					(subst-mod-params rhs modsubst)))))
-		       (cond ((or (eq subst 'fail) (eq modsubst 'fail))
+		       (cond ((or (eq ssubst 'fail) (eq modsubst 'fail))
 			      (if lhs ;;then match must've failed.
 				  (track-rewrite-format
 				   res expr
@@ -3293,11 +3293,9 @@ subgoal is proved)."
 				  (multiple-value-bind (sigrhs newrhs)
 				      (cond ((is-res-auto-rewrite! res)
 					     (inc-rewrite-depth res)
-					     (flag-assert-if (substit rhs subst)))
+					     (flag-assert-if (substit rhs ssubst)))
 					    (t (top-lazy-assert-if-with-subst
-						rhs subst
-						if-flag
-						res)))
+						rhs ssubst if-flag res)))
 				    (decf *auto-rewrite-depth*)	;;NSH(5.26.95)
 				    (cond ((and if-flag (eq sigrhs 'X))
 					   ;;then ignore current rewrite.
@@ -3332,7 +3330,7 @@ subgoal is proved)."
 				      (multiple-value-bind (subst tccforms)
 					  (let* ((*tccforms* nil)
 						 (*keep-unbound* *bound-variables*)
-						 (tsubst (tc-alist subst nil 'top)))
+						 (tsubst (tc-alist ssubst nil 'top)))
 					    (values tsubst *tccforms*))
 					(when (modname? modsubst) ;;NSH(2.8.97)
 					  ;;ensure generation of assumption TCCS
@@ -3469,10 +3467,37 @@ subgoal is proved)."
 		    :test #'(lambda (u v)
 			      (eq u (declaration v)))))))
 
+
+;;; Called from auto-rewrite* in 2 places
+;;; Seems the best place to keep tracing info; basically the list of args
 (defun top-lazy-assert-if-with-subst (expr subst if-flag res)
-  (let ((*assert-flag* nil))
-    (inc-rewrite-depth res)
-    (lazy-assert-if-with-subst expr subst if-flag)))
+  "Basically calls assert-if-with-subst, which calls assert-if on the
+substituted expr. Note that this can recursively call auto-rewrite*, and
+hence top-lazy-assert-if-with-subst again, potentially with the same
+arguments, which will clearly loop.
+Hence the first thing this function does is check if the current argument
+list is already in the *auto-rewrite-stack*. If this is the case, simply
+return failure and allow auto-rewrite* to go to the next auto-rewrite
+formula.
+In addition, the user may set *tracing-rewrites* to t, in which case it
+prints a formatted form of the arguments, with spaces to indicate the depth.
+In debugging, one can also examine this stack after interrupting the prover,
+to understand loops that might not be caught by exact argument matching."
+  (let ((*assert-flag* nil)
+	(trinfo (list expr subst (and if-flag t) res)))
+    (when *tracing-rewrites*
+      (format t "~%~,,v,'-@a"
+	(1+ (length *auto-rewrite-stack*)) (id (declaration res))))
+    (cond ((member trinfo *auto-rewrite-stack* :test #'equal)
+	   (unless (or *proving-tcc* *rewrite-msg-off*)
+	     (let ((*suppress-printing* nil))
+	       (commentary "~%Skipping looping rewrite '~a':~
+                            ~%  for term ~a with subst ~a"
+			   (id (declaration res)) expr subst)))
+	   (values 'X expr)) ; treat as failure
+	  (t (let ((*auto-rewrite-stack* (cons trinfo *auto-rewrite-stack*)))
+	       (inc-rewrite-depth res)
+	       (lazy-assert-if-with-subst expr subst if-flag))))))
 
 (defun case-or-branch? (expr)
   (or (branch? expr)(cases? expr)))

@@ -107,7 +107,8 @@
 
 (defmethod simplify ((goalsequent sequent)  simplifier
 		     &key repeat sformnums)
-  (let* ((selected-s-forms (select-seq (s-forms goalsequent) sformnums))
+  (let* ((*auto-rewrite-stack* nil)
+	 (selected-s-forms (select-seq (s-forms goalsequent) sformnums))
 	 (remaining-s-forms (delete-seq (s-forms goalsequent) sformnums))
 	 (simplified-s-forms
 	  (loop for sform in selected-s-forms
@@ -131,12 +132,13 @@
 ;;;methods below do not need to deal with  signals at all.
 
 (defmethod simplify ((sform s-formula) simplifier &key repeat)
-  (mapcar #'(lambda (x)(lcopy sform
-			     'formula x))
-	  (simplify (formula sform) simplifier :repeat repeat)))
+  (let ((*auto-rewrite-stack* nil))
+    (mapcar #'(lambda (x)(lcopy sform 'formula x))
+      (simplify (formula sform) simplifier :repeat repeat))))
 
 (defmethod simplify ((formula expr) simplifier &key repeat)
-  (let ((first-simplification (funcall simplifier formula)))
+  (let* ((*auto-rewrite-stack* nil)
+	 (first-simplification (funcall simplifier formula)))
     (if (or (not repeat)  ;;no repeats or simplification unsuccessful
 	    (and (= (length first-simplification) 1)
 		 (exequal (car first-simplification) formula)))
