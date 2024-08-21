@@ -104,8 +104,10 @@
       (let ((theory (get-typechecked-theory thname)))
 	(unwind-protect
 	     (let ((*generate-tccs* 'all)
-		   (*current-context* (or (saved-context theory)
-					  (context nil)))
+		   (*current-context* (if (from-prelude? theory)
+					  *prelude-context*
+					  (or (saved-context theory)
+					      (context nil))))
 		   (*in-evaluator* t)
 		   (*pvs-eval-do-timing* t)
 		   (*destructive?* t)
