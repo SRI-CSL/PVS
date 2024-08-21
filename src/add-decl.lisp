@@ -528,7 +528,8 @@ always t from there."
   (call-next-method)
   (mapobject #'(lambda (ex)
 		 (when (and (typep ex '(and name-expr
-					    (not field-assignment-arg)))
+					(not field-assignment-arg)
+					(not binding)))
 			    (eq (declaration (resolution ex)) new))
 		   (setf (declaration (resolution ex)) old)))
 	     (definition new))
