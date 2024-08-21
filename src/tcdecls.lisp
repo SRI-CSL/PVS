@@ -183,6 +183,7 @@
 	    (set-visibility fdecl)
 	    (setf (module fdecl) (current-theory))
 	    (assert (eq (associated-decl fdecl) decl)))
+	  (set-dependent-formals (decl-formals decl))
 	  (with-added-decls (decl-formals decl)
 	    (let ((*tcc-conditions*
 		   (add-decl-formal-existence-assumptions (decl-formals decl))))
