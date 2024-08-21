@@ -211,19 +211,13 @@
 
 (defmethod prove-decl :around ((decl formula-decl) &key strategy)
   (declare (ignore strategy))
-  (if (or *proof-timeout*
-	  (and *noninteractive*
-	       *noninteractive-timeout*))
-      (let ((timeout (or *proof-timeout* *noninteractive-timeout*)))
-	#-sbcl
-	(mp:with-timeout (timeout (pvs-message "Interrupted: ~a sec timeout"
-				    timeout))
-			 (call-next-method))
-	#+sbcl
-	(sb-ext:with-timeout timeout
-	  (handler-case (call-next-method)
-	    (sb-ext:timeout ()
-	      (pvs-message "Interrupted: ~a sec timeout" timeout)))))
+  (if (and *noninteractive*
+	   *noninteractive-timeout*)
+      (with-timeout (*noninteractive-timeout*
+		     (progn
+		       (setf (proof-status decl) 'timeout)
+		       (pvs-message "Interrupted: ~a sec timeout" timeout)))
+	(call-next-method))
       (call-next-method)))
 
 
@@ -818,7 +812,7 @@
 			  input)))))))
 
 (defvar *proof-strategy-stack* nil)
-  
+
 (defmethod proofstepper ((proofstate proofstate))
 
 ;;The key part of the proofstate for the stepper is the strategy field.
@@ -3516,21 +3510,32 @@
 (defmethod nth-arg ((expr application) num)
        (nth num (arguments expr)))
 
+(defvar *show-skolem-constants* nil)
+
 (defmethod print-object ((ps proofstate) stream)
   (let* ((*ps* ps)
 	 (*print-ancestor* (if *print-ancestor*
 			       *print-ancestor*
 			       (parent-proofstate *ps*)))
 	 (*pp-print-parens* *show-parens-in-proof*))
-    (if *debugging-print-object*
-	(call-next-method)
-	(if (comment ps)
-	    (format stream "~%~a : ~%~a~%~a"
-	      (label ps)
-	      (comment ps)
-	      (current-goal ps))
-	    (format stream "~%~a :  ~%~a"  (label ps) 
-		    (current-goal ps))))))
+    (cond (*debugging-print-object*
+	   (call-next-method))
+	  (t (when *show-skolem-constants*
+	       (let ((skoconsts (collect-skolem-constants)))
+		 (when skoconsts
+		   (format stream "~%Skolem-constants:")
+		   (dolist (sc skoconsts)
+		     (let* ((decl (format nil "~a: ~a" (id sc) (type sc)))
+			    (def (when (definition sc)
+				   (unpindent (definition sc) 5 :string t))))
+		       (format stream "~%  ~a~@[ = ~a~]" decl def))))))
+	     (if (comment ps)
+		 (format stream "~%~a : ~%~a~%~a"
+		   (label ps)
+		   (comment ps)
+		   (current-goal ps))
+		 (format stream "~%~a :  ~%~a"  (label ps) 
+			 (current-goal ps)))))))
 
 (defmethod print-object ((ps tcc-proofstate) stream)
   (let* ((*ps* ps)
