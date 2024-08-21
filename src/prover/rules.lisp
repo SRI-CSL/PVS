@@ -122,7 +122,10 @@
 
 ;;The help rule
 (defun help-rule-fun (rule-name)
-  #'(lambda (ps)
+  #'(lambda (ps) (help-rule rule-name)
+      (values 'X nil nil)))
+
+(defun help-rule (rule-name)
   (cond ((string= rule-name '*)
 	 (funcall (help-rule-fun 'rules) ps)
 	 (funcall (help-rule-fun 'defined-rules) ps)
@@ -151,8 +154,7 @@
 	(t (let ((entry (prover-command-entry rule-name)))
 	     (if (null entry)
 		 (format t "~%No such rule, defined rule or strategy.~%")
-		 (format t "~%~a~%" (docstring entry))))))
-  (values 'X nil nil)))
+		 (format t "~%~a~%" (docstring entry)))))))
 
 (addrule 'help () ((name *))
   (help-rule-fun name) 
