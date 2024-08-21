@@ -5572,11 +5572,6 @@ type of the lhs."
             "May not instantiate current theory except with corresponding formals"))
         (type-error te
           "May not specify actuals for this type name")))
-;  (unless (or (same-id (module-instance te) (current-theory))
-;             (from-prelude? (get-theory (module-instance te))))
-;    (pushnew (module-instance te)
-;            (instances-used (current-theory))
-;            :test #'tc-eq))
   (when (or (actuals (module-instance te))
             (dactuals (module-instance te)))
     (setf (module-instance (resolution te))
