@@ -532,6 +532,13 @@
 	  'predicate (pseudo-normalize npred)
 	  'print-type nil))))
 
+(defmethod replace-expr* (lhs rhs (expr expr-as-type) lastopinfix?)
+  (declare (ignore lastopinfix?))
+  (let ((nexpr (replace-expr* lhs rhs (expr expr) nil)))
+    (if (eq nexpr (expr expr))
+	expr
+	(copy expr 'expr nexpr 'print-type nil))))
+
 (defmethod replace-expr* (lhs rhs (expr type-application) lastopinfix?)
   (declare (ignore lastopinfix?))
   (let ((ntype (replace-expr* lhs rhs (type expr) nil))
