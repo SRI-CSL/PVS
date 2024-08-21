@@ -108,7 +108,6 @@
 	   (setf (all-usings theory) nil)
 	   (setf (immediate-usings theory) 'unbound)
 	   (call-next-method)
-	   (setf (instances-used theory) nil)
 	   (setf (assuming-instances theory) nil)
 	   (setf (used-by theory) nil)
 	   (setf (theory theory) (remove-if #'(lambda (d)
@@ -132,7 +131,6 @@
   (setf (all-usings theory) nil)
   (setf (immediate-usings theory) 'unbound)
   ;; next-method
-  (setf (instances-used theory) nil)
   (setf (assuming-instances theory) nil)
   (setf (used-by theory) nil)
   (let ((rem-decls (cdr (memq decl (all-decls theory)))))
