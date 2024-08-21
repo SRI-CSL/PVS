@@ -118,11 +118,15 @@ is replaced with replacement."
   (pvs-context *workspace-session*))
 
 (defmethod pvs-context :around ((ws workspace-session))
-  (let ((ctx-file (merge-pathnames ".pvscontext" (path ws))))
-    (when (and (file-exists-p ctx-file)
+  (let* ((ctx-file (merge-pathnames ".pvscontext" (path ws)))
+	 (fdate (when (uiop:file-exists-p ctx-file)
+		  (file-write-date ctx-file))))
+    (when (and fdate
 	       (pvs-context-date ws)
-	       (< (pvs-context-date ws) (file-write-date ctx-file)))
-      (setf (pvs-context ws) (read-context-file ctx-file))))
+	       (< (pvs-context-date ws) fdate))
+      ;; Context was changed after being read
+      (setf (pvs-context ws) (read-context-file ctx-file))
+      (setf (pvs-context-date ws) fdate)))
   (call-next-method))
 
 (defsetf current-pvs-context () (pvsctx)
@@ -5437,6 +5441,9 @@ we can get this method using
       (if th-pos
 	  (values dir file (subseq theoryref (1+ th-pos)))
 	  (values dir nil file)))))
+
+(defmethod get-theory-ref ((theoryref symbol))
+  (get-theory-ref (string theoryref)))
 
 (defmethod get-theory-ref ((mod datatype-or-module))
   (values (context-path mod) (filename mod) (mk-modname (id mod))))
