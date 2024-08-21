@@ -289,7 +289,6 @@
   (with-pvs-file (fname) filename
     (let ((theories (get-context-theory-names fname))
 	  (*disable-gc-printout* t))
-      (break "status-proof-pvs-file")
       (if theories
 	  (pvs-buffer "PVS Status"
 	    (with-output-to-string (*standard-output*)
@@ -591,6 +590,7 @@
 	(t "untried")))
 
 (defun proof-status-symbol (decl)
+  "Returns symbol in (unchecked proved-complete proved-incomplete unfinished untried)"
   (cond ((eq (proof-status decl) 'unchecked) 'unchecked)
 	((proved? decl)
 	 (let ((complete (pc-complete decl)))
