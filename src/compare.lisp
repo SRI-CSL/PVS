@@ -46,6 +46,12 @@
 (defvar *needs-retypechecking* nil)
 (defvar *compare-selections* nil)
 
+
+;; Returns
+;;   nil - only lexical differences found
+;;   (odecl . nil)   - odecl has been removed
+;;   (nil . ndecl)   - ndecl appended at end
+;;   (odecl . ndecl) - decls differ
 (defun compare (old new)
   (assert (and (typep old 'datatype-or-module)
 	       (typep new 'datatype-or-module)))
@@ -100,18 +106,19 @@
 		  olist)))
     (compare-decls rolist nlist)))
 
-;;; Return nil if they compare (still may have whitespace issues).
-;;; Otherwise returns (odecl . ndecl) pair, which corresponds to the firs
-;;; mismatch between old decls and new decls.  Either may be nil, indicating
-;;; addition or deletion at the end.
+;;; Return nil if they compare (still may have lexical differences; copy-lex
+;;; is used for that). Otherwise returns (odecl . ndecl) pair, which
+;;; corresponds to the firs mismatch between old decls and new decls.
+;;; Either may be nil, indicating addition or deletion at the end.
 (defun compare-decls (olist nlist)
-  (if (null olist)
-      (unless (null nlist) (cons nil (car nlist)))
-      (if (null nlist)
-	  (cons (car olist) nil)
-	  (if (compare-decl (car olist) (car nlist))
-	      (compare-decls (cdr olist) (cdr nlist))
-	      (cons (car olist) (car nlist))))))
+  (cond ((null olist)
+	 (unless (null nlist)
+	   (cons nil (car nlist))))
+	((null nlist)
+	 (cons (car olist) nil))
+	((compare-decl (car olist) (car nlist))
+	 (compare-decls (cdr olist) (cdr nlist)))
+	(t (cons (car olist) (car nlist)))))
 
 ;;; Top level declarations
 ;;; compare-decl returns t if the decls are the same
