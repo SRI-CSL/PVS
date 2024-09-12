@@ -745,10 +745,19 @@ it is nil in the substituted binding")
 		    'id (new-boundvar-id (id bind) expr)
 		    'type stype
 		    'declared-type (substit* dec-type alist)))))
-	(unless (or *leave-bindings-undeclared*
-		    (eq bind new-binding)
-		    (declared-type new-binding))
-	  (setf (declared-type new-binding) (or (print-type stype) stype)))
+	(unless (or (declared-type new-binding)
+		    *leave-bindings-undeclared*)
+	  ;; Set the declared type, either directly by copying if
+	  ;; new-binding is not actually new. Also change class if
+	  ;; untyped-bind-decl.
+	  (let ((pstype (or (print-type stype) stype)))
+	    (if (eq bind new-binding)
+		(let ((nbind (copy new-binding :declared-type pstype)))
+		  (setq new-binding
+			(if (untyped-bind-decl? nbind)
+			    (change-class nbind 'bind-decl)
+			    nbind)))
+		(setf (declared-type new-binding) pstype))))
 	(make-new-bindings*
 	 (cdr old-bindings)
 	 (acons bind new-binding alist)
