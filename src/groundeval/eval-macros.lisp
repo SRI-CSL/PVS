@@ -419,9 +419,9 @@
 		     (dotimes (index (array-total-size x) t)
                        (let ((x-el (row-major-aref x index))
 			     (y-el (row-major-aref y index)))
-			 (when (or (eq x-el y-el)
-				   (pvs_equalp x-el y-el))
-			   t)))))
+			 (unless (or (eq x-el y-el)
+				     (pvs_equalp x-el y-el))
+			   (return nil))))))
 	       ((typep y '(or pvs-outer-array pvs-closure-hash function))
 		;; Can't test the length of a closure, but it should be OK
 		(dotimes (i (array-total-size x) t)
