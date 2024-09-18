@@ -501,7 +501,9 @@ in your PVS_LIBRARY_PATH."
 	    (let* ((subdir (truename sdir))
 		   (dname (or (pathname-name sdir)
 			      (car (last (pathname-directory sdir))))))
-	      (when (valid-pvs-id* dname)
+	      (when (and (valid-pvs-id* dname)
+			 (not (string-equal dname "pvsbin"))
+			 (uiop:file-exists-p (merge-pathnames ".pvscontext" sdir)))
 		(push (cons (intern dname :pvs) subdir) alist))))
 	  (pvs-warning "~a is in the library path, but is not a directory" path)))
     ;; earlier paths in *pvs-library-path* shadow later ones.
