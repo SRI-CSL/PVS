@@ -64,7 +64,6 @@
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
 (defvar pvs-path) ; Set in pvs-go.el
-(defvar prelude-files-and-regions)
 (defvar pvs-library-path)
 (defvar pvs-in-checker)
 (defvar pvs-reserved-words-regexp)
@@ -277,7 +276,7 @@ beginning of the previous one."
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
     (when (file-equal (buffer-file-name) prelude-file)
       (let ((prelude-regions
-	     (cdr (assoc prelude-file prelude-files-and-regions))))
+	     (cdr (assoc prelude-file (get-prelude-files-and-regions)))))
 	(while (and prelude-regions
 		    (< (caddr (car prelude-regions)) (point)))
 	  (pop prelude-regions))
@@ -1171,9 +1170,44 @@ theoryname."
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
     (when (file-equal (buffer-file-name) prelude-file)
       (let ((prelude-regions
-	     (cdr (assoc prelude-file prelude-files-and-regions))))
+	     (cdr (assoc prelude-file (get-prelude-files-and-regions)))))
 	(mapcar 'car prelude-regions)))))
 
+(defvar prelude-files-and-regions nil)
+
+(defun get-prelude-files-and-regions ()
+  (or prelude-files-and-regions
+      (let* ((files (directory-files (concat pvs-path "/lib")
+				     t "^prelude\\.pvs$\\|^pvsio_prelude\\.pvs$\\|.*_adt\\.pvs$"))
+	     (fregs (mapcar #'(lambda (file)
+				(save-excursion
+				  (let ((noninteractive t)) ;; Shut up about read-only
+				    (set-buffer (find-file-noselect file)))
+				  (cons (file-name-nondirectory file) (theory-regions*))))
+		      files)))
+	(setq prelude-files-and-regions fregs)
+	fregs)))
+
+(defun write-prelude-files-and-regions-el ()
+  "Ensures pvs-prelude-files-and-regions.el exists and has been loaded"
+  (let ((prfile (format "%s/lib/pvs-prelude-files-and-regions.el" pvs-path)))
+    (unless (file-exists-p prfile)
+      (let ((pfregs (get-prelude-files-and-regions)))
+	(with-current-buffer (find-file-noselect (concat pvs-path "/" prfile))
+	  (erase-buffer)
+	  (insert ";; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
+;;; Generated automatically - do not edit
+
+(defvar pvs-path)
+
+(defvar prelude-files-and-regions
+  (mapcar
+      #'(lambda (x)
+	 (cons (format \"%s/lib/%s\" pvs-path (car x)) (cdr x)))
+    '")
+	  (insert (format "%S" pfregs))
+	  (insert "))")
+	  (write-file (buffer-file-name)))))))
 
 (defun force-completing-read (prompt list)
   (let ((val (completing-read prompt (mapcar 'list list) nil t)))

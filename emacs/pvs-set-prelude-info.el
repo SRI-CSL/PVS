@@ -39,17 +39,10 @@
 (defvar region-file
   "emacs/pvs-prelude-files-and-regions.el")
 
+;;; Called from Makefile
 (defun set-prelude-files-and-regions ()
   ;; (pvs-message "Creating pvs-prelude-files-and-regions.el")
-  (let* ((files (directory-files (concat pvs-path "/lib")
-				 t "^prelude\\.pvs$\\|^pvsio_prelude\\.pvs$\\|.*_adt\\.pvs$"))
-	 (files-and-regions
-	  (mapcar #'(lambda (file)
-		      (save-excursion
-			(let ((noninteractive t)) ;; Shut up about read-only
-			  (set-buffer (find-file-noselect file)))
-			(cons (file-name-nondirectory file) (theory-regions*))))
-	    files)))
+  (let ((files-and-regions (get-prelude-files-and-regions)))
     (set-buffer (find-file-noselect (concat pvs-path "/" region-file)))
     (erase-buffer)
     (insert ";; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;

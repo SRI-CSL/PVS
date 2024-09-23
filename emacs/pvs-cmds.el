@@ -85,7 +85,6 @@
 (defvar pvs-view-mode-map)
 (defvar from-pvs-file)
 (defvar pvs-path)
-(defvar prelude-files-and-regions)
 (defvar pvs-library-path)
 (defvar pvs-initialized)
 
@@ -100,6 +99,7 @@
 (declare-function pvs-send-and-wait "pvs-ilisp")
 (declare-function pvs-view-mode "pvs-view")
 (declare-function pvs-welcome "pvs-load")
+(declare-function get-prelude-files-and-regions "pvs-utils")
 
 ;;;----------------------------------------------------------------------
 ;;; Basic Commands
@@ -555,7 +555,7 @@ may prove any of the prelude formulas simply by placing the cursor at the
 formula and invoking the prove command."
   (interactive (complete-prelude-name))
   (let* ((freg (get-prelude-file-and-region theoryname))
-	 (fname (car freg)))
+	 (fname (concat pvs-path "/lib/" (car freg))))
     (if (not (file-exists-p fname))
 	(error "%s does not exist." fname)
 	(let* ((buf (find-file-noselect fname))
@@ -579,7 +579,7 @@ formula and invoking the prove command."
 
 (defun get-prelude-file-and-region (theoryname)
   (let ((freg nil)
-	(pfregs prelude-files-and-regions))
+	(pfregs (get-prelude-files-and-regions)))
     (while (and (null freg)
 		pfregs)
       (let ((reg (cdr (assoc theoryname (cdr (car pfregs))))))
@@ -588,10 +588,9 @@ formula and invoking the prove command."
 	    (setq pfregs (cdr pfregs)))))
     freg))
 
-
 (defun complete-prelude-name ()
   (let* ((names (apply 'append
-		      (mapcar 'cdr prelude-files-and-regions)))
+		  (mapcar 'cdr (get-prelude-files-and-regions))))
 	 (th (completing-read "View prelude theory named: " names nil t)))
     (if (equal th "")
 	(error "No theory specified")

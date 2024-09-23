@@ -386,7 +386,7 @@ still complete, if it was in the full theory."
 	 ;; (type (cdr (assq 'type decl-form)))
 	 (theoryid (cdr (assq 'theoryid decl-form)))
 	 (place (cdr (assq 'place decl-form)))
-	 (filename (cdr (assq 'filename decl-form)))
+	 (prelude-file (cdr (assq 'filename decl-form)))
 	 (decl-ppstring (cdr (assq 'decl-ppstring decl-form))))
     (cond ((member place '(nil NIL))
 	   (let* ((bufname (format "%s.%s" theoryid declname))
@@ -399,25 +399,17 @@ still complete, if it was in the full theory."
 		 (set-buffer-modified-p nil))
 	       (pvs-view-mode))
 	     (pop-to-buffer buf)))
-	  (t				;(pvs-browse-quit)
-	   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
-	     (cond ((file-equal filename prelude-file)
-		    (let* ((freg (get-prelude-file-and-region theoryid))
-			   (line (when freg
-				   (save-excursion
-				     (let ((noninteractive t)) ;; Shut up about read-only
-				       (set-buffer (find-file-noselect (car freg))))
-				     (goto-char (cadr freg))
-				     (- (current-line-number) 1)))))
-		      (view-prelude-theory theoryid)
-		      (when line
-			(goto-char (point-min))
-			(forward-line (1- (- (elt place 0) line)))
-			(forward-char (elt place 1)))))
-		   (t (find-file filename)
-		      (goto-char (point-min))
-		      (forward-line (1- (elt place 0)))
-		      (forward-char (elt place 1))))))))
+	  (t ;; place is relative to the prelude file, need to offset from theory inside
+	   (let* ((freg (get-prelude-file-and-region theoryid))
+		  (line (when freg
+			  (with-current-buffer (find-file-noselect prelude-file)
+			    (goto-char (cadr freg))
+			    (- (current-line-number) 1)))))
+	     (view-prelude-theory theoryid)
+	     (when line
+	       (goto-char (point-min))
+	       (forward-line (1- (- (elt place 0) line)))
+	       (forward-char (elt place 1)))))))
   (delete-other-windows)
   (recenter))
 

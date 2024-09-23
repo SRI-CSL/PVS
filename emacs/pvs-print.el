@@ -47,7 +47,6 @@
 (eval-when-compile (require 'pvs-macros))
 
 (defvar pvs-path)
-(defvar prelude-files-and-regions)
 
 (declare-function confirm-not-in-checker "pvs-eval")
 (declare-function pvs-send "pvs-ilisp")
@@ -55,6 +54,7 @@
 (declare-function complete-prelude-name "pvs-cmds")
 (declare-function pvs-mode "pvs-mode")
 (declare-function current-line-number "pvs-mode")
+(declare-function get-prelude-files-and-regions "pvs-utils")
 (declare-function get-prelude-file-and-region "pvs-cmds")
 
 ;;; The first few functions were extracted from the GNU distribution file
@@ -297,10 +297,7 @@ the corresponding generated file is foo-alltt.tex."
 
 (defun alltt-prelude ()
   "Generate LaTeX files in alltt format for the PVS prelude."
-  ;;(interactive)
-  (unless prelude-files-and-regions
-    (complete-prelude-name))
-  (dolist (freg prelude-files-and-regions)
+  (dolist (freg (get-prelude-files-and-regions))
     (let ((buf (find-file-noselect (car freg))))
       (dolist (treg (cdr freg))
 	(let* ((file (format "%s%s-alltt.tex" pvs-current-directory
