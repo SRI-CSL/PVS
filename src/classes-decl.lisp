@@ -286,7 +286,6 @@
   (nonempty-types :restore-as nil)  ; Keep track of types marked nonempty during typechecking
   all-usings ; The transitive closure of the usings of the theory
   (immediate-usings :initform 'unbound) ; immediate usings of the theory
-  instances-used
   ht-instance-clone
   (assuming-instances :restore-as nil)
   used-by
