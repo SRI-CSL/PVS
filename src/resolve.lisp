@@ -964,10 +964,11 @@ Prefer fixed-thinsts over comp-thinsts."
 		      (pushnew cathinst fixed-thinsts :test #'tc-eq)
 		      (pushnew cathinst comp-thinsts :test #'tc-eq))
 		  (if (fully-instantiated? cathinst)
-		      (unless (and ;; (null *get-all-resolutions*)
-				   ;; (member cathinst fixed-thinsts :test #'compatible?)
-				   nil)
-			(pushnew cathinst comp-thinsts :test #'tc-eq))
+		      ;; (unless (and (null *get-all-resolutions*)
+		      ;; 	      (member cathinst fixed-thinsts :test #'compatible?)
+		      ;; 		   (break "cathinst"))
+		      ;; 	(pushnew cathinst comp-thinsts :test #'tc-eq))
+		      nil
 		      (pushnew cathinst comp-thinsts :test #'tc-eq)))))
 	(decl-args-compatible* decl (cdr mthinsts) args fixed-thinsts comp-thinsts))))
 
