@@ -654,7 +654,7 @@ is replaced with replacement."
   (system (format nil "/bin/chmod ~a ~a" prot (namestring file))))
 
 (defun pvs-current-directory ()
-  (if (file-exists-p *default-pathname-defaults*)
+  (if (uiop:file-exists-p *default-pathname-defaults*)
       (namestring *default-pathname-defaults*)
       "/dev/null"))
 
@@ -2554,6 +2554,13 @@ prove itself from the mapped axioms."
 (defmethod accessor? ((expr expr))
   nil)
 
+(defmethod adt ((mname modname))
+  (assert (resolution mname))
+  (let ((thy (declaration mname)))
+    (when (rectype-theory? thy)
+      (let ((dt (get-theory (generated-by thy))))
+	(when (recursive-type? dt)
+	  (subst-mod-params (adt-type-name dt) mname thy))))))
 
 ;;; Given a constructor name, return the appropriately instantiated adt
 ;;; type name.
@@ -5816,7 +5823,7 @@ and the next method is called with this. Only \formula\" is required."
 	  (values source version))))))
 
 (defvar *pvs-environment-variables*
-  '(PVS_LIBRARY_PATH NLYICES_DIR PVSPATH PVSMINUSQ PVSINEMACS PVSNONINTERACTIVE
+  '(PVS_LIBRARY_PATH NLYICES_DIR PVSPATH PVSMINUSQ PVSEMACS PVSNONINTERACTIVE
     PVSTIMEOUT PVSVERBOSE PVSEVALLOAD PVSPORT PVSPATCHLEVEL
 
     PVSIOFILE PVSIOTIME PVSIOTHEORY PVSIOPACK PVSIOVERB PVSIOTCCS
@@ -6091,7 +6098,8 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 	(let ((ni (environment-variable "PVSNONINTERACTIVE")))
 	  (and ni (not (equal ni "")))))
   (setq *pvs-emacs-interface*
-	(let ((ei (environment-variable "PVSINEMACS")))
+	(let ((ei (or (environment-variable "PVSEMACS")
+		      (environment-variable "PVSINEMACS"))))
 	  (and ei (not (equal ei "")))))
   (setq *noninteractive*
 	(let ((ni (environment-variable "PVSNONINTERACTIVE")))
@@ -6119,7 +6127,9 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 
 #+sbcl
 (defun make-new-pvs-image (name)
-  "Creates a new pvs image of the given name, using sb-ext:save-lisp-and-die."
+  "Creates a new pvs image of the given name, using
+sb-ext:save-lisp-and-die.  Saves (mostly) the current state of the PVS
+system; primarily used after loading PVS libraries."
   (if (string= name "pvs-sbclisp")
       (error "Can't reuse the pvs-sbclisp name")
       (let* ((platform (pvs-platform))
