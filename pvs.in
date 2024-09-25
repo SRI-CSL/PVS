@@ -9,11 +9,10 @@
 # command line arguments:
 #   -h | -help | --help  prints a help line and exits
 #   -version | --version prints the PVS version
-#   -emacs emacsref        emacs, xemacs, alias, or pathname
-#   -lisp name             lisp image name - allegro, cmulisp, or sbclisp
+#   -emacs emacsref        emacs, xemacs, or pathname
+#   -lisp name             lisp image name - allegro or sbclisp
 #   -runtime               use the runtime image (devel is default, if there)
-#   -decision-procedures   set the default decision procedures (ics or shostak)
-#   -force-decision-procedures  forces the decision procedures to be used
+#   -image imagename       use user SBCL image (see make-new-pvs-image in utils.lisp)
 #   -patchlevel    indicates the patch level: 0 for no patches
 #   -batch         run in batch mode
 #   -timeout       seconds to timeout commands or proofs - only allowed in batch
@@ -37,8 +36,9 @@
 #   PVSLISP       - corresponds to the -lisp argument
 #   PVSEMACS      - corresponds to the -emacs argument
 #   PVSPATCHLEVEL - corresponds to the -patchlevel argument
-#   PVSXINIT      - X window parameters; e.g., "-g '-0-0'"
+#   PVSPORT       - corresponds to the -port argument
 #   PVSVERBOSE    - corresponds to the -v argument
+#   PVSXINIT      - X window parameters; e.g., "-g '-0-0'"
 #
 # The following environment variables are used by PVS, and are set below:
 #   PVSPATH     pvs system path - this should not normally be set by the user
@@ -72,32 +72,39 @@ PVSPATH=@PVSPATH@
 # Nothing below this line should need modification
 
 
-# get the command-line options
-opsys=`uname -s`
-flags=
+# Initialize/set local variables
 batch=
-rawmode=
-PVSINEMACS=t
+dotemacs=
+emacs_args=
+emacscmd=
+evalflag=
+emacsargs=
 getversion=
+loadafter=
 nobg=
-if [ -f $HOME/.emacs ]
-  then dotemacs="-l $HOME/.emacs"
-  else dotemacs=
-fi
-PVSXINIT=${PVSXINIT:-""}
-PVSFORCEDP=nil
+noinit=
+nowin=
+opsys=`uname -s`
+otherargs=
+pvsemacsinit=
+pvsimagepath=
 pvsruntime=
+rawmode=
+
+# Process the command-line options
+
+# Note that if emacsargs are repeated, the aruments are appended if that makes
+# sence, otherwise the last occurence is used
 while [ $# -gt 0 ]
 do
    case $1 in
-     -emacs) PVSEMACS="$2"
+     -emacs) emacscmd="$2"
              shift;;
      -lisp)
        case $2 in
 	 allegro) PVSLISP=allegro;;
-	 cmulisp) PVSLISP=cmulisp;;
 	 sbclisp) PVSLISP=sbclisp;;
-	 *) echo "Only allegro, cmulisp, and sbclisp are currently available"
+	 *) echo "Only allegro and sbclisp are currently available"
 	    exit 1;;
        esac
        shift;;
@@ -112,24 +119,7 @@ do
 	  exit 1
 	fi
 	shift;;
-     -decision-procedures)
-        case $2 in
-	  ics)     PVSDEFAULTDP=ics;;
-	  shostak) PVSDEFAULTDP=shostak;;
-	  *) echo "The decision-procedures argument must be ics or shostak"
-	     exit 1;;
-	esac
-	shift;;
-     -force-decision-procedures)
-        case $2 in
-	  ics) PVSFORCEDP=:ics;;
-	  shostak) PVSFORCEDP=:shostak;;
-	  *) echo "The force-decision-procedures argument must be ics or shostak"
-	     exit 1;;
-	esac
-	shift;;
-     -nw)    nowin=1
-             flags="$flags $1";;
+     -nw)    nowin=1;;
      -nobg)  nobg=1;;
      -patchlevel)
         case $2 in
@@ -150,17 +140,16 @@ do
 	   exit 1
 	 fi
 	 shift;;
-     -raw) unset PVSINEMACS
-           rawmode="yes";;
+     -raw) rawmode=1;;
      -v) case $2 in
            0|1|2|3) PVSVERBOSE=$2
                     shift;;
 	   *) echo "The -v argument must be in the range 0-3"
               exit 1;;
 	 esac;;
-     -name|-title|-xrm) PVSXINIT="$PVSXINIT $1 $2"
+     -name|-title|-xrm) emacsargs="$emacsargs $1 $2"
                         shift;;
-     -q|-no-init-file) flags="$flags $1"
+     -q|-no-init-file) emacsargs="$emacsargs $1"
                        PVSMINUSQ="-q"
 		       dotemacs= ;;
      -E) PVSEVALLOAD="$PVSEVALLOAD $2"
@@ -182,19 +171,17 @@ do
         exit 1;;
      -where|--where) echo $PVSPATH
                      exit 0;;
-     -version|--version) unset PVSINEMACS
-                         getversion="yes";;
+     -version|--version) getversion=1;;
      -h|-help|--help)  echo "usage:
        pvs [-options ...] [file]
 where options include:
   -h | -help | --help  print out this message
   -version | --version show the PVS version number
-  -emacs emacsref    emacs, xemacs, alias, or pathname
+  -emacs emacsref    emacs, xemacs, or pathname
   -load-after efile  loads emacs file after PVS emacs files
-  -lisp name         lisp image name (allegro, cmulisp, or sbclisp)
+  -lisp name         lisp name (allegro or sbclisp)
+  -image name        see make-new-pvs-image in src/utils.lisp
   -runtime           use the runtime image
-  -decision-procedures  set default decision procedures (ics or shostak)
-  -force-decision-procedures  forces the decision procedures (ics or shostak)
   -patchlevel level  patchlevel (none, rel, test, exp or 0-3, resp.)
   -batch             run in batch mode
   -timeout number    use a timeout for commands or proofs in batch mode
@@ -211,97 +198,83 @@ where options include:
 To change the title and icon names, use -title and -xrm, for example,
   pvs -title foo -xrm \"pvs*iconName:bar\""
 	            exit 0;;
-     *)      flags="$flags $1";;
+     *)      otherargs="$otherargs $1";;
    esac
    shift
-done
+done # command line args have been processed
 
+# Check for Emacs - complain if -raw and certain emacs emacsargs are given
+# emacsargs are: (-e -l -name -title -xrm) -batch is treated special, as it must appear
+# as the first argument to Emacs
+if [ -n "${rawmode}" ] # -raw given, hence no Emacs
+then if [ -n "${emacscmd}" ] # -emacs given
+     then echo "ERROR: -raw and -emacs flags should not both be given."; exit 1
+     elif [ -n "${emacsargs}" ]
+     then echo "ERROR: -raw with -e or -l emacs flags not allowed."; exit 1
+     elif [ -n "${batch}" ] # -batch
+     then echo "ERROR: -raw with -batch emacs flags not allowed."; exit 1
+     else unset PVSEMACS # In case it's set as an environment variable
+     fi
+else if [ -n "${emacscmd}" ]
+     then PVSEMACS=${emacscmd}
+     else PVSEMACS=${PVSEMACS:-"emacs"}
+     fi
+     
+     # Exit if PVSEMACS is not executable
+     if [ ! -x `which ${PVSEMACS}` ]
+     then echo ${PVSEMACS} is not executable; exit 1
+     fi
+     # Exit if running XEmacs - considered obsolete and inconsistent with cl-lib
+     emacsversion="`${PVSEMACS} -q --version 2>&1 | grep Emacs | head -1`"
+     case $emacsversion in
+       *XEmacs*) echo "XEmacs is no longer supported"; exit 1;;
+     esac
+     
+     pvsemacsinit="-load ${PVSPATH}/emacs/go-pvs.el ${emacs_args} ${loadafter}"
+     if [ -f ${HOME}/.emacs ]
+     then dotemacs="-l ${HOME}/.emacs"
+     fi
+     PVSINEMACS=1
+fi
+
+# If we have any -E or -L args, wrap them in a progn
 if [ -n "$PVSEVALLOAD" ]
     then PVSEVALLOAD="(progn $PVSEVALLOAD)"
 fi
 
-PVSEMACS=${PVSEMACS:-"emacs"}
-
 # Determine the system type and set PVSARCH accordingly
 case $opsys in
-  SunOS) majvers=`uname -r | cut -d"." -f1`
-	 if [ $majvers = 4 ]
-	    then echo "PVS only runs under Mac OS X, Linux, or FreeBSD"; exit 1
-	 fi
-	 PVSARCH=sun4;;
-  Linux) # If Linux, we need to determine the Redhat version to use.
-	 opsys=Linux
-	 majvers=
-	 case `uname -m` in
-	   x86_64) PVSARCH=ix86_64 ;;
-	   *86*)   PVSARCH=ix86 ;;
-	   *) echo "PVS only runs on Intel under Linux"; exit 1
-	 esac
-	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
-	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
-	 # the old thread-implementation.
-	 export LD_ASSUME_KERNEL=2.4.19;
-	 # See if setting this leads to problems - if it does, then
-	 # uname exits with an error and we unset it.
-	 uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
-	 ;;
-  FreeBSD) opsys=Linux
-	   majvers=
-	   case `uname -m` in
-	     x86_64) PVSARCH=ix86_64 ;;
-	     *86*)   PVSARCH=ix86 ;;
-	     *) echo "PVS only runs on Intel under Linux"; exit 1
-	   esac
-	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
-	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
-	   # the old thread-implementation.
-	   export LD_ASSUME_KERNEL=2.4.19;
-	   # See if setting this leads to problems - if it does, then
-	   # uname exits with an error and we unset it.
-	   uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
-           ;;
+  Linux|FreeBSD) case `uname -m` in
+		   x86_64) PVSARCH=ix86_64 ;;
+		   *86*)   PVSARCH=ix86 ;;
+		   *)      PVSARCH=`uname -p`;;
+		 esac
+		 ;;
   Darwin) case `uname -p` in
-            powerpc) PVSARCH=powerpc;;
 	    i*86) PVSARCH=ix86;;
-	    *) PVSARCH=`uname -p`;;
+	    *)    PVSARCH=`uname -p`;;
 	  esac
           opsys=MacOSX
 	  export LC_ALL="en_US.UTF-8"
-	  # Hack for emacs on Mac - /usr/bin/emacs doesn't support X
-	  # but if X is enabled, then DISPLAY env var is set
-	  if [ ! `(export EMACS=$PVSEMACS; $PVSPATH/emacs/configured-for-x)` ]
-	  then nowin=1
-	    echo "$PVSEMACS does not support X; running in terminal mode"
-	  fi
-          #majvers=`uname -r | cut -d"." -f1`
-	  majvers=
 	  ;;
-  *) echo "PVS only runs under Solaris, Linux, FreeBSD (linux-enabled), or MacOSX"; exit 1
+  *) echo "PVS only runs under Linux, FreeBSD (linux-enabled), or MacOSX"; exit 1
 esac
 
-PVSBINPATH=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
+PVSBINPATH=$PVSPATH/bin/$PVSARCH-$opsys
 # Check if this is a 64-bit platform, but only 32-bit available
 if [ "$PVSARCH" = "ix86_64" -a ! -x "$PVSBINPATH" ]
-    then PVSBINPATH=$PVSPATH/bin/ix86-$opsys${majvers}
+    then PVSBINPATH=$PVSPATH/bin/ix86-$opsys
 fi
 
-if [ -n "$PVSLISP" -a "$PVSLISP" != "allegro" -a "$PVSLISP" != "cmulisp" -a "$PVSLISP" != "sbclisp" ]
-  then echo "ERROR: PVSLISP must be unset, or set to 'allegro', 'cmulisp', or 'sbclisp'"
-       exit 1
-fi
-
+# Check which lisp to use
 if [ -z "$PVSLISP" ]
    then if   [ -x $PVSBINPATH/devel/pvs-allegro ]
         then PVSLISP=allegro
         elif [ -x $PVSBINPATH/runtime/pvs-allegro ]
         then PVSLISP=allegro
-        elif [ -x $PVSBINPATH/devel/pvs-cmulisp ]
-        then PVSLISP=cmulisp
-        elif [ -x $PVSBINPATH/runtime/pvs-cmulisp ]
-        then PVSLISP=cmulisp
-	elif [ -e $PVSBINPATH/devel/pvs-sbclisp ]
+	elif [ -x $PVSBINPATH/devel/pvs-sbclisp ]
 	then PVSLISP=sbclisp
-	elif [ -e $PVSBINPATH/runtime/pvs-sbclisp ]
+	elif [ -x $PVSBINPATH/runtime/pvs-sbclisp ]
 	then PVSLISP=sbclisp
         else echo "No executable available in $PVSBINPATH"
              exit 1
@@ -309,11 +282,12 @@ if [ -z "$PVSLISP" ]
 fi
 
 # If PVSIMAGE is set, PVSLISP must be sbclisp
-if [ "$PVSIMAGE" ]; then PVSLISP=sbclisp; fi
+if [ -n "$PVSIMAGE" ]; then PVSLISP=sbclisp; fi
 # Set PVSIMAGE if not already given
 PVSIMAGE=${PVSIMAGE:=pvs-$PVSLISP}
 
-if [ -d $PVSBINPATH/devel -a -e $PVSBINPATH/devel/$PVSIMAGE -a ! "$pvsruntime" ]
+# Set path related environment variables
+if [ -d $PVSBINPATH/devel -a -e $PVSBINPATH/devel/$PVSIMAGE -a -z "$pvsruntime" ]
 then
   PATH=$PVSBINPATH/devel:$PVSBINPATH:$PVSPATH/bin:$PATH
   LD_LIBRARY_PATH=$PVSBINPATH/devel:$LD_LIBRARY_PATH
@@ -331,22 +305,20 @@ else
   exit 1
 fi
 
-# Here is where we handle the different flags for the different lisps
+# Here is where we handle the different emacsargs for the different lisps
 case $PVSLISP in
     allegro) 
-	ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
+	ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys/home
 	noinit="-qq"
 	evalflag="-e"
-	;;
-    cmulisp)
-	noinit="-quiet -noinit"
-	evalflag="-eval"
 	;;
     sbclisp)
 	noinit="--no-userinit"
 	evalflag="--eval"
 	;;
 esac
+
+# Set and export various environment variables
 
 PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
 
@@ -357,23 +329,32 @@ case $PVSPATCHLEVEL in
     exp)  PVSPATCHLEVEL=3;;
 esac
 
-if [ "$PVSVERBOSE" -a ! "$batch" ]
- then echo "The -verbose flag is used only with -batch; it will be ignored"
+if [ -n "$PVSVERBOSE" -a -z "$batch" ]
+then echo "The -verbose flag only makes sense with -batch; it will be ignored"
 fi
 
-if [ "$PVSTIMEOUT" -a ! "$batch" ]
- then echo "The -timeout flag is used only with -batch; it will be ignored"
+if [ -n "$PVSTIMEOUT" -a -z "$batch" ]
+then echo "The -timeout flag only makes sense with -batch; it will be ignored"
 fi
 
 PVSVERBOSE=${PVSVERBOSE:-0}
 
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PVSBINPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
-export PVSPORT PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
-export PVSNONINTERACTIVE PVSINEMACS PVSEVALLOAD
+export PVSPORT PVSPATCHLEVEL PVSMINUSQ PVSNONINTERACTIVE PVSEVALLOAD PVSEMACS
+export PVSINEMACS # Will be obsolete soon
+
+# if -version, simply call pvs lisp image and return it
+# Do this right after the environment variables are exported
+if [ -n "${getversion}" ]
+then
+  export PVS_LIBRARY_PATH=
+  echo `${pvsimagepath} ${noinit} ${evalflag} "(progn(pvs::pvs-version)(terpri)(pvs::exit-pvs))"`
+  exit 0
+fi
 
 # Warn about for PVS_LIBRARY_PATH conflicts
-if [ "$PVS_LIBRARY_PATH" -a ! "$getversion" -a ! "$rawmode" ]
+if [ -n "$PVS_LIBRARY_PATH" -a -z "$rawmode" ]
  then
   plibs=`for plib in ${PVSPATH}/lib/*; do if [ -d $plib -a -f $plib/.pvscontext ]; then basename $plib; fi; done`
   for path in `echo $PVS_LIBRARY_PATH | tr ':' ' '`
@@ -387,45 +368,18 @@ if [ "$PVS_LIBRARY_PATH" -a ! "$getversion" -a ! "$rawmode" ]
    done
 fi
 
-pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $emacsargs $loadafter"
-
-if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
- then
-  HOST=${HOST:-`uname -n`}
-
-  # Now try to determine which version of Emacs we're running, and set
-  # PVSXINIT accordingly.
-
-  case $PVSEMACS in
-    *[xl]emacs*) \
-      if [ $nobg ] ; then
-        ("$PVSEMACS" $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
-                   $PVSXINIT $pvsemacsinit )
-      else
-        ("$PVSEMACS" $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
-                   $PVSXINIT $pvsemacsinit &)
-      fi;;
-    *) \
-      if [ $nobg ] ; then
-        ("$PVSEMACS" $flags -name pvs $PVSXINIT $pvsemacsinit)
-      else
-        ("$PVSEMACS" $flags -name pvs $PVSXINIT $pvsemacsinit &)
-      fi;;
-  esac
-elif [ $getversion ]
-  then
-    # Make sure there are no spaces in the eval form - otherwise it goes
-    # through the pvs-cmulisp script and gets mangled.
-    echo `$pvsimagepath $noinit $evalflag "(progn(pvs::pvs-version)(terpri)(bye))"`
-elif [ $rawmode ]
-  then
-    if [ -n "$emacsargs" ]
-      then echo "Emacs flags '$emacsargs' will be ignored in raw mode"
-    fi
-    $pvsimagepath $noinit $flags
-elif [ $batch ]
-  then
-    "$PVSEMACS" $batch $dotemacs $pvsemacsinit $flags 2>&1
+# Now run pvs, either through Emacs or the raw PVS image
+# emacsargs is the arguments not otherwise hendled while processing the command line args
+if [ -n "${rawmode}" ] # No Emacs involved - PVSEMACS is not set
+then ${pvsimagepath} ${noinit} ${otherargs}
+elif [ -n "${batch}" ] # Emacs, but no windows
+then ${PVSEMACS} ${batch} ${dotemacs} ${pvsemacsinit} ${emacsargs} ${otherargs} 2>&1
+elif [ -n "${nowin}" -o -z "${DISPLAY}" ]
+then ${PVSEMACS} -nw ${pvsemacsinit} ${emacsargs} ${otherargs}
 else
-  "$PVSEMACS" $pvsemacsinit $flags
+  pvsrun="${PVSEMACS} -name pvs ${pvsemacsinit} ${PVSXINIT} ${emacsargs} ${otherargs}"
+  if [ -z ${nobg} ]
+  then (${pvsrun} &)
+  else ${pvsrun}
+  fi
 fi
