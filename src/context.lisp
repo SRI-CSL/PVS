@@ -288,16 +288,17 @@ retypechecked."
 		       (let ((bp (make-binpath theory))
 			     (ce (get-context-file-entry theory)))
 			 (when (typechecked? theory)
-			   (assert ce () "write-object-files: ~a missing ce?" (id theory))
+			   (assert ce () "write-object-files - ~a missing ce?" (id theory))
 			   (assert (file-exists-p bp) ()
-				   "write-object-files: ~a doesn't exist" (id theory))
+				   "write-object-files - ~a doesn't exist" (id theory))
 			   (assert (ce-object-date ce) ()
-				   "write-object-files: ~a object date missing" (id theory))
-			   (assert (assq (id theory) (ce-object-date ce)) ()
-				   "write-object-files: ~a theory not in ce" (id theory))
+				   "write-object-files - ~a object date missing" (id theory))
+			   (assert (assoc (id theory) (ce-object-date ce) :test #'string=) ()
+				   "write-object-files - ~a theory not in ce" (id theory))
 			   (assert (= (file-write-time bp)
-				      (cdr (assq (id theory) (ce-object-date ce))))
-				   () "write-object-files:  date mismatch in ~a" bp)))))
+				      (cdr (assoc (id theory) (ce-object-date ce)
+						  :test #'string=)))
+				   () "write-object-files - date mismatch in ~a" bp)))))
 		 (current-pvs-files))
 	(multiple-value-bind (value condition)
 	    (ignore-file-errors
@@ -947,7 +948,7 @@ are all the same."
   (assert ws)
   (let ((ctx-file (merge-pathnames *context-name*)))
     (if (uiop:file-exists-p ctx-file)
-	(let ((ctx-file-date (file-write-time ctx-file)))
+	(let ((ctx-file-date (file-write-date ctx-file)))
 	  (handler-case
 	      (unless (and (pvs-context ws)
 			   (= ctx-file-date (pvs-context-date ws)))
@@ -1479,6 +1480,7 @@ are all the same."
 	     (min-theory-wrt-imps (cdr theories) imps new-min)))))
 
 (defun invalidate-context-formula-proof-info (filename file nth)
+  (break "Shouldn't get here")
   (unless (or (null (get-context-file-entry filename))
 	      (and (ce-write-date (get-context-file-entry filename))
 		   (= (file-write-time file)
@@ -1571,6 +1573,7 @@ are all the same."
   (setq *save-proofs-pretty* (not *save-proofs-pretty*)))
 
 (defun save-proofs (filestring theories &optional force?)
+  "Save proofs for the given theories in the given filestring."
   (if (write-permission?)
       (let* ((oldproofs (read-pvs-file-proofs filestring))
 	     (curproofs (collect-theories-proofs theories)))
@@ -1810,19 +1813,20 @@ are all the same."
 (defun restore-formula-proofs (decl proofs)
   ;; decl is a formula-decl, but either not a TCC, or the proofs don't have
   ;; origins
-  (let ((prf-entry (assq (id decl) proofs)))
+  (let ((prf-entry (assq (id decl) proofs))
+	(fe (get-context-formula-entry decl)))
     (cond (prf-entry
 	   (let ((dproofs (make-proof-infos-from-sexp decl prf-entry)))
 	     (setf (proofs decl) dproofs)
 	     (setf (default-proof decl)
-		   (nth (cadr prf-entry) (proofs decl))))
+		   (nth (cadr prf-entry) (proofs decl)))
+	     (when fe
+	       (setf (fe-status fe) (status (default-proof decl)))))
 	   (let ((fe (get-context-formula-entry decl)))
 	     (setf (status (default-proof decl))
 		   (if fe
-		       (if (symbolp (fe-status fe))
-			   (fe-status fe)
-			   (intern (fe-status fe) :pvs))
-		       'unchecked)))
+		       (format nil "~(~a~)" (fe-status fe))
+		       "unchecked")))
 	   (remove prf-entry proofs))
 	  (t ;; Decl has no associated proof in file
 	   ;;(pvs-warning "Declaration ~a.~a has no proof" (id (module decl) (id decl) ))
@@ -2071,7 +2075,7 @@ Note that the lists might not be the same length."
 					     (eq theoryid (cadr prf))))
 				  oproofs)))
 		     (unless (member prf oprfs
-				     :test #'(lambda (x y) (equal x (cddr y))))
+				     :test #'(lambda (x y) (proofs-equal x (cddr y))))
 		       (incf count)
 		       (write (cons filename (cons theoryid prf))
 			      :length nil :level nil :escape t :pretty nil
@@ -2081,6 +2085,26 @@ Note that the lists might not be the same length."
 	(pvs-message
 	    "Added ~d proof~:p from theory ~a to orphaned-proofs.prf"
 	  count theoryid)))))
+
+(defun proofs-equal (proof1 proof2)
+  (and (eq (car proof1) (car proof2)) ; formula id
+       (= (cadr proof1) (cadr proof2)) ; index
+       (every #'proofs-equal* (cddr proof1) (cddr proof2))))
+
+(defun proofs-equal* (proof1 proof2)
+  (and (eq (car proof1) (car proof2)) ; proof id
+       (equal (cadr proof1) (cadr proof2)) ; description
+       ;; create-date - ignore
+       ;; run-date - ignore
+       (equal (fifth proof1) (fifth proof2)) ; script 
+       ;; status - ignore
+       ;; refers-to - ignore
+       ;; real-time 
+       ;; run-time
+       ;; interactive?
+       ;; decision-procedure-used
+       ))
+
 
 (defun read-theory-proofs (theoryref)
   (let* ((filename (context-file-of theoryref))
@@ -3097,7 +3121,7 @@ each context, the theories are in alphabetic order."
     (and ce
 	 (every #'(lambda (te)
 		    (and (loop for (lib-ref . theory-ids) in (te-dependencies te)
-			    always (check-binfiles* lib-ref theory-ids))
+			       always (check-binfiles* lib-ref theory-ids))
 			 (check-binfile (id te) ce)))
 		(ce-theories ce)))))
 
@@ -3305,7 +3329,7 @@ binfile, not the filename."
 ;;; end of the previous session:
 ;;;  PVSPATH - the path under which this context was last run
 ;;;  PVSMINUSQ - ignores ~/.pvs.lisp; pvs shell script sets this from '-q' arg
-;;;  PVSINEMACS - whether to sync with Emacs
+;;;  PVSEMACS - whether to sync with Emacs
 ;;;  PVSNONINTERACTIVE - won't attempt to prompt user; just take default
 ;;;                      value when there are choices to be made.
 ;;;  PVSTIMEOUT -
@@ -3426,3 +3450,25 @@ If there is no error, but the ls-files is empty"
   ;;   ("library" . ,(de-library de)))
   ;; For efficiency, we just create a list
   (list (de-id de) (de-class de) (de-type de) (de-theory-id de) (de-library de)))
+
+(defun consistent-fe-entries-and-proofs (thname)
+  (let ((all-good t))
+    (every #'(lambda (fe fdecl)
+	       (if (string= (fe-id fe) (id fdecl))
+		   (let ((prstat (proof-status fdecl))
+			 (festat (fe-status fe)))
+		     (unless (cond ((null prstat) (string= festat "untried"))
+				   ((string= prstat "proved")
+				    (member festat
+					    '("proved-complete" "proved-incomplete")
+					    :test #'string=))
+				   (t (string= prstat festat)))
+		       (setq all-good nil)
+		       (error "proof/fe status mismatch: ~a vs ~a"
+			      (or prstat "untried") festat)))
+		   (progn (setq all-good nil)
+			  (error "proof/fe formula mismatch: ~a vs ~a"
+				 (id fdecl) (fe-id fe)))))
+	   (te-formula-info (get-context-theory-entry thname))
+	   (provable-formulas (get-theory thname)))
+    all-good))
