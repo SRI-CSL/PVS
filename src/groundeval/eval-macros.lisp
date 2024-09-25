@@ -419,9 +419,9 @@
 		     (dotimes (index (array-total-size x) t)
                        (let ((x-el (row-major-aref x index))
 			     (y-el (row-major-aref y index)))
-			 (when (or (eq x-el y-el)
-				   (pvs_equalp x-el y-el))
-			   t)))))
+			 (unless (or (eq x-el y-el)
+				     (pvs_equalp x-el y-el))
+			   (return nil))))))
 	       ((typep y '(or pvs-outer-array pvs-closure-hash function))
 		;; Can't test the length of a closure, but it should be OK
 		(dotimes (i (array-total-size x) t)
@@ -584,37 +584,44 @@
 	 (inner-size (pvs-array-size inner-array))
 	 (inner-diffs (pvs-array-diffs inner-array))
 	 (contents (pvs-array-contents inner-array))
-	 (oldval (aref contents at))
 	 (main? (eql offset inner-size)))
-    (cond (main?
+    (cond ((and main? (<= at (fill-pointer contents)));;allow values to be pushed
 	   (assert (not diffs))
-	   (push (cons at oldval) (pvs-array-diffs inner-array))
-	   (incf (pvs-array-size inner-array))
+	   (when (eq at (fill-pointer contents))
+	     (vector-push-extend at contents));;extend the contents array
+	   (push (cons at (aref contents at)) (pvs-array-diffs inner-array));might contain uninitialized entries 
+	   (incf (pvs-array-size inner-array))                              ;that should never be accessed
 	   (setf (aref contents at) with
 		 (pvs-outer-array-offset x)
 		 (pvs-array-size inner-array))
 	   ;(break "main")
 	   x)
-	  (t
+	  ((> at (fill-pointer contents))
+	   (let ((closure-hash (mk-pvs-closure-hash (make-hash-table :test 'pvs_equalp) pvs-outer-array)))
+	     (pvs-function-update closure-hash at with)
+	     closure-hash))
+	  (t 
 	    (push (cons at with) (pvs-outer-array-diffs x))
 	    (incf (pvs-outer-array-size x))
+	    (setf (pvs-outer-array-maxindex pvs-outer-array)
+		  (max (1+ at) (pvs-outer-array-maxindex pvs-outer-array)))
 	    (when (> (+ inner-size
 			outer-size)
 		     (size-limit (array-total-size contents)))
 	      (let ((newarray (copy-seq contents)))
-		(loop for (x . y) in inner-diffs ;restore inner values
-		      as i from (1+ offset) to inner-size
-		      do (setf (aref newarray x) y))
-		(setf (pvs-outer-array-inner-array pvs-outer-array)
-		      (make-pvs-array ;;restore outer diffs
-			:contents 
-			(insert-array-diffs
-			 diffs
-			 newarray)
-		      :size 0)
-		      (pvs-outer-array-diffs pvs-outer-array) nil
-		      (pvs-outer-array-offset pvs-outer-array) 0
-		      (pvs-outer-array-size pvs-outer-array)  0)))
+	    	(loop for (x . y) in inner-diffs ;restore inner values
+	    	      as i from (1+ offset) to inner-size
+	    	      do (setf (aref newarray x) y))
+	    	(setf (pvs-outer-array-inner-array pvs-outer-array)
+	    	      (make-pvs-array ;;restore outer diffs
+	    		:contents 
+	    		(insert-array-diffs
+	    		 diffs
+	    		 newarray)
+	    	      :size 0)
+	    	      (pvs-outer-array-diffs pvs-outer-array) nil
+	    	      (pvs-outer-array-offset pvs-outer-array) 0
+	    	      (pvs-outer-array-size pvs-outer-array)  0)))
 	    x))))
 
 (defun assoc-last (index alist count)
