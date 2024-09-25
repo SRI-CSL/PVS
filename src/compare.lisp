@@ -84,10 +84,10 @@
 	(cons old new))))
 
 (defmethod compare-top ((old module) (new recursive-type))
-  old)
+  (cons old new))
 
 (defmethod compare-top ((old recursive-type) (new module))
-  old)
+  (cons old new))
 
 ;;; Declarations
 
