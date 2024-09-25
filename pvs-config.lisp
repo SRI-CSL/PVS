@@ -131,6 +131,7 @@
 
 #+allegro
 (defun bye (&optional (exit-status 0))
+  (pvs-ws:stop-pvs-server)
   (excl:exit exit-status :no-unwind t :quiet t))
 
 #+harlequin-common-lisp
@@ -143,6 +144,7 @@
 
 #+sbcl
 (defun bye (&optional (exit-status 0))
+  (pvs-ws:stop-pvs-server)
   (sb-ext:quit :unix-status exit-status))
 
 (defun pvs-version-and-quit ()
