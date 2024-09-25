@@ -1279,8 +1279,7 @@
 	  (when (macro-expressions th)
 	    (setf (macro-expressions nth)
 		  (subst-mod-params-alist* (macro-expressions th) modinst bindings)))
-	  (when (or (instances-used th)
-		    (macro-subtype-tcc-args-alist th))
+	  (when (macro-subtype-tcc-args-alist th)
 	    (break "subst-mod-params* module"))
 	  (values nth tbindings))))))
 
@@ -1333,7 +1332,7 @@
 	       (assert (with-current-decl ndecl (fully-instantiated? bval)))
 	       (dolist (nfml ndfmls)
 		 (setf (associated-decl nfml) ndecl))
-	       (when (and (declaration? decl)
+	       (when (and (typep decl '(or declaration inline-recursive-type))
 			  (id decl)
 			  *subst-mod-params-declaration*
 			  (ref-to-id *subst-mod-params-declaration*))
@@ -1499,6 +1498,7 @@
 (defmethod subst-mod-params* ((nrectype inline-recursive-type) modinst bindings)
   (assert (generated-by nrectype))
   (let* ((*adt* nrectype)
+	 ;;(adt-type (subst-mod-params* (adt-type-name nrectype) modinst bindings))
 	 (nconstr (subst-mod-params* (constructors nrectype) modinst bindings))
 	 (ntype-name (subst-mod-params* (adt-type-name nrectype) modinst bindings)))
     ;; importings
@@ -1597,10 +1597,12 @@
   ;; Sets ndecl type-value, 
   (with-slots (type-value contains) ndecl
     (let ((ntval (subst-mod-params* type-value modinst bindings)))
+      (when (adt-type-name? ntval)
+	(break "subst-mod-params* type-decl for adt-type-name"))
       (setf type-value ntval))
     (assert (generated-by ndecl)) ;; Should be new
     (let ((tn (if (adt-type-name? type-value)
-		  (progn (break "subst-mod-params* type-decl for adt-type-name")
+		  (progn ;; (break "subst-mod-params* type-decl for adt-type-name")
 			 ;; (let ((sadt (cdr (assq (adt type-value) owlist))))
 			 ;;   (assert sadt)
 			 ;;   (mk-adt-type-name (id sd) nil nil nil sadt))
@@ -2088,9 +2090,12 @@
 				 (acons ncar ncdr ralist)))))
 
 (defmethod subst-mod-params* ((type adt-type-name) modinst bindings)
-  (unless (adt type)
-    (setf (adt type) *adt*))
-  (call-next-method)) ;; bound in subst-mod-params* (recursive-type)
+  (let ((ntype (call-next-method)))
+    ;; (break "subst-mod-params* adt-type-name")
+    ;; *adt* bound in subst-mod-params* (recursive-type)
+    (unless (adt type)
+      (setf (adt type) *adt*))
+    ntype))
 
 (defmethod subst-mod-params* ((type type-name) modinst bindings)
   (let* ((res (car (resolutions type)))
@@ -3268,11 +3273,7 @@
 			     (if (dactuals mi)
 				 (subst-mod-params* mi modinst bindings)
 				 (lcopy modinst :library libid))
-			     ;;(lcopy modinst :dactuals nil :library libid)
-			     (if (or (actuals mi) (dactuals modinst))
-				 (progn (assert (null (dactuals mi)))
-					mi)
-				 modinst)))
+			     modinst))
 		    (nres (if (and (eq ntype type) (eq mi nmi))
 			      res
 			      (mk-resolution decl nmi ntype))))
@@ -3431,13 +3432,24 @@
     ;; 		     (free-params rtype))))
     (mk-resolution decl (lcopy mi :resolutions nil) rtype)))
 
-(defmethod make-resolution ((decl decl-formal) modinst &optional type
+(defmethod make-resolution ((decl decl-formal-type) modinst &optional type
 			    (cdecl (current-declaration)))
   (assert (or modinst type))
   (assert (memq decl (decl-formals cdecl)))
-  (if (memq decl (decl-formals (current-declaration)))
-      (mk-resolution decl modinst (type-value decl))
-      (break "Check make-resolution (decl-formal)")))
+  (mk-resolution decl modinst (type-value decl)))
+
+(defmethod make-resolution ((decl decl-formal-const-decl) modinst &optional type
+			    (cdecl (current-declaration)))
+  (assert (or modinst type))
+  (assert (memq decl (decl-formals cdecl)))
+  (mk-resolution decl modinst (type decl)))
+
+(defmethod make-resolution ((decl decl-formal-theory-decl) modinst &optional type
+			    (cdecl (current-declaration)))
+  (assert (or modinst type))
+  (assert (memq decl (decl-formals cdecl)))
+  (break "make-resolution (decl-formal-theory-decl)")
+  (mk-resolution decl modinst (type decl)))
 
 (defmethod make-resolution ((decl binding) modinst
 			    &optional type (sdecl (current-declaration)))
