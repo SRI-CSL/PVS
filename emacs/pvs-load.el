@@ -124,7 +124,7 @@
 			    (if (= (aref dir (1- (length dir))) ?/)
 				(substring dir 0 (1- (length dir)))
 				dir))
-		  (string-split (pvs-getenv "PVS_LIBRARY_PATH") ":"))))
+		  (split-string (pvs-getenv "PVS_LIBRARY_PATH") ":"))))
       (setq pvs-library-path dirs)
       (setq load-path
 	    (cons (car load-path) (append dirs (cdr load-path))))))
