@@ -378,7 +378,7 @@ trivial TCCs."
   (interactive (append (complete-theory-name "Show TCCs of theory named: ")
 		       (list (when current-prefix-arg
 			       (prefix-numeric-value current-prefix-arg)))))
-  (let ((theory (car (last (string-split theoryref "#")))))
+  (let ((theory (car (last (split-string theoryref "#")))))
     (save-some-pvs-buffers)
     (message "Creating the %s.tccs buffer..." theory)
     (pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theoryref arg)
@@ -1638,8 +1638,8 @@ underlying Lisp in the minibuffer."
 (defun pvs-major-version-number ()
   (string-to-number
    (if pvs-version-information
-      (car (string-split (car pvs-version-information) "\\."))
-      (car (string-split (pvs-send-and-wait "*pvs-version*" nil nil) "\\.")))))
+      (car (split-string (car pvs-version-information) "\\."))
+      (car (split-string (pvs-send-and-wait "*pvs-version*" nil nil) "\\.")))))
 
 ;;; Replay
 

@@ -664,7 +664,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (kill-buffer buff))))
 
 (defun get-theory-buffer (theoryref)
-  (let* ((theoryname (car (last (string-split theoryref "#"))))
+  (let* ((theoryname (car (last (split-string theoryref "#"))))
 	 (filoc (cdr (assoc theoryname (pvs-collect-theories))))
 	 (filename (car filoc))
 	 (place (cadr filoc)))
@@ -757,7 +757,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun short-file-name (file)
   (if (file-exists-p file)
-      (let* ((dirnames (string-split file "/"))
+      (let* ((dirnames (split-string file "/"))
 	     (shortname file)
 	     (lname file)
 	     (hname file))
@@ -1627,7 +1627,7 @@ Point will be on the offending delimiter."
 
 (defun directory-writable-p (dirname)
   (let* ((edir (expand-file-name dirname))
-	 (dirnames (reverse (string-split edir "/")))
+	 (dirnames (reverse (split-string edir "/")))
 	 (dname edir))
     (while dirnames
       (if (file-exists-p dname)
@@ -2092,7 +2092,7 @@ existence and time differences to be whitespace")
 )
 
 (defun trailing-components (directory num)
-  (let ((comps (nreverse (string-split directory "/")))
+  (let ((comps (nreverse (split-string directory "/")))
 	(sdir "")
 	(n 0))
     (while (and (< n num) comps)
