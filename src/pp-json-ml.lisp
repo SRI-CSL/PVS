@@ -768,6 +768,7 @@
   ;;  ("commentary" . (list of strings and proofstates))
   (pp-json-proof-session* (cdr (assoc "commentary" session :test #'string=))))
 
+#+allegro
 (defun pp-json-proof-session* (session &optional commentary ps-jsons)
   (cond ((null session)
 	 (when commentary
@@ -840,7 +841,7 @@
 (defmethod pp-json-ml* ((expr t))
   (format nil "~a" expr))
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;declarations
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;declarations
 
 ;; (defmethod pp-json-ml* ((decl type-decl))
 ;;   (with-slots (id type-value) decl
@@ -1450,7 +1451,8 @@
     (if (cdr bindings)
 	`("{" "(" ,@(tokenize-list bindings ",") ")" "|" ,@(tokenize expr)"}")
 	`("{" ,@(tokenize (car bindings)) "|" ,@(tokenize expr)"}"))))
-  
+
+#+allegro
 (defun tokenize-visible-decls ()
   (assert *current-context*)
   (let ((lem-tokens nil)
@@ -1489,6 +1491,7 @@
 	("formulas" . ,formulas)
 	("proof-session" . ,prf-session)))))
 
+#+allegro
 (defun pp-tokenize-proof-session* (session &optional commentary ps-jsons)
   (cond ((null session)
 	 (when commentary
