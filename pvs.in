@@ -249,6 +249,7 @@ case $opsys in
 		   *86*)   PVSARCH=ix86 ;;
 		   *)      PVSARCH=`uname -p`;;
 		 esac
+		 [ -n "${DISPLAY}" ] || nowin=1
 		 ;;
   Darwin) case `uname -p` in
 	    i*86) PVSARCH=ix86;;
@@ -374,7 +375,7 @@ if [ -n "${rawmode}" ] # No Emacs involved - PVSEMACS is not set
 then ${pvsimagepath} ${noinit} ${otherargs}
 elif [ -n "${batch}" ] # Emacs, but no windows
 then ${PVSEMACS} ${batch} ${dotemacs} ${pvsemacsinit} ${emacsargs} ${otherargs} 2>&1
-elif [ -n "${nowin}" -o -z "${DISPLAY}" ]
+elif [ -n "${nowin}" ]
 then ${PVSEMACS} -nw ${pvsemacsinit} ${emacsargs} ${otherargs}
 else
   pvsrun="${PVSEMACS} -name pvs ${pvsemacsinit} ${PVSXINIT} ${emacsargs} ${otherargs}"
