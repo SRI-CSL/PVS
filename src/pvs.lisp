@@ -795,6 +795,27 @@ use binfiles."
 			 (prover-step (id sess) "(lisp (setq *context-modified* t))")))))
 		 (values theories nil changed-theories)))))))
 
+;; (defun check-for-modified-files ()
+;;   (org.shirakumo.file-notify:process-events
+;;    #'(lambda (file change)
+;;        (format t "~%~a: ~a" file change)
+;;        ))
+
+(defun get-parsed-file-theories (fileref)
+  (with-pvs-file (fname) fileref
+    (let* ((filename (pvs-filename fname))
+	   (*current-file* filename)
+	   (file (make-specpath filename))
+	   (theories (get-theories file)))
+      (cond ((not (file-exists-p file))
+	     (pvs-message "PVS file ~a is not in the current context" filename))
+	    ((parsed-file? file)
+	     (or (cdr (gethash filename (current-pvs-files)))
+		 (and (equal filename "prelude")
+		      *prelude-theories*)))
+	    (t (let ((*no-obligations-allowed* t))
+		 (parse :file file)))))))
+
 (defun parse-all-pvs-files (dir)
   (dolist (file (directory dir))
     (when (string-equal (pathname-type file) "pvs")
@@ -2517,13 +2538,24 @@ Note that even proved ones get overwritten"
 				 (or (parsed?* gth)
 				     ;;(break "(parsed?* ~a) failed" gth)
 				     ))))
-			 (t (and (filename mod)
-				 (eql (car (gethash (pvs-filename (filename mod))
-						    (current-pvs-files)))
-				      (file-write-date (make-specpath (filename mod)))))))))
+			 (t (parsed-theory? mod)))))
 	(push mod *parsed-theories-seen*)
 	prsd?)))
 
+(defun parsed-theory? (mod)
+  (and (filename mod)
+       (let ((spec-fname (make-specpath (filename mod))))
+	 (if (uiop:file-exists-p spec-fname)
+	     (or (eql (car (gethash (pvs-filename (filename mod)) (current-pvs-files)))
+		      (file-write-date spec-fname))
+		 (let* ((*no-obligations-allowed* t)
+			(ntheories (parse :file spec-fname))
+			(nthy (find mod ntheories :test #'same-id))
+			(diff (when nthy (compare mod nthy))))
+		   ;; When should (copy-lex mod nthy) be called?
+		   (and nthy (null diff))))
+	     (progn (pvs-message "File ~a has disappeared!" spec-fname)
+		    nil)))))
 
 #-gcl
 (defmethod parsed?* ((path pathname))
