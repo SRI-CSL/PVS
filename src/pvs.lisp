@@ -1370,7 +1370,7 @@ escapes here."
 	(if (cdr pdecls)
 	    (let ((vis-instances (assuming-instances (cadr pdecls))))
 	      (unless (equal vis-instances (assuming-instances othy))
-		(break "merge-parsed-theory: assuming-instances")
+		; (break "merge-parsed-theory: assuming-instances")
 		(setf (assuming-instances othy) vis-instances)))
 	    (setf (assuming-instances othy) nil))))
     (setf (all-declarations othy) nil)
