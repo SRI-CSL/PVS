@@ -6136,6 +6136,8 @@ system; primarily used after loading PVS libraries."
 	     (platform-dir (format nil "~a/bin/~a/" *pvs-path* platform))
 	     (build-dir (format nil "~aruntime/" platform-dir))
 	     (image (format nil "~a~a" build-dir name)))
+	(format t "~%Saving image as ~a" name)
+	(close-pvs-log)
 	(sb-ext:save-lisp-and-die
 	 image
 	 :toplevel (function image-startup)

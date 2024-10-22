@@ -387,6 +387,13 @@
     ;;(uiop:finish-outputs *pvs-log-stream*)
     ))
 
+(defun close-pvs-log ()
+  (when (and (streamp *pvs-log-stream*)
+	     (open-stream-p *pvs-log-stream*))
+    (close *pvs-log-stream*))
+  (setq *pvs-log-stream* nil))
+
+
 (defun verbose-msg (ctl &rest args)
   ;; Writes out a message.  The message should fit on one line, and
   ;; should contain no newlines.  For Emacs, it is intended to write to
