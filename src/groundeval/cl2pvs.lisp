@@ -65,7 +65,7 @@
 	;(if (eq (cadr typeof) 'character))
 	(cons 0 (1- length)))
       (if (pvs-outer-array-p sexpr)
-	  (cons 0 (1- (pvs-array-size (pvs-outer-array-inner-array sexpr))))
+	  (cons 0 (1- (array-total-size (pvs-array-contents (pvs-outer-array-inner-array sexpr)))))
 	(let ((bnds (simple-subrange? (domtype type))))
 	  (and bnds (number-expr? (car bnds))(number-expr? (cdr bnds))
 	       (cons (number (car bnds))(number (cdr bnds))))))))
@@ -88,11 +88,15 @@
 	(let ((bnds (dom-subrange? sexpr type)))
 	  (if bnds
 	      (cond ((zerop (car bnds))
-		     (format nil "[:")
-		     (format nil "~a" (cl2pvs* (pvs-funcall sexpr 0) (range type) *current-context*))
-		     (loop for i from 1 to (cdr bnds) do
-			   (format nil ", ~a" (cl2pvs* (pvs-funcall sexpr i) (range type) *current-context*)))
-		     (format nil ":]"))
+		     (let ((elems (loop for i from 0 to (cdr bnds) collect
+					(cl2pvs* (pvs-funcall sexpr i) (range type) *current-context*))))
+		       ;(break "elems: ~s" elems)
+		       (mk-array-expr elems)))
+		     ;; (format nil "[:")
+		     ;; (format nil "~a" (cl2pvs* (pvs-funcall sexpr 0) (range type) *current-context*))
+		     ;; (loop for i from 1 to (cdr bnds) do
+		     ;; 	   (format nil ", ~a" (cl2pvs* (pvs-funcall sexpr i) (range type) *current-context*)))
+		     ;; (format nil ":]")
 		    (t (let* ((nvar (make-new-variable '|ii| type))
 			      (conds (make-subrange-conds  (car bnds)  (cdr bnds)
 							   nvar sexpr (range type)

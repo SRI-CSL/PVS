@@ -503,7 +503,7 @@
     (pvs-array (length (pvs-array-contents x)))))
 
 (defun insert-array-diffs (diffs array)
-  (insert-array-diffs* diffs array))
+ (insert-array-diffs* diffs array))
 
 (defun insert-array-diffs* (diffs array)  
       (if (consp diffs)
@@ -531,12 +531,15 @@
 	    :size 0))))
 
 (defun copy-pvs-outer-array! (array arraysize &optional update-index)
-  (cond ((pvs-outer-array-p array) (copy-pvs-outer-array array))
+  (cond ((pvs-outer-array-p array)
+	 (copy-pvs-outer-array array))
 	((vectorp array) ;;was (simple-vector-p array)
-	 (let ((arr (make-array arraysize :initial-element 0)))
-	   (loop for i from 0 to (1- arraysize)
-	      when (not (eql i update-index))
-	      do (setf (aref arr i) (aref array i)))
+	 (let ((arr (make-array arraysize :initial-contents array
+				:fill-pointer arraysize
+				:adjustable t)))
+	   ;; (loop for i from 0 to (1- arraysize)
+	   ;;    when (not (eql i update-index))
+	   ;;    do (setf (aref arr i) (aref array i)))
 	   (make-pvs-outer-array
 	    :inner-array (make-pvs-array :contents arr :size 0)
 	    :offset 0
@@ -575,6 +578,11 @@
 
 (defun size-limit (x) (sqrt x))
 
+(defun pvs-copy-array (size array)
+  (make-array size  :initial-contents array
+	      :fill-pointer (and (array-has-fill-pointer-p array) (fill-pointer array))
+	      :adjustable (adjustable-array-p array)))
+
 (defun pvs-outer-array-update (pvs-outer-array at with arraysize)
   (let* ((x (copy-pvs-outer-array! pvs-outer-array arraysize at))
 	 (diffs (pvs-outer-array-diffs x))
@@ -585,44 +593,44 @@
 	 (inner-diffs (pvs-array-diffs inner-array))
 	 (contents (pvs-array-contents inner-array))
 	 (main? (eql offset inner-size)))
-    (cond ((and main? (<= at (fill-pointer contents)));;allow values to be pushed
-	   (assert (not diffs))
-	   (when (eq at (fill-pointer contents))
-	     (vector-push-extend at contents));;extend the contents array
-	   (push (cons at (aref contents at)) (pvs-array-diffs inner-array));might contain uninitialized entries 
-	   (incf (pvs-array-size inner-array))                              ;that should never be accessed
-	   (setf (aref contents at) with
-		 (pvs-outer-array-offset x)
-		 (pvs-array-size inner-array))
-	   ;(break "main")
-	   x)
-	  ((> at (fill-pointer contents))
-	   (let ((closure-hash (mk-pvs-closure-hash (make-hash-table :test 'pvs_equalp) pvs-outer-array)))
-	     (pvs-function-update closure-hash at with)
-	     closure-hash))
-	  (t 
-	    (push (cons at with) (pvs-outer-array-diffs x))
-	    (incf (pvs-outer-array-size x))
-	    (setf (pvs-outer-array-maxindex pvs-outer-array)
-		  (max (1+ at) (pvs-outer-array-maxindex pvs-outer-array)))
-	    (when (> (+ inner-size
-			outer-size)
-		     (size-limit (array-total-size contents)))
-	      (let ((newarray (copy-seq contents)))
-	    	(loop for (x . y) in inner-diffs ;restore inner values
-	    	      as i from (1+ offset) to inner-size
-	    	      do (setf (aref newarray x) y))
-	    	(setf (pvs-outer-array-inner-array pvs-outer-array)
-	    	      (make-pvs-array ;;restore outer diffs
-	    		:contents 
-	    		(insert-array-diffs
-	    		 diffs
-	    		 newarray)
-	    	      :size 0)
-	    	      (pvs-outer-array-diffs pvs-outer-array) nil
-	    	      (pvs-outer-array-offset pvs-outer-array) 0
-	    	      (pvs-outer-array-size pvs-outer-array)  0)))
-	    x))))
+	 (cond ((and main? (<= at (fill-pointer contents))) ;;allow values to be pushed
+		(assert (not diffs))
+		(when (eq at (fill-pointer contents))
+		  (vector-push-extend at contents)) ;;extend the contents array
+		(push (cons at (aref contents at)) (pvs-array-diffs inner-array)) ;might contain uninitialized entries 
+		(incf (pvs-array-size inner-array)) ;that should never be accessed
+		(setf (aref contents at) with
+		      (pvs-outer-array-offset x)
+		      (pvs-array-size inner-array))
+					;(break "main")
+		x)
+	       ((> at (fill-pointer contents))
+		(let ((closure-hash (mk-pvs-closure-hash (make-hash-table :test 'pvs_equalp) pvs-outer-array)))
+		  (pvs-function-update closure-hash at with)
+		  closure-hash))
+	       (t 
+		(push (cons at with) (pvs-outer-array-diffs x))
+		(incf (pvs-outer-array-size x))
+		;; (setf (pvs-outer-array-maxindex pvs-outer-array)
+		;; 	  (max (1+ at) (pvs-outer-array-maxindex pvs-outer-array)))
+		(when (> (+ inner-size
+			    outer-size)
+			 (size-limit (array-total-size contents)))
+		  (let ((newarray (pvs-copy-array (length contents) contents)))	;;avoid copy-seq: it turns vectors into simple-vectors
+	    	    (loop for (x . y) in inner-diffs ;restore inner values
+	    		  as i from (1+ offset) to inner-size
+	    		  do (setf (aref newarray x) y))
+	    	    (setf (pvs-outer-array-inner-array pvs-outer-array)
+	    		  (make-pvs-array ;;restore outer diffs
+	    		   :contents 
+	    		   (insert-array-diffs
+	    		    diffs
+	    		    newarray)
+	    		   :size 0)
+	    		  (pvs-outer-array-diffs pvs-outer-array) nil
+	    		  (pvs-outer-array-offset pvs-outer-array) 0
+	    		  (pvs-outer-array-size pvs-outer-array)  0)))
+		x))))
 
 (defun assoc-last (index alist count)
   (if (and (consp alist)(> count 0))
@@ -707,7 +715,7 @@
 
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)
-	(newrec  (copy-seq ,rec)))
+	(newrec  (copy-seq ,rec)));;okay to use copy-seq here
     (setf (svref newrec ,fieldnum) val);;no need to gentemp val and rec
     newrec))                           ;;since fieldnum is a fixed number
 
