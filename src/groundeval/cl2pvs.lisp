@@ -92,11 +92,6 @@
 					(cl2pvs* (pvs-funcall sexpr i) (range type) *current-context*))))
 		       ;(break "elems: ~s" elems)
 		       (mk-array-expr elems)))
-		     ;; (format nil "[:")
-		     ;; (format nil "~a" (cl2pvs* (pvs-funcall sexpr 0) (range type) *current-context*))
-		     ;; (loop for i from 1 to (cdr bnds) do
-		     ;; 	   (format nil ", ~a" (cl2pvs* (pvs-funcall sexpr i) (range type) *current-context*)))
-		     ;; (format nil ":]")
 		    (t (let* ((nvar (make-new-variable '|ii| type))
 			      (conds (make-subrange-conds  (car bnds)  (cdr bnds)
 							   nvar sexpr (range type)
