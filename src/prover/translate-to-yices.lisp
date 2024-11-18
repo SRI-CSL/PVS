@@ -958,14 +958,16 @@
 	     (get-yices-executable-path npath)))))
 	    
 
-(defun yices (sformnums)
+(defun yices (sformnums &optional no-comment)
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*ydefns* nil)
-	     (*ydatatype-warning* nil))
+	     (*ydatatype-warning* nil)
+	     (*suppress-printing* no-comment))
 	(find-yices-executable)
 	(assert *yices-executable*)
+	(break "yices")
 	(clear-yices)
 	(let ((yices-forms
 	       (loop for sf in s-forms
@@ -1019,20 +1021,20 @@ Please check your results with a proof that does not rely on Yices. ~%")
 		     (values 'X nil))))))))
 
 	
-(addrule 'yices () ((fnums *))
-  (yices fnums)
+(addrule 'yices () ((fnums *)(no-comment))
+  (yices fnums no-comment)
   "Invokes Yices as an endgame SMT solver to prove that the conjunction
 of the negations of the selected formulas is unsatisfiable. "
   "~%Simplifying with Yices,")
   
   
 (defstep yices-with-rewrites
-  (&optional (fnums *) defs theories rewrites exclude-theories exclude)
+  (&optional (fnums *) defs theories rewrites exclude-theories exclude no-comment)
   (then (simplify-with-rewrites fnums defs theories
 				:rewrites rewrites
 				:exclude-theories exclude-theories
 				:exclude exclude)
-	(yices fnums))
+	(yices fnums no-comment))
   "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
 or explicit!), from THEORIES, and REWRITES, then applies (assert fnums) followed
 by (yices fnums), then turns off all the installed rewrites.  Examples:
@@ -1053,7 +1055,8 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
 			  cases-rewrite?
 			  quant-simp?
 			  no-replace?
-			  implicit-typepreds?)
+			  implicit-typepreds?
+			  no-comment)
   (then (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
 	(repeat* (bash$ :if-match if-match :updates? updates?
@@ -1062,7 +1065,7 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
 			:quant-simp? quant-simp?
 			:implicit-typepreds? implicit-typepreds?
 			:cases-rewrite? cases-rewrite?))
-	(yices))
+	(yices * no-comment))
   "Core of GRIND: Installs rewrites, repeatedly applies BASH, and then
    invokes YICES.  See BASH for more explanation."
 "Repeatedly simplifying with decision procedures, rewriting,
