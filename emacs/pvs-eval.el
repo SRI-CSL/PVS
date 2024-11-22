@@ -32,23 +32,15 @@
   (interactive (complete-theory-name "Generate lisp for theory: "))
   (pvs-bury-output)
   (message "Generating Lisp for theory...")
-  (pvs-send-and-wait (format "(generate-lisp-for-theory \"%s\")"
-			 theoryname) nil nil 'dont-care)
-  (let ((buf (pvs-find-lisp-file theoryname)))
-    (when buf
-      (message "")
-      (with-current-buffer buf
-	(set (make-local-variable 'pvs-context-sensitive) t)
-	(lisp-mode)))))
-
-(defun pvs-find-lisp-file (theoryref)
-  (let ((theoryname (car (last (split-string theoryref "#")))))
-    (let ((buf (get-buffer (format "%s.lisp" theoryname))))
-      (when buf
-	(kill-buffer buf)))
-    (let ((lisp-file (format "%s%s.lisp" pvs-current-directory theoryname)))
-      (when (file-exists-p lisp-file)
-	(find-file-read-only-other-window lisp-file)))))
+  (let* ((cmd (format "(generate-lisp-for-theory \"%s\")" theoryname))
+	 (lfile (pvs-send-and-wait cmd nil nil 'string)))
+    (when lfile
+      (let ((buf (find-file lfile)))
+	(when buf
+	  (message "")
+	  (with-current-buffer buf
+	    (set (make-local-variable 'pvs-context-sensitive) t)
+	    (lisp-mode)))))))
 
 (defpvs pvs-c-theory typecheck (theoryref)
   "Generates the C code for a given theory and displays it in a buffer"

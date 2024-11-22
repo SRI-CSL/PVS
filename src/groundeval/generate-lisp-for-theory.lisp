@@ -92,7 +92,10 @@
 					      :if-does-not-exist :create)
 	     (let ((*error-output* *standard-output*))
 	       (pvs2cl-theory theory)))
-	   (print-lisp-defns theoryname (format nil "~a.lisp" basename) t)))))
+	   (let ((lfile (format nil "~a.lisp" basename)))
+	     (print-lisp-defns theoryname lfile t)
+	     (pvs-message "Generated ~a" lfile)
+	     lfile)))))
 
 (defun evaluation-mode (theoryref)
   (multiple-value-bind (dir file thname)
