@@ -4932,7 +4932,7 @@ type of the lhs."
 				(if (and ex (some (complement #'null) cdr-args))
                                     (let* ((fapp (make!-field-application (car fields) ex))
                                            (ass (make-assignment (car cdr-args) (car cdr-vals)))
-                                           (val (make-update-expr fapp (list ass))))
+                                           (val (make!-update-expr fapp (list ass))))
 				      ;; (assert (place ex))
 				      ;; ;; (push (list fapp ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
 				      ;; ;; (push (list val ex 'set-assignment-rec-arg-types) *set-type-generated-terms*)
