@@ -1011,7 +1011,7 @@ Please check your results with a proof that does not rely on Yices. ~%")
 			  (values '! nil nil))
 			 (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
 			    (values 'X nil nil))))
-		  (t (break "yices")
+		  (t ;(break "yices")
 		     (format t
 			 "~%Error running yices - you may need to do one or more of:~
                           ~% 1. Download yices from http://yices.csl.sri.com~
