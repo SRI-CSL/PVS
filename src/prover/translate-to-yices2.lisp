@@ -56,13 +56,13 @@
     (⇒ (|booleans| . =>))
     (IFF (|booleans| . =))
     (⇔ (|booleans| . =))
-    (AND (|booleans| . and) (|bv_bitwise| . |bv-and|))
+    (AND (|booleans| . |and|) (|bv_bitwise| . |bv-and|))
     (∧ (|booleans| . |and|))
     (& (|booleans| . |and|))
-    (OR  (|booleans| . or) (|bv_bitwise| . |bv-or|))
-    (∨  (|booleans| . or))
-    (NOT  (|booleans| . not)(|bv_bitwise| . |bv-not|))
-    (¬ (|booleans| . not))
+    (OR  (|booleans| . |or|) (|bv_bitwise| . |bv-or|))
+    (∨  (|booleans| . |or|))
+    (NOT  (|booleans| . |not|)(|bv_bitwise| . |bv-not|))
+    (¬ (|booleans| . |not|))
     (+  (|number_fields| . +)(|bv_arith_nat| . |bv-add|))
     (- (|number_fields| . -)(|bv_arithmetic_defs| . |bv-sub|))
     (*   (|number_fields| . *))
@@ -363,11 +363,12 @@
 (defmethod translate-to-yices2* :around ((obj expr) bindings)
   (if (or *bound-variables* *bindings*)
       (call-next-method)
-      (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
+    (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
 	(or hashed-value
 	    (let* ((result (call-next-method))
-		   (type-constraints (type-constraints obj :none))
+		   (type-constraints (type-constraints obj t));all? arg is :func, not :none or t
 		   (rtype-constraints (loop for fmla in type-constraints
+					    when (not (forall-expr? fmla));remove forall formulas
 					 nconc (and+ fmla))))
 	      (setf (gethash obj *translate-to-yices2-hash*)
 		    result)
@@ -377,7 +378,8 @@
 					(format nil "(assert (implies (and ~{ ~a~}) ~a))"
 					  *yices2-conditions*
 					  ytc)
-					(format nil "(assert ~a)" ytc))))
+				      (format nil "(assert ~a)" ytc))))
+		      ;(break "forall-subtype-constraint: ~a" ytc)
 		      (push yclause *yices2-subtype-constraints*)))
 	      result)))))
 
@@ -501,7 +503,8 @@
   (with-slots (operator argument) expr
     (let* ((op* (operator* expr))
 	   (op-id (when (name-expr? op*) (id op*))))
-      (cond ((and (eq op-id 'rem)
+;      (when (eq op-id '|t_target|) (break "translate-to-yices2(appl)"))
+      (cond ((and (eq op-id '|rem|)
 		  (eq (id (module-instance (resolution op*)))
 		      'modulo_arithmetic))
 	     (let ((denom (translate-to-yices2* (args1 (operator expr))
@@ -514,7 +517,7 @@
 		  (eq (id (module-instance (resolution op*)))
 		      '|number_fields|))
 	     (format nil "(- 0 ~a)" (translate-to-yices2* (argument expr) bindings)))
-	    ((and (eq op-id 'nat2bv)
+	    ((and (eq op-id '|nat2bv|)
 		  (number-expr? (expr (car (actuals (module-instance op*))))))
 	     (let ((size (translate-to-yices2*
 		  (expr (car (actuals (module-instance op*))))
@@ -841,6 +844,7 @@
 	      (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
+	    (format stream "(show-model)~%")
 	    ;(unless nonlinear? (format stream "(status)"))
 	    )
 	  (let ((*yices2-flags*

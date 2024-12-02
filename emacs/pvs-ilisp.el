@@ -206,7 +206,7 @@ intervenes."
 	(cl-case type
 	  (interrupt "Error: Received signal number 2 (Interrupt)")
 	  (break (concat "Break in PVS Lisp:\n"
-			 (string-trim (substring output msg-start msg-end))))
+			 (pvs-remove-whitespace (substring output msg-start msg-end))))
 	  (t (concat "Error in PVS Lisp (probably a bug):\n"
 		     (string-trim (substring output msg-start msg-end)))))))))
 
@@ -241,18 +241,18 @@ intervenes."
   (let* ((type-regex "\\(SIMPLE-ERROR\\|SIMPLE-CONDITION\\|SB-SYS:INTERACTIVE-INTERRUPT @[0-9A-F]+\\)")
 	 (prefix-regex (concat "debugger invoked on a "
 			       type-regex
-			      " in thread\n#<THREAD \"main thread\" RUNNING {"
+			      " in thread\n#<THREAD .*\"main thread\" RUNNING {"
 			      "[0-9A-F]+}>:")))
     (when (string-match prefix-regex output)
       (let* ((type-str (substring output (match-beginning 1) (match-end 1)))
 	     (msg-start (match-end 0))
-	     (msg-end (string-match "Type HELP" output msg-start t)))
+	     (msg-end (string-match "Type HELP" output msg-start)))
 	(cond ((equal type-str "SIMPLE-ERROR")
 	       (concat "Error in PVS Lisp (probably a bug):\n"
-		       (string-trim (substring output msg-start msg-end))))
+		       (pvs-remove-whitespace (substring output msg-start msg-end))))
 	      ((equal type-str "SIMPLE-CONDITION")
 	       (concat "Break in PVS Lisp:\n"
-		       (string-trim (substring output msg-start msg-end))))
+		       (pvs-remove-whitespace (substring output msg-start msg-end))))
 	      (t ;; (string-match "SB-SYS:INTERACTIVE-INTERRUPT" type-str)
 	       "Error: Received signal number 2 (Interrupt)"))))))
 
