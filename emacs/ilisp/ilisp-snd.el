@@ -582,6 +582,7 @@ it will be handled by HANDLER."
     ;; No completion table
     (setq ilisp-original nil)
     (cond ((memq and-go '(t call))
+	   (comint-ipc-debug "ilisp-send and-go: string = %s, handler = %s" string handler)
 	   (comint-send process string nil nil status message handler)
 	   (if (eq and-go 'call)
 	       (call-defun-lisp nil)
@@ -589,21 +590,26 @@ it will be handled by HANDLER."
 	   nil)
 	  (t
 	   (let* ((save (ilisp-value 'ilisp-save-command t))
+		  (save-str (if save (format save string) string))
 		  (result
-		   (comint-send 
-		    process
-		    (if save (format save string) string)
-		    ;; Interrupt without waiting
-		    t (unless dispatch 'wait) status message handler)))
-	     (when save 
+		   (progn
+		     (comint-ipc-debug "ilisp-send no-go: save-str = %s, handler = %s"
+				      save-str handler)
+		     (comint-send process save-str
+		      ;; Interrupt without waiting
+		      t (unless dispatch 'wait) status message handler))))
+	     (when save
+	       (comint-ipc-debug "ilisp-send save: save-str = (pvs-ilisp-restore), handler = t"
+				save-str handler)
 	       (comint-send
 		process
-		(ilisp-value 'ilisp-restore-command t)
+		(ilisp-value 'ilisp-restore-command t) ;; no-insert
 		;; Martin Atzmueller 2000-01-22
 		;; this was necessary to have it work in Emacs 20.3 smoothly
                 ;; old one: t nil 'restore "Restore" t t
 		;; mew experimental:
-		;; t (unless dispatch 'wait) 'restore "Restore" t t))
+		;; t (unless dispatch 'wait) 'restore "Restore" t t
+		;; wait, status, message, handler, after
 		t 'dispatch 'restore "Restore" t t)) ;;; (unless dispatch 'wait) -> 'dispatch by SO.
 	     (unless dispatch
 	       (while (not (cdr result))
