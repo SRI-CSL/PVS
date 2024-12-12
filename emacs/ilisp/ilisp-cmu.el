@@ -68,7 +68,7 @@
 
 	ilisp-find-source-command "(ILISP:source-file \"%s\" \"%s\" \"%s\")"
 
-	comint-fix-error ":pop"
+	comint-fix-error ":abort"
 
 	comint-continue ":go"
 
