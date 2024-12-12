@@ -250,7 +250,7 @@ intervenes."
     (when (string-match prefix-regex output)
       (let* ((type-str (substring output (match-beginning 1) (match-end 1)))
 	     (msg-start (match-end 0))
-	     (msg-end (string-match "Type HELP" output msg-start t)))
+	     (msg-end (string-match "Type HELP" output msg-start)))
 	(cond ((equal type-str "SIMPLE-ERROR")
 	       (concat "Error in PVS Lisp (probably a bug):\n"
 		       (pvs-remove-whitespace (substring output msg-start msg-end))))
