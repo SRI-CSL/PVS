@@ -39,6 +39,15 @@
 
 (require 'comint)
 
+(defvar debugging-comint-ipc nil)
+
+(defmacro comint-ipc-debug (fmt-string &rest args)
+  `(when debugging-comint-ipc
+     (with-current-buffer (get-buffer-create "comint-ipc-debug")
+       (goto-char (point-max))
+       (insert (format ,fmt-string ,@args))
+       (insert "\n"))))
+
 (declare-function ilisp-scroll-output "ilisp-out")
 
 (declare-function ilisp-show-output "ilisp-out")
@@ -306,6 +315,7 @@ comint-prompt-regexp or nil otherwise.  Also set the status
 appropriately by funcalling comint-update-status.  If specified EQUAL
 will be called with old and line and should return T if line is not an
 error.  OLD will be nil for the first prompt."
+  (comint-ipc-debug "comint-prompt-status: old = %s, line = %s, equal = %s" old line equal)
   (if (string-match comint-prompt-regexp line)
       (let ((error (or (if equal
 			   (funcall equal old line)
@@ -415,6 +425,7 @@ a regexp.
 
 Output to the process should only be done through the functions
 comint-send or comint-default-send, or results will be mixed up."
+  (comint-ipc-debug "comint-process-filter: output = %s" output)
   (let* ((inhibit-quit t)
 	 ;; (window (selected-window))
 	 (comint-original-buffer (prog1 (current-buffer)
@@ -436,6 +447,14 @@ comint-send or comint-default-send, or results will be mixed up."
 	 (sync (stringp wait-p)))
     ;; (comint-log process output t)  ;; leave logging up to PVS
     ;; Remove leading whitespace
+    (comint-ipc-debug "comint-process-filter:\n  comint-original-buffer = %s\n  match-data = %s"
+		     comint-original-buffer match-data)
+    (comint-ipc-debug "  send = %s\n  no-insert = %s\n  wait-p = %s\n  messagep = %s"
+		     send no-insert wait-p messagep)
+    (comint-ipc-debug "  handler = %s\n  running = %s\n  old-prompt = %s\n  line = %s"
+		     handler running old-prompt line)
+    (comint-ipc-debug "  result = %s\n  old-result = %s\n  message = %s\n  sync = %s\n"
+		     result old-result message sync)
     (if (and (null old-result)
 	     (save-excursion (goto-char (process-mark process)) (bolp))
 	     (eq (string-match "[ \t]*\n" output) 0))
@@ -463,6 +482,7 @@ comint-send or comint-default-send, or results will be mixed up."
 	(let* ((last (substring (car result) (car line)))
 	       (is-prompt
 		(funcall comint-prompt-status (car old-prompt) last)))
+	  (comint-ipc-debug "comint-process-filter: last = %s, is-prompt = %s" last is-prompt)
 	  (if is-prompt
 	      (let* ((output
 		      (if (or no-insert sync)
@@ -499,21 +519,34 @@ comint-send or comint-default-send, or results will be mixed up."
 		    ;; corrupt successive behaviors."
 
 		    ;; The code hereafter fixes the problem.
-		    
 		    (if handler
 			(save-excursion
-			  (setq handler
-				(funcall handler comint-errorp wait-p
-					 message output last))))
+			  (progn
+			    (comint-ipc-debug "comint-process-filter: invoking handler = %s" handler)
+			    (comint-ipc-debug "  comint-errorp = %s, wait-p = %s, message = %s"
+					     comint-errorp wait-p message)
+			    (comint-ipc-debug "  last = %s, output = %s\n" last output)
+					       
+			    (setq handler
+				  (funcall handler comint-errorp wait-p
+					   message output last)))))
 
-		  (if (and error handler no-insert comint-fix-error)
-		      (setq comint-send-queue 
-			    (cons (list comint-fix-error t nil 'fix
-					"Fixing error" nil
-					nil nil 0 (cons nil nil))
-				  ;; We may have aborted
-				  (or (cdr comint-send-queue)
-				      comint-send-queue))))
+		  (comint-ipc-debug "comint-process-filter: comint-fix-error = %s, cond = %s"
+				   comint-fix-error
+				   (and error handler no-insert comint-fix-error))
+		  (comint-ipc-debug "  error = %s, handler = %s, no-insert = %s\n"
+				   error handler no-insert)
+		  
+		  (when (and error handler no-insert comint-fix-error)
+		    (comint-ipc-debug "comint-process-filter: adding comint-fix-error = %s to queue"
+				     comint-fix-error)
+		    (setq comint-send-queue 
+			  (cons (list comint-fix-error t nil 'fix
+				      "Fixing error" nil
+				      nil nil 0 (cons nil nil))
+				;; We may have aborted
+				(or (cdr comint-send-queue)
+				    comint-send-queue))))
 		  (if sync
 		      (let ((match (string-match wait-p old-result)))
 			(if match
@@ -601,7 +634,8 @@ current send if done."
 			  message comment-end "\n")))
 	     (if (and string (not (stringp string)))
 		 ;; Elisp code
-		 (progn 
+		 (progn
+		   (comint-ipc-debug "comint-dispatch-send: not stringp prompt = #s" prompt)
 		   (rplacd (comint-send-results (car comint-send-queue))
 			   (if (consp prompt) (car prompt) prompt))
 		   (funcall string)
@@ -627,6 +661,9 @@ current send if done."
 		       ;; is a problem only if the original did start
 		       ;; and had side effects.
 		       (rplaca running nil)
+		       
+		       (comint-ipc-debug "comint-dispatch-send: stringp comint-fix-error = #s"
+					comint-fix-error)
 		       (setq comint-send-queue 
 			     (cons (list comint-fix-error t nil 'fix
 					 "Fixing error" nil
@@ -655,14 +692,16 @@ send."
 	      (list nil t nil 'interrupt "Interrupt" nil
 		    ;; running old-prompt line (output . prompt)
 		    current nil 0 (cons nil nil))))
+	(comint-ipc-debug "comint-interrupt: continue send = #s" send)
 	(setq comint-send-queue (cons interrupt (cons send comint-send-queue)))
 	(funcall comint-update-status 'interrupt)
 	(comint-interrupt-subjob))
-      (if (eq comint-send-queue comint-end-queue)
-	  (setq comint-send-queue
-		(cons (car comint-send-queue)
-		      (cons send comint-send-queue)))
-	  (rplacd comint-send-queue (cons send (cdr comint-send-queue))))))
+      (progn (comint-ipc-debug "comint-interrupt: adding send = #s" send)
+	     (if (eq comint-send-queue comint-end-queue)
+		 (setq comint-send-queue
+		       (cons (car comint-send-queue)
+			     (cons send comint-send-queue)))
+		 (rplacd comint-send-queue (cons send (cdr comint-send-queue)))))))
 
 ;;;%Interface
 (defun comint-setup-ipc (&optional force)
@@ -758,6 +797,8 @@ It should return the output string.
 
 comint-interrupt-start is a function \(output) that returns the start
 of the interrupt text in output using comint-interrupt-regexp to find it."
+  (comint-ipc-debug "comint-send: handler = %s, comint-handler = %s"
+		   handler comint-handler)
   (with-current-buffer (process-buffer process)
     (let* ((inhibit-quit t)
 	   (send (list string 
@@ -779,6 +820,7 @@ of the interrupt text in output using comint-interrupt-regexp to find it."
       (setq comint-aborting nil)
       (if (and top-level (or (stringp wait) prompt))
 	  (progn
+	    (comint-ipc-debug "comint-send: toplevel pushing onto queue %s" send)
 	    (setq comint-send-queue (cons send comint-send-queue))
 	    (comint-dispatch-send process))
 	  (if (or (and wait (not after) (not prompt)) top-level)
@@ -812,11 +854,14 @@ of the interrupt text in output using comint-interrupt-regexp to find it."
 		       (list nil t nil 'interrupt "Interrupt" nil
 			     ;; running old-prompt line (output . prompt)
 			     send (car (cdr (comint-send-variables send)))
-			     nil (cons nil nil)))) 
+			     nil (cons nil nil))))
+		  (comint-ipc-debug "comint-send: not ok 1 interrupt = %s" interrupt)
 		  (setq comint-send-queue
 			(cons interrupt (cdr comint-send-queue)))
 		  (comint-interrupt-subjob))
-		(setq comint-send-queue (delq send comint-send-queue))))))))
+		(progn
+		  (comint-ipc-debug "comint-send: not ok 2 deleting %s" send)
+		  (setq comint-send-queue (delq send comint-send-queue)))))))))
 
 ;;;
 (defun comint-send-code (process code)
@@ -827,19 +872,22 @@ want to execute synchronous sends in the code or it will lock up. "
 ;;;
 (defun comint-default-send (process string)
   "Send to PROCESS top-level, STRING."  
+  (comint-ipc-debug "comint-default-send: string = %s" string)
   (with-current-buffer (process-buffer process)
     (let* ((top (car comint-end-queue))
 	   (old (car top)))
       (rplaca (cdr (cdr (cdr (cdr (car comint-end-queue))))) string)
-      (if (eq comint-send-queue comint-end-queue)
-	  (progn (funcall comint-update-status 'run)
-		 (rplaca (comint-send-variables (car comint-send-queue)) t)
-		 (rplacd (comint-send-results (car comint-send-queue)) nil)
-		 (comint-sender process string))
-	  (rplaca top
-		  (if old
-		      (concat old (if comint-send-newline "\n") string)
-		      string))))))
+      (cond ((eq comint-send-queue comint-end-queue)
+	     (comint-ipc-debug "comint-default-send: end-queue top = %s, old = %s" top old)
+	     (funcall comint-update-status 'run)
+	     (rplaca (comint-send-variables (car comint-send-queue)) t)
+	     (rplacd (comint-send-results (car comint-send-queue)) nil)
+	     (comint-sender process string))
+	    (t (comint-ipc-debug "comint-default-send: replacing old = %s" old)
+	       (rplaca top
+		       (if old
+			   (concat old (if comint-send-newline "\n") string)
+			   string)))))))
 
 ;;;
 (defun comint-sync (process start start-regexp end end-regexp)
@@ -912,6 +960,7 @@ messages in *Aborted Commands*."
 	      (setq pointer (cdr pointer))))
 	  (bury-buffer "*Aborted Commands*")
 	  (rplaca (car comint-end-queue) nil)
+	  (comint-ipc-debug "comint-abort-sends: #s" (reverse (cons (car comint-end-queue) new)))
 	  (setq comint-send-queue 
 		(reverse (cons (car comint-end-queue) new))
 		comint-end-queue 
