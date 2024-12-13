@@ -346,6 +346,7 @@ workspace-session instance, removes binfiles if delete-binfiles is not nil,
 loads .pvscontext, and any prelude library extensions in the .pvscontext
  (see load-prelude-libraries), unless dont-load-prelude-libraries is not
 nil."
+  (clear-background-context)
   (let ((*dont-write-object-files* t))
     (save-context empty-pvs-context))
   (reset-typecheck-caches)
@@ -484,7 +485,7 @@ nil."
 (defun add-library-path (dir)
   (when (string= dir "")
     (setq dir (merge-pathnames #p"lib/" *pvs-path*)))
-  (if (uiop:file-exists-p dir)
+  (if (uiop:directory-exists-p dir)
       (let ((tdir (truename dir)))
 	(if (member tdir *pvs-library-path* :test #'file-equal)
 	    (pvs-warning "~a is already in your pvs library path")
@@ -794,27 +795,6 @@ use binfiles."
 				   changed-theories)
 			 (prover-step (id sess) "(lisp (setq *context-modified* t))")))))
 		 (values theories nil changed-theories)))))))
-
-;; (defun check-for-modified-files ()
-;;   (org.shirakumo.file-notify:process-events
-;;    #'(lambda (file change)
-;;        (format t "~%~a: ~a" file change)
-;;        ))
-
-(defun get-parsed-file-theories (fileref)
-  (with-pvs-file (fname) fileref
-    (let* ((filename (pvs-filename fname))
-	   (*current-file* filename)
-	   (file (make-specpath filename))
-	   (theories (get-theories file)))
-      (cond ((not (file-exists-p file))
-	     (pvs-message "PVS file ~a is not in the current context" filename))
-	    ((parsed-file? file)
-	     (or (cdr (gethash filename (current-pvs-files)))
-		 (and (equal filename "prelude")
-		      *prelude-theories*)))
-	    (t (let ((*no-obligations-allowed* t))
-		 (parse :file file)))))))
 
 (defun parse-all-pvs-files (dir)
   (dolist (file (directory dir))
@@ -1391,7 +1371,7 @@ escapes here."
 	(if (cdr pdecls)
 	    (let ((vis-instances (assuming-instances (cadr pdecls))))
 	      (unless (equal vis-instances (assuming-instances othy))
-		; (break "merge-parsed-theory: assuming-instances")
+		;; (break "merge-parsed-theory: assuming-instances")
 		(setf (assuming-instances othy) vis-instances)))
 	    (setf (assuming-instances othy) nil))))
     (setf (all-declarations othy) nil)
@@ -2423,6 +2403,26 @@ Note that even proved ones get overwritten"
 	   (pvs-buffer buffer str t t))
 	  (t (pvs-message "Theory ~a has no TCCs" theoryref)))))
 
+;; (defun get-tccs-origin-info (fileref)
+;;   (let ((theories (typecheck-file fileref nil nil nil t)))
+;;     (mapcan #'get-tcc-origin-theory-info theories)))
+
+;; (defun get-tcc-origin-theory-info (th)
+;;   (let ((tcc-info (mapcan #'get-tcc-origin-info (all-decls th))))
+;;     `(("theory-id" . ,(string (id th)))
+;;       ("tcc-info" ,tcc-info))))
+
+;; (defmethod get-tcc-origin-info ((decl tcc-decl))
+;;   ;; Returning JSON-friendly alist
+;;   (list `(("tcc-id" . ,(string (id decl)))
+;; 	  ("comment" . ,(newline-comment decl))
+;; 	  ("tcc-def" . ,(format nil "~a" (closed-definition decl)))
+;; 	  ("origin-place" . ,(coerce (place (origin decl)) 'list)))))
+
+;; (defmethod get-tcc-origin-info (decl)
+;;   nil)
+
+
 (defun show-declaration-tccs (bufname origin line &optional unproved-only?)
   (let* ((decl (get-decl-at-origin bufname origin line))
 	 (theory (module decl))
@@ -2538,24 +2538,13 @@ Note that even proved ones get overwritten"
 				 (or (parsed?* gth)
 				     ;;(break "(parsed?* ~a) failed" gth)
 				     ))))
-			 (t (parsed-theory? mod)))))
+			 (t (and (filename mod)
+				 (eql (car (gethash (pvs-filename (filename mod))
+						    (current-pvs-files)))
+				      (file-write-date (make-specpath (filename mod)))))))))
 	(push mod *parsed-theories-seen*)
 	prsd?)))
 
-(defun parsed-theory? (mod)
-  (and (filename mod)
-       (let ((spec-fname (make-specpath (filename mod))))
-	 (if (uiop:file-exists-p spec-fname)
-	     (or (eql (car (gethash (pvs-filename (filename mod)) (current-pvs-files)))
-		      (file-write-date spec-fname))
-		 (let* ((*no-obligations-allowed* t)
-			(ntheories (parse :file spec-fname))
-			(nthy (find mod ntheories :test #'same-id))
-			(diff (when nthy (compare mod nthy))))
-		   ;; When should (copy-lex mod nthy) be called?
-		   (and nthy (null diff))))
-	     (progn (pvs-message "File ~a has disappeared!" spec-fname)
-		    nil)))))
 
 #-gcl
 (defmethod parsed?* ((path pathname))
@@ -3877,7 +3866,7 @@ nil is returned in that case."
 	  (or (and *current-context*
 		   (or *in-checker*
 		       *generating-adt*
-		       (null *working-current-context*)
+		       ;; (null *working-current-context*)
 		       (eq *current-context* *working-current-context*))
 		   (let ((th (get-theory thname)))
 		     (when (and th (typechecked? th))
