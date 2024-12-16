@@ -4030,6 +4030,24 @@ bounded_nat_inductions[m: nat]: THEORY
 
  END bounded_nat_inductions
 
+everybelow  : THEORY
+
+  BEGIN
+  
+  everybelow(n : nat, P : PRED[below(n)])(i : upto(n)): RECURSIVE bool
+  = (IF i = 0 THEN TRUE
+     ELSE P(i-1) AND everybelow(n, P)(i-1)
+     ENDIF)
+  MEASURE i
+
+  forall_everybelow: LEMMA %transforms universal quantifer into an unfoldable conjunction
+   (FORALL (n : nat), (P :PRED[below(n)]) :  (FORALL (i : below(n)): P(i)) => (FORALL (j : upto(n)):  everybelow(n, P)(j)))
+
+  forall_everybelow_full: LEMMA
+     (FORALL (n : nat), (P :PRED[below(n)]) :  (FORALL (i : below(n)): P(i)) => everybelow(n, P)(n))
+   
+  END everybelow
+
 
 % subrange_type
 
@@ -5328,6 +5346,11 @@ list_props [T: TYPE]: THEORY
   every_nth: LEMMA
       every(P)(l) IFF FORALL (i:below(length(l))): P(nth(l,i))
 
+  every_implies: LEMMA
+      (FORALL x: P(x) => Q(x))
+      AND every(P)(l)
+      => every(Q)(l)
+
  END list_props
 
 
@@ -5379,27 +5402,36 @@ filters[T: TYPE]: THEORY
  BEGIN
   s: VAR set[T]
   l: VAR list[T]
-  p: VAR pred[T]
+  p, q: VAR pred[T]
   
   filter(s, p): set[T] = {x: T | s(x) & p(x)}
 
   filter(p)(s): set[T] = {x: T | s(x) & p(x)}
 
-  filter(l, p): RECURSIVE list[T] =
+  filter(l, p): RECURSIVE (list_adt[T].every(p)) = 
     CASES l OF
       null: null,
       cons(x, y): IF p(x) THEN cons(x, filter(y, p)) ELSE filter(y, p) ENDIF
     ENDCASES
     MEASURE length(l)
 
-  filter(p)(l): RECURSIVE list[T] =
+  filter(p)(l): RECURSIVE (list_adt[T].every(p)) = 
     CASES l OF
       null: null,
       cons(x, y): IF p(x) THEN cons(x, filter(p)(y)) ELSE filter(p)(y) ENDIF
     ENDCASES
     MEASURE length(l)
- END filters
 
+  every_filter_uncurried: LEMMA
+   FORALL (x : (list_adt[T].every(p))):  every(p)(filter(x, q))
+
+  every_filter: LEMMA
+   FORALL (x : (list_adt[T].every(p))): every(p)(filter(q)(x))
+
+  
+
+
+ END filters
 
 % list2finseq
 
