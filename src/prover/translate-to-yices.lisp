@@ -967,7 +967,7 @@
 	     (*suppress-printing* no-comment))
 	(find-yices-executable)
 	(assert *yices-executable*)
-	(break "yices")
+	;(break "yices")
 	(clear-yices)
 	(let ((yices-forms
 	       (loop for sf in s-forms

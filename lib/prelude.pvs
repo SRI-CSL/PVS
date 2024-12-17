@@ -5329,14 +5329,26 @@ list_props [T: TYPE]: THEORY
   every_append: LEMMA
     every(P)(append(l1, l2)) IFF (every(P)(l1) AND every(P)(l2))
 
+  some_append: LEMMA
+    some(P)(append(l1, l2)) IFF (some(P)(l1) OR some(P)(l2))
+
   every_disjunct1: LEMMA
     every(P)(l) IMPLIES every(LAMBDA (x: T): P(x) OR Q(x))(l)
+
+  some_disjunct1: LEMMA
+    some(P)(l) IMPLIES some(LAMBDA (x : T): P(x) OR Q(x))(l)
 
   every_disjunct2: LEMMA
     every(Q)(l) IMPLIES every(LAMBDA (x: T): P(x) OR Q(x))(l)
 
+  some_disjunct2: LEMMA
+    some(Q)(l) IMPLIES some(LAMBDA (x : T): P(x) OR Q(x))(l)
+
   every_conjunct: LEMMA
     every(LAMBDA (x: T): P(x) AND Q(x))(l) => (every(P)(l) AND every(Q)(l))
+
+  some_conjunct: LEMMA
+    some(LAMBDA (x: T): P(x) AND Q(x))(l) => (some(P)(l) AND some(Q)(l))
 
   every_conjunct2: LEMMA
     (every(P)(l) AND every(Q)(l)) => every(LAMBDA (x: T): P(x) AND Q(x))(l)
@@ -5346,10 +5358,18 @@ list_props [T: TYPE]: THEORY
   every_nth: LEMMA
       every(P)(l) IFF FORALL (i:below(length(l))): P(nth(l,i))
 
+  some_nth: LEMMA
+      some(P)(l) IFF EXISTS (i:below(length(l))): P(nth(l,i))
+
   every_implies: LEMMA
       (FORALL x: P(x) => Q(x))
       AND every(P)(l)
       => every(Q)(l)
+
+  some_implies: LEMMA
+      (FORALL x: P(x) => Q(x))
+      AND some(P)(l)
+      => some(Q)(l)
 
  END list_props
 
@@ -5428,8 +5448,7 @@ filters[T: TYPE]: THEORY
   every_filter: LEMMA
    FORALL (x : (list_adt[T].every(p))): every(p)(filter(q)(x))
 
-  
-
+  length_filter: LEMMA (FORALL (p: PRED[T]): length(filter(l, p)) <= length(l))
 
  END filters
 
