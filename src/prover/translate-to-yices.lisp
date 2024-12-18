@@ -298,7 +298,7 @@
 		    (ysupertype (translate-to-yices* supertype
 						     bindings))
 		    (maxtype (find-supertype supertype))
-		    (subvar (yices-id-name 'subvar)))
+		    (subvar (yices-id-name '|subvar|)))
 	       (if (tupletype? maxtype)
 		   (let* ((ldom (length (types maxtype)))
 			  (subvarlist (yices-format-tuple-list subvar ldom)))
@@ -587,9 +587,9 @@
   (with-slots (operator argument) expr
     (let* ((op* (operator* expr))
 	   (op-id (when (name-expr? op*) (id op*))))
-      (cond ((and (eq op-id 'rem)
+      (cond ((and (eq op-id '|rem|)
 		  (eq (id (module-instance (resolution op*)))
-		      'modulo_arithmetic))
+		      '|modulo_arithmetic|))
 	     (let ((denom (translate-to-yices* (args1 (operator expr))
 					       bindings))
 		   (numer (translate-to-yices* (args1 expr)
@@ -600,7 +600,7 @@
 		  (eq (id (module-instance (resolution op*)))
 		      '|number_fields|))
 	     (format nil "(- 0 ~a)" (translate-to-yices* (argument expr) bindings)))
-	    ((and (eq op-id 'nat2bv)
+	    ((and (eq op-id '|nat2bv|)
 		  (number-expr? (expr (car (actuals (module-instance op*))))))
 	     (let ((size (translate-to-yices*
 			  (expr (car (actuals (module-instance op*))))
@@ -967,7 +967,7 @@
 	     (*suppress-printing* no-comment))
 	(find-yices-executable)
 	(assert *yices-executable*)
-	(break "yices")
+	;(break "yices")
 	(clear-yices)
 	(let ((yices-forms
 	       (loop for sf in s-forms
