@@ -2668,7 +2668,7 @@
 	     str)
       (multiple-value-bind (q r)
 	  (floor cnt 127)
-	(setf (char str pos) (code-char (+ r 128)))
+	(setf (char str pos) (character (code-char (+ r 128))))
 	(assert (not (char= (char str pos) #\Rubout)))
 	(make-new-tex-string* str (1- pos) q))))
 

@@ -768,14 +768,13 @@
   ;;  ("commentary" . (list of strings and proofstates))
   (pp-json-proof-session* (cdr (assoc "commentary" session :test #'string=))))
 
-#+allegro
 (defun pp-json-proof-session* (session &optional commentary ps-jsons)
   (cond ((null session)
 	 (when commentary
 	   (let ((last-commentary (assoc "commentary" (car ps-jsons) :test #'string=)))
 	     (if last-commentary
 		 (nconc last-commentary (nreverse commentary))
-		 (nconc (car ps-jsons) `(("commentary" . ,(nreverse commentary)))))))
+		 (append (car ps-jsons) `(("commentary" . ,(nreverse commentary)))))))
 	 (nreverse ps-jsons))
 	((proofstate? (car session))
 	 (let ((ps-json (pp-json-proofstate (car session) (reverse commentary))))
@@ -1452,7 +1451,6 @@
 	`("{" "(" ,@(tokenize-list bindings ",") ")" "|" ,@(tokenize expr)"}")
 	`("{" ,@(tokenize (car bindings)) "|" ,@(tokenize expr)"}"))))
 
-#+allegro
 (defun tokenize-visible-decls ()
   (assert *current-context*)
   (let ((lem-tokens nil)
