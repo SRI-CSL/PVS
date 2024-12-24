@@ -1450,6 +1450,23 @@ is replaced with replacement."
 (defmethod context ((name-sym symbol))
   (context (string name-sym)))
 
+;; (defmethod context ((name name))
+;;   "context assumes the name is a module or declaration name, but has to
+;; determine which.  A full name is of the form lib@th#decl, which translates
+;; to library = lib, mod-id = th, and id = decl. Only the id is necessarily
+;; set; the others may be nil. If so, context tries it as a theory id first,
+;; then as a declaration id."
+;;   (let* ((thname (change-class
+;; 		     (if (mod-id name)
+;; 			 (copy name :id (mod-id name) :mod-id nil)
+;; 			 (copy name))
+;; 		     'modname))
+;; 	 (th (get-typechecked-theory thname))
+;; 	 (decl (if (mod-id name)
+;; 		   (find (id name) (all-decls th) :key #'id)
+;; 		   (car (last (all-decls th))))))
+;;     (context decl)))
+
 (defmethod context ((name name))
   (if (mod-id name)
       (let ((th (get-theory (mod-id name))))
@@ -1689,6 +1706,12 @@ prove itself from the mapped axioms."
 (defmethod add-conversions-to-context ((decl conversion-decl))
   (push decl (conversions *current-context*)))
 
+
+;;; Background theories
+;;;   *background-context* is automatically created, and allows one to
+;;;   experiment with PVS declarations, adding them to the backround theory rather
+;;;   than an existing theory. This is used primarily by tc-decl
+
 (defun make-background-theory ()
   (make-instance 'module
     :id 'pvs-background-theory
@@ -1703,6 +1726,10 @@ prove itself from the mapped axioms."
   (or *background-context*
       (setq *background-context*
 	    (make-background-context))))
+
+(defun clear-background-context ()
+  (setq *background-context*
+	(make-background-context)))
 
 (defun make-new-context (theory)
   (let ((pctx (or (prelude-context *workspace-session*)
@@ -4828,7 +4855,8 @@ space")
   (list (root origin)
 	(kind origin)
 	(expr origin)
-	(type origin)))
+	(type origin)
+	(place origin)))
 
 (defmethod sexp ((dref decl-reference))
   (with-slots (id class type theory-id library) dref
@@ -5299,16 +5327,20 @@ we can get this method using
   (with-context (background-context)
     (let ((tdecls (tc-term decl :nt 'theory-elt)))
       (dolist (tdecl tdecls)
-	(add-decl tdecl)))))
+	(add-decl tdecl)))
+    (if (cdr tdecls) tdecls (car tdecls))))
 
 (defun tc-modname (ex)
-  (tc-term ex :nt 'modname))
+  (with-context (or *current-context* (background-context))
+    (tc-term ex :nt 'modname)))
 
 (defun tc-expr (ex &key expected)
-  (tc-term ex :expected expected))
+  (with-context (or *current-context* (background-context))
+    (tc-term ex :expected expected)))
 
 (defun tc-type (ty)
-  (tc-term ty :nt 'type-expr))
+  (with-context (or *current-context* (background-context))
+    (tc-term ty :nt 'type-expr)))
 
 ;; This is the function for making hash tables
 (defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?
@@ -5752,6 +5784,20 @@ and the next method is called with this. Only \formula\" is required."
       (format nil "git hash-object ~a" file)
     :input "//dev//null"
     :output '(:string :stripped t)))
+
+;; (defun pvs-git-file-last-commit (file)
+;;   ""
+;;   (assert (uiop:file-exists-p file))
+;;     (let* ((unix-date-str
+;; 	    (uiop:run-program
+;; 		(format nil "git -C ~a log -1 --date=unix ~a | sed -n -E 's/^Date:[ ]*//p'"
+;; 		  *pvs-path* file)
+;; 	      :input "//dev//null"
+;; 	      :output '(:string :stripped t)))
+;; 	 (unix-date (unless (equal unix-date-str "")
+;; 		      (parse-integer unix-date-str))))
+;;     (unless unix-date
+      
 
 (defun record-file-loaded-for-pvs (file)
   (let ((elt (assq *loading-files* *files-loaded*)))

@@ -422,12 +422,14 @@ looking in bindings and substs."
 (defun insert-tcc-decl (kind expr type ndecl)
   (let* ((root (tcc-root-name expr))
 	 (origin (make-instance 'tcc-origin
-		   :root (or root (break "No root?"))
+		   :root root
 		   :kind kind
 		   :expr (if (eq kind 'existence)
 			     ""
 			     (str (raise-actuals expr t :all) :char-width nil))
-		   :type (str (raise-actuals type t :all) :char-width nil))))
+		   :type (str (raise-actuals type t :all) :char-width nil)
+		   :place (tcc-origin-place expr type))))
+    (assert root () "No tcc-root in ~a" expr)
     (if (or *in-checker* *in-evaluator* *collecting-tccs*)
 	(add-tcc-info kind expr type ndecl origin)
 	(insert-tcc-decl1 kind expr type ndecl origin))))
@@ -2283,6 +2285,13 @@ the same id for the substitution."
 		(get-arithmetic-value (car exprs)))
 	   (tcc-evaluates-to-true* (cdr exprs)))))
 
+(defun tcc-origin-place (expr type)
+  (or (place *set-type-actuals-name*)
+      (place expr)
+      (place type)
+      (place *set-type-subtype*)
+      (place *set-type-expr*)))
+
 (defun add-tcc-comment (kind expr type
 			&optional reason subsumed-by (decl (current-declaration)))
   "Creates a TCC comment string, and updates the tcc-comments slot of the
@@ -2291,11 +2300,7 @@ TCC generation when the TCC is found to be trivial or subsumed."
   (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
     (let* ((theory (current-theory))
 	   ;;(genby (cdr (assq expr *set-type-generated-terms*)))
-	   (place (or (place *set-type-actuals-name*)
-		      (place expr) (place type)
-		      (place *set-type-subtype*)
-		      (place *set-type-expr*)
-		      ))
+	   (place (tcc-origin-place expr type))
 	   (preason (cdr (assq expr *compatible-pred-reason*)))
 	   (aname (or *set-type-actuals-name* expr))
 	   (tcc-comment (list kind aname type reason place preason ;;genby

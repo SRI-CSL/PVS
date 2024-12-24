@@ -1125,10 +1125,11 @@
   (if (tcc-origin? origin)
       origin
       (make-instance 'tcc-origin
-       :root (car origin)
-       :kind (cadr origin)
-       :expr (caddr origin)
-       :type (cadddr origin))))
+	:root (nth 0 origin)
+	:kind (nth 1 origin)
+	:expr (nth 2 origin)
+	:type (nth 3 origin)
+	:place (nth 4 origin))))
 
 (defun make-recordtype (fields)
   #+pvsdebug (assert (every@ #'(lambda (fd)

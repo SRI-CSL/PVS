@@ -1081,7 +1081,8 @@ restored, the TCCs are checked")
   root
   kind
   expr
-  type)
+  type
+  place)
 
 (defcl tcc-proof-info (proof-info)
   origin)
