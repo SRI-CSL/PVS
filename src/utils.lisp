@@ -4856,7 +4856,7 @@ space")
 	(kind origin)
 	(expr origin)
 	(type origin)
-	(place origin)))
+	(coerce (place origin) 'list)))
 
 (defmethod sexp ((dref decl-reference))
   (with-slots (id class type theory-id library) dref
@@ -5331,16 +5331,22 @@ we can get this method using
     (if (cdr tdecls) tdecls (car tdecls))))
 
 (defun tc-modname (ex)
-  (with-context (or *current-context* (background-context))
-    (tc-term ex :nt 'modname)))
+  (if *current-context*
+      (tc-term ex :nt 'modname)
+      (with-context (or *current-context* (background-context))
+	(tc-term ex :nt 'modname))))
 
 (defun tc-expr (ex &key expected)
-  (with-context (or *current-context* (background-context))
-    (tc-term ex :expected expected)))
+  (if *current-context*
+      (tc-term ex :expected expected)
+      (with-context (background-context)
+	(tc-term ex :expected expected))))
 
 (defun tc-type (ty)
-  (with-context (or *current-context* (background-context))
-    (tc-term ty :nt 'type-expr)))
+  (if *current-context*
+      (tc-term ty :nt 'type-expr)
+      (with-context (background-context)
+	(tc-term ty :nt 'type-expr))))
 
 ;; This is the function for making hash tables
 (defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?

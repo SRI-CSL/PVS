@@ -1129,7 +1129,7 @@
 	:kind (nth 1 origin)
 	:expr (nth 2 origin)
 	:type (nth 3 origin)
-	:place (nth 4 origin))))
+	:place (coerce (nth 4 origin) 'vector))))
 
 (defun make-recordtype (fields)
   #+pvsdebug (assert (every@ #'(lambda (fd)
