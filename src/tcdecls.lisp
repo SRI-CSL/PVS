@@ -2849,9 +2849,10 @@ The dependent types are created only when needed."
 
 (defmethod typecheck* ((type enumtype) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (setf (id type) (id (declaration *current-context*)))
+  ;;(setf (id type) (id (current-declaration))))
   (setf (module type) (current-theory))
-  (call-next-method))
+  (let ((*typechecking-module* t))
+    (call-next-method)))
 
 
 ;;; TYPE-NAME - the name is resolved to a type-decl, and its type-value
