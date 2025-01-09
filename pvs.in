@@ -349,6 +349,7 @@ export PVSINEMACS # Will be obsolete soon
 # Do this right after the environment variables are exported
 if [ -n "${getversion}" ]
 then
+  export PVSEMACS=
   export PVS_LIBRARY_PATH=
   echo `${pvsimagepath} ${noinit} ${evalflag} "(progn(pvs::pvs-version)(terpri)(pvs::exit-pvs))"`
   exit 0
