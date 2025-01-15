@@ -126,8 +126,8 @@
 	(uiop:quit 1))
       (unless (char= (char tmpdir (1- (length tmpdir))) #\/)
 	(setq tmpdir (format nil "~a/" tmpdir)))
-      (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a~%"
-	tmpdir)
+      ;; (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a~%"
+      ;; 	tmpdir)
       (setq uiop:*temporary-directory* tmpdir)))
   (setq *print-pretty* t)
   #+allegro (setq top-level::*print-length* nil
