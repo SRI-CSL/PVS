@@ -200,7 +200,7 @@
 	(mk-name '|ceiling| nil '|floor_ceil|)
 	(mk-name '|nrem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
-	(mk-name '|sqrt| nil '|sqrt| nil '|reals|)
+	;;(mk-name '|sqrt| nil '|sqrt| nil '|reals|)
 	(mk-name '|even?| nil '|integers|)
 	(mk-name '|odd?| nil '|integers|)
 	(mk-name '|restrict| nil '|restrict|)
@@ -243,9 +243,10 @@
 
 (defmethod pvs2ir-primitive? ((expr name-expr))
   (unless (every #'resolutions *pvs2ir-primitives*)
-    (dolist (pr *pvs2ir-primitives*) (typecheck pr))
-    (pushnew 'untypecheck-pvs2ir-primitives *untypecheck-hook*)
-    (assert (every #'resolutions *pvs2ir-primitives*)))
+    (with-context :prelude
+      (dolist (pr *pvs2ir-primitives*) (typecheck pr))
+      (pushnew 'untypecheck-pvs2ir-primitives *untypecheck-hook*)
+      (assert (every #'resolutions *pvs2ir-primitives*))))
   ;; Note that resolutions are not necessarily unique; number_fields.- is ambiguous
   (member expr *pvs2ir-primitives*
 	  :test #'(lambda (ex pr) (member (declaration ex) (resolutions pr) :key #'declaration))))

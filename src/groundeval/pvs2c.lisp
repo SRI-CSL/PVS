@@ -118,13 +118,22 @@
 	(*suppress-output* t)
 	(pvs2c-translated-theories nil))
     (ensure-c-directories-exist)
+    (uiop:copy-file (format nil "~a/src/groundeval/pvslib.c" *pvs-path*)
+		    (format nil "~a/lib/pvs2c/src/pvslib.c" *pvs-path*))
+    (uiop:copy-file (format nil "~a/src/groundeval/pvslib.h" *pvs-path*)
+		    (format nil "~a/lib/pvs2c/include/pvslib.h" *pvs-path*))
+    (uiop:copy-file (format nil "~a/src/groundeval/GC.c" *pvs-path*)
+		    (format nil "~a/lib/pvs2c/src/GC.c" *pvs-path*))
+    (uiop:copy-file (format nil "~a/src/groundeval/GC.h" *pvs-path*)
+		    (format nil "~a/lib/pvs2c/include/GC.h" *pvs-path*))
     (dolist (theory *prelude-theories*)
       (when (memq (id theory) *pvs2c-prelude-theories*)
 	(let ((main-theory (if (datatype? theory) (adt-theory theory) theory)))
 	  (let ((c-file (pvs2c-theory* main-theory t)))
 	    (when c-file
 	      (push (file-namestring c-file) pvs2c-translated-theories))))))
-    (create-config-make pvs2c-translated-theories)))
+    (create-config-make (cons "pvslib.c" (cons "GC.c"
+					       (reverse pvs2c-translated-theories))))))
 
 (defun create-config-make (c-files)
   (let ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*)))
@@ -141,7 +150,7 @@
 	 (format mf "SDK=$(shell xcrun --show-sdk-path)")
 	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include")
 	 (format mf "LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lm -lgmp~%")))
-      (format mf "~%src := ../pvslib.c ../GC.c ~{~a~^ ~}~%" (reverse c-files))
+      (format mf "~%src := ~{~a~^ ~}~%" c-files)
       (format mf "~%obj := $(src:.c=.o)~%")
       (format mf "~%.c.o : ; $(CC) ${CFLAGS} -c $< -o $@~%")
       (format mf "~%all : ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%")
@@ -256,7 +265,8 @@
 
 (defun pvs2c-theory (theoryref &optional force?)
   (let* ((theory (get-typechecked-theory theoryref nil t)))
-    (pvs2c-theory* theory force?)))
+    (with-context theory
+      (pvs2c-theory* theory force?))))
 
 ;; Null dir means not making a library (e.g., source file is in pvs2c subdirectory
 (defmethod pvs2c-theory* ((rectype recursive-type) &optional force?)

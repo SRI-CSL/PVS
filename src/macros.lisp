@@ -244,9 +244,10 @@ After exiting, all of these are reverted to their previous values."
 	(truedir (gentemp))
 	(orig-dir (gentemp)))
     `(let* ((,lref (or ,lib-ref (current-context-path)))
-	    (,lib-path (if (workspace-session? ,lref)
-			   (path ,lref)
-			   (get-library-path ,lref))))
+	    (,lib-path (typecase ,lref
+			 (workspace-session (path ,lref))
+			 (theory-element (context-path (module ,lref)))
+			 (t (get-library-path ,lref)))))
        (cond ((null ,lib-path)
 	      ,@forms)
 	     ((uiop:directory-exists-p ,lib-path)
@@ -295,11 +296,10 @@ After exiting, all of these are reverted to their previous values."
 
 (defmacro with-current-theory (theory &rest body)
   (let ((cth (gensym)))
-    `(let ((,cth (current-theory)))
-       (unwind-protect
-	    (progn (setf (current-theory) ,theory)
-		   ,@body)
-	 (setf (current-theory) ,cth)))))
+    `(let ((,cth ,theory))
+       (with-workspace (context-path ,cth)
+	 (with-context ,cth
+	   ,@body)))))
 
 (defmacro with-theory (vars theory-ref &rest body)
   "Gets the specified theory, and executes body with specified var bound to the theory.
