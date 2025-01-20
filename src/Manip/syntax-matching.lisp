@@ -3,7 +3,10 @@
 ;; syntax-matching.lisp -- Syntax matching functions for Manip package
 ;; Author          : Ben Di Vito <b.divito@nasa.gov>
 ;; Created On      : 19 Sep 2005 (excerpted from manip-strategies.lisp)
-;; Last Modified By: 
+;; Last Modified By: Cesar Munoz <cesar.a.munoz@nasa.gov>
+;; Last Modified On: 20 Jan 2025
+;; Last Modified By: Mariano Moscato <mariano.m.moscato@nasa.gov>
+;; Last Modified On: 03 Sep 2019
 ;; Last Modified On: 29 Nov 2005 (v1.2-beta)
 ;; Last Modified On: 17 Nov 2007 (v1.2)
 ;; Status          : Stable
@@ -40,23 +43,25 @@
 	 (action-targets-steps (match-items-action-targets-steps match-items)))
     (if error-msg
 	(gen-manip-response 'match (format nil "~A~%" error-msg))
-        (let* ((fnum-patterns (normalize-patterns match-items))
-	       (vars-instances-fnums (match-instances fnum-patterns)))
-	  (cond ((match-items-show-flag match-items)
-		 `(match-syntax-show$ ,@vars-instances-fnums
-				      ,@action-targets-steps))
-		((>= (length (cadr vars-instances-fnums))
-		     (length fnum-patterns))
-		 (apply #'match-syntax-rule
-			(append vars-instances-fnums action-targets-steps)))
-		(t (gen-manip-response
-		    'match
-		    (if (cadr vars-instances-fnums)
-			(format nil
-				"Only ~A pattern instance(s) matched.~%"
-				(length (cadr vars-instances-fnums)))
-		        (format nil "No pattern matches found.~%") ))))))))
-
+      (let* ((fnum-patterns (normalize-patterns match-items))
+	     (vars-instances-fnums (match-instances fnum-patterns))
+	     (instances (cadr vars-instances-fnums)))
+	(cond ((null instances)
+	       (gen-manip-response
+		'match
+		(format nil "No pattern matches found.~%") ))
+	      ((match-items-show-flag match-items)
+	       `(match-syntax-show$ ,@vars-instances-fnums
+				    ,@action-targets-steps))
+	      ((>= (length instances)
+		   (length fnum-patterns))
+	       (apply #'match-syntax-rule
+		      (append vars-instances-fnums action-targets-steps)))
+	      (t (gen-manip-response
+		  'match
+		  (format nil
+			  "Only ~A pattern instance(s) matched.~%"
+			  (length instances)))))))))
 
 ;; Following is invoked when only information display is requested.
 ;; It displays information about pattern matches, template substitutions
@@ -101,9 +106,10 @@
 		  ""
 		  (format nil "~%Generated Proof Step:~%  ~S~%"
 			  (car rule-steps))))
-	(show-step (gen-manip-response 'match
-                     (format nil "~%~{~A~}"
-			     (list variables patterns contractum rule)))))
+	(show-step (let ((*suppress-manip-messages* nil))
+		     (gen-manip-response 'match
+					 (format nil "~%~{~A~}"
+						 (list variables patterns contractum rule))))))
     show-step)
   "Helper strategy for match."
   "~%Matching syntax in formulas and performing actions")
@@ -121,13 +127,15 @@
 	 (prf-steps (mapcar #'(lambda (step)
 				(subst-target step var-subs instances fnums t))
 			    steps))
-	 ;; M3: check for non replaced percent symbol is removed
-	 ;;     in order to allow nested applications of match
-	 ;; (unmatched-var     ;; check for strings with remaining %-chars
-	 ;;   (apply-to-selected-nodes
-	 ;;     #'stringp (lambda (s) (find #\% s))
-	 ;;     (lambda (x) nil) #'(lambda (s) (some #'identity s))
-	 ;;     (append contracta prf-steps)))
+	 ;; M3/CM: removed check for non replaced percent symbol inside match 
+	 ;; to allow nested applications of match
+	 (unmatched-var     ;; check for strings with remaining %-chars
+	  (apply-to-selected-nodes
+	   #'(lambda (s) (or (and (consp s) (member (car s) '(match match$))) (stringp s)))  ;; Select
+	   #'(lambda (s) (when (stringp s) (find #\% s))) ;; node
+	   #'(lambda (s) nil)  ; else
+	   #'(lambda (s) (some #'identity s)) ;; list
+	   (append contracta prf-steps)))
 	 (lhs (if (and (typep (car instances) 'expr)
 		       (> (parens (car instances)) 0))
 		  (car instances)
@@ -142,33 +150,26 @@
 			(match-action-p               ;; relational operator
 			 `(case ,(format nil "~A ~A ~A" lhs op rhs)))))
 	 (main-rule
-	  (cond 
-	   ;; M3: check for non replaced percent symbol is removed
-	   ;;     in order to allow nested applications of match
-	   ;; (unmatched-var
-	   ;;  (gen-manip-response 'match
-	   ;;    (format nil
-	   ;; 	   "Not all %-variables in templates were bound.~%")))
-	   ((eq op 'step)
-	    (if (stringp (car contracta))
-		(handler-case (read-from-string (car contracta))
-		  (error (condition)
-			 (gen-manip-response 'match
-			   (format nil "Bad step: ~A~%" (car contracta)))))
-		     (car contracta)))
+	  (cond (unmatched-var
+		 (gen-manip-response 'match
+				     (format nil
+					     "Not all %-variables in templates were bound.~%")))
+		((eq op 'step)
+		 (if (stringp (car contracta))
+		     (handler-case (read-from-string (car contracta))
+		       (error (condition)
+			      (gen-manip-response 'match
+						  (format nil "Bad step: ~A~%" (car contracta)))))
+		   (car contracta)))
 		((not match-action-p)       ;; existing prover rule
 		 ;;;; consider variants: T1...Tk followed by P1...Pn ???
 		 `(,op ,@(mapcar #'(lambda (e) (format nil "~A" e))
 				 instances)))
 		(t br-rule))))
-    (values (if ;; M3: check for non replaced percent symbol is removed
-		;;     in order to allow nested applications of match
-		;; (or unmatched-var (eq op 'step)) ;; (not match-action-p))
-		(eq op 'step)
+    (values (if (or unmatched-var (eq op 'step)) ;; (not match-action-p))
 		main-rule
-	        `(branch-back$ ,main-rule ,prf-steps))
+	      `(branch-back$ ,main-rule ,prf-steps))
 	    prf-steps)))
-
 
 ;;; ---------------- Extended expression interface ----------------
 
@@ -209,7 +210,6 @@
 	  (t (mapcar #'(lambda (e n) (make-ee-descriptor :pvs-obj e :fnum n))
 		     instances fnums)))))
 
-
 ;;; ---------------- Syntax matching functions ----------------
 
 ;; Sort out possible forms for match item list.  Assumes item syntax:
@@ -234,19 +234,12 @@
 	      (if comment-posn (subseq all-items 0 comment-posn) all-items))
 	     (show-flag (memq (car real-items) '(? show)))
 	     (fnums-items (if show-flag (cdr real-items) real-items))
-	     (fnums (if (consp fnums-items) (car fnums-items) nil))
-	     ;; (fnum-p #'(lambda (e)
-	     ;; 		 (or (numberp e)
-	     ;; 		     (and (symbolp e)
-	     ;; 			  (or (memq e '(+ - *))
-	     ;; 			      ;; Check for labels
-	     ;; 			      (member e (collect-labels-of-current-sequent)
-	     ;; 				      :test #'string=))))))
-	     (items (if (or (fnum-p fnums)
-			    (and (consp fnums) (every #'fnum-p fnums)))
+	     ;; Added support for extended formula references below [CM]
+	     (fnums (extra-get-fnums-strict (when (consp fnums-items) (car fnums-items)))) 
+	     (items (if fnums
 			(cdr fnums-items)
-		        fnums-items))
-	     (global-fnums (if (eq items fnums-items) '* fnums))
+		      fnums-items))
+	     (global-fnums (or fnums '*))
 	     (patterns nil)
 	     (result (make-match-items :show-flag show-flag
 				       :formula-nums global-fnums
@@ -276,9 +269,16 @@
 	      (and (consp last-patt) (every #'numberp last-patt)))
 	  (setf (match-items-occurrence-nums result) last-patt
 		patterns (butlast items (- (length items) last-patt-posn)))
-	  (setf patterns (butlast items
-				  (- (length items) (1+ last-patt-posn)))))
-      (setf (match-items-patterns result) patterns))
+	(setf patterns (butlast items
+				(- (length items) (1+ last-patt-posn)))))
+      ;; Added support for expanded fnums in patterns below [CM]
+      (setf (match-items-patterns result)
+	    (mapcar #'(lambda (patt) 
+			(if (listp patt)
+			    (let ((efnums (extra-get-fnums-strict (car patt))))
+			      (cons (or efnums (car patt)) (cdr patt)))
+			  patt))
+		    patterns)))
     (unless patterns
       (setf (match-items-error-msg result) "No patterns specified.")
       (return-from parse-match-items-match result))
@@ -359,7 +359,6 @@
 			    (match-items-formula-nums match-items)
 			    (match-items-occurrence-nums match-items)))
 
-
 ;; Parse pattern specs, taking care to account for optional fnums in
 ;; list forms.  When absent, fnums are given the place-holder nil, which
 ;; will be expanded later.  The same is true for missing occurrence
@@ -369,20 +368,15 @@
 ;; Returns a list of triples: (... (fnum patt onum) ...).
 
 (defun parse-match-patterns (patterns)
-  (let* (;; (fnum-p #'(lambda (e)
-	 ;; 	     (or (numberp e) (memq e '(+ - *)))))
-	 (fnums-option-p #'(lambda (fnums) 
-			     (or (fnum-p fnums)
-				 (and (consp fnums) (every #'fnum-p fnums)))))
-	 (fnums-complete 		 
+  (let* ((fnums-complete 		 
 	  (loop for patt in patterns
 	        collect (cond ((not (consp patt))
 			       (list nil patt nil))
-			      ((funcall fnums-option-p (car patt))
+			      ((extra-get-fnums-strict (car patt)) ;; Added support for extended fnums [CM]
 			       (if (< (length patt) 2)
 				   ;; missing pattern; use universal patt "%"
 				   (append patt (list "%"))
-				   patt))
+				 patt))
 			      (t (cons nil patt)))))
 	 (patts-complete
 	  (loop for patt in fnums-complete
@@ -533,7 +527,6 @@
 ;;; (for %V variables) and b1...bn are bindings for other variables.
 
 (defun match-subexpr (expr patt global-subs)
-
   (flet ((submatches (expr-list patt-list)
 	   (let* ((ex-list (if (or (= (length expr-list) (length patt-list))
 				   (cdr patt-list))
@@ -558,7 +551,9 @@
 	 (submatches expr patt))
 	((and (consp expr) (null (cdr expr)))   ;; single expr
 	 (match-subexpr (car expr) patt global-subs))
-	((and (symbolp patt) (symbolp expr) (eq patt expr))
+	((and (symbolp expr)
+	      (or (and (symbolp patt) (eq patt expr))
+		  (and (typep patt 'name-expr) (eq (id patt) expr) (null (actuals patt)))))
 	 (list global-subs))
 	((symbolp patt)
 	 ;; entire expr needs to match syntax class:
@@ -571,27 +566,36 @@
 ;;;	 (list global-subs))
 	((eql expr patt)    ;; declare a match if objects eql
 	 (list global-subs))
-
+	
 	;; If syntax classes match, need to check all corresponding pairs
 	;; of subexpressions from expr and patt (all must match).
-
+	
 	((let ((entry (assoc-if #'(lambda (e) (typep expr e))
 				*pvs-syntax-class-alist*)))
 	   (and entry
 		(or (typep expr (class-of patt))
 		    ;; special case so pattern vars and names can match types:
-		    (and (typep expr 'type-name) (typep patt 'name-expr)))
+		    (and (typep expr 'type-name) (typep patt 'name-expr))
+		    ;; M3:
+		    (and (typep expr 'field-application) (typep patt 'application)))
 		(let* ((subexpr-fn (cdr entry))
 		       (expr-args (funcall subexpr-fn expr))
 		       ;; if expr is a subclass of patt, might lack some slots:
-		       (patt-args (ignore-errors (funcall subexpr-fn patt))))
+		       (patt-args (ignore-errors
+				    (funcall
+				     (if (typep patt 'application)
+					 (let ((patt-entry
+						(assoc-if #'(lambda (e) (typep patt e)) *pvs-syntax-class-alist*)))
+					   (cdr patt-entry))
+				       subexpr-fn)
+				     patt))))
 		  (when (and expr-args patt-args)
 		    (when (and (null (cadr patt-args))
 			       (name-expr? expr)
 			       (actuals expr))
 		      (setf (cadr expr-args) nil))
 		    (submatches expr-args patt-args))))))
-
+	
 	(t nil))))      ;; no case applies -> match fails
 
 
@@ -798,6 +802,8 @@
     (proj     projappl     ;; (index argument)
 	      ,#'(lambda (e) (list (list (index e)) (list (argument e)))))
     (field_   fieldappl    ;; (id argument)
+	      ,#'(lambda (e) (list (list (id e)) (list (argument e)))))
+    (field__  field-application    ;; (id argument)
 	      ,#'(lambda (e) (list (list (id e)) (list (argument e)))))
     (tuple    tuple-expr  ;; (exprs)
 	      ,#'(lambda (e) (list (exprs e))))
@@ -1057,36 +1063,46 @@
     result))
 
 (defun subst-target-object (target var-subst instances fnums)
-  (build-instan-cmd (build-instan-target target var-subst)
-		    (loop for e in instances
-			  for fnum in fnums
-			  collect (make-ee-descriptor
-				   :pvs-obj e :fnum fnum))))
+  (let* ((build-instan-target-result (build-instan-target target var-subst))
+	 (result (build-instan-cmd build-instan-target-result
+				   (loop for e in instances
+					 for fnum in fnums
+					 collect (make-ee-descriptor
+						  :pvs-obj e :fnum fnum)))))
+    result))
 
 ;; Start to build instantiated target by substituting for user-defined
 ;; pattern variables of the form %<var-name>.  Object tree is traversed
 ;; but only variable substitution in strings is performed.
 
+;; M3: This fix prevents, in nested match applications, outer bindings to be used
+;;  in the inner match.
 (defun build-instan-target (target var-subst)
-  (labels ((build-target (expr)
-	     (cond ((stringp expr)
-		    (subst-syntax-pattern-vars expr var-subst))
-		   ((consp expr)
-		    (mapcar #'build-target expr))
-		   (t expr))))
+  (labels ((build-target
+	    (expr)
+	    (cond ((stringp expr)
+		   (subst-syntax-pattern-vars expr var-subst))
+		  ((consp expr)
+		   ;; M3: only proceed with the instantiation if the strategy
+		   ;;     is not a match itself.
+		   (if (member (car expr) '(match match$))
+		       expr
+		     (mapcar #'build-target expr)))
+		  (t expr))))
     (build-target target)))
 
 ;; Generalized function to walk over an s-expr tree and selectively
 ;; apply functions to leaf and subtree nodes.
 
 (defun apply-to-selected-nodes (select-pred node-fn else-fn list-fn tree)
-  (labels ((apply-tree (s-expr)
-	     (cond ((funcall select-pred s-expr) (funcall node-fn s-expr))
-		   ((consp s-expr)
-		    (funcall list-fn (mapcar #'apply-tree s-expr)))
-		   (t (funcall else-fn s-expr)))))
+  (labels ((apply-tree
+	    (s-expr)
+	    (cond ((funcall select-pred s-expr)
+		   (funcall node-fn s-expr))
+		  ((consp s-expr)
+		   (funcall list-fn (mapcar #'apply-tree s-expr)))
+		  (t (funcall else-fn s-expr)))))
     (apply-tree tree)))
-
 
 ;;; Convert expr lists to comma separated text.
 

@@ -460,10 +460,20 @@
   (extract-fnums-arg (if (stringp fnums) (makesym fnums) fnums)))
    
 ;; Get a list of formula numbers from fnums
+;; If enlist? is true and fnums is a list, each member of fnums is
+;; listed separately.
 (defun extra-get-fnums (fnums &optional enlist?)
   (if (or (not enlist?) (atom fnums) (member (car fnums) '(^ +^ -^)))
     (extra-extract-fnums fnums)
     (mapcar #'extra-extract-fnums fnums)))
+
+;;; Behaves likes exta-get-fnums but returns nil if one of the elements doesn't specify
+;;; a formula number
+(defun extra-get-fnums-strict (fnums)
+  (let ((pre-fnums (extra-get-fnums fnums t)))
+    (unless (member nil pre-fnums)
+      (loop for fnum in pre-fnums
+	    append (if (atom fnum) (list fnum) fnum)))))
 
 ;; Get a formula number from fnum
 (defun extra-get-fnum (fnum)
