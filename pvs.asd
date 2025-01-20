@@ -236,7 +236,7 @@
 		 ;; (:file "pvs2rust")
 		 (:file "pvs2ir")
 		 ;; (:file "pvs2c-primop")
-		 ;; (:file "pvs2c")
+		 (:file "pvs2c")
 		 ))
    (:module :pvs-methods
      :pathname "src/"

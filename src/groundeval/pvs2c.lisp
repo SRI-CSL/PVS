@@ -1,889 +1,882 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                PVS to C translator
-;;
-;;     Author: Gaspard ferey
-;;
-;;  -> https://github.com/Gaspi/pvs2c.git
-;;  -> Please read  "main.lisp"
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  Main functions :
-;;
-;;    pvs2C expr bindings livevars type
-;;      -> C expression (Ccode) representing a C-var with the given type
-;;         and with the translation of expr as a value.
-;;
-;;    pvs2C* expr bindings livevars
-;;      -> As below but might have a "hole" (unnamed variable) for the result
-;;
-;;    pvs2C2 expr bindings livevars variable [need-malloc]
-;;      -> Ccode with the necessary instructions to let the variable be set
-;;         to a C expression representing expr.
-;;         If need-malloc flag is t, also initializes the variable.
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pvs2c.lisp -- 
+;; Author          : Shankar, Gaspard Ferey, and Sam Owre
+;; Status          : Stable
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO flattennning free variables
-;; f(a , a(0), a )
-;; -> x = GC( a )
-;; -> y = GC( a )
-;; -> z = y(0)
-;; -> free(y)     ;; to last line <=> apply(y, 0)   (so y is freed)
-;; -> f(a, x ,z)    ;; and everything is freed
-;;
-;; Bump up the reference count by one so that no argument used as a mutable variable
-;; Move the free to just after the last occurence of the variable
-;;
-;; Every Function has the responsability to free it's array arguments !!!
-;;
-;; 
-;; (lambda(x): a with [0 = x(0) ]  )( a with [0=0] )
-;; -> x = GC( a )
-;; -> y = a with [0=0]    ;; done non destructively
-;; -> 
-;;
-;;Page 5 Guarded Optim
-;; frec doesn't terminate
-;; and the C update doesn't seems to be done destructively
-;;
+;; --------------------------------------------------------------------
+;; PVS
+;; Copyright (C) 2024, SRI International.  All Rights Reserved.
 
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 2
+;; of the License, or (at your option) any later version.
 
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program; if not, write to the Free Software
+;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+;; --------------------------------------------------------------------
 
 (in-package :pvs)
 
-(defvar *C-livevars-table* nil)
-(defvar *C-record-defns* nil)
+(defvar *pvs2c-current-decl* nil)
+(defvar *pvs2c-defn-actuals* nil)
+(defvar *current-pvs2c-theory* nil)
+;;(defvar *pvs2c-preceding-theories* nil)
+(defvar *pvs2c-library-path* nil)
+(defvar *pvs2c-theory-importings* nil)
+(defvar *pvs2c-theory-decls* nil)
 
-(defvar *C-definitions* nil)
-(defun reset-definitions () (C-reset *C-definitions*))
-(defun add-definition (definition)
-  (setq *C-definitions* (append *C-definitions* (list definition))))
+;;; SO The following are from the pvs-strings branch of my clib/src,
+;;; but I'm not certain of the source.
+;;;    GC.c - not generated, supports GC in PVS2C
+;;; The rest are from prelude theories:
+;;;    bytestrings euclidean_division exp2 gen_strings identity integertypes lex2 min_nat
+;;;    modulo_arithmetic ordinals ordstruct_adt pvslib.c real_defs strings
 
+;;commented theories are the ones that are supported by C code generation
+(defparameter *primitive-prelude-theories*
+  '(|booleans| |equalities| |notequal| |if_def| |boolean_props| ;; |xor_def|
+    |quantifier_props| |defined_types| |exists1| |equality_props| |if_props| |functions|
+    |functions_alt| ;; |transpose| |restrict|
+    |restrict_props| |extend| ;; |extend_bool|
+    |extend_props| |extend_func_props| ;; |K_conversion| |K_props| ;; |identity|
+    |identity_props| |relations| |orders| |orders_alt| |restrict_order_props|
+    |extend_order_props| |wf_induction| |measure_induction| |epsilons| |decl_params| |sets|
+    |sets_lemmas| |function_inverse_def| |function_inverse| |function_inverse_alt|
+    |function_image| |function_props| |function_props_alt| |function_props2| |relation_defs|
+    |relation_props| |relation_props2| |relation_converse_props| |indexed_sets|
+    |operator_defs| |numbers| |number_fields| |reals| |real_axioms| |bounded_real_defs|
+    |bounded_real_defs_alt| |real_types| |rationals| |integers| |naturalnumbers|
+    ;; |min_nat| |real_defs|
+    |real_props| |extra_real_props| |extra_tegies| |rational_props| |integer_props|
+    |floor_ceil| |exponentiation| ;; |euclidean_division|
+    |divides| ;; |modulo_arithmetic|
+    |subrange_inductions| |bounded_int_inductions| |bounded_nat_inductions|
+    |subrange_type| |int_types| |nat_types| ;; |exp2| |integertypes|
+    |nat_fun_props| |finite_sets| |restrict_set_props| |extend_set_props|
+    |function_image_aux| |function_iterate| |sequences|
+    |seq_functions| |finite_sequences| |more_finseq| |ordstruct|
+    ;; |ordstruct_adt| |ordinals| |lex2|
+    |lex3| |lex4| |list| |list_adt| |list_adt_map| |list_props| |map_props|
+    |more_map_props| |filters| |list2finseq| |list2set| |disjointness| |character|
+    |character_adt| ;; |strings| |gen_strings|
+    |charstrings| ;; |bytestrings|
+    |lift| |lift_adt| |lift_adt_map| |union| |tostring| |file|
+    |mucalculus| |ctlops| |fairctlops| |Fairctlops| |bit| |bv| |bv_concat_def|
+    |bv_bitwise| |bv_nat| |empty_bv| |bv_caret| |integer_bv_ops|
+    |mod| |bv_arith_nat_defs| |bv_int_defs| |bv_arithmetic_defs| |bv_extend_defs|
+    |infinite_sets_def| |finite_sets_of_sets|
+    |EquivalenceClosure| |QuotientDefinition| |KernelDefinition| |QuotientKernelProperties|
+    |QuotientSubDefinition| |QuotientExtensionProperties| |QuotientDistributive|
+    |QuotientIteration| |PartialFunctionDefinitions| |PartialFunctionComposition|
+    |stdpvs| |stdexc| |stdexc_tags| |stdcatch| |stdprog| |stdglobal| |stdmutable|
+    |stdmath| |stdstr| |stdio| |stdpvsio| |stdsys|))
 
-(defmacro pvs2C-error (msg &rest args)
-  `(format t ,msg ,@args))
+;; Leaving out
+;;   |euclidean_division| - no functions
+;;   |function_iterate| - iterate not translatable
+;;   |modulo_arithmetic| - no functions
+;;   |array_sequences| - needs work
 
+(defparameter *pvs2c-prelude-theories*
+  ;; Sorted alphabetically
+  '(|bytestrings| |empty_bv| |exp2| |extend_bool|
+    |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
+    |min_nat| |modulo_arithmetic| |more_finseq|
+    |ordinals| |ordstruct| |real_defs| |sequences| |strings|
+    |transpose| |xor_def|))
 
-(defvar *C-nondestructive-hash* (make-hash-table :test #'eq))
-(defvar *C-destructive-hash* (make-hash-table :test #'eq))
+(defun ensure-c-directories-exist ()
+  (when *pvs2c-library-path*
+    (let* ((c-dir *pvs2c-library-path*)
+	   (src-dir (format nil "~a/src/" c-dir))
+	   (include-dir (format nil "~a/include/" c-dir))
+	   (lib-dir (format nil "~a/lib/" c-dir)))
+      (uiop:ensure-all-directories-exist (list src-dir))
+      (dolist (file (uiop:directory-files src-dir "*.c"))
+	(delete-file file))
+      (uiop:ensure-all-directories-exist (list include-dir))
+      (dolist (file (uiop:directory-files src-dir "*.h"))
+	(delete-file file))
+      (uiop:ensure-all-directories-exist (list lib-dir))
+      (dolist (file (uiop:directory-files src-dir "*.a"))
+	(delete-file file))
+      (dolist (file (uiop:directory-files src-dir "*.so"))
+	(delete-file file))
+      (dolist (file (uiop:directory-files src-dir "*.dylib"))
+	(delete-file file)))))
 
-;; TODO stop using this structure. Rely only on the definition class
-(defstruct C-info
-  id type-out type-arg C-code definition analysis)
+(defun pvs2c-prelude ()
+  (let ((*pvs2c-library-path* (format nil "~a/lib/pvs2c/" *pvs-path*))
+	(*suppress-output* t)
+	(pvs2c-translated-theories nil))
+    (ensure-c-directories-exist)
+    (dolist (theory *prelude-theories*)
+      (when (memq (id theory) *pvs2c-prelude-theories*)
+	(let ((main-theory (if (datatype? theory) (adt-theory theory) theory)))
+	  (let ((c-file (pvs2c-theory* main-theory t)))
+	    (when c-file
+	      (push (file-namestring c-file) pvs2c-translated-theories))))))
+    (create-config-make pvs2c-translated-theories)))
 
-(defun C-hashtable (&optional (destr *destructive?*))
-  (if destr *C-destructive-hash* *C-nondestructive-hash*))
-
-(defun C_id (op)
-  (let ((hashentry (gethash (declaration op) (C-hashtable))))
-    (when hashentry (C-info-id hashentry))))
-
-(defun C_nondestructive_id (op)
-  (let ((hashentry (gethash (declaration op) *C-nondestructive-hash*)))
-    (when hashentry (C-info-id hashentry))))
-
-(defun C_analysis (op)
-  (let ((hashentry (gethash (declaration op) (C-hashtable))))
-    (when hashentry (C-info-analysis hashentry))))
-
-
-
-
-;; Return a trivial C-expr if possible
-(defun getConstantName (expr bindings)
-  (when (name-expr? expr)
-    (let ((e (assoc (declaration expr) bindings :key #'declaration)))
-      (when e (mk-C-expr (pvs2C-type (type (car e))) (format nil "~a" (cdr e)))))))
-
-
-;; Get the name of a variable according to the bindings
-(defmethod getBindName ((l list) bindings)
-  (when (consp l) (cons (getBindName (car l) bindings)
-			(getBindName (cdr l) bindings))))
-(defmethod getBindName ((bd bind-decl) bindings)
-  (let ((e (assoc bd bindings :key #'declaration)))
-    (getBindName (if e (cdr e) (id bd)) bindings)))
-(defmethod getBindName ((n name-expr) bindings)
-  (getBindName (declaration n) bindings))
-(defmethod getBindName (e bindings) (format nil "~a" e))
-
-
+(defun create-config-make (c-files)
+  (let ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*)))
+    (with-open-file (mf makefile
+			:direction :output :if-exists :supersede :if-does-not-exist :create)
+      (case (intern (pvs-platform) :pvs)
+	(|ix86_64-Linux|
+	 (format mf "CFLAGS := -I ../include -fPIC -Wall -Winline -O -ggdb~%")
+	 (format mf "LDFLAGS = -Bsymbolic -shared -L./ -lc -lm -lgmp~%"))
+	(|ix86-MacOSX|
+	 (format mf "CFLAGS := -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
+	 (format mf "LDFLAGS = -bundle -flat_namespace -undefined suppress -L./ -lc -lm -lgmp~%"))
+	(|arm-MacOSX|
+	 (format mf "SDK=$(shell xcrun --show-sdk-path)")
+	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include")
+	 (format mf "LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lm -lgmp~%")))
+      (format mf "~%src := ../pvslib.c ../GC.c ~{~a~^ ~}~%" (reverse c-files))
+      (format mf "~%obj := $(src:.c=.o)~%")
+      (format mf "~%.c.o : ; $(CC) ${CFLAGS} -c $< -o $@~%")
+      (format mf "~%all : ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%")
+      (format mf "~%../lib/libpvs-prelude.so : ${obj}~%")
+      (format mf "~a$(LD) $(LDFLAGS) -o $@ ${obj}~%" #\tab)
+      (format mf "~%../lib/libpvs-prelude.a : $(obj)~%")
+      (format mf "~a$(AR) r $@ ${obj}~%" #\tab)
+      (format mf "~%clean :~%")
+      (format mf "~a-rm $(obj)~%" #\tab)
+      (format mf "~a-rm ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%" #\tab))
+    (format t "~%Generated ~a" makefile)))
   
-;; Returns a C-expr
-;; type is the list of the types
-;; name is the list of the names
-;; instr and destr are the concatenation of the instrs and destrs
-(defmethod pvs2C ((expr list) bindings livevars &optional (exp-type (cons nil nil)))
-  (if (consp expr)
-      (let ((hd (pvs2C (car expr) bindings
-		       (append (updateable-vars (cdr expr)) livevars)
-		     (car exp-type)))
-	    (tl (pvs2C (cdr expr) bindings
-		       (append (updateable-vars (car expr)) livevars)
-		       (cdr exp-type))))
-	(C-expr (cons   (var   hd) (var   tl))
-		(append (instr hd) (instr tl))
-		(append (destr hd) (destr tl))))
-    (C-expr nil )))
+
+;; (defun used-prelude-theory-names (theory &optional prelude-theory-names)
+;;   (let ((th (get-theory theory)))
+;;     (unless th
+;;       (error "Theory ~a not found - may need to typecheck first" theory))
+;;     (dolist (decl (all-decls th))
+;;       (when (typep decl '(or type-decl const-decl))
+;; 	(dolist (d (refers-to decl))
+;; 	  (when (and (typep d '(or type-decl const-decl))
+;; 		     (from-prelude? d))
+;; 	    (unless (member (module d) prelude-theory-names :test #'same-id)
+;; 	      (setq prelude-theory-names
+;; 		    (used-prelude-theory-names (module d)
+;; 					       (cons (id (module d)) ;(mk-modname (id (module d)))
+;; 						     prelude-theory-names))))))))
+;;     prelude-theory-names))
+
+;;from-prelude? is a better function
+;; (defun prelude-theory? (theory)
+;;   (memq theory *prelude-theories*))
+
+;; (defun pvs2c-preceding-prelude-theories (theory);theory should not be a prelude theory
+;;   (let ((*preceding-prelude-theories* nil)
+;; 	(theory-defn (get-theory theory)))
+;;     (unless (memq (id theory-defn) *primitive-prelude-theories*)
+;;       (pvs2c-preceding-prelude-theories* theory-defn));(break "precedprelude")
+;;     *preceding-prelude-theories*))
+
+;; (defun pvs2c-preceding-prelude-theories-root (theory)
+;;   (loop for thy in (used-prelude-theories theory)
+;; 	when (not (memq (id thy) *primitive-prelude-theories*))
+;; 	do (pvs2c-preceding-prelude-theories* thy))
+;;   (when (prelude-theory? theory)
+;;     (pushnew theory *preceding-prelude-theories* :test #'same-id)))
+
+;; (defun pvs2c-preceding-prelude-theories* (theory)
+;;   (let ((imported-prelude-theories
+;; 	 (if (from-prelude? theory)
+;; 	     (implicit-prelude-importings theory)
+;; 	   (used-prelude-theories theory))))
+;;   (loop for thy in imported-prelude-theories
+;; 	when (not (memq (id thy) *primitive-prelude-theories*))
+;; 	do (pvs2c-preceding-prelude-theories* thy))
+;;   (unless (from-prelude? theory)
+;;     (let ((all-imported-theories (all-imported-theories theory)))
+;;       (when (listp all-imported-theories);i.e., not 'unbound
+;; 	(loop for thy in all-imported-theories
+;; 	      when (not (from-prelude? thy))
+;; 	      do (pvs2c-preceding-prelude-theories* thy)))))
+;;   (when (from-prelude? theory)
+;;     (pushnew theory *preceding-prelude-theories* :test #'same-id))))
+
+;; (defun pvs2c-preceding-theories (theory)
+;;   (let ((*pvs2c-preceding-theories* nil)
+;; 	(theory-defn (get-theory theory)))
+;;     (pvs2c-preceding-theories* theory-defn)
+;;       *pvs2c-preceding-theories*))
+
+;; (defmethod pvs2c-preceding-theories* ((theory module))
+;;   (unless (eq (all-imported-theories theory) 'unbound)
+;;     (loop for thy in (all-imported-theories theory)
+;; 	  do (pvs2c-preceding-theories* thy)))
+;;   (unless (from-prelude? theory)
+;;     (pushnew theory *pvs2c-preceding-theories* :test #'same-id)))
+
+;; (defmethod pvs2c-preceding-theories* ((theory datatype))
+;;   (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
+;;     (unless (eq (all-imported-theories theory) 'unbound)
+;;       (loop for thy in all-imported-theories
+;; 	    do (pvs2c-preceding-theories* thy)))
+;;     ;;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
+;;     (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
+;;     (when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
+;;     (when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))))
+
+(defun pvs2c-library (&rest top-theory-refs)
+  (unless top-theory-refs (error "pvs2-library: takes at least one theory-ref"))
+  (let* ((top-theories (mapcar #'get-typechecked-theory top-theory-refs))
+	 (*pvs2c-library-path* (context-path (car top-theories))))
+    (unless (every #'(lambda (th) (equalp (context-path th) *pvs2c-library-path*))
+		   (cdr top-theories))
+      (error "All top theories must be from the same library"))
+    (ensure-c-directories-exist)
+    (dolist (top-theory top-theories)
+      (dolist (theory (all-importings top-theory))
+	(pvs2c-theory theory))
+      (pvs2c-theory top-theory))))
+
+(defun pvs2c-pvs-file (fileref)
+  (let ((theories (typecheck-file fileref nil nil nil t))
+	;; (*pvs2c-preceding-theories* nil)
+	)
+    ;; (dolist (theory theories)
+    ;;   (pvs2c-preceding-theories* theory))
+    ;;(pvs2c-theories *pvs2c-preceding-theories* t)
+    (pvs2c-theories theories t)))
+
+(defun pvs2c-theories (theories force?)
+  (mapcar #'(lambda (th) (pvs2c-theory* th force?)) (reverse theories)))
+
+(defun pvs2c-theory (theoryref &optional force?)
+  (let* ((theory (get-typechecked-theory theoryref nil t)))
+    (pvs2c-theory* theory force?)))
+
+;; Null dir means not making a library (e.g., source file is in pvs2c subdirectory
+(defmethod pvs2c-theory* ((rectype recursive-type) &optional force?)
+  (let ((th (adt-theory rectype)))
+    (with-workspace th
+      (pvs2c-theory-body th force?))))
+
+(defmethod pvs2c-theory* ((th module) &optional force?)
+  (with-workspace th
+    (pvs2c-theory-body th force?)))
+
+(defun pvs2c-theory-body (theory &optional force? indecl);;*theory-id* needs to be bound by caller
+  (let* ((*theory-id* (simple-id (id theory)))
+	 ;; (*preceding-mono-theories* nil) ; monomorphised theory instances used in this theory
+	 )
+    (pvs2c-theory-body-step theory force? indecl)))
+
+(defun pvs2cl-theory-formals (formals force?
+			      &optional theory-formals ir-theory-formals ir-theory-tbindings)
+  (cond ((null formals)
+	 (values theory-formals ir-theory-formals ir-theory-tbindings))
+	(t (let ((formal (car formals)))
+	     (let ((*current-context* (decl-context formal))
+		   (*var-counter* nil))
+	       (newcounter *var-counter*)
+	       (pvs2c-decl formal force?))
+	     (let ((irformal
+		    (cond ((formal-const-decl? formal)
+			   (ir-defn (ir (eval-info formal))))
+			  ((formal-type-decl? formal)
+			   (let ((ir-type-value (ir-type-value formal)))
+			     (or (ir-const-formal (ir-type-name ir-type-value))
+				 (setf (ir-const-formal (ir-type-name ir-type-value))
+				       (mk-ir-const-formal (ir-type-id (ir-type-name (ir-type-value formal)))
+							   *type-actual-ir-name*))))))))
+	       ;;(setq *theory-formals* (nconc *theory-formals* (list formal)))
+	       ;;(setq *ir-theory-formals* (nconc *ir-theory-formals* (list irformal)))
+	       ;; (format t "~%pushing binding")
+	       ;;(setq *ir-theory-tbindings*
+	       ;;  (nconc *ir-theory-tbindings* (list (cons formal irformal))))
+	       (pvs2cl-theory-formals
+		(cdr formals) force?
+		(nconc theory-formals (list formal))
+		(nconc ir-theory-formals (list irformal))
+		(nconc ir-theory-tbindings (list (cons formal irformal)))))))))
+
+(defun pvs2c-theory-body-step (theory force? indecl)
+  (let* ((*current-pvs2c-theory* theory)
+	 (formals (formals-sans-usings theory))
+	 (*theory-formals* nil) ;;using the special vars as accumulators in pvs2cl-theory-formals for processed parameters
+	 (*ir-type-info-table* nil)
+	 (*c-type-info-table* nil)
+	 ;;(*closure-info-table* nil) ;;not currently used
+	 ;;(formal-ids (loop for decl in *theory-formals* do (pvs2ir-decl decl)))
+	 (*theory-type-formals* (loop for formal in *theory-formals* when  (formal-type-decl? formal) collect formal))
+	 (*ir-theory-formals* nil)
+	 (*ir-theory-tbindings* nil)
+	 (*pvs2c-theory-importings* nil)
+	 (*pvs2c-theory-decls* nil)
+	 ;; (*c-theory-formals*
+	 ;;  (ir2c-theory-formals *ir-theory-formals* *theory-formals*))
+	 )				;(break "body-step")
+    (multiple-value-bind (*theory-formals* *ir-theory-formals* *ir-theory-tbindings*)
+	(pvs2cl-theory-formals formals force?)
+      (when force? (setf (ht-instance-clone theory) nil))
+      (if (eq *theory-id* '|modulo_arithmetic|)
+	  (let ((decl (find-if #'(lambda (d) (and (const-decl? d) (eq (id d) '|rem|)))
+			(theory theory))))
+	    (assert decl () "Couldn't find rem in modulo_arithmetic")
+	    (pvs2c-decls (list decl) indecl force?))
+	  (pvs2c-decls (theory theory) indecl force?)
+	  ;; (loop for decl in (theory theory)
+	  ;;       when (if (null indecl)
+	  ;; 	       (or (const-decl? decl) ;(or (adt-operation? decl)(def-axiom decl))
+	  ;; 		   (type-decl? decl)
+	  ;; 		   (adt-type-decl? decl)
+	  ;; 		   (test-formula? decl))
+	  ;; 	       (eq decl indecl))
+	  ;;       do (pvs2c-decl decl force?))
+	  )
+      (cond (*pvs2c-theory-decls*
+	     (print-header-file *theory-id* theory)
+	     (print-body-file *theory-id* theory))
+	    (t (format t "~%No C code generated for theory ~a, since no declarations were translatable"
+		 (id theory)))))))
+
+(defun pvs2c-decls (decls indecl force?)
+  (when decls
+    (let ((decl (car decls)))
+      (when (or (eq decl indecl)
+		(typep decl '(or const-decl type-decl test-formula))
+		(adt-type-decl? decl))
+	(handler-case (progn (pvs2c-decl decl force?)
+			     (push decl *pvs2c-theory-decls*)
+			     (dolist (ref (refers-to decl))
+			       (unless (or (eq (module decl) (module ref))
+					   (and (from-prelude? (module ref))
+						(let ((mod-id (or (generated-by (module ref))
+								  (id (module ref)))))
+					    	  (not (member mod-id
+							       *pvs2c-prelude-theories*)))))
+				 (pushnew (module ref) *pvs2c-theory-importings*))))
+	  (pvs2c-error (c)
+	    (let ((warning (format nil "~%No C code generated for ~a~%  ~a" (id decl) c)))
+	      (push (cons decl warning) (pvs2c-warnings (module decl)))
+	      (warn warning))))))
+    (pvs2c-decls (cdr decls) indecl force?)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun pvs2c-decl (decl force?)
+  (let (;;(saved-c-type-info-table *c-type-info-table*)
+	(*pvs2c-current-decl* decl) ;;used to save auxilliary type defns in c-type-info-table
+	(*current-context* (decl-context decl))
+	(*var-counter* nil)
+	(*pvs2c-defn-actuals* nil))
+    (when force? (clear-decl decl))
+    (newcounter *var-counter*)
+    (pvs2c-decl* decl)))
+
+;;NSH(8/6/2016): Closures are handled now. 
+;; (handler-case
+;;  (pvs2c-decl* decl)
+;;  (pvs2c-error (condition) (format t "~%closures not handled")
+;; 		  (setq *c-type-info-table* saved-c-type-info-table)))))
+  
+(defmethod pvs2c-decl* ((decl type-eq-decl))
+  (let ((typename (pvs2ir-decl decl)))
+    ;(break "type-eq-decl")
+    (when  (and (ir-typename? typename)
+		(ir-type-value decl));some type definitions translate to no-ops
+      (add-c-type-definition typename)))); (ir2c-type (ir-type-defn typename))(ir-type-id typename)))))
+
+(defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
+  (let* (;(thid (simple-id (id (module decl))))
+	 (declid (simple-id (id decl)))
+	 (thname (intern (format nil "~a__~a" *theory-id* declid)))
+	 (hashentry (gethash  thname *c-primitive-type-attachments-hash*)))
+    (cond (hashentry
+	   (unless *to-emacs*
+	     (format t "~% attaching definition for type ~a" declid))
+	   (push-type-info-to-decl hashentry decl)
+	   thname)
+	  (t (let ((typename (pvs2ir-decl* decl)))
+	       (if (adt (type-value decl))
+		   (add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
+		 (let* ((ir-type-id (ir-type-id typename))
+			(c-type-info (mk-simple-c-type-info nil ir-type-id
+							    (format nil "//uninterpreted type~%typedef void * ~a_t;" ir-type-id) nil (format nil "~s" (id *pvs2c-current-decl*)))))
+		   (push-type-info-to-decl c-type-info decl)
+		   ir-type-id)))))))
+
+(defmethod pvs2c-decl* ((decl formal-type-decl))
+   (pvs2ir-decl decl))
+
+(defmethod pvs2c-decl* ((decl formal-const-decl))
+  (pvs2ir-decl decl)
+  (let ((ir (ir (eval-info decl))))
+    (ir2c-decl* ir decl)))
+  
+;;conversion for a definition
+(defmethod pvs2c-decl* ((decl const-decl))
+  (let* (;(thid (simple-id (id (module decl))))
+	 (declid (simple-id (id decl)))
+	 (ir-function-id (intern (format nil "~a__~a" *theory-id* declid)))
+	 (hashentry (gethash ir-function-id *c-primitive-attachments-hash*)))
+    (cond (hashentry
+	   (let* ((einfo (or (eval-info decl)
+			     (let* ((new-einfo (make-instance 'eval-info))
+				    )	;all nil for now
+			       (setf (eval-info decl) new-einfo)
+			       new-einfo)))
+		  (new-ir-function (mk-ir-function ir-function-id decl))
+		  (new-ir (mk-ir-defn new-ir-function nil nil nil)))
+	     (setf (ir einfo) new-ir)
+	     (setf (cdefn einfo) hashentry)
+	     (op-name hashentry)))
+	  (t (unless (or (adt-constructor-decl? decl) ;;these are automatically generated from the adt type decl
+			 (adt-recognizer-decl? decl)
+			 (adt-accessor-decl? decl))
+	       (pvs2ir-decl decl))
+	     (let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
+	       (ir2c-decl* ir decl))))))
+
+(defmethod pvs2c-decl* ((decl test-formula))
+  (pvs2ir-decl decl)
+  (let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
+    (ir2c-decl* ir decl)))
+
+(defun c-args-string (ir-vars)
+  (let* ((c-arg-types (loop for arg in ir-vars
+			    collect (add-c-type-definition (ir2c-type (ir-vtype arg)))))
+	 (c-args (loop for arg in ir-vars
+		       as c-arg-type in c-arg-types
+		       collect (format nil "~a_t ~a"
+				       (mppointer-type c-arg-type)
+				       (ir-name arg))))
+	 (c-args-string (if (consp c-args)
+			    (format nil "~{~a~^, ~}" c-args)
+			  (format nil "void"))))
+    c-args-string))
 
 
-
-;; If expressions
-;; Return a C-expr
-;; type is given type
-;; name is nil
-;; destr contains the destructions for the condition
-(defmethod pvs2C-if ((expr if-expr) bindings livevars exp-type)  ;result
-  (let* ((condition (condition expr))
-	 (then-part (then-part expr))
-	 (else-part (else-part expr))
-	 (newlivevars (append (updateable-vars then-part)
-			      (append (updateable-vars else-part)
-				      livevars)))
-	 (C-cond-part (pvs2C condition bindings newlivevars *C-int*))
-	 (C-then-part (pvs2C2 then-part bindings livevars (C-var exp-type)))
-	 (C-else-part (pvs2C2 else-part bindings livevars (C-var exp-type))))
-    (C-expr (C-var exp-type)
-	    (append
-	     (instr C-cond-part)
-	     (list (Cif (var C-cond-part)
-			(append (instr C-then-part)
-				(destr C-then-part))
-			(append (instr C-else-part)
-				(destr C-else-part)))))
-	    (destr C-cond-part))))
-
-(defmethod pvs2C* ((expr if-expr) bindings livevars)
-  (let* ((type (pvs2C-type expr)))    ;; TODO could be improved to find a smaller type
-    (pvs2C-if expr bindings livevars type)))
-
-
-
-;; --- Should be renamed "pvs2C-set" ---
-;; Returns a C-expr with type = (type var)  and  name = (name var)
-(defmethod pvs2C2 ((expr list) bindings livevars var &optional need-malloc)
-  (if (consp expr)
-      (let ((hd (pvs2C2 (car expr) bindings
-			(append (updateable-vars (cdr expr)) livevars)
-			(car var) need-malloc))
-	    (tl (pvs2C2 (cdr expr) bindings
-			(append (updateable-vars (car expr)) livevars)
-			(cdr var) need-malloc)))
-	(C-expr (cons   (var   hd) (var   tl))
-		(append (instr hd) (instr tl))
-		(append (destr hd) (destr tl))))
-    (C-expr nil )))
-
-
-
-;; Record expressions are treated seperately
-(defmethod pvs2C2 ((expr record-expr) bindings livevars var &optional need-malloc)
-  (C-expr var
-	  (append (when need-malloc (list (Cdecl var)))
-		  (list (Crecord-init var))
-		  (loop for a in (assignments expr)
-			collect (let ((e (assoc (id (caar (arguments a)))
-						(args (type var)))))
-				  (instr (pvs2C2 (expression a) bindings livevars
-						 (Crecord-get var (car e)))))))
-	  (append (list (Cfree var)))))
-
-(defmethod pvs2C ((expr record-expr) bindings livevars &optional (exp-type (pvs2C-type expr)))
-  (pvs2C2 expr bindings livevars (gen-C-var exp-type "aux") t))
-
-
-
-(defmethod pvs2C2 (expr bindings livevars var &optional need-malloc)
-  (let* ((type (type var))
-	 (e (if (C-base? type)
-		(pvs2C expr bindings livevars type)
-	      (pvs2C* expr bindings livevars))))
-    (if (and (unnamed? e) (type= (type e) type))  ;; Perfect case
-	(progn (define-name e var)
-	       (when need-malloc
-		 (app-instr e (list (Cdecl var)) t)
-		 (app-destr e (list (Cfree var))))
-	       e)
-      (progn (when (unnamed? e)
-	       (let ((n (gen-C-var (type e) "set")))
-		 (define-name e n)
-		 (set-instr e (append (list (Cdecl n)) (instr e) (destr e)))
-		 (set-destr e (list (Cfree n)))))
-	     (set-var-to-C-expr var e need-malloc)))))
-
-(defmethod set-var-to-C-expr ((var Ccode) (e C-expr) &optional need-malloc)
-  (C-expr var
-	  (append (instr e)
-		  (when need-malloc (list (Cdecl var)))
-		  (list (if (bang (type var)) (Ccopy var (var e))
-			                      (Cset  var (var e))))
-		  (destr e))
-	  (when need-malloc (list (Cfree var)))))
-
-
-;; Return a C-expr (  name : "if" name  ,  destr : only free(name)  )
-(defmethod pvs2C ((expr if-expr) bindings livevars &optional (exp-type (pvs2C-type expr)))
-  (let* ((type (smaller-type (pvs2C-type expr) exp-type))
-	 (if-bloc (pvs2C-if expr bindings livevars type))
-	 (if-name (gen-C-var type "if")))
-    (define-name if-bloc if-name)
-    (set-instr if-bloc
-	       (append (list (Cdecl if-name))
-		       (instr if-bloc)
-		       (destr if-bloc)))
-    (set-destr if-bloc (list (Cfree if-name)))
-    (convert exp-type if-bloc)))
-
-
-;; Returns a C-expr
-;; name is a variable of a simple expression
-;; destr is only  free(name)
-(defmethod pvs2C (expr bindings livevars &optional (exp-type (pvs2C-type expr)))
-  (let ((cst-C-expr (getConstantName expr bindings)))
-    (if cst-C-expr (convert exp-type cst-C-expr)
-      (let ((e (pvs2C* expr bindings livevars))) ;; Returns an instructions (ends with *)
-	(if (unnamed? e)
-	    (let ((n (gen-C-var (type e) "aux")))
-	      (define-name e n)
-	      (set-instr e (append (list (Cdecl n))
-				   (instr e)
-				   (destr e)))
-	      (set-destr e (list (Cfree n)))
-	      (convert exp-type e))
-	  (convert exp-type e))))))
-
-;; number-expr is a non negative integer
-(defmethod pvs2C* ((expr number-expr) bindings livevars)
-  (declare (ignore bindings livevars))
-  (let ((type (pvs2C-type expr)))
-    (if (C-gmp? type)
-	(C-expr (C-var type)
-		(list (Cfuncall-mp "mpz_set_str"
-				   (list (C-var type)
-					 (C-var nil (format nil "\"~a\"" (number expr))))
-				   type)))
-      (C-expr (C-var type (number expr) t)))))
-
-;; UNSAFE !!
-;; Should be modified to create a different tuple according to the type of the args
-(defmethod pvs2C* ((expr tuple-expr) bindings livevars)
-  (let* ((elts (exprs expr))
-	 (args (pvs2C elts bindings livevars
-		      (mapcar #'pvs2C-type elts))))
-    (set-name args
-	      (Cfuncall "createTuple" (cons "~a" args)))
-    args))
-
-;; UNSAFE !!
-(defmethod pvs2C* ((expr projection-application) bindings livevars)
-  (let* ((e  (pvs2C (argument expr) bindings livevars)))
-    (set-var e (Crecord-get (var e) (format nil "f~a" (index expr))))
-    e))
-
-;; UNSAFE !! When is this function called ??  (not working)
-(defmethod pvs2C* ((expr list) bindings livevars)
-  (if (consp expr)
-      (cons (pvs2C (car expr) bindings
-		   (append (updateable-vars (cdr expr)) livevars) )
-	    (pvs2C (cdr expr) bindings  ;;need car's freevars
-		   (append (updateable-vars (car expr)) ;;f(A, A WITH ..)
-			   livevars)))
-    nil))
-
-(defmethod pvs2C*  ((expr field-application) bindings livevars)
-  (let* ((clarg (pvs2C (argument expr) bindings livevars))
-	 (id (id expr)))
-    (set-var clarg (Crecord-get (var clarg) id))
-    clarg))
-
-
-;; pairlis with three lists
-(defun pair3lis (l1 l2 l3)
-  (when (consp l1)
-    (cons (list (car l1) (car l2) (car l3))
-	  (pair3lis (cdr l1) (cdr l2) (cdr l3)))))
-
-(defun mk-C-expr-funcall (type op args)
-  (if (C-gmp? type)
-      (progn   ;; Rq this should only be called with named arguments
-	(app-instr args (set-C-pointer op (var args) type))
-	(set-var args (C-var type)))
-    (set-var args (Cfuncall op (var args) type)))
-  args)
-
-(defmethod pvs2C* ((expr application) bindings livevars)
-  (with-slots (operator argument) expr
-  (if (rem-application? operator) (pvs2C-remappli expr bindings livevars)
-    (if (constant? operator)
-	(if (pvs2cl-primitive? operator)
-	    (pvs2C*-primitive-app expr bindings livevars)
-	  (if (datatype-constant? operator)
-	      (mk-C-expr-funcall (pvs2C-type (range (type operator)))
-				 (pvs2C-resolution operator)
-				 (pvs2C (arguments expr)
-					bindings
-					livevars))
-	    (pvs2C-defn-application expr bindings livevars)))
-      (if (lambda? operator)
-	  (let* ((bind-decls (bindings operator))
-		 (bind-ids (pvs2cl-make-bindings bind-decls bindings))
-		 (newbind (append (pairlis bind-decls bind-ids) bindings))
-		 (type-args (C-type-args operator))
-		 (C-arg (pvs2C2 (if (tuple-expr? argument)
-				    (exprs argument)
-				  (list argument))
-				newbind   ;; or bindings... ??
-				(append (updateable-free-formal-vars operator) livevars)
-				(C-var-list type-args (getBindName bind-decls newbind)) t))
-		 ;;		 (deb (break))
-		 (C-expr (pvs2C* (expression operator) newbind nil)))
-	    (app-instr C-expr (instr C-arg) t)
-	    (app-destr C-expr (destr C-arg))
-	    C-expr)
-	(let* ((type-op (pvs2C-type (type operator)))
-	       (type (pvs2C-type (range (type operator))))
-	       (C-arg (pvs2C argument bindings
-			     (append (updateable-free-formal-vars operator) livevars)))
-	       (C-op (pvs2C operator bindings
-			    (append (updateable-vars argument) livevars)
-			    type-op)))
-	  (if (C-array? type-op) ;; if the operator is an array
-	      (C-expr (Carray-get (var C-op) (var C-arg))
-		      (append (instr C-op) (instr C-arg))
-		      (append (destr C-op) (destr C-arg)))
-	    (if (C-gmp? type)
-		(C-expr (C-var type)
-			(append (instr C-op) (instr C-arg)
-				(set-C-pointer C-op C-arg type))
-			(append (destr C-op) (destr C-arg)))
-	      (C-expr (Cfuncall C-op C-arg type)
-		      (append (instr C-op) (instr C-arg))
-		      (append (destr C-op) (destr C-arg)))))))))))
-
-
-(defun pvs2C-defn-application (expr bindings livevars)
-  (with-slots (operator argument) expr
-    (pvs2C-resolution operator)
-    (let* ((actuals (expr-actuals (module-instance operator)))
-	   (op-decl (declaration operator))
-	   (args (arguments expr))
-	   (type-args (C-type-args op-decl))
-	   (ret-type (pvs2C-type (range (type op-decl))))
-	   (C-args (pvs2C (append actuals args) bindings livevars type-args)))
-      (if *destructive?*
-	  (let* ((ret-type (pvs2C-type (range (type operator))))
-		 (defns (def-axiom op-decl))
-		 (defn (when defns (args2 (car (last (def-axiom op-decl))))))
-		 (def-formals (when (lambda-expr? defn)
-				(bindings defn)))
-		 (module-formals (unless (eq (module op-decl) (current-theory))
-				   (constant-formals (module op-decl))))
-		 (alist (append (pairlis module-formals actuals)
-				(when def-formals
-				  (pairlis def-formals args))))
-		 (analysis (C_analysis operator))
-		 (check (check-output-vars analysis alist livevars))
-		 (id-op (if check (C_id operator)
-			          (C_nondestructive_id operator))))
-	    (mk-C-expr-funcall ret-type (declaration operator) C-args))
-	(mk-C-expr-funcall ret-type (declaration operator) C-args)))))
-	;;     (mk-C-expr-funcall ret-type id-op C-args))
-	;; (mk-C-expr-funcall ret-type (C_id operator) C-args)))))
-
-(defun pvs2C-resolution (op)
-  (let* ((op-decl (declaration op)))
-    (pvs2C-declaration op-decl)))
-
-(defun pvs2C-declaration (op-decl)
-  (let ((nd-hashentry (gethash op-decl *C-nondestructive-hash*)))
-					;enough to check one hash-table. 
-    (when (null nd-hashentry)
-      (let ((op-id   (gen-name (id op-decl) nil))
-	    (op-d-id (gen-name (id op-decl) t  )))
-	(setf (gethash op-decl *C-nondestructive-hash*)
-	      (make-C-info :id op-id))
-	(setf (gethash op-decl *C-destructive-hash*)
-	      (make-C-info :id op-d-id))
-	(let* ((defns (def-axiom op-decl))
-	       (defn (when defns (args2 (car (last (def-axiom op-decl))))))
-	       (def-formals (when (lambda-expr? defn)
-			      (bindings defn)))
-	       (def-body (if (lambda-expr? defn) (expression defn) defn))
-	       (module-formals (constant-formals (module op-decl)))
-	       (range-type (if def-formals (range (type op-decl))
-			     (type op-decl))))
-	  (pvs2C-resolution-nondestructive op-decl (append module-formals def-formals)
-					   def-body range-type)
-	  (pvs2C-resolution-destructive op-decl (append module-formals def-formals)
-					def-body range-type)
-	  (when *C-analysis* (C-analysis op-decl)))))))
-
-(defun pvs2C-resolution-destructive (op-decl formals body range-type)
-  (let ((*destructive?* t))
-    (pvs2C-resolution* op-decl formals body range-type)))
+(defun def-c-attach-primitive-type (theory name header-defn)
+  (let* ((thname (make-c-name (simple-id theory) (simple-id name)))
+	 (header (format nil "typedef ~a ~a_t;" header-defn thname))
+	 (c-type-info (mk-simple-c-type-info nil thname header nil nil) ))
+    (setf (gethash thname *c-primitive-type-attachments-hash*) c-type-info)
+    thname))
+    
 	 
 
-(defun pvs2C-resolution-nondestructive (op-decl formals body range-type)
-  (let ((*destructive?* nil))
-    (pvs2C-resolution* op-decl formals body range-type)))
+(defun def-c-attach-primitive (theory name return-type args arg-types header-defn &optional definition)
+  (let* ((thname (make-c-name (simple-id theory)(simple-id name)))
+	 (arg-type-pairs (loop for arg in args as
+			       arg-type in arg-types
+			       collect (format nil "~a_t ~a" arg-type arg)))
+	 (arg-string (if (null arg-type-pairs)
+			 (format nil "(void)")
+			 (format nil "(~{~a~^, ~})" arg-type-pairs)))
+	 (header (if definition (format nil "~a_t ~a~a;" return-type thname arg-string)
+		     (format nil "static inline ~a_t ~a~a~a" return-type thname arg-string header-defn)))
+	 (c-definition (when definition (format nil "~a_t ~a~a~a" return-type thname arg-string definition)))
+	 (c-defn-info (mk-c-noextern-defn-info thname header c-definition arg-types return-type)))
+    (setf (gethash thname *c-primitive-attachments-hash* ) c-defn-info)
+    thname))
 
 
-(defun pvs2C-resolution* (op-decl formals body range-type)
-  (let* ((bind-ids (pvs2cl-make-bindings formals nil))
-	 (id-map (pairlis formals bind-ids))
-	 (C-type-out (pvs2C-type range-type))
-	 (return-void (C-gmp? C-type-out))
-	 (result-var (C-var C-type-out "result"))
-	 (C-args (loop for var in formals
-		       collect (C-var (pvs2C-type (type var))
-				      (cdr (assoc var id-map)))))
-	 (C-type-arg (append (when return-void (list (C-var C-type-out "result")))
-			     C-args))
-	 (hash-entry (gethash op-decl (C-hashtable)))
-	 (C-body (pvs2C2 body id-map nil result-var (not return-void))))
-             ;; If we don't return void, we need to malloc the result
-    (when *destructive?*   ;; We only show one of the two defintions
-      (debug (format nil "Defining ~a with type:  ~a -> ~a"
-		     (id op-decl) (mapcar #'type C-type-arg) C-type-out)))
-    (when *eval-verbose* (format t "~%as :~%~{~a~%~}" (instr C-body)))
-    (setf (C-info-type-out hash-entry) (if return-void "void" C-type-out)
-	  (C-info-type-arg hash-entry) C-type-arg
-	  (C-info-C-code   hash-entry) C-body
-	  (C-info-definition hash-entry)
-	  (Cfun-decl (C-info-id hash-entry)
-		     (C-info-type-out hash-entry)
-	             (append (instr C-body)
-			     (loop for a in C-args collect (Cfree a))
-			     (if return-void (destr C-body)
-			                     (list (Creturn result-var))))
-		     C-type-arg))))
+(defun make-c-defn-info (ir pvs-return-type) ;(break "make-c-defn-info")
+  (with-slots
+	(ir-function-name ir-return-type ir-args ir-defn) ir
+    ;; (when (eq (id decl) 'coef)(break "coef"))
+    ;;   (format t "~%ir-defn~% =~a" (print-ir ir-defn))
+    (if (null ir-defn)
+	(let* ((ir-function-name (ir-fname ir-function-name))
+	       ;;(ir-result-type ir-return-type) ;(pvs2ir-type (type decl))
+	       ;; (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	       ;; (dummy (when (null c-result-type) (break "make-c-defn-info")))
+	       ;;might need to adjust c-header when result type is gmp
+	       ;; (c-header (format nil "~a_t ~a(~a)"
+	       ;; 		   (mppointer-type c-result-type) ir-function-name
+	       ;; 		   (c-args-string ir-args)))
+	       )
+	  (unless *to-emacs* ;; causes problems
+	    (format t "~%No definition for ~a" ir-function-name))
+	  nil)
+	  ;; (mk-c-defn-info ir-function-name (format nil "~a;" c-header) nil nil
+	  ;; 		  c-result-type)
+	(let* ((ir-function-name (ir-fname ir-function-name))
+	       (pre-ir (if ir-args
+			   (mk-ir-lambda ir-args ir-return-type ir-defn)
+			   ir-defn))
+	       (post-ir (preprocess-ir pre-ir))
+	       (ir-args (when (ir-lambda? post-ir)
+			  (ir-vartypes post-ir)))
+					;	     (ir-decl-type (add-c-type-definition (ir2c-type (pvs2ir-type (declared-type decl)))))
+	       (ir-result-type (if (ir-lambda? post-ir)
+				   (ir-rangetype post-ir) ;(pvs2ir-type (range (find-supertype (type decl))))
+				   (pvs2ir-type pvs-return-type)))
+	       (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	       (c-arg-types (loop for arg in ir-args
+			       collect (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype arg))))))
+	       (*mpvar-parameters*  (loop for arg in ir-args
+				       as c-arg-type in c-arg-types
+				       when (mpnumber-type? c-arg-type)
+				       collect arg))
+	       (c-args-string (c-args-string ir-args))
+	       (c-header (format nil "~a_t ~a(~a)" (mppointer-type c-result-type) ir-function-name c-args-string))
+	       ;; (case c-result-type
+	       ;; 		 ((|mpz| |mpq|)
+	       ;; 		  (if (consp c-args)
+	       ;; 		      (format nil void ~a(~a_t ~a, ~a)"
+	       ;; 			      ir-function-name c-result-type '|result| c-args-string)
+	       ;; 		    (format nil void ~a(~a_t ~a)"
+	       ;; 			      ir-function-name c-result-type '|result|)))
+	       ;; 		 (t (format nil ~a_t ~a(~a)" c-result-type ir-function-name c-args-string)))
+	       (ir-body (if (ir-lambda? post-ir)
+			    (ir-body post-ir)
+			    post-ir))
+	       (c-body (print2c (ir2c ir-body ir-result-type)))
+	       (c-body (if ir-args c-body
+			 (format nil "~%~8Tstatic bool_t defined = false;~%~8Tif (!defined){~%~12T~a~%~8Tdefined = true;};" c-body)))
+	       (static? (if ir-args "" " static "))
+	       (c-result-decl (if (mpnumber-type? c-result-type)
+				  (let ((mptype (mppointer-type c-result-type)))
+				    (format nil "~a_t ~a result;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
+				      mptype static?; c-result-type c-result-type
+				      ))
+				  (format nil "~a_t ~a result;" c-result-type static?)))
+	       (c-defn  (format nil "~a{~%~8T~a~%~a~%~8T~%~8Treturn result;~%}"
+			  c-header 
+			  c-result-decl
+			  c-body
+			  ;; (if (ir-reference-type? ir-result-type)
+			  ;;     "result->count++;"
+			  ;;   "")
+			  ))
+	       ;; (case c-result-type
+	       ;; 	       ((|mpq| |mpz|)
+	       ;; 		(format nil "~a{~%~a~%}"
+	       ;; 		     c-header 
+	       ;; 		     c-body))
+	       ;; 	       (t (format nil "~a{~%~8T~a_t result;~%~a~%~8Treturn result;~%}"
+	       ;; 		     c-header 
+	       ;; 		     (mppointer-type c-result-type)
+	       ;; 		     c-body)))
+	       )
+	  
+	  (unless *suppress-output* ;*to-emacs* ;; causes problems
+	    (format t "~%Function ~a"  ir-function-name)
+	    ;(format t "~%MPvars ~{~a, ~}" (print-ir *mpvar-parameters*))
+	    (format t "~%Before  preprocessing = ~%~a" (print-ir pre-ir))	   
+	    (format t "~%After preprocessing = ~%~a" (print-ir post-ir))
+	    (format t "~%Generates C definition = ~%~a" c-defn))
+	  (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn c-arg-types
+			  c-result-type)))))
 
-(defmethod pvs2C* ((expr name-expr) bindings livevars)
-  (let* ((type-e (pvs2C-type expr))
-	 (decl (declaration expr))
-	 (bnd (assoc decl bindings :key #'declaration))
-	 (prim (pvs2cl-primitive? expr)))
-    (assert (not (and bnd (const-decl? decl))))
-    (cond (bnd
-	   (C-expr (C-var type-e (format nil "~a" (cdr bnd)))))
-	  (prim (pvs2C*-primitive-cste expr bindings livevars))
-	  ((const-decl? decl)
-	        (pvs2C*-constant expr decl bindings livevars))
-	  (t
-	        (let ((undef (undefined expr "Hit untranslateable expression ~a")))
-		  `(funcall ',undef))))))
-
-(defun pvs2C*-constant (expr op-decl bindings livevars)
-  (let* ((defns (def-axiom op-decl))
-	 (defn (when defns (args2 (car (last (def-axiom op-decl))))))
-	 (def-formals (when (lambda-expr? defn)
-			(bindings defn))))
-    (pvs2C-resolution expr)
-    (if def-formals  ;; I don't understand this...
-	(let ((eta-expansion
-	       (make!-lambda-expr def-formals
-		    (make!-application* expr
-		       (loop for bd in def-formals
-			     collect (mk-name-expr bd))))))
-	  (pvs2C* eta-expansion bindings livevars))
-      (let ((actuals (expr-actuals (module-instance expr))))
-;;	(break) ;;Is that where functions from theory are called ?
-	(mk-C-expr-funcall (pvs2C-type (type expr))
-			   (declaration expr)
-;;			  (C_nondestructive_id expr)
-			  (pvs2C actuals bindings livevars))))))
-
-
-(defmethod pvs2C* ((expr lambda-expr) bindings livevars)
-  (declare (ignore livevars))
-  (with-slots (type expression) expr
-    (let ((bind-decls (bindings expr)))
-      (if (and (C-updateable? type) (funtype? type))  ;; If it could be represented as an array
-	  (let* (
-;;		 (Ctype (pvs2C-type type))        ;; Should we built Ctype from that ?
-	         (Ctype (pvs2C-type expr))        ;; Should we built Ctype from that ?
-		 (range-type (target Ctype))
-		 (i (gen-C-var *C-int* "i"))
-		 (new-bind (append (pairlis bind-decls ;; bind-decls must have length 1
-					    (list i))
-				   bindings))
-		 (body (pvs2C2 expression
-			       new-bind
-			       nil  ;;removed livevars (why ?)
-			       (Carray-get (C-var Ctype) i)
-			       nil)))
-	    (C-expr (C-var Ctype)
-		       (list (Carray-init (C-var Ctype) (instr body) i))
-		       (when (destr body)
-			 (append
-			  (list (format nil "for(~a = 0; ~a < ~a;;; ~a++) {"
-					i i (array-bound type) i))
-			  (indent (destr body))
-			  (list "}")))))
-	(pvs2C-lambda bind-decls expression bindings)))))
-
-;; (list (format nil "if ( GC_count( ~~a ) == 1) {")
-;;       (format nil "  ~~a = GC( ~a );" )
-;;       ....
-
-
-;; Creates a closure (not working now...)
-(defun pvs2C-lambda (bind-decls expr bindings) ;;removed livevars
-  (let* ((*destructive?* nil)
-	 (range-type (pvs2C-type (type expr)))
-	 (bind-ids (pvs2cl-make-bindings bind-decls bindings))
-	 (new-bind (append (pairlis bind-decls bind-ids) bindings))
-	 (C-body (pvs2C expr
-			 new-bind
-			 nil range-type))
-	 (name (gentemp "fun"))
-	 (fv (freevars expr))
-	 (nb-args (length fv))
-	 (var-ind (pairlis fv (range-arr nb-args)))
-	 (param-def (append-lists (mapcar #'(lambda (x) (load-void x "env"))
-					  var-ind)))
-	 (assign (loop for x in bindings
-		       when (assoc (cdr x) var-ind :test #'(lambda (x y) (eq x (id y)) ))
-		       collect it))
-	 ;; Carefull !! eq x (id y) is not enough, (duplication variable id)
-	 (env-name (gentemp "env")))
-    (add-definition (format nil "~a ~a(void *env) {~%~{  ~a~%~}  return ~a;~%}"
-			    range-type name
-			    (append param-def (instr C-body) (destr C-body))
-			    (name C-body)))
-    (C-expr (C-var (make-instance 'C-closure))
-	    (append (list (format nil "void ~a[~d];" env-name nb-args))
-		    (append-lists (mapcar
-				   #'(lambda (x) (save-void x env-name))
-				   assign))
-		    (list (format nil "makeClosure(~~a, ~a, ~a);" name env-name)))
-	    nil)))
-
-
-
-
-;; Doesn't work  / Should look like if-expr
-(defmethod pvs2C* ((expr cases-expr) bindings livevars)
-  (let ((type (pvs2C-type expr)))
-    (C-expr (C-var type)
-	    (append (list (format nil "switch( ~a ) {"
-				  (pvs2C (expression expr) bindings livevars type)))
-		    (pvs2C-cases (selections expr) (else-part expr) bindings livevars)
-		    (list "}")))))
-
-;; Doesn't work / Should look like if-expr
-(defun pvs2C-cases (selections else-part bindings livevars)
-  (let ((selections-C
-	 (loop for entry in selections
-	       collect
-	       (let* ((bind-decls (args entry))
-		      (bind-ids (pvs2cl-make-bindings bind-decls bindings)))
-		 (format nil "  case ~a ~{~a ~} : ~a; break;"
-			 (pvs2C (constructor entry) bindings livevars)
-			 bind-ids
-			 (pvs2C (expression entry)
-				(append (pairlis bind-decls bind-ids) bindings)
-				livevars)))))))
-  (append selections-C
-	  (when else-part
-	    (list (format nil "  default: ~a"
-			  (pvs2C (expression else-part) bindings livevars))))
-	  (list "}")))
+(defun make-c-closure-defn-info (ir-lambda-expr ir-function-name c-param-decl-string)
+  (declare (ignore c-param-decl-string))
+  (let* ((ir-args (ir-vartypes ir-lambda-expr))
+	 (ir-result-type (ir-rangetype ir-lambda-expr)) ;(pvs2ir-type (range (find-supertype (type decl))))
+	 (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	 (fvars (pvs2ir-freevars* ir-lambda-expr))
+	 (args-fvarargs (append ir-args fvars))
+	 (c-arg-types (loop for arg in args-fvarargs
+		       collect (add-c-type-definition (ir2c-type (freevar-type arg)))))
+	 (c-args (loop for arg in args-fvarargs
+		       collect (format nil "~a_t ~a"
+				       (mppointer-type (add-c-type-definition (ir2c-type (freevar-type arg))))
+				       (freevar-name arg))))
+	 (c-args-string (if (consp c-args)
+			    (format nil "~{~a~^, ~}" c-args)
+			  (format nil "void")))
+	 (c-header (format nil "~a_t ~a(~a)" (mppointer-type c-result-type)
+			   ir-function-name c-args-string))
+			   ;;ignoring params since they are in the free vars;;c-param-decl-string
+	 ;; (case c-result-type
+	 ;; 	     ((|mpz| |mpq|)
+	 ;; 	      (if (consp c-args)
+	 ;; 		  (format nil void ~a(~a_t ~a, ~a)"
+	 ;; 		      ir-function-name c-result-type '|result| c-args-string)
+	 ;; 		  (format nil void ~a(~a_t ~a)"
+	 ;; 		      ir-function-name c-result-type '|result|)))
+	 ;; 	     (t (format nil ~a_t ~a(~a)" c-result-type ir-function-name c-args-string)))
+	 (c-defn-arg-types c-arg-types)
+	 ;; (case c-result-type
+	 ;; 		     ((|mpz| |mpq|)(cons c-result-type c-arg-types))
+	 ;; 		     (t c-arg-types))
+	 (c-defn-result-type (mppointer-type c-result-type))
+	     ;; (case c-result-type
+	     ;; 		       ((|mpz| |mpq|) 'void)
+	     ;; 		       (t c-result-type))
+	 (ir-body (ir-body ir-lambda-expr))
+	 (*mpvar-parameters*  (loop for arg in ir-args
+				    as c-arg-type in c-arg-types 
+				    when (mpnumber-type? c-arg-type)
+				    collect arg))
+	 (c-body (print2c (ir2c ir-body ir-result-type)))
+	 (c-result-decl (case c-result-type
+			  ((|mpq| |mpz|)
+			   (format nil "~a_t result;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
+				   (mppointer-type c-result-type); c-result-type c-result-type
+				   ))
+			  (t (format nil "~a_t result;" c-result-type))))
+	 (c-defn  (format nil "~a{~%~8T~a~%~a~%~8Treturn result;~%}"
+			  c-header 
+			  c-result-decl
+			  c-body))
+	 ;; (case c-result-type
+	 ;; 	   ((|mpq| |mpz|)
+	 ;; 	    (format nil "~a{~%~a~%}" c-header c-body))
+	 ;; 	   (t (format nil "~a{~%~8T~a_t result;~%~a~%~8Treturn result;~%}"
+	 ;; 		      c-header
+	 ;; 		      c-result-type
+	 ;; 		      c-body)))
+	 )
+    (unless *suppress-output* ;;*to-emacs*
+      (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
+      (format t "~%Generates C definition = ~%~a" c-defn))
+    ;(break "make-c-closure-defn")
+    (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn
+		    c-defn-arg-types c-defn-result-type)))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;print the header file from the information in *c-type-info-table*
+;;If the type has a PVS definition, the type-info is saved with this declaration.
+;;Otherwise, the type information is generated for the type expression in the global.
 
-(defmethod pvs2C* ((expr update-expr) bindings livevars)
-  (with-slots (expression assignments) expr
-  (if (C-updateable? (type expression))
-      (progn
-	(when (and *destructive?* (not (some #'maplet? assignments)))
-	  (let* ((*C-livevars-table* 
-		  (no-livevars? expression livevars assignments)))
-	    ;;very unrefined: uses all freevars of eventually updated expression.
-	    (cond (*C-livevars-table* ;; check-assign-types
-		   (push-output-vars (car *C-livevars-table*)
-				     (cdr *C-livevars-table*)))
-		  ((and *eval-verbose* (not *C-livevars-table*))
-		   (format t "~%Update ~s translated nondestructively. Live variables ~s present"
-			   expr livevars)))))
-	(pvs2C-update expr bindings livevars))
-    (pvs2C (translate-update-to-if! expr) bindings livevars)))) ;; When does that happen ?
+(defun print-header-file (theory-id theory)
+  (let* ((file-string (if *pvs2c-library-path*
+			  (format nil "~a/include/~a_c.h" *pvs2c-library-path* theory-id)
+			  (format nil "~a_c.h" theory-id)))
+	 ;; (preceding-theories (pvs2c-preceding-theories theory))
+	 ;; (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory))
+	 ;; (theory-instances (when (ht-instance-clone theory)
+	 ;; 		     (maphash #'(lambda (x y) x) (ht-instance-clone theory))))
+	 )				;(break "print-header-file")
+    (with-open-file (output file-string :direction :output
+			    :if-exists :supersede :if-does-not-exist :create)
+      (format output "//Code generated using pvs2ir")
+      (format output "~%#ifndef _~a_h ~%#define _~a_h" theory-id theory-id)
+      (format output "~%~%#include <stdio.h>")
+      (format output "~%~%#include <stdlib.h>")
+      (format output "~%~%#include <inttypes.h>")
+      (format output "~%~%#include <stdbool.h>")
+      (format output "~%~%#include <stdarg.h>")		    
+      (format output "~%~%#include <string.h>")
+      (format output "~%~%#include <fcntl.h>")		    
+      (format output "~%~%#include <math.h>")
+      (format output "~%~%#include <sys/mman.h>")
+      (format output "~%~%#include <sys/stat.h>")
+      (format output "~%~%#include <sys/types.h>")
+      (format output "~%~%#include <gmp.h>")
+      (format output "~%~%#include \"pvslib.h\"")
+      (dolist (th *pvs2c-theory-importings*)
+	(format output "~%~%#include \"~a_c.h\"" (id th)))
+      ;; (format output "~%~%#include \"~a_c.h\"" (id theory))
+      ;; (format t "~%mono-theories: ~{ ~a~^,~}" *preceding-mono-theories*)
+      ;; (loop for thy in  *preceding-mono-theories*
+      ;; 	  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
+      (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
+      (format output " -I ~a/include" *pvs-path*)
+      (format output " ~a/lib/pvslib.c " *pvs-path*)
+      (format output " -I ~alib" *pvs-path*)
+      ;; (loop for thy in preceding-prelude-theories
+      ;; 	    do (format output " ~alib/~a_c.c" *pvs-path* (id thy)))
+      ;; (loop for thy in preceding-prelude-theories
+      ;; 	    do (when (ht-instance-clone thy)
+      ;; 		 (maphash #'(lambda (x y)
+      ;; 			      (declare (ignore y))
+      ;; 			      (format output  " ~a_c.c" x))
+      ;; 			  (ht-instance-clone thy))))
+      ;; (loop for thy in preceding-theories
+      ;; 	    do (format output " ~a_c.c" (id thy))
+      ;; 	    (when (ht-instance-clone thy)
+      ;; 	      (maphash #'(lambda (x y)
+      ;; 			   (declare (ignore y))
+      ;; 			   (format output  " ~a_c.c" x))
+      ;; 		       (ht-instance-clone thy))))
+      ;; (loop for thy in  *preceding-mono-theories*
+      ;; 	  do (format output " ~a_c.c" (id thy)))
+      (format output " -lgmp ")
+      ;; (when (formals theory) (format output "~%typedef pointer_t"))
+      (loop for formal in (formals theory)
+	    when (formal-type-decl? formal)
+	    do (format output "~%~%typedef pointer_t ~a_t;" (ir-type-id (ir-type-name (ir-type-value formal)))))
+      (print-type-info-headers-to-file output *c-type-info-table*)
+      (loop for decl in (theory theory)
+	    when (and (slot-exists-p decl 'eval-info)
+		      (eval-info decl)
+		      (cdefn (eval-info decl)))
+	    do (print-header-decl decl output))
+      (format output "~%#endif")
+      (unless *to-emacs*
+	(format t "~%Wrote ~a" file-string))
+      (id theory))))
 
+(defun print-header-decl (decl output)
+  (let ((einfo (eval-info decl)))
+    (when (accessor-eval-info? einfo)
+      (format output "~%~%~a" (op-header (update-cdefn (eval-info decl)))))
+    (format output "~%~%~a" (op-header (cdefn (eval-info decl))))))
 
+(defun print-type-info-headers-to-file (output type-info-stack)
+  (cond ((consp type-info-stack)
+	 (print-type-info-headers-to-file output (cdr type-info-stack))
+	 (print-type-defn-headers (car type-info-stack) output))
+	(t nil)))
 
-(defun pvs2C-update (expr bindings livevars)
-  (with-slots (type expression assignments) expr
-    (let* ((C-type (pvs2C-type type))
-	   (assign-exprs (mapcar #'expression assignments))
-	   (C-expr (pvs2C2 expression bindings
-			   (append (updateable-free-formal-vars
-				    assign-exprs) ;;assign-args can be ignored
-				   livevars)
-			   (bang-type (C-var C-type)) nil))
-	   (C-update (pvs2C-update* (type expression)
-				   (mapcar #'arguments assignments)
-				   assign-exprs
-				   bindings
-				   (append (updateable-vars expression)
-					   livevars))))
-      (set-name C-expr nil) ;; type is already C-type
-      (set-instr C-expr
-		 (append (instr C-update)  ;; Defining update key / value
-			 (instr C-expr)    ;; Getting an updateable array
-			 (name C-update)   ;; Performing the update (destructively)
-			 (destr C-update)));; Destroying
-      C-expr)))  ;; destr of C-expr is still to be destroyed
+(defmethod print-type-defn-headers ((type-info simple-c-type-info) output)
+  (when (comment-string type-info) (format output "~%//~a" (comment-string type-info)))
+  (format output "~%~%~a~%~%"
+	  (tdefn type-info)))
 
+(defmethod print-type-defn-headers ((type-info closure-c-type-info) output)
+  (with-slots (tdecl tdefn ftable-type-defn release-info hash-entry-type-defn hash-type-defn
+		     copy-info lookup-info dupdate-info update-info equal-info json-info comment-string)
+      type-info
+    (when comment-string (format output "~%//~a" comment-string))
+    (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+	    tdecl ftable-type-defn hash-entry-type-defn hash-type-defn tdefn)
+    (format output "~a~%~%" (op-header release-info))
+    (format output "~a~%~%" (op-header copy-info)) ;copy is required, but functions below are optional
+    (when lookup-info (format output "~a~%~%" (op-header lookup-info)))
+    (when dupdate-info (format output "~a~%~%" (op-header dupdate-info)))
+    (when update-info (format output "~a~%~%" (op-header update-info)))
+    (when equal-info (format output "~a~%~%" (op-header equal-info)))
+    (when json-info (format output  "~a~%~%" (op-header json-info)))
+    ))
 
-;;recursion over updates in an update expression
-(defun pvs2C-update* (type assign-args assign-exprs bindings livevars)
-  (if (consp assign-args)
-    (let ((C-car (pvs2C-update-nd-type
-	        type "~a"
-		(car assign-args )
-		(car assign-exprs)
-		bindings
-		(append (append (updateable-vars (cdr assign-exprs))
-				(updateable-vars (cdr assign-args ))
-				livevars))))
-	  (C-cdr (pvs2C-update* type
-			   (cdr assign-args)
-			   (cdr assign-exprs)
-			   bindings
-			   (append (updateable-free-formal-vars (car assign-exprs))
-				   livevars))))
-      (set-name  C-cdr (append (name  C-car) (name  C-cdr)))
-      (app-instr C-cdr (instr C-car) t)
-      (app-destr C-cdr (destr C-car) t)
-      C-cdr)
-    (C-expr (C-var nil))))
+(defmethod print-type-defn-headers ((type-info c-type-info) output)
+  (when (comment-string type-info) (format output "~%//~a" (comment-string type-info)))
+  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~a~%~%~a~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+	  (tdefn type-info)
+	  (op-header (new-info type-info))
+	  (op-header (release-info type-info))
+	  (op-header (copy-info type-info))
+	  (op-header (equal-info type-info))
+	  (if (json-info type-info)(op-header (json-info type-info))(format nil " "))
+	  (if (act-defn type-info)(ir-actual-type-defn (act-defn type-info))(format nil " "))
+	  (if (release-ptr-info type-info)(op-header (release-ptr-info type-info)) (format nil " "))
+	  (if (equal-ptr-info type-info)(op-header (equal-ptr-info type-info)) (format nil " "))
+	  (if (json-ptr-info type-info)(op-header (json-ptr-info type-info)) (format nil " "))	  
+	  (if (act-defn type-info)(ir-actual-fun-header (act-defn type-info)))(format nil " ")) 
+  (loop for t-info in (update-info type-info)
+	do (format output "~a~%~%" (op-header t-info)))
+  (loop for t-info in (upgrade-info type-info)
+	do (format output "~a~%~%" (op-header t-info))))
 
+(defmethod print-type-defn-headers ((type-info c-closure-info) output)
+  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+	  (tdecl type-info)
+	  (tdefn type-info)
+	  (op-header (fdefn type-info))
+	  (op-header (mdefn type-info))
+	  (op-header (hdefn type-info))	  
+	  (op-header (new-info type-info))
+	  (op-header (release-info type-info))
+	  (op-header (copy-info type-info))
+	  ))
 
-;; ---- Recursion over nested update arguments in a single update ----
-(defun pvs2C-update-nd-type (type exprvar args assign-expr bindings livevars)
-  (if (consp args)
-      (pvs2C-update-nd-type* type exprvar (car args) (cdr args) assign-expr
-			      bindings livevars)
-    (break))) ;; Should never happen... (a priori)
+(defun print-type-info-defns-to-file (output type-info-stack)
+  (cond ((consp type-info-stack)
+	 (print-type-info-defns-to-file output (cdr type-info-stack))
+	 (print-type-defns (car type-info-stack) output))
+	(t nil)))
 
-(defmethod pvs2C-update-nd-type* ((type funtype) expr arg1 restargs
-				   assign-expr bindings livevars)
-  (let* ((dom-type (pvs2C-type (domain type))) ;; Should really be int...
-	 (arg1var (gen-C-var dom-type "L"))
-	 (Ctype (pvs2C-type type))
-	 (C-arg1 (pvs2C2 (car arg1) bindings
-			 (append (updateable-vars restargs)
-				 (updateable-free-formal-vars assign-expr)
-				 livevars)
-			 arg1var t)))
-    (if (consp restargs)
-	(let* ((C-range-type (pvs2C-type (range type)))
-	       (exprvar (gen-C-var C-range-type "E"))
-	       (C-expr (pvs2C-update-nd-type (range type) exprvar
-					     restargs assign-expr
-					     bindings livevars)))
-	  (mk-C-expr nil
-		     (append (list (Cdecl exprvar))
-			     (list (Ccopy exprvar
-					  (Carray-get (C-var Ctype expr) arg1var)))
-			     (name C-expr)
-			     (list (Cset (Carray-get (C-var Ctype expr) arg1var) exprvar)))
-		    (append (instr C-expr) (instr C-arg1))
-		    (append (destr C-arg1) (destr C-expr))))
-      (let* ((res (gen-C-var (target Ctype) "res"))
-	     (C-expr (pvs2C2 assign-expr bindings livevars res t)))
-	(mk-C-expr nil
-		   (list (Cset (Carray-get (C-var Ctype expr) arg1var) res))
-		   (append (instr C-arg1) (instr C-expr))
-		   (append (destr C-arg1) (destr C-expr)))))))
+(defmethod print-type-defns ((type-info simple-c-type-info) output)
+  (declare (ignore output))
+  nil); do nothing
 
-
-(defmethod pvs2C-update-nd-type* ((type recordtype) expr arg1 restargs
-				   assign-expr bindings livevars)
-  (let* ((id (id (car arg1)))
-	 (field-type (type (find id (fields type) :key #'id) ))
-	 (C-type (pvs2C-type type))
-	 (C-target-type (cdr (assoc id (args C-type)))))
-    ;;	 (C-target-type (pvs2C-type field-type)))
-    (if (consp restargs)
-	(let ((exprvar (gen-C-var C-target-type "E"))
-	      (C-expr (pvs2C-update-nd-type field-type exprvar restargs assign-expr
-				      bindings livevars)))
-	  (set-name C-expr
-		    (append (list (Ccopy exprvar
-					 (Crecord-get (C-var C-type expr) id)))
-			    (name C-expr)
-			    (list (Cset (Crecord-get (C-var C-type expr) id)
-					exprvar))))
-	  C-expr)
-      (let* ((res (gen-C-var C-target-type "res"))
-	     (C-expr (pvs2C2 assign-expr bindings livevars res t)))
-	(mk-C-expr nil (list (Cset (Crecord-get (C-var C-type expr) id)
-				    res))
-		   (instr C-expr)
-		   (destr C-expr))))))
-
-
-(defmethod pvs2C-update-nd-type* ((type subtype) expr arg1 restargs
-				   assign-expr bindings livevars)
-  (pvs2C-update-nd-type* (find-supertype type) expr arg1 restargs
-			  assign-expr bindings livevars))
-
-
-;;C-updateable? is used to check if the type of an updated expression
-;;is possibly destructively. 
-(defmethod C-updateable? ((texpr tupletype))
-  (C-updateable? (types texpr)))
-
-;;this is the only case where C-updateable? can be false, because
-;;the given function type is not an array.  
-(defmethod C-updateable? ((texpr funtype)) ;;add enum types, subrange.
-  (and (or (simple-below? (domain texpr))
-	   (simple-upto? (domain texpr)))
-       (C-updateable? (range texpr))))
-
-(defmethod C-updateable? ((texpr recordtype))
-  (C-updateable? (mapcar #'type (fields texpr))))
-
-(defmethod C-updateable? ((texpr subtype))
-  (C-updateable? (find-supertype texpr)))
-
-(defmethod C-updateable? ((texpr list))
-  (or (null texpr)
-      (and (C-updateable? (car texpr))
-	   (C-updateable? (cdr texpr)))))
-
-(defmethod C-updateable? ((texpr t)) t)
-;; It is okay to say  C-updateable? for uninterpreted
-;; or actuals since these will not be updated destructively or otherwise.
+(defmethod print-type-defns ((type-info closure-c-type-info) output)
+  (with-slots (release-info copy-info lookup-info dupdate-info update-info equal-info json-info) type-info
+	      (format output "~%~%~a" (op-defn release-info))
+	      (format output "~%~%~a" (op-defn copy-info))
+	      (when lookup-info (format output "~%~%~a" (op-defn lookup-info)))
+	      (when dupdate-info (format output "~%~%~a" (op-defn dupdate-info)))
+	      (when update-info (format output "~%~%~a" (op-defn update-info)))
+	      (when equal-info (format output "~%~%~a" (op-defn equal-info)))
+	      (when json-info (format output "~%~%~a" (op-defn json-info)))))
 
 
+(defmethod print-type-defns ((type-info c-type-info) output)
+  (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+	  (op-defn (new-info type-info))
+	  (op-defn (release-info type-info))
+	  (if (release-ptr-info type-info)(op-defn (release-ptr-info type-info))(format nil " "))
+	  (op-defn (copy-info type-info))
+	  (op-defn (equal-info type-info))
+	  (if (json-info type-info)(op-defn (json-info type-info))(format nil " "))
+	  (if (equal-ptr-info type-info)(op-defn (equal-ptr-info type-info))(format nil " "))
+	  (if (json-ptr-info type-info)(op-defn (json-ptr-info type-info))(format nil " "))
+	  (if (act-defn type-info)(ir-actual-fun-defn (act-defn type-info))(format nil " ")))
+  (loop for t-info in (update-info type-info)
+	do (format output "~a~%~%" (op-defn t-info)))
+  (loop for t-info in (upgrade-info type-info)
+	do (format output "~a~%~%" (op-defn t-info))))
 
-(defun pvs2C-theory (theory)
-  (let* ((theory (get-theory theory))
-	 (*current-theory* theory)
-	 (*current-context* (context theory)))
-    (cond ((datatype? theory)
-	   (pvs2C-datatype theory))
-	   ;;(pvs2C-theory (adt-theory theory))
-	   ;;(let ((map-theory (adt-map-theory theory))
-	   ;;   (reduce-theory (adt-reduce-theory theory)))
-	   ;;   (when map-theory (pvs2C-theory (adt-map-theory theory)))
-	   ;;   (when reduce-theory (pvs2C-theory (adt-reduce-theory theory))))
-	  (t (loop for decl in (theory theory)
-		   do (cond ((type-eq-decl? decl)
-			     (let ((dt (find-supertype (type-value decl))))
-			       (when (adt-type-name? dt)
-				 (pvs2C-constructors (constructors dt) dt))))
-			    ((datatype? decl)
-			     (let ((adt (adt-type-name decl)))
-			       (pvs2C-constructors (constructors adt) adt)))
-			    ((const-decl? decl)
-			     (unless (eval-info decl)
-			       (pvs2C-declaration decl)))
-			    (t nil)))))))
+(defmethod print-type-defns ((type-info c-closure-info) output);(break "closure-info")
+  (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a"
+	  (op-defn (fdefn type-info))
+	  (op-defn (mdefn type-info))	  
+	  (op-defn (hdefn type-info))
+	  (op-defn (new-info type-info))
+	  (op-defn (release-info type-info))
+	  (op-defn (copy-info type-info))
+))
 
-;;; maps to AlgebraicTypeDef
-(defun pvs2C-datatype (dt)
-  (let* ((typevars (mapcar #'(lambda (fm)
-			       (pvs2C-datatype-formal fm dt))
-		     (formals dt)))
-	 (constructors (pvs2C-constructors
-			(constructors dt) dt
-			(mapcar #'cons (formals dt) typevars))))
-    (format nil "::~a~{ ~a~} = ~{~a~^ | ~}"
-      (id dt) typevars constructors)))
-
-(defun pvs2C-datatype-formal (formal dt)
-  (if (formal-type-decl? formal)
-      (let ((id-str (string (id formal))))
-	(if (lower-case-p (char id-str 0))
-	    (id formal)
-	    (make-new-variable (string-downcase id-str :end 1) dt)))
-      (break "What to do with constant formals?")))
-
-(defun pvs2C-constructors (constrs datatype tvars)
-  (pvs2C-constructors* constrs datatype tvars))
-
-(defun pvs2C-constructors* (constrs datatype tvars)
-  (when constrs
-    (cons (pvs2C-constructor (car constrs) datatype tvars)
-	  (pvs2C-constructors* (cdr constrs) datatype tvars))))
-
-;;; Maps to ConstructorDef
-(defun pvs2C-constructor (constr datatype tvars)
-  (format nil "~a~{ ~a~}" (id constr)
-	  (mapcar #'(lambda (arg) (pvs2C-type (type arg) tvars))
-	    (arguments constr))))
-
-(defun clear-C-hash ()
-  (clrhash *C-nondestructive-hash*)
-  (clrhash *C-destructive-hash*))
-
-(defun generate-C-for-pvs-file (filename &optional force?)
-  (setq *C-record-defns* nil)
-  (clrhash *C-nondestructive-hash*)
-  (clrhash *C-destructive-hash*)
-  (let ((theories (cdr (gethash filename (current-pvs-files)))))
-    (dolist (theory theories)
-      (pvs2C-theory theory))  ;; Fill the hash-tables with definitions
-    (with-open-file (outputH (format nil "~a.h" filename)
-			    :direction :output
+(defun print-body-file (theory-id theory)
+  "Generates the .c file for the given theory, returning the C file name if
+successful."
+  (let* ((file-string (if *pvs2c-library-path*
+			  (format nil "~a/src/~a_c.c" *pvs2c-library-path* theory-id)
+			  (format nil "~a_c.c" theory-id)))
+	 (file-path (format nil "~a" (working-directory))))
+    (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
-    (with-open-file (output (format nil "~a.c" filename)
-			    :direction :output
-			    :if-exists :supersede
-			    :if-does-not-exist :create)
-      (format output "~{~a~%~}" (define-name (list
-	    "// ---------------------------------------------"
-	    "//        C file generated from ~a.pvs"
-	    "// ---------------------------------------------"
-	    "//   Make sure to link GC.c and GMP in compilation:"
-	    "//      gcc -o ~a ~:*~a.c GC.c -lgmp"
-	    "//      ./~a"
-	    "// ---------------------------------------------"
-	    "~%#include<stdio.h>"
-	    "#include<gmp.h>"
-	    "#include \"GC.h\""
-	    "#include \"~a.h\""
-	    "~%#define TRUE 1"
-	    "#define FALSE 0"
-	    "~%int main(void) {"
-	    "  GC_start();"
-	    "  printf(\"Executing ~a ...\\n\");"
-	    "  // Insert code here"
-	    "  GC_quit();"
-	    "  return 0;~%}") filename))
-      (format output "~{~2%~a~}" *C-definitions*)
-      (format outputH "// C file generated from ~a.pvs" filename)
-      (when *Crename-uli*
-	(format outputH "~2%typedef unsigned long int uli;~%"))
-      (dolist (rec-def *C-record-defns*)
-	(format outputH "~a~%" (caddr rec-def)))
-      (dolist (theory theories)
-	(dolist (decl (theory theory))
-	  (let ((ndes-info (gethash decl *C-nondestructive-hash*))
-		(des-info (gethash decl *C-destructive-hash*)))
-	    (when ndes-info
-	      (let ((def (C-info-definition ndes-info)))
-		;; First the signature
-		(print-signature def outputH)
-		;; Then the defn
-		(print-definition def output)))
-	    (when des-info
-	      (let ((def (C-info-definition des-info)))
-		;; First the signature
-		(print-signature def outputH)
-		;; Then the defn
-		(print-definition def output))))))))))
+      (format output "//Code generated using pvs2ir2c")
+      (format output "~%#include \"~a_c.h\""  theory-id)
+      (print-type-info-defns-to-file output *c-type-info-table*)
+      (loop for decl in (theory theory)
+	 do (let ((einfo (and (slot-exists-p decl 'eval-info) (eval-info decl))))
+	      (when (and einfo (cdefn einfo))
+		(let ((op-defn (op-defn (cdefn einfo))))
+		  (when op-defn
+		    (when (accessor-eval-info? einfo)
+		      (format output "~%~%~a" (op-defn (update-cdefn (eval-info decl)))))
+		    (format output "~%~%~a" (op-defn (cdefn (eval-info decl)))))))))
+      (unless *to-emacs*
+	(format t "~%Wrote ~a" file-string))
+      (concatenate 'string file-path file-string))))
 
+(defparameter *usable-prelude-theories*
+  '(|xor_def| |real_defs| |exp2| |integertypes| |sequences| |more_finseq| |ordstruct_adt|
+    |ordinals| |lex2| |strings| |gen_strings| |bytestrings| |empty_bv|
+    |integer_bv_ops|))
 
+(defun make-c-tests-main (name &optional (path *default-pathname-defaults*))
+  (with-workspace path
+    (let ((filename (format nil "~a.c" name))
+	  (test-formulas (collect-test-formulas)))
+      (unless test-formulas
+	(error "No test-formulas found in typechecked theories of ~a" path))
+      (with-open-file (main filename :direction :output :if-exists :supersede)
+	(format main "// test main ~a generated by make-c-tests-main" name)
+	(format main "~2%// Includes")
+	(dolist (th (remove-duplicates (mapcar #'module test-formulas)))
+	  (format main "~%#include \"~a_c.h\"" (id th)))
+	(format main "~2%int main () {")
+	(dolist (tform test-formulas)
+	  (format main "~2%~Tprintf(\"~a.~a ==> %s\\n\", ~a() ? \"true\" : \"false\");"
+	    (id (module tform)) (id tform) (op-name (cdefn (eval-info tform)))))
+	(format main "~%}~%")))))
 
-
-;; TODO handle the duplication of variable
-;; f(x:int) = let x = 2 in x
-;; x#0 generated  -> x_0 for isntance
-
-
+(defun collect-test-formulas ()
+  (let ((th-hash (current-pvs-theories))
+	(tforms nil))
+    (dolist (k (sort (get-hash-keys th-hash) #'string-lessp))
+      (let ((th (gethash k (current-pvs-theories))))
+	(setf tforms
+	      (append tforms (remove-if-not #'test-formula? (all-decls th))))))
+    tforms))

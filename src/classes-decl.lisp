@@ -196,6 +196,9 @@
   (conversion-messages :documentation
 		       "A list of conversion message strings produced by calls to pvs-conversion-msg"
 		       :restore-as nil)
+  (pvs2c-warnings :documentation
+		  "A list of warnings generated during PVS2C translation"
+		  :restore-as nil)
   (all-declarations :fetch-as nil)
   (all-imported-theories :fetch-as 'unbound :initform 'unbound)
   (all-imported-names :fetch-as 'unbound :initform 'unbound)
@@ -646,10 +649,14 @@ restored, the TCCs are checked")
 
 (defcl monotonicity-tcc (tcc-decl))
 
+(defcl test-formula (formula-decl)
+  (eval-info :fetch-as nil))
+
 ;;; judgement class is a mixin
 (defcl judgement (typed-declaration)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
-  (free-parameter-theories :ignore t :initform 'unbound :fetch-as 'unbound))
+  (free-parameter-theories :ignore t :initform 'unbound :fetch-as 'unbound)
+  saved-context)
 
 (defcl subtype-judgement (judgement)
   (declared-subtype :parse t)
