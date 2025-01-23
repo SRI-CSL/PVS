@@ -41,6 +41,9 @@
 ;;;    modulo_arithmetic ordinals ordstruct_adt pvslib.c real_defs strings
 
 ;;commented theories are the ones that are supported by C code generation
+;;The non-parametric ones that are supported are in *pvs2c-prelude-theories$
+;;Others like |restrict|, |K_conversion|, |K_props|, |identity| have code generated
+;;during partial monomorphization.
 (defparameter *primitive-prelude-theories*
   '(|booleans| |equalities| |notequal| |if_def| |boolean_props| ;; |xor_def|
     |quantifier_props| |defined_types| |exists1| |equality_props| |if_props| |functions|
@@ -61,8 +64,8 @@
     |subrange_inductions| |bounded_int_inductions| |bounded_nat_inductions|
     |subrange_type| |int_types| |nat_types| ;; |exp2| |integertypes|
     |nat_fun_props| |finite_sets| |restrict_set_props| |extend_set_props|
-    |function_image_aux| |function_iterate| |sequences|
-    |seq_functions| |finite_sequences| |more_finseq| |ordstruct|
+    |function_image_aux| |function_iterate| ;|sequences|
+    |seq_functions| ;|finite_sequences| |more_finseq| |ordstruct|
     ;; |ordstruct_adt| |ordinals| |lex2|
     |lex3| |lex4| |list| |list_adt| |list_adt_map| |list_props| |map_props|
     |more_map_props| |filters| |list2finseq| |list2set| |disjointness| |character|
@@ -70,7 +73,8 @@
     |charstrings| ;; |bytestrings|
     |lift| |lift_adt| |lift_adt_map| |union| |tostring| |file|
     |mucalculus| |ctlops| |fairctlops| |Fairctlops| |bit| |bv| |bv_concat_def|
-    |bv_bitwise| |bv_nat| |empty_bv| |bv_caret| |integer_bv_ops|
+    |bv_bitwise| |bv_nat| ;|empty_bv|
+    |bv_caret| ;|integer_bv_ops|
     |mod| |bv_arith_nat_defs| |bv_int_defs| |bv_arithmetic_defs| |bv_extend_defs|
     |infinite_sets_def| |finite_sets_of_sets|
     |EquivalenceClosure| |QuotientDefinition| |KernelDefinition| |QuotientKernelProperties|
@@ -122,18 +126,14 @@
 		    (format nil "~a/lib/pvs2c/src/pvslib.c" *pvs-path*))
     (uiop:copy-file (format nil "~a/src/groundeval/pvslib.h" *pvs-path*)
 		    (format nil "~a/lib/pvs2c/include/pvslib.h" *pvs-path*))
-    (uiop:copy-file (format nil "~a/src/groundeval/GC.c" *pvs-path*)
-		    (format nil "~a/lib/pvs2c/src/GC.c" *pvs-path*))
-    (uiop:copy-file (format nil "~a/src/groundeval/GC.h" *pvs-path*)
-		    (format nil "~a/lib/pvs2c/include/GC.h" *pvs-path*))
     (dolist (theory *prelude-theories*)
       (when (memq (id theory) *pvs2c-prelude-theories*)
 	(let ((main-theory (if (datatype? theory) (adt-theory theory) theory)))
 	  (let ((c-file (pvs2c-theory* main-theory t)))
 	    (when c-file
 	      (push (file-namestring c-file) pvs2c-translated-theories))))))
-    (create-config-make (cons "pvslib.c" (cons "GC.c"
-					       (reverse pvs2c-translated-theories))))))
+    (create-config-make (cons "pvslib.c" ;NSH(1/21/25)(cons "GC.c"
+					       (reverse pvs2c-translated-theories)))))
 
 (defun create-config-make (c-files)
   (let ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*)))

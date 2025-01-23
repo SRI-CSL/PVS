@@ -200,7 +200,7 @@
 	(mk-name '|ceiling| nil '|floor_ceil|)
 	(mk-name '|nrem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
-	;;(mk-name '|sqrt| nil '|sqrt| nil '|reals|)
+	;;(mk-name '|sqrt| nil '|sqrt|)
 	(mk-name '|even?| nil '|integers|)
 	(mk-name '|odd?| nil '|integers|)
 	(mk-name '|restrict| nil '|restrict|)
@@ -224,21 +224,6 @@
 	(mk-name '|u16not| nil '|integer_bv_ops|)
 	(mk-name '|u32not| nil '|integer_bv_ops|)
 	(mk-name '|u64not| nil '|integer_bv_ops|)
-	(mk-name '|cons| nil '|list_adt|)
-	(mk-name '|car| nil '|list_adt|)
-	(mk-name '|cdr| nil '|list_adt|)
-	(mk-name '|cons?| nil '|list_adt|)
-	(mk-name '|null| nil '|list_adt|)
-        (mk-name '|null?| nil '|list_adt|)
-        (mk-name '|length| nil '|list_props|)
-	(mk-name '|member| nil '|list_props|)
-	(mk-name '|nth| nil '|list_props|)
-	(mk-name '|append| nil '|list_props|)
-	(mk-name '|reverse| nil '|list_props|)
-	(mk-name '|nth| nil '|sequences|)
-	(mk-name '|first| nil '|sequences|)
-	(mk-name '|suffix| nil '|sequences|)
-	(mk-name '|insert| nil '|sequences|)
 	))
 
 (defmethod pvs2ir-primitive? ((expr name-expr))
@@ -1441,7 +1426,6 @@
 		    (dummy2 (when thclone (format t "~%Found thclone")))
 		    (instdecl (find  decl (theory theory-instance) :key #'generated-by))
 		    ) ;(break "nonref-actuals")			;place information matches
-	       (declare (ignore dummy dummy2))
 	       (cond (thclone
 		      (format t "~%Pushing ~a" intern-theory-id)
 		      (pushnew theory-instance *preceding-mono-theories*)
@@ -1952,8 +1936,9 @@
 	    (pvs2ir-primitive-application op arg-names op-arg-types args-ir ir-expr-type bindings)
 	    (let* ((opdecl (declaration op))
 		   (theory (module opdecl)))
-	      (when (memq (id theory) *primitive-prelude-theories*) ;;NSH(6-16-21)
-		(pvs2c-err "Non-executable theory for constant: ~a.~a" (id theory) (id op)))
+	      (if (memq (id theory) *primitive-prelude-theories*);;NSH(6-16-21)
+		  (progn ;(break "undefined primitive")
+		    (mk-ir-exit (format nil "Non-executable theory: ~a" (id theory)) "PVS2C_EXIT_ERROR"))
 	      (let* ((formals (formals-sans-usings (module opdecl)))
 		     (actuals (actuals (module-instance op))) ;;handling theory actuals
 		     (ref-actuals (loop for act in actuals ;;collect const actuals and ref actuals
@@ -2015,7 +2000,6 @@
 		  
 		    (if (and op-ir-defn  args-ir (null op-ir-args))
 			(let ((op-var (mk-ir-variable (new-irvar)(pvs2ir-type (type op) bindings))))
-					;(break "pvs2ir-application")
 			  (make-ir-lett* op-domain-vars ;was arg-vartypes
 					 arg-types
 					 args-ir
@@ -2069,7 +2053,7 @@
 					  args-ir
 					  (mk-ir-let apply-return-var ;op-range-type
 						     (mk-ir-apply op-var arg-vartypes nil) ;op-range-type
-						     apply-return-var))))))))
+						     apply-return-var)))))))))
 	  
 				 ;; (if (eql (length arg-vartypes) 1)
 				 ;;     (mk-ir-apply op-var arg-vartypes)
@@ -2374,7 +2358,7 @@
 			   (mk-ir-get argvar id)))))
 
 (defmethod pvs2ir* ((expr projection-application) bindings expected)
-  (declare (ignore expected))  
+  (declare (ignore expected))  (break "projapp")
   (with-slots (index argument) expr
 	      (let ((ir-argument (pvs2ir* argument bindings nil))
 		    (argvar (mk-ir-variable (new-irvar)(pvs2ir-type (type argument) bindings))))
@@ -4476,6 +4460,7 @@
   (case (car c-arg-types)
     ((|int8| |int16| |int32| |int64| |__int128| |uint8| |uint16| |uint32| |uint64| |__uint128| |mpz| |mpq|)
      (ir2c-arith-relations '!= return-var ir-arg-names c-arg-types))
+    (|bool| (list (format nil "~a = (~a != ~a)" return-var (car ir-arg-names)(cadr ir-arg-names))));;NSH(1-21-25)
     (t (if (ir-formal-typename? (car arg-types))
 	   (list (format nil "~a = (~a_t) !~a->equal_ptr(~a, ~a, ~a)"
 		   return-var c-return-type (car c-arg-types) (car ir-arg-names)
@@ -6893,7 +6878,7 @@
 							c-param-arg-string c-param-decl-string))
 	       (closure-defn-info
 		(mk-c-closure-info ir-lambda-expr closure-name-root closure-type-decl closure-type-defn closure-fptr-definition closure-mptr-definition nil new-info release-info copy-info)))
-	  (declare (ignore theory-c-params-variadic))
+	  ;(break "add-closure-definition")
 	  (push closure-defn-info
 		*c-type-info-table*)
 	  (let ((closure-function-definition
