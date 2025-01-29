@@ -1,8 +1,9 @@
 ;;
 ;; proveit-init.lisp
-;; Release: ProofLite-8.0 (10/13/2023)
+;; Release: ProofLite-8.0 (01/28/2025)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;;          Mariano Moscato (mariano.m.moscato@nasa.gov)
 ;; NASA Langley Research Center
 ;; http://shemesh.larc.nasa.gov/people/cam/ProofLite
 ;;
@@ -56,7 +57,361 @@
 		  #'string<= :key #'car)))
     (thmerge l nil)))
 
+;;
+;; Proof-Status Reporters
+;;
+
+(defclass proof-status-reporter () ())
+
+(defgeneric initialize-collection-proofs-status-report
+  (proof-status-reporter theory-ids thfs &optional filename)
+  (:documentation "Initialize the report for a collection of theories (library, file, or any other arbitrary collection.)"))
+(defgeneric finish-collection-proofs-status-report
+  (proof-status-reporter theory-ids thfs tot proved unfin time &optional filename))
+(defgeneric initialize-theory-proofs-status-report
+  (proof-status-reporter theory-id thf &optional indent filename))
+(defgeneric report-decl-proof-status
+  (proof-status-reporter decl-id proof-status decision-procedure time))
+(defgeneric report-formula-entry-proof-status
+  (proof-status-reporter fe valid?))
+(defgeneric finish-theory-proofs-status-report
+  (proof-status-reporter total-forms attempted-forms succeeded-forms total-time))
+
+;;
+;; Classic Proof-Status Reporter
+;;
+
+(defclass textual-proof-status-reporter (proof-status-reporter)
+  ((timelength :accessor timelength)
+   (idlength :accessor idlength)
+   (ostream :initform t :accessor ostream)))
+
+(defmethod initialize-collection-proofs-status-report
+  ((reporter textual-proof-status-reporter) theory-ids thfs &optional filename)
+  (when filename
+    (format t "~2%Proof summary for file ~a.pvs" filename)))
+
+(defmethod finish-collection-proofs-status-report
+  ((reporter textual-proof-status-reporter) theory-ids thfs tot proved unfin time &optional filename)
+  (let ((stream (ostream reporter)))
+    (if filename
+	(format stream "~2%  Totals for ~a.pvs: " filename)
+      (format stream "~2%Grand Totals: "))
+    (format stream "~d proofs, ~d attempted, ~d succeeded (~,2f s)"
+	    tot (+ proved unfin) proved time)
+    (unless (= tot proved)
+      (let((miss-count (- tot proved)))
+	(format stream "~&*** Warning: Missed ~a formula~:[~;s~].~%" miss-count (< 1 miss-count))))))
+
+(defmethod initialize-theory-proofs-status-report
+  ((reporter textual-proof-status-reporter) theory-id thf &optional (indent 0) filename)
+  (let ((stream (ostream reporter)))
+    (if (null thf)
+	(format stream "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
+      (format stream "~2%~vTProof summary for formulas ~a in theory ~a" indent
+	      (cdr thf) (ref-to-id theory-id)))
+    (let ((theory (get-theory theory-id)))
+      (when (and theory
+		 (typechecked? theory))
+	(let*((fdecls (provable-formulas theory))
+	      (maxtime (/ (reduce #'max fdecls
+				  :key #'(lambda (d)
+					   (or (run-proof-time d) 0))
+				  :initial-value 0)
+			  internal-time-units-per-second)))
+	  (let ((statuslength 20) ; "proved - incomplete "
+		(dplength (+ (apply #'max
+				    (mapcar #'(lambda (x) (length (string x)))
+					    *decision-procedures*))
+			     2))
+		(timelength (length (format nil "~,2f" maxtime))))
+	    (setf (idlength reporter) (- 79 4 statuslength dplength timelength 4 3))
+	    (setf (timelength reporter) timelength)))))))
+
+(defmethod report-decl-proof-status
+  ((reporter textual-proof-status-reporter) decl-id proof-status decision-procedure time)
+  "The classic way to report the proof status of a declaration"
+  (let ((stream (ostream reporter)))
+    (format stream
+	    "~%    ~v,1,0,'.a...~19a [~a](~a s)"
+	    (idlength reporter)
+	    decl-id
+	    proof-status
+	    decision-procedure 
+	    (if time
+		(format nil "~v,2f" (timelength reporter) time)
+	      (format nil "~v<n/a~>" (timelength reporter))))))
+
+(defmethod report-formula-entry-proof-status
+  ((reporter textual-proof-status-reporter) fe valid?)
+  "The classic way to report the proof status of a formula entry (from a context)"
+  (let ((stream (ostream reporter)))
+    (let ((status (fe-status fe)))
+      (format stream "~%    ~52,1,0,'.a...~(~10a~)"
+	      (fe-id fe)
+	      (fe-proof-status-string fe valid?)))))
+
+(defmethod finish-theory-proofs-status-report
+  ((reporter textual-proof-status-reporter) total-forms attempted-forms succeeded-forms total-time)
+  (let ((stream (ostream reporter)))
+    (format stream "~%    Theory totals: ~d formulas, ~d attempted, ~d succeeded ~
+               (~,2f s)"
+	    total-forms attempted-forms succeeded-forms total-time)))
+
+;;
+;; MD Proof-Status Reporter
+;;
+
+(defclass md-proof-status-reporter (proof-status-reporter)
+  ((name :accessor name :initarg :name)
+   (output-directory :accessor dir :initarg :dir)
+   (output-filename :accessor filename :initarg :filename)
+   (summary-content :accessor content :initform nil)
+   (grand-table :accessor grand-table :initform nil)
+   (theory-name :accessor processing-theory)
+   (out-stream :accessor out-stream)
+   (timestamp :accessor starting-time :initarg :starting-time)))
+
+(defmacro add-content (reporter &rest new-content)
+  `(setf (content ,reporter) (append (content ,reporter) (list ,@new-content))))
+
+(defmethod initialize-collection-proofs-status-report ((reporter md-proof-status-reporter) theory-ids thfs &optional filename)
+  )
+
+(defun secs->ddhhmmss (time-in-secs)
+  "Returns string representation of TIME-IN-SECS in format DD:HH:MM:SS.SSS"
+  (multiple-value-bind (m secs) (floor time-in-secs 60)
+    (multiple-value-bind (h mins) (floor m 60)
+      (multiple-value-bind (d hours) (floor h 24)
+	(let ((d     (and (< 0 d) d))
+	      (hours (and (< 0 hours) hours))
+	      (mins  (and (< 0 mins) mins)))
+	  (format nil "~@[~d:~]~@[~d:~]~@[~d:~]~,3f" d hours mins secs))))))
+
+(defun obfuscated-path (pathname)
+  "To address security concerns, a pathname gets obfuscated by replacing
+   know library paths by collection Ids, the home path by '$HOME', and 
+   the pvs path by '$PVS_DIR'."
+  (let*((dir-names (cdr (pathname-directory pathname)))
+	(collection-id
+	 (when (fboundp 'extra-get-pvslib-id-from-dir) 
+	   (extra-get-pvslib-id-from-dir
+	    (format nil "~{/~a~}/" (subseq dir-names 0 (max 0 (- (length dir-names) 1))))))))
+    (if collection-id
+	(format nil "~a/~{~a~}/"
+		;; replacing '/' by '-' in collection ids is safe because '-' is not
+		;; a legal character for library names.
+		(substitute #\- #\/ collection-id)
+		(last dir-names))
+      (let ((collection-id
+	     (when (fboundp 'extra-get-pvslib-id-from-dir) 
+	       (extra-get-pvslib-id-from-dir (directory-namestring pathname)))))
+	(if collection-id
+	    (format nil "~a/~a" (substitute #\- #\/ collection-id) (file-namestring pathname))
+	  (let ((reconstructed-path (namestring pathname)))
+	    (replace-all
+	     (replace-all reconstructed-path (namestring *pvs-path*) "$PVS_DIR/")
+	     (namestring (user-homedir-pathname)) "$HOME/")))))))
+
+
+(defmethod finish-collection-proofs-status-report
+  ((reporter md-proof-status-reporter) theory-ids thfs tot proved unfin time &optional filename)
+  (with-open-file
+   (stream (format nil "~a/~a" (dir reporter) (filename reporter)) :direction :output :if-exists :supersede)
+   (format stream "~%# Summary for `~a`~%" (name reporter))
+   (format stream "Run started at ~a.~%~%" (starting-time reporter))
+   (format stream "_Note_: Time below is expressed in format DD:HH:MM:SS.SSS.~%")
+   (format stream "~%## Grand Totals ~%")
+   (let ((attempted (+ proved unfin))
+	 (missing   (- tot proved)))
+   (format stream "~%|            | Formulas | Attempted | Succeeded | Missing | Total Time |~%~
+                     | ---:       | :---:    | :---:     | :---:     | :---:   | ---        |~%~
+                     | **totals** | **~d**   | **~d**    | **~d**    | **~d**  | **~a s**   |~%"
+	   tot attempted proved missing (secs->ddhhmmss time)))
+   (loop for cont in (grand-table reporter) when cont do (format stream cont))
+   (unless (= tot proved)
+     (let((miss-count (- tot proved)))
+       (format stream "~% **Note**: Missed ~a formula~:[~;s~].~%" miss-count (< 1 miss-count))))
+   (format stream "~%## Detailed Summary ~%")
+   (loop for cont in (content reporter) when cont do (format stream cont))
+   ;;
+   (format stream "~%## Platform information ~%")
+   (format stream "~&|  |  |~%|---|---|~%" )
+   (format stream "~&| PVS Version | ~a |~%" (get-pvs-version))
+   (format stream "~&| Lisp| ~a ~a|~%" (lisp-implementation-type) (lisp-implementation-version))
+   (format stream "~&| Patch Version| ~a|~%" (or (get-patch-version) "n/a"))   
+   (format stream "~&| Library Path| ~{`~a`~^<br/>~}|~%" (mapcar #'obfuscated-path *pvs-library-path*))
+   (format stream "~&| Loaded Patches | ~{`~a`~^<br/>~}|~%"  (mapcar #'obfuscated-path *pvs-patches-loaded*))))
+
+;; (qualified-th-name th relative-path-lib-names?)
+
+(defmethod initialize-theory-proofs-status-report
+  ((reporter md-proof-status-reporter) theory-id thf &optional (indent 0) filename)
+  (let ((theory (ref-to-id theory-id)))
+    (setf (processing-theory reporter) theory)
+    (add-content
+     reporter
+     (if (null thf)
+	 (format nil "~%## `~a`~%" theory)
+       (format nil "~%## Theory ~a~%Including only formulas: ~{~a~^, ~}" theory (cdr thf)))
+     (if (or thf
+	      (let ((theory (get-theory theory-id)))
+		(and theory (typechecked? theory) (provable-formulas theory)))
+	      (te-formula-info (get-context-theory-entry theory-id)))
+	 (format nil "~%| Formula | Proof Status | Decision Procedure | Time |~%~
+                        | ---     | ---          | ---                | ---  |~%")
+       (format nil "No formula declaration found.")))))
+
+(defmethod report-decl-proof-status
+  ((reporter md-proof-status-reporter) decl-id proof-status decision-procedure time)
+  (add-content
+   reporter
+   (format nil
+	   "~&|~a|~a ~a|~a|~a|~%"
+	   decl-id
+	   (cond ((string= proof-status "unfinished") "❌")
+		 ((string= proof-status "untried") "✴")
+		 ((prefix? "proved" proof-status) "✅"))
+	   proof-status
+	   decision-procedure 
+	   (if time
+	       (secs->ddhhmmss time)
+	     "n/a"))))
+
+(defmethod report-formula-entry-proof-status
+  ((reporter md-proof-status-reporter) fe valid?)
+  (add-content
+   report
+   (let ((status (fe-status fe)))
+      (format nil "~&|~a|~a|n/a|n/a|~%"
+	      (fe-id fe)
+	      (fe-proof-status-string fe valid?)))))
+
+(defmethod finish-theory-proofs-status-report
+  ((reporter md-proof-status-reporter) total-forms attempted-forms succeeded-forms total-time)
+  (setf
+   (grand-table reporter)
+   (append
+    (grand-table reporter)
+    (let ((unfinished-proofs (- total-forms succeeded-forms)))
+      (list
+       (format nil
+	       "~&|[~A](#~:*~A) ~:[✅~;❌~]|~d|~d|~d|~d|~a|~%"
+	       (processing-theory reporter)
+	       (< 0 unfinished-proofs)
+	       total-forms
+	       attempted-forms
+	       succeeded-forms
+	       unfinished-proofs
+	       (secs->ddhhmmss total-time)))))))
+
+;;
+;; CSV Proof-Status Reporter
+;;
+
+(defclass csv-proof-status-reporter (proof-status-reporter)
+  ((name :accessor name :initarg :name)
+   (output-directory :accessor dir :initarg :dir)
+   (output-grand-totals-filename :accessor grand-totals-filename :initarg :grand-totals-filename)
+   (output-detailed-filename :accessor detailed-filename :initarg :detailed-filename)
+   (output-run-filename :accessor run-report-filename :initarg :run-report-filename)
+   (summary-content :accessor content :initform nil)
+   (grand-table :accessor grand-table :initform nil)
+   (theory-name :accessor processing-theory)
+   (out-stream :accessor out-stream)
+   (timestamp :accessor starting-time :initarg :starting-time)))
+
+(defmethod initialize-collection-proofs-status-report ((reporter csv-proof-status-reporter) theory-ids thfs &optional filename)
+  )
+
+(defmethod finish-collection-proofs-status-report
+  ((reporter csv-proof-status-reporter) theory-ids thfs tot proved unfin time &optional filename)
+  (with-open-file
+   (stream (format nil "~a/~a" (dir reporter) (run-report-filename reporter)) :direction :output :if-exists :supersede)
+   (format stream "Library ~a~%" (name reporter))
+   (format stream "Run started at ~a.~%~%" (starting-time reporter))
+   (format stream "~& PVS Version ,  ~a  ~%" (get-pvs-version))
+   (format stream "~& Lisp,  ~a ~a ~%" (lisp-implementation-type) (lisp-implementation-version))
+   (format stream "~& Patch Version,  ~a ~%" (or (get-patch-version) "n/a"))   
+   (format stream "~& Library Path ~{, \"~a\"~^, ~%~} ~%" *pvs-library-path*)
+   (format stream "~& Loaded Patches~{, \"~a\"~^, ~%~} ~%" *pvs-patches-loaded*))
+  (with-open-file
+   (stream (format nil "~a/~a" (dir reporter) (grand-totals-filename reporter)) :direction :output :if-exists :supersede)
+   (let ((attempted (+ proved unfin))
+	 (missing   (- tot proved)))
+   (format stream "~& Totals, ~d  , ~d   , ~d   , ~d , ~a s  ~%~
+                      Theory Name, Formulas, Attempted, Succeeded, Missing, Total Time~%"
+	   tot attempted proved missing (secs->ddhhmmss time)))
+   (loop for cont in (grand-table reporter) when cont do (format stream cont)))
+  (with-open-file
+   (stream (format nil "~a/~a" (dir reporter) (detailed-filename reporter)) :direction :output :if-exists :supersede)   
+   (loop for cont in (content reporter) when cont do (format stream cont))
+   ;;
+   ))
+
+(defmethod initialize-theory-proofs-status-report
+  ((reporter csv-proof-status-reporter) theory-id thf &optional (indent 0) filename)
+  (let ((theory (ref-to-id theory-id)))
+    (setf (processing-theory reporter) theory)
+    (add-content
+     reporter
+     (if (null thf)
+	 (format nil "~%Theory ~a~%" theory)
+       (format nil "~%Theory ~a~%Including only formulas: ~{~a~^, ~}" theory (cdr thf)))
+     (if (or thf
+	      (let ((theory (get-theory theory-id)))
+		(and theory (typechecked? theory) (provable-formulas theory)))
+	      (te-formula-info (get-context-theory-entry theory-id)))
+	 (format nil "~%Formula, Proof Status, Decision Procedure, Time ~%")
+       (format nil "No formula declaration found.")))))
+
+(defmethod report-decl-proof-status
+  ((reporter csv-proof-status-reporter) decl-id proof-status decision-procedure time)
+  (add-content
+   reporter
+   (format nil
+	   "~&~a, ~a, ~a, ~a~%"
+	   decl-id
+	   proof-status
+	   decision-procedure 
+	   (if time
+	       (secs->ddhhmmss time)
+	     "n/a"))))
+
+(defmethod report-formula-entry-proof-status
+  ((reporter csv-proof-status-reporter) fe valid?)
+  (add-content
+   report
+   (let ((status (fe-status fe)))
+      (format nil "~&~a, ~a, n/a, n/a~%"
+	      (fe-id fe)
+	      (fe-proof-status-string fe valid?)))))
+
+(defmethod finish-theory-proofs-status-report
+  ((reporter csv-proof-status-reporter) total-forms attempted-forms succeeded-forms total-time)
+  (setf
+   (grand-table reporter)
+   (append
+    (grand-table reporter)
+    (list
+     (format nil "~& ~a, ~d, ~d, ~d, ~d, ~a~%"
+	     (processing-theory reporter)
+	     total-forms
+	     attempted-forms
+	     succeeded-forms
+	     (- total-forms succeeded-forms)
+	     (secs->ddhhmmss total-time))))))
+
+;;
+;; TXT Proof-Status Reporter
+;;
+
+
+(defvar *proof-status-reporters* (list (make-instance 'textual-proof-status-reporter))
+  "Proof-status reporters (by default, the classic mode is on)")
+
 (defun proveit-status-proof-theories (theories thfs)
+  #+pvsdebug (format t "~%[proveit-init.proveit-status-proof-theories] theories ~a thfs ~a ~%" theories thfs) 
   (let ((return-value 0))
     (if theories
 	(let ((*disable-gc-printout* t))
@@ -78,26 +433,22 @@
 (defun proveit-proof-summaries (theory-ids thfs
 				&optional filename)                            
   (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
-    (when filename
-      (format t "~2%Proof summary for file ~a.pvs" filename))
+    #+pvsdebug (format t "~&[proveit-init.proveit-proof-summaries]   ~%")
+    (dolist (reporter *proof-status-reporters*)
+      (initialize-collection-proofs-status-report reporter theory-ids thfs filename))
     (dolist (theory theory-ids)
          (let ((thf (car (member theory thfs :test #'eq-thf))))
 	   (multiple-value-bind (to pr uf ut tm)
 	       (proveit-proof-summary theory thf (when filename 2))
 	     (incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
 	     (incf time tm))))
-    (if filename
-	(format t "~2%  Totals for ~a.pvs: " filename)
-	(format t "~2%Grand Totals: "))
-    (format t "~d proofs, ~d attempted, ~d succeeded (~,2f s)"
-      tot (+ proved unfin) proved time)
+    (dolist (reporter *proof-status-reporters*)
+      (finish-collection-proofs-status-report reporter theory-ids thfs tot proved unfin time filename))
     (values tot proved unfin untried time)))
 
 (defun proveit-proof-summary (theory-id thf &optional (indent 0))
-  (if (null thf)
-      (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
-    (format t "~2%~vTProof summary for formulas ~a in theory ~a" indent
-	    (cdr thf) (ref-to-id theory-id)))
+  (dolist (reporter *proof-status-reporters*)
+    (initialize-theory-proofs-status-report reporter theory-id thf indent))
   (let* ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
 	 (theory (get-theory theory-id))
 	 (valid? (or (and theory
@@ -105,19 +456,7 @@
 		     (valid-proofs-file (context-entry-of theory-id)))))
     (if (and theory
 	     (typechecked? theory))
-	(let* ((fdecls (provable-formulas theory))
-	       (maxtime (/ (reduce #'max fdecls
-				   :key #'(lambda (d)
-					    (or (run-proof-time d) 0))
-				   :initial-value 0)
-			   internal-time-units-per-second))
-	       (statuslength 20) ; "proved - incomplete "
-	       (dplength (+ (apply #'max
-			      (mapcar #'(lambda (x) (length (string x)))
-				*decision-procedures*))
-			    2))
-	       (timelength (length (format nil "~,2f" maxtime)))
-	       (idlength (- 79 4 statuslength dplength timelength 4 3)))
+	(let* ((fdecls (provable-formulas theory)))
 	  (dolist (decl fdecls)
 	    (let ((dof (member (format nil "~a" (id decl)) (cdr thf) 
 			       :test #'string=)))
@@ -132,40 +471,37 @@
 			 ((justification decl) (incf unfin))
 			 (t (incf untried)))
 		   (incf time tm)
-		   (format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
-		     idlength
-		     (id decl)
-		     (proof-status-string decl)
-		     (if (justification decl)
-			 (decision-procedure-used decl)
-			 "Untried")
-		     (if (run-proof-time decl)
-			 (format nil "~v,2f" timelength tm)
-			 (format nil "~v<n/a~>" timelength))))))))
-	(let ((te (get-context-theory-entry theory-id)))
-	  (mapc #'(lambda (fe)
-		    (let ((status (fe-status fe)))
-		      (format t "~%    ~52,1,0,'.a...~(~10a~)"
-			(fe-id fe)
-			(fe-proof-status-string fe valid?))
-		      (incf tot)
-		      (cond ((member status '("proved-complete" "proved-incomplete")
-				     :test #'string=)
-			     (if valid?
-				 (incf proved)
-				 (incf unfin)))
-			    ((member status '("unchecked" "unfinished"))
-			     (incf unfin))
-			    (t (incf untried)))))
-		(te-formula-info te))))
-    (format t "~%    Theory totals: ~d formulas, ~d attempted, ~d succeeded ~
-               (~,2f s)"
-      tot (+ proved unfin) proved
-      (/ (reduce #'+ (provable-formulas theory)
-		 :key #'(lambda (d) (or (run-proof-time d) 0))
-		 :initial-value 0)
-	 internal-time-units-per-second))
-    (values tot proved unfin untried time)))  
+		   (dolist (reporter *proof-status-reporters*)
+		     (report-decl-proof-status reporter
+			      (id decl)
+			      (proof-status-string decl)
+			      (if (justification decl)
+				  (decision-procedure-used decl)
+				"Untried")
+			      (when (run-proof-time decl) tm))))))))
+      (let ((te (get-context-theory-entry theory-id)))
+	(mapc #'(lambda (fe)
+		  (let ((status (fe-status fe)))
+		    (dolist (reporter *proof-status-reporters*)
+		      (report-formula-entry-proof-status reporter fe valid?))
+		    (incf tot)
+		    (case status
+		      ((proved-complete proved-incomplete)
+		       (if valid?
+			   (incf proved)
+			 (incf unfin)))
+		      ((unchecked unfinished)
+		       (incf unfin))
+		      (t (incf untried)))))
+	      (te-formula-info te))))
+    (dolist (reporter *proof-status-reporters*)
+      (finish-theory-proofs-status-report
+       reporter tot (+ proved unfin) proved time))
+    (values tot proved unfin untried time)))
+
+;;
+;;
+;;
 
 (defun proveit-theories (theories retry? thfs 
 			 &optional txtproofs texproofs use-default-dp? save-proofs?)
@@ -211,6 +547,10 @@
 	    (when (and save-proofs? *justifications-changed?*)
 	      (save-all-proofs (current-theory)))))))))
 
+;;
+;;
+;;
+
 (defun now-today ()
   (multiple-value-bind (s mi h d mo y dow dst tz) 
 		       (get-decoded-time)
@@ -224,11 +564,14 @@
    no id can be found for the directory ''/Users/username/pvs/nasalib/'."
   (let*((dir-names (cdr (pathname-directory pathname)))
 	(collection-id
-	 (extra-get-pvslib-id-from-dir
-	  (format nil "~{/~a~}/" (subseq dir-names 0 (max 0 (- (length dir-names) 1)))))))
+	 (when (fboundp 'extra-get-pvslib-id-from-dir) 
+	   (extra-get-pvslib-id-from-dir
+	    (format nil "~{/~a~}/" (subseq dir-names 0 (max 0 (- (length dir-names) 1))))))))
     (if collection-id
 	(format nil "~a/~{~a~}/"
-		collection-id
+		;; replacing '/' by '-' in collection ids is safe because '-' is not
+		;; a legal character for library names.
+		(substitute #\- #\/ collection-id)
 		(last dir-names))
       (format nil "~{~a/~}" (subseq dir-names (max 0 (- (length dir-names) 2)))))))
 
@@ -240,59 +583,24 @@
   "The qualified name of a theory is the name to be used in the dependency files."
   (format nil "~a~a" (qualified-path-name (context-path theory) relative?) (id theory)))
 
-(defun proveit ()
-  (let* ((proveitversion 
-		    (or (environment-variable "PROVEITVERSION") (format nil "proveit ~a" *prooflite-version*)))
-	 (context (environment-variable "PROVEITPVSCONTEXT"))
-	 (proveitarg (environment-variable "PROVEITARG"))
-	 (pvsfile (let ((name (environment-variable "PROVEITPVSFILE")))
-		    (when (and name (string/= name "")) name)))
-	 (import (let ((envstr (environment-variable "PROVEITLISPIMPORT")))
-		   (when envstr (read-from-string envstr))))
-	 (scripts (let ((envstr (environment-variable "PROVEITLISPSCRIPTS")))
-		    (when envstr (read-from-string envstr))))
-	 (write-scripts (let ((envstr (environment-variable "PROVEITLISPWRITESCRIPTS")))
-		    (when envstr (read-from-string envstr))))
-	 (traces (let ((envstr (environment-variable "PROVEITLISPTRACES")))
-		   (when envstr (read-from-string envstr))))
-	 (force (let ((envstr (environment-variable "PROVEITLISPFORCE")))
-		  (when envstr (read-from-string envstr))))
-	 (autotop (let ((envstr (environment-variable "PROVEITLISPAUTOTOP")))
-		    (when envstr (read-from-string envstr))))
-	 (typecheckonly (let ((envstr (environment-variable "PROVEITLISPTYPECHECK")))
-			  (when envstr (read-from-string envstr))))
-	 (txtproofs (let ((envstr (environment-variable "PROVEITLISPTXTPROOFS")))
-		      (when envstr (read-from-string envstr))))
-	 (texproofs (let ((envstr (environment-variable "PROVEITLISPTEXPROOFS")))
-		      (when envstr (read-from-string envstr))))
-	 (preludext (remove-duplicates
-			(let ((envstr (environment-variable "PROVEITLISPPRELUDEXT")))
-			  (when envstr (read-from-string envstr)))
-		      :test #'string=))
-	 (disable (remove-duplicates 
-		      (let ((envstr (environment-variable "PROVEITLISPDISABLE")))
-			(when envstr (read-from-string envstr)))
-		    :test #'string-equal))
-	 (enable (remove-duplicates
-		     (let ((envstr (environment-variable "PROVEITLISPENABLE")))
-		       (when envstr (read-from-string envstr)))
-		   :test #'string-equal))
-	 (auto-fix? (let ((envstr (environment-variable "PROVEITLISPAUTOFIX")))
-		      (when envstr (read-from-string envstr))))
-	 (default-proof (let ((envstr (environment-variable
-				       "PROVEITLISPDEFAULTPROOFSCRIPT")))
-			  (when envstr (read-from-string envstr))))
-	 (thfs (thfs2list (let ((envstr (environment-variable "PROVEITLISPTHFS")))
-			    (when envstr (read-from-string envstr)))))
-	 (theories (remove-duplicates
-		       (let ((envstr (environment-variable "PROVEITLISPTHEORIES")))
-			 (when envstr (read-from-string envstr)))
-		     :test #'string=))
-	 (dependencies (environment-variable "PROVEITLISPDEPENDENCIES"))
-	 (*print-readably* nil)
+;;
+;;
+;;
+
+(defmacro read-from-environment-variable (var-name)
+  `(let ((envstr (environment-variable ,var-name)))
+     (when envstr (read-from-string envstr))))
+
+(defun proveit-on (proveitversion
+		   context proveitarg pvsfile import scripts write-scripts
+		   traces force autotop typecheckonly txtproofs texproofs preludext
+		   disabled-oracles enabled-oracles auto-fix? default-proof thfs theories
+		   dependencies alternative-summary-modes debug-mode-on? outdir outbasename)
+  (let* ((*print-readably* nil)
 	 (*noninteractive* t)
 	 (*pvs-verbose* (if traces 3 2))
-	 (proveit-return-value 0))
+	 (proveit-return-value 0)
+	 (current-timestamp (now-today)))
     (handler-bind
 	((error #'(lambda (cnd)
 		    (format t "~%~a~%"
@@ -302,8 +610,36 @@
 		    (when (or (< 2 *pvs-verbose*) debug-mode-on?)
 		      (tpl::zoom-command :from-read-eval-print-loop nil :count t :top t :verbose t))
 		    (bye 1))))
+      (when debug-mode-on?
+	(format t "~%*** Running in debug mode.~%")
+	#+allegro
+	(tpl:do-command "args" :save t))
+      (when (member "md" alternative-summary-modes :test #'string=)
+	(let ((md-reporter
+	       (make-instance 'md-proof-status-reporter
+			      :name proveitarg
+			      :dir (merge-pathnames (or outdir "."))
+ 			      :filename (format nil "~a.summary.md" outbasename)
+			      :starting-time current-timestamp)))
+	  (push md-reporter *proof-status-reporters*)
+	  (format t "~%*** Generating md summary in ~a/~a.~%" (dir md-reporter)(filename md-reporter))))
+      (when (member "csv" alternative-summary-modes :test #'string=)
+	(let ((md-reporter
+	       (make-instance 'csv-proof-status-reporter
+			      :name proveitarg
+			      :dir (merge-pathnames (or outdir "."))
+ 			      :grand-totals-filename (format nil "~a.grand-totals.csv" outbasename)
+ 			      :detailed-filename (format nil "~a.detailed.csv" outbasename)
+ 			      :run-report-filename (format nil "~a.run-info.csv" outbasename)
+			      :starting-time current-timestamp)))
+	  (push md-reporter *proof-status-reporters*)
+	  (format t "~%*** Generating md summary in folder ~a: ~a, ~a, and ~a.~%"
+		  (dir md-reporter)
+		  (grand-totals-filename md-reporter)
+		  (detailed-filename md-reporter)
+		  (run-report-filename md-reporter))))
       (format t "~%*** ~%*** Processing ~a (~a)~%*** Generated by ~a~%" 
-	proveitarg (now-today) proveitversion)
+	proveitarg current-timestamp proveitversion)
       ;; auto-fix
       (when (and auto-fix? (numberp auto-fix?))
 	(setq *auto-fix-on-rerun* auto-fix?)
@@ -312,7 +648,7 @@
       (when default-proof
 	(setq *proof-for-unexpected-branches* default-proof)
 	(format  t "*** Using default proof for open branches: ~a~%" default-proof))
-      (extra-disable-oracles disable enable)
+      (extra-disable-oracles disabled-oracles enabled-oracles)
       (let ((orcls (extra-list-oracles)))
 	(when orcls 
 	  (format  t "*** Trusted Oracles~%")
@@ -410,6 +746,7 @@
 				   prl-filename (id theory))
 		      (install-prooflite-scripts-from-prl-file theory prlfile force))
 		    (install-prooflite-scripts (filename theory) (id theory) 0 force))))
+	      #+pvsdebug (format t "~%[proveit-init.proveit] before proveit-theories~%") 
 	      (proveit-theories pvstheories force thfs txtproofs texproofs nil
 				;; if auto-fix?, save proofs
 				auto-fix?)
@@ -421,6 +758,53 @@
 	      (write-all-prooflite-scripts-to-file (format nil "~a" (id theory)))))))
       #+pvsdebug (format t "~&[proveit-init.proveit] proveit-return-value ~a~%" proveit-return-value)
       (bye proveit-return-value)))) 
+
+(defun proveit ()
+  (let* ((proveitversion 
+		    (or (environment-variable "PROVEITVERSION") (format nil "proveit ~a" *prooflite-version*)))
+	 (context (environment-variable "PROVEITPVSCONTEXT"))
+	 (proveitarg (environment-variable "PROVEITARG"))
+	 (pvsfile (let ((name (environment-variable "PROVEITPVSFILE")))
+		    (when (and name (string/= name "")) name)))
+	 (import (read-from-environment-variable "PROVEITLISPIMPORT"))
+	 (scripts (read-from-environment-variable "PROVEITLISPSCRIPTS"))
+	 (write-scripts (read-from-environment-variable "PROVEITLISPWRITESCRIPTS"))
+	 (traces (read-from-environment-variable "PROVEITLISPTRACES"))
+	 (force (read-from-environment-variable "PROVEITLISPFORCE"))
+	 (autotop (read-from-environment-variable "PROVEITLISPAUTOTOP"))
+	 (typecheckonly (read-from-environment-variable "PROVEITLISPTYPECHECK"))
+	 (txtproofs (read-from-environment-variable "PROVEITLISPTXTPROOFS"))
+	 (texproofs (read-from-environment-variable "PROVEITLISPTEXPROOFS"))
+	 (preludext (remove-duplicates
+			(read-from-environment-variable "PROVEITLISPPRELUDEXT")
+		      :test #'string=))
+	 (disabled-oracles (remove-duplicates 
+		      (read-from-environment-variable "PROVEITLISPDISABLE")
+		    :test #'string=))
+	 (enabled-oracles (remove-duplicates
+		     (read-from-environment-variable "PROVEITLISPENABLE")
+		     :test #'string=))
+	 (auto-fix? (read-from-environment-variable "PROVEITLISPAUTOFIX"))
+	 (default-proof (let ((envstr (environment-variable
+				       "PROVEITLISPDEFAULTPROOFSCRIPT")))
+			  (when envstr (read-from-string envstr))))
+	 (thfs (thfs2list (read-from-environment-variable "PROVEITLISPTHFS")))
+	 (theories (remove-duplicates
+		       (read-from-environment-variable "PROVEITLISPTHEORIES")
+		     :test #'string=))
+	 (dependencies (environment-variable "PROVEITLISPDEPENDENCIES"))
+	 (alternative-summary-modes (remove-duplicates
+				    (read-from-environment-variable "PROVEITLISPALTSUMMARIESMODE")
+				    :test #'string=))
+	 (debug-mode-on? (environment-variable "DEBUG"))
+	 (outdir (let ((name (environment-variable "PROVEITLISPOUTDIR")))
+		   (when (and name (string/= name "")) name)))
+	 (outbasename (let ((name (environment-variable "PROVEITLISPOUTBASENAME")))
+			(when (and name (string/= name "")) name))))
+    (proveit-on proveitversion context proveitarg pvsfile import scripts write-scripts
+		traces force autotop typecheckonly txtproofs texproofs preludext
+		disabled-oracles enabled-oracles auto-fix? default-proof thfs theories
+		dependencies alternative-summary-modes debug-mode-on? outdir outbasename))) 
 
 (defun collect-top-theories ()
   (let ((files-in-dir
