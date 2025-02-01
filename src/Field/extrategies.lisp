@@ -16,7 +16,7 @@
 
 ;; List of strategies in Extrategies:
 (defparameter *extrategies* "
-%  Printing and commenting: printf, commentf, now
+%  Printing and commenting: printf, commentf, now, quietly
 %  Defining tactics, i.e., local strategies: deftactic
 %  Defining oracles, i.e., trusted proof rules: deforacle 
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
@@ -987,7 +987,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 
 (defstrat printf (msg &rest args)
   (let ((xxx (apply 'format (cons nil (cons msg args)))))
-    (skip-msg xxx))
+    (skip-msg xxx :force-printing? t))
   "[Extrategies] Prints the Lisp formatted string MSG using the format arguments
 ARGS. ARGS must be constant values.")
 
@@ -1012,6 +1012,29 @@ arguments ARGS. ARGS can only have constant values.")
     (declare (ignore dummy))
     (skip))
   "[Extrategies] Prints current time.")
+
+(defstrat quietly (&key (quiet? t) &rest steps)
+  (when steps
+    (if quiet?
+	(let ((do-step 
+	       `(unwind-protect$
+		 (then
+		  (sklisp
+		   (progn
+		     (setq *print-conversions* nil)
+		     (setq *rewrite-msg-off* t)
+		     (setq *suppress-manip-messages* t)))
+		  ,@steps)
+		 (sklisp 
+		  (progn
+		    (setq *rewrite-msg-off* ,*rewrite-msg-off*)
+		    (setq *print-conversions* ,*print-conversions*)
+		    (setq *suppress-manip-messages* ,*suppress-manip-messages*))))))
+	  do-step)
+      (let ((do-step `(then ,@steps)))
+	do-step)))
+  "Applies STEPS without rewriting, conversion, or Manip messages. In general, this strategy should
+be used inside strategies. The key :quiet? serves to turn on verbosity programmatically.")
 
 ;;; Labeling and naming
 
@@ -1613,7 +1636,7 @@ CAVEAT:Formulas in the sequent my be reorganized after the application of this s
 	(doc1    (format nil "Local tactic ~a defined in the proof context: ~a"
 			 nm (label *ps*)))
 	(doc2    (format nil "Applying local tactic ~a" nm)))
-    (then (lisp (defstep nm arg stp doc1 doc2)) 
+    (then (sklisp (defstep nm arg stp doc1 doc2)) 
 	  (if (check-name stratn)
 	      (printf "Redefining local tactic ~a" nm)
 	    (then (name stratn "TRUE")
