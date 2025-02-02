@@ -2484,7 +2484,7 @@ TCCs generated during the execution of the command are discharged with the proof
 ;;; Miscellaneous
 
 (defstep replaces (&optional (fnums -) (in *) but from to
-			     (hide? t) (dir lr))
+			     (hide? t) (dir lr) actuals?)
   (let ((flist (extra-get-fnums fnums))
 	(nfrom (extra-get-fnum from))
 	(nto   (extra-get-fnum to))
@@ -2497,16 +2497,17 @@ TCCs generated during the execution of the command are discharged with the proof
     (when feqs
       (with-fresh-labels
        ((!replaces :list n))
-       (let ((plabs  (set-pairing !replaces))
-	     (qdir   (list 'quote dir))
-	     (qhide  (list 'quote hide?))
-	     (forms  (extra-get-but-fnums but :all in)))
+       (let ((plabs    (set-pairing !replaces))
+	     (qdir     (list 'quote dir))
+	     (qhide    (list 'quote hide?))
+	     (qactuals (list 'quote actuals?))
+	     (forms    (extra-get-but-fnums but :all in)))
 	 (with-fresh-labels
 	  ((!rep forms))
 	  (let ((qrep (list 'quote !rep)))
 	    (then
 	     (relabel plabs feqs)
-	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir)
+	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir :actuals? ,qactuals)
 					     (when ,qhide
 					       (unlabel* ,x ,qrep)
 					       (delabel ,x :hide? t))
@@ -2517,7 +2518,9 @@ TCCs generated during the execution of the command are discharged with the proof
   "[Extrategies] Iterates the proof command replace to rewrite with the formulas in FNUMS,
 respecting the order, the formulas in IN but not in BUT. The keys DIR and HIDE? are like
 in REPLACE. Notice that in contrast to REPLACE, the default value of HIDE? is T. Instead
-of using FNUMS, rewriting formulas can be addressed via FROM and TO."
+of using FNUMS, rewriting formulas can be addressed via FROM and TO. When ACTUALS?  is T, 
+the replacement is done within actuals of names in addition to the expression level 
+replacements, including in types."
   "Iterating replace")
 
 (defstep rewrites (lemmas-or-fnums &optional (fnums *) (target-fnums *) (dir lr) (order in) dont-delete?)
