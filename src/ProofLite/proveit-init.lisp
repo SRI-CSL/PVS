@@ -423,8 +423,6 @@
 			    (proveit-proof-summaries theories thfs)
 			  (declare (ignore time untried unfin))
 			  (unless (= tot proved)
-			    (let((miss-count (- tot proved)))
-			      (format t "~&*** Warning: Missed ~a formula~:[~;s~].~%" miss-count (< 1 miss-count)))
 			    (setq return-value 142))))
 		      t))
       (pvs-message "No theories given"))

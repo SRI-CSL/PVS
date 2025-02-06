@@ -638,8 +638,8 @@ proveit() {
 	  if [ "$LISPDEPENDENCIES" != "nil" ]; then
 	      echo "Saving theory dependencies ($LISPDEPENDENCIES) in directory pvsbin"
 	  fi
-	  if [ "$LISPALTSUMMARIESMODE" != "nil" ]; then
-	      echo "Summaries will be reported in alternative format ($LISPALTSUMMARIESMODE)."
+	  if [ ! -z "$LISPALTSUMMARIESMODE" ]; then
+	      echo "Summaries will be also reported in alternative format: $(echo $LISPALTSUMMARIESMODE | sed 's/,/ and /')."
 	  fi
 	  if [ "$LISPSCRIPTS" != "t" ]; then
 	      echo "ProofLite scripts won't be installed"
