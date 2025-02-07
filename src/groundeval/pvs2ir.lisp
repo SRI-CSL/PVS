@@ -142,26 +142,45 @@
 (defun simple-id (id)
   (intern (substitute #\p #\? (string (op-to-id id)))))
 
-(defmacro make-c-name (module-id decl-id)
-  `(intern (format nil "~a__~a" ,module-id ,decl-id)))
+(defun pvsid-to-cstring (str-or-sym) ;;From Sam (1/31/25)
+  "Converts a PVS identifier to a valid C identifier, returning a string.
+PVS identifiers allow UTF-8, but C generally disallows them. Any char "
+  (let ((str (string str-or-sym))
+	(sym (if (symbolp str-or-sym)
+		 str-or-sym
+	       (intern str-or-sym :pvs))))
+    (with-output-to-string (out)
+			   (if (assq sym *pvs-operators*)
+			       (dotimes (i (length str))
+				 (format out "_u~x_" (char-code (char str i))))
+			     (dotimes (i (length str))
+			       (let ((ch (char str i)))
+				 (cond ((char= ch #\?)
+					;; One of the few ASCII chars that PVS allows and C doesn't
+					(format out "_p"))
+				       ((< (char-code ch) 128)
+					(format out "~a" ch))
+				       (t (format out "_u~x_" (char-code ch))))))))))
+
+
+(defmacro make-c-name (module-id decl-id) ;;NSH(2/5/25)
+  `(intern (pvsid-to-cstring (format nil "~a__~a" ,module-id ,decl-id))))
 
 (defun pvs2ir-unique-decl-id (decl)
-  (let ((module-id *theory-id*)		;(simple-id (id (module decl))))
+  (let ((module-id (simple-id *theory-id*)) ;(simple-id (id (module decl))))
 	(decl-id (simple-id (id decl))))
     (if (const-decl? decl)
 	(let ((same-id-decls (remove-if
-				 (complement #'(lambda (d)
-						 (and (const-decl? d)
-						      (eq (simple-id (id d)) decl-id))))
-			       (all-decls (module decl)))))
+			      (complement #'(lambda (d)
+					      (and (const-decl? d)
+						   (eq (simple-id (id d)) decl-id))))
+			      (all-decls (module decl)))))
 					;(assert (memq decl same-id-decls))
 	  (if (cdr same-id-decls)
 	      (let ((idx (1+ (position decl same-id-decls))))
-		(make-c-name module-id (format nil "~a__~d"  decl-id idx))) ;;two underscores to avoid name confusion
-	      (let ((dummy (when (eq decl-id '|ordstruct_adt|) (break "pvs2ir-unique-decl-id"))))
-		(declare (ignore dummy))
-		(make-c-name module-id decl-id))))
-	(make-c-name  module-id decl-id))))
+		(make-c-name module-id (format nil "~a_~d"  decl-id idx))) ;;% to avoid name confusion
+	    (make-c-name module-id decl-id)))
+      (make-c-name  module-id decl-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *pvs2ir-primitives*
@@ -1401,45 +1420,48 @@
       (let ((adt (adt expr)));(break "pvs2ir-constant-ir(adt)")
 	(pvs2ir-adt adt)
 	(ir (eval-info decl)))
-    (let* ((theory (module decl))
-	   (thinst (module-instance expr))
-	   (actuals (actuals thinst))
-	   (type-actuals (loop for act in actuals
-			       when (type-value act)
-			       collect (check-actual-type (type-value act) bindings)))
-	   (nonref-actuals (loop for actlabel in type-actuals
-				 when (not (eq actlabel 'ref))
-				 collect actlabel))
-	   (new-theory-id (format nil "~a_~{~a~^_~}" (simple-id (id theory))
-				  type-actuals))
-	   (intern-theory-id (intern new-theory-id :pvs))
-	   ) ;(when nonref-actuals (break "nonref-actuals"))
-      (cond ((and nonref-actuals (not (eq theory *current-pvs2c-theory*)))  ;; was (eq intern-theory-id *theory-id*)))
-	     (let* ((*theory-id* intern-theory-id)
-		    (monoclones (ht-instance-clone theory))
-		    (dummy (when (null monoclones)(format t "~% No monoclones")))
-		    (thclone (and monoclones (gethash  intern-theory-id monoclones)))
-		    (theory-instance (or thclone
-					 (let ((new-instance (subst-mod-params theory thinst)))
-					   (setf (id new-instance) *theory-id*)
-					   new-instance)))
-		    (dummy2 (when thclone (format t "~%Found thclone")))
-		    (instdecl (find  decl (theory theory-instance) :key #'generated-by))
-		    ) ;(break "nonref-actuals")			;place information matches
-	       (cond (thclone
-		      (format t "~%Pushing ~a" intern-theory-id)
-		      (pushnew theory-instance *preceding-mono-theories*)
-		      (ir (eval-info instdecl)))
-		     (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
-			(setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
-			(pvs2c-theory-body-step theory-instance t nil)  ;;NSH(3/20/22): Need to clear inherited eval-info
+    (if (and (null (cdefn (eval-info decl))) ;;NSH(2/6/25): Added check for call to non-executable operation
+	     (not (eq decl *pvs2c-current-decl*)))
+	(pvs2c-err "Found non-executable operation ~a while code generating for ~a" (id decl)(id *pvs2c-current-decl*))
+      (let* ((theory (module decl))
+	     (thinst (module-instance expr))
+	     (actuals (actuals thinst))
+	     (type-actuals (loop for act in actuals
+				 when (type-value act)
+				 collect (check-actual-type (type-value act) bindings)))
+	     (nonref-actuals (loop for actlabel in type-actuals
+				   when (not (eq actlabel 'ref))
+				   collect actlabel))
+	     (new-theory-id (format nil "~a_~{~a~^_~}" (simple-id (id theory))
+				    type-actuals))
+	     (intern-theory-id (intern new-theory-id :pvs))
+	     )	       ;(when nonref-actuals (break "nonref-actuals"))
+	(cond ((and nonref-actuals (not (eq theory *current-pvs2c-theory*))) ;; was (eq intern-theory-id *theory-id*)))
+	       (let* ((*theory-id* intern-theory-id)
+		      (monoclones (ht-instance-clone theory))
+		      (dummy (when (null monoclones)(format t "~% No monoclones")))
+		      (thclone (and monoclones (gethash  intern-theory-id monoclones)))
+		      (theory-instance (or thclone
+					   (let ((new-instance (subst-mod-params theory thinst)))
+					     (setf (id new-instance) *theory-id*)
+					     new-instance)))
+		      (dummy2 (when thclone (format t "~%Found thclone")))
+		      (instdecl (find  decl (theory theory-instance) :key #'generated-by))
+		      ) ;(break "nonref-actuals")			;place information matches
+		 (cond (thclone
 			(format t "~%Pushing ~a" intern-theory-id)
 			(pushnew theory-instance *preceding-mono-theories*)
-			;; (if (memq theory *preceding-prelude-theories*)
-			;; 	 (push theory-instance *preceding-prelude-theories*)
-			;;   (push theory-instance *preceding-theories*))
-			(ir (eval-info instdecl))))))
-	    (t (ir (eval-info decl)))))))
+			(ir (eval-info instdecl)))
+		       (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
+			  (setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
+			  (pvs2c-theory-body-step theory-instance t nil) ;;NSH(3/20/22): Need to clear inherited eval-info
+			  (format t "~%Pushing ~a" intern-theory-id)
+			  (pushnew theory-instance *preceding-mono-theories*)
+			  ;; (if (memq theory *preceding-prelude-theories*)
+			  ;; 	 (push theory-instance *preceding-prelude-theories*)
+			  ;;   (push theory-instance *preceding-theories*))
+			  (ir (eval-info instdecl))))))
+	      (t (ir (eval-info decl))))))))
 
 (defun pvs2ir-adt (adt)
   (let* ((adt-decl (declaration adt)));(break "adt")
@@ -2402,7 +2424,7 @@
 	   (cond ((and (ir-subrange? bnd1type)
 		       (check-quantifier-subrange (ir-low bnd1type)(ir-high bnd1type)))
 		  (mk-ir-forall bnd1 (pvs2ir-forall-expr rest expr)))
-		 (t (pvs2c-err "Quantifiers are not handled")
+		 (t (pvs2c-err "Non-subrange quantifiers are not handled")
 		    ;;(mk-ir-function 'u_undef_quant_expr)
 		    ))))
 	(t expr)))
@@ -2415,7 +2437,7 @@
 	   (cond ((and (ir-subrange? bnd1type)
 		       (check-quantifier-subrange (ir-low bnd1type)(ir-high bnd1type)))
 		  (mk-ir-exists bnd1 (pvs2ir-exists-expr rest expr)))
-		 (t (pvs2c-err "Quantifiers are not handled")
+		 (t (pvs2c-err "Non-subrange quantifiers are not handled")
 		    ;; (mk-ir-function 'u_undef_quant_expr)
 		    ))))
 	(t expr)))

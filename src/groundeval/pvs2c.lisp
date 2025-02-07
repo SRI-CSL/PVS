@@ -51,7 +51,7 @@
     |restrict_props| |extend| ;; |extend_bool|
     |extend_props| |extend_func_props| ;; |K_conversion| |K_props| ;; |identity|
     |identity_props| |relations| |orders| |orders_alt| |restrict_order_props|
-    |extend_order_props| |wf_induction| |measure_induction| |epsilons| |decl_params| |sets|
+    |extend_order_props| |wf_induction| |measure_induction| |epsilons| |decl_params| ;;|sets|
     |sets_lemmas| |function_inverse_def| |function_inverse| |function_inverse_alt|
     |function_image| |function_props| |function_props_alt| |function_props2| |relation_defs|
     |relation_props| |relation_props2| |relation_converse_props| |indexed_sets|
@@ -94,7 +94,7 @@
   '(|bytestrings| |empty_bv| |exp2| |extend_bool|
     |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
     |min_nat| |modulo_arithmetic| |more_finseq|
-    |ordinals| |ordstruct| |real_defs| |sequences| |strings|
+    |ordinals| |ordstruct| |real_defs| |sequences| |sets| |strings|
     |transpose| |xor_def|))
 
 (defun ensure-c-directories-exist ()
