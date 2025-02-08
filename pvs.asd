@@ -366,18 +366,7 @@
 		  (:file "pvs2clean")
 		  (:file "c-primitive-attachments"))
      :depends-on (basic))
-   (:module Field
-     :pathname "src/Field"
-     :components ((:file "decimals")
-		  (:file "extrategies")
-		  (:file "field")))
-   (:module PVSio
-     :pathname "src/PVSio"
-     :components ((:file "pvs-lib")
-		  (:file "defattach")
-		  (:file "pvsio")
-		  (:file "prelude-attachments")
-		  ))
+
    (:module Manip
      :pathname "src/Manip"
      :components ((:file "pregexp")
@@ -387,7 +376,22 @@
 		  (:file "manip-strategies")
 					;(:file "debug-utils")
 		  ))
-   (:module ProofLite
+
+   (:module Field
+     :pathname "src/Field"
+     :components ((:file "decimals")
+		  (:file "extrategies")
+		  (:file "field")))
+
+   (:module PVSio
+     :pathname "src/PVSio"
+     :components ((:file "pvs-lib")
+		  (:file "defattach")
+		  (:file "pvsio")
+		  (:file "prelude-attachments")
+		  ))
+
+  (:module ProofLite
      :pathname "src/ProofLite"
      :components (			;(:file "pregexp")
 		  (:file "prooflite")

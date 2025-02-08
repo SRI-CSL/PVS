@@ -19,6 +19,15 @@
 
 ;;; ------------ Support for syntax matching features ------------
 
+;;; Behaves likes exta-get-fnums but returns nil if one of the elements doesn't specify
+;;; a formula number [CAM]
+
+(defun match-get-fnums-strict (fnums)
+  (let ((pre-fnums (extra-get-fnums fnums t)))
+    (unless (member nil pre-fnums)
+      (loop for fnum in pre-fnums
+	    append (if (atom fnum) (list fnum) fnum)))))
+
 
 ;; Following structure returned by spec-items parser.
 
@@ -131,7 +140,7 @@
 	 ;; to allow nested applications of match
 	 (unmatched-var     ;; check for strings with remaining %-chars
 	  (apply-to-selected-nodes
-	   #'(lambda (s) (or (and (consp s) (member (car s) '(match match$))) (stringp s)))  ;; Select
+	   #'(lambda (s) (or (and (consp s) (member (car s) *manip-match-exceptions*)) (stringp s)))  ;; Select
 	   #'(lambda (s) (when (stringp s) (find #\% s))) ;; node
 	   #'(lambda (s) nil)  ; else
 	   #'(lambda (s) (some #'identity s)) ;; list
@@ -235,7 +244,7 @@
 	     (show-flag (memq (car real-items) '(? show)))
 	     (fnums-items (if show-flag (cdr real-items) real-items))
 	     ;; Added support for extended formula references below [CM]
-	     (fnums (extra-get-fnums-strict (when (consp fnums-items) (car fnums-items)))) 
+	     (fnums (match-get-fnums-strict (when (consp fnums-items) (car fnums-items)))) 
 	     (items (if fnums
 			(cdr fnums-items)
 		      fnums-items))
@@ -275,7 +284,7 @@
       (setf (match-items-patterns result)
 	    (mapcar #'(lambda (patt) 
 			(if (listp patt)
-			    (let ((efnums (extra-get-fnums-strict (car patt))))
+			    (let ((efnums (match-get-fnums-strict (car patt))))
 			      (cons (or efnums (car patt)) (cdr patt)))
 			  patt))
 		    patterns)))
@@ -372,7 +381,7 @@
 	  (loop for patt in patterns
 	        collect (cond ((not (consp patt))
 			       (list nil patt nil))
-			      ((extra-get-fnums-strict (car patt)) ;; Added support for extended fnums [CM]
+			      ((match-get-fnums-strict (car patt)) ;; Added support for extended fnums [CM]
 			       (if (< (length patt) 2)
 				   ;; missing pattern; use universal patt "%"
 				   (append patt (list "%"))
@@ -1085,7 +1094,7 @@
 		  ((consp expr)
 		   ;; M3: only proceed with the instantiation if the strategy
 		   ;;     is not a match itself.
-		   (if (member (car expr) '(match match$))
+		   (if (member (car expr) *manip-match-exceptions*)
 		       expr
 		     (mapcar #'build-target expr)))
 		  (t expr))))

@@ -2707,13 +2707,12 @@ description of all features."
 
 ;;; =============== Misc. utility strategies ===============
 
-(defstep else* (&rest steps)
+(defstrat else* (&rest steps)
   (if (null steps)
       (skip)
-      (let ((try-step `(try ,(car steps) (skip) (else*$ ,@(cdr steps)))))
+      (let ((try-step `(try ,(car steps) (skip) (else* ,@(cdr steps)))))
 	try-step))
-  "[Manip] Try STEPS in sequence until the first one succeeds."
-  "~%Trying steps in sequence")
+  "[Manip] Try STEPS in sequence until the first one succeeds.")
 
 (defstep try-rewrites (fnums &rest lemmas)
   (if (null lemmas)
@@ -2747,7 +2746,7 @@ expressions will be involved in the rewriting."
 	(name-step `(name ,(name-gensym "apply") ,expr-obj))
 	(replace-1 `(replace -1 ,adj-fnum))
 	(lemma-list (if (consp lemmas) lemmas (list lemmas)))
-	(rewrites `(repeat (else*$ ,@(targeted-rewrites -1 lemma-list))))
+	(rewrites `(repeat (else* ,@(targeted-rewrites -1 lemma-list))))
 	(replace-2 `(replace -1 :dir rl :hide? t))
 	(apply-step `(then ,name-step ,replace-1 ,rewrites ,replace-2)))
     apply-step)

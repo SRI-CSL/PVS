@@ -38,6 +38,9 @@
 
 (defvar *manip-gensym-count* 0)
 
+;; match doesn't expand variables on these strategies
+(defparameter *manip-match-exceptions* '(match match$))
+
 (defun name-gensym (str &optional (inc? t))
   (format nil "~A~A__" str
 	  (if inc? (incf *manip-gensym-count*) *manip-gensym-count*)))
@@ -139,7 +142,7 @@
 			      ((consp expr)
 			       ;; M3: only proceed with the instantiation if the strategy
 			       ;;     is not a match itself.
-			       (if (member (car expr) '(match match$))
+			       (if (member (car expr) *manip-match-exceptions*)
 				   expr
 				 (mapcan #'(lambda (e)
 					     (multiple-value-list (build-cmd e)))

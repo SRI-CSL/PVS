@@ -23,7 +23,7 @@
 %    name-label*, name-replace*, discriminate
 %  Copying formulas: copy*, protect, with-focus-on, with-focus-on@
 %  Programming: mapstep, mapstep@, with-fresh-labels, with-fresh-labels@,
-%    with-fresh-names, with-fresh-names@
+%    with-fresh-names, with-fresh-names@, cond-match, if-match
 %  Control flow: try@, try-then, try-then@, finalize, finalize*, touch,
 %    for, for@, when, when@, unless, unless@, when-label, when-label@,
 %    unless-label, unless-label@, if-label, sklisp
@@ -377,6 +377,24 @@
       (cons (if list? (list l1 l2) (cons l1 l2))
 	    (pair-lists (cdr ls1) (cdr ls2) cut? list? l1 l2)))))
 
+(defun is-null-pvslist (expr)
+  (or (null-expr? expr)
+      (and (constructor-name-expr? expr)
+	   (equal (id expr) '|null|))))
+
+;; This function assumes that expr is a PVS list of the form
+;; cons(a0,cons(ac1, ... cons(acn,rest)))
+;; return a pair of two elements ((: a0, a1, ..., an :) . rest).
+;; The PVS empty list is then represented by the pair (nil . nil)
+;; The PVS list (: a1, a2, a3 :) is presented by the pair ((a1, a2, a3) . nil)
+;; If this function is called on a non "cons-" constructed PVS object expr, it returns
+;; (nil . expr)
+
+(defun pvslist2list (expr &optional accum)
+  (if (is-function-expr expr "cons")
+      (pvslist2list (args2 expr) (append accum (list (args1 expr))))
+    (cons accum (unless (is-null-pvslist expr) expr))))
+
 ;; a <=> b
 (defun iff (a b)
   (equal (not a) (not b)))
@@ -466,14 +484,6 @@
   (if (or (not enlist?) (atom fnums) (member (car fnums) '(^ +^ -^)))
     (extra-extract-fnums fnums)
     (mapcar #'extra-extract-fnums fnums)))
-
-;;; Behaves likes exta-get-fnums but returns nil if one of the elements doesn't specify
-;;; a formula number
-(defun extra-get-fnums-strict (fnums)
-  (let ((pre-fnums (extra-get-fnums fnums t)))
-    (unless (member nil pre-fnums)
-      (loop for fnum in pre-fnums
-	    append (if (atom fnum) (list fnum) fnum)))))
 
 ;; Get a formula number from fnum
 (defun extra-get-fnum (fnum)
@@ -1883,7 +1893,7 @@ branch until the first that does nothing, then it applies ELSE-STEP.")
   finishes the current goal.")
 
 (defstep touch (&optional (step (skip)))
-  (else step (case "TRUE"))
+  (then step (case "TRUE"))
   "[Extrategies] Does step and touches the proof context so that try
 and else consider that step does something, even when it doesn't."
   "Doing ~a and touching the proof context")
@@ -2480,6 +2490,124 @@ specified in ORDER, which is a list of integers (i1 .. in). An integer ik repres
 component of the formula, left to right if ik is positive, right to left if ik is negative.
 TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Splashing formula in ~a")
+
+;;; cond-match
+(defstruct (matchcond (:conc-name get-))
+  match 
+  (step  '(skip))
+  onums
+  comment)
+
+;; split a match condition into condition step fnums (formula numbers) and onums (occurence numbers)
+;; from the following grammar (condition step [:fnums fnums] [:onums onums])
+;; returns a list of 5 elements (condition step fnums onums comment) or nil if there was an error
+
+(defun mk-match-cond (condstep matchcond)
+  (if (consp condstep)
+      (cond ((member (car condstep) '(:onums :onum))
+	     (setf (get-onums matchcond) (list (cadr condstep)))
+      	     (mk-match-cond (cddr condstep) matchcond))
+	    ((eq (car condstep) ':comment)
+	     (when (stringp (cadr condstep))
+	       (setf (get-comment matchcond) (cadr condstep))
+	       (mk-match-cond (cddr condstep) matchcond)))
+	    ((get-match matchcond)
+	     (when (consp (car condstep))
+	       (setf (get-step matchcond) (car condstep))
+	       (mk-match-cond (cdr condstep) matchcond)))
+	    (t
+	     (setf (get-match matchcond) (car condstep))
+      	     (mk-match-cond (cdr condstep) matchcond)))
+    (when (get-match matchcond)
+      matchcond)))
+
+(defun match-list (conds fnums else dry-run?)
+  (cond (conds
+	 (let ((matchcond (mk-match-cond (car conds) (make-matchcond))))
+	   (if matchcond
+	       (let* ((step (if (get-comment matchcond)
+				`(then (touch (comment ,(get-comment matchcond))) ,(get-step matchcond))
+			      (get-step matchcond)))
+		      (showstep  (if dry-run?
+				     `(match show ,fnums ,(get-match matchcond) ,@(get-onums matchcond) step ,step)
+				   step)))
+		 (cons 
+		  `(match$ ,fnums ,(get-match matchcond) ,@(get-onums matchcond) step ,showstep)
+		  (match-list (cdr conds) fnums else dry-run?)))
+	     (error-format-if "[cond-match] ~s is not a valid match-condition step"
+			      (car conds)))))
+	((and else (not dry-run?))
+	 (list else))))
+
+(push 'cond-match *manip-match-exceptions*)
+
+(defstrat cond-match (&key (fnums *) else dry-run? &rest conds)
+  (when conds
+    (if (listp else)
+	(let ((match-steps (match-list conds fnums else dry-run?)))
+	  (when match-steps
+	    (when dry-run?
+	      (printf "cond-match expands to:~%(else* ~{~s~^ ~})" match-steps))
+	    (else* :steps match-steps)))
+      (sklisp (error-format-if "[cond-match] ~s does not appear to be a valid step" else))))
+  "[Extrategies] In its simplest form (cond-match ((PATTERN1 [STEP1]) .. (PATTERNn [STEPn]))) finds 
+the first PATTERNi that matches formulas in the current sequent and applies its corresponding
+STEPi. By default, STEPi is (SKIP) if none is provided.
+
+Optionally, the following keys could be provided:
+:fnums FNUMS
+  Matches only the formulas in FNUMS
+:else STEP 
+  Applies STEP if none of the patterns matches a formula in FNUMS
+:dry-run? t 
+  Prints expansion of the strategy and instances of successful matchings
+
+Patterns and steps are formatted as in Manip's match (see Manip User's guide). 
+Furthermore, the following options could be added to the pair of PATTERNi and STEPi.
+:onum ONUM
+  Selects the ONUM occurrence in case of multiple successful matchings in FNUMS
+:comment STR
+  Adds the comment STR to the sequent if matches succeeds (STR may contain pattern variables)
+
+For example, assume
+
+{-1}  N < 10
+  |-------
+{1}   (nth(l, 1) > N AND nth(l, 2) > N AND g(2))
+{2}   (nth(l, 3) > N AND f(5, 40))
+
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\")))
+  results in (comment \"Found N < 10\")
+
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onum 2) :fnums +)
+  results in (case \"2 > 0\")
+
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onum 2) :fnums 2 :else (grind))
+  results in (grind) since there are no 2 occurrences of the pattern in {2}")
+
+(push 'if-match *manip-match-exceptions*)
+
+(defstrat if-match (pattern &optional step else (fnums *) onum dry-run?)
+  (let ((match-stp (when step (list step)))
+	(onum-opt  (when onum (list :onum onum)))
+	(else-stp  (when else (list :else else)))
+	(dry-run   (or dry-run? (and (null step) (null else))))
+	(cond-stp `(cond-match (,pattern ,@match-stp ,@onum-opt) :fnums ,fnums ,@else-stp :dry-run? ,dry-run)))
+    cond-stp)
+  "[Extrategies] Applies STEP1 if PATTERN matches formulas in the current sequent. Otherwise, applies STEP2. 
+By default STEP1 and STEP2 are (SKIP).
+
+Optionally, the following keys could be provided:
+:fnums FNUMS
+  Matches only the formulas in FNUMS
+:onum ONUM
+  Selects the ONUM occurrence in case of multiple successful matchings in FNUMS
+:dry-run? t 
+  Prints expansion of the strategy and instances of successful matchings. dry-run? is
+by default T when STEP1 and STEP2 are not provided.
+
+Pattern and steps are formatted as in Manip's match (see Manip User's guide).
+Also, see cond-match.")
 
 ;;; Miscellaneous
 
