@@ -16,7 +16,8 @@
 
 ;; List of strategies in Extrategies:
 (defparameter *extrategies* "
-%  Printing and commenting: printf, commentf, now, quietly
+%  Printing and commenting: printf, commentf, quietly,
+%    error-msg, warning-msg
 %  Defining tactics, i.e., local strategies: deftactic
 %  Defining oracles, i.e., trusted proof rules: deforacle 
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
@@ -41,8 +42,7 @@
 
 (defun print-extra-debug (msg)
   (when *extrategies-debug*
-    (format t "[*extrategies-debug*~%~a~%*extrategies-debug*]~%"
-	    msg)))
+    (format t "[*extrategies-debug*~%~a~%*extrategies-debug*]~%" msg)))
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -112,9 +112,9 @@
   (mapcar #'car (extra-list-oracles enabled)))
 
 (defmacro deforacle (name args step doc format &key internal)
-  (let* ((info     (format nil "Try (help ~a)" name))
-	 (dismsg   (format nil "~a has been disabled" name))
-	 (docmsg   (if internal doc (format nil "[Trusted Oracle] ~a" doc))))
+  (let* ((info   (format nil "Try (help ~a)" name))
+	 (docmsg (if internal doc (format nil "[Trusted Oracle] ~a" doc)))
+	 (errmsg (format nil "Oracle ~a has been disabled" name)))
   `(progn
      (extra-make-trusted-oracle ',name ,info ,internal)
      (defrule ,name ,args
@@ -127,7 +127,7 @@
 		    (sklisp (extra-reset-oracle-label ',name))
 		    (fail)))
 	     (sklisp (extra-reset-oracle-label ',name))))
-	 (printf ,dismsg))
+	 (error-msg ,errmsg))
        ,docmsg ,format))))
 
 ;; Load filename from dir relative to a path in *pvs-library-path*
@@ -171,7 +171,7 @@
 ;; the value of the evaluation, which is printed in console. The
 ;; strategy sklisp doesn't!
 (defstrat sklisp (lispexpr)
-  (let ((xxx (eval lispexpr)))
+  (let ((dummy (eval lispexpr)))
     (skip))
   "[Extrategies] Evaluates lispexpr and skips")
 
@@ -361,6 +361,10 @@
   (and (unary-application? term-obj)
        (name-expr? (operator term-obj))
        (eq (id (operator term-obj)) op)))
+
+(defun is-tcc-goal? (&optional (ps *ps*))
+  "Determines if PS is a goal generated from a TCC. PS default value is the current proofstate."
+  (typep *ps* 'tcc-proofstate))
 
 ;; If l is not a list put it into a list
 (defun enlist-it (l)
@@ -991,37 +995,62 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 (defun extra-is-false (expr)
   (tc-eq expr *false*))
 
+;; Return pair of current day and time in format (dd-mm-yyyy.hh:mm:ss)
+(defun now-dd-mm-yyyy ()
+  (multiple-value-bind
+      (second minute hour date month year day-of-week dst-p tz)
+      (get-decoded-time)
+    (declare (ignore dst-p))
+    (cons (format nil "~2,'0d-~2,'0d-~d" 
+		  date
+		  month
+		  year)
+	   (format nil "~2,'0d:~2,'0d:~2,'0d"
+		   hour
+		   minute
+		   second))))
+
 ;;;;;;;;;; Extrategies
 
 ;;; Printing and commenting
 
-(defstrat printf (msg &rest args)
-  (let ((xxx (apply 'format (cons nil (cons msg args)))))
-    (skip-msg xxx :force-printing? t))
-  "[Extrategies] Prints the Lisp formatted string MSG using the format arguments
-ARGS. ARGS must be constant values.")
+;; This variable can be used to suppress printing by printf
+(defparameter *extra-suppress-printing* nil)
+
+;; By PVS suppresses printing inside defsteps (e.g., after the second step in a then).
+;; In contrast to SKIP-MSG, PRINTF sets force-printing? to t by default.
+;; So, printf messages can be suppresed setting force-printing? to nil, or
+;; using the global variable *extra-suppress-printing*, as done for example by the
+;; strategy quitely.
+
+(defstrat printf (msg &key (force-printing? t) &rest args)
+  (let ((quiet *extra-suppress-printing*))
+    (unless quiet
+      (let ((fmtdmsg (apply 'format (cons nil (cons msg args)))))
+	(skip-msg fmtdmsg :force-printing? force-printing?))))
+  "[Extrategies] Prints the Lisp-formatted string MSG using the format arguments
+ARGS. ARGS must be constant values. The option FORCE-PRINTING? can be set 
+to force printing. By default, FORCE-PRINTING? is set to T.")
+
+(defstrat error-msg (msg &rest msg-args)
+  (let ((dummy
+	 (unless *extra-suppress-printing*
+	   (eval `(error-format-if ,msg ,@msg-args)))))
+    (fail))
+  "Reports error message and fails.")
+
+(defstrat warning-msg (msg &rest msg-args)
+  (let ((dummy
+	 (unless *extra-suppress-printing*
+	   (eval `(error-format-if ,msg ,@msg-args)))))
+    (skip))
+  "Reports error message and skips.")
 
 (defstrat commentf (msg &rest args)
-  (let ((msg (apply 'format (cons nil (cons msg args)))))
-    (comment msg))
+  (let ((fmtdmsg (apply 'format (cons nil (cons msg args)))))
+    (comment fmtdmsg))
   "[Extrategies] Adds the formatted comment MSG to the sequent using the format
 arguments ARGS. ARGS can only have constant values.")
-
-(defstrat now ()
-  (let ((dummy (multiple-value-bind
-		   (second minute hour date month year day-of-week dst-p tz)
-		   (get-decoded-time)
-		 (declare (ignore dst-p))
-		 (format t "~%TIME ~d/~2,'0d/~d  ~2,'0d:~2,'0d:~2,'0d~%"
-			 month
-			 date
-			 year
-			 hour
-			 minute
-			 second))))
-    (declare (ignore dummy))
-    (skip))
-  "[Extrategies] Prints current time.")
 
 (defstrat quietly (&key (quiet? t) &rest steps)
   (when steps
@@ -1033,18 +1062,20 @@ arguments ARGS. ARGS can only have constant values.")
 		   (progn
 		     (setq *print-conversions* nil)
 		     (setq *rewrite-msg-off* t)
+		     (setq *extra-suppress-printing* t)
 		     (setq *suppress-manip-messages* t)))
 		  ,@steps)
 		 (sklisp 
 		  (progn
 		    (setq *rewrite-msg-off* ,*rewrite-msg-off*)
 		    (setq *print-conversions* ,*print-conversions*)
+		    (setq *extra-suppress-printing* ,*extra-suppress-printing*)
 		    (setq *suppress-manip-messages* ,*suppress-manip-messages*))))))
 	  do-step)
       (let ((do-step `(then ,@steps)))
 	do-step)))
-  "Applies STEPS without rewriting, conversion, or Manip messages. In general, this strategy should
-be used inside strategies. The key :quiet? serves to turn on verbosity programmatically.")
+  "Applies STEPS without printing messages. In general, this strategy should be used inside strategies. 
+The key :quiet? serves to turn on verbosity programmatically.")
 
 ;;; Labeling and naming
 
@@ -1155,7 +1186,7 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
 	    (unless tccsome
 	      (unless tccnone
 		(hide labtcc))))
-	 (printf "Name ~a already exists" name)))))
+	 (error-msg "Name ~a already exists" name)))))
   "[Extrategies] Adds formula EXPR=NAME, where NAME is a new name, as
 a hypothesis and replaces EXPR by NAME in FNUMS. Options are as follows.
 * The added formula is labeled LABEL:. By default, LABEL is set to NAME.
@@ -1372,7 +1403,7 @@ use.")
 			     (delete ,dlab)
 			     (touch (delabel ,nlab))
 			     (touch (delabel ,hlab :hide? t)))))
-	  (xxxx     (print-extra-debug step)))
+	  (dummy     (print-extra-debug step)))
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1511,7 +1542,7 @@ specified as in WITH-FRESH-LABELS.")
 			(repeat (with-fresh-names-expand__$ ,vnms))
 			(delete ,lbtccs)
 			(touch (delabel ,allbs)))))
-	  (xxxx     (print-extra-debug step)))
+	  (dummy     (print-extra-debug step)))
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1636,7 +1667,7 @@ CAVEAT:Formulas in the sequent my be reorganized after the application of this s
 (defhelper localtactic__ (nm stratn step)
   (if (check-name stratn)
       step
-    (printf "Local strategy ~a is not defined in this proof context" nm))
+    (error-msg "Local strategy ~a is not defined in this proof context" nm))
   "[Extrategies] Internal strategy." "")
 
 (defrule deftactic (nm arg_or_step &optional step)
@@ -1647,10 +1678,10 @@ CAVEAT:Formulas in the sequent my be reorganized after the application of this s
 			 nm (label *ps*)))
 	(doc2    (format nil "Applying local tactic ~a" nm)))
     (then (sklisp (defstep nm arg stp doc1 doc2)) 
-	  (if (check-name stratn)
-	      (printf "Redefining local tactic ~a" nm)
-	    (then (name stratn "TRUE")
-		  (delete -1)))))
+	  (let ((nname (check-name stratn)))
+	    (unless nname
+	      (name stratn "TRUE")
+	      (delete -1)))))
   "[Extrategies] Defines a tactic named NM. A tactic is a strategy that is local to the current branch
 of the proof. NM needs to be a valid identifier in PVS. A tactic definition can be either
 (deftactic NM STEP) or (deftactic NM (ARGUMENTS) STEP). For example,
@@ -1681,8 +1712,6 @@ defines a tactic that behaves as (myfirsttactic) when used without parameters, e
 	     (idx      (when labl (search labl (label ps))))
 	     (prefix   (equal idx 0)))
 	(cond ((and torcl prefix)
-	       (unless (get-internal torcl)
-		 (format t "Trusted oracle: ~a." orcl))
 	       (values '! nil nil))
 	      (t
 	       (values 'X nil nil))))))
@@ -1698,12 +1727,12 @@ This strategy *must* only be used in the definition of the oracle ORCL."
   (let ((steps (if (equal steps '!) (list steps) steps))
 	(torcl (extra-get-trusted-oracle orcl)))
     (if torcl
-	(let ((mrcl  `(trust! ,orcl))
-	      (stps  (mapcar #'(lambda (x) (or (and (equal x '!) mrcl) x)) steps)))
+	(let ((mrcl `(trust! ,orcl))
+	      (stps (mapcar #'(lambda (x) (or (and (equal x '!) mrcl) x)) steps)))
 	  (try-branch step stps (skip)))
-      (printf "~a is not a trusted oracle" orcl)))
+      (error-msg "~a is not a trusted oracle" orcl)))
   "This strategy is like the strategy branch, but performs a miracle on behalf of ORCL when symbol ! 
-is found in STEPS. This rule *must* only be used in the definition of the oracle ORCL.")
+is found in STEPS. This rule may only be used in the definition of the oracle ORCL.")
 
 ;;; TCCs -- The following rules extend the internal proving capabilities of PVS.
 ;;; They cannot be written as a combination of the basic proof rules
@@ -2534,8 +2563,7 @@ TCCs generated during the execution of the command are discharged with the proof
 		 (cons 
 		  `(match$ ,fnums ,(get-match matchcond) ,@(get-onums matchcond) step ,showstep)
 		  (match-list (cdr conds) fnums else dry-run?)))
-	     (error-format-if "[cond-match] ~s is not a valid match-condition step"
-			      (car conds)))))
+	     (error "~s is not a valid match-condition step" (car conds)))))
 	((and else (not dry-run?))
 	 (list else))))
 
@@ -2544,13 +2572,18 @@ TCCs generated during the execution of the command are discharged with the proof
 (defstrat cond-match (&key (fnums *) else dry-run? &rest conds)
   (when conds
     (if (listp else)
-	(let ((match-steps (match-list conds fnums else dry-run?)))
-	  (when match-steps
-	    (when dry-run?
-	      (printf "cond-match expands to:~%(else* ~{~s~^ ~})" match-steps))
-	    (else* :steps match-steps)))
-      (sklisp (error-format-if "[cond-match] ~s does not appear to be a valid step" else))))
-  "[Extrategies] In its simplest form (cond-match ((PATTERN1 [STEP1]) .. (PATTERNn [STEPn]))) finds 
+	(let ((match-steps
+	       (handler-case
+		   (match-list conds fnums else dry-run?)
+		 (error (condition) (format nil "~a" condition)))))
+	  (if (stringp match-steps)
+	      (error-msg "[cond-match] ~a" match-steps)
+	    (when match-steps
+	      (when dry-run?
+		(printf "cond-match expands to:~%(else* ~{~s~^ ~})" match-steps))
+	      (else* :steps match-steps))))
+      (error-msg "[cond-match] ~s does not appear to be a valid step" else)))
+  "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn])) finds 
 the first PATTERNi that matches formulas in the current sequent and applies its corresponding
 STEPi. By default, STEPi is (SKIP) if none is provided.
 
@@ -3093,7 +3126,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 (defstep skip-steps (&rest steps)
   (skip)
-  "[Extrategies] Skips steps. This strategy is using for debugging purposes."
+  "[Extrategies] Skips steps. This strategy is used for debugging purposes."
   "Skipping steps")
 
 (defstrat show-debug-mode ()
@@ -3106,10 +3139,8 @@ when the list of FNUMS is over. Options are as in eval-formula."
   (if (member :strat-debug *features*)
       (let ((dummy (setq *features* (remove :strat-debug *features*)))
 	    (dummy (load "pvs-strategies")))
-	(declare (ignore dummy))
 	(printf "~%Debug mode disabled.~%"))
     (let ((dummy (pushnew :strat-debug *features*))
 	  (dummy (load "pvs-strategies")))
-      (declare (ignore dummy))
       (printf "~%Debug mode enabled.~%")))
   "[Extrategies] Toggles debug mode on the current theory strategies.")

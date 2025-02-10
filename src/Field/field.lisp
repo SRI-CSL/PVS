@@ -361,7 +361,7 @@ preserves labels of FNUM when labels? is t."
 	   (real-props !ngo :simple? t)
 	   (finalize auto-step))
 	  !ngl hide?))
-      (printf "No arithmetic relational formula in ~a" fnum)))
+      (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Negates both sides of the relational formula FNUM. If HIDE? is t,
 the original formula is hidden.  The new formula is labeled as the original
 one, unless an explicit LABEL is provided. TCCs generated during the execution
@@ -468,7 +468,7 @@ expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT
 		    ((then (real-props labad :simple? t) (finalize auto-step))
 		     (finalize (assert (!ad1 !ad2 labad)))
 		     (finalize tcc-step)))))
-       (printf "No arithmetic relational formulas in ~a" formsg))))
+       (error-msg "No arithmetic relational formulas in ~a" formsg))))
   "[Field] Adds relational formulas FNUM1 and FNUM2. If FNUM2 is nil, adds FNUM to itself.
 If HIDE? is t, the original formulas are hidden.  The new formula is labeled as LABEL,
 if specified. TCCs generated during the execution of the command are discharged with
@@ -489,7 +489,7 @@ branch using the proof command AUTO-STEP."
 	 (o2       (relation2num (car (is-relation formula2))))
 	 (labsb    (or label !sub)))
      (if eqfs
-	 (printf "Formula ~a cannot be subtracted from itself" fnum1)
+	 (error-msg "Formula ~a cannot be subtracted from itself" fnum1)
        (if (and o1 o2)
 	   (with-fresh-labels
 	    ((!sb1 f1 :tccs)
@@ -503,7 +503,7 @@ branch using the proof command AUTO-STEP."
 		   (when hide? (hide !sb1)))
 	     !nlb
 	     hide?))
-	 (printf "No arithmetic relational formulas in (~a ~a)" fnum1 fnum2)))))
+	 (error-msg "No arithmetic relational formulas in (~a ~a)" fnum1 fnum2)))))
   "[Field] Subtracts relational formulas FNUM1 and FNUM2. If HIDE? is t,
 the original formulas are hidden.  The new formula is labeled as LABEL,
 if specified. TCCs generated during the execution of the command are discharged
@@ -559,7 +559,7 @@ with the proof command TCC-STEP."
 		  ((cancel-by__$ !cby !cbd div tcc-step auto-step)
 		   (delete !cby)))
 	  (replaces !ndc :but !ndc :dir rl :hide? nil)))
-      (printf "No suitable expression in ~a" fnum)))
+      (error-msg "No suitable expression in ~a" fnum)))
   "[Field] Cancels the common expression EXPR in the relational formula FNUM.
 TCCs generated during the execution of the command are discharged with the 
 proof command TCC-STEP. At the end, the strategy tries to discharge the 
@@ -627,7 +627,7 @@ current branch using the proof command AUTO-STEP."
 	   (if cb
 	       (cancel-by !cf cb :tcc-step tcc-step)
 	     (finalize (grind-reals :dontdistrib !cf)))))
-      (printf "No arithmetic relational formula in ~a" fnum)))
+      (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Factorizes common terms in FNUM and then cancels them.
 TCCs generated during the execution of the command are discharged 
 with the proof command TCC-STEP."
@@ -705,7 +705,7 @@ with the proof command TCC-STEP."
 	 (branch (name-distrib (!fd *!fd-tccs*) :prefix "NDF" :label !ndf :tcc-step tcc-step)
 		 ((field__$ !fd !ndf !x theories cancel? tcc-step)
 		  (delete !fd))))
-      (printf "No arithmetic relational formula in ~a" fnum)))
+      (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Removes divisions and apply simplification heuristics to the relational
 formula on real numbers FNUM. It autorewrites with THEORIES when possible. If CANCEL?
 is t, then it tries to cancel common terms once the expression is free of divisions.
@@ -753,7 +753,7 @@ discharge the current branch using the proof command AUTO-STEP."
 	     (finalize auto-step))
 	   (then (delabel !bsf hide?) (finalize tcc-step))))
 	 (relabel lbs !bsl :push? nil))
-      (printf "No arithmetic relational formula in ~a" fnum)))
+      (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Applies function F to both sides of the relational
 expression in FNUM. If HIDE? is t, the original formula is hidden. The
 new formulas are labeled as the original one, unless an explicit LABEL
