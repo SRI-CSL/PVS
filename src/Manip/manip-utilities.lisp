@@ -89,8 +89,9 @@
 ;; expression shortcuts.
 
 ;; M3: Modified in order to
-;; - allow to use tilde commands in format control strings inside the step
+;; - allow for the use of tilde commands in format control strings inside steps
 ;;   parameters of the match strategy.
+;; - in nested match applications, preventing outer bindings to be used in the inner match.
 (defun build-instan-cmd (cmd descriptors)
   (labels ((split-string (string &key (item #\space) (test #'char=))
 			 ;; Splits the string into substrings at spaces.
@@ -113,22 +114,22 @@
 			       ;;     stored. Then, the rest of the string is splited on tildes. Every % is
 			       ;;     replaced in each piece and finally the stored prefix and every instantiated
 			       ;;     part are concatenated.		  
-			       (let((expr-length (length expr)))
+			       (let ((expr-length (length expr)))
 				 (if (< 0 expr-length)
-				     (let*((prefix-limit (loop for char across expr
-							       for i from 0 to expr-length
-							       when (not (char= char #\~))
-							       return i))
-					   (prefix (subseq expr 0 prefix-limit))
-					   (expr (subseq expr prefix-limit expr-length))
-					   (results
-					    (loop for expr in (lisp (split-string expr :item #\~))
-						  collect (let*((str-values (mapcar #'virt-ee-string descriptors))
-								(res1  (percent-subst expr str-values))
-								(res2  (percent-subst-all res1 str-values))
-								(res3  (percent-subst-ext res2 str-values)))
-							    res3)))
-					   (res (format nil "~a~{~~~a~}" (car results) (cdr results))))
+				     (let* ((prefix-limit (loop for char across expr
+								for i from 0 to expr-length
+								when (not (char= char #\~))
+								return i))
+					    (prefix (subseq expr 0 prefix-limit))
+					    (expr (subseq expr prefix-limit expr-length))
+					    (results
+					     (loop for expr in (split-string expr :item #\~)
+						   collect (let* ((str-values (mapcar #'virt-ee-string descriptors))
+								  (res1  (percent-subst expr str-values))
+								  (res2  (percent-subst-all res1 str-values))
+								  (res3  (percent-subst-ext res2 str-values)))
+							     res3)))
+					    (res (format nil "~a~{~~~a~}" (car results) (cdr results))))
 				       (format nil "~a~a" prefix res))
 				   expr)))
 			      ((symbolp expr)
@@ -136,9 +137,13 @@
 			      ((and (consp expr) (member (car expr) ext-expr-symbols))
 			       (values-list (mapcar #'ee-fnum (eval-ext-expr expr))))
 			      ((consp expr)
-			       (mapcan #'(lambda (e)
-					   (multiple-value-list (build-cmd e)))
-				       expr))
+			       ;; M3: only proceed with the instantiation if the strategy
+			       ;;     is not a match itself.
+			       (if (member (car expr) '(match match$))
+				   expr
+				 (mapcan #'(lambda (e)
+					     (multiple-value-list (build-cmd e)))
+					 expr)))
 			      (t expr))))
       (handler-case (build-cmd cmd)
 	(error (c) (format t "~a" c))))))
@@ -149,27 +154,27 @@
 ;; (%1, %2, etc.) may also be included, which get substituted first.
 
 (defparameter *embedded-ext-expr-pattern*
-  (compile-regexp ".*%(.*?)%.*"))           ;; non-greedy added
-;  (excl:compile-regexp ".*%\\(.*\\)%.*"))
+  (compile-regexp ".*%(..*?)%.*"))    ;; non-greedy added ;;M3: the extended expression must be non-empty.
+;;  (excl:compile-regexp ".*%\\(.*\\)%.*"))
 
 (defun percent-subst-ext (pattern values)
   (loop with target = pattern with index = t
         do (setf index (multiple-value-list
 			(match-regexp *embedded-ext-expr-pattern* target
 				      :return :index)))
-;			(excl:match-regexp *embedded-ext-expr-pattern* target
-;					   :return :index :shortest t)))
+	;; (excl:match-regexp *embedded-ext-expr-pattern* target
+	;;   :return :index :shortest t)))
 	unless (car index) return target
 	do (let* ((ext (caddr (multiple-value-list
 			       (match-regexp *embedded-ext-expr-pattern*
 					     target))))
-;			       (excl:match-regexp *embedded-ext-expr-pattern*
-;						  target :shortest t))))
+		  ;; (excl:match-regexp *embedded-ext-expr-pattern*
+		  ;;	target :shortest t))))
 		  (ext-expr (eval-ext-expr
 			     (read-from-string (format nil "(~A)" ext))))
 		  (ext-str (if (consp ext-expr)
 			       (virt-ee-string (car ext-expr))
-			       ""))
+			     ""))
 		  (start (- (caaddr index) 1))
 		  (finish (1+ (cdaddr index))))
 	     (setf target (replace-substring ext-str target start finish)))))

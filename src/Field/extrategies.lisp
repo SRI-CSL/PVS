@@ -16,7 +16,7 @@
 
 ;; List of strategies in Extrategies:
 (defparameter *extrategies* "
-%  Printing and commenting: printf, commentf, now
+%  Printing and commenting: printf, commentf, now, quietly
 %  Defining tactics, i.e., local strategies: deftactic
 %  Defining oracles, i.e., trusted proof rules: deforacle 
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
@@ -460,10 +460,20 @@
   (extract-fnums-arg (if (stringp fnums) (makesym fnums) fnums)))
    
 ;; Get a list of formula numbers from fnums
+;; If enlist? is true and fnums is a list, each member of fnums is
+;; listed separately.
 (defun extra-get-fnums (fnums &optional enlist?)
   (if (or (not enlist?) (atom fnums) (member (car fnums) '(^ +^ -^)))
     (extra-extract-fnums fnums)
     (mapcar #'extra-extract-fnums fnums)))
+
+;;; Behaves likes exta-get-fnums but returns nil if one of the elements doesn't specify
+;;; a formula number
+(defun extra-get-fnums-strict (fnums)
+  (let ((pre-fnums (extra-get-fnums fnums t)))
+    (unless (member nil pre-fnums)
+      (loop for fnum in pre-fnums
+	    append (if (atom fnum) (list fnum) fnum)))))
 
 ;; Get a formula number from fnum
 (defun extra-get-fnum (fnum)
@@ -977,7 +987,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 
 (defstrat printf (msg &rest args)
   (let ((xxx (apply 'format (cons nil (cons msg args)))))
-    (skip-msg xxx))
+    (skip-msg xxx :force-printing? t))
   "[Extrategies] Prints the Lisp formatted string MSG using the format arguments
 ARGS. ARGS must be constant values.")
 
@@ -1002,6 +1012,29 @@ arguments ARGS. ARGS can only have constant values.")
     (declare (ignore dummy))
     (skip))
   "[Extrategies] Prints current time.")
+
+(defstrat quietly (&key (quiet? t) &rest steps)
+  (when steps
+    (if quiet?
+	(let ((do-step 
+	       `(unwind-protect$
+		 (then
+		  (sklisp
+		   (progn
+		     (setq *print-conversions* nil)
+		     (setq *rewrite-msg-off* t)
+		     (setq *suppress-manip-messages* t)))
+		  ,@steps)
+		 (sklisp 
+		  (progn
+		    (setq *rewrite-msg-off* ,*rewrite-msg-off*)
+		    (setq *print-conversions* ,*print-conversions*)
+		    (setq *suppress-manip-messages* ,*suppress-manip-messages*))))))
+	  do-step)
+      (let ((do-step `(then ,@steps)))
+	do-step)))
+  "Applies STEPS without rewriting, conversion, or Manip messages. In general, this strategy should
+be used inside strategies. The key :quiet? serves to turn on verbosity programmatically.")
 
 ;;; Labeling and naming
 
@@ -1603,7 +1636,7 @@ CAVEAT:Formulas in the sequent my be reorganized after the application of this s
 	(doc1    (format nil "Local tactic ~a defined in the proof context: ~a"
 			 nm (label *ps*)))
 	(doc2    (format nil "Applying local tactic ~a" nm)))
-    (then (lisp (defstep nm arg stp doc1 doc2)) 
+    (then (sklisp (defstep nm arg stp doc1 doc2)) 
 	  (if (check-name stratn)
 	      (printf "Redefining local tactic ~a" nm)
 	    (then (name stratn "TRUE")
@@ -2451,7 +2484,7 @@ TCCs generated during the execution of the command are discharged with the proof
 ;;; Miscellaneous
 
 (defstep replaces (&optional (fnums -) (in *) but from to
-			     (hide? t) (dir lr))
+			     (hide? t) (dir lr) actuals?)
   (let ((flist (extra-get-fnums fnums))
 	(nfrom (extra-get-fnum from))
 	(nto   (extra-get-fnum to))
@@ -2464,16 +2497,17 @@ TCCs generated during the execution of the command are discharged with the proof
     (when feqs
       (with-fresh-labels
        ((!replaces :list n))
-       (let ((plabs  (set-pairing !replaces))
-	     (qdir   (list 'quote dir))
-	     (qhide  (list 'quote hide?))
-	     (forms  (extra-get-but-fnums but :all in)))
+       (let ((plabs    (set-pairing !replaces))
+	     (qdir     (list 'quote dir))
+	     (qhide    (list 'quote hide?))
+	     (qactuals (list 'quote actuals?))
+	     (forms    (extra-get-but-fnums but :all in)))
 	 (with-fresh-labels
 	  ((!rep forms))
 	  (let ((qrep (list 'quote !rep)))
 	    (then
 	     (relabel plabs feqs)
-	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir)
+	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir :actuals? ,qactuals)
 					     (when ,qhide
 					       (unlabel* ,x ,qrep)
 					       (delabel ,x :hide? t))
@@ -2484,7 +2518,9 @@ TCCs generated during the execution of the command are discharged with the proof
   "[Extrategies] Iterates the proof command replace to rewrite with the formulas in FNUMS,
 respecting the order, the formulas in IN but not in BUT. The keys DIR and HIDE? are like
 in REPLACE. Notice that in contrast to REPLACE, the default value of HIDE? is T. Instead
-of using FNUMS, rewriting formulas can be addressed via FROM and TO."
+of using FNUMS, rewriting formulas can be addressed via FROM and TO. When ACTUALS?  is T, 
+the replacement is done within actuals of names in addition to the expression level 
+replacements, including in types."
   "Iterating replace")
 
 (defstep rewrites (lemmas-or-fnums &optional (fnums *) (target-fnums *) (dir lr) (order in) dont-delete?)
