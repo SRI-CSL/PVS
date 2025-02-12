@@ -62,8 +62,7 @@
 			;;(freevars-fmla (freevars fmla))
 			(lhs
 			 (if  (negation? fmla)
-			      (if (or (equation? (args1 fmla))
-				      (iff-or-boolean-equation? (args1 fmla)))
+			      (if (typep (args1 fmla) '(or equation iff-or-boolean-equation))
 				  (if (string-equal direction 'rl)
 				      (args2 (args1 fmla))
 				      (args1 (args1 fmla)))
@@ -71,14 +70,27 @@
 			      fmla))
 			(rhs
 			 (if  (negation? fmla)
-			      (if (or (equation? (args1 fmla))
-				      (iff-or-boolean-equation? (args1 fmla)))
+			      (if (typep (args1 fmla) '(or equation iff-or-boolean-equation))
 				  (if (string-equal direction 'rl)
 				      (args1 (args1 fmla))
 				      (args2 (args1 fmla)))
 				  *true*)
 			      *false*)))
 		   ;; (format-if "~%Replacing using formula ~a," source-sformnum)
+		   (format-if "Replacing \"~a\" with \"~a\"" lhs rhs)
+		   ;; Checking for when the fmla is = or iff but not used as such,
+		   ;; meaning the operator is overloaded
+		   (let ((bad-eq (when (and (eq rhs *true*)
+					    (not (tc-eq (args1 fmla) *true*))
+					    (negation? fmla)
+					    (not (typep (args1 fmla) '(or equation iff-or-boolean-equation)))
+					    (application? (args1 fmla))
+					    (name-expr? (operator (args1 fmla)))
+					    (memq (id (operator (args1 fmla))) '(= IFF)))
+				   (operator (args1 fmla)))))
+		     (when bad-eq
+		       (format-if "~%  Note that this uses an overloaded \"~a\": ~a"
+				  (id bad-eq) (full-name bad-eq))))
 		   (let* ((*replace-cache* (make-hash-table :test #'eq))
 			  (new-s-forms
 			   (replace-loop lhs rhs sformnum
