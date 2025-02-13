@@ -65,7 +65,7 @@
     |subrange_type| |int_types| |nat_types| ;; |exp2| |integertypes|
     |nat_fun_props| |finite_sets| |restrict_set_props| |extend_set_props|
     |function_image_aux| |function_iterate| ;|sequences|
-    |seq_functions| ;|finite_sequences| |more_finseq| |ordstruct|
+    ;; |seq_functions| |finite_sequences| |more_finseq| |ordstruct|
     ;; |ordstruct_adt| |ordinals| |lex2|
     |lex3| |lex4| |list| |list_adt| |list_adt_map| |list_props| |map_props|
     |more_map_props| |filters| |list2finseq| |list2set| |disjointness| |character|
@@ -93,7 +93,7 @@
   ;; Sorted alphabetically
   '(|bytestrings| |empty_bv| |exp2| |extend_bool|
     |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
-    |min_nat| |modulo_arithmetic| |more_finseq|
+    |min_nat| |modulo_arithmetic| |finite_sequences| |more_finseq| |array_sequences|
     |ordinals| |ordstruct| |real_defs| |sequences| |sets| |strings|
     |transpose| |xor_def|))
 
@@ -544,21 +544,29 @@
 	       ;; 		 (t (format nil ~a_t ~a(~a)" c-result-type ir-function-name c-args-string)))
 	       (ir-body (if (ir-lambda? post-ir)
 			    (ir-body post-ir)
-			    post-ir))
-	       (c-body (print2c (ir2c ir-body ir-result-type)))
+			  post-ir))
+	       (static-result-var (when (and (null ir-args)(mpnumber-type? c-result-type))
+				    "static_result"))
+	       (c-body (print2c (ir2c ir-body ir-result-type static-result-var)));;NSH(2-11-25): use a local static var
 	       (c-body (if ir-args c-body
 			 (format nil "~%~8Tstatic bool_t defined = false;~%~8Tif (!defined){~%~12T~a~%~8Tdefined = true;};" c-body)))
 	       (static? (if ir-args "" " static "))
 	       (c-result-decl (if (mpnumber-type? c-result-type)
 				  (let ((mptype (mppointer-type c-result-type)))
-				    (format nil "~a_t ~a result;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
-				      mptype static?; c-result-type c-result-type
-				      ))
+				    (if static-result-var 
+					(format nil "~a_t result;~%~8T~a_t ~a ~a;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
+						mptype mptype static? static-result-var	; c-result-type c-result-type
+						)
+				      (format nil " ~a_t ~a result;"
+						mptype static?
+						)))
 				  (format nil "~a_t ~a result;" c-result-type static?)))
-	       (c-defn  (format nil "~a{~%~8T~a~%~a~%~8T~%~8Treturn result;~%}"
+	       (c-defn  (format nil "~a{~%~8T~a~%~a~%~8T~%~8T~a~%~8Treturn result;~%}"
 			  c-header 
 			  c-result-decl
-			  c-body
+			  c-body ;;NSH(2-11-25): added static-result-var for mpz/mpq
+			  (if static-result-var (format nil "~a_mk_set(result, ~a);" c-result-type static-result-var)
+			    "")
 			  ;; (if (ir-reference-type? ir-result-type)
 			  ;;     "result->count++;"
 			  ;;   "")

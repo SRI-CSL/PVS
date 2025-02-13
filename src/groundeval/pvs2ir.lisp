@@ -2380,7 +2380,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			   (mk-ir-get argvar id)))))
 
 (defmethod pvs2ir* ((expr projection-application) bindings expected)
-  (declare (ignore expected))  (break "projapp")
+  (declare (ignore expected))  ;(break "projapp")
   (with-slots (index argument) expr
 	      (let ((ir-argument (pvs2ir* argument bindings nil))
 		    (argvar (mk-ir-variable (new-irvar)(pvs2ir-type (type argument) bindings))))
@@ -2488,11 +2488,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ;;evaluates the right-hand sides; creates bindings; and then constructs the
 ;;updates over the assignments
 (defun pvs2ir-update (assignments ir-expression expression-type bindings)
-  (let ((maplet (find-if #'maplet? assignments)))
-    (when maplet
-      (pvs2c-err "Maplets not supported: ~a" maplet)))
+  ;; (let ((maplet (find-if #'maplet? assignments)))
+  ;;   (when maplet
+  ;;     (pvs2c-err "Maplets not supported: ~a" maplet)))
   (let ((rhs-list (mapcar #'expression assignments))
-	(lhs-list (mapcar #'arguments assignments)))
+	(lhs-list (mapcar #'arguments assignments))
+	(maplet-list (mapcar #'maplet? assignments)))
     (let* ((rhs-irvar-list (loop for i from 1 to (length rhs-list)
 				 collect (new-irvar)))
 	   (ir-rhs-types (loop for lhs in lhs-list
@@ -3912,9 +3913,10 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	      (cons result accum))))))
 
 
-(defun ir2c (ir-expr return-type);;this is called on a whole definition with a result
+(defun ir2c (ir-expr return-type &optional resultvar);;this is called on a whole definition with a result
   ;(when (null return-type) (break "ir2c"))
-  (ir2c* ir-expr '|result| (ir2c-type return-type)))
+  (ir2c* ir-expr (or resultvar '|result|) (ir2c-type return-type)));;NSH(2-11-25): added option resultvar to
+                                                                   ;;handle arg-less functions with static output
 
 (defun mk-if-instr (if-cond then-instr else-instr)
   (make-instance 'if-instr
@@ -7814,7 +7816,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1 && i < x->max){y = x;}~%~16T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2 ? 2*x->max: UINT32_MAX;~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);} else {y = copy_~a(x);~%~22Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1 && i < x->max){y = x;}~%~16T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2  ? (i < 2*x->max  ? 2*x->max : i) : UINT32_MAX;~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);} else {y = copy_~a(x);~%~22Tx->count--;};~%~8T~
                      ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;}~%~8T~
                      if (yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string

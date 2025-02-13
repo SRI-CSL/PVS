@@ -5080,6 +5080,10 @@ array_sequences [T: TYPE]: THEORY
 
   aseq_appl(a): [below[length(a)] -> T] = a`seq;
 
+  aseq_add(x : T, (a  | NOT full_aseq?(a))): aseq = 
+     a WITH [`length := a`length + 1,
+              `seq(a`length) |-> x]
+
   % Causes problems with finseq_appl conversion
   % CONVERSION aseq_appl;
 

@@ -113,6 +113,8 @@
   ir-lhs
   ir-rhs)
 
+(defcl ir-upgrade (ir-update))
+
 (defcl ir-const-formal (ir-variable))
 
 (defcl ir-constructor-update (ir-update))  ;;this is for the internal update operation to preserve refcounts
