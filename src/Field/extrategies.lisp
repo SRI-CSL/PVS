@@ -18,8 +18,7 @@
 (defparameter *extrategies* "
 %  Printing and commenting: printf, commentf, quietly,
 %    error-msg, warning-msg
-%  Defining tactics, i.e., local strategies: deftactic
-%  Defining oracles, i.e., trusted proof rules: deforacle 
+%  Defining rules, deftactic, deforacle
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
 %    name-label*, name-replace*, discriminate
 %  Copying formulas: copy*, protect, with-focus-on, with-focus-on@
@@ -34,15 +33,10 @@
 %    if-tcc-sequent, with-tccs
 %  Ground evaluation (PVSio): eval-formula, eval-formula*, eval-expr, eval
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
-%  Strategy debugging (experts only): skip-steps, show-debug-mode, toggle-debug-mode")
+%  Strategy debugging (experts only): skip-steps, show-debug-mode, 
+%     toggle-debug-mode, set-debug-mode, load-files")
 
-(defparameter *extrategies-version* "Extrategies-8.0 (08/15/24)")
-
-(defparameter *extrategies-debug* nil)
-
-(defun print-extra-debug (msg)
-  (when *extrategies-debug*
-    (format t "[*extrategies-debug*~%~a~%*extrategies-debug*]~%" msg)))
+(defparameter *extrategies-version* "Extrategies-8.0 (02/28/25)")
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -478,16 +472,61 @@
     (loop for i from 1 to n
 	  collect (freshname prefix))))
 
+;; (:fnum  <fnum1> ... <fnumn>) --> All the formulas in fnum1 ... fnumn
+;; (:fnum  <fnum1> ... <fnumn>) --> The first formula in fnum1 ... fnumn
+;; (:in <fnum1> ... <fnumn>) --> The intersection of formulas in fnum1 .. fnumn
+;; (:diff <fnum> <fnum-but1> ... <fnum-butn>) --> Formulas in <fnum> but not in <fnum-but1> .. <fnum-butn>
+;; (:from <n> [<m>]) --> Formula numbers from <n> to <m>. If <n> > <m> then forward direction. Otherwise backward direction.
+;;   If <m> is not provided, it assumes the last valid formula number in the direction of the sign of <m>
+
+(defparameter *extra-fnum-symbols* '(:fnums :fnum :in :diff :from))
+
+;; Test if fnums represents an extended formula reference,
+;; i.e., numbers, labels, symbols, lists, all-but symbols, in addition to (:fnums ...) and (:fnum ...)
+(defun extra-fnums-p (fnums)
+  (when fnums
+    (or (fnum-p fnums)
+	(when (consp fnums)
+	  (every #'fnum-p
+		 (if (member (car fnums) (append all-but-symbols *extra-fnum-symbols*))
+		     (cdr fnums)
+		   fnums))))))
+  
 (defun extra-extract-fnums (fnums)
-  (extract-fnums-arg (if (stringp fnums) (makesym fnums) fnums)))
-   
+  (when fnums
+    (if (consp fnums)
+	(cond ((equal (car fnums) :fnums) (extra-extract-fnums (cdr fnums)))
+	      ((equal (car fnums) :fnum) (enlist-it (car (extra-extract-fnums (cdr fnums)))))
+	      ((equal (car fnums) :in)
+	       (if (null (cddr fnums))
+		   (extra-extract-fnums (cadr fnums))
+		 (reduce #'intersection (mapcar #'extra-extract-fnums (cdr fnums)))))
+	      ((equal (car fnums) :diff)
+	       (if (null (cddr fnums))
+		   (extra-extract-fnums (cadr fnums))
+		 (extra-extract-fnums `(:in ,(cadr fnums) (^ ,(cddr fnums))))))
+	      ((equal (car fnums) :from)
+	       (let* ((from (when (numberp (cadr fnums)) (cadr fnums)))
+		      (to   (when (numberp (caddr fnums)) (caddr fnums))))
+		 (when from
+		   (cond (to
+			  (extra-extract-fnums (fromto from to)))
+			 ((> from 0)
+			  (remove-before from (extra-extract-fnums '+)))
+			 ((< from 0)
+			  (remove-before from (extra-extract-fnums '-)))))))
+	      (t (extract-fnums-arg fnums)))
+      (extract-fnums-arg fnums))))
+
 ;; Get a list of formula numbers from fnums
 ;; If enlist? is true and fnums is a list, each member of fnums is
 ;; listed separately.
 (defun extra-get-fnums (fnums &optional enlist?)
-  (if (or (not enlist?) (atom fnums) (member (car fnums) '(^ +^ -^)))
-    (extra-extract-fnums fnums)
-    (mapcar #'extra-extract-fnums fnums)))
+  (if (or (not enlist?) (atom fnums) (and (consp fnums)
+					  (member (car fnums) (append all-but-symbols *extra-fnum-symbols*))))
+      (extra-extract-fnums fnums)
+    (when (consp fnums)
+      (mapcar #'extra-extract-fnums fnums))))
 
 ;; Get a formula number from fnum
 (defun extra-get-fnum (fnum)
@@ -1108,11 +1147,11 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
   (if (is-pairing l) l
     (let ((el (enlist-it l)))
       (when el
-	(cons ':pairing el)))))
+	(cons :pairing el)))))
 
 (defun is-pairing (l)
   (and (listp l)
-       (equal (car l) ':pairing)))
+       (equal (car l) :pairing)))
 
 (defun flatten-labels (label)
   (when label
@@ -1348,9 +1387,9 @@ use.")
       (let* ((binding (car bindings))
 	     (lab     (car binding))
 	     (lopts   (cdr binding)))
-	(cond ((enabled-option-flag ':delete lopts t)
+	(cond ((enabled-option-flag :delete lopts t)
 	       (enabled-delete-hide (cdr bindings) (cons lab dlab) hlab nlab))
-	      ((enabled-option-flag ':hide lopts t)
+	      ((enabled-option-flag :hide lopts t)
 	       (enabled-delete-hide (cdr bindings) dlab (cons lab hlab) nlab))
 	      (lab
 	       (enabled-delete-hide (cdr bindings) dlab hlab (cons lab nlab)))))
@@ -1361,7 +1400,7 @@ use.")
     (let ((bindings (enlist-bindings bindings))
 	  ;; Bind variables to new labels
 	  (vlbs     (loop for b in bindings
-			  for ln = (member ':list (cdr b))
+			  for ln = (member :list (cdr b))
 			  collect
 			  (list (car b)
 				(list 'quote (if ln
@@ -1372,7 +1411,7 @@ use.")
 	  (ftccs    (loop for b in bindings
 			  for opts = (cdr b)
 			  when (when (extra-get-fnums (car opts))
-				 (enabled-option-flag ':tccs opts t))
+				 (enabled-option-flag :tccs opts t))
 			  collect (let* ((tccs (format nil "*~a-TCCS*" (car b)))
 					 (lccs (freshlabel tccs)))
 				    (list (car b) lccs (intern tccs :pvs) (list 'quote lccs)))))
@@ -1403,7 +1442,9 @@ use.")
 			     (delete ,dlab)
 			     (touch (delabel ,nlab))
 			     (touch (delabel ,hlab :hide? t)))))
-	  (dummy     (print-extra-debug step)))
+	  #+extra-debug
+	  (dummy (extra-debug-print step))
+	  )
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1465,12 +1506,12 @@ specified as in WITH-FRESH-LABELS.")
     (let ((bindings (enlist-bindings bindings))
 	  ;; Get list of expressions (same length as bindings)
 	  (exprs    (loop for b in bindings
-			  for full? = (enabled-option-flag ':full (cdr b) t)
+			  for full? = (enabled-option-flag :full (cdr b) t)
 			  collect (extra-get-expr (cadr b) t full?)))
 	  ;; Bind variables to new names (same length as bindings)
 	  (vnms     (loop for b in bindings
 			  for e in exprs
-			  for ln = (member ':list (cdr b))
+			  for ln = (member :list (cdr b))
 			  collect
 			  (list (car b)
 				(cond
@@ -1488,7 +1529,7 @@ specified as in WITH-FRESH-LABELS.")
 	  (nmsexs   (loop for b in bindings
 			  for e in exprs
 			  for v in vnms
-			  for full? = (enabled-option-flag ':full (cdr b) t)
+			  for full? = (enabled-option-flag :full (cdr b) t)
 			  when (or e (and (cadr b) (listp (cadr b))))
 			  append (if e (list (cadr v) e)
 				   (let* ((vs (cadadr v))
@@ -1509,7 +1550,7 @@ specified as in WITH-FRESH-LABELS.")
 			  for e in exprs
 			  when (or e (and (cadr b) (listp (cadr b))))
 			  append
-			  (let* ((opt-tcc (enabled-option-flag ':tccs (cdr b) t))
+			  (let* ((opt-tcc (enabled-option-flag :tccs (cdr b) t))
 				 (va      (format nil "*~a-~a*" (car b) 'tccs))
 				 (la      (format nil "~a-~a" (car b) 'tccs))
 				 (stp     (if (listp opt-tcc) opt-tcc '(extra-tcc-step)))
@@ -1542,7 +1583,8 @@ specified as in WITH-FRESH-LABELS.")
 			(repeat (with-fresh-names-expand__$ ,vnms))
 			(delete ,lbtccs)
 			(touch (delabel ,allbs)))))
-	  (dummy     (print-extra-debug step)))
+	  #+extra-debug
+	  (dummy (extra-debug-print step)))
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1664,44 +1706,60 @@ CAVEAT:Formulas in the sequent my be reorganized after the application of this s
 
 ;;; Defining tactics
 
-(defhelper localtactic__ (nm stratn step)
+(defhelper local_tactic__ (name stratn step)
   (if (check-name stratn)
       step
-    (error-msg "Local strategy ~a is not defined in this proof context" nm))
+    (error-msg "Tactic ~a is not defined in this proof context" name))
   "[Extrategies] Internal strategy." "")
 
-(defrule deftactic (nm arg_or_step &optional step)
-  (let ((stratn  (format nil "local_tactic_~a__" nm))
+(defrule deftactic (name arg_or_step &optional step)
+  (let ((stratn  (format nil "local_tactic_~a__" name))
 	(arg     (when step arg_or_step))
-	(stp     (list 'localtactic__ nm stratn (or step arg_or_step)))
-	(doc1    (format nil "Local tactic ~a defined in the proof context: ~a"
-			 nm (label *ps*)))
-	(doc2    (format nil "Applying local tactic ~a" nm)))
-    (then (sklisp (defstep nm arg stp doc1 doc2)) 
-	  (let ((nname (check-name stratn)))
-	    (unless nname
-	      (name stratn "TRUE")
-	      (delete -1)))))
-  "[Extrategies] Defines a tactic named NM. A tactic is a strategy that is local to the current branch
-of the proof. NM needs to be a valid identifier in PVS. A tactic definition can be either
-(deftactic NM STEP) or (deftactic NM (ARGUMENTS) STEP). For example,
+	(namestr (format nil "~a" name))
+	(stp     `(local_tactic__ ,namestr ,stratn ,(or step arg_or_step)))
+	(pc      (label *ps*))
+	(pcstr   (format nil "~s" pc))
+	(doc1    (format nil "Local tactic ~a defined in the context of the proof branch ~a"
+			 name pc))
+	(doc2    (format nil "Applying local tactic ~a" name))
+	(tactvar (intern (format nil "*tactic-~a*" name) :pvs))
+	(declstr (let ((decl (declaration (context *ps*))))
+		   (format nil "~a.~a" (id (module decl)) (id decl))))
+	(tactval (when (boundp tactvar) (eval tactvar)))
+	(errmsg  (when (and tactval
+			    (string= (car tactval) declstr)    ;; Same proof
+			    (not (string= (cdr tactval) pc)))  ;; Different branch
+		   (format nil "Local tactic ~a already defined in the proof branch ~a"
+			   name (cdr tactval))))
+	(stpq    `(progn (defstep ,name ,arg ,stp ,doc1 ,doc2) (setq ,tactvar (cons ,declstr ,pc)))))
+    (if errmsg
+	(error-msg errmsg)
+      (let ((dummy (eval stpq)))
+	(if (check-name stratn)
+	    (touch)  ;; Touch the proof context so that the tactic does something
+	  (then
+	   (name stratn pcstr)
+	   (delete -1))))))
+  "[Extrategies] Defines a tactic named NAME. A tactic is a strategy that is local to the current branch
+of the proof. NAME needs to be a valid identifier in PVS. A tactic definition can be either
+(deftactic NAME STEP) or (deftactic NAME (ARGUMENTS) STEP). For example,
 
-(deftactic myfirsttactic (then (flatten) (assert) (grind)))
+(deftactic tactic1 (then (flatten) (assert) (grind)))
 
-defines a tactic (myfirsttactic) that sequentially applies (flatten),
+defines a tactic (tactic1) that sequentially applies (flatten),
 (assert), and (grind). Tactics can be parametric, for example
 
-(deftactic mysecondtactic (fnums) (then (flatten) (assert fnums) (grind)))
+(deftactic tactic2 (fnums) (then (flatten) (assert fnums) (grind)))
 
-defines a tactic (mysecondtactic <fnum>), where <fnum> is a parameter provided by the user,
-that sequentially applies (flatten), (assert <fnum>), and (grind). Parameters can be
+defines a tactic (tactic2 FNUMS), where FNUMS is a parameter provided by the user,
+that sequentially applies (flatten), (assert FNUMS), and (grind). Parameters can be
 optional and have a default value, for example,
 
-(deftactic mythirdtactic (&optional (fnums *)) (then (flatten) (assert fnums) (grind)))
+(deftactic tactic3 (&optional (fnums *)) (then (flatten) (assert fnums) (grind)))
 
-defines a tactic that behaves as (myfirsttactic) when used without parameters, e.g.,
-(mythirdtactic), and as (mysecondtactic <fnum>) when used with a parameter, e.g.,
-(mythirdtactic <fnum>)."
+defines a tactic that behaves as (tactic1) when used without parameters, e.g.,
+(tactic3), and as (tactic2 FNUMS) when used with a parameter, e.g.,
+(tactic3 FNUMS)."
   "Defining local tactic ~a")
 
 ;; This function performs a miracle on behalf of the trusted oracle ORCL. 
@@ -1925,7 +1983,7 @@ branch until the first that does nothing, then it applies ELSE-STEP.")
   (then step (case "TRUE"))
   "[Extrategies] Does step and touches the proof context so that try
 and else consider that step does something, even when it doesn't."
-  "Doing ~a and touching the proof context")
+  "Doing ~s and touching the proof context")
 
 (defstrat when (flag &rest steps)
   (if (and flag steps)
@@ -2521,86 +2579,100 @@ TCCs generated during the execution of the command are discharged with the proof
   "Splashing formula in ~a")
 
 ;;; cond-match
-(defstruct (matchcond (:conc-name get-))
+(defstruct (condmatch (:conc-name get-))
   match 
-  (step  '(skip))
+  step
   onums
   comment)
 
-;; split a match condition into condition step fnums (formula numbers) and onums (occurence numbers)
-;; from the following grammar (condition step [:fnums fnums] [:onums onums])
-;; returns a list of 5 elements (condition step fnums onums comment) or nil if there was an error
+;; splits patt-step into pattern step fnums (formula numbers) and onums (occurence numbers)
+;; from the following grammar (pattern step [:fnums fnums] [:onums onums])
+;; pattern can be ELSE
 
-(defun mk-match-cond (condstep matchcond)
-  (if (consp condstep)
-      (cond ((member (car condstep) '(:onums :onum))
-	     (setf (get-onums matchcond) (list (cadr condstep)))
-      	     (mk-match-cond (cddr condstep) matchcond))
-	    ((eq (car condstep) ':comment)
-	     (when (stringp (cadr condstep))
-	       (setf (get-comment matchcond) (cadr condstep))
-	       (mk-match-cond (cddr condstep) matchcond)))
-	    ((get-match matchcond)
-	     (when (consp (car condstep))
-	       (setf (get-step matchcond) (car condstep))
-	       (mk-match-cond (cdr condstep) matchcond)))
+(defun mk-cond-match (patt-step &optional (condmatch (make-condmatch)))
+  (if (consp patt-step)
+      (cond ((member (car patt-step) '(:onums :onum))
+	     (setf (get-onums condmatch) (list (cadr patt-step)))
+      	     (mk-cond-match (cddr patt-step) condmatch))
+	    ((eq (car patt-step) :comment)
+	     (when (stringp (cadr patt-step))
+	       (setf (get-comment condmatch) (cadr patt-step))
+	       (mk-cond-match (cddr patt-step) condmatch)))
+	    ((get-match condmatch)
+	     (when (consp (car patt-step))
+	       (setf (get-step condmatch) (car patt-step))
+	       (mk-cond-match (cdr patt-step) condmatch)))
 	    (t
-	     (setf (get-match matchcond) (car condstep))
-      	     (mk-match-cond (cdr condstep) matchcond)))
-    (when (get-match matchcond)
-      matchcond)))
+	     (setf (get-match condmatch)
+		   (if (eq (car patt-step) 'else) (car patt-step)
+		     (enlist-it (car patt-step))))
+      	     (mk-cond-match (cdr patt-step) condmatch)))
+    (when (get-match condmatch)
+      condmatch)))
 
-(defun match-list (conds fnums else dry-run?)
-  (cond (conds
-	 (let ((matchcond (mk-match-cond (car conds) (make-matchcond))))
-	   (if matchcond
-	       (let* ((step (if (get-comment matchcond)
-				`(then (touch (comment ,(get-comment matchcond))) ,(get-step matchcond))
-			      (get-step matchcond)))
-		      (showstep  (if dry-run?
-				     `(match show ,fnums ,(get-match matchcond) ,@(get-onums matchcond) step ,step)
-				   step)))
-		 (cons 
-		  `(match$ ,fnums ,(get-match matchcond) ,@(get-onums matchcond) step ,showstep)
-		  (match-list (cdr conds) fnums else dry-run?)))
-	     (error "~s is not a valid match-condition step" (car conds)))))
-	((and else (not dry-run?))
-	 (list else))))
+(defun match-list (conds fnums dry-run?)
+  (when conds
+    (let ((condmatch (mk-cond-match (car conds))))
+      (unless condmatch
+	(error "~s is not a valid (PATTERN [STEP] [:ONUMS ONUMS] [:COMMENT COMMENT])" (car conds)))
+      (if (eq (get-match condmatch) 'else)
+	  (let ((else (get-step condmatch)))
+	    (cond ((null else)
+		   (error "Step of the ELSE pattern is missing"))
+		  ((cdr conds)
+		   (error "ELSE must be the last pattern"))
+		  (dry-run?
+		   (list `(skip-steps ,else)))
+		  (t (list else))))
+	(let* ((pre-step (or (get-step condmatch) '(skip)))
+	       (step     (if (get-comment condmatch)
+			     `(then (comment ,(get-comment condmatch)) ,pre-step)
+			   pre-step))
+	       (show     (when dry-run? '(show))))
+	  (cons 
+	   `(match$ ,@show ,@(get-match condmatch) ,@(get-onums condmatch) step ,step ,@fnums)
+	   (match-list (cdr conds) fnums dry-run?)))))))
 
 (push 'cond-match *manip-match-exceptions*)
 
-(defstrat cond-match (&key (fnums *) else dry-run? &rest conds)
+(defstrat cond-match (&key (fnums *) dry-run? &rest conds)
   (when conds
-    (if (listp else)
-	(let ((match-steps
-	       (handler-case
-		   (match-list conds fnums else dry-run?)
-		 (error (condition) (format nil "~a" condition)))))
-	  (if (stringp match-steps)
-	      (error-msg "[cond-match] ~a" match-steps)
-	    (when match-steps
-	      (when dry-run?
-		(printf "cond-match expands to:~%(else* ~{~s~^ ~})" match-steps))
-	      (else* :steps match-steps))))
-      (error-msg "[cond-match] ~s does not appear to be a valid step" else)))
-  "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn])) finds 
-the first PATTERNi that matches formulas in the current sequent and applies its corresponding
-STEPi. By default, STEPi is (SKIP) if none is provided.
+    (let ((match-steps
+	   (handler-case
+	       (match-list conds (when fnums (list :fnums fnums)) dry-run?)
+	     (error (condition) (format nil "~a" condition)))))
+      (if (stringp match-steps)
+	  (warning-msg "[cond-match] ~a" match-steps)
+	(when match-steps
+	  (let ((step
+		 (if (cdr match-steps)
+		     (cons 'else* match-steps)
+		   (car match-steps))))
+	    (then
+	     (when dry-run?
+	       (printf "cond-match expands to:~%~s" step))
+	     step))))))
+  "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn])) 
+finds the first PATTERNi that matches formulas in the current sequent and applies its 
+corresponding STEPi. By default, STEPi is (SKIP) if none is provided. PATTERNi can be
+also a list of patterns, i.e., ((PATTERNi1 ..PATTERim) STEPi) applies STEPi if there
+is a match with any of the PARTERNij. The last pattern, PATTERNn, can be the
+symbol ELSE. In this case, STEPn is applied when none of the patterns matches a formula 
+in FNUMS.
 
 Optionally, the following keys could be provided:
 :fnums FNUMS
-  Matches only the formulas in FNUMS
-:else STEP 
-  Applies STEP if none of the patterns matches a formula in FNUMS
+  Matches only the formulas in FNUMS. By default FNUMS is all formulas
 :dry-run? t 
   Prints expansion of the strategy and instances of successful matchings
 
 Patterns and steps are formatted as in Manip's match (see Manip User's guide). 
-Furthermore, the following options could be added to the pair of PATTERNi and STEPi.
-:onum ONUM
-  Selects the ONUM occurrence in case of multiple successful matchings in FNUMS
-:comment STR
-  Adds the comment STR to the sequent if matches succeeds (STR may contain pattern variables)
+Furthermore, the following options could be added to any pattern/step specification.
+:onums ONUMS
+  Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
+  By default ONUMS is set to 1 occurence
+:comment MSG
+  Adds the comment MSG to the sequent if matches succeeds (MSG may contain pattern variables)
 
 For example, assume
 
@@ -2612,29 +2684,31 @@ For example, assume
 - (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\")))
   results in (comment \"Found N < 10\")
 
-- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onum 2) :fnums +)
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onums 2) :fnums +)
   results in (case \"2 > 0\")
 
-- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onum 2) :fnums 2 :else (grind))
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onums 2) (else (grind)) :fnums 2)
   results in (grind) since there are no 2 occurrences of the pattern in {2}")
 
 (push 'if-match *manip-match-exceptions*)
 
-(defstrat if-match (pattern &optional step else (fnums *) onum dry-run?)
+(defstrat if-match (pattern &optional step else fnums onums dry-run?)
   (let ((match-stp (when step (list step)))
-	(onum-opt  (when onum (list :onum onum)))
-	(else-stp  (when else (list :else else)))
+	(fnums-opt (when fnums (list :fnums fnums)))
+	(onums-opt (when onums (list :onums onums)))
+	(else-stp  (when else (list `(else ,else))))
 	(dry-run   (or dry-run? (and (null step) (null else))))
-	(cond-stp `(cond-match (,pattern ,@match-stp ,@onum-opt) :fnums ,fnums ,@else-stp :dry-run? ,dry-run)))
+	(cond-stp `(cond-match (,pattern ,@match-stp ,@onums-opt) ,@else-stp ,@fnums-opt :dry-run? ,dry-run)))
     cond-stp)
   "[Extrategies] Applies STEP1 if PATTERN matches formulas in the current sequent. Otherwise, applies STEP2. 
 By default STEP1 and STEP2 are (SKIP).
 
 Optionally, the following keys could be provided:
 :fnums FNUMS
-  Matches only the formulas in FNUMS
-:onum ONUM
-  Selects the ONUM occurrence in case of multiple successful matchings in FNUMS
+  Matches only the formulas in FNUMS. By default FNUMS is all formulas
+:onums ONUMS
+  Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
+  By default ONUMS is set to 1 occurence
 :dry-run? t 
   Prints expansion of the strategy and instances of successful matchings. dry-run? is
 by default T when STEP1 and STEP2 are not provided.
@@ -3124,23 +3198,133 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 ;;; Debugging features
 
-(defstep skip-steps (&rest steps)
-  (skip)
-  "[Extrategies] Skips steps. This strategy is used for debugging purposes."
+;; The following parameters are set by appropriate debug functions and strategies
+;; Do not set them unless you know what you are doing
+(defparameter *extrategies-debug* nil)      ;; When T prints debug messages 
+(defparameter *extrategies-debug-frames* 1) ;; Number of frames to be displayed
+
+(defmacro extra-debug-data (data)
+  (when data
+    `(cons (format nil "~a~a" ',(car data)
+		   (if (and (atom ',(car data)) (not (symbolp ',(car data)))) ""
+		     (format nil " = ~s" ,(car data))))
+	   (extra-debug-data ,(cdr data)))))
+
+(defparameter *debug-fail* "
+%%%
+%%% This code requires the feature :extra-debug. To avoid this error at compile time, 
+%%% use the conditional compilation directive #+extra-debug before (extra-debug-print ...) 
+%%% and (extra-debug-println ...).
+%%%
+")
+
+(defmacro extra-debug-print (&rest data)
+  (unless (member :extra-debug *features*)
+    (error *debug-fail*))
+  (let ((tempvar (gensym)))
+    `(when *extrategies-debug*
+       (let ((,tempvar
+	      #+sbcl
+	      (sb-debug:list-backtrace :count *extrategies-debug-frames*)
+	      ))
+	 (format t "~%[*extrategies-debug*~@[~%|-- FRAMES (from TOP)~%~
+                 ~{~s~%~}--|~]~%~{~a~%~}*extrategies-debug*]~%"
+		 ,tempvar
+		 (extra-debug-data ,data))))))
+
+(defmacro extra-debug-println (&rest data)
+  (unless (member :extra-debug *features*)
+    (error *debug-fail*))
+  `(when *extrategies-debug*
+     (format t "~%[*extrategies-debug*] ~{~a~^, ~}~%"
+	     (extra-debug-data ,data))))
+
+(defstep skip-steps (&key touch? &rest steps)
+  (when touch?
+    (touch))
+  "[Extrategies] Skips steps. This strategy is used for debugging purposes. 
+If TOUCH? is t, the strategy touches the proof context (see TOUCH)."
   "Skipping steps")
 
 (defstrat show-debug-mode ()
-  (if (member :strat-debug *features*)
-      (printf "~%Debug mode is currently enabled.~%")
-    (printf "~%Debug mode is currently disabled.~%"))
+  (let ((enabled (member :extra-debug *features*))
+	(debug *extrategies-debug*)
+	(frames *extrategies-debug-frames*))
+    (printf "Global variable *extrategies-debug* is set to ~a.~%Global variable *extrategies-debug-frames* is set to ~a.~%Debug mode ~:[DISABLED~;ENABLED~].~%"
+	    debug frames enabled))
   "[Extrategies] Shows current debug mode.")
 
-(defstrat toggle-debug-mode ()
-  (if (member :strat-debug *features*)
-      (let ((dummy (setq *features* (remove :strat-debug *features*)))
-	    (dummy (load "pvs-strategies")))
-	(printf "~%Debug mode disabled.~%"))
-    (let ((dummy (pushnew :strat-debug *features*))
-	  (dummy (load "pvs-strategies")))
-      (printf "~%Debug mode enabled.~%")))
-  "[Extrategies] Toggles debug mode on the current theory strategies.")
+;; File-dir can be a file, directory, or a list of files/directories.
+;; In case of directories, it loads all .lisp, pvs-attachments, and pvs-strategies files
+;; Return a list of messages
+(defun extra-load-files (&optional file-dir)
+  (when file-dir
+    (let* ((files (enlist-it file-dir))
+	   (file  (car files))
+	   (path  (probe-file file)))
+      (if path
+	  (if (pathname-name path) ;; Is a file
+	      (progn
+		(load path)
+		(cons (format nil "Loaded file ~a" path)
+		      (extra-load-files (cdr files))))
+	    (let* ((pvs-attachments (enlist-it
+				     (probe-file (format nil "~a/pvs-attachments" path))))
+		   (pvs-strategies (enlist-it
+				    (probe-file (format nil "~a/pvs-strategies" path))))
+		   (dirfiles  ;; Is a directory
+		    (append
+		     (remove-if
+		      #'(lambda (p) (equal 0 (position #\. (pathname-name p))))
+		      (directory (format nil "~a/*.lisp" path)))
+		     pvs-attachments pvs-strategies)))
+	      (extra-load-files (append dirfiles (cdr files)))))
+	(cons
+	 (format nil "File ~s not found" file)
+	 (extra-load-files (cdr files)))))))
+
+(defun extra-set-debug-mode (&optional &key disable files frames)
+  (with-output-to-string
+    (msg)
+    (if disable
+	(progn
+	  (setq *features* (delete :extra-debug *features*))
+	  (setq *extrategies-debug* nil))
+      (progn
+	(pushnew :extra-debug *features*)
+	(setq *extrategies-debug* t)))
+    (when (numberp frames)
+      (setq *extrategies-debug-frames* frames))
+    (let ((debug *extrategies-debug*)
+	  (frames *extrategies-debug-frames*))
+      (format msg "Global variable *extrategies-debug* is set to ~a.~%Global variable *extrategies-debug-frames* is set to ~a.~%Debug mode ~:[DISABLED~;ENABLED~].~%"
+	      debug frames (not disable)))
+    (let ((msgs (extra-load-files files)))
+      (format msg "~{~a~%~}" msgs))))
+  
+(defun extra-toggle-debug-mode (&optional files)
+  (extra-set-debug-mode :disable (member :extra-debug *features*) :files files))
+
+(defstrat toggle-debug-mode (&rest files)
+  (let ((msg (extra-toggle-debug-mode files)))
+    (printf "~a" msg))
+  "[Extrategies] Toggles debug mode by adding/removing the symbol :extra-debug to/from *features*
+and loads files or directories specified in FILES. In the case of directories, loads all files 
+*.pvs, pvs-attachments, and pvs-strategies in the directory.")
+
+(defstrat set-debug-mode (&key disable frames &rest files)
+  (let ((msg (extra-set-debug-mode :disable disable :files files :frames frames)))
+    (printf "~a" msg))
+  "[Extrategies] Loads files or directories specified in FILES afer enabling/disabling debug mode.
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
+If the option DISABLE is set to T, debug mode is disabled by removing the symbol :extra-debug 
+from *features*. Otherwise, debug mode is enabled by adding the symbol :extra-debug to *features*. 
+If FRAMES is set to N >= 0, debug information provided by the function extra-debug-print 
+displays N frames.")
+
+(defstrat load-files (&rest files)
+  (when files
+    (let ((msgs (extra-load-files files)))
+      (printf "~{~a%~}" msgs)))
+  "[Extrategies] Loads files or directories specified in FILES. In the case of directories, load 
+all files *.pvs, pvs-attachments, and pvs-strategies in the directory.")

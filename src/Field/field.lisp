@@ -351,16 +351,17 @@ preserves labels of FNUM when labels? is t."
 	 ((!ngf fn :tccs)
 	  (!ngl)
 	  (!ngo))
-	 (protect
-	  !ngf 
-	  (then@
-	   (if label
-	       (relabel (!ngo label) !ngf :push? nil)
-	     (relabel !ngo !ngf))
-	   (wrap-manip !ngo (mult-by !ngo "-1" :sign -) :tcc-step tcc-step)
-	   (real-props !ngo :simple? t)
-	   (finalize auto-step))
-	  !ngl hide?))
+	 (quietly
+	  (protect
+	   !ngf 
+	   (then@
+	    (if label
+		(relabel (!ngo label) !ngf :push? nil)
+	      (relabel !ngo !ngf))
+	    (wrap-manip !ngo (mult-by !ngo "-1" :sign -) :tcc-step tcc-step)
+	    (real-props !ngo :simple? t)
+	    (finalize auto-step))
+	   !ngl hide?)))
       (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Negates both sides of the relational formula FNUM. If HIDE? is t,
 the original formula is hidden.  The new formula is labeled as the original
@@ -464,10 +465,11 @@ expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT
 	   (with-fresh-labels
 	    ((!ad1 f1 :tccs :hide? hide?)
 	     (!ad2 f2 :tccs :hide? hide?))
-	    (branch (discriminate (case str) labad)
-		    ((then (real-props labad :simple? t) (finalize auto-step))
-		     (finalize (assert (!ad1 !ad2 labad)))
-		     (finalize tcc-step)))))
+	    (quietly
+	     (branch (discriminate (case str) labad)
+		     ((then (real-props labad :simple? t) (finalize auto-step))
+		      (finalize (assert (!ad1 !ad2 labad)))
+		      (finalize tcc-step))))))
        (error-msg "No arithmetic relational formulas in ~a" formsg))))
   "[Field] Adds relational formulas FNUM1 and FNUM2. If FNUM2 is nil, adds FNUM to itself.
 If HIDE? is t, the original formulas are hidden.  The new formula is labeled as LABEL,
@@ -496,13 +498,14 @@ branch using the proof command AUTO-STEP."
 	     (!sb2 f2 :tccs)
 	     (!nsb2 :delete)
 	     (!nlb))
-	    (protect
-	     !sb2
-	     (then (then@ (neg-formula !sb2 :label !nsb2 :tcc-step tcc-step)
-			  (add-formulas !sb1 !nsb2 :hide? nil :label labsb))
-		   (when hide? (hide !sb1)))
-	     !nlb
-	     hide?))
+	    (quietly
+	     (protect
+	      !sb2
+	      (then (then@ (neg-formula !sb2 :label !nsb2 :tcc-step tcc-step)
+			   (add-formulas !sb1 !nsb2 :hide? nil :label labsb))
+		    (when hide? (hide !sb1)))
+	      !nlb
+	      hide?)))
 	 (error-msg "No arithmetic relational formulas in (~a ~a)" fnum1 fnum2)))))
   "[Field] Subtracts relational formulas FNUM1 and FNUM2. If HIDE? is t,
 the original formulas are hidden.  The new formula is labeled as LABEL,
@@ -551,13 +554,14 @@ with the proof command TCC-STEP."
 	   (!cbt :delete)
 	   (!cbdt :delete)
 	   (!ndc :hide))
-	  (tccs-formula !cby :label !cbt)
-	  (branch (then@ (tccs-expression e :label !cbdt :tcc-step tcc-step)
-			 (name-distrib (!cby !cbt !cbdt) :prefix "NDC" :label !ndc :tcc-step tcc-step)
-			 (name-label div e :fnums (^ !ndc) :label !cbd :tcc-step tcc-step)
-			 (replace !ndc !cbd))
-		  ((cancel-by__$ !cby !cbd div tcc-step auto-step)
-		   (delete !cby)))
+	  (quietly
+	   (tccs-formula !cby :label !cbt)
+	   (branch (then@ (tccs-expression e :label !cbdt :tcc-step tcc-step)
+			  (name-distrib (!cby !cbt !cbdt) :prefix "NDC" :label !ndc :tcc-step tcc-step)
+			  (name-label div e :fnums (^ !ndc) :label !cbd :tcc-step tcc-step)
+			  (replace !ndc !cbd))
+		   ((cancel-by__$ !cby !cbd div tcc-step auto-step)
+		    (delete !cby))))
 	  (replaces !ndc :but !ndc :dir rl :hide? nil)))
       (error-msg "No suitable expression in ~a" fnum)))
   "[Field] Cancels the common expression EXPR in the relational formula FNUM.
@@ -618,15 +622,16 @@ current branch using the proof command AUTO-STEP."
     (if rel
 	(with-fresh-labels
 	 ((!cf fn))
-	 (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
-	 (let ((form (extra-get-formula !cf))
-	       (l1   (get-mults-monom nil (args1 form)))
-	       (l2   (get-mults-monom nil (args2 form)))
-	       (l    (inter-polynom l1 l2 nil))
-	       (cb   (normal-mult l)))
-	   (if cb
-	       (cancel-by !cf cb :tcc-step tcc-step)
-	     (finalize (grind-reals :dontdistrib !cf)))))
+	 (quietly
+	  (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
+	  (let ((form (extra-get-formula !cf))
+		(l1   (get-mults-monom nil (args1 form)))
+		(l2   (get-mults-monom nil (args2 form)))
+		(l    (inter-polynom l1 l2 nil))
+		(cb   (normal-mult l)))
+	    (if cb
+		(cancel-by !cf cb :tcc-step tcc-step)
+	      (finalize (grind-reals :dontdistrib !cf))))))
       (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Factorizes common terms in FNUM and then cancels them.
 TCCs generated during the execution of the command are discharged 
@@ -702,9 +707,10 @@ with the proof command TCC-STEP."
 	 ((!fd fn :tccs)
 	  (!ndf)
 	  (!x))
-	 (branch (name-distrib (!fd *!fd-tccs*) :prefix "NDF" :label !ndf :tcc-step tcc-step)
-		 ((field__$ !fd !ndf !x theories cancel? tcc-step)
-		  (delete !fd))))
+	 (quietly
+	  (branch (name-distrib (!fd *!fd-tccs*) :prefix "NDF" :label !ndf :tcc-step tcc-step)
+		  ((field__$ !fd !ndf !x theories cancel? tcc-step)
+		   (delete !fd)))))
       (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Removes divisions and apply simplification heuristics to the relational
 formula on real numbers FNUM. It autorewrites with THEORIES when possible. If CANCEL?
@@ -713,10 +719,11 @@ TCCs generated during the execution of the command are discharged with the proof
   "Removing divisions and simplifying formula ~a with field")
 
 (defstep sq-simp (&optional (fnum *) (auto-step (assert)))  
-  (then (rewrite* ("sq_0" "sq_1" "sq_abs" "sq_abs_neg" "sq_neg" "sq_times" "sq_plus" "sq_minus"
-		   "sq_div" "sqrt_0" "sqrt_1" "sqrt_def" "sqrt_square"
-		   "sqrt_sq" "sq_sqrt" "sqrt_times" "sqrt_div" "sqrt_sq_abs") fnum)
-	(finalize auto-step))
+  (quietly
+   (rewrite* ("sq_0" "sq_1" "sq_abs" "sq_abs_neg" "sq_neg" "sq_times" "sq_plus" "sq_minus"
+	      "sq_div" "sqrt_0" "sqrt_1" "sqrt_def" "sqrt_square"
+	      "sqrt_sq" "sq_sqrt" "sqrt_times" "sqrt_div" "sqrt_sq_abs") fnum)
+   (finalize auto-step))
   "[Field] Simplifies FNUM with lemmas from sq and sqrt. At the end, the strategy tries to 
 discharge the current branch using the proof command AUTO-STEP."
   "Simplifying sq and sqrt in ~a")
@@ -737,22 +744,23 @@ discharge the current branch using the proof command AUTO-STEP."
 	 ((!bsf fn :tccs)
 	  (!bsp)
 	  (!bsl))
-	 (branch
-	  (discriminate
-	   (wrap-manip
-	    !bsf
-	    (transform-both !bsf str :swap swap?)
-	    :tcc-step (skip)
-	    :labels? nil)
-	   !bsl)
-	  ((else (finalize auto-step) (delabel !bsf hide?))
-	   (if iseq
-	       (then (hide-all-but (!bsf 1))
-		     (replaces !bsf)
-		     (assert))
-	     (finalize auto-step))
-	   (then (delabel !bsf hide?) (finalize tcc-step))))
-	 (relabel lbs !bsl :push? nil))
+	 (quietly
+	  (branch
+	   (discriminate
+	    (wrap-manip
+	     !bsf
+	     (transform-both !bsf str :swap swap?)
+	     :tcc-step (skip)
+	     :labels? nil)
+	    !bsl)
+	   ((else (finalize auto-step) (delabel !bsf hide?))
+	    (if iseq
+		(then (hide-all-but (!bsf 1))
+		      (replaces !bsf)
+		      (assert))
+	      (finalize auto-step))
+	    (then (delabel !bsf hide?) (finalize tcc-step))))
+	  (relabel lbs !bsl :push? nil)))
       (error-msg "No arithmetic relational formula in ~a" fnum)))
   "[Field] Applies function F to both sides of the relational
 expression in FNUM. If HIDE? is t, the original formula is hidden. The
