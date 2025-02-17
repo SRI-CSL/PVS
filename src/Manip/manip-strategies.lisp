@@ -295,7 +295,7 @@
   "[Manip] Try commutatively swapping two terms and replacing.  Set INFIX?
 to nil for prefix applications.  Commutativity proof for operator will
 be tried automatically."
-  "~%Swapping terms in a commutative expression and replacing")
+  "Swapping terms in a commutative expression and replacing")
 
 ;;; Construct swapped expression from commuted terms and wrap
 ;;; with parentheses if necessary.
@@ -345,7 +345,7 @@ be tried automatically."
   "[Manip] Try commutatively swapping the two arguments of the function
 application found at EXPR-LOC.  Commutativity proof for operator will
 be tried automatically."
-  "~%Swapping terms in a commutative expression and replacing")
+  "Swapping terms in a commutative expression and replacing")
 
 (defmethod manip-commutativity-lemmas (term-class) ;; for unsupported types
   nil)
@@ -372,7 +372,7 @@ be tried automatically."
   "[Manip] Try associatively regrouping three terms toward SIDE (L or R)
 and replacing.  Set INFIX? to nil for prefix applications.  Associativity
 proof for operator will be tried automatically."
-  "~%Regrouping terms in an associative expression and replacing")
+  "Regrouping terms in an associative expression and replacing")
 
 (defstep group! (expr-loc &optional (side l))
   (let ((eq-step
@@ -393,7 +393,7 @@ proof for operator will be tried automatically."
   "[Manip] Try associatively regrouping the three subexpressions of the
 function applications found at EXPR-LOC toward SIDE (L or R).  Associativity
 proof for operator will be tried automatically."
-  "~%Regrouping terms in an associative expression and replacing")
+  "Regrouping terms in an associative expression and replacing")
 
 (defun group-equate-step (op infix? old-expr new-expr expr-classes)
   (let* ((assoc-lemmas (apply #'manip-associativity-lemmas expr-classes))
@@ -453,7 +453,7 @@ to the scheme indicated by SIDE:
 so as to lift and move center term to the left or right.  Set INFIX? to
 nil for prefix applications.  Justification proof for operator will be
 tried automatically."
-  "~%Regrouping and swapping terms in an associative expression and replacing")
+  "Regrouping and swapping terms in an associative expression and replacing")
 
 (defstep swap-group! (expr-loc &optional (side l))
   (let ((eq-step
@@ -477,7 +477,7 @@ by SIDE:
   L: x op (y op z) ==> y op (x op z)  R: (x op y) op z ==> (x op z) op y
 so as to lift and move center term to the left or right.  Justification
 proof for operator will be tried automatically."
-  "~%Regrouping and swapping terms in an associative expression and replacing")
+  "Regrouping and swapping terms in an associative expression and replacing")
 
 (defun swap-group-equate-step (op infix? old-expr new-expr expr-classes side)
   (let* ((assoc-lemmas (apply #'manip-comm-assoc-lemmas
@@ -513,7 +513,7 @@ proof for operator will be tried automatically."
     swap-step)
   "[Manip] Swap the two sides of relational formulas and reverse the direction
 of the relational operators."
-  "~%Reversing the order of the relations in formulas ~A")
+  "Reversing the order of the relations in formulas ~A")
 
 ;; Last modified by MM and CM (April 10, 2020)
 (defhelper swap-rel-one (fnum)
@@ -532,7 +532,7 @@ of the relational operators."
 	(steplist (list main-branch just-step)))
     (spread case-step steplist))
   "[Manip] Reverse order of a relational formula."
-  "~%Reversing the order of the relation in formula ~A")
+  "Reversing the order of the relation in formula ~A")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -548,7 +548,7 @@ of the relational operators."
 RHS in FNUMS.  Proof of the justification step can be tried or deferred.
 Use TRY-JUST to supply the rule for the justification proof or T for
 the default rule (GRIND)."
-  "~%Equating two expressions and replacing")
+  "Equating two expressions and replacing")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -567,7 +567,7 @@ to 0).  Symbols for SIGN are (+ - 0 0+ 0- +-), which have meanings positive,
 negative, zero, nonnegative, nonpositive, and nonzero.  Proof of the
 justification step can be tried or deferred.  Use TRY-JUST to supply
 a step for the justification proof or T for the default rule (GRIND)."
-  "~%Claiming the selected term has the designated sign")
+  "Claiming the selected term has the designated sign")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -586,7 +586,7 @@ a step for the justification proof or T for the default rule (GRIND)."
 If TERM is known to be positive or negative, use + or - as the SIGN
 argument.  Otherwise, use *, which introduces a conditional expression
 to handle the two cases."
-  "~%Multiplying both sides of selected formulas by given term")
+  "Multiplying both sides of selected formulas by given term")
 
 (defstep div-by (fnums term &optional (sign +))
   (let ((f-nums (get-relations (extract-fnums-arg fnums)))
@@ -603,7 +603,7 @@ to handle the two cases."
 If TERM is known to be positive or negative, use + or - as the SIGN
 argument.  Otherwise, use *, which introduces a conditional expression
 to handle the two cases."
-  "~%Dividing both sides of selected formulas by given term")
+  "Dividing both sides of selected formulas by given term")
 
 (defhelper mult/div-by (op term fnum sign)
   (let ((formula (manip-get-formula fnum))
@@ -615,7 +615,7 @@ to handle the two cases."
 			    op term fnum sign formula relation)))
     mult/div-step)
   "[Manip] Multiply/divide both sides of a relation by a term."
-  "~%Multiplying/dividing both sides of formula by given term")
+  "Multiplying/dividing both sides of formula by given term")
 
 
 (defmethod mult/div-by-steps         ;; default for unsupported types
@@ -712,7 +712,7 @@ works if FNUM is a strict consequent inequality.  Simplification using
 (ASSERT) is applied after splitting.  The equality may be optionally
 used for replacement by supplying  the direction LR or RL for the
 REPLACE? argument."
-  "~%Splitting off the equality case from formula ~A")
+  "Splitting off the equality case from formula ~A")
 
 (defhelper split-ineq-one (fnum formula replace?)
   (let ((rel-op (id (operator formula)))
@@ -723,7 +723,7 @@ REPLACE? argument."
 		     `(assert))))
     (branch case-step (eq-step (assert))))
   "[Manip] Split an inequality based on equal-to case."
-  "~%Splitting off the equality case from formula ~A")
+  "Splitting off the equality case from formula ~A")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -749,7 +749,7 @@ by exchanging between antecedents and consequents.  Conjunctions and
 disjunctions of inequalities are also accepted, causing each conjunct
 or disjunct in the form of an inequality to be negated and moved.
 If HIDE? is set to NIL, the original formulas are left intact."
-  "~%Negating and moving the inequalities in formulas ~A")
+  "Negating and moving the inequalities in formulas ~A")
 
 (defhelper flip-ineq-one (flabel orig-fnum hide?)
   (let ((fnum (car (map-fnums-arg flabel)))
@@ -766,7 +766,7 @@ If HIDE? is set to NIL, the original formulas are left intact."
 			   orig-fnum))))
     (if new-formula (spread case-step steplist) err-step))
   "[Manip] Negate and move inequality formulas."
-  "~%Negating and moving the inequalities in formula ~A")
+  "Negating and moving the inequalities in formula ~A")
 
 (defun flip-ineq-formula (formula)
   (cond ((typep formula 'infix-conjunction)
@@ -811,7 +811,7 @@ If HIDE? is set to NIL, the original formulas are left intact."
 formulas with full parenthesization.  This strategy overlaps the built-in
 feature of PVS (since 3.0), M-x pvs-set-proof-parens (also available from
 the PVS menu)."
-  "~%")
+  "Displaying formulas with full parenthesization")
 
 ;; Create a fully parenthesized version of a formula by copying all
 ;; the relevant object instances in the parse tree and turning on
@@ -855,7 +855,7 @@ the PVS menu)."
     move-step)
   "[Manip] Move additive terms numbered TERM-NUMS in relational formula FNUM
 from SIDE (L or R) to the other side, adding or substracting as needed."
-  "~%Moving additive terms to the other side of formula ~A")
+  "Moving additive terms to the other side of formula ~A")
 
 (defhelper move-terms-one (rel fnum formula side term-nums)
   (let ((left  (collect-additive-terms '+ (args1 formula)))
@@ -872,7 +872,7 @@ from SIDE (L or R) to the other side, adding or substracting as needed."
 		       (gen-manip-response 'move-terms "No suitable terms."))))
     move-step)
   "[Manip] Move additive terms to the other side of a relation."
-  "~%Moving additive terms to the other side of relation")
+  "Moving additive terms to the other side of relation")
 
 (defhelper move-terms-two (rel fnum formula side from-list to-list tnums
 			   value-class zero &optional append-left)
@@ -903,7 +903,7 @@ from SIDE (L or R) to the other side, adding or substracting as needed."
 		     ,just-step)))
     (spread move-step step-list))
   "[Manip] Move additive terms to the other side of a relation."
-  "~%Moving additive terms to the other side of relation")
+  "Moving additive terms to the other side of relation")
 
 ;;;;;;;;;;;;;
 
@@ -926,7 +926,7 @@ from SIDE (L or R) to the other side, adding or substracting as needed."
 formula FNUM.  Those terms cited in TERM-NUMS will be moved to the END in
 the order listed.  The remaining factors will be placed at the other END
 in their original order."
-  "~%Permuting additive terms in formula ~A")
+  "Permuting additive terms in formula ~A")
 
 (defstep permute-terms! (expr-loc &optional (term-nums 1) (end r))
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -945,7 +945,7 @@ in their original order."
   "[Manip] Reorder additive terms found in expression at EXPR-LOC.  Those
 terms cited in TERM-NUMS will be moved to the END in the order listed.  The
 remaining factors will be placed at the other END in their original order."
-  "~%Permuting additive terms in selected expression")
+  "Permuting additive terms in selected expression")
 
 (defhelper permute-terms-one (expr-descriptor term-nums end)
   (let ((expr-obj (ee-pvs-obj expr-descriptor))
@@ -961,7 +961,7 @@ remaining factors will be placed at the other END in their original order."
 					      "No suitable terms."))))
     permute-step)
   "[Manip] Permute additive terms on one side of a relation."
-  "~%Permuting additive terms in formula ~A")
+  "Permuting additive terms in formula ~A")
 
 (defun permute-terms-step (fnum expr-obj terms tnums end value-class zero)
   (let* ((in-terms (loop for n in tnums
@@ -1001,7 +1001,7 @@ remaining factors will be placed at the other END in their original order."
   "[Manip] Eliminate unary minus functions where possible in additive
 expressions.  Convert expressions of the form x +/- -y to the form
 x -/+ y.  Also convert -x + y to y - x."
-  "~%Eliminating unary minus functions from formula ~A")
+  "Eliminating unary minus functions from formula ~A")
 
 (defstep elim-unary! (expr-loc)
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -1020,7 +1020,7 @@ x -/+ y.  Also convert -x + y to y - x."
   "[Manip] Eliminate unary minus functions where possible in additive
 expressions.  Convert expressions of the form x +/- -y to the form
 x -/+ y.  Also convert -x + y to y - x."
-  "~%Eliminating unary minus functions from selected expression")
+  "Eliminating unary minus functions from selected expression")
 
 (defhelper elim-unary-one (fnum expr)
   (let ((value-class (manip-class-ex expr))
@@ -1039,7 +1039,7 @@ x -/+ y.  Also convert -x + y to y - x."
     elim-steps)
   "[Manip] Eliminate unary minus functions where possible in additive
 expressions."
-  "~%Eliminating unary minus functions from formula ~A")
+  "Eliminating unary minus functions from formula ~A")
 
 ;; Rearrange the terms if possible to eliminate all unary negations.
 ;; Lift the unary operators up and flip the binary operators that
@@ -1082,7 +1082,7 @@ expressions."
     move-step)
   "Move all additive terms except that numbered TERM-NUM in relational
 formula FNUM from SIDE (L or R) to the other side."
-  "~%Moving all but one additive terms to the other side of formula ~A")
+  "Moving all but one additive terms to the other side of formula ~A")
 
 (defstep isolate-replace (fnum side term-num &optional (targets *))
   (let ((fnumber (car (extract-fnums-arg fnum)))
@@ -1099,7 +1099,7 @@ formula FNUM from SIDE (L or R) to the other side."
     move-step)
   "[Manip] Isolate the term TERM-NUM on SIDE (L or R) of relational formula FNUM,
 then replace and hide it.  Use TARGETS to restrict scope of replacement."
-  "~%Isolating and replacing an additive term of formula ~A")
+  "Isolating and replacing an additive term of formula ~A")
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -1125,7 +1125,7 @@ a case split so the rules will apply.  If SIGN is `+' or `-', terms
 are claimed to be positive or negative.  If SIGN is `0+' or `0-', terms
 are nonnegative or nonpositive.  If SIGN is `*', the terms  are assumed
 to be arbitrary reals and a three-way case split is used."
-  "~%Canceling terms from both sides of selected formulas")
+  "Canceling terms from both sides of selected formulas")
 
 ;; Both-sides cancellation (x op y R x op z).
 
@@ -1155,7 +1155,7 @@ to be arbitrary reals and a three-way case split is used."
 				   ,left-term ,op ,relation ,right-term)))))
     cancel-step)
   "[Manip] Try canceling terms in a relational formula."
-  "~%Canceling terms from both sides of formula ~A")
+  "Canceling terms from both sides of formula ~A")
 
 ;; The simplest case tries to apply rewrite rules without considering the
 ;; polarity of the cancellation term.  If expressions are involved, name
@@ -1185,7 +1185,7 @@ to be arbitrary reals and a three-way case split is used."
 	       ,(gen-manip-response 'cancel "No cancellation rules apply."))))
     cancel-step)
   "[Manip] Try canceling terms in a relational formula."
-  "~%Canceling terms from both sides of formula ~A")
+  "Canceling terms from both sides of formula ~A")
 
 ;; Basic cancellation proceeds by introducing the new relation, name
 ;; replacing expressions if necessary, then simplifying with rewrite
@@ -1211,7 +1211,7 @@ to be arbitrary reals and a three-way case split is used."
 	(step-list `((replace -1 :hide? t) ,just-step)))
     (spread case-step step-list))
   "[Manip] Try canceling terms in a relational formula."
-  "~%Canceling terms from both sides of formula ~A")
+  "Canceling terms from both sides of formula ~A")
 
 ;; For cancellation terms whose type doesn't satisfy the rewrite rules,
 ;; set up a suitable case split on the term's polarity.
@@ -1252,7 +1252,7 @@ to be arbitrary reals and a three-way case split is used."
 	(msg-step (gen-manip-response 'cancel "No cancellation rules apply.")))
     (try case-step (skip) msg-step))
   "[Manip] Try canceling terms in a relational formula."
-  "~%Canceling terms from both sides of formula ~A")
+  "Canceling terms from both sides of formula ~A")
 
 ;;; Generate list of applicable lemma names based on relation and
 ;;; top-level operator.
@@ -1303,7 +1303,7 @@ select L or R end of a chain of associative terms for cancellation.  The
 `-' operator is considered equivalent to `+' for this purpose.  On the
 other hand, only the outer-most application in a chain of `/'-separated
 terms is recognized.  SIGN may be used to indicate polarity as in cancel."
-  "~%Canceling terms from both sides of selected formulas")
+  "Canceling terms from both sides of selected formulas")
 
 (defhelper cancel-lr-one (fnum end sign try-just)
   (let ((formula (manip-get-formula fnum))
@@ -1340,7 +1340,7 @@ terms is recognized.  SIGN may be used to indicate polarity as in cancel."
 			 (try-justification 'cancel-terms try-just))))
     (spread eq-step step-list))
   "[Manip] Try canceling terms in a relational formula."
-  "~%Canceling terms from both sides of formula ~A")
+  "Canceling terms from both sides of formula ~A")
 
 
 
@@ -1358,7 +1358,7 @@ terms is recognized.  SIGN may be used to indicate polarity as in cancel."
 The matching terms can appear in any relative position within their
 containing expressions.  Also works for a term and its negation on the
 same side of a relation."
-  "~%Canceling additive terms from selected formulas")
+  "Canceling additive terms from selected formulas")
 
 (defhelper cancel-add-one (fnum)
   (let ((formula (manip-get-formula fnum))
@@ -1376,7 +1376,7 @@ same side of a relation."
 	      "No terms can be canceled in selected formula."))))
     cancel-steps)
   "[Manip] Try canceling additive terms in a relational formula."
-  "~%Canceling additive terms in formula ~A")
+  "Canceling additive terms in formula ~A")
 
 (defun cancel-add-steps (fnum formula value-class zero rel new-terms)
   (let* ((final-sides
@@ -1409,7 +1409,7 @@ same side of a relation."
     cancel-step)
   "[Manip] Cancel additive terms from selected expressions.  The matching terms
 can appear in any relative position within their containing expressions."
-  "~%Canceling additive terms from selected expressions")
+  "Canceling additive terms from selected expressions")
 
 (defun cancel-add-two (fnum expr)
   (let* ((name-step `(name-replace ,(name-gensym "cancel_add")
@@ -1487,7 +1487,7 @@ the expression found on SIDE (L or R) of relational formula FNUM.
 Performs the following operations using these designated symbols:
    z+      +z      -z      1*      *1      /1
    0 + x   x + 0   x - 0   1 * x   x * 1   x / 1"
-  "~%Applying identity operation to rewrite selected expression")
+  "Applying identity operation to rewrite selected expression")
 
 (defhelper op-ident-one (fnumber formula side operation)
   (let ((relation (id (operator formula)))
@@ -1507,7 +1507,7 @@ Performs the following operations using these designated symbols:
 		    (then (assert) (assert))))))
     rewrite-step)
   "[Manip] Apply operator identity to rewrite expression."
-  "~%Applying identity operation to rewrite selected expression")
+  "Applying identity operation to rewrite selected expression")
 
 (defstep op-ident! (expr-loc &optional (operation *1))
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -1524,7 +1524,7 @@ the expression found at EXPR-LOC.  Currently performs the following
 operations using these designated symbols:
    z+      +z      -z      1*      *1      /1
    0 + x   x + 0   x - 0   1 * x   x * 1   x / 1"
-  "~%Applying identity operation to rewrite selected expression")
+  "Applying identity operation to rewrite selected expression")
 
 (defhelper op-ident!-one (expr-descriptor operation)
   (let ((old-expr (ee-pvs-obj expr-descriptor))
@@ -1537,7 +1537,7 @@ operations using these designated symbols:
 		    (assert 1)))))
     rewrite-step)
   "[Manip] Apply operator identity to rewrite expression."
-  "~%Applying identity operation to rewrite selected expression")
+  "Applying identity operation to rewrite selected expression")
 
 (defun op-ident-expr (expr operation)
   (case operation
@@ -1572,7 +1572,7 @@ both sides of a formula by the respective divisors of each side and
 then simplify.  Checks for negative real divisors and invokes suitable
 lemmas as needed.  Applies cross multiplication recursively until all
 outermost division operators are gone."
-  "~%Multiplying both sides of selected formulas by LHS/RHS divisor(s)")
+  "Multiplying both sides of selected formulas by LHS/RHS divisor(s)")
 
 (defhelper cross-mult-one (fnum pre-rewrites &optional (depth-limit 10))
   (let ((formula (manip-get-formula fnum))
@@ -1592,7 +1592,7 @@ outermost division operators are gone."
 		(t '(skip)))))
     mult-step)
   "[Manip] Multiply both sides of a relation by LHS/RHS divisor(s)."
-  "~%Multiplying both sides of ~A by LHS/RHS divisor(s)")
+  "Multiplying both sides of ~A by LHS/RHS divisor(s)")
 
 (defhelper cross-mult-lr (fnum formula left-side value-class)
   (let ((relation (id (operator formula)))
@@ -1603,7 +1603,7 @@ outermost division operators are gone."
 			  left-side side-obj other-obj)))
     lemma-step)
   "[Manip] Multiply both sides of a relation by LHS/RHS divisor(s)."
-  "~%Multiplying both sides of ~A by LHS/RHS divisor")
+  "Multiplying both sides of ~A by LHS/RHS divisor")
 
 ;;;;;;;;;;;;;
 
@@ -1656,7 +1656,7 @@ outermost division operators are gone."
 of a formula the respective subtrahend of each side and then simplify.
 Applies cross addition recursively until all outermost subtraction
 operators are gone."
-  "~%Adding LHS/RHS subtrahend(s) to both sides of selected formulas")
+  "Adding LHS/RHS subtrahend(s) to both sides of selected formulas")
 
 (defhelper cross-add-one (fnum &optional (depth-limit 10))
   (let ((formula (manip-get-formula fnum))
@@ -1672,7 +1672,7 @@ operators are gone."
 		(t '(skip)))))
     add-step)
   "[Manip] Add LHS/RHS subtrahend(s) to both sides of a relation."
-  "~%Adding LHS/RHS subtrahend(s) to both sides of formula ~A")
+  "Adding LHS/RHS subtrahend(s) to both sides of formula ~A")
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -1685,7 +1685,7 @@ given by TERM-NUMS for the expression found on SIDE (L or R) of each
 relational formula in FNUMS, then rearrange.  ID? = T indicates the factor
 made of summed terms should be embedded in a call to the identity function
 to prevent later distribution."
-  "~%Extracting common factors from additive terms of selected expressions")
+  "Extracting common factors from additive terms of selected expressions")
 
 (defstep factor! (expr-loc &optional (term-nums *) (id? nil))
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -1703,7 +1703,7 @@ to prevent later distribution."
 given by TERM-NUMS for the expressions found at EXPR-LOC, then rearrange.
 ID? = T indicates the factor made of summed terms should be embedded in
 a call to the identity function to prevent later distribution."
-  "~%Extracting common factors from additive terms of selected expressions")
+  "Extracting common factors from additive terms of selected expressions")
 
 (defhelper factor-one (expr-descriptor term-nums id?)
   (let ((expr-obj (ee-pvs-obj expr-descriptor))
@@ -1721,7 +1721,7 @@ a call to the identity function to prevent later distribution."
 	       (t '(skip)))))
     extract-step)
   "[Manip] Extract common factors from additive terms."
-  "~%Extracting common factors from additive terms of selected expression")
+  "Extracting common factors from additive terms of selected expression")
 
 (defun factor-terms (old-expr fnum value-class full-terms tnums id?)
   (let* ((term-mask (mapcar #'(lambda (n) (member (1+ n) tnums))
@@ -1817,7 +1817,7 @@ a call to the identity function to prevent later distribution."
 of additive subexpressions.  Apply this action to the top-level additive
 terms given by TERM-NUMS for the expression found on SIDE (L or R) of each
 relational formula in FNUMS."
-  "~%Distributing multiplication over additive terms of selected expressions")
+  "Distributing multiplication over additive terms of selected expressions")
 
 (defstep distrib! (expr-loc)
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -1834,7 +1834,7 @@ relational formula in FNUMS."
   "[Manip] Distribute multiplication operators over factors having the
 form of additive subexpressions.  Apply this action to the multiplicative
 expression found at EXPR-LOC."
-  "~%Distributing multiplication over additive terms of selected expressions")
+  "Distributing multiplication over additive terms of selected expressions")
 
 (defhelper distrib-one (expr-descriptor)
   (let ((expr-obj (ee-pvs-obj expr-descriptor))
@@ -1847,7 +1847,7 @@ expression found at EXPR-LOC."
 	       (t '(skip)))))
     distrib-step)
   "[Manip] Distribute multiplication operators over additive factors."
-  "~%Distributing multiplication over additive terms of selected expressions")
+  "Distributing multiplication over additive terms of selected expressions")
 
 
 (defun distrib-mult-step (expr-obj fnum)
@@ -1890,7 +1890,7 @@ sides of formula 3 by 2 then adds 1.  The flag SWAP is used to indicate
 when the terms should be swapped (e.g., when multiplying by a negative
 number).  Proof of the justification step can be tried by supplying
 a proof step for TRY-JUST."
-  "~%Applying transform to both sides of formula ~A and simplifying")
+  "Applying transform to both sides of formula ~A and simplifying")
 
 (defhelper transform-both-one (fnumber formula transform swap try-just)
   (let ((operator (textify (operator formula)))
@@ -1907,7 +1907,7 @@ a proof step for TRY-JUST."
 	(steplist (list '(skip) (try-justification 'transform-both try-just))))
     (spread case-step steplist))
   "[Manip] Apply TRANSFORM to both sides of relational formula FNUM."
-  "~%Applying transform to both sides of formula ~A and simplifying")
+  "Applying transform to both sides of formula ~A and simplifying")
 
 
 ;;; ============== Strategies for manipulating products ==============
@@ -1920,7 +1920,7 @@ for the expression found on SIDE (L or R) of relational formulas FNUMS.
 Those factors cited in TERM-NUMS will be moved to the END in the order
 listed.  The remaining factors will be placed at the other END in their
 original order."
-  "~%Permuting factors in selected expressions")
+  "Permuting factors in selected expressions")
 
 (defstep permute-mult! (expr-loc &optional (term-nums 2) (end l))
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -1936,7 +1936,7 @@ original order."
 for the expressions found at EXPR-LOC.  Those factors cited in TERM-NUMS
 will be moved to the END in the order listed.  The remaining factors
 will be placed at the other END in their original order."
-  "~%Permuting factors in selected expressions")
+  "Permuting factors in selected expressions")
 
 (defhelper permute-mult-one (expr-descriptor term-nums end)
   (let ((expr-obj (ee-pvs-obj expr-descriptor))
@@ -1954,7 +1954,7 @@ will be placed at the other END in their original order."
 	     (gen-manip-response 'permute-mult! "Not a suitable expression."))))
     extract-step)
   "[Manip] Reorder multiplicative terms."
-  "~%Permuting factors in selected expression")
+  "Permuting factors in selected expression")
 
 ;;; Internal strategy allows permutation in either direction.
 ;;; END argument indicates movement to L or R.  Term number generation
@@ -1982,7 +1982,7 @@ will be placed at the other END in their original order."
 		     (assert))))
     (branch extract-step step-list))
   "[Manip] Reorder multiplicative terms."
-  "~%Permuting factors in selected expression")
+  "Permuting factors in selected expression")
 
 ;;; Internal strategy to permute right.
 
@@ -1993,7 +1993,7 @@ will be placed at the other END in their original order."
 	(extract-step `(permute-mult-terms$ ,expr-obj ,fnumber ,term-nums r)))
     extract-step)
   "[Manip] Reorder multiplicative terms."
-  "~%Permuting factors in selected expression")
+  "Permuting factors in selected expression")
 
 
 (defmethod collect-mult-factors (val-cl expr)
@@ -2012,7 +2012,7 @@ will be placed at the other END in their original order."
   "[Manip] Select a list of factors (indicated by TERM-NUMS) from the
 expression found on SIDE (L or R) of relational formula FNUM.  Assign a
 NAME to the product of the selected factors and replace the product by NAME."
-  "~%Permuting factors and replacing selected terms by ~A in expression")
+  "Permuting factors and replacing selected terms by ~A in expression")
 
 (defstep name-mult! (name expr-loc &optional (term-nums *))
   (let ((expr-desc (car (eval-ext-expr expr-loc)))
@@ -2028,7 +2028,7 @@ NAME to the product of the selected factors and replace the product by NAME."
 expression found at EXPR-LOC.  Assign a NAME to the product of the selected
 factors and replace the product by NAME.  Can only handle first expression
 that results from EXPR-LOC."
-  "~%Permuting factors and replacing selected terms by ~A in expression")
+  "Permuting factors and replacing selected terms by ~A in expression")
 
 (defhelper name-mult-one (name expr-desc expr-loc term-nums)
   (let ((full-expr (ee-pvs-obj expr-desc))
@@ -2042,7 +2042,7 @@ that results from EXPR-LOC."
 		  (gen-manip-response 'name-mult! "No suitable terms."))))
     step)
   "[Manip] Select a list of factors and assign a NAME to their product."
-  "~%Permuting factors and replacing selected terms by ~A in expression")
+  "Permuting factors and replacing selected terms by ~A in expression")
 
 ;;; expr-loc is the same, but the expression it locates is different
 ;;; after permutation.
@@ -2062,7 +2062,7 @@ that results from EXPR-LOC."
 If a syntax pattern was used, try a location reference instead."))))
     name-step)
   "[Manip] Permute factors, name selection, and replace."
-  "~%Permuting factors and replacing selected terms by ~A in expression")
+  "Permuting factors and replacing selected terms by ~A in expression")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2072,7 +2072,7 @@ If a syntax pattern was used, try a location reference instead."))))
   "[Manip] Convert the top-level division operation for the expression found
 on SIDE (L or R) of relational formulas FNUMS to a multiplication by the
 reciprocal of the divisor."
-  "~%Converting division in selected terms to multiplication by reciprocal")
+  "Converting division in selected terms to multiplication by reciprocal")
 
 (defstep recip-mult! (expr-loc)
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -2085,7 +2085,7 @@ reciprocal of the divisor."
     rewrite-step)
   "[Manip] Convert the top-level division operation for the expressions found
 at EXPR-LOC to a multiplication by the reciprocal of the divisor."
-  "~%Converting division in selected terms to multiplication by reciprocal")
+  "Converting division in selected terms to multiplication by reciprocal")
 
 (defhelper recip-mult-one (expr-descriptor)
   (let ((expr (ee-pvs-obj expr-descriptor))
@@ -2100,7 +2100,7 @@ at EXPR-LOC to a multiplication by the reciprocal of the divisor."
 	(step-list `((replace -1 ,adj-fnum :hide? t) (assert))))
     (branch case-step step-list))
   "[Manip] Convert division operation to multiplication by reciprocal."
-  "~%Converting division in selected term to multiplication by reciprocal")
+  "Converting division in selected term to multiplication by reciprocal")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2125,7 +2125,7 @@ at EXPR-LOC to a multiplication by the reciprocal of the divisor."
 both sides as needed to leave the selected term isolated.  SIGN indicates
 the sign of the product of the unselected factors.  A case split to generate
 the appropriate condition on the divisor is automatically introduced."
-  "~%Dividing by factors to isolate a term in formula ~A")
+  "Dividing by factors to isolate a term in formula ~A")
 
 ;;; Assume relation has been swapped first so always operating on left.
 
@@ -2160,7 +2160,7 @@ the appropriate condition on the divisor is automatically introduced."
 			      (fail))))))
     step)
   "[Manip] Divide by factors to isolate term."
-  "~%Dividing by factors to isolate a term in formula ~A")
+  "Dividing by factors to isolate a term in formula ~A")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2188,7 +2188,7 @@ a * x R b * y.  If R is an inequality, the SIGN argument can be set to
 one of the symbols in {+, -, 0+, 0-} to indicate the polarity of x and y.
 A SIGN of `*' is not supported (yet).  The relational formula may appear
 on either side of the sequent, but the equality must be an antecedent."
-  "~%Multiplying terms from formula ~A by those in ~A to derive a new relation")
+  "Multiplying terms from formula ~A by those in ~A to derive a new relation")
 
 (defhelper mult-eq-one (rel-fnum rel-formula eq-fnum eq-formula sign)
   (let ((rel-op (id (operator rel-formula)))
@@ -2214,7 +2214,7 @@ on either side of the sequent, but the equality must be an antecedent."
 	  (if (< rel-fnum 0) `((skip) ,just-step) `(,just-step (skip)))))
     (spread case-step step-list))
   "[Manip] Multiply terms in relational formula by equality to form new relation."
-  "~%Multiplying terms from formula ~A by those in ~A to derive a new relation")
+  "Multiplying terms from formula ~A by those in ~A to derive a new relation")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2241,7 +2241,7 @@ either R1 or R2 is.  SIGNS indicates the polarity of the pairs (a,b) and
 multiplied.  Example: SIGNS = (+ -) indicates a,b are positive terms
 while x,y are negative.  If either formula appears as a consequent,
 its relation is negated before carrying out the multiplication."
-  "~%Multiplying terms from formulas ~A and ~A to derive a new inequality")
+  "Multiplying terms from formulas ~A and ~A to derive a new inequality")
 
 (defhelper mult-ineq-one (fnum1 formula1 fnum2 formula2 signs)
   (let ((orig-op1 (id (operator formula1)))
@@ -2277,7 +2277,7 @@ its relation is negated before carrying out the multiplication."
 			 (assert))))
     (spread case-step ((skip) (then rewrite-step just-step))))
   "[Manip] Multiply terms in relational formulas to form new relation."
-  "~%Multiplying terms from formulas to derive a new inequality")
+  "Multiplying terms from formulas to derive a new inequality")
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -2308,7 +2308,7 @@ IF FNUM is an inequality of the form 'a * b R c' or 'a R c * d', first
 transform FNUM into the form a * b R c * d by multiplying c or a by 1.
 MULT-OP may be set to *1 (1*) to multiply on the right (left).  Then
 proceed as in the previous case."
-  "~%Analyzing cases for the relation in formula ~A")
+  "Analyzing cases for the relation in formula ~A")
 
 (defhelper mult-cases-next (fnumber abs? mult-op)
   (let ((formula (manip-get-formula fnumber))
@@ -2328,7 +2328,7 @@ proceed as in the previous case."
 		(t (gen-manip-response 'mult-cases "Formula not suitable.")))))
     split-step)
   "[Manip] Generate case analyses for relational formulas containing products."
-  "~%Analyzing cases for the relation in formula ~A")
+  "Analyzing cases for the relation in formula ~A")
 
 (defhelper mult-cases-zero (fnum formula left-mult)
   (let ((rel-op (id (operator formula)))
@@ -2344,7 +2344,7 @@ proceed as in the previous case."
 	(split-step `(then ,rewrite-step ,@simp-step (flatten) (assert))))
     split-step)
   "[Manip] Analyze cases for a relation on products."
-  "~%Analyzing cases for the relation in formula ~A")
+  "Analyzing cases for the relation in formula ~A")
 
 (defhelper mult-cases-nonzero (fnum abs? left-mult right-mult mult-op)
   (let ((prep-step
@@ -2357,7 +2357,7 @@ proceed as in the previous case."
 	(nonzero-step (if prep-step `(then ,prep-step ,split-step) split-step)))
     nonzero-step)
   "[Manip] Analyze cases for a relation on products."
-  "~%Analyzing cases for the relation in formula ~A")
+  "Analyzing cases for the relation in formula ~A")
 
 (defhelper mult-cases-cons (fnum abs?)
   (let ((formula (manip-get-formula fnum))
@@ -2370,7 +2370,7 @@ proceed as in the previous case."
 			  (flatten))))
     all-steps)
   "[Manip] Analyze cases for a relation on products."
-  "~%Analyzing cases for the relation in formula ~A")
+  "Analyzing cases for the relation in formula ~A")
 
 (defhelper mult-cases-ante (fnum abs?)
   (let ((formula (manip-get-formula fnum))
@@ -2384,7 +2384,7 @@ proceed as in the previous case."
 			  (assert) (flatten))))
     all-steps)
   "[Manip] Analyze cases for a relation on products."
-  "~%Analyzing cases for the relation in formula ~A")
+  "Analyzing cases for the relation in formula ~A")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2397,7 +2397,7 @@ factors, some of which contain divisions.  Each selected product term is
 assigned a name derived from NAME and is extracted using name-replace to
 form a new antecedent equality.  Then all the divisors are cross multiplied
 and any common factors are identified and canceled."
-  "~%Naming (using ~A), extracting and canceling terms from expression")
+  "Naming (using ~A), extracting and canceling terms from expression")
 
 (defstep mult-extract! (name expr-loc &optional (term-nums *))
   (let ((extract-step
@@ -2431,7 +2431,7 @@ contain divisions.  Each selected product term is assigned a name derived
 from NAME and extracted using name-replace to form a new antecedent equality.
 Then all the divisors are cross multiplied and any common factors are
 identified and canceled.  Can only handle first expression from EXPR-LOC."
-  "~%Naming (using ~A), extracting and canceling terms from expression")
+  "Naming (using ~A), extracting and canceling terms from expression")
 
 (defhelper mult-extract-one (name full-terms term-num)
   (let ((old-mult (cadr (nth (- term-num 1) full-terms)))
@@ -2449,7 +2449,7 @@ identified and canceled.  Can only handle first expression from EXPR-LOC."
 	(continue-step `(mult-extract-two$)))
     (then@ name-step permute-step div-step continue-step))
   "[Manip] Extract additive terms formed by factors containing divisions."
-  "~%Naming (using ~A), extracting and canceling terms from expression")
+  "Naming (using ~A), extracting and canceling terms from expression")
 
 (defhelper mult-extract-two ()
   (let ((formula (manip-get-formula -1))
@@ -2475,7 +2475,7 @@ identified and canceled.  Can only handle first expression from EXPR-LOC."
 	      `(then@ ,permute-left ,permute-right ,cancel-step))))
     extract-step)
   "[Manip] Extract additive terms formed by factors containing divisions."
-  "~%Naming, extracting and canceling terms from expression")
+  "Naming, extracting and canceling terms from expression")
 
 
 ;;; ================= General purpose strategies ==================
@@ -2491,7 +2491,7 @@ EXPR-SPECS.  Example: suppose formula 1 is f(x+y) = f(a*(z+1)).  Then
    (invoke (case \"%1 = %2\") (? 1 \"f(%1) = f(%2)\"))
 would match and create the bindings %1=`x+y' and %2=`a*(z+1)', which
 results in the prover command (case \"x+y = a*(z+1)\") being invoked."
-  "~%Invoking instantiated command after substitutions")
+  "Invoking instantiated command after substitutions")
 
 (defstep for-each (command &rest expr-specs)
   (let ((descriptors (mapappend #'eval-ext-expr expr-specs))
@@ -2501,7 +2501,7 @@ results in the prover command (case \"x+y = a*(z+1)\") being invoked."
 with substitutions extracted from the extended expression specifications
 EXPR-SPECS.  For each expression specified, instantiate and invoke
 COMMAND with a different binding for parameters %1, $1, etc."
-  "~%Invoking instantiated command for each substitution")
+  "Invoking instantiated command for each substitution")
 
 (defstep for-each-rev (command &rest expr-specs)
   (let ((descriptors (reverse (mapappend #'eval-ext-expr expr-specs)))
@@ -2512,7 +2512,7 @@ with substitutions extracted from the extended expression specifications
 EXPR-SPECS.  For each expression specified, instantiate and invoke
 COMMAND with a different binding for parameters %1, $1, etc.  Performs
 the invocations in reverse order."
-  "~%Invoking instantiated command for each substitution")
+  "Invoking instantiated command for each substitution")
 
 (defhelper for-each-one (command descriptors)
   (let ((cmd-list
@@ -2526,7 +2526,7 @@ the invocations in reverse order."
 ;;	(invocations `(then@ (skip) ,@cmd-list))) ;; extra skip to suppress msg
     invocations)
   "[Manip] Repeatedly invokes instantiated rule or strategy after substitutions."
-  "~%Invoking instantiated command for each substitution")
+  "Invoking instantiated command for each substitution")
 
 (defstep show-subst (command &rest expr-specs)
   (let ((descriptors (mapappend #'eval-ext-expr expr-specs))
@@ -2539,7 +2539,7 @@ extended expression specifications.  Emits messages to show what
 substitutions occur, but doesn't invoke any commands.  Use the idiom
     (show-subst ($*) <ext expr 1> ... <ext expr n>)
 to see the evaluation of extended expressions against the current sequent."
-  "~%")
+  "Testing command formation with Manip's substitutions")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2555,7 +2555,7 @@ variables to represent terms to be substituted in the parameterized
 condition expression.  The justification step can be tried by setting
 TRY-JUST to a proof step.  Example: (claim \"%1 < %2\" t \"x\" \"y+z\")
 case splits on `x < y+z' and tries to prove the relation using grind."
-  "~%Claiming the parameterized condition holds on the terms supplied")
+  "Claiming the parameterized condition holds on the terms supplied")
 
 (defstep name-extract (name &rest expr-specs)
   (let ((exprs (mapcar #'virt-ee-string (eval-ext-expr expr-specs)))
@@ -2575,7 +2575,7 @@ case splits on `x < y+z' and tries to prove the relation using grind."
 supplied in EXPR-SPECS.  Assign NAME (or NAME_1, NAME_2,...) to the
 expressions and replace them throughout the sequent, leaving the
 antecedent equalities visible."
-  "~%Assigning designated expressions to ~A and replacing")
+  "Assigning designated expressions to ~A and replacing")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -2596,7 +2596,7 @@ antecedent equalities visible."
   "[Manip] Rearranges the order of antecedent and consequent formulas.
 Takes the FNUMS given and moves the corresponding formulas to the front
 of the antecedent and consequent lists as appropriate."
-  "~%Moving selected formulas up in the sequent")
+  "Moving selected formulas up in the sequent")
 
 (defstep rotate-- ()
   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
@@ -2604,7 +2604,7 @@ of the antecedent and consequent lists as appropriate."
 	(move-step `(move-to-front$ ,@(cdr fnums))))
     move-step)
   "[Manip] Moves the first antecedent formula to the end of the antecedents."
-  "~%Moving the first antecedent to the end")
+  "Moving the first antecedent to the end")
 
 (defstep rotate++ ()
   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
@@ -2612,7 +2612,7 @@ of the antecedent and consequent lists as appropriate."
 	(move-step `(move-to-front$ ,@(cdr fnums))))
     move-step)
   "[Manip] Moves the first consequent formula to the end of the consequents."
-  "~%Moving the first consequent to the end")
+  "Moving the first consequent to the end")
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -2639,7 +2639,7 @@ front of the sequent (formula -1).  Then a USE command for LEMMA is
 invoked so that the search for instantiable terms begins with the
 temporary formula.  The effect is to match terms from the user's preferred
 formulas (in the order given) before looking elsewhere in the sequent."
-  "~%Using ~A with formula preferences for instantiation")
+  "Using ~A with formula preferences for instantiation")
 
 (defun make-preferred-use-term (fnum)
   (let ((formula (manip-get-formula fnum)))
@@ -2661,7 +2661,7 @@ formulas (in the order given) before looking elsewhere in the sequent."
 an implicit variable list.  In PVS, lemma variables appear in alphabetical
 order when introduced by the LEMMA rule.  That order needs to be observed
 when entering EXPR-SPECS."
-  "~%Invoking lemma ~A on given expressions")
+  "Invoking lemma ~A on given expressions")
 
 (defstep apply-rewrite (lemma &rest expr-specs)
   (let ((exprs (mapcar #'virt-ee-string (eval-ext-expr expr-specs)))
@@ -2678,14 +2678,14 @@ when entering EXPR-SPECS."
 instantiations using an implicit variable list.  In PVS, lemma variables
 appear in alphabetical order when introduced by the LEMMA rule.  That
 order needs to be observed when entering EXPR-SPECS."
-  "~%Rewriting with lemma ~A on given expressions")
+  "Rewriting with lemma ~A on given expressions")
 
 
 ;;; --------------- Syntax matching strategies ----------------
 
 
-(defstep match (&rest spec-items)
-  (let ((step (apply #'match-syntax-step spec-items)))
+(defstep match (&key fnums &rest spec-items)
+  (let ((step (apply #'match-syntax-step fnums spec-items)))
     step)
 
   "[Manip] Try matching syntax patterns against formulas in the sequent.
@@ -2699,8 +2699,29 @@ case splitting on expressions), a binary relation symbol (split on case
 <instance> <op> <template>), 'step' (invoke template as a proof step or
 strategy), and a symbol <rule> (invoke <rule> on templates).  Proof steps
 for all cases can be provided. See the Manip user's guide for a full
-description of all features."
-  "~%Matching syntax in formulas and using instantiated templates")
+description of all features.
+
+UPDATE TO MANIP USER's GUIDE
+* The key :fnums can be used to restrict the set of possible matching 
+  formulas. The syntactic form (match <fnums> <patterns> ...) is still 
+  supported, but deprecated because of the ambiguity between labeled fnums 
+  and patterns. The preferred syntactic form is
+  (match <patterns> ... :fnums <fnums>).
+* match allows complex patterns of the form ([fnums] pattern [onums]),
+  where fnums and onums are, respectively, restrictions on formula 
+  numbers and occurrence numbers. The following formula reference 
+  extensions are now supported in place of FNUMS, in addition to, *, +, -,
+  and the all-but references (^ | +^ | -^ fnum1 ... fnumn): 
+  (:fnum  <fnum1> ... <fnumn>): All the formulas in fnum1 ... fnumn
+  (:fnum  <fnum1> ... <fnumn>): The first formula in fnum1 ... fnumn
+  (:in <fnum1> ... <fnumn>): The intersection of formulas in fnum1 .. fnumn
+  (:diff <fnum> <fnum-but1> ... <fnum-butn>): Formulas in <fnum> but not 
+    in <fnum-but1> ... <fnum-butn>
+  (:from <n> [<m>]): Formula numbers from <n> to <m>. If <n> ia greater than <m> 
+    then forward direction. Otherwise backward direction. If <m> is not provided, 
+    it assumes the last valid formula number in the direction of the sign of <m>.
+"
+  "Matching syntax in formulas and using instantiated templates")
 
 ;; See file syntax-matching.lisp for implementation of match strategy.
 
@@ -2724,7 +2745,7 @@ description of all features."
 			    (try-rewrites$ ,fnums ,@(cdr lemmas)))))
 	try-step))
   "[Manip] Try rewriting LEMMAS in sequence within FNUMS until first one succeeds."
-  "~%Trying lemma rewrites in sequence")
+  "Trying lemma rewrites in sequence")
 
 (defstep rewrite-expr (lemmas expr-loc)
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -2737,7 +2758,7 @@ description of all features."
     apply-step)
   "[Manip] Rewrite LEMMAS in the expressions located by EXPR-LOC.  Only these
 expressions will be involved in the rewriting."
-  "~%Rewriting ~A in selected expressions")
+  "Rewriting ~A in selected expressions")
 
 (defhelper rewrite-expr-one (lemmas descriptor)
   (let ((expr-obj (ee-pvs-obj descriptor))
@@ -2751,7 +2772,7 @@ expressions will be involved in the rewriting."
 	(apply-step `(then ,name-step ,replace-1 ,rewrites ,replace-2)))
     apply-step)
   "[Manip] Rewrite lemmas in selected expressions"
-  "~%Rewriting ~A in selected expressions")
+  "Rewriting ~A in selected expressions")
 
 (defstep auto-rewrite-expr (lemmas expr-loc)
   (let ((descriptors (eval-ext-expr expr-loc))
@@ -2766,7 +2787,7 @@ expressions will be involved in the rewriting."
     apply-step)
   "[Manip] Rewrite LEMMAS in the expressions located by EXPR-LOC.  Only these
 expressions will be involved in the rewriting."
-  "~%Rewriting ~A in selected expressions")
+  "Rewriting ~A in selected expressions")
 
 (defhelper auto-rewrite-expr-one (descriptors)
   (let ((expr-objs (mapcar #'ee-pvs-obj descriptors))
@@ -2786,7 +2807,7 @@ expressions will be involved in the rewriting."
 	(apply-step `(then ,name-step ,replace-1 ,rewrites ,replace-2)))
     apply-step)
   "[Manip] Rewrite lemmas in selected expressions"
-  "~%Rewriting ~A in selected expressions")
+  "Rewriting ~A in selected expressions")
 
 
 ;;; Following strategy provides an alternative to REWRITE for use when
@@ -2807,7 +2828,7 @@ expressions will be involved in the rewriting."
 	       (replace -1 adj-fnum :hide? t))))
   "[Manip] Alternative form of REWRITE using explicit terms, propagating
 failure if INST fails."
-  "~%Rewriting with lemma ~A in formula ~A")
+  "Rewriting with lemma ~A in formula ~A")
 
 
 (defstep branch-back (step steplist)
@@ -2825,7 +2846,7 @@ Similar to the built-in strategy BRANCH except that the elements of
 STEPLIST are attempted in all-or-nothing fashion.  If the step for a
 branch fails to prove its goal completely, the proof state (for that
 branch only) is rolled back to the point before the step was invoked."
-  "~%Initiating a branching step with a backtracking step list")
+  "Initiating a branching step with a backtracking step list")
 
 
 ;;; Following strategy is used to protect against successful steps

@@ -165,24 +165,28 @@
         do (setf index (multiple-value-list
 			(match-regexp *embedded-ext-expr-pattern* target
 				      :return :index)))
-	;; (excl:match-regexp *embedded-ext-expr-pattern* target
-	;;   :return :index :shortest t)))
+	;;              (excl:match-regexp *embedded-ext-expr-pattern* target
+	;;                            :return :index :shortest t)))
 	unless (car index) return target
 	do (let* ((ext (caddr (multiple-value-list
 			       (match-regexp *embedded-ext-expr-pattern*
 					     target))))
-		  ;; (excl:match-regexp *embedded-ext-expr-pattern*
-		  ;;	target :shortest t))))
+		  ;;	       (excl:match-regexp *embedded-ext-expr-pattern*
+		  ;;				  target :shortest t))))
 		  (ext-expr (eval-ext-expr
 			     (read-from-string (format nil "(~A)" ext))))
 		  (ext-str (if (consp ext-expr)
 			       (virt-ee-string (car ext-expr))
 			     ""))
 		  (start (- (caaddr index) 1))
-		  (finish (1+ (cdaddr index))))
+		  (finish (1+ (cdaddr index)))
+		  #+extra-debug
+		  (dummy (extra-debug-print
+		  	  "[manip-utilities]"
+		  	  pattern values index target ext ext-expr ext-str start finish))
+		  )
 	     (setf target (replace-substring ext-str target start finish)))))
 					     
-
 (defun cmd-symbol-subst (symb descriptors)
   (let ((name (symbol-name symb)))
     (if (eql (char name 0) subst-symb-char)
