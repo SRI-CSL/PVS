@@ -18,7 +18,7 @@
 (defparameter *extrategies* "
 %  Printing and commenting: printf, commentf, quietly,
 %    error-msg, warning-msg
-%  Defining rules, deftactic, deforacle
+%  Defining proof rules: deftactic, deforacle
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
 %    name-label*, name-replace*, discriminate
 %  Copying formulas: copy*, protect, with-focus-on, with-focus-on@
@@ -34,7 +34,7 @@
 %  Ground evaluation (PVSio): eval-formula, eval-formula*, eval-expr, eval
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
 %  Strategy debugging (experts only): skip-steps, show-debug-mode, 
-%     toggle-debug-mode, set-debug-mode, load-files")
+%    enable-debug-mode, disable-debug-mode, set-debug-mode, load-files")
 
 (defparameter *extrategies-version* "Extrategies-8.0 (02/28/25)")
 
@@ -365,6 +365,12 @@
   (if (and (listp l) (not (equal (car l) '!)))
       l
     (list l)))
+
+;; Enlist l, but considers Manip's extensions, such as (^ ...) (? ...), etc, as atoms
+(defun enlist-ext (l)
+  (if (and (listp l) (not (member (car l) (append all-but-symbols ext-expr-symbols))))
+      l
+    (list l))) 
 
 ;; Pairs lists ls1 and ls2. Unless cut? is t, lists are completed with the last
 ;; elements if they have different length. If list? is t, pairs with list instead of cons
@@ -2610,7 +2616,7 @@ TCCs generated during the execution of the command are discharged with the proof
     (when (get-match condmatch)
       condmatch)))
 
-(defun match-list (conds fnums dry-run?)
+(defun match-list (conds fnums dry-run)
   (when conds
     (let ((condmatch (mk-cond-match (car conds))))
       (unless condmatch
@@ -2621,25 +2627,25 @@ TCCs generated during the execution of the command are discharged with the proof
 		   (error "Step of the ELSE pattern is missing"))
 		  ((cdr conds)
 		   (error "ELSE must be the last pattern"))
-		  (dry-run?
+		  (dry-run
 		   (list `(skip-steps ,else)))
 		  (t (list else))))
 	(let* ((pre-step (or (get-step condmatch) '(skip)))
 	       (step     (if (get-comment condmatch)
 			     `(then (comment ,(get-comment condmatch)) ,pre-step)
 			   pre-step))
-	       (show     (when dry-run? '(show))))
+	       (show     (when dry-run '(show))))
 	  (cons 
 	   `(match$ ,@show ,@(get-match condmatch) ,@(get-onums condmatch) step ,step ,@fnums)
-	   (match-list (cdr conds) fnums dry-run?)))))))
+	   (match-list (cdr conds) fnums dry-run)))))))
 
-(push 'cond-match *manip-match-exceptions*)
+(pushnew 'cond-match *manip-match-exceptions*)
 
-(defstrat cond-match (&key (fnums *) dry-run? &rest conds)
+(defstrat cond-match (&key (fnums *) dry-run &rest conds)
   (when conds
     (let ((match-steps
 	   (handler-case
-	       (match-list conds (when fnums (list :fnums fnums)) dry-run?)
+	       (match-list conds (when fnums (list :fnums fnums)) dry-run)
 	     (error (condition) (format nil "~a" condition)))))
       (if (stringp match-steps)
 	  (warning-msg "[cond-match] ~a" match-steps)
@@ -2649,7 +2655,7 @@ TCCs generated during the execution of the command are discharged with the proof
 		     (cons 'else* match-steps)
 		   (car match-steps))))
 	    (then
-	     (when dry-run?
+	     (when dry-run
 	       (printf "cond-match expands to:~%~s" step))
 	     step))))))
   "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn])) 
@@ -2663,7 +2669,7 @@ in FNUMS.
 Optionally, the following keys could be provided:
 :fnums FNUMS
   Matches only the formulas in FNUMS. By default FNUMS is all formulas
-:dry-run? t 
+:dry-run t 
   Prints expansion of the strategy and instances of successful matchings
 
 Patterns and steps are formatted as in Manip's match (see Manip User's guide). 
@@ -2690,15 +2696,15 @@ For example, assume
 - (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onums 2) (else (grind)) :fnums 2)
   results in (grind) since there are no 2 occurrences of the pattern in {2}")
 
-(push 'if-match *manip-match-exceptions*)
+(pushnew 'if-match *manip-match-exceptions*)
 
-(defstrat if-match (pattern &optional step else fnums onums dry-run?)
+(defstrat if-match (pattern &optional step else fnums onums dry-run)
   (let ((match-stp (when step (list step)))
 	(fnums-opt (when fnums (list :fnums fnums)))
 	(onums-opt (when onums (list :onums onums)))
 	(else-stp  (when else (list `(else ,else))))
-	(dry-run   (or dry-run? (and (null step) (null else))))
-	(cond-stp `(cond-match (,pattern ,@match-stp ,@onums-opt) ,@else-stp ,@fnums-opt :dry-run? ,dry-run)))
+	(dry-run   (or dry-run (and (null step) (null else))))
+	(cond-stp `(cond-match (,pattern ,@match-stp ,@onums-opt) ,@else-stp ,@fnums-opt :dry-run ,dry-run)))
     cond-stp)
   "[Extrategies] Applies STEP1 if PATTERN matches formulas in the current sequent. Otherwise, applies STEP2. 
 By default STEP1 and STEP2 are (SKIP).
@@ -2709,8 +2715,8 @@ Optionally, the following keys could be provided:
 :onums ONUMS
   Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
   By default ONUMS is set to 1 occurence
-:dry-run? t 
-  Prints expansion of the strategy and instances of successful matchings. dry-run? is
+:dry-run t 
+  Prints expansion of the strategy and instances of successful matchings. dry-run is
 by default T when STEP1 and STEP2 are not provided.
 
 Pattern and steps are formatted as in Manip's match (see Manip User's guide).
@@ -3200,8 +3206,9 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 ;; The following parameters are set by appropriate debug functions and strategies
 ;; Do not set them unless you know what you are doing
-(defparameter *extrategies-debug* nil)      ;; When T prints debug messages 
-(defparameter *extrategies-debug-frames* 1) ;; Number of frames to be displayed
+(defvar *extra-debug* nil)       ;; When T prints debug messages 
+(defvar *extra-debug-frames* 1)  ;; Number of frames to be displayed
+(defvar *extra-debug-files* nil) ;; Files that have been loaded
 
 (defmacro extra-debug-data (data)
   (when data
@@ -3222,52 +3229,52 @@ when the list of FNUMS is over. Options are as in eval-formula."
   (unless (member :extra-debug *features*)
     (error *debug-fail*))
   (let ((tempvar (gensym)))
-    `(when *extrategies-debug*
+    `(when *extra-debug*
        (let ((,tempvar
 	      #+sbcl
-	      (sb-debug:list-backtrace :count *extrategies-debug-frames*)
+	      (sb-debug:list-backtrace :count *extra-debug-frames*)
 	      ))
-	 (format t "~%[*extrategies-debug*~@[~%|-- FRAMES (from TOP)~%~
-                 ~{~s~%~}--|~]~%~{~a~%~}*extrategies-debug*]~%"
+	 (format t "~%[*extra-debug*~@[~%|-- FRAMES (from TOP)~%~
+                 ~{~s~%~}--|~]~%~{~a~%~}*extra-debug*]~%"
 		 ,tempvar
 		 (extra-debug-data ,data))))))
 
 (defmacro extra-debug-println (&rest data)
   (unless (member :extra-debug *features*)
     (error *debug-fail*))
-  `(when *extrategies-debug*
-     (format t "~%[*extrategies-debug*] ~{~a~^, ~}~%"
+  `(when *extra-debug*
+     (format t "~%[*extra-debug*] ~{~a~^, ~}~%"
 	     (extra-debug-data ,data))))
 
-(defstep skip-steps (&key touch? &rest steps)
-  (when touch?
-    (touch))
-  "[Extrategies] Skips steps. This strategy is used for debugging purposes. 
-If TOUCH? is t, the strategy touches the proof context (see TOUCH)."
-  "Skipping steps")
+(defun extra-show-debug-mode (&optional notfound)
+   (format nil "~%*extra-debug*: ~a~
+                ~%*extra-debug-frames*: ~a~
+                ~%*extra-debug-files*: ~a~
+                 ~%Debug mode: ~:[DISABLED~;ENABLED~]~%~
+                ~@[Files not found: ~{~a~^, ~}~%~]"
+	   *extra-debug* *extra-debug-frames* *extra-debug-files*
+	   (member :extra-debug *features*) notfound))
 
 (defstrat show-debug-mode ()
-  (let ((enabled (member :extra-debug *features*))
-	(debug *extrategies-debug*)
-	(frames *extrategies-debug-frames*))
-    (printf "Global variable *extrategies-debug* is set to ~a.~%Global variable *extrategies-debug-frames* is set to ~a.~%Debug mode ~:[DISABLED~;ENABLED~].~%"
-	    debug frames enabled))
+  (let ((msg (extra-show-debug-mode)))
+    (printf "~a" msg))
   "[Extrategies] Shows current debug mode.")
 
-;; File-dir can be a file, directory, or a list of files/directories.
-;; In case of directories, it loads all .lisp, pvs-attachments, and pvs-strategies files
-;; Return a list of messages
-(defun extra-load-files (&optional file-dir)
-  (when file-dir
-    (let* ((files (enlist-it file-dir))
-	   (file  (car files))
-	   (path  (probe-file file)))
+;; FILES can be a list of files/directories.
+;; In case of directories, function loads all .lisp, pvs-attachments, and pvs-strategies files.
+;; Returns a pair of loaded files and files not found
+(defun extra-load-files-raw (files &optional loaded notfound)
+  (if files
+    (let* ((file (car files))
+	   (path (probe-file file)))
       (if path
 	  (if (pathname-name path) ;; Is a file
-	      (progn
-		(load path)
-		(cons (format nil "Loaded file ~a" path)
-		      (extra-load-files (cdr files))))
+	      (if (member path loaded :test #'equal)
+		  (extra-load-files-raw (cdr files) loaded notfound)
+		(progn
+		  (load path)
+		  (push path *extra-debug-files*)
+		  (extra-load-files-raw (cdr files) (cons path loaded) notfound)))
 	    (let* ((pvs-attachments (enlist-it
 				     (probe-file (format nil "~a/pvs-attachments" path))))
 		   (pvs-strategies (enlist-it
@@ -3278,53 +3285,85 @@ If TOUCH? is t, the strategy touches the proof context (see TOUCH)."
 		      #'(lambda (p) (equal 0 (position #\. (pathname-name p))))
 		      (directory (format nil "~a/*.lisp" path)))
 		     pvs-attachments pvs-strategies)))
-	      (extra-load-files (append dirfiles (cdr files)))))
-	(cons
-	 (format nil "File ~s not found" file)
-	 (extra-load-files (cdr files)))))))
+	      (extra-load-files-raw (append dirfiles (cdr files)) loaded notfound)))
+	(extra-load-files-raw (cdr files) loaded (cons (car files) notfound))))
+    (cons (reverse loaded) notfound)))
 
-(defun extra-set-debug-mode (&optional &key disable files frames)
-  (with-output-to-string
-    (msg)
-    (if disable
-	(progn
-	  (setq *features* (delete :extra-debug *features*))
-	  (setq *extrategies-debug* nil))
-      (progn
-	(pushnew :extra-debug *features*)
-	(setq *extrategies-debug* t)))
-    (when (numberp frames)
-      (setq *extrategies-debug-frames* frames))
-    (let ((debug *extrategies-debug*)
-	  (frames *extrategies-debug-frames*))
-      (format msg "Global variable *extrategies-debug* is set to ~a.~%Global variable *extrategies-debug-frames* is set to ~a.~%Debug mode ~:[DISABLED~;ENABLED~].~%"
-	      debug frames (not disable)))
-    (let ((msgs (extra-load-files files)))
-      (format msg "~{~a~%~}" msgs))))
-  
-(defun extra-toggle-debug-mode (&optional files)
-  (extra-set-debug-mode :disable (member :extra-debug *features*) :files files))
+;; FILES can be a list of files/directories.
+;; In case of directories, it loads all .lisp, pvs-attachments, and pvs-strategies files.
+;; When RESET is nil, loads *extra-debug-files* in addition to FILES.
+;; Sets *extra-debug-files* to the list of loaded files.
+;; Returns a list of files not found.
+(defun extra-load-files (&optional files reset)
+  (let* ((files	(enlist-it files))
+	 (all-files (append files (unless reset *extra-debug-files*)))
+	 (loaded-notfound (extra-load-files-raw all-files)))
+    (setq *extra-debug-files* (car loaded-notfound))
+    (cdr loaded-notfound)))
 
-(defstrat toggle-debug-mode (&rest files)
-  (let ((msg (extra-toggle-debug-mode files)))
+;; Sets debug mode variables. MODE can be
+;;   nil    : doesn't change debug mode
+;;   toogle : switches from/to enabled/disabled debug modes. Updates *features* and *extra-debug*
+;;   enable : enables debug mode. Adds extra-debug to *features* and sets *extra-debug* to t
+;;   disable: disables debug mode. Removes extra-debug to *features* and sets *extra-debug* to nil
+;; FILES is a list of files or dierectories to be loaded. When FILES is not null, sets *extra-debug-files* to
+;; loaded files. FRAMES is the number of frames to be printed as part of debug information.
+;; Sets *extra-debug-frames* to FRAMES
+(defun extra-set-debug-mode (&optional mode files frames)
+  (cond ((eq mode 'toggle)
+	 (extra-set-debug-mode (if (member :extra-debug *features*) 'disable 'enable) files frames))
+	((eq mode 'enable)
+	 (pushnew :extra-debug *features*)
+	 (setq *extra-debug* t))
+	((eq mode 'disable)
+	 (setq *features* (delete :extra-debug *features*))
+	 (setq *extra-debug* nil)))
+  (when (numberp frames)
+    (setq *extra-debug-frames* frames))
+  (let ((notfound (when files (extra-load-files files t))))
+    (extra-show-debug-mode notfound)))
+
+(defstrat set-debug-mode (&key mode frames &rest files)
+  (let ((msg (extra-set-debug-mode mode files frames)))
     (printf "~a" msg))
-  "[Extrategies] Toggles debug mode by adding/removing the symbol :extra-debug to/from *features*
-and loads files or directories specified in FILES. In the case of directories, loads all files 
-*.pvs, pvs-attachments, and pvs-strategies in the directory.")
+  "[Extrategies] Loads files or directories specified in FILES afer enabling/disabling debug mode. 
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory. 
+When FILES is not null, sets *extra-debug-files* to FILES.  MODE can be
+  nil    : doesn't change debug mode
+  toggle : switches from/to enabled/disabled debug modes. Updates *features* and *extra-debug*
+  enable : enables debug mode. Adds extra-debug to *features* and sets *extra-debug* to t
+  disable: disables debug mode. Removes extra-debug to *features* and sets *extra-debug* to nil
+If FRAMES is a number N >= 0, sets the value of *extra-debug-frames* to N. This parameter affects the
+number of frames (function scopes) printed by the function extra-debug-print.")
 
-(defstrat set-debug-mode (&key disable frames &rest files)
-  (let ((msg (extra-set-debug-mode :disable disable :files files :frames frames)))
+(defstrat enable-debug-mode (&rest files)
+  (let ((msg (extra-set-debug-mode 'enable (or files *extra-debug-files*))))
     (printf "~a" msg))
-  "[Extrategies] Loads files or directories specified in FILES afer enabling/disabling debug mode.
-In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
-If the option DISABLE is set to T, debug mode is disabled by removing the symbol :extra-debug 
-from *features*. Otherwise, debug mode is enabled by adding the symbol :extra-debug to *features*. 
-If FRAMES is set to N >= 0, debug information provided by the function extra-debug-print 
-displays N frames.")
+  "[Extrategies] Loads files or directories specified in FILES afer enabling debug mode. 
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory. 
+If FILES is null, loads files in *extra-debug-files*.")
 
-(defstrat load-files (&rest files)
-  (when files
-    (let ((msgs (extra-load-files files)))
-      (printf "~{~a%~}" msgs)))
-  "[Extrategies] Loads files or directories specified in FILES. In the case of directories, load 
-all files *.pvs, pvs-attachments, and pvs-strategies in the directory.")
+(defstrat disable-debug-mode (&rest files)
+  (let ((msg (extra-set-debug-mode 'disable (or files *extra-debug-files*))))
+    (printf "~a" msg))
+  "[Extrategies] Loads files or directories specified in FILES afer disabling debug mode. 
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory. 
+If FILES is null, loads files in *extra-debug-files*.")
+
+(defstrat load-files (&key reset &rest files)
+  (let ((notfound (extra-load-files files reset))
+	(loaded   *extra-debug-files*)
+	(some     (or notfound loaded)))
+    (when some
+      (printf "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~s~^, ~}~]"
+	      loaded notfound)))
+  "[Extrategies] Loads files or directories specified in FILES and updates *extra-debug-files* with
+the loaded files. In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies 
+in the directory. Unless RESET is set to T, files in *extra-debug-files* are loaded afeter FILES.")
+
+(defstep skip-steps (&key touch? &rest steps)
+  (when touch?
+    (touch))
+  "[Extrategies] Skips steps. This strategy is used for debugging purposes. 
+If TOUCH? is t, the strategy touches the proof context (see TOUCH)."
+  "Skipping steps")
