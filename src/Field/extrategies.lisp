@@ -367,10 +367,13 @@
     (list l)))
 
 ;; Enlist l, but considers Manip's extensions, such as (^ ...) (? ...), etc, as atoms
-(defun enlist-ext (l)
-  (if (and (listp l) (not (member (car l) (append all-but-symbols ext-expr-symbols))))
+(defun enlist-ee (l)
+  (if (and (listp l)
+	   (not (member (car l)
+			(append all-but-symbols ext-expr-symbols deep-wild-symbols goto-index-symbols
+				loc-ref-symbols))))
       l
-    (list l))) 
+    (list l)))
 
 ;; Pairs lists ls1 and ls2. Unless cut? is t, lists are completed with the last
 ;; elements if they have different length. If list? is t, pairs with list instead of cons
