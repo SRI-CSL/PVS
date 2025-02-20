@@ -64,6 +64,9 @@
   (in-package :pvs)
   ;; Turn off compiler warnings
   (handler-bind ((sb-ext:compiler-note #'muffle-warning))
+    ;; Normally set to :warn, but is issued after the prompt, which is not what ILISP wants.
+    ;; See SBCL/src/code/unix.lisp for details about this warning.
+    (setq sb-unix::*on-dangerous-wait* nil)
     ;; Can't directly call (pvs::pvs-init)
     (apply (find-symbol (string :pvs-init) :pvs) nil)
     (sb-impl::toplevel-init)))
