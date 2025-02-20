@@ -57,7 +57,7 @@
 	(cond ((null instances)
 	       (gen-manip-response
 		'match
-		(format nil "No pattern matches found.~%") ))
+		(format nil "No pattern matches found.~%")))
 	      ((match-items-show-flag match-items)
 	       `(match-syntax-show$ ,@vars-instances-fnums
 				    ,@action-targets-steps))
@@ -111,10 +111,11 @@
 	(show-step (let ((*suppress-manip-messages* nil))
 		     (gen-manip-response 'match
 					 (format nil "~%~{~A~}"
-						 (list variables patterns contractum rule))))))
+						 (list variables patterns contractum rule))
+					 t))))
     show-step)
   "Helper strategy for match."
-  "~%Matching syntax in formulas and performing actions")
+  "Matching syntax in formulas and performing actions")
 
 ;; Generate the rule or proof step that follows from the specified action
 ;; and substitution instances.  Defaults are applied as needed.
@@ -1945,7 +1946,7 @@
 	(dummy (push (list step-num new-step) *upgraded-step-list*)))
     new-step)
   "Convert formula number arguments to patterns."
-  "~%Converting formula number arguments to patterns")
+  "Converting formula number arguments to patterns")
 
 (defun upgrade-file-proofs (name)
   (let* ((prf-file (format nil "~A.prf" name)))

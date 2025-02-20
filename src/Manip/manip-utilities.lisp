@@ -251,8 +251,11 @@ undoing proof attempt." just-rule)
 ;; Generate an error/status message step using skip-msg.  Forces printing by
 ;; default.  A Manip user, however, which might be another strategy package,
 ;; can override this setting and suppress the message.
+;; Changed default of force-printing? to nil. As result, messages are
+;; suppressed when called from another step, but they are printed when
+;; called interactively. [CAM 2/19/2025]
 
-(defun gen-manip-response (name msg &optional (force-printing? t))
+(defun gen-manip-response (name msg &optional force-printing?)
   (if *suppress-manip-messages*
       '(skip)
       `(skip-msg ,(format nil "[Manip.~A]  ~A" name msg) ,force-printing?)))
