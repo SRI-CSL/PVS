@@ -7061,7 +7061,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	      (not (ir-type? (ir-texpr c-type-info)))
 	      (not (null (unique-name (ir-texpr c-type-info))))))
 ;;    (assert (null (get-c-type-info (ir-texpr c-type-info))))
-  (push-new-type-info c-type-info *c-type-info-table*)
+  ;(push-new-type-info c-type-info *c-type-info-table*)
   (when (null (ir-type-value decl))
     (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) nil nil nil decl)));;added params
       (push ir-type-name *ir-type-info-table*)
