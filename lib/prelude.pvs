@@ -4192,6 +4192,8 @@ integertypes: THEORY
 
      maxsize: MACRO uint32 = exp2(28) %max array size
      size: TYPE = upto(maxsize)
+
+     maxindex: MACRO uint32 = exp2(28) - 1 %max array index
      index: TYPE = below(maxsize) %array index supertype
 
      ux8, uy8, uz8: VAR uint8
