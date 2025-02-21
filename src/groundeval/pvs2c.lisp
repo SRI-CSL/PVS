@@ -136,16 +136,18 @@
 					       (reverse pvs2c-translated-theories)))))
 
 (defun create-config-make (c-files)
-  (let ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*)))
+  (let* ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*))
+	 (platform (intern (pvs-platform) :pvs))
+	 (lib-suffix (if (eq platform '|ix86_64-Linux|) '|so| '|dylib|)))
     (with-open-file (mf makefile
 			:direction :output :if-exists :supersede :if-does-not-exist :create)
-      (case (intern (pvs-platform) :pvs)
+      (case platform
 	(|ix86_64-Linux|
 	 (format mf "CFLAGS := -I ../include -fPIC -Wall -Winline -O -ggdb~%")
 	 (format mf "LDFLAGS = -Bsymbolic -shared -L./ -lc -lm -lgmp~%"))
 	(|ix86-MacOSX|
-	 (format mf "CFLAGS := -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
-	 (format mf "LDFLAGS = -bundle -flat_namespace -undefined suppress -L./ -lc -lm -lgmp~%"))
+	 (format mf "CFLAGS := -fPIC -Wall -Winline -O2 -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
+	 (format mf "LDFLAGS = -shared -bundle -flat_namespace -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./  -lgmp~%"))
 	(|arm-MacOSX|
 	 (format mf "SDK=$(shell xcrun --show-sdk-path)")
 	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include")
@@ -153,14 +155,15 @@
       (format mf "~%src := ~{~a~^ ~}~%" c-files)
       (format mf "~%obj := $(src:.c=.o)~%")
       (format mf "~%.c.o : ; $(CC) ${CFLAGS} -c $< -o $@~%")
-      (format mf "~%all : ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%")
+      (format mf "~%all : ../lib/libpvs-prelude.~a ../lib/libpvs-prelude.a~%" lib-suffix)
       (format mf "~%../lib/libpvs-prelude.so : ${obj}~%")
       (format mf "~a$(LD) $(LDFLAGS) -o $@ ${obj}~%" #\tab)
       (format mf "~%../lib/libpvs-prelude.a : $(obj)~%")
       (format mf "~a$(AR) r $@ ${obj}~%" #\tab)
       (format mf "~%clean :~%")
       (format mf "~a-rm $(obj)~%" #\tab)
-      (format mf "~a-rm ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%" #\tab))
+      (format mf "~a-rm ../lib/libpvs-prelude.~a ../lib/libpvs-prelude.a~%"
+	      #\tab lib-suffix))
     (format t "~%Generated ~a" makefile)))
   
 
@@ -494,7 +497,7 @@
     thname))
 
 
-(defun make-c-defn-info (ir pvs-return-type) ;(break "make-c-defn-info")
+(defun make-c-defn-info (ir pvs-return-type)
   (with-slots
 	(ir-function-name ir-return-type ir-args ir-defn) ir
     ;; (when (eq (id decl) 'coef)(break "coef"))
