@@ -38,15 +38,11 @@
 
 (defvar *manip-gensym-count* 0)
 
-;; match doesn't expand variables on these strategies
-(defparameter *manip-match-exceptions* '(match match$))
-
 (defun name-gensym (str &optional (inc? t))
   (format nil "~A~A__" str
 	  (if inc? (incf *manip-gensym-count*) *manip-gensym-count*)))
 
 (defun textify (form) (str form))
-
 
 ;;; ------------- Regular expression package functions -------------
 

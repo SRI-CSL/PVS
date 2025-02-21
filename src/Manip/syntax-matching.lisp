@@ -347,6 +347,8 @@
 (defparameter *max-match-step-index*
   (- (length *match-step-rules*) 1))
 
+;; match doesn't expand variables on these strategies
+(defparameter *manip-match-exceptions* '(match match$ cond-match if-match))
 
 ;; From the output of match-item parsing, create a list of triples
 ;; (fnums, pattern, onums) suitable for matching.
