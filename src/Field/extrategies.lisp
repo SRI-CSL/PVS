@@ -366,12 +366,15 @@
       l
     (list l)))
 
+(alexandria:define-constant extra-fnum-symbols (append all-but-symbols '(:fnums :fnum :in :diff :from)) :test #'equal)
+
+(alexandria:define-constant extra-all-symbols (append extra-fnum-symbols ext-expr-symbols deep-wild-symbols
+						      goto-index-symbols loc-ref-symbols) :test #'equal)
+ 
 ;; Enlist l, but considers Manip's extensions, such as (^ ...) (? ...), etc, as atoms
 (defun enlist-ee (l)
   (if (and (listp l)
-	   (not (member (car l)
-			(append all-but-symbols ext-expr-symbols deep-wild-symbols goto-index-symbols
-				loc-ref-symbols))))
+	   (not (member (car l) extra-all-symbols)))
       l
     (list l)))
 
@@ -488,8 +491,6 @@
 ;; (:from <n> [<m>]) --> Formula numbers from <n> to <m>. If <n> > <m> then forward direction. Otherwise backward direction.
 ;;   If <m> is not provided, it assumes the last valid formula number in the direction of the sign of <m>
 
-(defparameter *extra-fnum-symbols* '(:fnums :fnum :in :diff :from))
-
 ;; Test if fnums represents an extended formula reference,
 ;; i.e., numbers, labels, symbols, lists, all-but symbols, in addition to (:fnums ...) and (:fnum ...)
 (defun extra-fnums-p (fnums)
@@ -497,7 +498,7 @@
     (or (fnum-p fnums)
 	(when (consp fnums)
 	  (every #'fnum-p
-		 (if (member (car fnums) (append all-but-symbols *extra-fnum-symbols*))
+		 (if (member (car fnums) extra-fnum-symbols)
 		     (cdr fnums)
 		   fnums))))))
   
@@ -532,7 +533,7 @@
 ;; listed separately.
 (defun extra-get-fnums (fnums &optional enlist?)
   (if (or (not enlist?) (atom fnums) (and (consp fnums)
-					  (member (car fnums) (append all-but-symbols *extra-fnum-symbols*))))
+					  (member (car fnums) extra-fnum-symbols)))
       (extra-extract-fnums fnums)
     (when (consp fnums)
       (mapcar #'extra-extract-fnums fnums))))
@@ -3208,90 +3209,140 @@ when the list of FNUMS is over. Options are as in eval-formula."
 (defvar *extra-debug-frames* 1)     ;; Number of frames to be displayed
 (defvar *extra-debug-files* nil)    ;; Files that have been loaded
 
-;; Function on list of frames that is used to suppress printing in extra-debug-print
-(defvar *extra-debug-suppress* nil) 
-
 ;; The following are examples of functions that can be used for *extra-debug-suppres**
 
-;; Suppresses all printing
-(defun suppress-all (frames)
-  "Suppresses all printing"
-  (declare (ignore frames))
-  t)
-
-;; Supresses nothing
-(defun suppress-nothing (frames)
-  "Suppresses nothing"
-  (declare (ignore frames))
-  nil)
+(defun format-list-andor (l andor)
+  (let ((len (length l)))
+    (cond ((> len 2)
+	   (format nil "(~{~a, ~}~a ~a)" (butlast l) andor (car (last l))))
+	  ((> len 1)
+	   (format nil "(~a ~a ~a)" (car l) andor (cadr l)))
+	  ((> len 0)
+	   (format nil "~a" (car l))))))
 
 ;; Suppresses printing from funcnames
 (defun suppress-from (&rest funcnames)
-  (when funcnames
-    (let ((fun
-	   (lambda (frames)
-	     (loop for name in funcnames
-		   with frame = (car frames)
-		   thereis (string-equal name (car frame))))))
-      (setf (documentation fun 'function)
-	    (format nil "Suppresses printing from ~{~a~^, ~}" funcnames))
-      fun)))
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 with frame = (car frames)
+		 thereis (string-equal name (car frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "from ~a" (format-list-andor funcnames "and"))
+	    (format nil "never")))
+    fun))
 
 ;; Suppresses printing but from funcnames
 (defun suppress-but (&rest funcnames)
-  (when funcnames
-    (let ((fun
-	   (lambda (frames)
-	     (loop for name in funcnames
-		   with frame = (car frames)
-		   never (string-equal name (car frame))))))
-      (setf (documentation fun 'function)
-	    (format nil "Suppresses printing except from ~{~a~^, ~}" funcnames))
-      fun)))
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 with frame = (car frames)
+		 never (string-equal name (car frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "except from ~a" (format-list-andor funcnames "or"))
+	    (format nil "always")))
+    fun))
 
+;; In scope means that a call to name appears in the stack frame.
 (defun extra-in-scope (name frame)
-  (format t "~a~%" frame)
   (when (consp frame)
-    (if (atom (car frame))
-	(or (string-equal name (car frame))
-	    (extra-in-scope name (cdr frame)))
-      (or (extra-in-scope name (car frame))
-	  (extra-in-scope name (cdr frame))))))
+    (let ((head (car frame)))
+      (if (atom head)
+	  (or (and (symbolp head) (string-equal name head))
+	      (extra-in-scope name (cdr frame)))
+	(or (extra-in-scope name head)
+	    (extra-in-scope name (cdr frame)))))))
 
 ;; Suppresses printing within the scope of funcnames (up to depth *extra-debug-frames*)
 (defun suppress-in-scope (&rest funcnames)
-  (when funcnames
-    (let ((fun
-	   (lambda (frames)
-	     (loop for name in funcnames
-		   for frame in frames
-		   thereis (string-equal name (car frame))))))
-      (setf (documentation fun 'function)
-	    (format nil "Suppresses printing within the scope of ~{~a~^, ~} up to *extra-debug-frames* (~a)"
-		    funcnames *extra-debug-frames*))
-      fun)))
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 thereis 
+		 (loop for frame in frames
+		       thereis (extra-in-scope name frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "within the scope of ~a up to *extra-debug-frames* (~a)"
+		      (format-list-andor funcnames "and") *extra-debug-frames*)
+	    (format nil "never")))
+    fun))
 
 ;; Suppresses printing not in the scope of funcnames (up to depth *extra-debug-frames*)
 (defun suppress-out-scope (&rest funcnames)
-  (when funcnames
-    (let ((fun
-	   (lambda (frames)
-	     (loop for name in funcnames
-		   for frame in frames
-		   never (string-equal name (car frame))))))
-      (setf (documentation fun 'function)
-	    (format nil "Suppresses printing except within the scope of ~{~a~^, ~} up to *extra-debug-frames* (~a)"
-		    funcnames *extra-debug-frames*))
-      fun)))
-  
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 never
+		 (loop for frame in frames
+		       thereis (extra-in-scope name frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "outside the scope of ~a up to *extra-debug-frames* (~a)"
+		      (format-list-andor funcnames "or") *extra-debug-frames*)
+	    (format nil "always")))
+    fun))
+
+;; Suppresses all printing
+(setq suppress-all (suppress-but))
+
+;; Suppresses no printing
+(setq suppress-none (suppress-from))
+
+;; Function on list of frames that is used to suppress printing in extra-debug-print
+(defvar *extra-debug-suppress* suppress-none) 
+
+;; Suppresses AND
+(defun suppress-and (&rest suppressors)
+  (let ((fun (lambda (frames)
+	       (loop for suppressor in suppressors
+		     always
+		     (funcall suppressor frames))))
+	(docs (loop for suppressor in suppressors
+		    collect
+		    (documentation suppressor 'function)))) 
+    (setf (documentation fun 'function)
+	  (if suppressors
+	      (format nil "~a" (format-list-andor docs "and"))
+	    (format nil "never")))
+    fun))
+
+;; Suppresses OR
+(defun suppress-or (&rest suppressors)
+  (let ((fun (lambda (frames)
+	       (loop for suppressor in suppressors
+		     thereis
+		     (funcall suppressor frames))))
+	(docs (loop for suppressor in suppressors
+		    collect
+		    (documentation suppressor 'function)))) 
+    (setf (documentation fun 'function)
+	  (if suppressors
+	      (format nil "~a" (format-list-andor docs "or"))
+	    (format nil "always")))
+    fun))
+
+;; Suppresses NOT 
+(defun suppress-not (suppressor)
+  (let ((fun  (lambda (frames)
+		(not (funcall suppressor frames))))
+	(doc (documentation suppressor 'function)))
+    (setf (documentation fun 'function)
+	  (format nil "(except ~a)" doc))
+    fun))
+
 (defmacro extra-debug-data (data)
   (when data
-    `(cons (format nil "~a~a" ',(car data)
-		   (if (and (atom ',(car data)) (not (symbolp ',(car data)))) ""
-		     (format nil " = ~s" ,(car data))))
-	   (extra-debug-data ,(cdr data)))))
+    `(cons ',(car data)
+	   (cons
+	    (unless (and (atom ',(car data)) (not (symbolp ',(car data))))
+	      (format nil "~s" ,(car data)))
+	    (extra-debug-data ,(cdr data))))))
 
-(defparameter *debug-fail* "
+(defparameter *debug-fail-msg* "
 %%%
 %%% This code requires the feature :extra-debug. To avoid this error at compile time, 
 %%% use the conditional compilation directive #+extra-debug before (extra-debug-print ...) 
@@ -3299,36 +3350,45 @@ when the list of FNUMS is over. Options are as in eval-formula."
 %%%
 ")
 
+(defun extra-frames-msg (frames)
+  (when frames
+    (let* ((ns  (fromto 1 (length (cdr frames))))
+	   (nfs (merge-lists ns (cdr frames))))
+      (format nil
+	      "~%[TOP FRAME] ~s~%~{[~9<FRAME~;-~a~>] ~s~%~}"
+	      (car frames)
+	      nfs))))
+
 (defmacro extra-debug-print (&rest data)
   (unless (member :extra-debug *features*)
-    (error *debug-fail*))
+    (error *debug-fail-msg*))
   (let ((tempvar (gensym)))
     `(let ((,tempvar
 	    #+sbcl
-	    (sb-debug:list-backtrace :count *extra-debug-frames*)
+	    (sb-debug:list-backtrace :method-frame-style :minimal :count *extra-debug-frames*)
 	    ))
        (unless (and *extra-debug-suppress*
 		    (funcall *extra-debug-suppress* ,tempvar))
-	 (format t "~%[*extra-debug*~@[~%FRAMES (from TOP)~%~
-                 ~{~s~%~}END FRAMES~]~%~{~a~%~}*extra-debug*]~%"
-		 ,tempvar
+	 (format t "~%[*extra-debug-print*~@[~a~]~%~{~*~:[~;  ~]~2:*~a~@[ = ~a~]~%~}*extra-debug-print*]~%"
+		 (extra-frames-msg ,tempvar)
 		 (extra-debug-data ,data))))))
 
 (defmacro extra-debug-println (&rest data)
   (unless (member :extra-debug *features*)
-    (error *debug-fail*))
-  `(format t "~%[*extra-debug*] ~{~a~^, ~}~%"
+    (error *debug-fail-msg*))
+  `(format t "~%[*extra-debug-println*] ~{~a~@[ = ~a~]~^, ~}~%"
 	   (extra-debug-data ,data)))
 
-(defun extra-show-debug-mode (&optional notfound)
+(defun extra-show-debug-mode (&optional notfound msgs)
    (format nil "~%*extra-debug-frames*: ~a~
                 ~%*extra-debug-files*: ~a~
-              ~@[~%(extra-debug-print ...): ~a~]~
+              ~@[~%(extra-debug-print ...): Printing is suppressed ~a~]~
                  ~%Debug mode: ~:[DISABLED~;ENABLED~]~%~
-                ~@[Files not found: ~{~a~^, ~}~%~]"
+                ~@[Files not found: ~{~a~^, ~}~%~]~
+                ~@[Error: ~{~a~^, ~}~%~]"
 	   *extra-debug-frames* *extra-debug-files*
 	   (documentation *extra-debug-suppress* 'function)
-	   (member :extra-debug *features*) notfound))
+	   (member :extra-debug *features*) notfound msgs))
 
 (defstrat show-debug-mode ()
   (let ((msg (extra-show-debug-mode)))
@@ -3387,33 +3447,36 @@ when the list of FNUMS is over. Options are as in eval-formula."
 ;; Sets *extra-debug-frames* to FRAMES
 ;; SUPPRESS is a function on a list of frames that is used to suppress printing
 ;; of (extra-debug-print ...). The following functions are pre-defined:
-;; #'suppress-all: Suppresses all printing
-;; #'suppress-nothing: Suppresses nothing
-;; (suppress-from <f1> .. <fn>): Suppresses printing from <f1> .. <fn>
-;; (suppress-but <f1> .. <fn>): Suppresses printing except from <f1> .. <fn>
-;; (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1> .. <fn>
+;; suppress-all: Suppresses all printing
+;; suppress-none: Suppresses no printing 
+;; (suppress-from <f1> .. <fn>): Suppresses printing from <f1>,.., and <fn>
+;; (suppress-but <f1> .. <fn>): Suppresses printing except from <f1>,.., or <fn>
+;; (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1>,.., and <fn>
 ;;   up to *extra-debug-frames*.
-;; (suppress-out-scope <f1> .. <fn>): Suppresses printing except within the scope of <f1> .. <fn>
+;; (suppress-out-scope <f1> .. <fn>): Suppresses printing outside the scope of <f1>,.., or <fn>
 ;;   up to *extra-debug-frames*.
-;; If the value of SUPPRESS is not a function, its value is reset to NIL
+;; Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
+;; (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>).
 (defun extra-set-debug-mode (&optional mode files frames suppress)
-  (cond ((eq mode 'toggle)
-	 (extra-set-debug-mode
-	  (if (member :extra-debug *features*) 'disable 'enable) files frames))
-	((eq mode 'enable)
-	 (pushnew :extra-debug *features*))
-	((eq mode 'disable)
-	 (setq *features* (delete :extra-debug *features*))))
-  (when (numberp frames)
-    (setq *extra-debug-frames* frames))
-  (when suppress
-    (let ((fsuppress (unless (and (atom suppress) (not (typep suppress 'function)))
-		       (eval suppress))))
-      (setq *extra-debug-suppress*
-	    (when (typep fsuppress 'function)
-	      fsuppress))))
-  (let ((notfound (when files (extra-load-files files t))))
-    (extra-show-debug-mode notfound)))
+  (let ((msgs))
+    (cond ((eq mode 'toggle)
+	   (extra-set-debug-mode
+	    (if (member :extra-debug *features*) 'disable 'enable) files frames))
+	  ((eq mode 'enable)
+	   (pushnew :extra-debug *features*))
+	  ((eq mode 'disable)
+	   (setq *features* (delete :extra-debug *features*))))
+    (when frames
+      (if (numberp frames)
+	  (setq *extra-debug-frames* frames)
+	(push (format nil "FRAMES (~a) must be a number" frames) msgs)))
+    (when suppress
+      (let ((fsuppress (eval suppress)))
+	(if (typep fsuppress 'function)
+	    (setq *extra-debug-suppress* fsuppress)
+	  (push (format nil "SUPPRESS (~a) must be a function" suppress) msgs))))
+    (let ((notfound (when files (extra-load-files files t))))
+      (extra-show-debug-mode notfound msgs))))
 
 (defstrat set-debug-mode (&key mode frames suppress &rest files)
   (let ((msg (extra-set-debug-mode mode files frames suppress)))
@@ -3427,17 +3490,19 @@ When FILES is not null, sets *extra-debug-files* to FILES.  MODE can be
   disable: disables debug mode. Removes extra-debug to *features*
 If FRAMES is a number N >= 0, sets the value of *extra-debug-frames* to N. This parameter affects the
 number of frames (function scopes) printed by the function extra-debug-print.
-If SUPPRESS is provided, it should be a function on a list of frames that is used to suppress printing
-of (extra-debug-print ...). The following functions are pre-defined:
-  #'suppress-all: Suppresses all printing
-  #'suppress-nothing: Suppresses nothing
-  (suppress-from <f1> .. <fn>): Suppresses printing from <f1> .. <fn>
-  (suppress-but <f1> .. <fn>): Suppresses printing except from <f1> .. <fn>
-  (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1> .. <fn>
-    up to *extra-debug-frames*
-  (suppress-out-scope <f1> .. <fn>): Suppresses printing except within the scope of <f1> .. <fn>
-    up to *extra-debug-frames*
-  If the value of SUPPRESS is not a function, its value is reset to NIL.")
+If SUPPRESS is provided, it should be a predicate on a list of current frames, up to *extra-debug-frames*,
+used to suppress printing of (extra-debug-print ...). 
+The following functions are pre-defined:
+ suppress-all: Suppresses all printing
+ suppress-none: Suppresses no printing 
+ (suppress-from <f1> .. <fn>): Suppresses printing from <f1>,.., and <fn>
+ (suppress-but <f1> .. <fn>): Suppresses printing except from <f1>,.., or <fn>
+ (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1>,.., and <fn>
+   up to *extra-debug-frames*.
+ (suppress-out-scope <f1> .. <fn>): Suppresses printing outside the scope of <f1>,.., or <fn>
+   up to *extra-debug-frames*.
+ Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
+ (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>).")
 
 (defstrat enable-debug-mode (&rest files)
   (let ((msg (extra-set-debug-mode 'enable (or files *extra-debug-files*))))
