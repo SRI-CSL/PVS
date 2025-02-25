@@ -1,10 +1,10 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-8.0 (10/13/2023)
+;; Release: Extrategies-8.0 (02/28/25)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
-;; http://shemesh.larc.nasa.gov/people/cam/Extrategies
+;; https://shemesh.larc.nasa.gov/fm/pvs/Extrategies/
 ;;
 ;; Copyright (c) 2011-2012 United States Government as represented by
 ;; the National Aeronautics and Space Administration.  No copyright
@@ -2863,7 +2863,7 @@ quantifier, if provided."
 	(strategies *extrategies*)) 
     (printf "%--
 % ~a
-% http://shemesh.larc.nasa.gov/people/cam/Extrategies
+% https://shemesh.larc.nasa.gov/fm/pvs/Extrategies/
 % Strategies in Extrategies:~a
 %--~%" version strategies))
   "[Extrategies] Prints Extrategies's about information.")
