@@ -487,7 +487,10 @@ list of positive numbers" occurrence)
   expr)
 
 (defmethod expand-defn (name (terms list) occurrence)
-  (expand-defn-list name terms occurrence))
+  (let ((nterms (expand-defn-list name terms occurrence)))
+    (if (equal terms nterms)
+	terms
+	nterms)))
 
 (defun expand-defn-list (name terms occurrence &optional nterms)
   (if (null terms)
