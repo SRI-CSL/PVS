@@ -1,7 +1,9 @@
+# Extrategies
+
 **Extrategies** is a collection of strategies, strategy combinators, and Lisp functions for writting strategies in PVS. It provides improved versions of standard PVS strategies for skolemizing, naming, labeling, replacing, splitting, etc. Notably, it also contains a framework to debug PVS strategies.
 
 
-# Summary of Provided Strategies
+## Summary of Provided Strategies
 
 |  | |
 | --- | --- |
@@ -18,9 +20,7 @@
 | Miscellaneous| `splash`, `replaces`, `rewrites`, `rewrite*`, `suffices`|
 | Strategy debugging ([see below](#debugging-strategies))| `skip-steps`, `show-debug-mode`, `enable-debug-mode`, `disable-debug-mode`, `set-debug-mode`, `load-files`|
 
-# Debugging Strategies
-
-## Light Debugging
+## Debugging Strategies
 
 The strategies `(set-debug-mode [<files>] :mode [toggle|enable|disable])`, `(enable-debug-mode [<files>])` and `(disable-debug-mode [<files>])` enable/disable, respectively debug mode. Once debug mode is enabled, the lisp functions `(extra-debug-print [val-or-expr]*)` and `(extra-debug-println [val-or-expr]*)` can be used to print values and expressions for debugging.
 
@@ -32,7 +32,7 @@ These functions will fail if debug mode is not enabled. Therefore, the typical w
 
 The function `(extra-debug-println ..)` prints one line of information. The function `(extra-debug-print ..)` is more verbose, e.g., it prints back traces up to a user-specified number of frames, and allows a developer to suppress messages depending on the scope where the call appears.
 
-## Use Case
+### Use Case
 
 Assume we are developing the strategy `mystrat` in the file `pvs-strategies`.
 
@@ -215,7 +215,7 @@ Rule? (mystrat -1)
 
 In the case of `(mystrat -1)`, printing from `h` is disabled since in that instance `h` doesn't appear in the scope of `f`.
 
-## Suppress-Printing Functions
+### Suppress Printing Functions
 
 Other pre-defined suppress printing functions are:
 
@@ -230,7 +230,7 @@ Furthermore, suppress predicates can be combined using `(suppress-and <supp1> ..
 
 The options `:frames` and `:suppress` can be dynamically changed using the strategy `(set-debug-mode :frames <frames> :suppress <suppress-function>)` and don't require loading files afterwards.
 
-## Compilation Error
+### Compilation Error
 
 Calling the strategy `mystrat` instrumented with `extra-debug-print` or `extra-debug-println` without enabling debug mode will result in the following error:
 
@@ -253,6 +253,6 @@ This behavior is intentional to discourage the presence of debug code in the cod
   ...)
 ```
 
-## Detailed Documentation
+### Detailed Documentation
 
 For detailed documentation of the strategies mentioned in this document, please use the `help` proof command. For instance, `(help set-debug-mode)`.
