@@ -785,7 +785,7 @@ number)."
 	(strategies *field-strategies*))
     (printf "%--
 % ~a 
-% http://shemesh.larc.nasa.gov/people/cam/Field
+% http://shemesh.larc.nasa.gov/fm/pvs/Field
 % Strategies in Field:~a
 %--~%" version strategies))
   "[Field] Prints Field's about information.")
