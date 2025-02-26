@@ -7082,7 +7082,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (format t "\nEmpty decl"))
   (with-slots (ir-expr tname) c-type-info
     (format t "~%Adding ~a: ~a to c-type-info-table" tname (print-ir ir-expr)))
-  (push-new-type-info  c-type-info *c-type-info-table* nil))
+					;(push-new-type-info  c-type-info *c-type-info-table* nil)
+  )
 
 (defmethod get-c-type-info-table ((decl  const-decl))
   (c-type-info-table (eval-info decl)))
