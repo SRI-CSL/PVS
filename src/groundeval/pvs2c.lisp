@@ -156,7 +156,7 @@
       (format mf "~%obj := $(src:.c=.o)~%")
       (format mf "~%.c.o : ; $(CC) ${CFLAGS} -c $< -o $@~%")
       (format mf "~%all : ../lib/libpvs-prelude.~a ../lib/libpvs-prelude.a~%" lib-suffix)
-      (format mf "~%../lib/libpvs-prelude.so : ${obj}~%")
+      (format mf "~%../lib/libpvs-prelude.~a : ${obj}~%" lib-suffix)
       (format mf "~a$(LD) $(LDFLAGS) -o $@ ${obj}~%" #\tab)
       (format mf "~%../lib/libpvs-prelude.a : $(obj)~%")
       (format mf "~a$(AR) r $@ ${obj}~%" #\tab)
