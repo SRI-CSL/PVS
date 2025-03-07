@@ -7035,7 +7035,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
      (unless known-c-type-info  ;if the type expression is already in the table, do nothing
        (push c-type-info ,info-table) ;else add to the info table and the decl table
        (when ,decl-table (push c-type-info ,decl-table)))
-     (tname (get-c-type-info ir-texpr))));return the known or newly added name 
+     (or (tname c-type-info)(tname known-c-type-info))));return the known or newly added name 
 
 										  
 (defmethod push-type-info-to-decl (c-type-info (decl const-decl))
@@ -7056,7 +7056,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
       (push-new-type-info c-type-info *c-type-info-table* (c-type-info-table einfo))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl type-decl))
-					;  (when (consp c-type-info) (break "push-type-info-to-decl"))
+					 ;(break "push-type-info-to-decl(type-decl)")
   (assert (or (null (ir-texpr c-type-info))
 	      (not (ir-type? (ir-texpr c-type-info)))
 	      (not (null (unique-name (ir-texpr c-type-info))))))
@@ -7077,7 +7077,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (push-new-type-info c-type-info *c-type-info-table* (c-type-info-table einfo))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl t))
-  ;;  (when (consp c-type-info) (break "push-type-info-to-decl"))
+;   (break "push-type-info-to-decl(t)")
   (unless *to-emacs*
     (format t "\nEmpty decl"))
   (with-slots (ir-expr tname) c-type-info
@@ -7108,7 +7108,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod add-c-type-definition ((ir2c-type t) &optional tname)
   (cond (tname
 	 (let ((c-type-info (get-c-type-info-by-name tname)))
-	   ;(when (null ir2c-type) (break "add-c-type-definition"))
+	   ;(break "add-c-type-definition")
 	   (cond (c-type-info tname)
 		 (t (let ((c-type-info (mk-simple-c-type-info ir2c-type tname (format nil "typedef ~a_t ~a_t;" ir2c-type tname) nil (format nil "~a" (id *pvs2c-current-decl*)))));;replace nil with act-defn
 		      (push-type-info-to-decl c-type-info
