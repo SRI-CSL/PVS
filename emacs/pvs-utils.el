@@ -1557,73 +1557,12 @@ Point will be on the offending delimiter."
 	(goto-char (point-max)))
       (error "No proof is currently running")))
 
-
-;;; This is taken from dired-aux.el
-
-(defvar pvs-query-keymap nil)
-(if pvs-query-keymap ()
-    (setq pvs-query-keymap (copy-keymap minibuffer-local-map))
-    (define-key pvs-query-keymap "y" 'self-insert-and-exit)
-    (define-key pvs-query-keymap " " 'self-insert-and-exit)
-    (define-key pvs-query-keymap "n" 'self-insert-and-exit)
-    (define-key pvs-query-keymap "\C-?" 'self-insert-and-exit)
-    (define-key pvs-query-keymap "!" 'self-insert-and-exit)
-    (define-key pvs-query-keymap "q" 'self-insert-and-exit)
-    (define-key pvs-query-keymap "n" 'self-insert-and-exit)
-    (unless (featurep 'xemacs)
-      (define-key pvs-query-keymap "\e" 'self-insert-and-exit))
-    ;;(define-key pvs-query-keymap [help-char] 'self-insert-and-exit)
-    ;;(define-key pvs-query-keymap "\C-g" 'keyboard-quit)
-    )
-    
-
-(defvar pvs-query-alist
-  '((?\y . y) (?\040 . y)		; `y' or SPC means accept once
-    (?n . n) (?\177 . n)		; `n' or DEL skips once
-    (?! . yes)				; `!' accepts rest
-    (?q. no) (?\e . no)			; `q' or ESC skips rest
-    ;; None of these keys quit - use C-g for that.
-    ))
-
-(defun pvs-emacs-query (qs-var qs-prompt &rest qs-args)
-  ;; Query user and return nil or t.
-  ;; Store answer in symbol VAR (which must initially be bound to nil).
-  ;; Format PROMPT with ARGS.
-  ;; Binding variable help-form will help the user who types the help key.
-  (let* ((char (symbol-value qs-var))
-	 (action (cdr (assoc char pvs-query-alist))))
-    (cond ((eq 'yes action)
-	   t)				; accept, and don't ask again
-	  ((eq 'no action)
-	   nil)				; skip, and don't ask again
-	  (t;; no lasting effects from last time we asked - ask now
-	   (let ((qprompt (concat qs-prompt
-				  (if help-form
-				      (format " [Type yn!q or %s] "
-					      (key-description
-					       (char-to-string help-char)))
-				    " [Type y, n, q or !] ")))
-		 (minibuffer-help-form help-form)
-		 elt)
-	     ;;(apply 'message qprompt qs-args)
-	     ;;(setq char (set qs-var (read-char)))
-	     (setq char
-		   (set qs-var
-			(string-to-char
-			 (read-from-minibuffer (format qprompt qs-args) nil
-					       pvs-query-keymap))))
-	     (while (not (setq elt (assoc char pvs-query-alist)))
-	       (message "Invalid char - type %c for help." help-char)
-	       (ding)
-	       (sit-for 1)
-	       ;;(apply 'message qprompt qs-args)
-	       ;;(setq char (set qs-var (read-char)))
-	       (setq char
-		     (set qs-var
-			  (string-to-char
-			   (read-from-minibuffer (format qprompt qs-args) nil
-						 pvs-query-keymap)))))
-	     (memq (cdr elt) '(t y yes)))))))
+(defun pvs-emacs-query (prompt &rest args)
+  (let* ((qprompt (concat (format prompt args)
+			  " [Type y(es), n(o), q(uit) or !(always)] "))
+	 (char-list (append "ynq!" nil))
+	 (char (read-char-from-minibuffer qprompt char-list)))
+    char))
 
 (defun directory-writable-p (dirname)
   (let* ((edir (expand-file-name dirname))

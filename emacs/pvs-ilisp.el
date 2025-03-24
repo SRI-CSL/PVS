@@ -1005,11 +1005,10 @@ window."
 	     (comint-simple-send (ilisp-process) "t")
 	     t)
       (let ((inhibit-quit nil)
-	    (query nil))
-	(pvs-emacs-query 'query prompt)
+	    (qchar (pvs-emacs-query prompt)))
 	(comint-simple-send
 	 (ilisp-process)
-	 (cl-case query (?! ":auto") (?y "t") (t "nil"))))))
+	 (cl-case qchar (?! ":auto") (?y "t") (t "nil"))))))
 
 (defun pvs-make-items (item-list)
   (mapcar #'(lambda (x) (cons (cadr x) (caddr x)))
