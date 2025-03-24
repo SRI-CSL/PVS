@@ -298,6 +298,8 @@ These are not associated with a workspace, and usually done through
 (defvar *odd_negint* nil)
 (defvar *ordinal* nil)
 (defvar *string-type* nil)
+(defvar *charstring-type* nil)
+(defvar *bytestring-type* nil)
 (defvar *character* nil)
 (defvar *char* nil)
 (defvar *uint8* nil)

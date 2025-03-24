@@ -4560,6 +4560,8 @@ in a way, a HAS_TYPE b is boolean, but it's not a valid expr."
     (|odd_negint| (setq *odd_negint* type))
     (|ordinal| (setq *ordinal* type))
     (|string| (setq *string-type* type))
+    (|charstring| (setq *charstring-type* type))
+    (|bytestring| (setq *bytestring-type* type))
     (|character| (setq *character* type)
 		 (setq *char* (tc-type "below[0x110000]")))
     (|uint8| (setq *uint8* type))

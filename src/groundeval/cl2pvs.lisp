@@ -126,18 +126,17 @@
 
 (defmethod cl2pvs* (sexpr (type recordtype) context)
   (cond ((string-type? type)
-	 (cl2pvs*-string sexpr))
-	((string-type? type)
 	 (let* ((len (elt sexpr 0))
 		(fn (elt sexpr 1))
 		(ne (mk-name-expr '|char?|))
 		(charcodelist (loop for x from 0 to (- len 1)
 				    collect
-				    (pvs-funcall fn x))))
+				    (pvs-funcall fn x)))
+		(string-value (if (stringp fn)
+				  fn
+				(format nil "~{~a~}" charcodelist))))
 	   (make-instance 'string-expr
-			  'string-value (format nil "~{~a~}"
-						    (loop for chcode in charcodelist
-							  collect (code-char chcode)))
+			  'string-value string-value
 			  'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
 			  'argument (cl2pvs*-string* charcodelist))))
 	   ;; (mk-application (mk-name-expr '|list2finseq|)

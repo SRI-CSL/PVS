@@ -102,10 +102,10 @@
   hash closure size) ;size can be nil to indicate that it is unbounded or not an array
 
 (defmacro pvs-funcall (fun &rest args)
-  (if (arrayp fun)
-      `(aref ,fun ,@args)
-    (let ((funval (gentemp)))
-      `(let ((,funval ,fun))
+  (let ((funval (gentemp)))
+    `(let ((,funval ,fun))
+       (if (arrayp ,funval)
+	   (aref ,funval ,@args)
 	 ;; (declare (cl:type pvs-funcallable ,funval))
 	 (if (pvs-array-closure-p ,funval)
 	     (pvs-array-closure-lookup ,funval ,@args)
@@ -703,15 +703,22 @@
     `(vector ,@protected-args)))
 
 (defmacro pvs2cl_finseq (length seq);;not accurate - revisit in 7.2
-  `(let* ((length (trap-undefined ,length))
-	  (seq (trap-undefined ,seq))
-	  (seqtypeof (type-of seq)))
-    (if (and (typep seq 'simple-array)
-	     (listp seqtypeof)
-	     (> (length seqtypeof) 1)
-	     (eq (cadr seqtypeof) 'character))
-	(make-pvslist-string length seq)
-      (pvs2cl_record length seq))))
+  `(pvs2cl_record length seq))
+;;NSH(3-22-25): representing strings as records
+  ;; `(let* ((length (trap-undefined ,length))
+  ;; 	  (seq (trap-undefined ,seq))
+  ;; 	  (seqtypeof (type-of seq)))
+  ;;   (if (and (typep seq 'simple-array)
+  ;; 	     (listp seqtypeof)
+  ;; 	     (> (length seqtypeof) 1)
+  ;; 	     (eq (cadr seqtypeof) 'character))
+  ;; 	(make-pvslisp-string length seq)
+  ;;     (pvs2cl_record length seq))))
+
+(defmacro pvs2cl_stringify (expr)
+  `(let ((val ,expr))
+     (if (stringp val) val
+       (make-pvslisp-string (project 1 val)(project 2 val)))))
 
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)

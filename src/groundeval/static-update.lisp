@@ -190,15 +190,16 @@
   (unless (member texpr *exprs-seen* :test #'tc-eq)
     (push texpr *exprs-seen*)
     (some #'(lambda (constr)
-	      (and (funtype? (type constr))
-		   (let* ((dom (domain (type constr)))
-			  (types (if (tupletype? dom)
-				     (types dom)
+	      (let ((contype (type (con-decl constr))))
+		(and (funtype? contype)
+		     (let* ((dom (domain contype))
+			    (types (if (tupletype? dom)
+				       (types dom)
 				     (list dom))))
-		     (loop for ty in types
-			   thereis (and (not (tc-eq (find-supertype ty) texpr))
-					(contains-possibly-updateable?* ty))))))
-	  (constructors texpr))))
+		       (loop for ty in types
+			     thereis (and (not (tc-eq (find-supertype ty) texpr))
+					  (contains-possibly-updateable?* ty)))))))
+	  (constructors (adt texpr)))))
 
 
 (defmethod contains-possibly-updateable?* ((texpr list))

@@ -220,11 +220,16 @@ if called."
 ;;wraps (the type ..) around the translated lisp when the type is known
 (defmethod pvs2cl_up* :around ((expr expr) bindings livevars)
   (declare (ignore livevars bindings))
-  (let ((lisp-type (unless (rational-expr? expr)
+  (let ((lisp-type (unless (or (rational-expr? expr)
+			       (tuple-expr? expr)
+			       (record-expr? expr))
 		     (pvs2cl-lisp-type (type expr)))))
     (if lisp-type
-	`(the ,lisp-type
-	   ,(call-next-method))
+	(if (eq lisp-type 'string)
+	    `(the ,lisp-type
+		  (pvs2cl_stringify ,(call-next-method)))
+	  `(the ,lisp-type
+		  ,(call-next-method)))
 	(call-next-method))))
 
 ;;String literals are translated directly to strings. 
@@ -233,7 +238,8 @@ if called."
   (declare (ignore bindings livevars))
 ;  (break "string-expr")
   (let ((str (string-value expr)))
-    str))
+    `(pvs2cl_record (length ,str) ,str)))
+;;    str
 ;;   `(pvs2cl_record (length ,str) ,str)))
 ;;;    (concatenate 'string "\"" (string-value expr) "\"")
 
@@ -868,20 +874,26 @@ if called."
 
 (defun make-pvslisp-string (size expr)
   (let ((charlist (loop for i from 0 to (1- size) collect (pvs-funcall expr i))))
-  (coerce charlist 'string)))
+    (coerce charlist 'string)))
+
+(defun string-type? (x) (member x (list *string-type* *charstring-type* *bytestring-type*) :test #'tc-eq))
   
 
 (defmethod pvs2cl_up* ((expr record-expr) bindings livevars)
   ;;add special case for strings
   (let ((args (pvs2cl_up* (mapcar #'expression
-			    (sort-assignments (assignments expr)))
-			  bindings livevars))
-	(stype (find-supertype (type expr))))
-        (if (tc-eq stype *string-type*)
-	    `(make-pvslist-string ,(car args) ,(cadr args))
-	  (if (finseq-type? stype)
-	      `(pvs2cl_finseq ,(car args) ,(cadr args))
-	    `(pvs2cl_record ,@args)))))
+				  (sort-assignments (assignments expr)))
+			  bindings livevars)))
+    `(pvs2cl_record ,@args)))
+  ;; (let ((args (pvs2cl_up* (mapcar #'expression
+  ;; 			    (sort-assignments (assignments expr)))
+  ;; 			  bindings livevars))
+  ;; 	(stype (find-supertype (type expr))))
+  ;;       (if (string-type? stype)
+  ;; 	    `(make-pvslisp-string ,(car args) ,(cadr args))
+  ;; 	  (if (finseq-type? stype)
+  ;; 	      `(pvs2cl_finseq ,(car args) ,(cadr args))
+  ;; 	    `(pvs2cl_record ,@args)))))
 
 (defmethod pvs2cl_up* ((expr projection-application) bindings livevars)
     `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
@@ -904,14 +916,15 @@ if called."
     (let* ((clarg (pvs2cl_up* argument bindings livevars))
 	   (argtype (find-supertype (type argument)))
 	   (fieldnum (get-field-num (id expr) argtype)))
+      `(project ,(1+ fieldnum) ,clarg))))
       ;; (if (tc-eq argtype *string-type*)	;;NSH(9-9-20): trapping strings
       ;; 	  (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
       (if (finseq-type? argtype)
-	  (let ((fldapp (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))))
+	  (let ((fldapp (if (zerop fieldnum) '(length argval) 'argval)))  ;;'(coerce argval 'vector)
 	    `(let ((argval ,clarg))
 	       (if (stringp argval)
 		   ,fldapp
-		   (project ,(1+ fieldnum) ,clarg))))
+		   (project ,(1+ fieldnum) argval))))
 	  `(project ,(1+ fieldnum) ,clarg))
       ;; )
       )))
@@ -1064,18 +1077,14 @@ if called."
 	 (cl-expr-var (gentemp "E"))
 	 ;;(rhs-var (gentemp "R"))
 	 )
-    (if (tc-eq type *string-type*)
-	(if (eq id 'seq)
-	    (if (cdr args) ;;if the index i of the string is being updated
-		(let ((index-var (gentemp "I"))
-		      (index-expr (pvs2cl_up* (caadr args) bindings
-					      livevars)))
-		  `(let ((,cl-expr-var ,cl-expr)
-			 (,index-var ,index-expr))
-		     (setf (aref ,cl-expr-var ,index-var) ,rhs)
-		     ,cl-expr-var))
-	      `(coerce ,rhs 'string)) ;replacing the entire seq field
-	  cl-expr); can't update length field of a string in isolation
+    (if (and (string-type? type)(eq id 'seq)(cdr args))
+	(let ((index-var (gentemp "I"))
+	      (index-expr (pvs2cl_up* (caadr args) bindings
+				      livevars)))
+	  `(let ((,cl-expr-var ,cl-expr)
+		 (,index-var ,index-expr))
+	     (setf (aref ,cl-expr-var ,index-var) ,rhs)
+	     ,cl-expr-var))
       (let* ((field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
 	     (newexpr `(svref ,cl-expr-var ,field-num))
 	     (field-type (type (find id fields :key #'id) ))
@@ -1608,7 +1617,7 @@ if called."
 (defun pvs2cl-external-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* (module decl))
-	 (*pvs2cl-decl* decl))
+	 (*pvs2cl-decl* decl))(when (eq (id decl) '|substr|) (break "substr"))
     (cond ((null defax)
 	   (let ((undef (undefined decl)))
 	     (make-c-eval-info decl)
@@ -2284,9 +2293,12 @@ if called."
   nil)
 
 (defmethod pvs2cl-lisp-type*  ((type recordtype))
-  (if (tc-eq type *string-type*)
-      'string
-    '(simple-array t)))
+  ;; (when (or (tc-eq type *charstring-type*)
+  ;; 	    (tc-eq type *bytestring-type*))
+  ;;   (break "lisp-type"))
+  ;; (if (string-type? type)
+  ;;     'string
+    '(simple-array t))
 
 (defun subrange-index (type)
   (let ((below (simple-below? type)))
