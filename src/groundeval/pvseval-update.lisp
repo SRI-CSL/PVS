@@ -876,7 +876,7 @@ if called."
   (let ((charlist (loop for i from 0 to (1- size) collect (pvs-funcall expr i))))
     (coerce charlist 'string)))
 
-(defun string-type? (x) (member x (list *string-type* *charstring-type* *bytestring-type*) :test #'tc-eq))
+;;(defun string-type? (x) (member x (list *string-type* *charstring-type* *bytestring-type*) :test #'tc-eq))
   
 
 (defmethod pvs2cl_up* ((expr record-expr) bindings livevars)
@@ -917,18 +917,17 @@ if called."
 	   (argtype (find-supertype (type argument)))
 	   (fieldnum (get-field-num (id expr) argtype)))
       `(project ,(1+ fieldnum) ,clarg))))
+
       ;; (if (tc-eq argtype *string-type*)	;;NSH(9-9-20): trapping strings
       ;; 	  (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
-      (if (finseq-type? argtype)
-	  (let ((fldapp (if (zerop fieldnum) '(length argval) 'argval)))  ;;'(coerce argval 'vector)
-	    `(let ((argval ,clarg))
-	       (if (stringp argval)
-		   ,fldapp
-		   (project ,(1+ fieldnum) argval))))
-	  `(project ,(1+ fieldnum) ,clarg))
-      ;; )
-      )))
-
+      ;; (if (finseq-type? argtype)
+      ;; 	  (let ((fldapp (if (zerop fieldnum) '(length argval) 'argval)))  ;;'(coerce argval 'vector)
+      ;; 	    `(let ((argval ,clarg))
+      ;; 	       (if (stringp argval)
+      ;; 		   ,fldapp
+      ;; 		   (project ,(1+ fieldnum) argval))))
+      ;; 	  `(project ,(1+ fieldnum) ,clarg))
+      ;; ))
 
 
 (defmethod no-livevars? ((expr update-expr) livevars assignments)
