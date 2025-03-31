@@ -187,12 +187,12 @@
 ;; (defun prelude-theory? (theory)
 ;;   (memq theory *prelude-theories*))
 
-;; (defun pvs2c-preceding-prelude-theories (theory);theory should not be a prelude theory
-;;   (let ((*preceding-prelude-theories* nil)
-;; 	(theory-defn (get-theory theory)))
-;;     (unless (memq (id theory-defn) *primitive-prelude-theories*)
-;;       (pvs2c-preceding-prelude-theories* theory-defn));(break "precedprelude")
-;;     *preceding-prelude-theories*))
+(defun pvs2c-preceding-prelude-theories (theory);theory should not be a prelude theory
+  (let ((*preceding-prelude-theories* nil)
+	(theory-defn (get-theory theory)))
+    (unless (memq (id theory-defn) *primitive-prelude-theories*)
+      (pvs2c-preceding-prelude-theories* theory-defn));(break "precedprelude")
+    *preceding-prelude-theories*))
 
 ;; (defun pvs2c-preceding-prelude-theories-root (theory)
 ;;   (loop for thy in (used-prelude-theories theory)
@@ -201,45 +201,45 @@
 ;;   (when (prelude-theory? theory)
 ;;     (pushnew theory *preceding-prelude-theories* :test #'same-id)))
 
-;; (defun pvs2c-preceding-prelude-theories* (theory)
-;;   (let ((imported-prelude-theories
-;; 	 (if (from-prelude? theory)
-;; 	     (implicit-prelude-importings theory)
-;; 	   (used-prelude-theories theory))))
-;;   (loop for thy in imported-prelude-theories
-;; 	when (not (memq (id thy) *primitive-prelude-theories*))
-;; 	do (pvs2c-preceding-prelude-theories* thy))
-;;   (unless (from-prelude? theory)
-;;     (let ((all-imported-theories (all-imported-theories theory)))
-;;       (when (listp all-imported-theories);i.e., not 'unbound
-;; 	(loop for thy in all-imported-theories
-;; 	      when (not (from-prelude? thy))
-;; 	      do (pvs2c-preceding-prelude-theories* thy)))))
-;;   (when (from-prelude? theory)
-;;     (pushnew theory *preceding-prelude-theories* :test #'same-id))))
+(defun pvs2c-preceding-prelude-theories* (theory)
+  (let ((imported-prelude-theories
+	 (if (from-prelude? theory)
+	     (implicit-prelude-importings theory)
+	   (used-prelude-theories theory))))
+  (loop for thy in imported-prelude-theories
+	when (not (memq (id thy) *primitive-prelude-theories*))
+	do (pvs2c-preceding-prelude-theories* thy))
+  (unless (from-prelude? theory)
+    (let ((all-imported-theories (all-imported-theories theory)))
+      (when (listp all-imported-theories);i.e., not 'unbound
+	(loop for thy in all-imported-theories
+	      when (not (from-prelude? thy))
+	      do (pvs2c-preceding-prelude-theories* thy)))))
+  (when (from-prelude? theory)
+    (pushnew theory *preceding-prelude-theories* :test #'same-id))))
 
-;; (defun pvs2c-preceding-theories (theory)
-;;   (let ((*pvs2c-preceding-theories* nil)
-;; 	(theory-defn (get-theory theory)))
-;;     (pvs2c-preceding-theories* theory-defn)
-;;       *pvs2c-preceding-theories*))
+(defun pvs2c-preceding-theories (theory)
+  (let ((*pvs2c-preceding-theories* nil)
+	(theory-defn (get-theory theory)))
+    (pvs2c-preceding-theories* theory-defn)
+      *pvs2c-preceding-theories*))
 
-;; (defmethod pvs2c-preceding-theories* ((theory module))
-;;   (unless (eq (all-imported-theories theory) 'unbound)
-;;     (loop for thy in (all-imported-theories theory)
-;; 	  do (pvs2c-preceding-theories* thy)))
-;;   (unless (from-prelude? theory)
-;;     (pushnew theory *pvs2c-preceding-theories* :test #'same-id)))
+(defmethod pvs2c-preceding-theories* ((theory module))
+  (unless (eq (all-imported-theories theory) 'unbound)
+    (loop for thy in (all-imported-theories theory)
+	  do (pvs2c-preceding-theories* thy)))
+  (unless (from-prelude? theory)
+    (pushnew theory *pvs2c-preceding-theories* :test #'same-id)))
 
-;; (defmethod pvs2c-preceding-theories* ((theory datatype))
-;;   (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
-;;     (unless (eq (all-imported-theories theory) 'unbound)
-;;       (loop for thy in all-imported-theories
-;; 	    do (pvs2c-preceding-theories* thy)))
-;;     ;;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
-;;     (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
-;;     (when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
-;;     (when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))))
+(defmethod pvs2c-preceding-theories* ((theory datatype))
+  (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
+    (unless (eq (all-imported-theories theory) 'unbound)
+      (loop for thy in all-imported-theories
+	    do (pvs2c-preceding-theories* thy)))
+    ;;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
+    (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))))
 
 (defun pvs2c-library (&rest top-theory-refs)
   (unless top-theory-refs (error "pvs2-library: takes at least one theory-ref"))
@@ -369,6 +369,7 @@
 					   (and (from-prelude? (module ref))
 						(let ((mod-id (or (generated-by (module ref))
 								  (id (module ref)))))
+						  ;;(format t "~%pvs2c-decls: pushing mod-id: ~a" mod-id)
 					    	  (not (member mod-id
 							       *pvs2c-prelude-theories*)))))
 				 (pushnew (module ref) *pvs2c-theory-importings*))))
@@ -386,7 +387,7 @@
 	(*var-counter* nil)
 	(*pvs2c-defn-actuals* nil))
     (when force? (clear-decl decl))
-    (newcounter *var-counter*)
+    (newcounter *var-counter*);(break "pvs2c-decl")
     (pvs2c-decl* decl)))
 
 ;;NSH(8/6/2016): Closures are handled now. 
@@ -400,7 +401,9 @@
     ;(break "type-eq-decl")
     (when  (and (ir-typename? typename)
 		(ir-type-value decl));some type definitions translate to no-ops
-      (add-c-type-definition typename)))); (ir2c-type (ir-type-defn typename))(ir-type-id typename)))))
+      ;(break "pvs2c-decl*:type-eq-decl")
+      (add-c-type-definition typename))))
+
 
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
   (let* (;(thid (simple-id (id (module decl))))
@@ -513,6 +516,7 @@
 	       ;; 		   (c-args-string ir-args)))
 	       )
 	  (unless *to-emacs* ;; causes problems
+	    (break "make-c-defn-info: no defn")
 	    (format t "~%No definition for ~a" ir-function-name))
 	  nil)
 	  ;; (mk-c-defn-info ir-function-name (format nil "~a;" c-header) nil nil
@@ -724,7 +728,7 @@
       (loop for formal in (formals theory)
 	    when (formal-type-decl? formal)
 	    do (format output "~%~%typedef pointer_t ~a_t;" (ir-type-id (ir-type-name (ir-type-value formal)))))
-      (print-type-info-headers-to-file output *c-type-info-table*)
+      (print-type-info-headers-to-file output *c-type-info-table*);;(break "print-type-info-headers")
       (loop for decl in (theory theory)
 	    when (and (slot-exists-p decl 'eval-info)
 		      (eval-info decl)

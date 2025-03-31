@@ -1252,13 +1252,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	  ;;     ir-type ;;ir-type might not be a typename
 	  (cond ((ir-typename? ir-type);;return the existing name-don't nest ir-typenames
 		 (setf (ir-type-value decl) (mk-eval-type-info ir-type))
-		 (ir-type-id ir-type));otherwise, create a new definition
+		 ir-type );otherwise, create a new definition
 		(t (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) ir-type
 						       ir-formals nil decl)));nil actuals 
 		     (push ir-type-name *ir-type-info-table*)
 		     (setf (ir-type-value decl)
 			   (mk-eval-type-info ir-type-name))
-		     (ir-type-id ir-type-name))))))))
+		     ir-type-name)))))))
 
 (defmethod pvs2ir-decl* ((decl type-decl))
   (and (or (ir-type-value decl)
@@ -1877,17 +1877,17 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (with-slots (size) ir-type
     (list (mk-ir-subrange 0 (1- size)))))
 
-(defmethod mk-variables-from-ir-domain-types ((ir-type ir-typename) bindings)
+(defmethod mk-variables-from-ir-domain-types ((ir-type ir-typename) bindings  singleton-flag?)
   (with-slots (ir-type-defn) ir-type
-    (mk-variables-from-ir-domain-types ir-type-defn bindings)))
+    (mk-variables-from-ir-domain-types ir-type-defn bindings singleton-flag?)))
 
-(defmethod mk-variables-from-ir-domain-types ((ir-type ir-funtype) bindings)
+(defmethod mk-variables-from-ir-domain-types ((ir-type ir-funtype) bindings  singleton-flag?)
   (with-slots (ir-domain) ir-type
     (let* ((dtype (if (ir-fieldtype? ir-domain) (ir-vtype ir-domain) ir-domain))
-	   (dtypes (if (ir-tupletype? dtype) (ir-field-types dtype) (list dtype))))
+	   (dtypes (if (and (not singleton-flag?)(ir-tupletype? dtype)) (ir-field-types dtype) (list dtype))))
       (mk-variables-from-ir-types dtypes bindings))))
 
-(defmethod mk-variables-from-ir-domain-types ((ir-type ir-arraytype) bindings)
+(defmethod mk-variables-from-ir-domain-types ((ir-type ir-arraytype) bindings  singleton-flag?)
   (declare (ignore bindings))
   (with-slots (size) ir-type
     (list (mk-ir-variable (new-irvar) (mk-ir-subrange 0 (1- size))))))
@@ -2051,7 +2051,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (let* ((op-ir-type (pvs2ir-type (type op) bindings))
 	   (op-var (new-irvartype op-ir-type))
 	   (op-ir (pvs2ir* op bindings nil)) ; expected is nil 
-	   (arg-vartypes (mk-variables-from-ir-domain-types op-ir-type nil))) ; (break "pvs2ir-application-2")
+	   (arg-vartypes (mk-variables-from-ir-domain-types op-ir-type nil (eql (length args-ir) 1))))  ;(break "pvs2ir-application-2")
       ;;	  (when (not (eql (length arg-vartypes)(length arg-types))) (break "pvs2-ir-application: arg-vartypes: ~s, ~% argtypes: ~s" arg-vartypes arg-types))
       (if (ir-array? op-ir-type)
 	  (mk-ir-let op-var op-ir
@@ -2061,26 +2061,33 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					   apply-return-var)))
 	  (if (ir-lambda? op-ir) ;;op-var is ignored, IR is beta-reduced
 	      (with-slots (ir-vartypes ir-body) op-ir
-		(mk-ir-let* arg-vartypes args-ir
-			    (if (eql (length ir-vartypes)(length arg-vartypes))
-				(mk-ir-let* ir-vartypes arg-vartypes
-					    ir-body)
-				(if (eql (length arg-vartypes) 1)
-				    (let ((ir-projected-args
-					   (loop for ir-vartype in ir-vartypes
-						 as i from 1
-						 collect (mk-ir-get (car arg-vartypes)
-								    (intern (format nil "project_~a" i))))))
+		(let ((args-ir-flat (if (and (eql (length args-ir) 1)
+					     (> (length arg-vartypes) 1))
+					(loop for av in arg-vartypes
+					      as i from 1
+					      collect (mk-ir-get (car args-ir)
+								 (intern (format nil "project_~a" i))))
+					args-ir)))
+		  (mk-ir-let* arg-vartypes args-ir-flat
+			      (if (eql (length ir-vartypes)(length arg-vartypes))
+				  (mk-ir-let* ir-vartypes arg-vartypes
+					      ir-body)
+				  (if (eql (length arg-vartypes) 1)
+				      (let ((ir-projected-args
+					     (loop for ir-vartype in ir-vartypes
+						   as i from 1
+						   collect (mk-ir-get (car arg-vartypes)
+								      (intern (format nil "project_~a" i))))))
 
-				      (mk-ir-let* ir-vartypes ir-projected-args ir-body))
-				    (let* ((ir-fields (loop for ir-vartype in arg-vartypes
-							    as i from 1 
-							    collect
-							    (mk-ir-field (intern (format nil "project_~a" i))
-									 ir-vartype)))
-					   (ir-recordtype (ir-vtype (car ir-vartypes))))
-				      (mk-ir-let (car ir-vartypes) (mk-ir-record ir-fields ir-recordtype)
-						 ir-body))))))
+					(mk-ir-let* ir-vartypes ir-projected-args ir-body))
+				      (let* ((ir-fields (loop for ir-vartype in arg-vartypes
+							      as i from 1 
+							      collect
+							      (mk-ir-field (intern (format nil "project_~a" i))
+									   ir-vartype)))
+					     (ir-recordtype (ir-vtype (car ir-vartypes))))
+					(mk-ir-let (car ir-vartypes) (mk-ir-record ir-fields ir-recordtype)
+						   ir-body)))))))
 	      (make-ir-let op-var op-ir 
 			   (make-ir-lett* arg-vartypes
 					  arg-types
@@ -7035,7 +7042,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
      (unless known-c-type-info  ;if the type expression is already in the table, do nothing
        (push c-type-info ,info-table) ;else add to the info table and the decl table
        (when ,decl-table (push c-type-info ,decl-table)))
-     (or (tname c-type-info)(tname known-c-type-info))));return the known or newly added name 
+     (or (and known-c-type-info (tname known-c-type-info))(tname c-type-info))));return the known or newly added name 
 
 										  
 (defmethod push-type-info-to-decl (c-type-info (decl const-decl))
@@ -7141,15 +7148,15 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(add-c-type-definition ir-type-defn ir-type-id)
       (if (and type-declaration
      	       (type-eq-decl? type-declaration))
-     	  (if (or (eq (id (module type-declaration)) *theory-id*)
+     	  (if (or (eql (id (module type-declaration)) *theory-id*)
 		  (formals-sans-usings (module type-declaration))
 		  (decl-formals type-declaration))
 	      (let ((c-type-info (get-c-type-info-by-name ir-type-id)))
     		(cond (c-type-info ir-type-id)
 		      (t ;(when (eq (id (module type-declaration)) *theory-id*) (break "add-c-type ir-typename"))
-		       (if (eq (id (module type-declaration)) *theory-id*)
-			   (add-c-type-definition  ir-type-defn ir-type-id)
-			   (add-c-type-definition  ir-type-defn ))))); ir-type-id
+		       (if (eql (id (module type-declaration)) *theory-id*)
+			   (add-c-type-definition  (ir2c-type ir-type-defn) ir-type-id)
+			   (add-c-type-definition  (ir2c-type ir-type-defn) ))))); ir-type-id
 	    ir-type-id)
 	ir-type-id))))
 
