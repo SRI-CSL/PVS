@@ -146,7 +146,7 @@
 	 (format mf "CFLAGS := -I ../include -fPIC -Wall -Winline -O -ggdb~%")
 	 (format mf "LDFLAGS = -Bsymbolic -shared -L./ -lc -lm -lgmp~%"))
 	(|ix86-MacOSX|
-	 (format mf "SDK=$(shell xcrun --show-sdk-path)")
+	 (format mf "SDK=$(shell xcrun --show-sdk-path)~%")
 	 (format mf "CFLAGS := -fPIC -Wall -Winline -O2 -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
 	 (format mf "LDFLAGS =  -bundle -flat_namespace -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lgmp~%"))
 	(|arm-MacOSX|
