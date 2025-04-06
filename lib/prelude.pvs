@@ -5730,7 +5730,8 @@ charstrings: THEORY
     charstring_bound: MACRO uint32 = exp2(28) %same as index, but only used in types
     charstring: TYPE = [# length : index, %below(charstring_bound)
                         seq : ARRAY[below(length) -> char] #]
-
+    JUDGEMENT charstring SUBTYPE_OF string
+    
     c, c1, c2: VAR char
 
     s, s1, s2: VAR charstring
