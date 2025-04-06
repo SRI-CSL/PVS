@@ -165,10 +165,11 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				       (t (format out "_u~x_" (char-code ch))))))))))
 
 
-(defmacro make-c-name (module-id decl-id) ;;NSH(2/5/25)
-  `(intern (pvsid-to-cstring (format nil "~a__~a" ,module-id ,decl-id))))
+(defmacro make-c-name (prefix module-id decl-id) ;;NSH(2/5/25)
+  `(intern (if ,prefix (pvsid-to-cstring (format nil "~a_~a__~a" ,prefix ,module-id ,decl-id))
+	       (pvsid-to-cstring (format nil "~a__~a" ,module-id ,decl-id)))))
 
-(defun pvs2ir-unique-decl-id (decl)
+(defun pvs2ir-unique-decl-id (decl &optional prefix)
   (let ((module-id (simple-id *theory-id*)) ;(simple-id (id (module decl))))
 	(decl-id (simple-id (id decl))))
     (if (const-decl? decl)
@@ -180,9 +181,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					;(assert (memq decl same-id-decls))
 	  (if (cdr same-id-decls)
 	      (let ((idx (1+ (position decl same-id-decls))))
-		(make-c-name module-id (format nil "~a_~d"  decl-id idx))) ;;% to avoid name confusion
-	    (make-c-name module-id decl-id)))
-      (make-c-name  module-id decl-id))))
+		(make-c-name prefix module-id (format nil "~a_~d"  decl-id idx))) ;;% to avoid name confusion
+	    (make-c-name prefix module-id decl-id)))
+      (make-c-name prefix module-id decl-id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *pvs2ir-primitives*
@@ -1184,8 +1185,30 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod clear-decl* ((decl type-eq-decl))
   (setf (ir-type-value decl) nil) decl)
 
+(defun rm-ir-eval-info (decl)
+  (and (eval-info decl)
+       (setf (ir (eval-info decl)) nil
+	     (cdefn (eval-info decl)) nil
+	     (c-type-info-table (eval-info decl)) nil)))
+
+
+(defun clear-constructor (constr)
+  (rm-ir-eval-info (rec-decl constr))
+  (loop for accdecl in (acc-decls constr)
+	do (rm-ir-eval-info  accdecl))
+  (rm-ir-eval-info (con-decl constr)))
+
+
+
 (defmethod clear-decl* ((decl type-decl))
-  (setf (ir-type-value decl) nil) decl)
+  (cond ((adt (type-value decl))
+	 (let* ((adt (adt (type-value decl)))
+	       (constructors (constructors adt)))
+	   (loop for con in constructors
+		 do (clear-constructor con)))
+	 (setf (ir-type-value decl) nil)
+	 decl)
+	(t (setf (ir-type-value decl) nil) decl)))
 
 (defmethod clear-decl* ((decl formal-type-decl))
   (setf (ir-type-value decl) nil) decl)
@@ -1211,13 +1234,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod clear-decl* ((decl adt-constructor-decl))
   decl)
 
-
 (defmethod clear-decl* ((decl adt-accessor-decl))
   decl)
-
-
-
-
 
 (defmethod clear-decl* ((decl t))
   decl)
@@ -1530,7 +1548,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (declare (ignore adt-enum-type))
   (let* ((cdecl (con-decl constructor))
 	 ;(args (arguments constructor))
-	 (cid (pvs2ir-unique-decl-id cdecl))
+	 (cid (pvs2ir-unique-decl-id cdecl "enum"))
 	 (einfo (get-eval-info cdecl)))
 ;    (unless (ir einfo))
       (setf (ir einfo) (make-instance 'ir-constructor-defn))
@@ -1555,6 +1573,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (let* ((cdecl (con-decl constructor))
 	 (args (arguments constructor))
 	 (cid (pvs2ir-unique-decl-id cdecl))
+	 (constructor-ir-id (intern (format nil "con_~a" cid)))
 	 (einfo (get-eval-info cdecl))
 	 (*var-counter* nil))
     (newcounter *var-counter*)
@@ -1583,7 +1602,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			       (mk-ir-let cvar cbody-record cvar))));(break "c2")
 	(setf (ir-constructor-type (ir einfo)) ctypename);(break "-constructor")
 	(setf (ir-function-name (ir einfo))
-	      (mk-ir-function cid cdecl)
+	      (mk-ir-function constructor-ir-id cdecl)
 	      (ir-args (ir einfo)) cargs
 	      (ir-return-type (ir einfo)) adt-type-name
 	      (ir-defn (ir einfo)) cbody)
@@ -1624,13 +1643,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	 (*var-counter* nil))
     (newcounter *var-counter*)
     (or ir-einfo
-	(let* ((rid (pvs2ir-unique-decl-id rdecl))
+	(let* ((rid (pvs2ir-unique-decl-id rdecl "rec"))
 	       (rarg  (mk-ir-variable (new-irvar) adt-type-name))
 	       (index-var (mk-ir-variable (new-irvar) index-type))
 	       (check-expr (mk-ir-apply (mk-ir-primitive-function '=) (list rarg index-var)))
 	       (rbody (mk-ir-let index-var (mk-ir-integer index)
 				 check-expr))
-	       (recognizer-name (mk-ir-function (intern (format nil "r_~a" rid)) rdecl)))
+	       (recognizer-name (mk-ir-function  rid rdecl)));(break "recog")
 	  (setf (ir einfo)(mk-ir-defn recognizer-name
 				      (list rarg) '|bool| rbody)
 		(cdefn einfo) nil
@@ -1646,7 +1665,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	 (*var-counter* nil))
     (newcounter *var-counter*)
 ;    (or ir-einfo)
-    (let* ((rid (pvs2ir-unique-decl-id rdecl))
+    (let* ((rid (pvs2ir-unique-decl-id rdecl "rec"))
 	   (rargs (list (mk-ir-variable (new-irvar) adt-type-name)))
 	   (index-expr (mk-ir-get (car rargs) index-id))
 	   (index-expr-var (mk-ir-variable (new-irvar) index-type))
@@ -1655,7 +1674,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	   (rbody (mk-ir-let index-var (mk-ir-integer index)
 			     (mk-ir-let index-expr-var index-expr
 					check-expr)))
-	   (recognizer-name (mk-ir-function (intern (format nil "r_~a" rid)) rdecl))
+	   (recognizer-name (mk-ir-function rid rdecl))
 					;(rdefn (mk-ir-lambda rargs 'bool rbody))
 	   )				;(break "recognizer")
       
@@ -1687,7 +1706,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				 project-expr))
 ;	       (adefn (mk-ir-lambda (list aargvar) accessor-ir-type abody))
 	       (new-value-var (mk-ir-variable (new-irvar) accessor-ir-type))
-	       (accessor-name (mk-ir-function (format nil "~a_~a" (ir-type-id adt-type-name) adecl-id) adecl))
+	       (accessor-name (mk-ir-function (format nil "acc_~a_~a" (ir-type-id adt-type-name) adecl-id) adecl))
 	       (update-name (mk-ir-function (format nil "update_~a_~a" (ir-type-id adt-type-name) adecl-id) adecl))
 	       (ubody (mk-ir-let cast-var aargvar (mk-ir-constructor-update cast-var adecl-id new-value-var))))
 	  (setf (ir einfo)
@@ -2310,6 +2329,11 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	      (mk-ir-fieldtype (id (caar arguments))
 				(pvs2ir-expr-type expression bindings))))
 
+;; (defmethod pvs2ir-expr-type ((expr array-expr) &optional bindings)
+;;   (with-slots (type) expr
+;;     (let*
+;;     (mk-ir-arraytype 
+
 (defmethod pvs2ir-expr-type ((expr t) &optional bindings)
   (let ((val (pvs-integer? expr)))
     (if val (mk-ir-subrange val val)
@@ -2342,7 +2366,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		(ir-record-fieldtype (mk-ir-fieldtype (ir-fieldname ir-field) ir-field-type))
 		(new-bindings (if expected (acons expec1 ir-field-vartype bindings)
 				bindings)))
-	   
+	   ;(break "pvs2ir-fld-assignments")
 	   (pvs2ir-field-assignments (cdr assignments) new-bindings (cdr expected) 
 				     (cons ir-field-vartype accum-ir-fieldvars)
 				     (cons ir-assgn1 accum-ir-assignments)
@@ -2364,7 +2388,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				    (mk-ir-recordtype (nreverse accum-ir-fieldtypes)))))));no label
   
 
-(defun pvs2ir-fields (assignments bindings expected)
+(defun pvs2ir-fields (assignments bindings expected);(break "pvs2ir-fields")
   (pvs2ir-field-assignments assignments bindings expected  nil nil nil nil nil))
   ;; (let* ((expressions (mapcar #'expression assignments))
   ;; 	 (expected-field-types (mapcar #'type expected))
@@ -7323,24 +7347,24 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ~8Tuint32_t hashindex = ihash & mask;
 ~8T~a_hashentry_t data = htbl->data[hashindex];
 ~8Tbool_t keyzero;
-~{~%~8T~a;~}
+~%~a
 ~8Tbool_t keymatch;~
-~{~%~8T~a;~}
+~%~a
 ~8Twhile ((!keyzero || data.keyhash != 0) &&
 ~16T (data.keyhash != ihash || !keymatch)){
 ~16Thashindex++;
 ~16Thashindex = hashindex & mask;
 ~16Tdata = htbl->data[hashindex];
-~{~%~16T~a;~}
-~{~%~16T~a;~}
+~%~a
+~%~a
 ~16T}
 ~8Treturn hashindex;
 ~8T}"
 			 type-name-root
-			 keyzero-instrs
-			 keymatch-instrs
-			 keyzero-instrs
-			 keymatch-instrs
+			 (let ((*c-scope-string* "~8T"))(print2c keyzero-instrs))
+			 (let ((*c-scope-string* "~8T"))(print2c keymatch-instrs))
+			 (let ((*c-scope-string* "~16T"))(print2c keyzero-instrs))
+			 (let ((*c-scope-string* "~16T"))(print2c keymatch-instrs))
 			 ))
 	 (defn (format nil "~a~a" header body)))
     (mk-c-defn-info name  (format nil "~a;" header) defn
@@ -7398,14 +7422,14 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ~%~16Tfor (uint32_t j = 0; j < size; j++){//transfer entries~
 ~%~24Tuint32_t keyhash = data[j].keyhash;~
 ~%~24Tbool_t keyzero;~
-~%~24T~{~a;~}~
+~a
 ~%~24Tif (!keyzero || keyhash != 0){~
 ~%~32Tuint32_t new_loc = keyhash ^ new_mask;~
-~{~%~32T~a;~}~
+~a
 ~%~32Twhile (keyzero && new_data[new_loc].keyhash == 0){~
 ~%~40Tnew_loc++;~
 ~%~40Tnew_loc = new_loc ^ new_mask;
-~{~%~40T~a;~}~
+~a
 ~%~32T}~
 ~%~32T~a;~
 ~%~32Tnew_data[new_loc].keyhash = keyhash;~
@@ -7420,7 +7444,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ~%~8T~a_hashentry_t hentry = htbl->data[hashindex];~
 ~%~8Tuint32_t hkeyhash = hentry.keyhash;~
 ~%~8Tbool_t hentrykeyzero;~
-~%~8T~{~a;~}
+~a
 ~%~8Tif (hentrykeyzero && (hkeyhash == 0))~
 ~%~16T{~a; htbl->data[hashindex].keyhash = ihash; ~{~a;~} htbl->num_entries++;}~
 ~%~12Telse {~{~a;~}};~
@@ -7432,19 +7456,23 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	  (ir2c-initialize "htbl->data[j].key" c-domain-root 0 '|uint8|)
 	  type-name-root
 	  type-name-root type-name-root type-name-root 
-	  (ir2c-arith-relations '== "keyzero" (list "data[j].key"  0)
-				(list c-domain-root '|uint8|))
-	  (ir2c-arith-relations '== "keyzero" (list "new_data[new_loc].key"  0)
-				(list c-domain-root '|uint8|))
-	  (ir2c-arith-relations '== "keyzero" (list "new_data[new_loc].key"  0)
-				(list c-domain-root '|uint8|))
+	  (let ((*c-scope-string* "~24T"))
+	    (print2c (ir2c-arith-relations '== "keyzero" (list "data[j].key"  0)
+				(list c-domain-root '|uint8|))))
+	  (let ((*c-scope-string* "~32T"))
+	    (print2c (ir2c-arith-relations '== "keyzero" (list "new_data[new_loc].key"  0)
+				(list c-domain-root '|uint8|))))
+	  (let ((*c-scope-string* "~40T"))
+	    (print2c (ir2c-arith-relations '== "keyzero" (list "new_data[new_loc].key"  0)
+				(list c-domain-root '|uint8|))))
 	  (make-c-assignment "new_data[new_loc].key" c-domain-root "data[j].key" c-domain-root)
 	  (make-c-assignment "new_data[new_loc].value" c-range-root  "data[j].value" c-range-root)
 	  htype 
 	  type-name-root
 	  type-name-root
-	  (ir2c-arith-relations '== "hentrykeyzero" (list "hentry.key"  0)
-				(list c-domain-root '|uint8|))
+	  (let ((*c-scope-string* "~8T"))
+	    (print2c (ir2c-arith-relations '== "hentrykeyzero" (list "hentry.key"  0)
+				(list c-domain-root '|uint8|))))
 	  (make-c-assignment "htbl->data[hashindex].key" c-domain-root "i" c-domain-root)
 	  (make-c-assignment-with-count "htbl->data[hashindex].value" c-range-root "v" c-range-root)
 	  (if (ir-reference-type? elemtype)
@@ -8707,14 +8735,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					   (format nil "~a~a" "~~8T" *c-scope-string*)))
 				      (print2c else-instr)))
 				
-				   (if-string (format nil "~aif (~a){~a~%~a} else {~%~a~%~a}"
+				   (if-string (format nil "~aif (~a){~a~%~a} else {~a}"
 						      *c-scope-string*
 						      if-cond
-						      *c-scope-string*
 						      then-part
 						      *c-scope-string*
 						      else-part)))
-			      (format nil "~a;~%~a" (format nil if-string)
+			      (format nil "~%~a;~a" (format nil if-string)
 				      (print2c (cdr c-instrs))))))
 	       ((for-instr? (car c-instrs))
 		(let* ((for-body (for-body (car c-instrs)))
@@ -8722,20 +8749,20 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		       (c-for-body (let ((*c-scope-string*
 					  (format nil "~a~a" "~~8T" *c-scope-string*)))
 				     (print2c for-body))))
-		  (format nil (format nil "~afor (~a){~%~a~a};~%~a"
+		  (format nil (format nil "~%~afor (~a){~a~%~a};~a"
 				      *c-scope-string* for-index
 				      c-for-body *c-scope-string*
 				      (print2c (cdr c-instrs))))))
 	       ((consp (car c-instrs));;NSH(4/5/22): Added block structure
 		;(break "nested block")
 		(format nil
-			(format nil "~a{~%~a~a};~%~a"
+			(format nil "~%~a{~%~a~a};~a"
 				*c-scope-string*
 				(let ((*c-scope-string* (format nil "~8T~a" *c-scope-string*)))
 				  (print2c (car c-instrs)))
 				*c-scope-string*
 				(print2c (cdr c-instrs)))))
-	       (t (format nil (format nil "~a~a;~%~a" *c-scope-string* (car c-instrs)
+	       (t (format nil (format nil "~%~a~a;~a" *c-scope-string* (car c-instrs)
 				      (print2c (cdr c-instrs)))))))
 	(t (format nil ""))))
 
