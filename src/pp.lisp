@@ -1502,6 +1502,14 @@ then uses unpindent* to add the indent to each line"
 		(pprint-newline :linear)))
 	(write "[]"))))
 
+(defmethod pp* ((te functiontype))
+  (write 'FUNCTION)
+  (call-next-method))
+
+(defmethod pp* ((te arraytype))
+  (write 'ARRAY)
+  (call-next-method))
+
 (defmethod pp* ((te funtype))
   (with-slots (domain range) te
     (pprint-logical-block (nil nil :prefix "[" :suffix "]")
