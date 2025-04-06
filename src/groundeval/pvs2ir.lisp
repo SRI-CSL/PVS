@@ -9159,7 +9159,7 @@ successful."
     |stdmath| |stdstr| |stdio| |stdpvsio| |stdsys|))
 
 (defparameter *pvs2c-prelude-theories*
-  ;; Sorted alphabetically
+  ;; Sorted alphabetically  
   '(|array_sequences| |bytestrings|
     |empty_bv| |euclidean_division| |exp2| |extend_bool|
     |function_iterate| |gen_strings|

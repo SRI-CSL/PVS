@@ -223,8 +223,14 @@ if called."
   (let ((lisp-type (unless (rational-expr? expr)
 		     (pvs2cl-lisp-type (type expr)))))
     (if lisp-type
-	`(the ,lisp-type
-	   ,(call-next-method))
+	(if (eq lisp-type 'string)
+	    (let ((exprval (gentemp "stringval")))
+	    `(the string
+		  (let ((,exprval ,(call-next-method)))
+		    (if (stringp ,exprval) ,exprval
+		      (make-pvslisp-string (svref ,exprval 0)(svref ,exprval 1))))))
+	  `(the ,lisp-type
+		,(call-next-method)))
 	(call-next-method))))
 
 ;;String literals are translated directly to strings. 
@@ -876,9 +882,10 @@ if called."
   (let ((args (pvs2cl_up* (mapcar #'expression
 			    (sort-assignments (assignments expr)))
 			  bindings livevars))
-	(stype (find-supertype (type expr))))
-        (if (tc-eq stype *string-type*)
-	    `(make-pvslist-string ,(car args) ,(cadr args))
+					;(stype (find-supertype (type expr)))(break "record-expr: string = ~a" (tc-eq stype *string-type*))
+	)
+        (if (compatible? (type expr) *string-type*)
+	    `(make-pvslisp-string ,(car args) ,(cadr args))
 	  (if (finseq-type? stype)
 	      `(pvs2cl_finseq ,(car args) ,(cadr args))
 	    `(pvs2cl_record ,@args)))))
@@ -904,14 +911,13 @@ if called."
     (let* ((clarg (pvs2cl_up* argument bindings livevars))
 	   (argtype (find-supertype (type argument)))
 	   (fieldnum (get-field-num (id expr) argtype)))
-      ;; (if (tc-eq argtype *string-type*)	;;NSH(9-9-20): trapping strings
-      ;; 	  (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))
       (if (finseq-type? argtype)
-	  (let ((fldapp (if (zerop fieldnum) `(length ,clarg) `(coerce ,clarg 'vector))))
-	    `(let ((argval ,clarg))
-	       (if (stringp argval)
+	  (let* ((argvar (gentemp "arg"));;NSH(1/12/25: pvs-funcall handles string literals
+		 (fldapp (if (zerop fieldnum) `(length ,argvar) argvar))) 
+	    `(let ((,argvar ,clarg))
+	       (if (stringp ,argvar)
 		   ,fldapp
-		   (project ,(1+ fieldnum) ,clarg))))
+		   (project ,(1+ fieldnum) ,argvar))))
 	  `(project ,(1+ fieldnum) ,clarg))
       ;; )
       )))
@@ -1537,7 +1543,7 @@ if called."
   (and (adt-name-expr? expr)
        (not (pvs2cl-primitive? expr))))
 
-(defun pvs2cl-resolution2 (expr)
+(defun pvs2cl-resolution2 (expr) ;(break "pvs2cl-resolution2")
   (pvs2cl-resolution expr)
   (if (datatype-constant? expr)
       (lisp-function2 (declaration expr))
@@ -1863,11 +1869,9 @@ if called."
 		      ;; 		  `(defconstant ,idc ,(car (last (definition (in-defn-d decl)))))))
 		      )
 		 (setf (definition (in-defn decl))
-		       ;; (if defconst
-		       ;; 	   `(progn ,defconst ,in-defn)
 			 in-defn))
 	       (eval (definition (in-defn decl)))
-	       (assert id)
+	       (assert id);;(break "pvs2cl-lisp-function")
 	       (or skip-compile (compile id)))))))
 ;;	       (compile id))))))
 
@@ -2239,15 +2243,15 @@ if called."
     (format output "~%;;;   ~a - ~a" (id dec) (name (in-defn-d dec))))
   (when (and (definition (ex-defn dec))
 	     (not (eq (id dec) (name (ex-defn dec)))))
-    (break "ex")
+    ;(break "ex")
     (format output "~%;;;   ~a - ~a" (id dec) (name (ex-defn dec))))
   (when (and (definition (ex-defn-m dec))
 	     (not (eq (id dec) (name (ex-defn-m dec)))))
-    (break "ex-m")
+    ;(break "ex-m")
     (format output "~%;;;   ~a - ~a" (id dec) (name (ex-defn-m dec))))
   (when (and (definition (ex-defn-d dec))
 	     (not (eq (id dec) (name (ex-defn-d dec)))))
-    (break "ex-d")
+    ;(break "ex-d")
     (format output "~%;;;   ~a - ~a" (id dec) (name (ex-defn-d dec)))))
 
 (defun print-lisp-defns (theory &optional file-string supersede?)
@@ -2284,7 +2288,7 @@ if called."
   nil)
 
 (defmethod pvs2cl-lisp-type*  ((type recordtype))
-  (if (tc-eq type *string-type*)
+  (if (compatible? type *string-type*)
       'string
     '(simple-array t)))
 

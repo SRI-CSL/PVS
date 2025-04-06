@@ -5080,6 +5080,10 @@ array_sequences [T: TYPE]: THEORY
 
   aseq_appl(a): [below[length(a)] -> T] = a`seq;
 
+  aseq_add(x : T, (a  | NOT full_aseq?(a))): aseq = 
+     a WITH [`length := a`length + 1,
+              `seq(a`length) |-> x]
+
   % Causes problems with finseq_appl conversion
   % CONVERSION aseq_appl;
 
@@ -5726,6 +5730,7 @@ charstrings: THEORY
     charstring_bound: MACRO uint32 = exp2(28) %same as index, but only used in types
     charstring: TYPE = [# length : index, %below(charstring_bound)
                         seq : ARRAY[below(length) -> char] #]
+    JUDGEMENT charstring SUBTYPE_OF string			
 
     c, c1, c2: VAR char
 
