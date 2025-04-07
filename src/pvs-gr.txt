@@ -880,5 +880,5 @@ formula-name	::= 'AXIOM' <`AXIOM()> | 'CHALLENGE' <`CHALLENGE()>
                 |   'LEMMA' <`LEMMA()> | 'OBLIGATION' <`OBLIGATION()>
 		|   'POSTULATE' <`POSTULATE()>
 		|   'PROPOSITION' <`PROPOSITION()> | 'SUBLEMMA' <`SUBLEMMA()>
-		|   'THEOREM' <`THEOREM()>
+		|   'THEOREM' <`THEOREM()> | '_TEST_' <`TEST()>
 		;

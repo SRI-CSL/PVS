@@ -836,7 +836,8 @@
 	     (fdom (domain-types sty))
 	     (fran (range sty))
 	     (nbindings ;;(find-compatible-bindings* types-lists fdom bindings nil)
-	      (let ((*tc-strict-matches* nil))
+	      (let ((*tc-strict-matches* nil)
+		    (*tc-match-type-name-args* nil))
 		(tc-match* jargstypes fdom bindings))))
 	;; Note that nbindings is now a list of bindings, but we may need
 	(assert (every #'(lambda (bd) (formal-decl? (car bd))) nbindings))
@@ -2381,6 +2382,16 @@
 (defvar *subtypes-seen* nil)
 
 (defun type-constraints (ex &optional all?)
+  "Gets the type-constraints corresponding to the all? argument,
+which is one of:
+  nil - don't include ignored type constraints (currently nat and up)
+        unless there are no other preds; excludes function constraints
+        for backward compatibility
+  :nat - same as nil but includes nat pred (e.g. i >= 0)
+  :none - don't include ignored in any case; excludes function
+  :funcs - include function constraints
+  t - include all type constraints
+Note that the all? arument is only used in the type-constraints* (subtype) method."
   (let* ((jtypes (judgement-types+ ex))
 	 (*subtypes-seen* nil)
 	 (preds (type-constraints* jtypes ex nil all?)))
@@ -2393,20 +2404,14 @@
   (let ((car-preds (type-constraints* (car list) ex nil all?)))
     (type-constraints* (cdr list) ex (nconc car-preds preds) all?)))
 
-;;; all? can be nil :none, :funcs, or t, defaults to nil
-;;;  nil - don't include ignored type constraints (currently nat and up)
-;;;        unless there are no other preds; excludes function constraints
-;;;        for backward compatibility
-;;;  :none - don't include ignored in any case; excludes function
-;;;  :funcs - include function constraints
-;;;  t - include all type constraints
 (defmethod type-constraints* ((te subtype) ex preds all?)
   (cond ((everywhere-true? (predicate te))
 	 (type-constraints* (supertype te) ex preds all?))
 	((or (member te *subtypes-seen* :test #'tc-eq)
 	     (and (not (eq all? t))
 		  (or preds (eq all? :none))
-		  (ignored-type-constraint te)))
+		  (unless (and (eq all? :nat) (tc-eq te *naturalnumber*))
+		    (ignored-type-constraint te))))
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
 	   (let ((pred (make!-reduced-application (predicate te) ex)))

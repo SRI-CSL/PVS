@@ -983,12 +983,13 @@
 	     :actuals (actuals theory-name)
 	     :mod-id (id theory-name)))))
 
-(defun mk-name (id &optional actuals mod resolution)
+(defun mk-name (id &optional actuals mod resolution lib)
   (make-instance 'name
     :id id
     :actuals actuals
+    :library lib
     :mod-id mod
-    :resolutions (list resolution)))
+    :resolutions (when resolution (list resolution))))
 
 (defmethod mk-actual ((arg type-expr))
   (let* ((pt (print-type arg))
@@ -1735,9 +1736,9 @@
 
 (defun make-update-expr (expression assignments &optional expected)
   (typecheck (make-instance 'update-expr
-			    'expression expression
-			    'assignments assignments)
-	     :expected expected))
+	       'expression expression
+	       'assignments assignments)
+    :expected expected))
 
 (defun make-greatereq (x y)
   (typecheck (mk-greatereq x y) :expected *boolean* :tccs 'top))

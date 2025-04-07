@@ -1481,10 +1481,15 @@
 	       (is-sop 'OBLIGATION fname))
       (parse-error fname
 	"The OBLIGATION keyword is not allowed here"))
-    (make-instance 'formula-decl
-      :spelling (sim-term-op fname)
-      :definition (xt-expr expr)
-      :place (term-place formula-decl))))
+    (if (is-sop 'TEST fname)
+	(make-instance 'test-formula
+	  :spelling (sim-term-op fname)
+	  :definition (xt-expr expr)
+	  :place (term-place formula-decl))
+	(make-instance 'formula-decl
+	  :spelling (sim-term-op fname)
+	  :definition (xt-expr expr)
+	  :place (term-place formula-decl)))))
 
 
 ;;; Type Expressions
