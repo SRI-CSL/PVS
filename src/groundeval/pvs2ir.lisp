@@ -222,7 +222,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(mk-name '|ceiling| nil '|floor_ceil|)
 	(mk-name '|nrem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
-	;;(mk-name '|sqrt| nil '|sqrt|)
+	;;(mk-name '|sqrt| nil '|sqrt| nil '|reals|)
 	(mk-name '|even?| nil '|integers|)
 	(mk-name '|odd?| nil '|integers|)
 	(mk-name '|restrict| nil '|restrict|)
@@ -1270,7 +1270,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	  ;;     ir-type ;;ir-type might not be a typename
 	  (cond ((ir-typename? ir-type);;return the existing name-don't nest ir-typenames
 		 (setf (ir-type-value decl) (mk-eval-type-info ir-type))
-		 ir-type );otherwise, create a new definition
+		 (ir-type-id ir-type));otherwise, create a new definition
 		(t (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) ir-type
 						       ir-formals nil decl)));nil actuals 
 		     (push ir-type-name *ir-type-info-table*)
