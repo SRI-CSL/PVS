@@ -663,7 +663,7 @@
 								(cons (cons fst i) bindings)))))
 			 (format nil "(or ~{ ~a~})" translate-rst-list))))
 		 (t nil))))
-	 (t (translate-to-yices2* expression bindings))))
+	 (t (translate-to-yices2* expression bindings)))
 							   
 	       
 

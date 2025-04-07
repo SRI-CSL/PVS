@@ -41,6 +41,9 @@
 ;;;    modulo_arithmetic ordinals ordstruct_adt pvslib.c real_defs strings
 
 ;;commented theories are the ones that are supported by C code generation
+;;The non-parametric ones that are supported are in *pvs2c-prelude-theories$
+;;Others like |restrict|, |K_conversion|, |K_props|, |identity| have code generated
+;;during partial monomorphization.
 (defparameter *primitive-prelude-theories*
   '(|booleans| |equalities| |notequal| |if_def| |boolean_props| ;; |xor_def|
     |quantifier_props| |defined_types| |exists1| |equality_props| |if_props| |functions|
@@ -48,7 +51,7 @@
     |restrict_props| |extend| ;; |extend_bool|
     |extend_props| |extend_func_props| ;; |K_conversion| |K_props| ;; |identity|
     |identity_props| |relations| |orders| |orders_alt| |restrict_order_props|
-    |extend_order_props| |wf_induction| |measure_induction| |epsilons| |decl_params| |sets|
+    |extend_order_props| |wf_induction| |measure_induction| |epsilons| |decl_params| ;;|sets|
     |sets_lemmas| |function_inverse_def| |function_inverse| |function_inverse_alt|
     |function_image| |function_props| |function_props_alt| |function_props2| |relation_defs|
     |relation_props| |relation_props2| |relation_converse_props| |indexed_sets|
@@ -61,16 +64,19 @@
     |subrange_inductions| |bounded_int_inductions| |bounded_nat_inductions|
     |subrange_type| |int_types| |nat_types| ;; |exp2| |integertypes|
     |nat_fun_props| |finite_sets| |restrict_set_props| |extend_set_props|
-    |function_image_aux| |function_iterate| |sequences|
-    |seq_functions| |finite_sequences| |more_finseq| |ordstruct|
+    |function_image_aux| |function_iterate| ;|sequences|
+    ;; |seq_functions| |finite_sequences| |more_finseq| |ordstruct|
     ;; |ordstruct_adt| |ordinals| |lex2|
-    |lex3| |lex4| |list| |list_adt| |list_adt_map| |list_props| |map_props|
+    |lex3| |lex4| |list| ;;|list_adt| |list_adt_map| |list_props|
+    ;;|map_props|
     |more_map_props| |filters| |list2finseq| |list2set| |disjointness| |character|
     |character_adt| ;; |strings| |gen_strings|
     |charstrings| ;; |bytestrings|
-    |lift| |lift_adt| |lift_adt_map| |union| |tostring| |file|
+    ;;|lift| |lift_adt| |lift_adt_map|
+    |union| |tostring| |file|
     |mucalculus| |ctlops| |fairctlops| |Fairctlops| |bit| |bv| |bv_concat_def|
-    |bv_bitwise| |bv_nat| |empty_bv| |bv_caret| |integer_bv_ops|
+    |bv_bitwise| |bv_nat| ;|empty_bv|
+    |bv_caret| ;|integer_bv_ops|
     |mod| |bv_arith_nat_defs| |bv_int_defs| |bv_arithmetic_defs| |bv_extend_defs|
     |infinite_sets_def| |finite_sets_of_sets|
     |EquivalenceClosure| |QuotientDefinition| |KernelDefinition| |QuotientKernelProperties|
@@ -89,8 +95,10 @@
   ;; Sorted alphabetically
   '(|bytestrings| |empty_bv| |exp2| |extend_bool|
     |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
-    |min_nat| |modulo_arithmetic| |more_finseq|
-    |ordinals| |ordstruct| |real_defs| |sequences| |strings|
+    |lift| |lift_adt| |lift_adt_map|
+    |list_adt| |list_adt_map| |list_props|
+    |min_nat| |modulo_arithmetic| |finite_sequences| |more_finseq| |array_sequences|
+    |ordinals| |ordstruct| |real_defs| |sequences| |sets| |strings|
     |transpose| |xor_def|))
 
 (defun ensure-c-directories-exist ()
@@ -122,30 +130,28 @@
 		    (format nil "~a/lib/pvs2c/src/pvslib.c" *pvs-path*))
     (uiop:copy-file (format nil "~a/src/groundeval/pvslib.h" *pvs-path*)
 		    (format nil "~a/lib/pvs2c/include/pvslib.h" *pvs-path*))
-    (uiop:copy-file (format nil "~a/src/groundeval/GC.c" *pvs-path*)
-		    (format nil "~a/lib/pvs2c/src/GC.c" *pvs-path*))
-    (uiop:copy-file (format nil "~a/src/groundeval/GC.h" *pvs-path*)
-		    (format nil "~a/lib/pvs2c/include/GC.h" *pvs-path*))
     (dolist (theory *prelude-theories*)
       (when (memq (id theory) *pvs2c-prelude-theories*)
 	(let ((main-theory (if (datatype? theory) (adt-theory theory) theory)))
 	  (let ((c-file (pvs2c-theory* main-theory t)))
 	    (when c-file
 	      (push (file-namestring c-file) pvs2c-translated-theories))))))
-    (create-config-make (cons "pvslib.c" (cons "GC.c"
-					       (reverse pvs2c-translated-theories))))))
-
+    (create-config-make (cons "pvslib.c" ;NSH(1/21/25)(cons "GC.c"
+					       (reverse pvs2c-translated-theories)))))
 (defun create-config-make (c-files)
-  (let ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*)))
+  (let* ((makefile (merge-pathnames "src/Makefile" *pvs2c-library-path*))
+	 (platform (intern (pvs-platform) :pvs))
+	 (lib-suffix (if (eq platform '|ix86_64-Linux|) '|so| '|dylib|)))
     (with-open-file (mf makefile
 			:direction :output :if-exists :supersede :if-does-not-exist :create)
-      (case (intern (pvs-platform) :pvs)
+      (case platform
 	(|ix86_64-Linux|
 	 (format mf "CFLAGS := -I ../include -fPIC -Wall -Winline -O -ggdb~%")
 	 (format mf "LDFLAGS = -Bsymbolic -shared -L./ -lc -lm -lgmp~%"))
 	(|ix86-MacOSX|
-	 (format mf "CFLAGS := -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
-	 (format mf "LDFLAGS = -bundle -flat_namespace -undefined suppress -L./ -lc -lm -lgmp~%"))
+	 (format mf "SDK=$(shell xcrun --show-sdk-path)~%")
+	 (format mf "CFLAGS := -fPIC -Wall -Winline -O2 -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
+	 (format mf "LDFLAGS =  -bundle -flat_namespace -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lgmp~%"))
 	(|arm-MacOSX|
 	 (format mf "SDK=$(shell xcrun --show-sdk-path)")
 	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include")
@@ -153,14 +159,15 @@
       (format mf "~%src := ~{~a~^ ~}~%" c-files)
       (format mf "~%obj := $(src:.c=.o)~%")
       (format mf "~%.c.o : ; $(CC) ${CFLAGS} -c $< -o $@~%")
-      (format mf "~%all : ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%")
-      (format mf "~%../lib/libpvs-prelude.so : ${obj}~%")
+      (format mf "~%all : ../lib/libpvs-prelude.~a ../lib/libpvs-prelude.a~%" lib-suffix)
+      (format mf "~%../lib/libpvs-prelude.~a : ${obj}~%" lib-suffix)
       (format mf "~a$(LD) $(LDFLAGS) -o $@ ${obj}~%" #\tab)
       (format mf "~%../lib/libpvs-prelude.a : $(obj)~%")
       (format mf "~a$(AR) r $@ ${obj}~%" #\tab)
       (format mf "~%clean :~%")
       (format mf "~a-rm $(obj)~%" #\tab)
-      (format mf "~a-rm ../lib/libpvs-prelude.so ../lib/libpvs-prelude.a~%" #\tab))
+      (format mf "~a-rm ../lib/libpvs-prelude.~a ../lib/libpvs-prelude.a~%"
+	      #\tab lib-suffix))
     (format t "~%Generated ~a" makefile)))
   
 
@@ -184,12 +191,12 @@
 ;; (defun prelude-theory? (theory)
 ;;   (memq theory *prelude-theories*))
 
-;; (defun pvs2c-preceding-prelude-theories (theory);theory should not be a prelude theory
-;;   (let ((*preceding-prelude-theories* nil)
-;; 	(theory-defn (get-theory theory)))
-;;     (unless (memq (id theory-defn) *primitive-prelude-theories*)
-;;       (pvs2c-preceding-prelude-theories* theory-defn));(break "precedprelude")
-;;     *preceding-prelude-theories*))
+(defun pvs2c-preceding-prelude-theories (theory);theory should not be a prelude theory
+  (let ((*preceding-prelude-theories* nil)
+	(theory-defn (get-theory theory)))
+    (unless (memq (id theory-defn) *primitive-prelude-theories*)
+      (pvs2c-preceding-prelude-theories* theory-defn));(break "precedprelude")
+    *preceding-prelude-theories*))
 
 ;; (defun pvs2c-preceding-prelude-theories-root (theory)
 ;;   (loop for thy in (used-prelude-theories theory)
@@ -198,45 +205,45 @@
 ;;   (when (prelude-theory? theory)
 ;;     (pushnew theory *preceding-prelude-theories* :test #'same-id)))
 
-;; (defun pvs2c-preceding-prelude-theories* (theory)
-;;   (let ((imported-prelude-theories
-;; 	 (if (from-prelude? theory)
-;; 	     (implicit-prelude-importings theory)
-;; 	   (used-prelude-theories theory))))
-;;   (loop for thy in imported-prelude-theories
-;; 	when (not (memq (id thy) *primitive-prelude-theories*))
-;; 	do (pvs2c-preceding-prelude-theories* thy))
-;;   (unless (from-prelude? theory)
-;;     (let ((all-imported-theories (all-imported-theories theory)))
-;;       (when (listp all-imported-theories);i.e., not 'unbound
-;; 	(loop for thy in all-imported-theories
-;; 	      when (not (from-prelude? thy))
-;; 	      do (pvs2c-preceding-prelude-theories* thy)))))
-;;   (when (from-prelude? theory)
-;;     (pushnew theory *preceding-prelude-theories* :test #'same-id))))
+(defun pvs2c-preceding-prelude-theories* (theory)
+  (let ((imported-prelude-theories
+	 (if (from-prelude? theory)
+	     (implicit-prelude-importings theory)
+	   (used-prelude-theories theory))))
+  (loop for thy in imported-prelude-theories
+	when (not (memq (id thy) *primitive-prelude-theories*))
+	do (pvs2c-preceding-prelude-theories* thy))
+  (unless (from-prelude? theory)
+    (let ((all-imported-theories (all-imported-theories theory)))
+      (when (listp all-imported-theories);i.e., not 'unbound
+	(loop for thy in all-imported-theories
+	      when (not (from-prelude? thy))
+	      do (pvs2c-preceding-prelude-theories* thy)))))
+  (when (from-prelude? theory)
+    (pushnew theory *preceding-prelude-theories* :test #'same-id))))
 
-;; (defun pvs2c-preceding-theories (theory)
-;;   (let ((*pvs2c-preceding-theories* nil)
-;; 	(theory-defn (get-theory theory)))
-;;     (pvs2c-preceding-theories* theory-defn)
-;;       *pvs2c-preceding-theories*))
+(defun pvs2c-preceding-theories (theory)
+  (let ((*pvs2c-preceding-theories* nil)
+	(theory-defn (get-theory theory)))
+    (pvs2c-preceding-theories* theory-defn)
+      *pvs2c-preceding-theories*))
 
-;; (defmethod pvs2c-preceding-theories* ((theory module))
-;;   (unless (eq (all-imported-theories theory) 'unbound)
-;;     (loop for thy in (all-imported-theories theory)
-;; 	  do (pvs2c-preceding-theories* thy)))
-;;   (unless (from-prelude? theory)
-;;     (pushnew theory *pvs2c-preceding-theories* :test #'same-id)))
+(defmethod pvs2c-preceding-theories* ((theory module))
+  (unless (eq (all-imported-theories theory) 'unbound)
+    (loop for thy in (all-imported-theories theory)
+	  do (pvs2c-preceding-theories* thy)))
+  (unless (from-prelude? theory)
+    (pushnew theory *pvs2c-preceding-theories* :test #'same-id)))
 
-;; (defmethod pvs2c-preceding-theories* ((theory datatype))
-;;   (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
-;;     (unless (eq (all-imported-theories theory) 'unbound)
-;;       (loop for thy in all-imported-theories
-;; 	    do (pvs2c-preceding-theories* thy)))
-;;     ;;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
-;;     (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
-;;     (when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
-;;     (when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))))
+(defmethod pvs2c-preceding-theories* ((theory datatype))
+  (with-slots (adt-theory adt-map-theory adt-reduce-theory all-imported-theories) theory
+    (unless (eq (all-imported-theories theory) 'unbound)
+      (loop for thy in all-imported-theories
+	    do (pvs2c-preceding-theories* thy)))
+    ;;pushing is enough since the importings are already pushed in above, otherwise we have a circularity
+    (when adt-theory (pushnew adt-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-map-theory (pushnew adt-map-theory *pvs2c-preceding-theories* :test #'same-id))
+    (when adt-reduce-theory (pushnew adt-reduce-theory *pvs2c-preceding-theories* :test #'same-id))))
 
 (defun pvs2c-library (&rest top-theory-refs)
   (unless top-theory-refs (error "pvs2-library: takes at least one theory-ref"))
@@ -366,6 +373,7 @@
 					   (and (from-prelude? (module ref))
 						(let ((mod-id (or (generated-by (module ref))
 								  (id (module ref)))))
+						  ;;(format t "~%pvs2c-decls: pushing mod-id: ~a" mod-id)
 					    	  (not (member mod-id
 							       *pvs2c-prelude-theories*)))))
 				 (pushnew (module ref) *pvs2c-theory-importings*))))
@@ -383,7 +391,7 @@
 	(*var-counter* nil)
 	(*pvs2c-defn-actuals* nil))
     (when force? (clear-decl decl))
-    (newcounter *var-counter*)
+    (newcounter *var-counter*);(break "pvs2c-decl")
     (pvs2c-decl* decl)))
 
 ;;NSH(8/6/2016): Closures are handled now. 
@@ -397,7 +405,9 @@
     ;(break "type-eq-decl")
     (when  (and (ir-typename? typename)
 		(ir-type-value decl));some type definitions translate to no-ops
-      (add-c-type-definition typename)))); (ir2c-type (ir-type-defn typename))(ir-type-id typename)))))
+      ;(break "pvs2c-decl*:type-eq-decl")
+      (add-c-type-definition typename))))
+
 
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
   (let* (;(thid (simple-id (id (module decl))))
@@ -470,7 +480,7 @@
 
 
 (defun def-c-attach-primitive-type (theory name header-defn)
-  (let* ((thname (make-c-name (simple-id theory) (simple-id name)))
+  (let* ((thname (make-c-name "" (simple-id theory) (simple-id name)))
 	 (header (format nil "typedef ~a ~a_t;" header-defn thname))
 	 (c-type-info (mk-simple-c-type-info nil thname header nil nil) ))
     (setf (gethash thname *c-primitive-type-attachments-hash*) c-type-info)
@@ -479,7 +489,7 @@
 	 
 
 (defun def-c-attach-primitive (theory name return-type args arg-types header-defn &optional definition)
-  (let* ((thname (make-c-name (simple-id theory)(simple-id name)))
+  (let* ((thname (make-c-name "" (simple-id theory)(simple-id name)))
 	 (arg-type-pairs (loop for arg in args as
 			       arg-type in arg-types
 			       collect (format nil "~a_t ~a" arg-type arg)))
@@ -494,7 +504,7 @@
     thname))
 
 
-(defun make-c-defn-info (ir pvs-return-type) ;(break "make-c-defn-info")
+(defun make-c-defn-info (ir pvs-return-type)
   (with-slots
 	(ir-function-name ir-return-type ir-args ir-defn) ir
     ;; (when (eq (id decl) 'coef)(break "coef"))
@@ -510,6 +520,7 @@
 	       ;; 		   (c-args-string ir-args)))
 	       )
 	  (unless *to-emacs* ;; causes problems
+	    (break "make-c-defn-info: no defn")
 	    (format t "~%No definition for ~a" ir-function-name))
 	  nil)
 	  ;; (mk-c-defn-info ir-function-name (format nil "~a;" c-header) nil nil
@@ -544,21 +555,29 @@
 	       ;; 		 (t (format nil ~a_t ~a(~a)" c-result-type ir-function-name c-args-string)))
 	       (ir-body (if (ir-lambda? post-ir)
 			    (ir-body post-ir)
-			    post-ir))
-	       (c-body (print2c (ir2c ir-body ir-result-type)))
+			  post-ir))
+	       (static-result-var (when (and (null ir-args)(mpnumber-type? c-result-type))
+				    "static_result"))
+	       (c-body (print2c (ir2c ir-body ir-result-type static-result-var)));;NSH(2-11-25): use a local static var
 	       (c-body (if ir-args c-body
 			 (format nil "~%~8Tstatic bool_t defined = false;~%~8Tif (!defined){~%~12T~a~%~8Tdefined = true;};" c-body)))
 	       (static? (if ir-args "" " static "))
 	       (c-result-decl (if (mpnumber-type? c-result-type)
 				  (let ((mptype (mppointer-type c-result-type)))
-				    (format nil "~a_t ~a result;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
-				      mptype static?; c-result-type c-result-type
-				      ))
+				    (if static-result-var 
+					(format nil "~a_t result;~%~8T~a_t ~a ~a;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
+						mptype mptype static? static-result-var	; c-result-type c-result-type
+						)
+				      (format nil " ~a_t ~a result;"
+						mptype static?
+						)))
 				  (format nil "~a_t ~a result;" c-result-type static?)))
-	       (c-defn  (format nil "~a{~%~8T~a~%~a~%~8T~%~8Treturn result;~%}"
+	       (c-defn  (format nil "~a{~%~8T~a~%~a~%~8T~%~8T~a~%~8Treturn result;~%}"
 			  c-header 
 			  c-result-decl
-			  c-body
+			  c-body ;;NSH(2-11-25): added static-result-var for mpz/mpq
+			  (if static-result-var (format nil "~a_mk_set(result, ~a);" c-result-type static-result-var)
+			    "")
 			  ;; (if (ir-reference-type? ir-result-type)
 			  ;;     "result->count++;"
 			  ;;   "")
@@ -683,6 +702,8 @@
       (format output "~%~%#include \"pvslib.h\"")
       (dolist (th *pvs2c-theory-importings*)
 	(format output "~%~%#include \"~a_c.h\"" (id th)))
+      (dolist (th *preceding-mono-theories*)
+	(format output "~%~%#include \"~a_c.h\"" (id th)))
       ;; (format output "~%~%#include \"~a_c.h\"" (id theory))
       ;; (format t "~%mono-theories: ~{ ~a~^,~}" *preceding-mono-theories*)
       ;; (loop for thy in  *preceding-mono-theories*
@@ -713,7 +734,7 @@
       (loop for formal in (formals theory)
 	    when (formal-type-decl? formal)
 	    do (format output "~%~%typedef pointer_t ~a_t;" (ir-type-id (ir-type-name (ir-type-value formal)))))
-      (print-type-info-headers-to-file output *c-type-info-table*)
+      (print-type-info-headers-to-file output *c-type-info-table*);;(break "print-type-info-headers")
       (loop for decl in (theory theory)
 	    when (and (slot-exists-p decl 'eval-info)
 		      (eval-info decl)
