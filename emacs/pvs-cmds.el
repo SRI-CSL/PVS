@@ -179,6 +179,12 @@ reparsing and retypechecking of the entire importchain."
 	     ))
 	(t (message "PVS file %s does not exist" filename))))
 
+;; (defun pvs-highlight-tcc-origins (filename)
+;;   (interactive (list (current-pvs-file)))
+;;   (let ((tcc-info (pvs-get-tcc-info filename)))
+;;     (dolist (tcc-item tcc-info)
+;;       ;; tcc-item has place, tcc-id, tcc-string, comment
+;;     (break))))
 
 ;; (defun pvs-in-tcp (fileref) ;; fileref may be useful with multi-threading
 ;;   "Intecepts interrupts during TCC proofs in typecheck-prove (tcp)"
@@ -1102,10 +1108,10 @@ the file and the directory to dump it into, and asks for confirmation
 prior to overwriting an existing file unless given a command argument
 e.g., C-u or M-0."
   (interactive "fUndump file: \nDInto directory: ")
-  (let ((buf (find-file-noselect filename))
-	(dname (file-name-as-directory directory))
-	;; (overwrite nil)
-	)
+  (let ((buf (if (file-exists-p filename)
+		 (find-file-noselect filename)
+		 (error "File %s not found" filename)))
+	(dname (file-name-as-directory directory)))
     (unless (file-name-absolute-p dname)
       (error "Directory to undump into must be absolute, not relative"))
     (with-current-buffer buf
@@ -1115,7 +1121,8 @@ e.g., C-u or M-0."
 	(let* ((dir (car (read-from-string
 			  (buffer-substring (match-beginning 1)
 					    (match-end 1))))))
-	  (unless (file-name-absolute-p dir)
+	  (unless (or (file-directory-p dir)
+		      (file-name-absolute-p dir))
 	    (let* ((libs (pvs-library-path-subdirs pvs-library-path))
 		   (lib (if (= (aref dir (1- (length dir))) ?/)
 			    (substring dir 0 (1- (length dir)))
@@ -1131,8 +1138,10 @@ e.g., C-u or M-0."
 	  (if (file-directory-p dir)
 	      (load-prelude-library dir)
 	      (error "Library directory %s not found" dir))))
-      (let ((found-one (re-search-forward "^[$][$][$].*$" nil t)))
-	(while found-one
+      (let ((found-one (re-search-forward "^[$][$][$].*$" nil t))
+	    (always-overwrite nil)
+	    (quit nil))
+	(while (and found-one (not quit))
 	  (forward-line)
 	  (let* ((fname (buffer-substring (+ (match-beginning 0) 3)
 					  (match-end 0)))
@@ -1142,11 +1151,6 @@ e.g., C-u or M-0."
 			     (short-file-name
 			      (concat (file-name-as-directory ndir)
 				      (file-name-nondirectory fname)))))
-		 (help-form '(format "\
-Type SPC or `y' to overwrite file `%s',
-DEL or `n' to skip to next,
-ESC or `q' to not overwrite any of the remaining files,
-`!' to overwrite all remaining files with no more questions." filename))
 		 (start (point)))
 	    (setq found-one (re-search-forward "^[$][$][$].*$" nil t))
 	    (cond ((and (stringp ndir)
@@ -1156,12 +1160,17 @@ ESC or `q' to not overwrite any of the remaining files,
 				  (- (match-beginning 0) 1)
 				  (point-max)))
 			 (data (match-data)))
-		     (when (or (and current-prefix-arg t)
+		     (when (or always-overwrite
+			       current-prefix-arg
 			       (not (file-exists-p filename))
-			       (pvs-emacs-query
-				'overwrite "Overwrite `%s'?" fname))
+			       (let ((char (pvs-emacs-query "Overwrite `%s'?" fname)))
+				 (when (= char ?q)
+				   (setq quit t))
+				 (when (= char ?!)
+				   (setq always-overwrite t))
+				 (member char '(?y ?!))))
 		       (unwind-protect
-			   (write-region start end filename)
+			    (write-region start end filename)
 			 (store-match-data data)))))
 		  ((and (stringp ndir)
 			(file-exists-p ndir))

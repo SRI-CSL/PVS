@@ -739,19 +739,21 @@ AUTO-REWRITE, AUTO-REWRITE!, or AUTO-REWRITE-THEORY. E.g.,
 (addrule 'expand (function-name)
 	 ((fnum *) occurrence if-simplifies assert? actuals?)
   (expand function-name fnum occurrence if-simplifies assert? actuals?)
-  "Expands (and simplifies) the definition of FUNCTION-NAME at a given
-OCCURRENCE.  If no OCCURRENCE is given, then all instances of the
-definition are expanded.  The OCCURRENCE is given as a number n
-referring to the nth occurrence of the function symbol counting
-from the left, or as a list of such numbers.  If the IF-SIMPLIFIES
-flag is T, then any definition expansion occurs only if the RHS
-instance simplifies (using the decision procedures).  Note that the
-EXPAND step also applies simplification with decision procedures
-(i.e. SIMPLIFY with default options) to any sequent formulas where
-an expansion has occurred.  ASSERT? can be either NONE (meaning no
-simplification), NIL (meaning simplify using SIMPLIFY), or T (meaning
-simplify using ASSERT).  If ACTUALS? is T, expansion is also done in
-actual parameters, mappings, and types."
+  "Expands (and simplifies) the definition of FUNCTION-NAME in FNUM.
+  ACTUALS?: If NIL (the default), expansion will not occur in types, actuals,
+    and mappings. Any other value will expand everywhere.
+  OCCURRENCE: If NIL (the default) expands everywhere allowed by ACTUALS?
+    Otherwise, OCCURRENCE is a posnat or list of posnats indicating
+    which occurrence(s) should be expanded, counting from 1.
+    Note that the count could be different depending on ACTUALS?.
+  IF-SIMPLIFIES: If T, then any definition expansion occurs only if the
+    RHS instance simplifies (using the decision procedures).
+    Note that the EXPAND step also applies simplification with decision
+    procedures (i.e. SIMPLIFY with default options) to any sequent formulas
+    where an expansion has occurred.
+  ASSERT?: NIL - simplify using SIMPLIFY,
+           NONE - no simplification
+           T = simplify using ASSERT"
   "~%Expanding the definition of ~a,")
 
 

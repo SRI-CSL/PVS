@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # proveit.in
-# Release: ProofLite-8.0 (10/13/2023)
+# Release: ProofLite-8.0 (01/28/2025)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -12,7 +12,7 @@
 # is claimed in the United States under Title 17, U.S.Code. All Other
 # Rights Reserved.
 #
-# Mariano Moscato (10/13/2023)
+# Mariano Moscato (01/28/2025)
 #
 # Script for batch proving in PVS 
 #  
@@ -79,7 +79,7 @@ OUTDIR=
 TOP=top
 NOFILE=yes
 BINARIESONLY=t
-LISPALTSUMMARIESMODE=nil
+LISPALTSUMMARIESMODE=
 
 reset_vars() {
   FILENOTFOUND=
@@ -343,7 +343,8 @@ OPTIONS
    --version           print version information and exit
    -w|--write-scripts  write proofs as prooflite scripts into separate files (disabled by default,
                        this option is omitted in typecheck-only mode.)
-   --summary-mode [md] alternative summary mode
+   --summary-mode <mode> alternative summary mode, where <mode> can be md for Markdown, or csv 
+                       for comma-separated values.
 
 SEE ALSO
   provethem -- for iterating proveit on a list of directories
@@ -637,8 +638,8 @@ proveit() {
 	  if [ "$LISPDEPENDENCIES" != "nil" ]; then
 	      echo "Saving theory dependencies ($LISPDEPENDENCIES) in directory pvsbin"
 	  fi
-	  if [ "$LISPALTSUMMARIESMODE" != "nil" ]; then
-	      echo "Summaries will be reported in alternative format ($LISPALTSUMMARIESMODE)."
+	  if [ ! -z "$LISPALTSUMMARIESMODE" ]; then
+	      echo "Summaries will be also reported in alternative format: $(echo $LISPALTSUMMARIESMODE | sed 's/,/ and /')."
 	  fi
 	  if [ "$LISPSCRIPTS" != "t" ]; then
 	      echo "ProofLite scripts won't be installed"
@@ -692,7 +693,7 @@ proveit() {
       export PROVEITLISPTXTPROOFS="$LISPTXTPROOFS"
       export PROVEITLISPTEXPROOFS="$LISPTEXPROOFS"
       export PROVEITLISPDEPENDENCIES="$LISPDEPENDENCIES"
-      export PROVEITLISPALTSUMMARIESMODE="$LISPALTSUMMARIESMODE"
+      export PROVEITLISPALTSUMMARIESMODE="`list_to_lisp $LISPALTSUMMARIESMODE`"
       export PROVEITLISPPRELUDEXT="`list_to_lisp $PRELUDEXT`"
       export PROVEITLISPDISABLE="`list_to_lisp $DISABLE`"
       export PROVEITLISPENABLE="`list_to_lisp $ENABLE`"
@@ -871,11 +872,11 @@ do
 	    exit 1
 	fi;;
     -summary-mode|--summary-mode)
-	if echo $2 | grep -qE '^md$'; then
-	    LISPALTSUMMARIESMODE=md
+	if echo $2 | grep -qE '^[^-]'; then
+	    LISPALTSUMMARIESMODE=`append $2 $LISPALTSUMMARIESMODE`
 	    shift
 	else
-	    echo "Error: --summary-mode option must be followed by the option 'md'. (See proveit --help for details.)"
+	    echo "Error: --summary-mode option must be followed by the option 'md' or 'csv'. (See proveit --help for details.)"
 	    exit 1
 	fi;;
     --timeout)

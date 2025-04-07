@@ -44,7 +44,6 @@
 
 (defun textify (form) (str form))
 
-
 ;;; ------------- Regular expression package functions -------------
 
 ;; Earlier versions of Manip used the regular expression functions
@@ -139,7 +138,7 @@
 			      ((consp expr)
 			       ;; M3: only proceed with the instantiation if the strategy
 			       ;;     is not a match itself.
-			       (if (member (car expr) '(match match$))
+			       (if (member (car expr) *manip-match-exceptions*)
 				   expr
 				 (mapcan #'(lambda (e)
 					     (multiple-value-list (build-cmd e)))
@@ -162,24 +161,28 @@
         do (setf index (multiple-value-list
 			(match-regexp *embedded-ext-expr-pattern* target
 				      :return :index)))
-	;; (excl:match-regexp *embedded-ext-expr-pattern* target
-	;;   :return :index :shortest t)))
+	;;              (excl:match-regexp *embedded-ext-expr-pattern* target
+	;;                            :return :index :shortest t)))
 	unless (car index) return target
 	do (let* ((ext (caddr (multiple-value-list
 			       (match-regexp *embedded-ext-expr-pattern*
 					     target))))
-		  ;; (excl:match-regexp *embedded-ext-expr-pattern*
-		  ;;	target :shortest t))))
+		  ;;	       (excl:match-regexp *embedded-ext-expr-pattern*
+		  ;;				  target :shortest t))))
 		  (ext-expr (eval-ext-expr
 			     (read-from-string (format nil "(~A)" ext))))
 		  (ext-str (if (consp ext-expr)
 			       (virt-ee-string (car ext-expr))
 			     ""))
 		  (start (- (caaddr index) 1))
-		  (finish (1+ (cdaddr index))))
+		  (finish (1+ (cdaddr index)))
+		  #+extra-debug
+		  (dummy (extra-debug-print
+		  	  "[manip-utilities]"
+		  	  pattern values index target ext ext-expr ext-str start finish))
+		  )
 	     (setf target (replace-substring ext-str target start finish)))))
 					     
-
 (defun cmd-symbol-subst (symb descriptors)
   (let ((name (symbol-name symb)))
     (if (eql (char name 0) subst-symb-char)
@@ -244,8 +247,11 @@ undoing proof attempt." just-rule)
 ;; Generate an error/status message step using skip-msg.  Forces printing by
 ;; default.  A Manip user, however, which might be another strategy package,
 ;; can override this setting and suppress the message.
+;; Changed default of force-printing? to nil. As result, messages are
+;; suppressed when called from another step, but they are printed when
+;; called interactively. [CAM 2/19/2025]
 
-(defun gen-manip-response (name msg &optional (force-printing? t))
+(defun gen-manip-response (name msg &optional force-printing?)
   (if *suppress-manip-messages*
       '(skip)
       `(skip-msg ,(format nil "[Manip.~A]  ~A" name msg) ,force-printing?)))

@@ -19,7 +19,6 @@
 
 ;;; ------------ Support for syntax matching features ------------
 
-
 ;; Following structure returned by spec-items parser.
 
 (defstruct match-items
@@ -36,8 +35,12 @@
 ;; Conduct a syntax-matching search then generate the appropriate proof
 ;; step or information display step according to the search results.
 
-(defun match-syntax-step (&rest spec-items)
-  (let* ((match-items (parse-match-items spec-items))
+(defun match-syntax-step (fnums &rest spec-items)
+  (let* ((match-items (parse-match-items fnums spec-items))
+	 #+extra-debug
+	 (dummy (extra-debug-print
+	 	 "[syntax-matching (1)]"
+	 	 match-items))
 	 ;; returns a structure of type match-items
 	 (error-msg (match-items-error-msg match-items))
 	 (action-targets-steps (match-items-action-targets-steps match-items)))
@@ -45,23 +48,22 @@
 	(gen-manip-response 'match (format nil "~A~%" error-msg))
       (let* ((fnum-patterns (normalize-patterns match-items))
 	     (vars-instances-fnums (match-instances fnum-patterns))
-	     (instances (cadr vars-instances-fnums)))
+	     (instances (cadr vars-instances-fnums))
+	     #+extra-debug
+	     (dummy (extra-debug-print
+	     	     "[syntax-matching (2)]"
+	     	     fnum-patterns vars-instances-fnums instances))
+	     )
 	(cond ((null instances)
 	       (gen-manip-response
 		'match
-		(format nil "No pattern matches found.~%") ))
+		(format nil "No pattern matches found.~%")))
 	      ((match-items-show-flag match-items)
 	       `(match-syntax-show$ ,@vars-instances-fnums
 				    ,@action-targets-steps))
-	      ((>= (length instances)
-		   (length fnum-patterns))
+	      (t
 	       (apply #'match-syntax-rule
-		      (append vars-instances-fnums action-targets-steps)))
-	      (t (gen-manip-response
-		  'match
-		  (format nil
-			  "Only ~A pattern instance(s) matched.~%"
-			  (length instances)))))))))
+		      (append vars-instances-fnums action-targets-steps))))))))
 
 ;; Following is invoked when only information display is requested.
 ;; It displays information about pattern matches, template substitutions
@@ -109,10 +111,11 @@
 	(show-step (let ((*suppress-manip-messages* nil))
 		     (gen-manip-response 'match
 					 (format nil "~%~{~A~}"
-						 (list variables patterns contractum rule))))))
+						 (list variables patterns contractum rule))
+					 t))))
     show-step)
   "Helper strategy for match."
-  "~%Matching syntax in formulas and performing actions")
+  "Matching syntax in formulas and performing actions")
 
 ;; Generate the rule or proof step that follows from the specified action
 ;; and substitution instances.  Defaults are applied as needed.
@@ -131,7 +134,7 @@
 	 ;; to allow nested applications of match
 	 (unmatched-var     ;; check for strings with remaining %-chars
 	  (apply-to-selected-nodes
-	   #'(lambda (s) (or (and (consp s) (member (car s) '(match match$))) (stringp s)))  ;; Select
+	   #'(lambda (s) (or (and (consp s) (member (car s) *manip-match-exceptions*)) (stringp s)))  ;; Select
 	   #'(lambda (s) (when (stringp s) (find #\% s))) ;; node
 	   #'(lambda (s) nil)  ; else
 	   #'(lambda (s) (some #'identity s)) ;; list
@@ -178,7 +181,7 @@
 ;; Returns a list of EE descriptors.
 
 (defun match-syntax-ee (&rest spec-items)
-  (let* ((match-items (parse-match-items spec-items t))
+  (let* ((match-items (parse-match-items nil spec-items t))
 	 ;; returns a structure of type match-items
 	 (error-msg (match-items-error-msg match-items))
 	 (expressions (match-items-expressions match-items)))
@@ -224,8 +227,8 @@
 ;; If ee-form is true, parse according to extended expression syntax:
 ;;   [fnums] pattern-1 ... pattern-n [onums] [-> expr-1 ... expr-n]
 ;; Returns a structure of type match-items.
-   
-(defun parse-match-items (all-items &optional (ee-form nil))
+  
+(defun parse-match-items (global-fnums all-items &optional (ee-form nil))
   (if all-items
       (let* ((comment-posn (position '-- all-items :from-end t))
 	     (comments
@@ -233,25 +236,27 @@
 	     (real-items
 	      (if comment-posn (subseq all-items 0 comment-posn) all-items))
 	     (show-flag (memq (car real-items) '(? show)))
-	     (fnums-items (if show-flag (cdr real-items) real-items))
-	     ;; Added support for extended formula references below [CM]
-	     (fnums (extra-get-fnums-strict (when (consp fnums-items) (car fnums-items)))) 
-	     (items (if fnums
-			(cdr fnums-items)
-		      fnums-items))
-	     (global-fnums (or fnums '*))
+	     (fnum-items (if show-flag (cdr real-items) real-items))
+	     (fnums (or global-fnums
+			(if (extra-fnums-p (car fnum-items))
+			    (car fnum-items)
+			  '*)))
+	     (items (if (or global-fnums
+			    (not (extra-fnums-p (car fnum-items))))
+			fnum-items
+		      (cdr fnum-items)))
 	     (patterns nil)
 	     (result (make-match-items :show-flag show-flag
-				       :formula-nums global-fnums
+				       :formula-nums (extra-get-fnums fnums)
 				       :comments comments)))
 	(if ee-form
-	    (parse-match-items-ee global-fnums items patterns result)
-	    (parse-match-items-match global-fnums items patterns result)))
+	    (parse-match-items-ee items patterns result)
+	    (parse-match-items-match items patterns result)))
     (make-match-items :error-msg "No item specifications supplied.")))
 
 ;; Parse top-level match strategy items.
 
-(defun parse-match-items-match (global-fnums items patterns result)
+(defun parse-match-items-match (items patterns result)
   (let* ((action nil)
 	 (targets nil)
 	 (steps nil)
@@ -271,14 +276,7 @@
 		patterns (butlast items (- (length items) last-patt-posn)))
 	(setf patterns (butlast items
 				(- (length items) (1+ last-patt-posn)))))
-      ;; Added support for expanded fnums in patterns below [CM]
-      (setf (match-items-patterns result)
-	    (mapcar #'(lambda (patt) 
-			(if (listp patt)
-			    (let ((efnums (extra-get-fnums-strict (car patt))))
-			      (cons (or efnums (car patt)) (cdr patt)))
-			  patt))
-		    patterns)))
+      (setf (match-items-patterns result) patterns))
     (unless patterns
       (setf (match-items-error-msg result) "No patterns specified.")
       (return-from parse-match-items-match result))
@@ -315,7 +313,7 @@
 
 ;; Parse extended expression forms.
 
-(defun parse-match-items-ee (global-fnums items patterns result)
+(defun parse-match-items-ee (items patterns result)
   (let* ((action-posn (position-if #'(lambda (e) (eq e '->))
 				   items :from-end t))
 	 (last-patt-posn (- (or action-posn (length items)) 1)))
@@ -349,6 +347,8 @@
 (defparameter *max-match-step-index*
   (- (length *match-step-rules*) 1))
 
+;; match doesn't expand variables on these strategies
+(defparameter *manip-match-exceptions* '(match match$ cond-match if-match))
 
 ;; From the output of match-item parsing, create a list of triples
 ;; (fnums, pattern, onums) suitable for matching.
@@ -372,11 +372,12 @@
 	  (loop for patt in patterns
 	        collect (cond ((not (consp patt))
 			       (list nil patt nil))
-			      ((extra-get-fnums-strict (car patt)) ;; Added support for extended fnums [CM]
-			       (if (< (length patt) 2)
-				   ;; missing pattern; use universal patt "%"
-				   (append patt (list "%"))
-				 patt))
+			      ((extra-fnums-p (car patt)) ;; Added support for extended fnums [CM]
+			       (let ((fnums (extra-get-fnums (car patt))))
+				 (if (< (length patt) 2)
+				     ;; missing pattern; use universal patt "%"
+				     `(,fnums "%")
+				   (cons fnums (cdr patt)))))
 			      (t (cons nil patt)))))
 	 (patts-complete
 	  (loop for patt in fnums-complete
@@ -477,29 +478,20 @@
 				(number-items all-p-sforms)))
 	     (all-fmlas (append all-n-sforms all-p-sforms))
 	     (all-n-fmlas (mapcar #'cons all-fnums all-fmlas))
-	      ;; cache: list of (fp-fnums actual-fnums formulas)
-	     (fp-cache-fnum nil)
-	      ;; cache: list of (fp-patt patt-obj)
+	     ;; cache: list of (fp-patt patt-obj)
 	     (g-subs nil)
 	     (matches
 	      (loop for fp in fnum-patterns
 		    append
-		      (let* ((fnums-in (assoc (car fp) fp-cache-fnum
-					      :test #'equal))
-			     (fnums (cond (fnums-in (cadr fnums-in))
-					  ((eq (car fp) '*) all-fnums)
-					  (t (map-fnums-arg (car fp)))))
+		      (let* (;; At this point (car fp) are formulas numbers [CAM]
+			     (fnums (car fp))
 			     (formulas
-			      (cond (fnums-in (caddr fnums-in))
-				    ((eq (car fp) '*) all-fmlas)
-				    (t (loop for n-fmla in all-n-fmlas
-				             if (memq (car n-fmla) fnums)
-					        collect (cdr n-fmla)))))
+			      (loop for n-fmla in fnums
+				    collect (cdr (assoc n-fmla all-n-fmlas))))
 			     (anchor-pattern
 			      (pattern-object (cadr fp) which-expr)))
 			(setf anchored (car anchor-pattern)
 			      pattern (cdr anchor-pattern))
-			(push (list (car fp)  fnums formulas) fp-cache-fnum)
 			(setf result nil
 			      fully-done nil
 			      occurrence 1
@@ -1085,7 +1077,7 @@
 		  ((consp expr)
 		   ;; M3: only proceed with the instantiation if the strategy
 		   ;;     is not a match itself.
-		   (if (member (car expr) '(match match$))
+		   (if (member (car expr) *manip-match-exceptions*)
 		       expr
 		     (mapcar #'build-target expr)))
 		  (t expr))))
@@ -1248,7 +1240,7 @@
 	    return patt-str)))
 
 (defun match-syntax-single (which-expr &rest spec-items)
-  (let* ((match-items (parse-match-items spec-items))
+  (let* ((match-items (parse-match-items nil spec-items))
 	 ;; returns a structure of type match-items
 	 (error-msg (match-items-error-msg match-items)))
     (if error-msg
@@ -1956,7 +1948,7 @@
 	(dummy (push (list step-num new-step) *upgraded-step-list*)))
     new-step)
   "Convert formula number arguments to patterns."
-  "~%Converting formula number arguments to patterns")
+  "Converting formula number arguments to patterns")
 
 (defun upgrade-file-proofs (name)
   (let* ((prf-file (format nil "~A.prf" name)))

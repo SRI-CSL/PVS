@@ -4398,6 +4398,8 @@ type of the lhs."
                           (setf (bindings ex) (list bd))
                           (setf (expression ex) if-expr)
                           (setf (type ex) (car ctypes))
+			  (unless (arraytype? (type ex))
+			    (change-class (type ex) 'arraytype))
 			  (check-for-subtype-tcc ex expected)))))))))
 
 (defun make-array-if-expr (var exprs)

@@ -4119,10 +4119,10 @@ integertypes: THEORY
  BEGIN
 
 
-     uint8: TYPE = below(exp2(8))
-     uint16: TYPE = upto(exp2(16) - 1) 
-     uint32: TYPE = upto(exp2(32) - 1) 
-     uint64: TYPE = upto(exp2(64) - 1)
+     uint8: TYPE = below(exp2(8)) CONTAINING 0
+     uint16: TYPE = upto(exp2(16) - 1) CONTAINING 0
+     uint32: TYPE = upto(exp2(32) - 1) CONTAINING 0
+     uint64: TYPE = upto(exp2(64) - 1) CONTAINING 0
 
      max8:  uint8 = 255
      max16: uint16 = 65535
@@ -4130,38 +4130,38 @@ integertypes: THEORY
      max64: uint64 = (9223372036854775807 * 2) + 1
                      % = 18446744073709551615, but C compiler won't accept this
 
-     int8: TYPE = subrange(-exp2(7), exp2(7) - 1)
-     int16: TYPE = subrange(-exp2(15), exp2(15) - 1)
-     int32: TYPE = subrange(-exp2(31), exp2(31) - 1)
-     int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
+     int8: TYPE = subrange(-exp2(7), exp2(7) - 1) CONTAINING 0
+     int16: TYPE = subrange(-exp2(15), exp2(15) - 1) CONTAINING 0
+     int32: TYPE = subrange(-exp2(31), exp2(31) - 1) CONTAINING 0
+     int64: TYPE = subrange(-exp2(63), exp2(63) - 1) CONTAINING 0
 
      % Provide some intersection types, so that judgements can find a minimal type
-     pos_uint8:  TYPE = {x: uint8 | x > 0}
-     pos_uint16: TYPE = {x: uint16 | x > 0}
-     pos_uint32: TYPE = {x: uint32 | x > 0}
-     pos_uint64: TYPE = {x: uint64 | x > 0}
-     neg_int8:   TYPE = {x: int8 | x < 0}
-     neg_int16:  TYPE = {x: int16 | x < 0}
-     neg_int32:  TYPE = {x: int32 | x < 0}
-     neg_int64:  TYPE = {x: int64 | x < 0}
+     pos_uint8:  TYPE = {x: uint8 | x > 0} CONTAINING 1
+     pos_uint16: TYPE = {x: uint16 | x > 0} CONTAINING 1
+     pos_uint32: TYPE = {x: uint32 | x > 0} CONTAINING 1
+     pos_uint64: TYPE = {x: uint64 | x > 0} CONTAINING 1
+     neg_int8:   TYPE = {x: int8 | x < 0} CONTAINING -1
+     neg_int16:  TYPE = {x: int16 | x < 0} CONTAINING -1
+     neg_int32:  TYPE = {x: int32 | x < 0} CONTAINING -1
+     neg_int64:  TYPE = {x: int64 | x < 0} CONTAINING -1
      % Now the even and odd forms of these
      even_uint8: TYPE = {x: uint8 | even?(x)} % Only needed for 0, hence no odd_uint8
-     even_pos_uint8:  TYPE = {x: uint8 | x > 0 and even?(x)}
-     even_pos_uint16: TYPE = {x: uint16 | x > 0 and even?(x)}
-     even_pos_uint32: TYPE = {x: uint32 | x > 0 and even?(x)}
-     even_pos_uint64: TYPE = {x: uint64 | x > 0 and even?(x)}
-     even_neg_int8:   TYPE = {x: int8 | x < 0 and even?(x)}
-     even_neg_int16:  TYPE = {x: int16 | x < 0 and even?(x)}
-     even_neg_int32:  TYPE = {x: int32 | x < 0 and even?(x)}
-     even_neg_int64:  TYPE = {x: int64 | x < 0 and even?(x)}
-     odd_pos_uint8:   TYPE = {x: uint8 | x > 0 and odd?(x)}
-     odd_pos_uint16:  TYPE = {x: uint16 | x > 0 and odd?(x)}
-     odd_pos_uint32:  TYPE = {x: uint32 | x > 0 and odd?(x)}
-     odd_pos_uint64:  TYPE = {x: uint64 | x > 0 and odd?(x)}
-     odd_neg_int8:    TYPE = {x: int8 | x < 0 and odd?(x)}
-     odd_neg_int16:   TYPE = {x: int16 | x < 0 and odd?(x)}
-     odd_neg_int32:   TYPE = {x: int32 | x < 0 and odd?(x)}
-     odd_neg_int64:   TYPE = {x: int64 | x < 0 and odd?(x)}
+     even_pos_uint8:  TYPE = {x: uint8 | x > 0 and even?(x)} CONTAINING 2
+     even_pos_uint16: TYPE = {x: uint16 | x > 0 and even?(x)} CONTAINING 2
+     even_pos_uint32: TYPE = {x: uint32 | x > 0 and even?(x)} CONTAINING 2
+     even_pos_uint64: TYPE = {x: uint64 | x > 0 and even?(x)} CONTAINING 2
+     even_neg_int8:   TYPE = {x: int8 | x < 0 and even?(x)} CONTAINING -2
+     even_neg_int16:  TYPE = {x: int16 | x < 0 and even?(x)} CONTAINING -2
+     even_neg_int32:  TYPE = {x: int32 | x < 0 and even?(x)} CONTAINING -2
+     even_neg_int64:  TYPE = {x: int64 | x < 0 and even?(x)} CONTAINING -2
+     odd_pos_uint8:   TYPE = {x: uint8 | x > 0 and odd?(x)} CONTAINING 1
+     odd_pos_uint16:  TYPE = {x: uint16 | x > 0 and odd?(x)} CONTAINING 1
+     odd_pos_uint32:  TYPE = {x: uint32 | x > 0 and odd?(x)} CONTAINING 1
+     odd_pos_uint64:  TYPE = {x: uint64 | x > 0 and odd?(x)} CONTAINING 1
+     odd_neg_int8:    TYPE = {x: int8 | x < 0 and odd?(x)} CONTAINING -1
+     odd_neg_int16:   TYPE = {x: int16 | x < 0 and odd?(x)} CONTAINING -1
+     odd_neg_int32:   TYPE = {x: int32 | x < 0 and odd?(x)} CONTAINING -1
+     odd_neg_int64:   TYPE = {x: int64 | x < 0 and odd?(x)} CONTAINING -1
 
      even_pos_uint8_is_nzint:  JUDGEMENT even_pos_uint8 SUBTYPE_OF nzint
      even_pos_uint16_is_nzint: JUDGEMENT even_pos_uint16 SUBTYPE_OF nzint
@@ -4192,6 +4192,8 @@ integertypes: THEORY
 
      maxsize: MACRO uint32 = exp2(28) %max array size
      size: TYPE = upto(maxsize)
+
+     maxindex: MACRO uint32 = exp2(28) - 1 %max array index
      index: TYPE = below(maxsize) %array index supertype
 
      ux8, uy8, uz8: VAR uint8

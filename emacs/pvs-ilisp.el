@@ -130,7 +130,7 @@ intervenes."
   (setq pvs-lisp (intern (getenv "PVSLISP")))
   (cl-case pvs-lisp
     (allegro (pvsallegro "pvs" nil))
-    ;; (cmulisp (pvscmulisp "pvs" nil))
+    ;; (cmulisp (pvscmulisp "pvs" nil)) ;; Not used since it only has 32-bit support
     (sbclisp (pvssbclisp "pvs" nil))
     (t (error "Unknown lisp - %s" (getenv "PVSLISP"))))
   (with-current-buffer (ilisp-buffer)
@@ -215,7 +215,7 @@ intervenes."
 		     (pvs-remove-whitespace (substring output msg-start msg-end)))))))))
 
 (defdialect pvssbclisp "pvs-sbclisp"
-  cmulisp
+  sbcl
   (pvs-comint-init)
   ;;(setq comint-send-newline nil)
   (setq ilisp-binary-extension (pvs-sbclisp-binary-extension))
@@ -242,28 +242,19 @@ intervenes."
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
 (defun sbcl-error-filter (output)
-  (let* ((type-regex "\\(SIMPLE-ERROR\\|SIMPLE-CONDITION\\|SB-SYS:INTERACTIVE-INTERRUPT @[0-9A-F]+\\)")
-	 (prefix-regex (concat "debugger invoked on a " type-regex " in thread")))
+  (let* ((debug-regex "debugger invoked on a \\(.*\\) in thread"))
     ;; "\n#<THREAD .*\"main thread\" RUNNING {" "[0-9A-F]+}>:"
-    (comint-ipc-debug "sbcl-error-filter: prefix-regex = %s,\n   output = %s\n"
-		     prefix-regex output)
-    (when (string-match prefix-regex output)
-      (let* ((type-str (substring output (match-beginning 1) (match-end 1)))
+    (when output
+      (comint-ipc-debug "sbcl-error-filter: prefix-regex = %s,\n   output = %s\n"
+			debug-regex output))
+    (when (string-match debug-regex output)
+      (let* ((error-type (substring output (match-beginning 1) (match-end 1)))
 	     (msg-start (match-end 0))
 	     (msg-end (string-match "Type HELP" output msg-start)))
-	(cond ((equal type-str "SIMPLE-ERROR")
-	       (concat "Error in PVS Lisp (probably a bug):\n"
-		       (pvs-remove-whitespace (substring output msg-start msg-end))))
-	      ((equal type-str "SIMPLE-CONDITION")
-	       (concat "Break in PVS Lisp:\n"
-		       (pvs-remove-whitespace (substring output msg-start msg-end))))
-	      (t ;; (string-match "SB-SYS:INTERACTIVE-INTERRUPT" type-str)
-	       "Error: Received signal number 2 (Interrupt)"))))))
+	(format "Error: %s\n%s" error-type
+	  (pvs-remove-whitespace (substring output msg-start msg-end)))))))
 
 (defun pvs-allegro-binary-extension ()
-  "fasl")
-
-(defun pvs-cmulisp-binary-extension ()
   "fasl")
 
 (defun pvs-sbclisp-binary-extension ()
@@ -344,12 +335,15 @@ intervenes."
   (when pvs-in-evaluator
     (ilisp-switch-to-lisp t)
     (error "Must exit the ground evaluator first"))
+  ;; (when (pvs-in-the-debugger)
+  ;;   (ilisp-switch-to-lisp t)
+  ;;   (error "Must exit the debugger first - :top will do this, see :help"))
   (with-current-buffer (ilisp-buffer)
     (setq buffer-read-only nil))
   (let (*pvs-output-pos*)
     ;; Note that exit any break loop we might be in
-    ;;(pvs-send-and-wait (ilisp-process) "(pvs::exit-debugger)")
-    (pvs-exit-debugger)
+    ;; (pvs-send-and-wait (ilisp-process) "(pvs::exit-debugger)")
+    ;; (pvs-exit-debugger)
     (comint-log (ilisp-process) (format "\nsent:{%s}\n" string))
     (comint-ipc-debug "-------\npvs-send*: %s, and-go = %s" string and-go)
     (prog1
@@ -372,15 +366,18 @@ intervenes."
 	(goto-char (marker-position *pvs-output-pos*))))))
 
 (defun pvs-exit-debugger ()
-  (while (pvs-in-the-debugger)
-    (comint-simple-send
-     (pvs-process)
-     (if (eq pvs-lisp sbclisp) ":abort" ":pop"))
-    (sit-for 0)))
+  (unless noninteractive
+    (while (pvs-in-the-debugger)
+      (comint-simple-send
+       (pvs-process)
+       (if (eq pvs-lisp 'sbclisp) ":abort" ":pop"))
+      (sit-for 0))))
 
 (defun pvs-in-the-debugger ()
-  (let ((in-debug (ilisp-send "(in-the-debugger)")))
-    (member in-debug '("t" "T"))))
+  (let* ((in-debug-str (ilisp-send "(in-the-debugger)"))
+	 ;; Get rid of comments from debugger
+	 (in-debug (car (read-from-string in-debug-str))))
+    (member in-debug '(t T))))
     
 
 (defvar *pvs-maximize-proof-display* t  
@@ -402,12 +399,13 @@ want to set this to nil for slow terminals, or connections over a modem.")
 (defvar pvs-process-output)
 
 (defun pvs-process-filter (process output)
-  "This is called as output is collected from the process. It may need to be buffered"
+  "This is called as output is collected from the process.
+It may need to be buffered"
   (when comint-log-verbose
     (comint-log (ilisp-process) (format "\nrec:{%s}\n" output)))
   (setq output (pvs-process-gc-messages output))
-  (unless pvs-recursive-process-filter
-    (comint-ipc-debug "pvs-process-filter: output = %s" output))
+  (comint-ipc-debug "pvs-process-filter 1: pvs-recursive-process-filter = %s\n  output = %s"
+		    output pvs-recursive-process-filter)
   ;; pvs-recursive-process-filter
   (if pvs-recursive-process-filter
       (setq pvs-process-output (concat pvs-process-output output))
@@ -423,8 +421,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	    ;; depending on the action taken
 	    (let ((pvs-output (pvs-output-filter
 			       (substring pvs-process-output 0 line-end))))
-	      (comint-ipc-debug "pvs-process-filter: after pvs-process-output:\n  %s"
-			       pvs-output)
+	      (comint-ipc-debug "pvs-process-filter 2:\n  %s" pvs-output)
 	      (when (and noninteractive
 			 pvs-in-checker
 			 (not (string-match "^\\(nil\\|NIL\\)$" pvs-output)))
@@ -432,7 +429,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		  (princ pvs-output))
 		(when (> pvs-verbose 2)
 		  (princ pvs-output 'external-debugging-output)))
-	      (comint-ipc-debug "pvs-process-filter: calling comint-process-filter in CR loop")
+	      (comint-ipc-debug "pvs-process-filter 3: pvs-output = %s\n" pvs-output)
 	      (comint-process-filter process pvs-output))
 	    (setq pvs-process-output
 		  (substring pvs-process-output line-end)))
@@ -1008,11 +1005,10 @@ window."
 	     (comint-simple-send (ilisp-process) "t")
 	     t)
       (let ((inhibit-quit nil)
-	    (query nil))
-	(pvs-emacs-query 'query prompt)
+	    (qchar (pvs-emacs-query prompt)))
 	(comint-simple-send
 	 (ilisp-process)
-	 (cl-case query (?! ":auto") (?y "t") (t "nil"))))))
+	 (cl-case qchar (?! ":auto") (?y "t") (t "nil"))))))
 
 (defun pvs-make-items (item-list)
   (mapcar #'(lambda (x) (cons (cadr x) (caddr x)))
@@ -1398,7 +1394,7 @@ is emptied."
 	  (message "Resetting PVS")
 	  (when pvs-in-checker
 	    (comint-simple-send (ilisp-process) (format "(quit)y\nno")))
-	  (pvs-exit-debugger)
+	  ;; (pvs-exit-debugger)
  	  (sleep-for 1)
 	  (interrupt-process (ilisp-process))
 	  (with-current-buffer (ilisp-buffer)

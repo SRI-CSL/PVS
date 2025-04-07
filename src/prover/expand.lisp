@@ -30,6 +30,7 @@
 (in-package :pvs)
 
 (defvar *count-occurrences* 0)
+(defvar *skip-occur-count* nil)
 (defvar *if-simplifies*)
 (defvar *expand-in-actuals?* nil)
 (defvar *names-from-symbols*)
@@ -341,8 +342,10 @@ list of positive numbers" occurrence)
 	   (< *max-occurrence* *count-occurrences*))
       expr
       (cond ((same-expand-name expr name)
-	     (setf *count-occurrences* (1+ *count-occurrences*))
+	     (unless *skip-occur-count*
+	       (incf *count-occurrences*))
 	     (if (or (null occurrence)
+		     *skip-occur-count*
 		     (member *count-occurrences* occurrence
 			     :test #'eql))
 		 (cond ((def-axiom (declaration expr))
@@ -403,6 +406,16 @@ list of positive numbers" occurrence)
 		       'resolutions (list res))))))
 	    (t expr))))
 
+(defmethod expand-defn (name (expr bind-decl) occurrence)
+  (assert *expand-in-actuals?*)
+  ;;(assert (declared-type expr))
+  (let* ((dty (expand-defn name (declared-type expr) occurrence))
+	 (*skip-occur-count* (or dty *skip-occur-count*))
+	 (ty (expand-defn name (type expr) occurrence)))
+    (lcopy expr
+      'declared-type dty
+      'type ty)))
+
 (defmethod expand-defn (name (expr actual) occurrence)
   (if (type-value expr)
       expr
@@ -414,11 +427,21 @@ list of positive numbers" occurrence)
     'rhs (expand-defn name (rhs expr) occurrence)))
 
 (defmethod expand-defn (name (expr binding-expr) occurrence)
-  (if (and (plusp *max-occurrence*)
-	   (< *max-occurrence* *count-occurrences*))
-      expr
-      (lcopy expr
-	'expression (expand-defn name (expression expr) occurrence))))
+  (cond ((and (plusp *max-occurrence*)
+	      (< *max-occurrence* *count-occurrences*))
+	 expr)
+	(*expand-in-actuals?*
+	 (let ((nbindings (expand-defn name (bindings expr) occurrence)))
+	   (if (equal nbindings (bindings expr))
+	       (lcopy expr
+		 'expression (expand-defn name (expression expr) occurrence))
+	       (let* ((alist (mapcar #'cons (bindings expr) nbindings))
+		      (sexpr (substit (expression expr) alist)))
+		 (lcopy expr
+		   'bindings nbindings
+		   'expression (expand-defn name sexpr occurrence))))))
+	(t (lcopy expr
+	     'expression (expand-defn name (expression expr) occurrence)))))
 
 (defmethod expand-defn (name (expr lambda-expr) occurrence)
   (if (and (plusp *max-occurrence*)
@@ -463,13 +486,21 @@ list of positive numbers" occurrence)
   (declare (ignore name occurrence))
   expr)
 
-(defmethod expand-defn (name (expr list) occurrence)
-  (let ((newlist (mapcar #'(lambda (x) (expand-defn name x
-						    occurrence))
-			 expr)))
-    (if (every #'eq expr newlist)
-	expr
-	newlist)))
+(defmethod expand-defn (name (terms list) occurrence)
+  (let ((nterms (expand-defn-list name terms occurrence)))
+    (if (equal terms nterms)
+	terms
+	nterms)))
+
+(defun expand-defn-list (name terms occurrence &optional nterms)
+  (if (null terms)
+      (nreverse nterms)
+      (let* ((nterm (expand-defn name (car terms) occurrence))
+	     (ncdr (if (and (not (eq nterm (car terms)))
+			    (typep nterm 'binding))
+		       (substit (cdr terms) (acons (car terms) nterm nil))
+		       (cdr terms))))
+	(expand-defn-list name ncdr occurrence (cons nterm nterms)))))
 
 (defmethod expand-defn (name (expr update-expr) occurrence)
   (if (and (plusp *max-occurrence*)
@@ -495,6 +526,149 @@ list of positive numbers" occurrence)
 (defmethod expand-defn (name (expr expr) occurrence)
   (declare (ignore name occurrence))
   expr)
+
+;;; Type expressions
+
+(defmethod expand-defn :around (name (type type-expr) occurrence)
+  ;; Handles print-types
+  (if (print-type type)
+      ;; occurrence should only be counted for print-type
+      ;; need to somehow find and expand the corresponding occurrence(s)
+      ;; for call-next-method
+      (let* ((pt (print-type type))
+	     (ptype (expand-defn name (print-type type) occurrence)))
+	(if occurrence
+	    ;; Keeping things simple for now - if, e.g., only one of two
+	    ;; occurrences is expanded in the print-type, the cacnonical type
+	    ;; might have any number of occurrences which are difficult to
+	    ;; correlate
+	    (if (eq pt ptype) ;; if none found, expand wasn't used
+		type
+		(let* ((*skip-occur-count* t)
+		       (etype (call-next-method)))
+		  (setf (print-type etype) ptype)
+		  etype))
+	    (let ((etype (call-next-method)))
+	      (unless (eq ptype pt)
+		(setf (print-type etype) ptype))
+	      etype)))
+      (call-next-method)))
+
+(defmethod expand-defn (name (type type-name) occurrence)
+  (assert *expand-in-actuals?*)
+  (if (and (plusp *max-occurrence*)
+	   (< *max-occurrence* *count-occurrences*))
+      type
+      (if (or (actuals type)
+	      (mappings type))
+	  (let ((eacts (expand-defn name (actuals type) occurrence))
+		(emaps (expand-defn name (mappings type) occurrence)))
+	    (if (and (eq eacts (actuals type))
+		     (eq emaps (mappings type)))
+		type
+		(let* ((thinst (copy (module-instance type)
+				 'actuals eacts 'mappings emaps))
+		       (res (make-resolution (declaration type) thinst)))
+		  (copy type
+		    'actuals eacts
+		    'mappings emaps
+		    'resolutions (list res)))))
+	  type)))
+
+(defmethod expand-defn (name (ptype print-type-application) occurrence)
+  (lcopy ptype
+    'type (expand-defn name (type ptype) occurrence)
+    'parameters (pseudo-normalize (expand-defn name (parameters ptype) occurrence))))
+
+(defmethod expand-defn (name (type type-application) occurrence)
+  (lcopy type
+    'type (expand-defn name (type type) occurrence)
+    'parameters (pseudo-normalize (expand-defn name (parameters type) occurrence))))
+  
+(defmethod expand-defn (name (dbdg dep-binding) occurrence)
+  (let* ((dty (expand-defn name (declared-type dbdg) occurrence))
+	 (*skip-occur-count* (or dty *skip-occur-count*))
+	 (ty (expand-defn name (type dbdg) occurrence)))
+    (lcopy dbdg
+      'declared-type dty
+      'type ty)))
+
+(defmethod expand-defn (name (texpr expr-as-type) occurrence)
+  (let ((expr (pseudo-normalize (expand-defn name (expr texpr) occurrence))))
+    (lcopy texpr 'expr expr)))
+  
+(defmethod expand-defn (name (type datatype-subtype) occurrence)
+  (let* ((dty (expand-defn name (declared-type type) occurrence))
+	 (*skip-occur-count* (or dty *skip-occur-count*))
+	 (ty (call-next-method)))
+    (lcopy ty 'declared-type dty)))
+
+(defmethod expand-defn (name (type setsubtype) occurrence)
+  (declare (ignore name occurrence))
+  (let ((ntype (call-next-method)))
+    (unless (eq (predicate type) (predicate ntype))
+      (setf (formals ntype) (bindings (predicate ntype)))
+      (setf (formula ntype) (expression (predicate ntype))))
+    ntype))
+  
+(defmethod expand-defn (name (type subtype) occurrence)
+  (let ((stype (expand-defn name (supertype type) occurrence))
+	(pred (expand-defn name (predicate type) occurrence)))
+    (lcopy type
+      'supertype stype
+      'predicate (pseudo-normalize pred))))
+
+(defmethod expand-defn (name (type funtype) occurrence)
+  (let* ((ftypes (list (domain type) (range type)))
+	 (ntypes (expand-defn name ftypes occurrence)))
+    (if (equal ftypes ntypes)
+	type
+	(copy type
+	  'domain (car ntypes)
+	  'range (cadr ntypes)))))
+  
+(defmethod expand-defn (name (type tupletype) occurrence)
+  (let ((ntypes (expand-defn name (types type) occurrence)))
+    (if (equal ntypes (types type))
+	type
+	(copy type 'types ntypes))))
+
+(defmethod expand-defn (name (type struct-sub-tupletype) occurrence)
+  (let ((ntype (expand-defn name (type type) occurrence))
+	(ntypes (expand-defn name (types type) occurrence)))
+    (lcopy type
+      'type ntype
+      'types ntypes)))
+
+(defmethod expand-defn (name (type cotupletype) occurrence)
+  (let ((ntypes (expand-defn name (types type) occurrence)))
+    (if (equal ntypes (types type))
+	type
+	(copy type 'types ntypes))))
+
+(defmethod expand-defn (name (type recordtype) occurrence)
+  (let ((nfields (expand-defn name (fields type) occurrence)))
+    (if (equal nfields (fields type))
+	type
+	(let* ((dfields (dependent-fields? nfields))
+	       (ntype (copy type
+			'fields (sort-fields nfields dfields)
+			'dependent? dfields)))
+	    ntype))))
+
+(defmethod expand-defn (name (type struct-sub-recordtype) occurrence)
+  (let ((ntype (expand-defn name (type type) occurrence))
+	(nfields (expand-defn name (fields type) occurrence)))
+    (lcopy type
+      'type ntype
+      'fields nfields)))
+
+(defmethod expand-defn (name (field field-decl) occurrence)
+  (let* ((dty (expand-defn name (declared-type field) occurrence))
+	 (*skip-occur-count* (or dty *skip-occur-count*))
+	 (ty (expand-defn name (type field) occurrence)))
+    (lcopy field 'type ty 'declared-type dty)))
+  
 
 ;;; Compares the tgt-name from the sequent to the pat-name given by the user
 ;;; Whatever is not nil in the pat-name must match.

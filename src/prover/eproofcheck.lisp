@@ -3911,12 +3911,15 @@
 	       (values 'X nil nil))))))
 
 (defun fnum-p (e)
-  (or (numberp e)
-      (and (symbolp e)
-	   (or (memq e '(+ - *))
-	       ;; Check for labels
-	       (member e (collect-labels-of-current-sequent)
-		       :test #'string=)))))
+  (when (atom e)
+    (if (numberp e)
+	;; 0 is not a fnum
+	(/= e 0) 
+      ;; Check for labels [CM] Labels could be strings
+      (or (member e (collect-labels-of-current-sequent)
+		  :test #'string=)
+	  (and (symbolp e)
+	       (memq e '(+ - *)))))))
 	
 (defun collect-labels-of-current-sequent ()
   (reduce #'union (s-forms (current-goal *ps*)) :key #'label))

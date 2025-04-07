@@ -1,10 +1,10 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-8.0 (10/13/2023)
+;; Release: Extrategies-8.0 (02/28/25)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
-;; http://shemesh.larc.nasa.gov/people/cam/Extrategies
+;; https://shemesh.larc.nasa.gov/fm/pvs/Extrategies/
 ;;
 ;; Copyright (c) 2011-2012 United States Government as represented by
 ;; the National Aeronautics and Space Administration.  No copyright
@@ -16,14 +16,14 @@
 
 ;; List of strategies in Extrategies:
 (defparameter *extrategies* "
-%  Printing and commenting: printf, commentf, now
-%  Defining tactics, i.e., local strategies: deftactic
-%  Defining oracles, i.e., trusted proof rules: deforacle 
+%  Printing and commenting: printf, commentf, quietly,
+%    error-msg, warning-msg
+%  Defining proof rules: deftactic, deforacle
 %  Labeling and naming: unlabel*, delabel, relabel, name-label,
 %    name-label*, name-replace*, discriminate
 %  Copying formulas: copy*, protect, with-focus-on, with-focus-on@
 %  Programming: mapstep, mapstep@, with-fresh-labels, with-fresh-labels@,
-%    with-fresh-names, with-fresh-names@
+%    with-fresh-names, with-fresh-names@, cond-match, if-match
 %  Control flow: try@, try-then, try-then@, finalize, finalize*, touch,
 %    for, for@, when, when@, unless, unless@, when-label, when-label@,
 %    unless-label, unless-label@, if-label, sklisp
@@ -33,16 +33,10 @@
 %    if-tcc-sequent, with-tccs
 %  Ground evaluation (PVSio): eval-formula, eval-formula*, eval-expr, eval
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
-%  Strategy debugging (experts only): skip-steps, show-debug-mode, toggle-debug-mode")
+%  Strategy debugging (experts only): skip-steps, show-debug-mode, 
+%    enable-debug-mode, disable-debug-mode, set-debug-mode, load-files")
 
-(defparameter *extrategies-version* "Extrategies-8.0 (08/15/24)")
-
-(defparameter *extrategies-debug* nil)
-
-(defun print-extra-debug (msg)
-  (when *extrategies-debug*
-    (format t "[*extrategies-debug*~%~a~%*extrategies-debug*]~%"
-	    msg)))
+(defparameter *extrategies-version* "Extrategies-8.0 (02/28/25)")
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -112,9 +106,9 @@
   (mapcar #'car (extra-list-oracles enabled)))
 
 (defmacro deforacle (name args step doc format &key internal)
-  (let* ((info     (format nil "Try (help ~a)" name))
-	 (dismsg   (format nil "~a has been disabled" name))
-	 (docmsg   (if internal doc (format nil "[Trusted Oracle] ~a" doc))))
+  (let* ((info   (format nil "Try (help ~a)" name))
+	 (docmsg (if internal doc (format nil "[Trusted Oracle] ~a" doc)))
+	 (errmsg (format nil "Oracle ~a has been disabled" name)))
   `(progn
      (extra-make-trusted-oracle ',name ,info ,internal)
      (defrule ,name ,args
@@ -127,7 +121,7 @@
 		    (sklisp (extra-reset-oracle-label ',name))
 		    (fail)))
 	     (sklisp (extra-reset-oracle-label ',name))))
-	 (printf ,dismsg))
+	 (error-msg ,errmsg))
        ,docmsg ,format))))
 
 ;; Load filename from dir relative to a path in *pvs-library-path*
@@ -171,7 +165,7 @@
 ;; the value of the evaluation, which is printed in console. The
 ;; strategy sklisp doesn't!
 (defstrat sklisp (lispexpr)
-  (let ((xxx (eval lispexpr)))
+  (let ((dummy (eval lispexpr)))
     (skip))
   "[Extrategies] Evaluates lispexpr and skips")
 
@@ -362,9 +356,25 @@
        (name-expr? (operator term-obj))
        (eq (id (operator term-obj)) op)))
 
+(defun is-tcc-goal? (&optional (ps *ps*))
+  "Determines if PS is a goal generated from a TCC. PS default value is the current proofstate."
+  (typep *ps* 'tcc-proofstate))
+
 ;; If l is not a list put it into a list
 (defun enlist-it (l)
   (if (and (listp l) (not (equal (car l) '!)))
+      l
+    (list l)))
+
+(alexandria:define-constant extra-fnum-symbols (append all-but-symbols '(:fnums :fnum :in :diff :from)) :test #'equal)
+
+(alexandria:define-constant extra-all-symbols (append extra-fnum-symbols ext-expr-symbols deep-wild-symbols
+						      goto-index-symbols loc-ref-symbols) :test #'equal)
+ 
+;; Enlist l, but considers Manip's extensions, such as (^ ...) (? ...), etc, as atoms
+(defun enlist-ee (l)
+  (if (and (listp l)
+	   (not (member (car l) extra-all-symbols)))
       l
     (list l)))
 
@@ -376,6 +386,24 @@
 	  (l2 (or (car ls2) prevl2)))
       (cons (if list? (list l1 l2) (cons l1 l2))
 	    (pair-lists (cdr ls1) (cdr ls2) cut? list? l1 l2)))))
+
+(defun is-null-pvslist (expr)
+  (or (null-expr? expr)
+      (and (constructor-name-expr? expr)
+	   (equal (id expr) '|null|))))
+
+;; This function assumes that expr is a PVS list of the form
+;; cons(a0,cons(ac1, ... cons(acn,rest)))
+;; return a pair of two elements ((: a0, a1, ..., an :) . rest).
+;; The PVS empty list is then represented by the pair (nil . nil)
+;; The PVS list (: a1, a2, a3 :) is presented by the pair ((a1, a2, a3) . nil)
+;; If this function is called on a non "cons-" constructed PVS object expr, it returns
+;; (nil . expr)
+
+(defun pvslist2list (expr &optional accum)
+  (if (is-function-expr expr "cons")
+      (pvslist2list (args2 expr) (append accum (list (args1 expr))))
+    (cons accum (unless (is-null-pvslist expr) expr))))
 
 ;; a <=> b
 (defun iff (a b)
@@ -456,24 +484,59 @@
     (loop for i from 1 to n
 	  collect (freshname prefix))))
 
+;; (:fnum  <fnum1> ... <fnumn>) --> All the formulas in fnum1 ... fnumn
+;; (:fnum  <fnum1> ... <fnumn>) --> The first formula in fnum1 ... fnumn
+;; (:in <fnum1> ... <fnumn>) --> The intersection of formulas in fnum1 .. fnumn
+;; (:diff <fnum> <fnum-but1> ... <fnum-butn>) --> Formulas in <fnum> but not in <fnum-but1> .. <fnum-butn>
+;; (:from <n> [<m>]) --> Formula numbers from <n> to <m>. If <n> > <m> then forward direction. Otherwise backward direction.
+;;   If <m> is not provided, it assumes the last valid formula number in the direction of the sign of <m>
+
+;; Test if fnums represents an extended formula reference,
+;; i.e., numbers, labels, symbols, lists, all-but symbols, in addition to (:fnums ...) and (:fnum ...)
+(defun extra-fnums-p (fnums)
+  (when fnums
+    (or (fnum-p fnums)
+	(when (consp fnums)
+	  (every #'fnum-p
+		 (if (member (car fnums) extra-fnum-symbols)
+		     (cdr fnums)
+		   fnums))))))
+  
 (defun extra-extract-fnums (fnums)
-  (extract-fnums-arg (if (stringp fnums) (makesym fnums) fnums)))
-   
+  (when fnums
+    (if (consp fnums)
+	(cond ((equal (car fnums) :fnums) (extra-extract-fnums (cdr fnums)))
+	      ((equal (car fnums) :fnum) (enlist-it (car (extra-extract-fnums (cdr fnums)))))
+	      ((equal (car fnums) :in)
+	       (if (null (cddr fnums))
+		   (extra-extract-fnums (cadr fnums))
+		 (reduce #'intersection (mapcar #'extra-extract-fnums (cdr fnums)))))
+	      ((equal (car fnums) :diff)
+	       (if (null (cddr fnums))
+		   (extra-extract-fnums (cadr fnums))
+		 (extra-extract-fnums `(:in ,(cadr fnums) (^ ,(cddr fnums))))))
+	      ((equal (car fnums) :from)
+	       (let* ((from (when (numberp (cadr fnums)) (cadr fnums)))
+		      (to   (when (numberp (caddr fnums)) (caddr fnums))))
+		 (when from
+		   (cond (to
+			  (extra-extract-fnums (fromto from to)))
+			 ((> from 0)
+			  (remove-before from (extra-extract-fnums '+)))
+			 ((< from 0)
+			  (remove-before from (extra-extract-fnums '-)))))))
+	      (t (extract-fnums-arg fnums)))
+      (extract-fnums-arg fnums))))
+
 ;; Get a list of formula numbers from fnums
 ;; If enlist? is true and fnums is a list, each member of fnums is
 ;; listed separately.
 (defun extra-get-fnums (fnums &optional enlist?)
-  (if (or (not enlist?) (atom fnums) (member (car fnums) '(^ +^ -^)))
-    (extra-extract-fnums fnums)
-    (mapcar #'extra-extract-fnums fnums)))
-
-;;; Behaves likes exta-get-fnums but returns nil if one of the elements doesn't specify
-;;; a formula number
-(defun extra-get-fnums-strict (fnums)
-  (let ((pre-fnums (extra-get-fnums fnums t)))
-    (unless (member nil pre-fnums)
-      (loop for fnum in pre-fnums
-	    append (if (atom fnum) (list fnum) fnum)))))
+  (if (or (not enlist?) (atom fnums) (and (consp fnums)
+					  (member (car fnums) extra-fnum-symbols)))
+      (extra-extract-fnums fnums)
+    (when (consp fnums)
+      (mapcar #'extra-extract-fnums fnums))))
 
 ;; Get a formula number from fnum
 (defun extra-get-fnum (fnum)
@@ -981,37 +1044,87 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 (defun extra-is-false (expr)
   (tc-eq expr *false*))
 
+;; Return pair of current day and time in format (dd-mm-yyyy.hh:mm:ss)
+(defun now-dd-mm-yyyy ()
+  (multiple-value-bind
+      (second minute hour date month year day-of-week dst-p tz)
+      (get-decoded-time)
+    (declare (ignore dst-p))
+    (cons (format nil "~2,'0d-~2,'0d-~d" 
+		  date
+		  month
+		  year)
+	   (format nil "~2,'0d:~2,'0d:~2,'0d"
+		   hour
+		   minute
+		   second))))
+
 ;;;;;;;;;; Extrategies
 
 ;;; Printing and commenting
 
-(defstrat printf (msg &rest args)
-  (let ((xxx (apply 'format (cons nil (cons msg args)))))
-    (skip-msg xxx))
-  "[Extrategies] Prints the Lisp formatted string MSG using the format arguments
-ARGS. ARGS must be constant values.")
+;; This variable can be used to suppress printing by printf
+(defparameter *extra-suppress-printing* nil)
+
+;; By PVS suppresses printing inside defsteps (e.g., after the second step in a then).
+;; In contrast to SKIP-MSG, PRINTF sets force-printing? to t by default.
+;; So, printf messages can be suppresed setting force-printing? to nil, or
+;; using the global variable *extra-suppress-printing*, as done for example by the
+;; strategy quitely.
+
+(defstrat printf (msg &key (force-printing? t) &rest args)
+  (let ((quiet *extra-suppress-printing*))
+    (unless quiet
+      (let ((fmtdmsg (apply 'format (cons nil (cons msg args)))))
+	(skip-msg fmtdmsg :force-printing? force-printing?))))
+  "[Extrategies] Prints the Lisp-formatted string MSG using the format arguments
+ARGS. ARGS must be constant values. The option FORCE-PRINTING? can be set 
+to force printing. By default, FORCE-PRINTING? is set to T.")
+
+(defstrat error-msg (msg &rest msg-args)
+  (let ((dummy
+	 (unless *extra-suppress-printing*
+	   (eval `(error-format-if ,msg ,@msg-args)))))
+    (fail))
+  "Reports error message and fails.")
+
+(defstrat warning-msg (msg &rest msg-args)
+  (let ((dummy
+	 (unless *extra-suppress-printing*
+	   (eval `(error-format-if ,msg ,@msg-args)))))
+    (skip))
+  "Reports error message and skips.")
 
 (defstrat commentf (msg &rest args)
-  (let ((msg (apply 'format (cons nil (cons msg args)))))
-    (comment msg))
+  (let ((fmtdmsg (apply 'format (cons nil (cons msg args)))))
+    (comment fmtdmsg))
   "[Extrategies] Adds the formatted comment MSG to the sequent using the format
 arguments ARGS. ARGS can only have constant values.")
 
-(defstrat now ()
-  (let ((dummy (multiple-value-bind
-		   (second minute hour date month year day-of-week dst-p tz)
-		   (get-decoded-time)
-		 (declare (ignore dst-p))
-		 (format t "~%TIME ~d/~2,'0d/~d  ~2,'0d:~2,'0d:~2,'0d~%"
-			 month
-			 date
-			 year
-			 hour
-			 minute
-			 second))))
-    (declare (ignore dummy))
-    (skip))
-  "[Extrategies] Prints current time.")
+(defstrat quietly (&key (quiet? t) &rest steps)
+  (when steps
+    (if quiet?
+	(let ((do-step 
+	       `(unwind-protect$
+		 (then
+		  (sklisp
+		   (progn
+		     (setq *print-conversions* nil)
+		     (setq *rewrite-msg-off* t)
+		     (setq *extra-suppress-printing* t)
+		     (setq *suppress-manip-messages* t)))
+		  ,@steps)
+		 (sklisp 
+		  (progn
+		    (setq *rewrite-msg-off* ,*rewrite-msg-off*)
+		    (setq *print-conversions* ,*print-conversions*)
+		    (setq *extra-suppress-printing* ,*extra-suppress-printing*)
+		    (setq *suppress-manip-messages* ,*suppress-manip-messages*))))))
+	  do-step)
+      (let ((do-step `(then ,@steps)))
+	do-step)))
+  "Applies STEPS without printing messages. In general, this strategy should be used inside strategies. 
+The key :quiet? serves to turn on verbosity programmatically.")
 
 ;;; Labeling and naming
 
@@ -1044,11 +1157,11 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
   (if (is-pairing l) l
     (let ((el (enlist-it l)))
       (when el
-	(cons ':pairing el)))))
+	(cons :pairing el)))))
 
 (defun is-pairing (l)
   (and (listp l)
-       (equal (car l) ':pairing)))
+       (equal (car l) :pairing)))
 
 (defun flatten-labels (label)
   (when label
@@ -1122,7 +1235,7 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
 	    (unless tccsome
 	      (unless tccnone
 		(hide labtcc))))
-	 (printf "Name ~a already exists" name)))))
+	 (error-msg "Name ~a already exists" name)))))
   "[Extrategies] Adds formula EXPR=NAME, where NAME is a new name, as
 a hypothesis and replaces EXPR by NAME in FNUMS. Options are as follows.
 * The added formula is labeled LABEL:. By default, LABEL is set to NAME.
@@ -1284,9 +1397,9 @@ use.")
       (let* ((binding (car bindings))
 	     (lab     (car binding))
 	     (lopts   (cdr binding)))
-	(cond ((enabled-option-flag ':delete lopts t)
+	(cond ((enabled-option-flag :delete lopts t)
 	       (enabled-delete-hide (cdr bindings) (cons lab dlab) hlab nlab))
-	      ((enabled-option-flag ':hide lopts t)
+	      ((enabled-option-flag :hide lopts t)
 	       (enabled-delete-hide (cdr bindings) dlab (cons lab hlab) nlab))
 	      (lab
 	       (enabled-delete-hide (cdr bindings) dlab hlab (cons lab nlab)))))
@@ -1297,7 +1410,7 @@ use.")
     (let ((bindings (enlist-bindings bindings))
 	  ;; Bind variables to new labels
 	  (vlbs     (loop for b in bindings
-			  for ln = (member ':list (cdr b))
+			  for ln = (member :list (cdr b))
 			  collect
 			  (list (car b)
 				(list 'quote (if ln
@@ -1308,7 +1421,7 @@ use.")
 	  (ftccs    (loop for b in bindings
 			  for opts = (cdr b)
 			  when (when (extra-get-fnums (car opts))
-				 (enabled-option-flag ':tccs opts t))
+				 (enabled-option-flag :tccs opts t))
 			  collect (let* ((tccs (format nil "*~a-TCCS*" (car b)))
 					 (lccs (freshlabel tccs)))
 				    (list (car b) lccs (intern tccs :pvs) (list 'quote lccs)))))
@@ -1339,7 +1452,9 @@ use.")
 			     (delete ,dlab)
 			     (touch (delabel ,nlab))
 			     (touch (delabel ,hlab :hide? t)))))
-	  (xxxx     (print-extra-debug step)))
+	  #+extra-debug
+	  (dummy (extra-debug-print step))
+	  )
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1401,12 +1516,12 @@ specified as in WITH-FRESH-LABELS.")
     (let ((bindings (enlist-bindings bindings))
 	  ;; Get list of expressions (same length as bindings)
 	  (exprs    (loop for b in bindings
-			  for full? = (enabled-option-flag ':full (cdr b) t)
+			  for full? = (enabled-option-flag :full (cdr b) t)
 			  collect (extra-get-expr (cadr b) t full?)))
 	  ;; Bind variables to new names (same length as bindings)
 	  (vnms     (loop for b in bindings
 			  for e in exprs
-			  for ln = (member ':list (cdr b))
+			  for ln = (member :list (cdr b))
 			  collect
 			  (list (car b)
 				(cond
@@ -1424,7 +1539,7 @@ specified as in WITH-FRESH-LABELS.")
 	  (nmsexs   (loop for b in bindings
 			  for e in exprs
 			  for v in vnms
-			  for full? = (enabled-option-flag ':full (cdr b) t)
+			  for full? = (enabled-option-flag :full (cdr b) t)
 			  when (or e (and (cadr b) (listp (cadr b))))
 			  append (if e (list (cadr v) e)
 				   (let* ((vs (cadadr v))
@@ -1445,7 +1560,7 @@ specified as in WITH-FRESH-LABELS.")
 			  for e in exprs
 			  when (or e (and (cadr b) (listp (cadr b))))
 			  append
-			  (let* ((opt-tcc (enabled-option-flag ':tccs (cdr b) t))
+			  (let* ((opt-tcc (enabled-option-flag :tccs (cdr b) t))
 				 (va      (format nil "*~a-~a*" (car b) 'tccs))
 				 (la      (format nil "~a-~a" (car b) 'tccs))
 				 (stp     (if (listp opt-tcc) opt-tcc '(extra-tcc-step)))
@@ -1478,7 +1593,8 @@ specified as in WITH-FRESH-LABELS.")
 			(repeat (with-fresh-names-expand__$ ,vnms))
 			(delete ,lbtccs)
 			(touch (delabel ,allbs)))))
-	  (xxxx     (print-extra-debug step)))
+	  #+extra-debug
+	  (dummy (extra-debug-print step)))
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -1600,44 +1716,60 @@ CAVEAT:Formulas in the sequent my be reorganized after the application of this s
 
 ;;; Defining tactics
 
-(defhelper localtactic__ (nm stratn step)
+(defhelper local_tactic__ (name stratn step)
   (if (check-name stratn)
       step
-    (printf "Local strategy ~a is not defined in this proof context" nm))
+    (error-msg "Tactic ~a is not defined in this proof context" name))
   "[Extrategies] Internal strategy." "")
 
-(defrule deftactic (nm arg_or_step &optional step)
-  (let ((stratn  (format nil "local_tactic_~a__" nm))
+(defrule deftactic (name arg_or_step &optional step)
+  (let ((stratn  (format nil "local_tactic_~a__" name))
 	(arg     (when step arg_or_step))
-	(stp     (list 'localtactic__ nm stratn (or step arg_or_step)))
-	(doc1    (format nil "Local tactic ~a defined in the proof context: ~a"
-			 nm (label *ps*)))
-	(doc2    (format nil "Applying local tactic ~a" nm)))
-    (then (lisp (defstep nm arg stp doc1 doc2)) 
-	  (if (check-name stratn)
-	      (printf "Redefining local tactic ~a" nm)
-	    (then (name stratn "TRUE")
-		  (delete -1)))))
-  "[Extrategies] Defines a tactic named NM. A tactic is a strategy that is local to the current branch
-of the proof. NM needs to be a valid identifier in PVS. A tactic definition can be either
-(deftactic NM STEP) or (deftactic NM (ARGUMENTS) STEP). For example,
+	(namestr (format nil "~a" name))
+	(stp     `(local_tactic__ ,namestr ,stratn ,(or step arg_or_step)))
+	(pc      (label *ps*))
+	(pcstr   (format nil "~s" pc))
+	(doc1    (format nil "Local tactic ~a defined in the context of the proof branch ~a"
+			 name pc))
+	(doc2    (format nil "Applying local tactic ~a" name))
+	(tactvar (intern (format nil "*tactic-~a*" name) :pvs))
+	(declstr (let ((decl (declaration (context *ps*))))
+		   (format nil "~a.~a" (id (module decl)) (id decl))))
+	(tactval (when (boundp tactvar) (eval tactvar)))
+	(errmsg  (when (and tactval
+			    (string= (car tactval) declstr)    ;; Same proof
+			    (not (string= (cdr tactval) pc)))  ;; Different branch
+		   (format nil "Local tactic ~a already defined in the proof branch ~a"
+			   name (cdr tactval))))
+	(stpq    `(progn (defstep ,name ,arg ,stp ,doc1 ,doc2) (setq ,tactvar (cons ,declstr ,pc)))))
+    (if errmsg
+	(error-msg errmsg)
+      (let ((dummy (eval stpq)))
+	(if (check-name stratn)
+	    (touch)  ;; Touch the proof context so that the tactic does something
+	  (then
+	   (name stratn pcstr)
+	   (delete -1))))))
+  "[Extrategies] Defines a tactic named NAME. A tactic is a strategy that is local to the current branch
+of the proof. NAME needs to be a valid identifier in PVS. A tactic definition can be either
+(deftactic NAME STEP) or (deftactic NAME (ARGUMENTS) STEP). For example,
 
-(deftactic myfirsttactic (then (flatten) (assert) (grind)))
+(deftactic tactic1 (then (flatten) (assert) (grind)))
 
-defines a tactic (myfirsttactic) that sequentially applies (flatten),
+defines a tactic (tactic1) that sequentially applies (flatten),
 (assert), and (grind). Tactics can be parametric, for example
 
-(deftactic mysecondtactic (fnums) (then (flatten) (assert fnums) (grind)))
+(deftactic tactic2 (fnums) (then (flatten) (assert fnums) (grind)))
 
-defines a tactic (mysecondtactic <fnum>), where <fnum> is a parameter provided by the user,
-that sequentially applies (flatten), (assert <fnum>), and (grind). Parameters can be
+defines a tactic (tactic2 FNUMS), where FNUMS is a parameter provided by the user,
+that sequentially applies (flatten), (assert FNUMS), and (grind). Parameters can be
 optional and have a default value, for example,
 
-(deftactic mythirdtactic (&optional (fnums *)) (then (flatten) (assert fnums) (grind)))
+(deftactic tactic3 (&optional (fnums *)) (then (flatten) (assert fnums) (grind)))
 
-defines a tactic that behaves as (myfirsttactic) when used without parameters, e.g.,
-(mythirdtactic), and as (mysecondtactic <fnum>) when used with a parameter, e.g.,
-(mythirdtactic <fnum>)."
+defines a tactic that behaves as (tactic1) when used without parameters, e.g.,
+(tactic3), and as (tactic2 FNUMS) when used with a parameter, e.g.,
+(tactic3 FNUMS)."
   "Defining local tactic ~a")
 
 ;; This function performs a miracle on behalf of the trusted oracle ORCL. 
@@ -1648,8 +1780,6 @@ defines a tactic that behaves as (myfirsttactic) when used without parameters, e
 	     (idx      (when labl (search labl (label ps))))
 	     (prefix   (equal idx 0)))
 	(cond ((and torcl prefix)
-	       (unless (get-internal torcl)
-		 (format t "Trusted oracle: ~a." orcl))
 	       (values '! nil nil))
 	      (t
 	       (values 'X nil nil))))))
@@ -1665,12 +1795,12 @@ This strategy *must* only be used in the definition of the oracle ORCL."
   (let ((steps (if (equal steps '!) (list steps) steps))
 	(torcl (extra-get-trusted-oracle orcl)))
     (if torcl
-	(let ((mrcl  `(trust! ,orcl))
-	      (stps  (mapcar #'(lambda (x) (or (and (equal x '!) mrcl) x)) steps)))
+	(let ((mrcl `(trust! ,orcl))
+	      (stps (mapcar #'(lambda (x) (or (and (equal x '!) mrcl) x)) steps)))
 	  (try-branch step stps (skip)))
-      (printf "~a is not a trusted oracle" orcl)))
+      (error-msg "~a is not a trusted oracle" orcl)))
   "This strategy is like the strategy branch, but performs a miracle on behalf of ORCL when symbol ! 
-is found in STEPS. This rule *must* only be used in the definition of the oracle ORCL.")
+is found in STEPS. This rule may only be used in the definition of the oracle ORCL.")
 
 ;;; TCCs -- The following rules extend the internal proving capabilities of PVS.
 ;;; They cannot be written as a combination of the basic proof rules
@@ -1860,10 +1990,10 @@ branch until the first that does nothing, then it applies ELSE-STEP.")
   finishes the current goal.")
 
 (defstep touch (&optional (step (skip)))
-  (else step (case "TRUE"))
+  (then step (case "TRUE"))
   "[Extrategies] Does step and touches the proof context so that try
 and else consider that step does something, even when it doesn't."
-  "Doing ~a and touching the proof context")
+  "Doing ~s and touching the proof context")
 
 (defstrat when (flag &rest steps)
   (if (and flag steps)
@@ -2458,10 +2588,144 @@ component of the formula, left to right if ik is positive, right to left if ik i
 TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Splashing formula in ~a")
 
+;;; cond-match
+(defstruct (condmatch (:conc-name get-))
+  match 
+  step
+  onums
+  comment)
+
+;; splits patt-step into pattern step fnums (formula numbers) and onums (occurence numbers)
+;; from the following grammar (pattern step [:fnums fnums] [:onums onums])
+;; pattern can be ELSE
+
+(defun mk-cond-match (patt-step &optional (condmatch (make-condmatch)))
+  (if (consp patt-step)
+      (cond ((member (car patt-step) '(:onums :onum))
+	     (setf (get-onums condmatch) (list (cadr patt-step)))
+      	     (mk-cond-match (cddr patt-step) condmatch))
+	    ((eq (car patt-step) :comment)
+	     (when (stringp (cadr patt-step))
+	       (setf (get-comment condmatch) (cadr patt-step))
+	       (mk-cond-match (cddr patt-step) condmatch)))
+	    ((get-match condmatch)
+	     (when (consp (car patt-step))
+	       (setf (get-step condmatch) (car patt-step))
+	       (mk-cond-match (cdr patt-step) condmatch)))
+	    (t
+	     (setf (get-match condmatch)
+		   (if (eq (car patt-step) 'else) (car patt-step)
+		     (enlist-it (car patt-step))))
+      	     (mk-cond-match (cdr patt-step) condmatch)))
+    (when (get-match condmatch)
+      condmatch)))
+
+(defun match-list (conds fnums dry-run)
+  (when conds
+    (let ((condmatch (mk-cond-match (car conds))))
+      (unless condmatch
+	(error "~s is not a valid (PATTERN [STEP] [:ONUMS ONUMS] [:COMMENT COMMENT])" (car conds)))
+      (if (eq (get-match condmatch) 'else)
+	  (let ((else (get-step condmatch)))
+	    (cond ((null else)
+		   (error "Step of the ELSE pattern is missing"))
+		  ((cdr conds)
+		   (error "ELSE must be the last pattern"))
+		  (dry-run
+		   (list `(skip-steps ,else)))
+		  (t (list else))))
+	(let* ((pre-step (or (get-step condmatch) '(skip)))
+	       (step     (if (get-comment condmatch)
+			     `(then (comment ,(get-comment condmatch)) ,pre-step)
+			   pre-step))
+	       (show     (when dry-run '(show))))
+	  (cons 
+	   `(match$ ,@show ,@(get-match condmatch) ,@(get-onums condmatch) step ,step ,@fnums)
+	   (match-list (cdr conds) fnums dry-run)))))))
+
+(defstrat cond-match (&key (fnums *) dry-run &rest conds)
+  (when conds
+    (let ((match-steps
+	   (handler-case
+	       (match-list conds (when fnums (list :fnums fnums)) dry-run)
+	     (error (condition) (format nil "~a" condition)))))
+      (if (stringp match-steps)
+	  (warning-msg "[cond-match] ~a" match-steps)
+	(when match-steps
+	  (let ((step
+		 (if (cdr match-steps)
+		     (cons 'else* match-steps)
+		   (car match-steps))))
+	    (then
+	     (when dry-run
+	       (printf "cond-match expands to:~%~s" step))
+	     step))))))
+  "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn])) 
+finds the first PATTERNi that matches formulas in the current sequent and applies its 
+corresponding STEPi. By default, STEPi is (SKIP) if none is provided. PATTERNi can be
+also a list of patterns, i.e., ((PATTERNi1 ..PATTERim) STEPi) applies STEPi if there
+is a match with any of the PARTERNij. The last pattern, PATTERNn, can be the
+symbol ELSE. In this case, STEPn is applied when none of the patterns matches a formula 
+in FNUMS.
+
+Optionally, the following keys could be provided:
+:fnums FNUMS
+  Matches only the formulas in FNUMS. By default FNUMS is all formulas
+:dry-run t 
+  Prints expansion of the strategy and instances of successful matchings
+
+Patterns and steps are formatted as in Manip's match (see Manip User's guide). 
+Furthermore, the following options could be added to any pattern/step specification.
+:onums ONUMS
+  Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
+  By default ONUMS is set to 1 occurence
+:comment MSG
+  Adds the comment MSG to the sequent if matches succeeds (MSG may contain pattern variables)
+
+For example, assume
+
+{-1}  N < 10
+  |-------
+{1}   (nth(l, 1) > N AND nth(l, 2) > N AND g(2))
+{2}   (nth(l, 3) > N AND f(5, 40))
+
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\")))
+  results in (comment \"Found N < 10\")
+
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onums 2) :fnums +)
+  results in (case \"2 > 0\")
+
+- (cond-match (\"N < %a\" :comment \"Found N < %a\") (\"nth(%a,%b)\" (case \"%b > 0\") :onums 2) (else (grind)) :fnums 2)
+  results in (grind) since there are no 2 occurrences of the pattern in {2}")
+
+(defstrat if-match (pattern &optional step else fnums onums dry-run)
+  (let ((match-stp (when step (list step)))
+	(fnums-opt (when fnums (list :fnums fnums)))
+	(onums-opt (when onums (list :onums onums)))
+	(else-stp  (when else (list `(else ,else))))
+	(dry-run   (or dry-run (and (null step) (null else))))
+	(cond-stp `(cond-match (,pattern ,@match-stp ,@onums-opt) ,@else-stp ,@fnums-opt :dry-run ,dry-run)))
+    cond-stp)
+  "[Extrategies] Applies STEP1 if PATTERN matches formulas in the current sequent. Otherwise, applies STEP2. 
+By default STEP1 and STEP2 are (SKIP).
+
+Optionally, the following keys could be provided:
+:fnums FNUMS
+  Matches only the formulas in FNUMS. By default FNUMS is all formulas
+:onums ONUMS
+  Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
+  By default ONUMS is set to 1 occurence
+:dry-run t 
+  Prints expansion of the strategy and instances of successful matchings. dry-run is
+by default T when STEP1 and STEP2 are not provided.
+
+Pattern and steps are formatted as in Manip's match (see Manip User's guide).
+Also, see cond-match.")
+
 ;;; Miscellaneous
 
 (defstep replaces (&optional (fnums -) (in *) but from to
-			     (hide? t) (dir lr))
+			     (hide? t) (dir lr) actuals?)
   (let ((flist (extra-get-fnums fnums))
 	(nfrom (extra-get-fnum from))
 	(nto   (extra-get-fnum to))
@@ -2474,16 +2738,17 @@ TCCs generated during the execution of the command are discharged with the proof
     (when feqs
       (with-fresh-labels
        ((!replaces :list n))
-       (let ((plabs  (set-pairing !replaces))
-	     (qdir   (list 'quote dir))
-	     (qhide  (list 'quote hide?))
-	     (forms  (extra-get-but-fnums but :all in)))
+       (let ((plabs    (set-pairing !replaces))
+	     (qdir     (list 'quote dir))
+	     (qhide    (list 'quote hide?))
+	     (qactuals (list 'quote actuals?))
+	     (forms    (extra-get-but-fnums but :all in)))
 	 (with-fresh-labels
 	  ((!rep forms))
 	  (let ((qrep (list 'quote !rep)))
 	    (then
 	     (relabel plabs feqs)
-	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir)
+	     (try (mapstep #'(lambda(x)`(try (replace ,x ,qrep :dir ,qdir :actuals? ,qactuals)
 					     (when ,qhide
 					       (unlabel* ,x ,qrep)
 					       (delabel ,x :hide? t))
@@ -2494,7 +2759,9 @@ TCCs generated during the execution of the command are discharged with the proof
   "[Extrategies] Iterates the proof command replace to rewrite with the formulas in FNUMS,
 respecting the order, the formulas in IN but not in BUT. The keys DIR and HIDE? are like
 in REPLACE. Notice that in contrast to REPLACE, the default value of HIDE? is T. Instead
-of using FNUMS, rewriting formulas can be addressed via FROM and TO."
+of using FNUMS, rewriting formulas can be addressed via FROM and TO. When ACTUALS?  is T, 
+the replacement is done within actuals of names in addition to the expression level 
+replacements, including in types."
   "Iterating replace")
 
 (defstep rewrites (lemmas-or-fnums &optional (fnums *) (target-fnums *) (dir lr) (order in) dont-delete?)
@@ -2596,7 +2863,7 @@ quantifier, if provided."
 	(strategies *extrategies*)) 
     (printf "%--
 % ~a
-% http://shemesh.larc.nasa.gov/people/cam/Extrategies
+% https://shemesh.larc.nasa.gov/fm/pvs/Extrategies/
 % Strategies in Extrategies:~a
 %--~%" version strategies))
   "[Extrategies] Prints Extrategies's about information.")
@@ -2937,25 +3204,449 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 ;;; Debugging features
 
-(defstep skip-steps (&rest steps)
-  (skip)
-  "[Extrategies] Skips steps. This strategy is using for debugging purposes."
-  "Skipping steps")
+;; The following parameters are set by appropriate debug functions and strategies
+;; Do not set them unless you know what you are doing
+(defvar *extra-debug-frames* 1)     ;; Number of frames to be displayed
+(defvar *extra-debug-files* nil)    ;; Files that have been loaded
+
+;; The following are examples of functions that can be used for *extra-debug-suppres**
+
+(defun format-list-andor (l andor)
+  (let ((len (length l)))
+    (cond ((> len 2)
+	   (format nil "(~{~a, ~}~a ~a)" (butlast l) andor (car (last l))))
+	  ((> len 1)
+	   (format nil "(~a ~a ~a)" (car l) andor (cadr l)))
+	  ((> len 0)
+	   (format nil "~a" (car l))))))
+
+;; Suppresses printing from funcnames
+(defun suppress-from (&rest funcnames)
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 with frame = (car frames)
+		 thereis (string-equal name (car frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "from ~a" (format-list-andor funcnames "and"))
+	    (format nil "never")))
+    fun))
+
+;; Suppresses printing but from funcnames
+(defun suppress-but (&rest funcnames)
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 with frame = (car frames)
+		 never (string-equal name (car frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "except from ~a" (format-list-andor funcnames "or"))
+	    (format nil "always")))
+    fun))
+
+;; In scope means that a call to name appears in the stack frame.
+(defun extra-in-scope (name frame)
+  (when (consp frame)
+    (let ((head (car frame)))
+      (if (atom head)
+	  (or (and (symbolp head) (string-equal name head))
+	      (extra-in-scope name (cdr frame)))
+	(or (extra-in-scope name head)
+	    (extra-in-scope name (cdr frame)))))))
+
+;; Suppresses printing within the scope of funcnames (up to depth *extra-debug-frames*)
+(defun suppress-in-scope (&rest funcnames)
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 thereis 
+		 (loop for frame in frames
+		       thereis (extra-in-scope name frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "within the scope of ~a up to *extra-debug-frames* (~a)"
+		      (format-list-andor funcnames "and") *extra-debug-frames*)
+	    (format nil "never")))
+    fun))
+
+;; Suppresses printing not in the scope of funcnames (up to depth *extra-debug-frames*)
+(defun suppress-out-scope (&rest funcnames)
+  (let ((fun
+	 (lambda (frames)
+	   (loop for name in funcnames
+		 never
+		 (loop for frame in frames
+		       thereis (extra-in-scope name frame))))))
+    (setf (documentation fun 'function)
+	  (if funcnames
+	      (format nil "outside the scope of ~a up to *extra-debug-frames* (~a)"
+		      (format-list-andor funcnames "or") *extra-debug-frames*)
+	    (format nil "always")))
+    fun))
+
+;; Suppresses printing from stratnames
+(defun suppress-from-strat (&rest stratnames)
+  (let ((fun
+	 (lambda (frames)
+	   (declare (ignore frames))
+	   (let ((frame (topstep (car *proof-strategy-stack*))))
+	     (loop for name in stratnames
+		   thereis (string-equal name (when frame (car (rule-input frame)))))))))
+    (setf (documentation fun 'function)
+	  (if stratnames
+	      (format nil "from stateg~@p ~a"
+		      (length stratnames)
+		      (format-list-andor stratnames "and"))
+	    (format nil "never")))
+    fun))
+
+;; Suppresses printing but from statnames
+(defun suppress-but-strat (&rest stratnames)
+  (let ((fun
+	 (lambda (frames)
+	   (declare (ignore frames))
+	   (let ((frame (topstep (car *proof-strategy-stack*))))
+	     (loop for name in stratnames
+		   with frame = (topstep (car *proof-strategy-stack*))
+		   never (string-equal name (when frame (car (rule-input frame)))))))))
+    (setf (documentation fun 'function)
+	  (if stratnames
+	      (format nil "except from strateg~@p ~a"
+		      (length stratnames)
+		      (format-list-andor stratnames "or"))
+	    (format nil "always")))
+    fun))
+
+;; Suppresses printing within the scope of stratnames 
+(defun suppress-in-scope-strat (&rest stratnames)
+  (let ((fun
+	 (lambda (frames)
+	   (declare (ignore frames))
+	   (let ((frames (mapcar #'topstep *proof-strategy-stack*)))
+	     (loop for name in stratnames
+		   thereis 
+		   (loop for frame in frames
+			 thereis (string-equal name (when frame (car (rule-input frame))))))))))
+    (setf (documentation fun 'function)
+	  (if stratnames
+	      (format nil "within the scope of strateg~@p ~a"
+		      (length stratnames)
+		      (format-list-andor stratnames "and"))
+	    (format nil "never")))
+    fun))
+
+;; Suppresses printing not in the scope of stratnames
+(defun suppress-out-scope-strat (&rest stratnames)
+  (let ((fun
+	 (lambda (frames)
+	   (declare (ignore frames))
+	   (let ((frames (mapcar #'topstep *proof-strategy-stack*)))
+	     (loop for name in stratnames
+		   never
+		   (loop for frame in frames
+			 thereis (string-equal name (when frame (car (rule-input frame))))))))))
+    (setf (documentation fun 'function)
+	  (if stratnames
+	      (format nil "outside the scope of strateg~@p ~a"
+		      (length stratnames)
+		      (format-list-andor stratnames "or"))
+	    (format nil "always")))
+    fun))
+
+;; Suppresses all printing
+(setq suppress-all (suppress-but))
+
+;; Suppresses no printing
+(setq suppress-none (suppress-from))
+
+;; Function on list of frames that is used to suppress printing in extra-debug-print
+(defvar *extra-debug-suppress* suppress-none) 
+
+;; Suppresses AND
+(defun suppress-and (&rest suppressors)
+  (let ((fun (lambda (frames)
+	       (loop for suppressor in suppressors
+		     always
+		     (funcall suppressor frames))))
+	(docs (loop for suppressor in suppressors
+		    collect
+		    (documentation suppressor 'function)))) 
+    (setf (documentation fun 'function)
+	  (if suppressors
+	      (format nil "~a" (format-list-andor docs "and"))
+	    (format nil "never")))
+    fun))
+
+;; Suppresses OR
+(defun suppress-or (&rest suppressors)
+  (let ((fun (lambda (frames)
+	       (loop for suppressor in suppressors
+		     thereis
+		     (funcall suppressor frames))))
+	(docs (loop for suppressor in suppressors
+		    collect
+		    (documentation suppressor 'function)))) 
+    (setf (documentation fun 'function)
+	  (if suppressors
+	      (format nil "~a" (format-list-andor docs "or"))
+	    (format nil "always")))
+    fun))
+
+;; Suppresses NOT 
+(defun suppress-not (suppressor)
+  (let ((fun  (lambda (frames)
+		(not (funcall suppressor frames))))
+	(doc (documentation suppressor 'function)))
+    (setf (documentation fun 'function)
+	  (format nil "(except ~a)" doc))
+    fun))
+
+;; Format data for debug printing. Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or
+;; a lisp EXPR.  For latter post-proccesing, this function returns a list ( ... <msgi> <vali> ..) for each input in data.
+;; If the i-th data input is a string, <msgi> is the string and <vali> is NIL. Otherwise, if the i-th data input is formatted string, <msgi> is
+;; the string resulting from applying the Lisp function format to <FMSTRING> and <e1> ... <en>, and <vali> is NIL. Otherwise, when the
+;; i-th data input is a lisp expression EXPR, <msgi> is the string representation of EXPR and <vali> is its value.
+(defmacro extra-debug-data (data)
+  (when data
+    (let ((quode `,(car data)))
+      (cond ((stringp quode)
+	     `(cons (format nil "~a" ,(car data))
+		    (cons nil (extra-debug-data ,(cdr data)))))
+	    ((and (listp quode) (eq (car quode) ':fmt))
+	     `(cons (format nil ,(cadr (car data)) ,@(cddr (car data)))
+		    (cons nil (extra-debug-data ,(cdr data)))))
+	    (t `(cons (format nil "~a" ',(car data))
+		      (cons (format nil "~s" ,(car data))
+			    (extra-debug-data ,(cdr data)))))))))
+
+(defparameter *debug-fail-msg* "
+%%%
+%%% This code requires the feature :extra-debug. To avoid this error at compile time, 
+%%% use the conditional compilation directive #+extra-debug before (extra-debug-print ...) 
+%%% and (extra-debug-println ...).
+%%%
+")
+
+(defun extra-frames-msg (frames)
+  (when frames
+    (let* ((ns  (fromto 1 (length (cdr frames))))
+	   (nfs (merge-lists ns (cdr frames))))
+      (format nil
+	      "~%[TOP FRAME] ~s~%~{[~9<FRAME~;-~a~>] ~s~%~}"
+	      (car frames)
+	      nfs))))
+
+(defun extra-strat-stack-msg (stack)
+  (when stack
+    (let* ((ns  (fromto 1 (length (cdr stack))))
+	   (nfs (merge-lists ns (cdr stack))))
+      (format nil
+	      "~%[TOP STRAT] ~s~%~{[~9<STRAT~;-~a~>] ~s~%~}"
+	      (car stack)
+	      nfs))))
+
+;; This function prints debugging data. Data is a list of either a string, a formatted string of the
+;; form (:fmt <FMTSTRING> <e1 ... en>), or a lisp EXPR. Each input in data will be printed in one line.
+;; If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
+;; it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
+;; when the i-th data input is a lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
+;; is the evaluation of <expr>. In addition, this function will print backtrace frames (according to
+;; global variable *extra-debug-frames* and status of strategies stack at the point where the functions is
+;; called. Compiling a call of this function through (extra-set-debug-mode ...) without enabling debug mode
+;; results in a compilation error. This compilation error could be avoided by adding the compilation
+;; directive #+extra-debug before the call to the function.
+
+(defmacro extra-debug-print (&rest data)
+  (unless (member :extra-debug *features*)
+    (error *debug-fail-msg*))
+  (let ((tempvar (gensym)))
+    `(let ((,tempvar
+	    #+sbcl
+	    (sb-debug:list-backtrace :method-frame-style :minimal :count *extra-debug-frames*)
+	    ))
+       (unless (and *extra-debug-suppress*
+		    (funcall *extra-debug-suppress* ,tempvar))
+	 (format t "~%[*extra-debug-print*~@[~a~]~@[~a~]~%~{~*~:[~;  ~]~2:*~a~@[ = ~a~]~%~}*extra-debug-print*]~%"
+		 (extra-frames-msg ,tempvar)
+		 (extra-strat-stack-msg *proof-strategy-stack*)
+		 (extra-debug-data ,data))))))
+
+;; This function prints debugging data. It is supposed to be a light weight version of extra-debug-print.
+;; Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or a lisp EXPR.
+;; All input in data will be printed in one line.
+;; If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
+;; it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
+;; when the i-th data input is a lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
+;; is the evaluation of <expr>. Compiling a call of this function without enabling debug mode through
+;; (extra-set-debug-mode ...) results in a compilation error. This compilation error could be avoided by adding
+;; the compilation directive #+extra-debug before the call to the function.
+
+
+(defmacro extra-debug-println (&rest data)
+  (unless (member :extra-debug *features*)
+    (error *debug-fail-msg*))
+  `(format t "~%[*extra-debug-println*] ~{~a~@[ = ~a~]~^, ~}~%"
+	   (extra-debug-data ,data)))
+
+(defun extra-show-debug-mode (&optional notfound msgs)
+   (format nil "~%*extra-debug-frames*: ~a~
+                ~%*extra-debug-files*: ~a~
+              ~@[~%(extra-debug-print ...): Printing is suppressed ~a~]~
+                 ~%Debug mode: ~:[DISABLED~;ENABLED~]~%~
+                ~@[Files not found: ~{~a~^, ~}~%~]~
+                ~@[Error: ~{~a~^, ~}~%~]"
+	   *extra-debug-frames* *extra-debug-files*
+	   (documentation *extra-debug-suppress* 'function)
+	   (member :extra-debug *features*) notfound msgs))
 
 (defstrat show-debug-mode ()
-  (if (member :strat-debug *features*)
-      (printf "~%Debug mode is currently enabled.~%")
-    (printf "~%Debug mode is currently disabled.~%"))
+  (let ((msg (extra-show-debug-mode)))
+    (printf "~a" msg))
   "[Extrategies] Shows current debug mode.")
 
-(defstrat toggle-debug-mode ()
-  (if (member :strat-debug *features*)
-      (let ((dummy (setq *features* (remove :strat-debug *features*)))
-	    (dummy (load "pvs-strategies")))
-	(declare (ignore dummy))
-	(printf "~%Debug mode disabled.~%"))
-    (let ((dummy (pushnew :strat-debug *features*))
-	  (dummy (load "pvs-strategies")))
-      (declare (ignore dummy))
-      (printf "~%Debug mode enabled.~%")))
-  "[Extrategies] Toggles debug mode on the current theory strategies.")
+;; FILES can be a list of files/directories.
+;; In case of directories, function loads all .lisp, pvs-attachments, and pvs-strategies files.
+;; Returns a pair of loaded files and files not found
+(defun extra-load-files-raw (files &optional loaded notfound)
+  (if files
+    (let* ((file (car files))
+	   (path (probe-file file)))
+      (if path
+	  (if (pathname-name path) ;; Is a file
+	      (if (member path loaded :test #'equal)
+		  (extra-load-files-raw (cdr files) loaded notfound)
+		(progn
+		  (load path)
+		  (push path *extra-debug-files*)
+		  (extra-load-files-raw (cdr files) (cons path loaded) notfound)))
+	    (let* ((pvs-attachments (enlist-it
+				     (probe-file (format nil "~a/pvs-attachments" path))))
+		   (pvs-strategies (enlist-it
+				    (probe-file (format nil "~a/pvs-strategies" path))))
+		   (dirfiles  ;; Is a directory
+		    (append
+		     (remove-if
+		      #'(lambda (p) (equal 0 (position #\. (pathname-name p))))
+		      (directory (format nil "~a/*.lisp" path)))
+		     pvs-attachments pvs-strategies)))
+	      (extra-load-files-raw (append dirfiles (cdr files)) loaded notfound)))
+	(extra-load-files-raw (cdr files) loaded (cons (car files) notfound))))
+    (cons (reverse loaded) notfound)))
+
+;; FILES can be a list of files/directories.
+;; In case of directories, it loads all .lisp, pvs-attachments, and pvs-strategies files.
+;; When RESET is nil, loads *extra-debug-files* in addition to FILES.
+;; Sets *extra-debug-files* to the list of loaded files.
+;; Returns a list of files not found.
+(defun extra-load-files (&optional files reset)
+  (let* ((files	(enlist-it files))
+	 (all-files (append files (unless reset *extra-debug-files*)))
+	 (loaded-notfound (extra-load-files-raw all-files)))
+    (setq *extra-debug-files* (car loaded-notfound))
+    (cdr loaded-notfound)))
+
+;; Sets debug mode variables. MODE can be
+;;   nil    : doesn't change debug mode
+;;   toogle : switches from/to enabled/disabled debug modes. Updates *features*
+;;   enable : enables debug mode. Adds extra-debug to *features* 
+;;   disable: disables debug mode. Removes extra-debug to *features* 
+;; FILES is a list of files or dierectories to be loaded. When FILES is not null,
+;; sets *extra-debug-files* to loaded files.
+;; FRAMES is the number of frames to be printed as part of debug information.
+;; Sets *extra-debug-frames* to FRAMES
+;; SUPPRESS is a function on a list of frames that is used to suppress printing
+;; of (extra-debug-print ...). The following functions are pre-defined:
+;; suppress-all: Suppresses all printing
+;; suppress-none: Suppresses no printing 
+;; (suppress-from <f1> .. <fn>): Suppresses printing from <f1>,.., and <fn>
+;; (suppress-but <f1> .. <fn>): Suppresses printing except from <f1>,.., or <fn>
+;; (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1>,.., and <fn>
+;;   up to *extra-debug-frames*.
+;; (suppress-out-scope <f1> .. <fn>): Suppresses printing outside the scope of <f1>,.., or <fn>
+;;   up to *extra-debug-frames*.
+;; Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
+;; (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>).
+(defun extra-set-debug-mode (&optional mode files frames suppress)
+  (let ((msgs))
+    (cond ((eq mode 'toggle)
+	   (extra-set-debug-mode
+	    (if (member :extra-debug *features*) 'disable 'enable) files frames))
+	  ((eq mode 'enable)
+	   (pushnew :extra-debug *features*))
+	  ((eq mode 'disable)
+	   (setq *features* (delete :extra-debug *features*))))
+    (when frames
+      (if (numberp frames)
+	  (setq *extra-debug-frames* frames)
+	(push (format nil "FRAMES (~a) must be a number" frames) msgs)))
+    (when suppress
+      (let ((fsuppress (eval suppress)))
+	(if (typep fsuppress 'function)
+	    (setq *extra-debug-suppress* fsuppress)
+	  (push (format nil "SUPPRESS (~a) must be a function" suppress) msgs))))
+    (let ((notfound (when files (extra-load-files files t))))
+      (extra-show-debug-mode notfound msgs))))
+
+(defstrat set-debug-mode (&key mode frames suppress &rest files)
+  (let ((msg (extra-set-debug-mode mode files frames suppress)))
+    (printf "~a" msg))
+  "[Extrategies] Loads files or directories specified in FILES afer enabling/disabling debug mode. 
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory. 
+When FILES is not null, sets *extra-debug-files* to FILES.  MODE can be
+  nil    : doesn't change debug mode
+  toggle : switches from/to enabled/disabled debug modes. Updates *features* 
+  enable : enables debug mode. Adds extra-debug to *features*
+  disable: disables debug mode. Removes extra-debug to *features*
+If FRAMES is a number N >= 0, sets the value of *extra-debug-frames* to N. This parameter affects the
+number of frames (function scopes) printed by the function extra-debug-print.
+If SUPPRESS is provided, it should be a predicate on a list of current frames, up to *extra-debug-frames*,
+used to suppress printing of (extra-debug-print ...). 
+The following functions are pre-defined:
+ suppress-all: Suppresses all printing
+ suppress-none: Suppresses no printing 
+ (suppress-from <f1> .. <fn>): Suppresses printing from <f1>,.., and <fn>
+ (suppress-but <f1> .. <fn>): Suppresses printing except from <f1>,.., or <fn>
+ (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1>,.., and <fn>
+   up to *extra-debug-frames*.
+ (suppress-out-scope <f1> .. <fn>): Suppresses printing outside the scope of <f1>,.., or <fn>
+   up to *extra-debug-frames*.
+ (suppress-from-strat <s1> .. <sn>): Suppresses printing from strategies <s1>,.., and <sn>
+ (suppress-but-strat <s1> .. <sn>): Suppresses printing except from strategies <s1>,.., or <sn>
+ (suppress-in-scope-strat <s1> .. <sn>): Suppresses printing within the scope of strategies <s1>,.., and <sn>
+ (suppress-out-scope-strat <s1> .. <sn>): Suppresses printing outside the scope of strategies <s1>,.., or <sn>
+ Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
+ (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>).")
+
+(defstrat enable-debug-mode (&rest files)
+  (let ((msg (extra-set-debug-mode 'enable (or files *extra-debug-files*))))
+    (printf "~a" msg))
+  "[Extrategies] Loads files or directories specified in FILES afer enabling debug mode. 
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory. 
+If FILES is null, loads files in *extra-debug-files*.")
+
+(defstrat disable-debug-mode (&rest files)
+  (let ((msg (extra-set-debug-mode 'disable (or files *extra-debug-files*))))
+    (printf "~a" msg))
+  "[Extrategies] Loads files or directories specified in FILES afer disabling debug mode. 
+In the case of directories, loads all files *.pvs, pvs-attachments, and pvs-strategies in the directory. 
+If FILES is null, loads files in *extra-debug-files*.")
+
+(defstrat load-files (&key reset &rest files)
+  (let ((notfound (extra-load-files files reset))
+	(loaded   *extra-debug-files*)
+	(some     (or notfound loaded)))
+    (when some
+      (printf "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~s~^, ~}~]"
+	      loaded notfound)))
+  "[Extrategies] Loads files or directories specified in FILES and updates *extra-debug-files* with
+the loaded files. In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies 
+in the directory. Unless RESET is set to T, files in *extra-debug-files* are loaded afeter FILES.")
+
+(defstep skip-steps (&key touch? &rest steps)
+  (when touch?
+    (touch))
+  "[Extrategies] Skips steps. This strategy is used for debugging purposes. 
+If TOUCH? is t, the strategy touches the proof context (see TOUCH)."
+  "Skipping steps")
