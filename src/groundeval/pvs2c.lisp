@@ -67,8 +67,8 @@
     |function_image_aux| |function_iterate| ;|sequences|
     ;; |seq_functions| |finite_sequences| |more_finseq| |ordstruct|
     ;; |ordstruct_adt| |ordinals| |lex2|
-    |lex3| |lex4| |list| ;;|list_adt| |list_adt_map| |list_props|
-    ;;|map_props|
+    |lex3| |lex4| ;;|list| |list_adt_map| |list_props| |list_adt|
+    |map_props|
     |more_map_props| |filters| |list2finseq| |list2set| |disjointness| |character|
     |character_adt| ;; |strings| |gen_strings|
     |charstrings| ;; |bytestrings|
@@ -96,7 +96,7 @@
   '(|bytestrings| |empty_bv| |exp2| |extend_bool|
     |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
     |lift| |lift_adt| |lift_adt_map|
-    |list_adt| |list_adt_map| |list_props|
+    |list| |list_adt| ;;|list_adt_map| |list_props|
     |min_nat| |modulo_arithmetic| |finite_sequences| |more_finseq| |array_sequences|
     |ordinals| |ordstruct| |real_defs| |sequences| |sets| |strings|
     |transpose| |xor_def|))
@@ -412,7 +412,7 @@
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
   (let* (;(thid (simple-id (id (module decl))))
 	 (declid (simple-id (id decl)))
-	 (thname (intern (format nil "~a__~a" *theory-id* declid)))
+	 (thname (make-c-name nil *theory-id* declid))
 	 (hashentry (gethash  thname *c-primitive-type-attachments-hash*)))
     (cond (hashentry
 	   (unless *to-emacs*
@@ -440,8 +440,9 @@
 (defmethod pvs2c-decl* ((decl const-decl))
   (let* (;(thid (simple-id (id (module decl))))
 	 (declid (simple-id (id decl)))
-	 (ir-function-id (intern (format nil "~a__~a" *theory-id* declid)))
+	 (ir-function-id (make-c-name nil *theory-id* declid))
 	 (hashentry (gethash ir-function-id *c-primitive-attachments-hash*)))
+    ;;(when (eq declid '|u8rshift|);(break "u8rshift"))
     (cond (hashentry
 	   (let* ((einfo (or (eval-info decl)
 			     (let* ((new-einfo (make-instance 'eval-info))
@@ -480,7 +481,7 @@
 
 
 (defun def-c-attach-primitive-type (theory name header-defn)
-  (let* ((thname (make-c-name "" (simple-id theory) (simple-id name)))
+  (let* ((thname (make-c-name nil (simple-id theory) (simple-id name)))
 	 (header (format nil "typedef ~a ~a_t;" header-defn thname))
 	 (c-type-info (mk-simple-c-type-info nil thname header nil nil) ))
     (setf (gethash thname *c-primitive-type-attachments-hash*) c-type-info)
@@ -489,7 +490,7 @@
 	 
 
 (defun def-c-attach-primitive (theory name return-type args arg-types header-defn &optional definition)
-  (let* ((thname (make-c-name "" (simple-id theory)(simple-id name)))
+  (let* ((thname (make-c-name nil (simple-id theory)(simple-id name)))
 	 (arg-type-pairs (loop for arg in args as
 			       arg-type in arg-types
 			       collect (format nil "~a_t ~a" arg-type arg)))
