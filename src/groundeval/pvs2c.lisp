@@ -153,8 +153,8 @@
 	 (format mf "CFLAGS := -fPIC -Wall -Winline -O2 -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
 	 (format mf "LDFLAGS =  -bundle -flat_namespace -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lgmp~%"))
 	(|arm-MacOSX|
-	 (format mf "SDK=$(shell xcrun --show-sdk-path)")
-	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include")
+	 (format mf "SDK=$(shell xcrun --show-sdk-path)~%")
+	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include~%")
 	 (format mf "LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lm -lgmp~%")))
       (format mf "~%src := ~{~a~^ ~}~%" c-files)
       (format mf "~%obj := $(src:.c=.o)~%")
