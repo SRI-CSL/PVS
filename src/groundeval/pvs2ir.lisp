@@ -1505,14 +1505,15 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	    as index from 0
 	    do (pvs2ir-adt-constructor constructor index index-id index-type
 				       adt-enum-or-record-type adt-type-name))
-      (let ((ir-constructors
-	     (loop for con in constructors
-		   collect (cons (ir-constructor-type (ir (eval-info (con-decl con)))) ;;this might be the adt-typename
-				 (loop for acc in (acc-decls con)     ;;when there are no accessors
-				       collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
-								(pvs2ir-type (range (type acc)))))))))
-	(setf (ir-constructors adt-enum-or-record-type)
-	      ir-constructors))
+      (unless (enumtype? adt)
+	(let ((ir-constructors
+	       (loop for con in constructors
+		     collect (cons (ir-constructor-type (ir (eval-info (con-decl con)))) ;;this might be the adt-typename
+				   (loop for acc in (acc-decls con) ;;when there are no accessors
+					 collect (mk-ir-fieldtype (pvs2ir-unique-decl-id acc)
+								  (pvs2ir-type (range (type acc)))))))))
+	  (setf (ir-constructors adt-enum-or-record-type)
+		ir-constructors)))
       (unless (enumtype? adt)
 	(loop for constructor in constructors
 	      as index from 0
@@ -3035,10 +3036,11 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 
 (defun pvseval-integer (expr)
-  (handler-case
-      (let ((expr-value (eval (pvs2cl expr))))
-	(and (integerp expr-value) expr-value))
-    (pvseval-error nil)))
+  (unless (freevars expr)
+    (handler-case
+	(let ((expr-value (eval (pvs2cl expr))))
+	  (and (integerp expr-value) expr-value))
+      (pvseval-error nil))))
 
 (defun mk-ir-subtraction (ir-expr1 ir-expr2)
   (mk-ir-apply (mk-ir-primitive-function '-)

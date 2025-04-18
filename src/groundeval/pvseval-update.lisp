@@ -882,7 +882,7 @@ if called."
   (let ((args (pvs2cl_up* (mapcar #'expression
 			    (sort-assignments (assignments expr)))
 			  bindings livevars))
-					;(stype (find-supertype (type expr)))(break "record-expr: string = ~a" (tc-eq stype *string-type*))
+	(stype (find-supertype (type expr)));(break "record-expr: string = ~a" (tc-eq stype *string-type*))
 	)
         (if (compatible? (type expr) *string-type*)
 	    `(make-pvslisp-string ,(car args) ,(cadr args))
