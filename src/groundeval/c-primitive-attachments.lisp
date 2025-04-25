@@ -218,6 +218,18 @@
 (def-c-attach-primitive "integertypes" "i64floor"
   "int64" '(|x|) '(|mpq|) "{return (int64_t)pvsfloor_q_i64(x);}")
 
+(def-c-attach-primitive "real_defs" "sgn"
+  "mpz" '(|m|) '(|mpq|) "{mpz_ptr_t ret; mpz_mk_set_ui(ret, ((mpq_cmp_ui(m, 0) > 0) ? 1 : -1; mpq_set_ui(ret, x))); return ret;}"
+
+(def-c-attach-primitive "real_defs" "abs"
+  "mpq" '(|m|) '(|mpq|) "{mpq_ptr_t ret; q_init(ret, if (mpq_cmp_ui(m, 0) > 0){mpq_set(ret, m);} else {mpq_set_ui(ret, 0); mpq_sub(ret, ret, m);}; return ret;}")
+
+(def-c-attach-primitive "real_defs" "max"
+  "mpq" '(|m| |n|) '(|mpq| |mpq|) "{return (mpq_t) (mpq_cmp(m, n) > 0) ? m : n;}"
+
+(def-c-attach-primitive "real_defs" "min"
+  "mpq" '(|m| |n|) '(|mpq| |mpq|) "{return (mpq_t) (mpq_cmp(m, n) < 0) ? m : n;}"
+
 (def-c-attach-primitive "integer_bv_ops" "u8xor" "uint8"
   '(|x8| |y8|) '(|uint8| |uint8|) "{return x8^y8;}")
 

@@ -332,6 +332,7 @@
 	 (*ir-theory-formals* nil)
 	 (*ir-theory-tbindings* nil)
 	 (*pvs2c-theory-importings* nil)
+	 (*preceding-mono-theories* nil)
 	 (*pvs2c-theory-decls* nil)
 	 ;; (*c-theory-formals*
 	 ;;  (ir2c-theory-formals *ir-theory-formals* *theory-formals*))

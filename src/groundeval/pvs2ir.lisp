@@ -6162,13 +6162,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		      ;; 	      (list (format nil "~a_clear(~a)" var-ctype ir-name)
 		      ;; 		    (format nil "safe_free(~a)" ir-name)))
 		      ;;    body-instrs))
-		      (finalize-instrs (when (ir-type-actual? ir-bind-expr)
-					 (list (format nil "safe_free(~a)" ir-name))))
+		      ;; (finalize-instrs (when (ir-type-actual? ir-bind-expr)
+		      ;; 			 (list (format nil "safe_free(~a)" ir-name))))
 		      )
-		 (if init-instrs
-		     (cons decl-instr (append init-instrs
-			     		      (append bind-instrs body-instrs)))
-		   (cons decl-instr (append bind-instrs body-instrs finalize-instrs)))))))))
+		 ;; (if init-instrs
+		 ;;     (cons decl-instr (append init-instrs
+		 ;; 	     		      (append bind-instrs body-instrs))))
+		   (cons decl-instr (append bind-instrs body-instrs))))))))
 
 (defmethod ir2c* ((ir-expr ir-lett) return-var return-type);;assume ir-bind-expr is an ir-variable
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
@@ -6196,8 +6196,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 						  ;;   (cons decl-instr bind-instrs))
 						  )
 				 (body-instrs (ir2c* ir-body return-var return-type))
-				 (finalize-instrs (when (ir-type-actual? ir-bind-expr)
-					 (list (format nil "safe_free(~a)" ir-name)))))
+				 ;; (finalize-instrs (when (ir-type-actual? ir-bind-expr)
+				 ;; 	 (list (format nil "safe_free(~a)" ir-name))))
+				 )
 			    (if (ir-last? ir-bind-expr)
 				     ;(not (member (get-ir-last-var ir-bind-expr) *mpvar-parameters*))
 				(let ((clear-instrs
@@ -6209,8 +6210,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					 (if (ir-reference-type? ir2c-btype)
 					     (list (release-last-var (ir-var ir-bind-expr)))
 					   nil))))
-				  (append all-bind-instrs clear-instrs body-instrs finalize-instrs))
-			      (append all-bind-instrs body-instrs finalize-instrs))))))
+				  (append all-bind-instrs clear-instrs body-instrs))  ;finalize-instrs
+			      (append all-bind-instrs body-instrs)))))); finalize-instrs
 				
 
 (defmethod ir2c* ((ir-expr ir-nil) return-var return-type)
