@@ -219,16 +219,16 @@
   "int64" '(|x|) '(|mpq|) "{return (int64_t)pvsfloor_q_i64(x);}")
 
 (def-c-attach-primitive "real_defs" "sgn"
-  "mpz" '(|m|) '(|mpq|) "{mpz_ptr_t ret; mpz_mk_set_ui(ret, ((mpq_cmp_ui(m, 0) > 0) ? 1 : -1; mpq_set_ui(ret, x))); return ret;}"
+  "mpz_ptr" '(|m|) '(|mpq|) "{mpz_ptr_t ret; mpz_mk_set_ui(ret, ((mpq_cmp_ui(m, 0, 1) > 0) ? 1 : -1)); return ret;}")
 
 (def-c-attach-primitive "real_defs" "abs"
-  "mpq" '(|m|) '(|mpq|) "{mpq_ptr_t ret; q_init(ret, if (mpq_cmp_ui(m, 0) > 0){mpq_set(ret, m);} else {mpq_set_ui(ret, 0); mpq_sub(ret, ret, m);}; return ret;}")
+  "mpq_ptr" '(|m|) '(|mpq|) "{mpq_ptr_t ret; q_init(ret, if (mpq_cmp_ui(m, 0, 1) > 0){mpq_set(ret, m);} else {mpq_set_ui(ret, 0, 1); mpq_sub(ret, ret, m);}; return ret;)}")
 
 (def-c-attach-primitive "real_defs" "max"
-  "mpq" '(|m| |n|) '(|mpq| |mpq|) "{return (mpq_t) (mpq_cmp(m, n) > 0) ? m : n;}"
+  "mpq_ptr" '(|m| |n|) '(|mpq| |mpq|) "{mpq_ptr_t ret; mpq_mk_set(ret, (mpq_cmp(m, n) > 0) ? m : n); return ret;}")
 
 (def-c-attach-primitive "real_defs" "min"
-  "mpq" '(|m| |n|) '(|mpq| |mpq|) "{return (mpq_t) (mpq_cmp(m, n) < 0) ? m : n;}"
+  "mpq_ptr" '(|m| |n|) '(|mpq| |mpq|) "{mpq_ptr_t ret; mpq_mk_set(ret, (mpq_cmp(m, n) < 0) ? m : n); return ret;}")
 
 (def-c-attach-primitive "integer_bv_ops" "u8xor" "uint8"
   '(|x8| |y8|) '(|uint8| |uint8|) "{return x8^y8;}")
@@ -602,7 +602,7 @@
   "{
    char * name = f->name;
    uint32_t size = strlen(name);
-    bytestrings_array_0_t newarray = new_bytestrings_array_0(size);
+    bytestrings_array_1_t newarray = new_bytestrings_array_1(size);
     memcpy(newarray, (char *) name, size);
     bytestrings__bytestring_t newstring = new_bytestrings__bytestring();
     newstring->length = size;
@@ -622,7 +622,7 @@
     safe_free(filenamestring);
     struct stat s;
     if (fstat(fd, &s) == -1){
-       return file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
+       return con_file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
        }
     uint32_t size = s.st_size;
     uint32_t capacity = 4096 * (size/4096 + 1);
@@ -634,7 +634,7 @@
     ff->capacity = capacity;
     ff->contents = contents;
     ff->name = filenamestring;
-    return file__pass(ff);
+    return con_file__pass(ff);
    }")
 
 (def-c-attach-primitive "file" "create" "file__lifted_file_adt"
@@ -648,7 +648,7 @@
     safe_free(filenamestring);
     struct stat s;
     if (fstat(fd, &s) == -1){
-       return file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
+       return con_file__fail(); //pvs2cerror(\"File size extraction failed.\n\")
        }
     uint32_t size = s.st_size;
     uint32_t capacity = 4096 * (size/4096 + 1);
@@ -660,12 +660,12 @@
     ff->capacity = capacity;
     ff->contents = contents;
     ff->name = filenamestring;
-    return file__pass(ff);
+    return con_file__pass(ff);
    }")
 
 (def-c-attach-primitive "file" "append" "file__lifted_file_adt" '(|f| |b|) '(|file__file| |bytestrings__bytestring|)
   nil
-  "{if (f->count > 1) return file__fail();
+  "{if (f->count > 1) return con_file__fail();
     uint64_t fd = f->fd;
     uint32_t size = f->size;
     uint32_t capacity = f->capacity;
@@ -685,7 +685,7 @@
     f->contents = new_contents;
  };
    f->size = size + len;
-   return file__pass(f);
+   return con_file__pass(f);
 }")
 
 (def-c-attach-primitive "file" "getbyte" "uint8" '(|f| |i|) '(|file__file| |uint32|)
@@ -698,7 +698,7 @@
 ;;Signature in the prelude allows i upto(file_size(f), and size upto(file_size(f) - i).
 (def-c-attach-primitive "file" "getbytestring" "bytestrings__bytestring" '(|f| |i| |size|) '(|file__file| |uint32| |uint32|)
   nil
-  "{bytestrings_array_0_t newarray = new_bytestrings_array_0(size);
+  "{bytestrings_array_1_t newarray = new_bytestrings_array_1(size);
     memcpy(newarray->elems, (char *) f->contents + i, size);
     bytestrings__bytestring_t newstring = new_bytestrings__bytestring();
     newstring->length = size;
@@ -713,9 +713,9 @@
   nil
   "{if (f->count == 1){
      f->contents[i] = b;
-     return file__pass(f);
+     return con_file__pass(f);
      };
-    return file__fail();
+    return con_file__fail();
 }")
 
 (def-c-attach-primitive "file" "printc" "bytestrings__bytestring" '(|b|) '(|bytestrings__bytestring|) nil

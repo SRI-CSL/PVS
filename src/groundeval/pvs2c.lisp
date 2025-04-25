@@ -73,7 +73,7 @@
     |character_adt| ;; |strings| |gen_strings|
     |charstrings| ;; |bytestrings|
     ;;|lift| |lift_adt| |lift_adt_map|
-    |union| |tostring| |file|
+    |union| |tostring| ;;|file|
     |mucalculus| |ctlops| |fairctlops| |Fairctlops| |bit| |bv| |bv_concat_def|
     |bv_bitwise| |bv_nat| ;|empty_bv|
     |bv_caret| ;|integer_bv_ops|
@@ -96,6 +96,7 @@
   '(|bytestrings| |empty_bv| |exp2| |extend_bool|
     |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
     |lift| |lift_adt| |lift_adt_map|
+    |file|
     |list| |list_adt| ;;|list_adt_map| |list_props|
     |min_nat| |modulo_arithmetic| |finite_sequences| |more_finseq| |array_sequences|
     |ordinals| |ordstruct| |real_defs| |sequences| |sets| |strings|
@@ -151,7 +152,7 @@
 	(|ix86-MacOSX|
 	 (format mf "SDK=$(shell xcrun --show-sdk-path)~%")
 	 (format mf "CFLAGS := -fPIC -Wall -Winline -O2 -dynamic -DNDEBUG -arch x86_64 -I ../include~%")
-	 (format mf "LDFLAGS =  -bundle -flat_namespace -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lgmp~%"))
+	 (format mf "LDFLAGS =  -dylib -flat_namespace -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib -L./ -lc -lgmp~%"))
 	(|arm-MacOSX|
 	 (format mf "SDK=$(shell xcrun --show-sdk-path)~%")
 	 (format mf "CFLAGS := -g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 -I ../include~%")
