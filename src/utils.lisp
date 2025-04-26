@@ -6258,3 +6258,14 @@ system; primarily used after loading PVS libraries."
 ;;   (call-next-method)
 ;;   (when (print-type te)
 ;;     (break "init type-expr: print-type for type-name?")))
+
+#+cmu
+(defun ensure-directories-exist (dir-path)
+  "Ensure that directories in the given PATH exist. Create them if they don't."
+  (let ((pathname (make-pathname :directory dir-path)))
+    (unless (probe-file pathname)
+      (let ((directories (pathname-directory pathname)))
+        (loop for dir in directories
+              for current-path = (make-pathname :directory (subseq directories 0 (1+ (position dir directories))))
+              unless (probe-file current-path)
+              do (ensure-directories-exist (subseq directories 0 (1+ (position dir directories)))))))))

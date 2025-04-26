@@ -623,3 +623,29 @@ Returns JSON of the form:
   ;; Just return nil in this case, there's a problem on some Macs that this deals with.
   (declare (ignore any stream))
   nil)
+
+;; BEGIN LaTeX Generation -------------------------------------------------
+
+(defrequest latex-pvs-file (filename &optional content)
+  "Generate LaTeX from file"
+  (when content
+    ;; Try to write the file
+    (with-open-file (out filename :direction :output :if-exists :supersede)
+      (write content :stream out :escape nil)))
+  (let ((main-tex-file (pvs::latex-pvs-file filename)))
+    (when main-tex-file
+	`(("main-file" . ,(format nil "~a" main-tex-file))))))
+
+(defrequest latex-theory (theoryref)
+  "Generate LaTeX from theory"
+  (let ((main-tex-file (pvs::latex-theory theoryref)))
+    (when main-tex-file
+      `(("main-file" . ,(format nil "~a" main-tex-file))))))
+
+(defrequest latex-importchain (theoryref)
+  "Generate LaTeX from theory"
+  (let ((main-tex-file (pvs::latex-usingchain theoryref)))
+    (when main-tex-file
+      `(("main-file" . ,(format nil "~a" main-tex-file))))))
+
+;; END LaTeX Generation ---------------------------------------------------
