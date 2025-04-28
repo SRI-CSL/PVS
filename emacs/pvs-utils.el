@@ -989,7 +989,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
   "Perform completion on PVS file names"
   (pvs-bury-output)
   (pvs-current-directory)
-  (let ((file-list (append (context-files (or dir pvs-current-directory))
+  (let ((file-list (append (current-pvs-file)
+			   (context-files (or dir pvs-current-directory))
 			   (when with-prelude-p
 			     (list (format "%s/prelude" pvs-path))))))
     (if (member file-list '(nil NIL))

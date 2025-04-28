@@ -83,10 +83,11 @@ useful if more than one specification is to be included in one document")
 	(mkdir-err nil))
     (unless (file-exists-p pdir)
       (multiple-value-bind (success? err)
-	  (ignore-file-errors #+allegro (excl:make-directory pdir)
-			      #+cmu (unix:unix-mkdir (namestring pdir) #o777)
-			      #+sbcl
-			      (sb-unix:unix-mkdir (namestring pdir) #o777))
+	  (ignore-file-errors
+	   #+allegro (excl:make-directory pdir)
+	   #+cmu (unix:unix-mkdir (namestring pdir) #o777)
+	   #+sbcl (sb-unix:unix-mkdir (namestring pdir) #o777))
+	(declare (ignore success?))
 	(setq mkdir-err err)))
     (cond (mkdir-err
 	   (pvs-message "~a could not be created: ~a" mkdir-err))
@@ -99,56 +100,61 @@ useful if more than one specification is to be included in one document")
 		   )
 	       (unwind-protect
 		    (progn (set-working-directory dir)
-			   (latex-print-theories *prelude-theories*)
+			   (latex-print-theories *prelude-theories* (namestring (merge-pathnames (working-directory) "latex")))
 			   (pvs-message
 			       "Created LaTeX files for prelude in ~a ~
                          ~%pvsfiles.tex can be run with lualatex or xelatex in that directory"
 			     dir))
 		 (set-working-directory orig-dir)))))))
 
-(defun latex-theory (theoryname filename &optional show-subst)
-  (declare (ignore filename))
-  (let ((theory (get-theory theoryname)))
-    (cond ((not (write-permission?))
-	   (pvs-message "You do not have write permission in this context"))
-	  ((and theory (typechecked? theory))
-	   (latex-print-theories (list theory) show-subst)
-	   (pvs-message "Created LaTeX file ~a.tex - it is included in pvsfiles.tex"
-	     theoryname))
-	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
+(defun latex-theories (theories &optional show-subst main-file-name (target-dir (namestring (working-directory))))
+  (if (not (write-permission?))
+      (pvs-error "LatexFile error" "You do not have write permission")
+      (when theories
+        (ensure-directories-exist target-dir)
+	(let ((main-pathname (latex-print-theories theories show-subst main-file-name target-dir)))
+	  (pvs-message "Created LaTeX files - they are included in ~a" main-pathname)
+	  main-pathname))))
+
+(defun latex-theory (theoryref &optional show-subst)
+  (if (typechecked? theoryref)
+      (let ((theory (get-typechecked-theory theoryref)))
+    	(latex-theories (list theory)
+			show-subst
+			(format nil "~a#~a" (filename theory) (id theory))
+			(namestring (merge-pathnames (context-path theory) "latex"))))
+      (pvs-error "LatexFile error" (format nil "Theory ~a is not typechecked" theoryref))))
 
 (defun latex-pvs-file (fileref &optional show-subst)
-  (with-pvs-file (filename) fileref
-    (cond ((not (write-permission?))
-	   (pvs-message "You do not have write permission in this context"))
-	  ((typechecked-file? filename)
-	   (latex-print-theories (get-theories filename) show-subst)
-	   (pvs-message "Created LaTeX files - they are included in pvsfiles.tex"))
-	  (t (pvs-message "File ~a has not been typechecked" filename)))))
+  (with-pvs-file
+      (filename) fileref
+      (if (typechecked-file? filename)
+	  (latex-theories (get-theories filename)
+			  show-subst
+			  (format nil "~a#" (pathname-name filename))
+			  (namestring (merge-pathnames (path *workspace-session*) "latex")))
+	  (pvs-error "LatexFile error" (format nil "~a is not typechecked" filename)))))
 
-(defun latex-usingchain (theoryname filename &optional show-subst)
-  (declare (ignore filename))
-  (let ((theory (get-theory theoryname)))
-    (cond ((not (write-permission?))
-	   (pvs-message "You do not have write permission in this context"))
-	  ((and theory (typechecked? theory))
-	   (update-pvs-context)
-	   (latex-print-theories (mapcar #'get-theory
-					   (context-usingchain theoryname))
-				 show-subst))
-	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
+(defun latex-usingchain (theoryref &optional show-subst)
+  (if (typechecked? theoryref)
+      (with-theory (theory) theoryref
+	 (latex-theories (collect-theory-usings theory nil)
+			 show-subst
+			 (format nil "~a#~a.importchain" (filename theory) (id theory))
+			 (namestring (merge-pathnames (context-path theory) "latex"))))
+      (pvs-error "LatexFile error" (format nil "Theory ~a is not typecheked" theoryref))))
 
-(defun latex-print-theories (theories &optional show-subst)
+(defun latex-print-theories (theories &optional show-subst main-file-name target-dir)
   (get-tex-substitutions show-subst)
   (maplist #'(lambda (thlist)
-	       (latex-print-theory (car thlist) show-subst (cadr thlist)))
+	       (latex-print-theory (car thlist) show-subst (cadr thlist) target-dir))
 	   theories)
-  (latex-print-finish t))
+  (latex-print-finish main-file-name target-dir))
 
 (defvar *latex-linelength* 100)
 
-(defun latex-print-theory (theory &optional gen-subst next)
-  (let ((file (make-pathname :defaults (working-directory)
+(defun latex-print-theory (theory &optional gen-subst next target-dir)
+  (let ((file (make-pathname :directory target-dir
 			     :name (string (id theory)) :type "tex"))
 	(*latex-id-length-list* *latex-id-length-list*)
 	(*latex-id-macro-list* *latex-id-macro-list*)
@@ -166,7 +172,7 @@ useful if more than one specification is to be included in one document")
     (read-tex-substitutions (working-directory) (id theory))
     (push (string (id theory)) *latex-files*)
     (multiple-value-bind (v condition)
-	;;(ignore-errors
+	(ignore-errors
 	  (with-open-file (stream file :direction :output :if-exists :supersede)
 	    (when *insert-newcommands-into-output*
 	      (dolist (nc *latex-newcommands-list*)
@@ -174,8 +180,7 @@ useful if more than one specification is to be included in one document")
 		(terpri stream)))
 	    (format stream "\\begin{alltt}~%")
 	    (pp-tex theory stream)
-	    (format stream "\\end{alltt}~%"))
-         ;;)
+	    (format stream "\\end{alltt}~%")))
       (declare (ignore v))
       (when condition
 	(pvs-error "LaTeX generation error"
@@ -189,17 +194,16 @@ useful if more than one specification is to be included in one document")
       (shortname file) (when next (id next)))))
 
 
-(defun latex-print-finish (&optional file)
-  (when file
-    (with-open-file (mods (make-pathname :defaults *default-pathname-defaults*
-					 :name "pvs-files" :type "tex")
+(defun latex-print-finish (&optional (top-filename "pvs-files") target-dir)
+  (let ((top-pathname (make-pathname :directory target-dir
+				     :name top-filename :type "tex")))
+    (with-open-file (mods top-pathname
 			  :direction :output
 			  :if-exists :supersede
 			  :if-does-not-exist :create)
-    
+      
       (format mods "~
 % Automatically generated by PVS ~a
-
 \\documentclass[12pt]{article}
 \\usepackage{alltt}
 \\usepackage{fullpage}
@@ -220,13 +224,14 @@ useful if more than one specification is to be included in one document")
 ~}
 \\end{document}
 "
-	*pvs-version*
-	(environment-variable "PVSPATH")
-	*latex-substitutions*
-	(mapcar #'(lambda (name)
-		    (let ((fname (pathname-name name)))
-		      (list (latex-protect fname) fname)))
-	  (reverse *latex-files*))))))
+	      *pvs-version*
+	      (environment-variable "PVSPATH")
+	      *latex-substitutions*
+	      (mapcar #'(lambda (name)
+			  (let ((fname (pathname-name name)))
+			    (list (latex-protect fname) fname)))
+		      (reverse *latex-files*))))
+    top-pathname))
 
 (defun generate-latex-chart (name fname ids)
   (when ids
@@ -431,7 +436,7 @@ useful if more than one specification is to be included in one document")
 	  end))))
 		       
 
-(defun split-tex-line (line &optional (pos 0) &key all-the-rest)
+(defun split-tex-line (line &optional (pos 0) all-the-rest)
   (let ((spos (position-if #'(lambda (c) (not (white-space c)))
 			   line :start pos)))
     (when spos
@@ -456,33 +461,35 @@ useful if more than one specification is to be included in one document")
       (when pos
 	(multiple-value-setq (width pos) (split-tex-line line pos))
 	(when pos
-	  (setq tex (split-tex-line line pos :all-the-rest t)))))
+	  (setq tex (split-tex-line line pos t)))))
     (when (string= id "o") (setq id "O"))
     (values id type width tex)))
 
 
 ;;; Latex for proofs, built from code of Shankar's
 
-(defun latex-proof (texfile &optional terse? show-subst)
+(defun latex-proof (texfile &optional terse? show-subst (main-filename "last-proof"))
   (if *last-proof*
-      (let ((*report-mode* terse?)
-	    (*current-context* (context *last-proof*))
-	    (*tex-mode* t)
-	    (texpath (when (or (stringp texfile) (pathnamep texfile))
-		       (make-pathname :defaults (working-directory)
-				      :name (pathname-name texfile)
-				      :type "tex"))))
-	(get-tex-substitutions show-subst)
-	(read-tex-substitutions (working-directory) (id (current-theory)))
-	(cond ((stringp texfile)
-	       (with-open-file (stream texpath :direction :output
-				       :if-exists :supersede)
-		 (latex-proof1 stream terse?)))
-	      (t (latex-proof1 t terse?)))
-	(let ((*latex-files* (list (subseq texfile 0
-					   (search ".tex" texfile)))))
-	  (latex-print-finish texfile))
-	(pvs-message "Created LaTeX proof file ~a - it is included in pvsfiles.tex" texfile))
+      (let ((latex-output-directory (namestring (merge-pathnames (context-path (context *last-proof*)) "latex"))))
+	(let ((*report-mode* terse?)
+	      (*current-context* (context *last-proof*))
+	      (*tex-mode* t)
+	      (texpath (when (or (stringp texfile) (pathnamep texfile))
+			 (make-pathname :directory latex-output-directory
+					:name (pathname-name texfile)
+					:type "tex"))))
+	  (get-tex-substitutions show-subst)
+	  (read-tex-substitutions (working-directory) (id (current-theory)))
+	  (cond ((stringp texfile)
+		 (with-open-file (stream texpath :direction :output
+					 :if-exists :supersede)
+		   (latex-proof1 stream terse?)))
+		(t (latex-proof1 t terse?)))
+	  (let ((*latex-files* (list (subseq texfile 0
+					     (search ".tex" texfile)))))
+	    (let ((generated-file (latex-print-finish main-filename latex-output-directory)))
+	      (pvs-message "Created LaTeX proof file ~a - it is included in ~a.tex" texfile main-filename)
+	      generated-file))))
       (pvs-message "Need to rerun the proof")))
 
 (defun latex-proof1 (stream terse?)
@@ -620,136 +627,15 @@ useful if more than one specification is to be included in one document")
 
 (defun latex-theory-view (theoryname filename viewer &optional show-subst)
   (declare (ignore filename))
-  (let ((theory (get-theory theoryname)))
-    (cond ((not (write-permission?))
-	   (pvs-message "You do not have write permission in this context"))
-	  ((and theory (typechecked? theory))
-	   (latex-theory theoryname show-subst)
-	   (let ((errstr (run-latex "pvs-files")))
-	     (if errstr
-		 (pvs-error "LaTeX error" errstr)
-		 (run-latex-viewer viewer))))
-	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
-
+  (let ((main-pathname (latex-theory theoryname show-subst)))
+    (let ((pdf-pathname (run-latex main-pathname)))
+      (run-latex-viewer viewer pdf-pathname))))
+  
 (defun latex-proof-view (texfile viewer &optional terse? show-subst)
   (declare (ignore show-subst))
-  (cond (*last-proof*
-	 (latex-proof texfile terse?)
-	 (let ((errstr (run-latex "pvs-files")))
-	   (if errstr
-	       (pvs-error "LaTeX error" errstr)
-	       (run-latex-viewer viewer))))
-	(t (pvs-message "No proof has been run yet"))))
-
-#+lucid
-(defun run-latex-viewer (latex-viewer)
-  (if latex-viewer
-      (if (lucid::find-file-in-path latex-viewer)
-	  (let ((status nil)
-		(tmp-file (funcall *pvs-tmp-file*)))
-	    (with-open-file (out tmp-file
-				 :direction :output :if-exists :supersede)
-	      (multiple-value-bind (stream errstream stat process-id)
-		  (run-program latex-viewer
-			       :arguments '("pvs-files.pdf")
-			       :output out
-			       :error-output out
-			       :wait nil
-			       )
-		(declare (ignore stream errstream process-id))
-		(setq status stat)))
-	    (delete-file tmp-file))
-	  (pvs-message "Cannot find ~a in your path." latex-viewer))
-      (pvs-message "No viewer provided")))
-
-#+lucid
-(defun run-latex (filename)
-  (unless *pvs-tmp-file* (set-pvs-tmp-file))
-  (let ((status nil)
-	(tmp-file (funcall *pvs-tmp-file*)))
-    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-      (multiple-value-bind (stream errstream stat process-id)
-	  (run-program *latex-program*
-		       :arguments (list filename)
-		       :input "//dev//null"
-		       :output out)
-	(declare (ignore stream errstream process-id))
-	(setq status stat)))
-    (let ((result (unless (zerop status)
-		    (file-contents tmp-file))))
-      (delete-file tmp-file)
-      result)))
-
-#+allegro
-(defun run-latex-viewer (latex-viewer)
-  (if latex-viewer
-      (let ((tmp-file (funcall *pvs-tmp-file*)))
-	(with-open-file (out tmp-file
-			     :direction :output :if-exists :supersede)
-	  (excl:run-shell-command
-	   (format nil "~a pvs-files.pdf" latex-viewer)
-	   :output out
-	   :error-output :output
-	   :wait nil))
-	(delete-file tmp-file))
-      (pvs-message "No viewer provided")))
-
-#+allegro
-(defun run-latex (filename)
-  (unless *pvs-tmp-file* (set-pvs-tmp-file))
-  (let ((status nil)
-	(tmp-file (funcall *pvs-tmp-file*)))
-    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-      (setq status (excl:run-shell-command
-		    (format nil "~a ~a" *latex-program* filename)
-		    :input "//dev//null"
-		    :output out
-		    :error-output :output)))
-    (let ((result (unless (zerop status)
-		    (file-contents tmp-file))))
-      (delete-file tmp-file)
-      result)))
-
-;; extensions:run-program program args &key :env :wait :pty :input
-;; :if-input-does-not-exist
-;; :output :if-output-exists
-;; :error :if-error-exists
-;; :status-hook :before-execve
-
-#+cmu
-(defun run-latex-viewer (latex-viewer)
-  (if latex-viewer
-      (let ((tmp-file (funcall *pvs-tmp-file*)))
-	(with-open-file (out tmp-file
-			     :direction :output :if-exists :supersede)
-	  (extensions:run-program
-	   latex-viewer
-	   (list "pvs-files.pdf")
-	   :output out
-	   :error out
-	   :wait nil))
-	(delete-file tmp-file))
-      (pvs-message "No viewer provided")))
-
-#+cmu
-(defun run-latex (filename)
-  (unless *pvs-tmp-file* (set-pvs-tmp-file))
-  (let ((status nil)
-	(tmp-file (funcall *pvs-tmp-file*)))
-    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-      (setq status (extensions:run-program
-		    *latex-program*
-		    (list filename)
-		    :input "//dev//null"
-		    :output out
-		    :error out)))
-    (let ((result (unless (zerop status)
-		    (file-contents tmp-file))))
-      (delete-file tmp-file)
-      result)))
+  (if *last-proof*
+      (run-latex-viewer viewer (run-latex (latex-proof texfile terse?)))
+      (pvs-message "No proof has been run yet")))
 
 (defun file-contents (filename)
   (with-output-to-string (out)
@@ -764,3 +650,42 @@ useful if more than one specification is to be included in one document")
 (defun latex-viewer ()
   #+(or macosx os-macosx) "open"
   #-(or macosx os-macosx) "evince")
+
+(defun run-latex (tex-file-path)
+  (unless *pvs-tmp-file* (set-pvs-tmp-file))
+  (let ((tmp-file (funcall *pvs-tmp-file*))
+	(tex-file-name (file-namestring tex-file-path))
+	(tex-file-dir (directory-namestring tex-file-path)))
+      (multiple-value-bind (out err status)
+	  (uiop:run-program
+	   (format nil "pushd ~a && ~a ~a ; popd"
+		   tex-file-dir
+		   *latex-program*
+		   tex-file-name)
+	   :input "/dev/null"
+	   :output tmp-file
+	   :error-output :output
+	   :ignore-error-status t)
+	(declare (ignore out err))
+	(if (zerop status)
+	    (make-pathname :name (pathname-name (pathname tex-file-name)) :type "pdf"
+			   :directory tex-file-dir)
+	    (let ((result (file-contents tmp-file)))
+	      (delete-file tmp-file)
+	      (pvs-error "LaTeX error" result))))))
+
+(defun run-latex-viewer (latex-viewer pdf-pathname)
+  (unless *pvs-tmp-file* (set-pvs-tmp-file))
+  (let ((tmp-file (funcall *pvs-tmp-file*)))
+    (multiple-value-bind (out err status)
+	(uiop:run-program
+	 (format nil "~a ~a" latex-viewer pdf-pathname)
+	 :input "/dev/null"
+	 :output tmp-file
+	 :error-output :output
+	 :ignore-error-status t)
+      (declare (ignore out err))
+      (unless (zerop status)
+	(let ((result (file-contents tmp-file)))
+	  (delete-file tmp-file)
+	  (pvs-error "LaTeX error" result))))))
