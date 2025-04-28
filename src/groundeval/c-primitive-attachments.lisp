@@ -218,17 +218,17 @@
 (def-c-attach-primitive "integertypes" "i64floor"
   "int64" '(|x|) '(|mpq|) "{return (int64_t)pvsfloor_q_i64(x);}")
 
-(def-c-attach-primitive "real_defs" "sgn"
-  "mpz_ptr" '(|m|) '(|mpq|) "{mpz_ptr_t ret; mpz_mk_set_ui(ret, ((mpq_cmp_ui(m, 0, 1) > 0) ? 1 : -1)); return ret;}")
+;; (def-c-attach-primitive "real_defs" "sgn"
+;;   "mpz_ptr" '(|m|) '(|mpq|) "{mpz_ptr_t ret; mpz_mk_set_ui(ret, ((mpq_cmp_ui(m, 0, 1) > 0) ? 1 : -1)); return ret;}")
 
-(def-c-attach-primitive "real_defs" "abs"
-  "mpq_ptr" '(|m|) '(|mpq|) "{mpq_ptr_t ret; q_init(ret, if (mpq_cmp_ui(m, 0, 1) > 0){mpq_set(ret, m);} else {mpq_set_ui(ret, 0, 1); mpq_sub(ret, ret, m);}; return ret;)}")
+;; (def-c-attach-primitive "real_defs" "abs"
+;;   "mpq_ptr" '(|m|) '(|mpq|) "{mpq_ptr_t ret; q_init(ret, if (mpq_cmp_ui(m, 0, 1) > 0){mpq_set(ret, m);} else {mpq_set_ui(ret, 0, 1); mpq_sub(ret, ret, m);}; return ret;)}")
 
-(def-c-attach-primitive "real_defs" "max"
-  "mpq_ptr" '(|m| |n|) '(|mpq| |mpq|) "{mpq_ptr_t ret; mpq_mk_set(ret, (mpq_cmp(m, n) > 0) ? m : n); return ret;}")
+;; (def-c-attach-primitive "real_defs" "max"
+;;   "mpq_ptr" '(|m| |n|) '(|mpq| |mpq|) "{mpq_ptr_t ret; mpq_mk_set(ret, (mpq_cmp(m, n) > 0) ? m : n); return ret;}")
 
-(def-c-attach-primitive "real_defs" "min"
-  "mpq_ptr" '(|m| |n|) '(|mpq| |mpq|) "{mpq_ptr_t ret; mpq_mk_set(ret, (mpq_cmp(m, n) < 0) ? m : n); return ret;}")
+;; (def-c-attach-primitive "real_defs" "min"
+;;   "mpq_ptr" '(|m| |n|) '(|mpq| |mpq|) "{mpq_ptr_t ret; mpq_mk_set(ret, (mpq_cmp(m, n) < 0) ? m : n); return ret;}")
 
 (def-c-attach-primitive "integer_bv_ops" "u8xor" "uint8"
   '(|x8| |y8|) '(|uint8| |uint8|) "{return x8^y8;}")

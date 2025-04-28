@@ -269,12 +269,13 @@
     (pvs2c-theories theories t)))
 
 (defun pvs2c-theories (theories force?)
-  (mapcar #'(lambda (th) (pvs2c-theory* th force?)) (reverse theories)))
+  (mapcar #'(lambda (th) (pvs2c-theory* th force?)) theories));NSH(4-25-25) was (reverse theories)
 
 (defun pvs2c-theory (theoryref &optional force?)
-  (let* ((theory (get-typechecked-theory theoryref nil t)))
-    (with-context theory
-      (pvs2c-theory* theory force?))))
+  (let* ((theory (get-typechecked-theory theoryref nil t))
+	 (all-imported-theories (all-imported-theories theory)))
+    (pvs2c-theories all-imported-theories force?);;NSH(4-25-25)
+    (pvs2c-theory* theory force?)))
 
 ;; Null dir means not making a library (e.g., source file is in pvs2c subdirectory
 (defmethod pvs2c-theory* ((rectype recursive-type) &optional force?)
