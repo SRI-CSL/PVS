@@ -100,7 +100,8 @@ useful if more than one specification is to be included in one document")
 		   )
 	       (unwind-protect
 		    (progn (set-working-directory dir)
-			   (latex-print-theories *prelude-theories* (namestring (merge-pathnames (working-directory) "latex")))
+			   (latex-print-theories *prelude-theories*
+						 dir)
 			   (pvs-message
 			       "Created LaTeX files for prelude in ~a ~
                          ~%pvsfiles.tex can be run with lualatex or xelatex in that directory"
@@ -118,11 +119,11 @@ useful if more than one specification is to be included in one document")
 
 (defun latex-theory (theoryref &optional show-subst)
   (if (typechecked? theoryref)
-      (let ((theory (get-typechecked-theory theoryref)))
+      (with-theory (theory) theoryref
     	(latex-theories (list theory)
 			show-subst
 			(format nil "~a#~a" (filename theory) (id theory))
-			(namestring (merge-pathnames (context-path theory) "latex"))))
+		        (format nil "~alatex/" (namestring (path *workspace-session*)))))
       (pvs-error "LatexFile error" (format nil "Theory ~a is not typechecked" theoryref))))
 
 (defun latex-pvs-file (fileref &optional show-subst)
@@ -132,7 +133,7 @@ useful if more than one specification is to be included in one document")
 	  (latex-theories (get-theories filename)
 			  show-subst
 			  (format nil "~a#" (pathname-name filename))
-			  (namestring (merge-pathnames (path *workspace-session*) "latex")))
+			  (format nil "~alatex/" (namestring (path *workspace-session*))))
 	  (pvs-error "LatexFile error" (format nil "~a is not typechecked" filename)))))
 
 (defun latex-usingchain (theoryref &optional show-subst)
@@ -141,7 +142,7 @@ useful if more than one specification is to be included in one document")
 	 (latex-theories (collect-theory-usings theory nil)
 			 show-subst
 			 (format nil "~a#~a.importchain" (filename theory) (id theory))
-			 (namestring (merge-pathnames (context-path theory) "latex"))))
+			 (format nil "~alatex/" (namestring (path *workspace-session*)))))
       (pvs-error "LatexFile error" (format nil "Theory ~a is not typecheked" theoryref))))
 
 (defun latex-print-theories (theories &optional show-subst main-file-name target-dir)
@@ -470,7 +471,8 @@ useful if more than one specification is to be included in one document")
 
 (defun latex-proof (texfile &optional terse? show-subst (main-filename "last-proof"))
   (if *last-proof*
-      (let ((latex-output-directory (namestring (merge-pathnames (context-path (context *last-proof*)) "latex"))))
+      (let ((latex-output-directory
+	     (format nil "~alatex/" (namestring (context-path (context *last-proof*))))))
 	(let ((*report-mode* terse?)
 	      (*current-context* (context *last-proof*))
 	      (*tex-mode* t)
