@@ -4145,7 +4145,7 @@ integertypes: THEORY
      neg_int32:  TYPE = {x: int32 | x < 0} CONTAINING -1
      neg_int64:  TYPE = {x: int64 | x < 0} CONTAINING -1
      % Now the even and odd forms of these
-     even_uint8: TYPE = {x: uint8 | even?(x)} % Only needed for 0, hence no odd_uint8
+     even_uint8: TYPE = {x: uint8 | even?(x)} CONTAINING 0 % Only needed for 0, hence no odd_uint8
      even_pos_uint8:  TYPE = {x: uint8 | x > 0 and even?(x)} CONTAINING 2
      even_pos_uint16: TYPE = {x: uint16 | x > 0 and even?(x)} CONTAINING 2
      even_pos_uint32: TYPE = {x: uint32 | x > 0 and even?(x)} CONTAINING 2
