@@ -1139,7 +1139,7 @@ e.g., C-u or M-0."
 	      (load-prelude-library dir)
 	      (error "Library directory %s not found" dir))))
       (let ((found-one (re-search-forward "^[$][$][$].*$" nil t))
-	    (always-overwrite nil)
+	    (always-overwrite noninteractive)
 	    (quit nil))
 	(while (and found-one (not quit))
 	  (forward-line)
