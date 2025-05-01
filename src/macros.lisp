@@ -201,9 +201,9 @@
 	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd nil ,type))))
        (beta-reduce (make-forall-expr (list ,bd)
 		      (if (listp ,op)
-			  (mk-conjunction
+			  (make-conjunction
 			   (mapcar #'(lambda (o)
-				       (mk-application o ,nvar))
+				       (make-application o ,nvar))
 			     ,op))
 			  (mk-application ,op ,nvar)))))))
 
@@ -280,13 +280,15 @@ After exiting, all of these are reverted to their previous values."
   "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
   'lib@file.pvs', but the 'dir/', 'lib@', and '.pvs' are all optional.
   'lib' should be found as a subdirectory of the current directory, or in
-  PVS_LIBRARY_PATH. full-name is a variable bound to the absolute pathname."
+  PVS_LIBRARY_PATH. full-name is a variable bound to the absolute pathname.
+  vars is a list of one or two variable symbols that will be bound to the
+  directory and filename without the extension"
   (unless (and (listp vars)
 	       (< (length vars) 3)
 	       (every #'symbolp vars))
     (error "Wrong form for vars"))
-  (let ((dir (gentemp))
-	(file (car vars)))
+  (let ((file (car vars))
+	(dir (or (cadr vars) (gentemp))))
     `(multiple-value-bind (,dir ,file)
 	 (get-pvs-file-ref ,pvs-file-ref)
        (cond ((pathname-equal ,dir (current-context-path))
