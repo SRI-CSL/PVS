@@ -1675,7 +1675,16 @@
 	     (a2 (actuals etype)))
 	(cond ((and a1 a2)
 	       (if (fully-instantiated? atype)
-		   atype
+		   (if (and (fully-instantiated? etype)
+			    (every #'(lambda (aa1 aa2)
+				       (or (tc-eq aa1 aa2)
+					   (and (type-value aa1)
+						(type-value aa2)
+						(simple-subtype-of? (type-value aa1)
+							     (type-value aa2)))))
+				   a1 a2))
+		       etype
+		       atype)
 		   etype))
 	      ((or a1 a2)
 	       (if a1 atype etype))
@@ -2107,7 +2116,9 @@
   #+pvsdebug (assert (adt? etype))
   (adt-compatible-pred-actuals (actuals (module-instance atype))
 			       (actuals (module-instance etype))
-			       (formals-sans-usings (adt atype))
+			       (if (inline-recursive-type? (adt atype))
+				   (formals-sans-usings (module (adt atype)))
+				   (formals-sans-usings (adt atype)))
 			       (find-supertype atype)
 			       (positive-types (adt atype))
 			       aexpr
@@ -2597,7 +2608,9 @@
 	   (adt-subtype-of?
 	    (actuals (module-instance t1))
 	    (actuals (module-instance t2))
-	    (formals-sans-usings (adt t1))
+	    (if (inline-recursive-type? (adt t1))
+		(formals-sans-usings (module (adt t1)))
+		(formals-sans-usings (adt t1)))
 	    t1
 	    (positive-types (adt t1))))))
 

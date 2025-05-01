@@ -691,13 +691,15 @@ generated")
 (defmethod set-adt-positive-formal-types ((adt inline-recursive-type))
   ;; In this case, the positive types are only for the adt-type-name
   ;; perhaps should do this also for the top-level recursive types as well
-  (when (decl-formals adt)
+  (when (or (formals-sans-usings (current-theory))
+	    (decl-formals adt))
     (setf (positive-types adt)
 	  (mapcar #'type-value
 	    (remove-if-not #'(lambda (ff)
 			       (and (typep ff 'formal-type-decl)
 				    (occurs-positively? (type ff) adt)))
-	      (decl-formals (declaration (adt-type-name adt))))))))
+	      (append (formals-sans-usings (current-theory))
+		      (decl-formals (declaration (adt-type-name adt)))))))))
 
 (defun check-adt-name-uniqueness (adt)
   (let ((constrids (mapcar #'id (remove-if-not #'simple-constructor?
