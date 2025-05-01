@@ -157,8 +157,13 @@
 
 (defvar *tc-match-fixed-bindings* nil)
 
+;;; Controls possible recursion on type-names, in particular when
+;;; composition (function_props.o) is given args in the wrong order
+(defvar *tc-match-type-name-args*)
+
 (defun find-compatible-binding (types formals binding)
   (let* ((*tc-strict-matches* nil)
+	 (*tc-match-type-name-args* nil)
 	 (dbindings (tc-match-domains types formals (copy-tree binding))))
     ;; note that tc-match-domains doesn't check for consistent bindings;
     ;; still need to run find-compatible-binding* over the whole thing but
@@ -195,6 +200,7 @@
   (if (or (null types) (null binding))
       binding
       (let* ((*tc-match-strictly* nil)
+	     (*tc-match-type-name-args* nil)
 	     (nbinding (tc-match* (car types) (car formals) binding)))
 	(find-compatible-binding* (cdr types) (cdr formals) nbinding))))
 
@@ -217,6 +223,7 @@
     ;; declared.
     #+badassert (assert (every #'(lambda (b) (formal-not-in-context? (car b))) bindings))
     (let* ((*tc-strict-matches* strict-matches)
+	   (*tc-match-type-name-args* nil)
 	   (dbindings (let ((*tc-match-fixed-bindings* nil))
 			(tc-match-domains t1 t2 (copy-tree bindings)))))
       (let* ((*tc-match-fixed-bindings*
@@ -535,35 +542,39 @@ returns the updated bindings."
 (defmethod tc-match* ((arg type-name) (farg type-name) bindings)
   (declare (cl:type list bindings))
   (unless (null bindings)
-    (or (call-next-method)
-	(cond ((tc-eq arg farg)
-	       bindings)
-	      ((eq (id arg) (id farg))
-	       (let* ((m1 (module-instance (resolution arg)))
-		      (m2 (module-instance (resolution farg)))
-		      (a1 (actuals m1))
-		      (a2 (actuals m2))
-		      (d1 (dactuals m1))
-		      (d2 (dactuals m2)))
-		 (let ((abindings (tc-match-type-name-actuals a1 a2 arg farg bindings)))
-		   (declare (cl:type list abindings))
-		   (if (or d1 d2)
-		       (tc-match-type-name-dactuals
-			d1 d2 arg farg (or abindings bindings))
-		       abindings))))
-	      ((let ((val (assq (declaration farg) bindings)))
-		 (and val
-		      (tc-match* arg (cdr val) bindings))))
-	      (;;(not *tc-match-strictly*)
-	       (not (member arg *tc-strict-matches* :test #'tc-eq))
-	       ;;(null (cdr (assq (declaration farg) bindings)))
-	       (let ((binding (call-next-method farg arg bindings)))
-		 binding))
-	      ;; (t ;;(break "tc-match* type-name type-name")
-	      ;;  bindings)
-	      ;; (t (when *tc-match-type-names*
-	      ;; 	   bindings))
-	      ))))
+    (let ((args-list (list arg farg bindings)))
+      (cond ((member args-list *tc-match-type-name-args* :test #'equal)
+	     bindings)
+	    (t (push args-list *tc-match-type-name-args*)
+	       (or (call-next-method)
+		   (cond ((tc-eq arg farg)
+			  bindings)
+			 ((eq (id arg) (id farg))
+			  (let* ((m1 (module-instance (resolution arg)))
+				 (m2 (module-instance (resolution farg)))
+				 (a1 (actuals m1))
+				 (a2 (actuals m2))
+				 (d1 (dactuals m1))
+				 (d2 (dactuals m2)))
+			    (let ((abindings (tc-match-type-name-actuals a1 a2 arg farg bindings)))
+			      (declare (cl:type list abindings))
+			      (if (or d1 d2)
+				  (tc-match-type-name-dactuals
+				   d1 d2 arg farg (or abindings bindings))
+				  abindings))))
+			 ((let ((val (assq (declaration farg) bindings)))
+			    (and val
+				 (tc-match* arg (cdr val) bindings))))
+			 (;;(not *tc-match-strictly*)
+			  (not (member arg *tc-strict-matches* :test #'tc-eq))
+			  ;;(null (cdr (assq (declaration farg) bindings)))
+			  (let ((binding (call-next-method farg arg bindings)))
+			    binding))
+			 ;; (t ;;(break "tc-match* type-name type-name")
+			 ;;  bindings)
+			 ;; (t (when *tc-match-type-names*
+			 ;; 	   bindings))
+			 )))))))
 
 (defun tc-match-type-name-dactuals (d1 d2 arg farg bindings)
   (declare (cl:type list bindings))
@@ -620,7 +631,8 @@ returns the updated bindings."
 ;;; Called by match* (modname modname)
 (defun tc-match-acts (acts formals bindings)
   (let ((*tc-match-strictly* t)
-	(*tc-strict-matches* nil))
+	(*tc-strict-matches* nil)
+	(*tc-match-type-name-args* nil))
     (tc-match-acts1 acts formals bindings)))
 
 (defun tc-match-acts1 (acts formals bindings)
