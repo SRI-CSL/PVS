@@ -446,7 +446,7 @@
 	:id num-id
 	:resolutions reses))
     (setf (types expr)
-	  (cons (get-expr-number-type (number expr)) (mapcar #'type reses)))))
+	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
 
 (defmethod typecheck* ((expr rational-expr) expected kind arguments)
   (declare (ignore expected kind arguments))
