@@ -504,23 +504,18 @@
 (defun proveit-theories (theories retry? thfs 
 			 &optional txtproofs texproofs use-default-dp? save-proofs?)
   (let ((*use-default-dp?* use-default-dp?))
-    (when texproofs
-      (with-open-file 
-       (texfile
-	(ensure-directories-exist 
-	 (pathname "pvstex/README.txt"))
-	:direction :output
-	:if-does-not-exist :create
-	:if-exists :supersede)
-       (format texfile "To generate PDF files type: pdflatex main-<formula>.tex~%")))
     (read-strategies-files)
     (dolist (theory theories)
       (with-context theory
-	(let ((thf (car (member theory thfs :test #'eq-thf))))
+	(let ((thf (car (member theory thfs :test #'eq-thf)))
+	      (main-filename (format nil "~a.proofs" (id theory))))
 	  (if (null thf)   
 	      (pvs-message "Proving theory ~a" (id theory))
 	      (pvs-message "Proving formulas ~a in theory ~a" 
 		(cdr thf) (id theory)))
+	  (when texproofs
+	    (let ((main-filename (format nil "pvstex/~a.tex" main-filename)))
+	      (when (probe-file main-filename) (delete-file main-filename))))
 	  (let ((*justifications-changed?* nil))
 	    (dolist (decl (provable-formulas theory))
 	      (let ((dof (member (format nil "~a" (id decl)) (cdr thf) 
@@ -537,11 +532,7 @@
 			 :if-exists :supersede)
 		      (report-proof *last-proof*)))
 		  (when texproofs
-		    (latex-proof (format nil "~a.tex" (id decl)) t)
-		    (rename-file (format nil "~a.tex" (id decl)) 
-				 (format nil "pvstex/~a.tex" (id decl)))
-		    (rename-file "pvs-files.tex"
-				 (format nil "pvstex/main-~a.tex" (id decl)))))))
+		    (latex-proof (format nil "~a.tex" (id decl)) t nil main-filename nil)))))
 	    (when (and save-proofs? *justifications-changed?*)
 	      (save-all-proofs (current-theory)))))))))
 
