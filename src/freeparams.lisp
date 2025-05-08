@@ -283,7 +283,12 @@
 	(cons-list nil))
     (loop while (list-expr? list-ex)
        do (let ((afrs (free-params* (args1 list-ex) nil)))
-	    (assert (equal (free-parameters (args1 list-ex)) afrs))
+	    #+pvsdebug
+	    (assert (every #'(lambda (afr)
+			       (some #'(lambda (fp)
+					 (eq fp afr))
+				     (free-parameters (args1 list-ex))))
+			   afrs))
 	    (push list-ex cons-list)
 	    (setq list-ex (args2 list-ex))))
     (assert (or (null-expr? list-ex)
