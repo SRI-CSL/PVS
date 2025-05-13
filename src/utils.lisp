@@ -5782,6 +5782,37 @@ and the next method is called with this. Only \formula\" is required."
 	#\:))
       (error "*pvs-path* has no .git directory")))
 
+(defun in-git-repo-p (path)
+  "Check if the given PATH is inside a Git repository."
+  (let ((result (ignore-errors
+                  (uiop:run-program '("git" "rev-parse" "--is-inside-work-tree")
+                                    :directory path
+                                    :output '(:string :stripped t)
+                                    :error-output nil
+                                    :ignore-error-status t))))
+    (string= result "true")))
+
+(defun git-current-branch (&optional (folder *pvs-path*))
+  (when (in-git-repo-p folder)
+    (let ((branches-info
+	   (uiop:run-program
+	    (format nil "git -C ~a branch -v" folder)
+	    :input "//dev//null"
+	    :output '(:string :stripped t))))
+      (when branches-info
+	(let ((lines (uiop:split-string branches-info :separator #(#\Newline))))
+	  (loop for line in lines
+		when (and (plusp (length line))
+			  (char= (char line 0) #\*))
+		return (string-trim " " (subseq line 1))))))))
+
+(defun git-available-p ()
+  "Check if the 'git' command is available using UIOP's run-program."
+  (uiop:run-program '("git" "--version")
+                    :ignore-error-status t
+                    :output '(:string :stripped t)
+                    :error-output nil))
+
 (defun get-file-git-sha1 (file)
   ;; Use the Git SHA1, which is different from simple SHA1
   ;; as it includes "blob" and length of file
