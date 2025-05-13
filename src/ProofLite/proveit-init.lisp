@@ -188,7 +188,7 @@
 	      (mins  (and (< 0 mins) mins)))
 	  (format nil "~@[~d:~]~@[~d:~]~@[~d:~]~,3f" d hours mins secs))))))
 
-(defun obfuscated-path (pathname)
+(defun get-obfuscated-path (pathname)
   "To address security concerns, a pathname gets obfuscated by replacing
    know library paths by collection Ids, the home path by '$HOME', and 
    the pvs path by '$PVS_DIR'."
@@ -237,11 +237,21 @@
    ;;
    (format stream "~%## Platform information ~%")
    (format stream "~&|  |  |~%|---|---|~%" )
-   (format stream "~&| PVS Version | ~a |~%" (get-pvs-version))
+   (format stream "~&| Machine Info | **~a** (~a - ~a - ~a ~a) |~%" (machine-instance) (machine-type) (machine-version) (software-type) (software-version))
+   (format stream "~&| PVS | ~a (~a) |~%" 
+           (get-pvs-version)
+	   (let ((git-info (when (git-available-p) (git-current-branch))))
+	     (or git-info  "no git info available")))
    (format stream "~&| Lisp| ~a ~a|~%" (lisp-implementation-type) (lisp-implementation-version))
-   (format stream "~&| Patch Version| ~a|~%" (or (get-patch-version) "n/a"))   
-   (format stream "~&| Library Path| ~{`~a`~^<br/>~}|~%" (mapcar #'obfuscated-path *pvs-library-path*))
-   (format stream "~&| Loaded Patches | ~{`~a`~^<br/>~}|~%"  (mapcar #'obfuscated-path *pvs-patches-loaded*))))
+   (format stream "~&| Patch Version| ~a|~%" (or (get-patch-version) "n/a"))
+   (macrolet ((process-path (path)
+		(if (git-available-p)
+		    `(format nil "~a ~@[(~a)~]" (get-obfuscated-path ,path) (git-current-branch ,path))
+		    `(get-obfuscated-path ,path)
+		    )))
+     (format stream "~&| Library Path| ~{`~a`~^<br/>~}|~%"
+	   (mapcar (lambda (path) (process-path path)) *pvs-library-path*)))
+   (format stream "~&| Loaded Patches | ~{`~a`~^<br/>~}|~%"  (mapcar #'get-obfuscated-path *pvs-patches-loaded*))))
 
 ;; (qualified-th-name th relative-path-lib-names?)
 
