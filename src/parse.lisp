@@ -3428,6 +3428,10 @@
 	id
 	(parse-error term "Invalid id"))))
 
+(defun valid-theory-id (symbol)
+  (and (valid-pvs-id symbol)
+       (not (find #\. (string symbol)))))
+
 (defun valid-pvs-id (symbol)
   (or (not *valid-id-check*)
       *in-checker*
