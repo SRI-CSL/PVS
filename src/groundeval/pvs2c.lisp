@@ -122,17 +122,20 @@
       (dolist (file (uiop:directory-files src-dir "*.dylib"))
 	(delete-file file)))))
 
-(defun pvs2c-prelude ()
+(defun pvs2c-prelude (&optional theories) ;;if theories is nil, then all relevant theories
   (let ((*pvs2c-library-path* (format nil "~a/lib/pvs2c/" *pvs-path*))
 	(*suppress-output* t)
-	(pvs2c-translated-theories nil))
+	(pvs2c-translated-theories nil)
+	(interned-theories (mapcar #'intern theories)))
     (ensure-c-directories-exist)
     (uiop:copy-file (format nil "~a/src/groundeval/pvslib.c" *pvs-path*)
 		    (format nil "~a/lib/pvs2c/src/pvslib.c" *pvs-path*))
     (uiop:copy-file (format nil "~a/src/groundeval/pvslib.h" *pvs-path*)
 		    (format nil "~a/lib/pvs2c/include/pvslib.h" *pvs-path*))
     (dolist (theory *prelude-theories*)
-      (when (memq (id theory) *pvs2c-prelude-theories*)
+      (when (or (and (null theories)
+		     (memq (id theory) *pvs2c-prelude-theories*))
+		(memq (id theory) interned-theories))
 	(let ((main-theory (if (datatype? theory) (adt-theory theory) theory)))
 	  (let ((c-file (pvs2c-theory* main-theory t)))
 	    (when c-file
@@ -511,8 +514,8 @@
 (defun make-c-defn-info (ir pvs-return-type)
   (with-slots
 	(ir-function-name ir-return-type ir-args ir-defn) ir
-    ;; (when (eq (id decl) 'coef)(break "coef"))
-    ;;   (format t "~%ir-defn~% =~a" (print-ir ir-defn))
+     ;; (when (eq (id decl) '|jsonparsefile|)(break "jsonparsefile"))
+     ;;   (format t "~%ir-defn~% =~a" (print-ir ir-defn))
     (if (null ir-defn)
 	(let* ((ir-function-name (ir-fname ir-function-name))
 	       ;;(ir-result-type ir-return-type) ;(pvs2ir-type (type decl))
@@ -596,7 +599,7 @@
 	       ;; 		     (mppointer-type c-result-type)
 	       ;; 		     c-body)))
 	       )
-	  
+	  ;;(break "make-c-defn-info")
 	  (unless *suppress-output* ;*to-emacs* ;; causes problems
 	    (format t "~%Function ~a"  ir-function-name)
 	    ;(format t "~%MPvars ~{~a, ~}" (print-ir *mpvar-parameters*))
@@ -609,7 +612,7 @@
 (defun make-c-closure-defn-info (ir-lambda-expr ir-function-name c-param-decl-string)
   (declare (ignore c-param-decl-string))
   (let* ((ir-args (ir-vartypes ir-lambda-expr))
-	 (ir-result-type (ir-rangetype ir-lambda-expr)) ;(pvs2ir-type (range (find-supertype (type decl))))
+	 (ir-result-type  (ir-rangetype ir-lambda-expr)) ;(pvs2ir-type (range (find-supertype (type decl))))
 	 (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
 	 (fvars (pvs2ir-freevars* ir-lambda-expr))
 	 (args-fvarargs (append ir-args fvars))
@@ -664,11 +667,10 @@
 	 ;; 		      c-header
 	 ;; 		      c-result-type
 	 ;; 		      c-body)))
-	 )
+	 );(break "make-c-closure")
     (unless *suppress-output* ;;*to-emacs*
       (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
       (format t "~%Generates C definition = ~%~a" c-defn))
-    ;(break "make-c-closure-defn")
     (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn
 		    c-defn-arg-types c-defn-result-type)))
 

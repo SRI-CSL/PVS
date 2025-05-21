@@ -12,7 +12,7 @@
 
 (defcl ir-integer (ir-expr)
   ir-intval)
-;;ir-fload and ir-double are not used
+;;ir-float and ir-double are not used
 (defcl ir-float (ir-expr)
   ir-float-mantissa
   ir-float-exponent)

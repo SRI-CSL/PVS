@@ -359,6 +359,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 :ir-atype atype))
 
 (defun mk-ir-let (vartype expr body)
+  (when (null expr) (break "mk-ir-let null expr"))
   (make-instance 'ir-let
 		 :ir-vartype vartype
 		 :ir-bind-expr expr
@@ -756,6 +757,10 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (with-slots (ir-domain ir-range) ir-type
 	      `(-> ,(print-ir ir-domain) ,(print-ir ir-range))))
 
+(defmethod print-ir ((ir-type ir-arraytype))
+  (with-slots (size high ir-range) ir-type
+	      (format nil "~a[~d/~a]" (print-ir ir-range) size (format nil "~a" (print-ir high)))))
+
 (defmethod print-ir ((ir-type ir-subrange))
   (with-slots (ir-low ir-high ir-low-expr ir-high-expr) ir-type
 	      `(subrange ,ir-low ,ir-high ,(print-ir ir-low-expr) ,(print-ir ir-high-expr))))
@@ -946,6 +951,15 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	   (cons ir-var1 (pvs2ir-lambda-bindings (cdr boundvars)(acons bnd1 ir-var1 bindings)))))
 	(t nil)))
 
+(defun pvs2ir-type-new-irvars (types bindings)
+  (cond ((consp types)
+	 (let* ((typ1 (car types))
+		(ir-var1 (mk-ir-variable (new-irvar)(pvs2ir-type typ1 bindings)))
+		(new-bindings (if (binding? typ1) (acons typ1 ir-var1 bindings) bindings)))
+	   (cons ir-var1 (pvs2ir-type-new-irvars (cdr types) new-bindings))))
+	(t nil)))
+
+
 (defmethod get-range ((ir-type ir-funtype))
   (with-slots (ir-range) ir-type ir-range))
 
@@ -969,10 +983,21 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod pvs2ir* ((expr lambda-expr) bindings expected)
   (with-slots ((expr-bindings bindings) expression) expr 
     (let* ((ir-binds (pvs2ir-lambda-bindings expr-bindings bindings))
+	   (expected-supertype (when expected (find-supertype expected)))
+	   (expected-domain (when expected (domain expected-supertype)))
+	   (ir-expected-domvars (when expected
+				  (let* ((expected-domtype (if (typep expected-domain 'dep-binding)
+							       (type expected-domain)
+							       expected-domain))
+					 (ir-expected-domtypes (or (and (tupletype? expected-domtype)
+								       (> (length ir-binds) 1);if detupled
+								       (types expected-domtype))
+								  (list expected-domtype))))
+				     (pvs2ir-type-new-irvars ir-expected-domtypes bindings))))
 	   (ir-var-bindings (pairlis expr-bindings ir-binds))
 	   (in-bindings (append ir-var-bindings bindings))
-	   (expected-supertype (and expected (find-supertype expected)))
-	   (expected-range (and expected (dependent-function-range expected-supertype expr-bindings)))
+	   (expected-range (or (and expected (dependent-function-range expected-supertype expr-bindings))
+			       (and (lambda-expr-with-type? expr)(return-type expr))))
 	   (ir-rangetype (or (and expected (pvs2ir-type expected-range in-bindings))
 			     (pvs2ir-expr-type  expression in-bindings)))
 	   (eta-form? (and (application? expression)
@@ -986,25 +1011,31 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					     (not (member arg (freevars (operator expression)) :test #'same-declaration)))))) 
 	   (ir-expr (if eta-form?
 			(pvs2ir* (operator expression) bindings expected)
-		      (pvs2ir* expression in-bindings  expected-range)))) 
-      (let ((lambda-ir (if eta-form? ir-expr 
-			 (mk-ir-lambda ir-binds ir-rangetype ir-expr)))) 
-	lambda-ir))))
+		      (pvs2ir* expression in-bindings  expected-range)))
+	   (dummy (when (and ir-expected-domvars (not (eql (length ir-binds)(length ir-expected-domvars))))(break "lambda-expr")))
+	   (lambda-ir (if eta-form?
+			  ir-expr
+			  (if ir-expected-domvars
+			      (mk-ir-lambda ir-expected-domvars ir-rangetype
+					    (mk-ir-let* ir-binds ir-expected-domvars ir-expr))
+			      (mk-ir-lambda ir-binds ir-rangetype ir-expr)))))
+	lambda-ir)))
 
 (defmethod pvs2ir* ((expr lambda-expr-with-type) bindings expected)
-  (with-slots ((expr-bindings bindings) expression) expr 
-    (let* (;;(ir-expected (pvs2ir-type expected bindings))
-	   (ir-binds (pvs2ir-lambda-bindings expr-bindings bindings))
-	   (ir-var-bindings (pairlis expr-bindings ir-binds))
-	   (new-bindings (append ir-var-bindings bindings))
-	   (ir-rangetype (pvs2ir-type (return-type expr) new-bindings))
-	   (ir-expr (pvs2ir* expression new-bindings
-			     (and expected (dependent-function-range
-					    (find-supertype expected)
-					    expr-bindings)))))
-      (let ((lambda-ir (mk-ir-lambda ir-binds ir-rangetype ir-expr)))
-					;(format t "~%PVS: ~s becomes ~s" expr (print-ir lambda-ir))
-	lambda-ir))))
+  (call-next-method))
+;;   (with-slots ((expr-bindings bindings) expression) expr 
+;;     (let* (;;(ir-expected (pvs2ir-type expected bindings))
+;; 	   (ir-binds (pvs2ir-lambda-bindings expr-bindings bindings))
+;; 	   (ir-var-bindings (pairlis expr-bindings ir-binds))
+;; 	   (new-bindings (append ir-var-bindings bindings))
+;; 	   (ir-rangetype (pvs2ir-type (return-type expr) new-bindings))
+;; 	   (ir-expr (pvs2ir* expression new-bindings
+;; 			     (and expected (dependent-function-range
+;; 					    (find-supertype expected)
+;; 					    expr-bindings)))))
+;;       (let ((lambda-ir (mk-ir-lambda ir-binds ir-rangetype ir-expr)))
+;; 					;(format t "~%PVS: ~s becomes ~s" expr (print-ir lambda-ir))
+;; 	lambda-ir))))
 
 
 (defmethod bitvector-type? ((ty funtype))
@@ -1339,7 +1370,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (let* ((einfod (eval-info decl))
 	 (einfo (or einfod (make-c-eval-info decl))))
     (let* ((ir-einfo (ir einfo))
-	   (ir-function-name (when ir-einfo (ir-function-name ir-einfo))))
+	   (ir-function-name (when ir-einfo (ir-function-name ir-einfo))));(break "pvs2ir-decl*(const-decl)")
       (or ir-function-name
 	  (let* ((defn (decl-defn decl)))
 	    (unless ir-einfo ;first create eval-info then fill the function name
@@ -2213,6 +2244,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					      ir-vartype
 					      bindings)
 				       expected)))
+	   ;(when (ir-funtype? ir-type) (break "pvs2ir-let-expr(funtype)"))
 	   (mk-ir-let ir-vartype ir-bind-expr ir-body)
 	   ;; (if (or (ir-subrange? ir-type)
 	   ;; 	   (ir2c-tequal ir-type ir-arg-type))
@@ -2366,7 +2398,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	   ;; 	  (ir-expected (and (type-name? print-expected-record-type)
 	   ;; 			    (ir-type-name-with-actuals (declaration print-expected-record-type)
 	   ;; 						       ir-actuals)))))
-	 (mk-ir-lett* (nreverse accum-ir-fieldvars)(nreverse accum-ir-expr-types)
+	 (mk-ir-let* (nreverse accum-ir-fieldvars)  ;expected type is used (nreverse accum-ir-expr-types)
 		      (nreverse accum-ir-assignments)
 		      (mk-ir-record (nreverse accum-ir-fields)
 				    ;(or ir-expected)
@@ -2375,46 +2407,46 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun pvs2ir-fields (assignments bindings expected)
   (pvs2ir-field-assignments assignments bindings expected  nil nil nil nil nil))
-  ;; (let* ((expressions (mapcar #'expression assignments))
-  ;; 	 (expected-field-types (mapcar #'type expected))
-  ;; 	 (ir-assignments (pvs2ir*  expressions bindings expected-field-types));ignoring dependencies
-  ;; 	 (ir-field-vars (new-irvars (length assignments)))
-  ;; 	 (ir-field-types (if expected
-  ;; 			     (loop for eft in expected-field-types
-  ;; 				   collect (pvs2ir-type eft bindings))
-  ;; 			   (loop for expr in expressions
-  ;; 				   collect (pvs2ir-expr-type expr bindings))))
-  ;; 	 (ir-field-vartypes (mk-vartype-list ir-field-vars ir-field-types))
-  ;; 	 (ir-fields (loop for assignment in assignments
-  ;; 			  as ir-field-vartype in ir-field-vartypes
-  ;; 			  collect
-  ;; 			  (mk-ir-field (id (caar (arguments assignment)))
-  ;; 				       ir-field-vartype)))
-  ;; 	 (ir-recordtype (mk-ir-recordtype (loop for field in ir-fields
-  ;; 						as type in ir-field-types
-  ;; 						collect (mk-ir-fieldtype (ir-fieldname field) type)))))
-  ;;   (break "pvs2ir-fields")
-  ;; (mk-ir-let* ir-field-vartypes ir-assignments
-  ;; 	      (mk-ir-record ir-fields ir-recordtype)))
-
 
 (defmethod pvs2ir* ((expr field-application) bindings expected)
   (declare (ignore expected))
   (with-slots (id argument) expr
-	      (let ((ir-argument (pvs2ir* argument bindings nil));don't know the exact record type of argument
-		    (argvar (mk-ir-variable (new-irvar)(pvs2ir-type (type argument) bindings))))
+	      (let* ((ir-argument (pvs2ir* argument bindings nil));don't know the exact record type of argument
+		     (argtype (type argument))
+		     (argirtype (pvs2ir-type argtype bindings))
+		     (exprirtype (pvs2ir-type (type expr) bindings))
+		     (argvar (mk-ir-variable (new-irvar) argirtype))
+		     (return-ir-expr (mk-ir-get argvar id))
+		     (body-ir-expr (if expected
+				       (let ((exprvar (mk-ir-variable (new-irvar) (pvs2ir-type expected bindings))))
+					 (mk-ir-lett exprvar
+						   exprirtype
+						   return-ir-expr
+						   exprvar))
+				       return-ir-expr)))
 		(mk-ir-let argvar
 			   ir-argument
-			   (mk-ir-get argvar id)))))
+			   body-ir-expr))))
 
 (defmethod pvs2ir* ((expr projection-application) bindings expected)
   (declare (ignore expected))  
   (with-slots (index argument) expr
-	      (let ((ir-argument (pvs2ir* argument bindings nil))
-		    (argvar (mk-ir-variable (new-irvar)(pvs2ir-type (type argument) bindings))))
+	      (let* ((ir-argument (pvs2ir* argument bindings nil))
+		     (argtype (type argument))
+		     (argirtype (pvs2ir-type argtype bindings))
+		     (exprirtype (pvs2ir-type (type expr) bindings))
+		     (argvar (mk-ir-variable (new-irvar) argirtype))
+		     (return-ir-expr (mk-ir-get argvar (intern (format nil "project_~a" index))))
+		     (body-ir-expr (if expected
+				       (let ((exprvar (mk-ir-variable (new-irvar) (pvs2ir-type expected bindings))))
+					 (mk-ir-lett exprvar
+						   exprirtype
+						   return-ir-expr
+						   exprvar))
+				       return-ir-expr)))
 		(mk-ir-let argvar
 			   ir-argument
-			   (mk-ir-get argvar (intern (format nil "project_~a" index)))))))
+			   body-ir-expr))))
 
 (defmethod pvs2ir* ((expr update-expr) bindings expected)
   (with-slots (type expression assignments) expr
@@ -2516,9 +2548,6 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ;;evaluates the right-hand sides; creates bindings; and then constructs the
 ;;updates over the assignments
 (defun pvs2ir-update (assignments ir-expression expression-type bindings)
-  ;; (let ((maplet (find-if #'maplet? assignments)))
-  ;;   (when maplet
-  ;;     (pvs2c-err "Maplets not supported: ~a" maplet)))
   (let ((rhs-list (mapcar #'expression assignments))
 	(lhs-list (mapcar #'arguments assignments))
 	(maplet-list (mapcar #'maplet? assignments)))
@@ -3610,13 +3639,14 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 								     body-freevars)
 						     livevars :test #'eq)
 				 bindings)))
-	    (if (eq ir-vartype ir-body)
+	    (if (and (eq ir-vartype ir-body)
+		     (not (ir-arraytype? (ir-vtype ir-vartype))))
 		new-ir-bind-expr;;for let x = a in b, if x ~ b, then simplify to a
 	      (if (and (or (and (ir-variable? new-ir-bind-expr) ;;bind var to var
 				(not (mpnumber-type? (ir-vtype new-ir-bind-expr))))
 			   (ir-last? new-ir-bind-expr))
 		       (ir2c-tcompatible-but (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
-		       )
+		       );(break "ir-let-compatible")
 					;binds var to var' with same type, then replace var with var'
 		  (preprocess-ir* ir-body livevars
 				  (acons ir-vartype ; should be eq to new-ir-vartype
@@ -3686,6 +3716,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (with-slots (ir-vartypes ir-rangetype ir-body) ir-expr
     (let* ((new-ir-vartypes (loop for ir-var in ir-vartypes
 				  collect (rename-variable ir-var bindings)))
+	   (new-ir-rangetype (rename-type ir-rangetype bindings))
 	   (ir-mpq-vartypes (loop for ir-var in new-ir-vartypes
 				  when (ir-mpq-type? (ir-vtype ir-var))
 				  collect ir-var))
@@ -3707,7 +3738,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	    (mk-ir-lambda-with-lastvars
 	     new-ir-vartypes
 	     last-expr-freevars
-	     ir-rangetype
+	     new-ir-rangetype
 	     preprocessed-body)))
 		  ;; (format t "~%Preprocessing Lambda")
 		  ;; (format t "~%Freevars = ~s" (print-ir expr-freevars))
@@ -6188,7 +6219,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				 	      ;; 		      ir-name decl-var-ctype var-ctype)
 				 	      ;; 	      (format nil "~a_init(~a)" var-ctype ir-name)))
 					      )
-				 (bind-instrs (copy-type ir2c-vtype ir2c-btype ir-name
+				 (bind-instrs 
+				   (copy-type ir2c-vtype ir2c-btype ir-name
 							 (ir-name (get-ir-last-var ir-bind-expr))))
 				 (all-bind-instrs (cons decl-instr (append init-instrs bind-instrs))
 						  ;; (if init-instrs
@@ -6258,10 +6290,6 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ;; (defcl ir-hashtype (ir-type)
 ;;   hdomain)
 
-
-(defmethod print-ir ((ir-type ir-arraytype))
-  (with-slots (size high ir-range) ir-type
-	      (format nil "~a[~d/~a]" (print-ir ir-range) size (print-ir high))))
 
 (defmethod ir2c-type ((ir-typ ir-funtype))
   (with-slots (ir-domain ir-range) ir-typ
@@ -6434,7 +6462,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 (index (ir-name (car ir-vartypes)))
 		 (index-c-type (add-c-type-definition (ir2c-type (ir-vtype (car ir-vartypes)))))
 		 (for-index (gentemp "index"))
-		 (return-location (format nil "~a->elems[~a]" return-var index)) ;(NSH:4/3/24):replaced for-index w/index
+		 (return-location (format nil "~a->elems[~a]" return-var for-index)) ;(NSH:4/3/24):replaced for-index w/index
 		 (return-location-type (ir2c-type elemtype))
 		 (c-body (ir2c* ir-body return-location return-location-type))
 		 (mp-prelude (when (mpnumber-type? index-c-type)
@@ -6730,6 +6758,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defun add-closure-definition (ir-lambda-expr &optional c-return-type)
   (let* ((closure-info (get-c-closure-info ir-lambda-expr))
 	 (closure-fdefn (when closure-info (fdefn closure-info))))
+    ;(break "add-c-defn")
     (or (and closure-fdefn (op-name closure-fdefn))
 	(let* ((ir-freevars (pvs2ir-freevars* ir-lambda-expr))
 	       (ir-fvar-types (loop for fvar in ir-freevars collect (freevar-type fvar)))
@@ -7609,7 +7638,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod ir-reference-type? ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn) ir-type
-    (or (eq (ir-type-id ir-type) 'file__file)
+    (or (eq (ir-type-id ir-type) '|file__file|)
 	(ir-reference-type? ir-type-defn))))
 
 (defmethod ir-reference-type? ((ir-type t));;fallthrough case
@@ -7757,7 +7786,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
 	 (equal-header (make-array-equal-header equal-name type-name-root elemtype c-param-decl-string))
 	 (equal-defn (make-array-equal-defn equal-name type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)))
-    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-array-json-info (type-name-root size elemtype c-range-root c-param-decl-string c-param-arg-string)
   (let* ((json-name (intern (format nil "json_~a" type-name-root)))
@@ -7796,7 +7825,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (let* ((json-name (intern (format nil "json_~a" type-name-root)))
 	 (json-header (make-array-json-ptr-header json-name type-name-root elemtype c-param-decl-string))
 	 (json-defn (make-array-json-ptr-defn json-name type-name-root size elemtype c-range-root theory-c-params-variadic c-param-arg-string)))
-    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-array-json-ptr-header (json-name type-name-root elemtype c-param-decl-string)
   (declare (ignore type-name-root elemtype c-param-decl-string))
@@ -7855,7 +7884,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
 	 (equal-header (make-array-equal-ptr-header equal-name type-name-root elemtype c-param-decl-string))
 	 (equal-defn (make-array-equal-ptr-defn equal-name type-name-root size elemtype c-range-root theory-c-params-variadic c-param-arg-string)))
-    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-array-equal-ptr-header (equal-name type-name-root elemtype c-param-decl-string)
   (declare (ignore type-name-root elemtype c-param-decl-string))
@@ -8056,13 +8085,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 						   
 			 (format nil "void release_~a(~a_t x~a){~%switch (x->~a_index) {~{~%~a;~}~%}}"
 				 type-name-root type-name-root c-param-decl-string type-name-root release-fields))))
-    (mk-c-defn-info release-name release-header release-defn (list type-name-root) 'void)))
+    (mk-c-defn-info release-name release-header release-defn (list type-name-root) '|void|)))
 
 (defun make-record-release-ptr-info (type-name-root c-param-arg-string theory-c-params-variadic c-param-decl-string)
   (let* ((release-name (intern (format nil "release_~a" type-name-root)));;same name as release, _ptr added below
 	 (release-ptr-header (make-record-release-ptr-header release-name type-name-root c-param-decl-string))
 	 (release-ptr-defn (make-record-release-ptr-defn release-name type-name-root  c-param-arg-string theory-c-params-variadic)))
-    (mk-c-defn-info release-name release-ptr-header release-ptr-defn (list type-name-root) 'void)))
+    (mk-c-defn-info release-name release-ptr-header release-ptr-defn (list type-name-root) '|void|)))
 
 (defun make-record-release-ptr-header (release-name type-name-root c-param-decl-string)
   (declare (ignore c-param-decl-string))
@@ -8092,7 +8121,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				 (if (file-type-name? type-name-root)
 				     (format nil "~%~8T~8Tmunmap(x->contents, x->capacity);~%~8T~8Tclose(x->fd);")
 				   (format nil ""))))))
-    (mk-c-defn-info release-name release-header release-defn (list type-name-root) 'void)))
+    (mk-c-defn-info release-name release-header release-defn (list type-name-root) '|void|)))
 
 (defun make-record-copy-info (type-name-root ir-field-types c-field-types)
   (let* ((copy-name (intern (format nil "copy_~a" type-name-root)))
@@ -8101,7 +8130,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (mk-c-defn-info copy-name copy-header copy-defn (list type-name-root) type-name-root)))
 
 (defun file-type-name?(type-name)
-  (eq type-name 'file__file))
+  (eq type-name '|file__file|))
 
 (defun make-record-copy-defn (type-name-root ir-field-types c-field-types)
   (if (file-type-name? type-name-root)
@@ -8133,7 +8162,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			      type-name-root type-name-root c-param-decl-string))
 	 (equal-defn (make-adt-record-equal-defn type-name-root ir-field-types
 						 c-field-types constructors c-param-arg-string  c-param-decl-string)))
-    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-adt-record-json-info (type-name-root ir-field-types c-field-types constructors
 						  c-param-arg-string  c-param-decl-string)
@@ -8142,7 +8171,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			      type-name-root c-param-decl-string))
 	 (json-defn (make-adt-record-json-defn type-name-root ir-field-types
 						 c-field-types constructors c-param-arg-string  c-param-decl-string)))
-    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info json-name json-header json-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-adt-record-equal-defn (type-name-root ir-field-types c-field-types constructors
 						  c-param-arg-string  c-param-decl-string)
@@ -8180,7 +8209,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (let* ((equal-name (intern (format nil "equal_~a" type-name-root)))
 	 (equal-header (make-record-equal-ptr-header equal-name type-name-root))
 	 (equal-defn (make-record-equal-ptr-defn equal-name type-name-root theory-c-params-variadic c-param-arg-string)))
-    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-record-json-ptr-info (type-name-root theory-c-params-variadic c-param-arg-string)
   (let* ((json-name (intern (format nil "json_~a" type-name-root)))
@@ -8224,7 +8253,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			      type-name-root type-name-root c-param-decl-string))
 	 (equal-defn (make-record-equal-defn type-name-root ir-field-types c-field-types c-param-arg-string
 					     c-param-decl-string)))
-    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) 'bool)))
+    (mk-c-defn-info equal-name equal-header equal-defn (list type-name-root type-name-root) '|bool|)))
 
 (defun make-record-equal-defn (type-name-root ir-field-types c-field-types c-param-arg-string c-param-decl-string)
   (let ((equal-field-instrs
@@ -8461,6 +8490,46 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod ir2c-tcompatible* ((texpr1 t)(texpr2 t))
   (eq texpr1 texpr2));;Since the base case
 
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;check compatibility of between a texpr and an ir-expr to see if casting is needed
+;; (defun ir2c-tcompatible-expr (texpr ir-expr)
+;;   (ir2c-tcompatible-expr* texpr ir-expr))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-bool))
+;;   (eq texpr '|bool|))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-string))
+;;   (eq texpr '|string|))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-char))
+;;   (eq texpr '|char|))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-variable))
+;;   (with-slots (ir-vtype) ir-variable
+;;     (ir2c-tcompatible texpr ir-vtype)))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-apply))
+;;   (ir2c-tcompatible texpr (ir-atype ir-expr)))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-let))
+;;   (with-slots (ir-body) ir-expr
+;;     (ir2c-tcompatible-expr* texpr ir-body)))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr t)(ir-expr ir-record))
+;;   (with-slots (ir-recordtype) ir-expr
+;;     (ir2c-tcompatible texpr ir-recordtype)))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr ir-funtype)(ir-expr ir-lambda))
+;;   (with-slots (ir-vartypes ir-rangetype) ir-expr
+;;     (with-slots (ir-domain ir-range) texpr
+;;       (and (ir2c-tcompatible ir-domain (if (singleton? ir-vartypes) (ir-vtype (car ir-vartypes))
+;; 						 (mapcar #ir-vtype ir-vartypes)))
+;; 	   (ir2c-tcompatible ir-range ir-rangetype)))))
+
+;; (defmethod ir2c-tcompatible-expr* ((texpr ir-funtype)(ir-expr ir-lambda))
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;expects ir2c-types for texpr1 and texpr2; made it copy lazily only when types are mismatched. 
@@ -8547,6 +8616,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			  (let ((newlhs (format nil "~a->~a" lhs id1))
 				(newrhs (format nil "~a->~a" rhs id2)))
 			    (copy-type* ft1 ft2 newlhs newrhs)))))
+
+(defmethod copy-type* ((texpr1 ir-funtype)(texpr2 ir-arraytype) lhs rhs)
+  (break "copy-type*(funtype,arraytype)"));;(NSH: 5-17-25): leaving this break for now
 
 (defmethod copy-type* ((texpr1 ir-arraytype)(texpr2 ir-funtype) lhs rhs)
   (with-slots ((size1 size)(high1 high)(et1 ir-range)) texpr1
@@ -8681,7 +8753,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(ir-uname (ir-function-name ir)))))
 
 (defun ir-uname (fname)
-  (format nil "undef_~a" fname))
+  (intern (format nil "undef_~a" fname)))
 
 ;; (defmethod ir2c-decl* ((ir ir-formal-const-defn) decl)
 ;;   (with-slots (ir-defn) ir
