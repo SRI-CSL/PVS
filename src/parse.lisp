@@ -3429,8 +3429,14 @@
 	(parse-error term "Invalid id"))))
 
 (defun valid-theory-id (symbol)
-  (and (valid-pvs-id symbol)
-       (not (find #\. (string symbol)))))
+  (every #'(lambda (ch)
+	     (or (unialpha-char-p ch)
+		 (digit-char-p ch)
+		 ;; Note that periods are allowed in identifiers
+		 ;; in general, but not in declarations - see
+		 ;; xt-check-periods
+		 (member ch '(#\_ #\?) :test #'char=)))
+	 (string symbol)))
 
 (defun valid-pvs-id (symbol)
   (or (not *valid-id-check*)
