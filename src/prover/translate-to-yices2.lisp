@@ -338,11 +338,11 @@
   (translate-to-yices2* (type ty) bindings))
 
 (defmethod translate-to-yices2* ((ty funtype) bindings)
-  (with-slots (domain range) ty
+  (with-slots (domain range) ty (break "tty2(funtype)")
 	      (let* ((sdom (if (dep-binding? domain)  ;;NSH(4-16-11)
 			      (find-supertype (type domain))
 			     (find-supertype domain))) %was bypassing int for real on the domain
-		     (sdom-types (if (tupletype? sdom) (types sdom) (list domain))));;NSH(12-23-24)
+		     (sdom-types (types sdom)));NSH(4-23-25)
 	      (format nil "(->~{ ~a~})"
 		      (translate-to-yices2-list sdom-types nil
 						(translate-to-yices2* range bindings)
