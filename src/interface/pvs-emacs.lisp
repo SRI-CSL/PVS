@@ -432,7 +432,7 @@
   ;; Indicates an error; no recovery possible.
   (assert (or (null file-name)
 	      *from-buffer*
-	      (uiop:file-exists-p file-name)))
+	      (uiop:file-exists-p (make-specpath file-name))))
   (let* ((place (if *adt-decl* (place *adt-decl*) place))
 	 (buff (if *adt-decl*
 		   (or (filename *generating-adt*)
