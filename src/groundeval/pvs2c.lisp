@@ -448,7 +448,6 @@
 	 (declid (simple-id (id decl)))
 	 (ir-function-id (make-c-name nil *theory-id* declid))
 	 (hashentry (gethash ir-function-id *c-primitive-attachments-hash*)))
-    ;;(when (eq declid '|u8rshift|);(break "u8rshift"))
     (cond (hashentry
 	   (let* ((einfo (or (eval-info decl)
 			     (let* ((new-einfo (make-instance 'eval-info))

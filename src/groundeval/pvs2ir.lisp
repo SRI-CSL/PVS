@@ -1012,11 +1012,11 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	   (ir-expr (if eta-form?
 			(pvs2ir* (operator expression) bindings expected)
 		      (pvs2ir* expression in-bindings  expected-range)))
-	   (dummy (when (and ir-expected-domvars (not (eql (length ir-binds)(length ir-expected-domvars))))(break "lambda-expr")))
+	   (dummy (when (and ir-expected-domvars (not (eql (length ir-binds)(length ir-expected-domvars))))(break "lambda-expr")));(break "lambda-expr")
 	   (lambda-ir (if eta-form?
 			  ir-expr
 			  (if ir-expected-domvars
-			      (mk-ir-lambda ir-expected-domvars ir-rangetype
+			      (mk-ir-lambda ir-expected-domvars (rename-type ir-rangetype (pairlis ir-binds ir-expected-domvars))
 					    (mk-ir-let* ir-binds ir-expected-domvars ir-expr))
 			      (mk-ir-lambda ir-binds ir-rangetype ir-expr)))))
 	lambda-ir)))
@@ -1403,7 +1403,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		   (body (if (ir-lambda? ir-defn-with-tformals)
 			     (ir-body ir-defn-with-tformals)
 			     ir-defn-with-tformals))
-		   (lifted-actuals-body (pvs2ir-lifted-actuals body *pvs2c-defn-actuals*)))
+		   (lifted-actuals-body (pvs2ir-lifted-actuals body *pvs2c-defn-actuals*)));(break "pvs2ir-decl")
 	      ;;(format t "~%ir-theory-formals = ~{~a, ~}" *ir-theory-formals*)
 	      ;;(format t "~% pvs2ir-decl*, ir-defn = ~a" (print-ir ir-defn-with-tformals))
 	      (setf (ir-args (ir einfo)) args
@@ -3164,8 +3164,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod pvs2ir-freevars* :around ((ir-expr ir-expr))
   (with-slots (ir-freevars) ir-expr
+    ;; (when (and (consp ir-freevars)
+    ;; 	       (member '|ivar_1| ir-freevars :key #'ir-name))
+    ;;   (break "ivar_1 found"))
     (if (eq ir-freevars 'unbound)    
 	(let ((new-ir-freevars (call-next-method)))
+          ;(when (member '|ivar_1| new-ir-freevars :key #'ir-name)(break "pvs2ir-freevars*:around"))
 	  (setf (ir-freevars ir-expr) new-ir-freevars)
 	  new-ir-freevars)
     ir-freevars)))
@@ -3390,6 +3394,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun apply-bindings (bindings var-list)
   (cond ((consp var-list)
+	 ;(when (eq (ir-name (car var-list)) '|ivar_1|) (break "apply-b"))
 	 (cons (get-assoc (car var-list) bindings)
 	       (apply-bindings bindings (cdr var-list))))
 	(t nil)))
@@ -3400,9 +3405,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod preprocess-ir* ((ir-expr ir-variable) livevars bindings)
   (let* ((ir-var (get-assoc ir-expr bindings)))
     (if (memq ir-var livevars)
-	ir-var
+	(rename-variable ir-var bindings)
 	   ;;then variable is live and this is not the last occurrence
-      (mk-ir-last ir-var))))
+      (mk-ir-last (rename-variable ir-var bindings)))))
 
 ;;Since ir-fieldtype is also an ir-variable 
 (defmethod preprocess-ir* ((ir-expr ir-fieldtype) livevars bindings)
@@ -3599,7 +3604,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (preprocess-ir* ir-expr nil bindings)))
 
 (defmethod rename-type ((ir-type ir-arraytype) bindings)
-  (with-slots (size high ir-domain ir-range renamings) ir-type
+  (with-slots (size high ir-domain ir-range renamings) ir-type 
     (let ((new-bindings (append renamings bindings)))
       (lcopy ir-type 'high (preprocess-in-type high new-bindings)
 	     'ir-domain (rename-type ir-domain new-bindings)
@@ -3624,7 +3629,16 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(and (ir-adt-constructor-recordtype? gtexpr2)
 	     (ir2c-tcompatible texpr1 texpr2))
       (ir2c-tcompatible texpr1 texpr2))))
-	      
+
+
+(defmethod preprocess-ir* :around ((ir-expr ir-expr) livevars bindings)
+  (let ((result (call-next-method)))
+    (with-slots (ir-freevars) result
+      (when (consp ir-freevars)
+	(let ((new-ir-freevars (apply-bindings bindings ir-freevars)))
+	  (setf (ir-freevars result) new-ir-freevars)
+          (when (memq '|ivar_1| new-ir-freevars)(break "pp-ir*:around")))))
+      result))
 
 ;Irrelevant let-bindings are discarded
 (defmethod preprocess-ir* ((ir-expr ir-let) livevars bindings)
@@ -6452,7 +6466,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (with-slots (ir-vartypes ir-lastvars ir-rangetype ir-body) ir-expr
     (let* ((ir-arraytype  (get-arraytype return-type)) 
 	   (array? (and (ir-arraytype? ir-arraytype)
-			(array-size-expr ir-arraytype))))
+			(array-size-expr ir-arraytype)))) ;(break "ir2c*(ir-lambda")
       ;; (and (eql (length ir-vartypes) 1)
       ;; 		       (ir-index? (ir-vtype (car ir-vartypes))))
       (if array?;ignore this and retain lambda exprs
