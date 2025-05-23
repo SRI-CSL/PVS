@@ -1544,6 +1544,7 @@ declarations"
 		       (with-no-type-errors (get-resolutions ex 'expr nil))
 		       (get-resolutions ex 'expr nil))))
 	   (thres (unless (or (mod-id ex)
+			      (not (valid-theory-id (id ex)))
 			      (and kind
 				   (not (eq kind 'theory))))
 		    (let ((thname (name-to-modname ex)))
