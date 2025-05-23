@@ -589,3 +589,17 @@ of objects of the form {\"proofId\":id,\"status\":status}"
 		     (t (nconc result `(("cl-err" . ,(format nil "~a" cl-err))))))))
 	    (t (nconc result `(("tc-error" . ,(format nil "~a" tc-err)))))))))
 				     
+(defmacro message-periodically-till-finished ((period msg) &body body)
+  (let ((thread (gentemp))
+	(pd (gentemp)))
+    `(let* ((,pd ,period)
+	    (,thread (bt:make-thread #'(lambda ()
+					 (let ((time 0))
+					   (loop while t
+						 do (progn (sleep ,pd)
+							   (incf time ,pd)
+							   (pvs-message
+							       (format nil "(~a sec): ~a"
+								 time ,msg)))))))))
+       (unwind-protect (progn ,@body)
+	 (when (bt:thread-alive-p ,thread) (bt:destroy-thread ,thread))))))
