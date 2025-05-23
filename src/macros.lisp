@@ -689,12 +689,12 @@ obj may be of type:
 
 (defmacro ensure-trailing-slash (dirstring)
   (let ((dstring (gentemp)))
-    `(let ((,dstring ,dirstring))
+    `(let ((,dstring (namestring ,dirstring)))
        (assert (stringp ,dstring))
        (if (or (string= ,dstring "")
 	       (char= (char ,dstring (1- (length ,dstring))) #\/))
 	   ,dstring
-	   (concatenate 'string ,dirstring "/")))))
+	   (concatenate 'string ,dstring "/")))))
 
 ;;; Taken from http://dunsmor.com/lisp/onlisp/onlisp_22.html
 (defmacro dbind (pat seq &body body)
