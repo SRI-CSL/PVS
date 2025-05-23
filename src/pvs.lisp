@@ -2061,7 +2061,8 @@ escapes here."
 	      (orig-dp (decision-procedure-used fmla))
 	      (orig-proof-refers-to (proof-refers-to fmla))
 	      (orig-real-time (real-time fmla))
-	      (orig-run-time (run-time fmla)))
+	      (orig-run-time (run-time fmla))
+	      (decl-proofs (collect-decl-proofs fmla)))
 	  (pvs-message "Proving formula ~a" (id fmla))
 	  (incf tried-proofs)
 	  (setf (justification fmla) just)
@@ -2073,7 +2074,8 @@ escapes here."
 		 (setq save-proofs t)
 		 (incf proved-proofs)
 		 (copy-proofs-to-orphan-file
-		  (id theory) (list (cons (id fmla) orig-just))))
+		  (filename theory) (id theory)
+		  (list (cons (id theory) decl-proofs))))
 		(orig-just
 		 (pvs-message "~a unproved - keeping original strategy"
 		   (id fmla))
@@ -3581,10 +3583,11 @@ If formname is nil, then formref should resolve to a unique formula name."
 ;;; Delete Theory
 
 (defun delete-pvs-file (filename &optional delete-file?)
-  (let ((theories (get-context-theory-names filename)))
+  (let ((theory-ids (get-context-theory-names filename)))
     (when delete-file?
-      (mapc #'copy-theory-proofs-to-orphan-file theories))
-    (dolist (tid theories)
+      (dolist (thid theory-ids)
+	(copy-proofs-to-orphan-file filename thid)))
+    (dolist (tid theory-ids)
       (let ((theory (get-theory tid)))
 	(when theory
 	  (when (typechecked? theory)
@@ -3601,7 +3604,7 @@ If formname is nil, then formref should resolve to a unique formula name."
 (defun delete-theory (theoryref)
   (let ((theory (gethash (ref-to-id theoryref) (current-pvs-theories))))
     (when theory
-      (copy-theory-proofs-to-orphan-file theoryref)
+      (copy-proofs-to-orphan-file (filename theory) (id theory))
       (untypecheck-usedbys theory)
       (remhash (id theory) (current-pvs-theories))
       (let ((fname (pvs-filename (filename theory))))

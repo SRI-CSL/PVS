@@ -577,16 +577,16 @@
 ;;; untried, unfinished, unchecked, proved-incomplete, or proved-complete.
 
 (defun fe-proof-status-string (fe valid?)
-  (cond ((string= (fe-status fe) "proved-complete")
+  (cond ((string-equal (fe-status fe) "proved-complete")
 	 (if valid?
 	     "proved - complete"
 	     "unchecked"))
-	((member (fe-status fe) '("proved-incomplete" "proved") :test #'string=)
+	((member (fe-status fe) '("proved-incomplete" "proved") :test #'string-equal)
 	 (if valid?
 	     "proved - incomplete"
 	     "unchecked"))
-	((string= (fe-status fe) "unchecked") "unchecked")
-	((string= (fe-status fe) "unfinished") "unfinished")
+	((string-equal (fe-status fe) "unchecked") "unchecked")
+	((string-equal (fe-status fe) "unfinished") "unfinished")
 	(t "untried")))
 
 (defun proof-status-symbol (decl)
@@ -1131,11 +1131,34 @@
 	fdecl-string)
       (pvs-message "~a has not been typechecked" oname)))
 
+(defun all-usedby-proofs (oname origin)
+  (if (typechecked-origin? oname origin)
+
+      (let* ((udecl (get-decl-at-origin oname origin line))
+	     (decls (declaration-used-by-proofs-of udecl))
+	     (flist (mapcar #'(lambda (d)
+				(json-decl-list d (ptype-of d) (module d)))
+		      decls))
+	     (json:*lisp-identifier-name-to-json* 'identity)
+	     (fdecl-string (json:encode-json-to-string (or flist #()))))
+	fdecl-string)
+      (pvs-message "~a has not been typechecked" oname)))
+
+(defun get-origin-root-theory-name (bufname origin)
+  (let* ((namestr (string bufname))
+	 (ext (cond ((string-equal origin "tccs") ".tccs")
+		    ((string-equal origin "ppe") ".ppe")))
+	 (pos (when ext	(search ext namestr :from-end t)))
+	 (thname (if (and pos (= (length namestr) (+ pos (length ext))))
+		     (subseq namestr 0 pos)
+		     namestr)))
+    thname))
+
 (defun get-decl-at-origin (bufname origin line &optional libpath)
-  (let ((bname (if (stringp bufname) (intern bufname :pvs) bufname)))
+  (let ((bname (get-origin-root-theory-name bufname origin)))
     (if (and (member origin '("ppe" "tccs") :test #'string=)
 	     (not (get-theory* bname libpath)))
-	(pvs-message "~a is not typechecked" bufname)
+	(pvs-message "~@[~a@~]a is not typechecked" libpath bufname)
 	(case (intern (#+allegro string-downcase #-allegro string-upcase origin)
 		      :pvs)
 	  (ppe (let* ((theory (get-theory* bname libpath))

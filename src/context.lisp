@@ -111,7 +111,7 @@
 
 (defun fe-eq (fe1 fe2)
   (and (string= (fe-id fe1) (fe-id fe2))
-       (string= (fe-status fe1) (fe-status fe2))
+       (string-equal (fe-status fe1) (fe-status fe2))
        (length= (fe-proof-refers-to fe1) (fe-proof-refers-to fe2))
        (every #'de-eq (fe-proof-refers-to fe1) (fe-proof-refers-to fe2))))
 
@@ -521,7 +521,7 @@ its dependencies."
     (let ((fe (get-context-formula-entry fdecl)))
       (if fe
 	  (let ((status (proof-status-symbol fdecl)))
-	    (unless (string= (fe-status fe) status)
+	    (unless (string-equal (fe-status fe) status)
 	      (setf (fe-status fe) (format nil "~(~a~)" status))
 	      (setf (pvs-context-changed *workspace-session*) t))
 	    (assert (member (fe-status fe)
@@ -715,9 +715,9 @@ its dependencies."
 			(cond ((member (fe-status fentry)
 				       '("proved-complete" "proved-incomplete" "proved"
 					 "unchecked")
-				       :test #'string=)
+				       :test #'string-equal)
 			       "unchecked")
-			      ((string= (fe-status fentry) "unfinished")
+			      ((string-equal (fe-status fentry) "unfinished")
 			       "unfinished")
 			      (t "untried"))))
 		   (t "untried"))
@@ -759,8 +759,8 @@ its dependencies."
 	  (mapc #'(lambda (fe)
 		    (if (consp fe)
 			(if (eq (cadr fe) t) (setf (cadr fe) "unchecked"))
-			(if (string= (fe-status fe) "proved")
-			    (setf (fe-status fe) "unchecked"))))
+			(when (string-equal (fe-status fe) "proved")
+			  (setf (fe-status fe) "unchecked"))))
 		fentries))
 	fentries))))
   
@@ -970,7 +970,9 @@ are all the same."
 		       (and (char= (read-char in) #\()
 			    (char= (read-char in) #\")))
 		     (with-open-file (in ctx-file) (read in))
-		     (or (ignore-errors (fetch-object-from-file ctx-file))
+		     (or (if *testing-restore*
+			     (fetch-object-from-file ctx-file)
+			     (ignore-errors (fetch-object-from-file ctx-file)))
 			 (initial-context)))))
     (assert (uiop:directory-exists-p *default-pathname-defaults*))
     (setf (cdddr context)
@@ -1503,7 +1505,7 @@ are all the same."
 (defun invalidate-theory-proofs (te)
   (dolist (fe (te-formula-info te))
     (when (member (fe-status fe) '("proved-complete" "proved-incomplete")
-		  :test #'string=)
+		  :test #'string-equal)
       (setf (fe-status fe) "unchecked")
       (setf (pvs-context-changed *workspace-session*) t))))
   
@@ -1554,9 +1556,15 @@ are all the same."
 		       (cdr (gethash (filename theory) (current-pvs-files)))
 		       force?))
 	(maphash #'(lambda (file mods)
+		     ;; (car mods) is the timestamp
 		     (when (some #'has-proof? (cdr mods))
 		       (save-proofs (make-prf-pathname file) (cdr mods))))
 		 (current-pvs-files)))))
+
+(defun save-pvs-file-proofs (fileref)
+  (with-pvs-file (file) fileref
+    (save-proofs (make-prf-pathname file)
+		 (cdr (gethash file (current-pvs-files))))))
 
 (defun has-proof? (mod)
   (some #'(lambda (d) (and (formula-decl? d) (justification d)))
@@ -1621,6 +1629,50 @@ are all the same."
 		condition)
 	       (save-proofs-to-file prf-file theory-proofs)
 	       (pvs-message "Proof not saved"))))))
+
+(defun save-proofs-to-json (fileref)
+  (with-pvs-file (filename) fileref
+    (save-pvs-file-proofs filename)
+    (let* ((prf-file (make-prf-pathname filename))
+	   (json-path (format nil "~a/pvsjson" (working-directory)))
+	   (json-prf-file (format nil "~a/~a.prf.json" json-path filename))
+	   (theories-proofs (read-pvs-file-proofs filename))
+	   (file-proofs `(("proof-file" . ,json-prf-file)
+			  ("file-date" . ,(file-write-time prf-file))
+			  ("theory-proofs" . ,theories-proofs))))
+      (uiop:ensure-all-directories-exist (list json-path))
+      (handler-case
+	  (with-open-file (out json-prf-file :direction :output
+			       :if-exists :supersede)
+	    (json:encode-json file-proofs out))
+	(file-error (err)
+	  (pvs-message "~a" err)
+	  (pvs-log "  ~a" err))))))
+
+(defun proof-file-alist (theories-proofs)
+  (mapcar #'proof-theory-alist theories-proofs))
+
+(defun proof-theory-alist (theory-proofs)
+  `(("theory" . ,(string (car theory-proofs)))
+    ("decl-proofs" . ,(mapcar #'proof-decls-alist (cdr theory-proofs)))))
+
+(defun proof-decls-alist (decl-proofs)
+  `(("decl" . ,(string (car decl-proofs)))
+    ("current-proof" . ,(cadr decl-proofs))
+    ("proofs" . ,(mapcar #'proof-element-alist (cddr decl-proofs)))))
+
+(defun proof-element-alist (prf)
+  `(("proof-id" . ,(string (car prf)))
+    ("description" . ,(cadr prf))
+    ("create-date" . ,(caddr prf))
+    ("script" . ,(format nil "~s" (cadddr prf)))
+    ("refers-to" . ,(mapcar #'proof-decl-ref-alist (car (cddddr prf))))))
+
+(defun proof-decl-ref-alist (decl-ref)
+  `(("decl-id" . ,(string (car decl-ref)))
+    ("class" . ,(string (cadr decl-ref)))
+    ("type" . ,(caddr decl-ref))
+    ("theory-id" . ,(string (cadddr decl-ref)))))
 
 
 (defun backup-proof-file (file)
@@ -1751,7 +1803,7 @@ are all the same."
   (let* ((*current-context* (context theory))
 	 (*generate-tccs* 'none)
 	 (aproofs (or proofs (read-pvs-file-proofs filename)))
-	 (tproofs (cdr (assq (id theory) aproofs))))
+	 (tproofs (assq (id theory) aproofs)))
     (when tproofs
       (restore-theory-proofs theory tproofs))))
 
@@ -1775,21 +1827,22 @@ are all the same."
 ;;; We still try to accomodate old .prf files, as seen below
 
 (defun restore-theory-proofs (theory proofs)
+  (assert (eq (id theory) (car proofs)))
   (assert (every #'(lambda (prf)
 		     (and (listp prf) (integerp (cadr prf))))
-		 proofs))
+		 (cdr proofs)))
   (let* ((have-tcc-origins?
-	  (some #'(lambda (prf) (= (length (car (cddr prf))) 7)) proofs))
+	  (some #'(lambda (prf) (= (length (car (cddr prf))) 7)) (cdr proofs)))
 	 (te (get-context-theory-entry (id theory)))
 	 (rem-proofs (restore-decls-proofs
 		      ;; Note that formal parameters cannot have formulas,
 		      ;; even TCCs are put in the assuming or theory parts
 		      (append (assuming theory) (theory theory))
-		      proofs
+		      (cdr proofs)
 		      have-tcc-origins?)))
     (when (and te (memq 'invalid-proofs (te-status te)))
       (invalidate-proofs theory))
-    (copy-proofs-to-orphan-file (id theory) rem-proofs)))
+    (copy-proofs-to-orphan-file (filename theory) (id theory) rem-proofs)))
 
 (defun restore-decls-proofs (decls proofs have-tcc-origins?)
   (cond ((null decls)
@@ -2015,80 +2068,76 @@ Note that the lists might not be the same length."
   ;; ((decl-id class type theory-id) ...)
   (mapcar #'convert-refersto-to-lowercase* refers-to))
 
+(defun filter-nil-form (obj)
+  ;; Removes forms of nil resulting from different Common Lisps writing of nil
+  ;; string-equal allows strings or symbols, and is case-insensitive
+  (unless (and (symbolp obj)
+	       (string-equal obj "nil"))
+    obj))
+
 (defun convert-refersto-to-lowercase* (ref)
-  (unless (memq ref '(nil NIL))
+  (when (filter-nil-form ref) ;; Don't allow nil in any form for ref
+    ;; This is because orphan files could be written by different Common Lisps
     (let ((id (car ref))		; could check it exists
 	  (class (if (find-class (cadr ref) nil)
 		     (cadr ref)
 		     (or (find-if #'(lambda (x) (string-equal x (cadr ref)))
 			   (pvs-class-names))
 			 (break "CLASS not found, proof file probably corrupt"))))
-	  (type (unless (eq (caddr ref) 'NIL) (caddr ref)))		; a string
-	  (theory-id (unless (eq (cadddr ref) 'NIL) (cadddr ref))))
+	  (type (filter-nil-form (caddr ref))) ; a string
+	  (theory-id (filter-nil-form (cadddr ref))))
       (list id class type theory-id))))
 
-(defun copy-theory-proofs-to-orphan-file (theoryref)
-  (when (if *loading-prelude*
-	    (write-permission? (format nil "~a/lib" *pvs-path*))
-	    (write-permission?))
-    (let* ((tid (ref-to-id theoryref))
-	   (filename (if *loading-prelude*
-			 (if (member tid (core-prelude-theories) :key #'id)
-			     "prelude" "pvsio_prelude")
-			 (context-file-of theoryref)))
-	   (tproofs (read-theory-proofs theoryref))
-	   (oproofs (read-orphaned-proofs)))
-      (ignore-file-errors
-       (with-open-file (orph "orphaned-proofs.prf"
-			     :direction :output
-			     :if-exists :append
-			     :if-does-not-exist :create)
-	 (mapc #'(lambda (prf)
-		   (let ((oprfs (remove-if-not
-				    #'(lambda (prf)
-					(and (equal filename (car prf))
-					     (eq tid (cadr prf))))
-				  oproofs)))
-		     (unless (member prf oprfs
-				     :test #'(lambda (x y) (equal x (cdr y))))
-		       (write (cons filename (cons (car tproofs) prf))
-			      :length nil :level nil :escape t :pretty nil
-			      :stream orph))))
-	       (cdr tproofs)))))))
 
-(defun copy-proofs-to-orphan-file (theoryid proofs)
+(defun copy-proofs-to-orphan-file (filename &optional theoryid (proofs nil pfs?))
+  "Typechecking tries to assign proofs in each .prf file to the
+corresponding formula declarations, but sometimes proofs are left over (decl
+renaming, etc.) which are then added to the orphaned-proofs.prf file"
+  (unless (or proofs pfs?) ;; nil intensional
+    (let* ((file-proofs (read-pvs-file-proofs filename))
+	   (th-proofs (if theoryid
+			  (let ((th-elt (assq theoryid file-proofs)))
+			    (if th-elt
+				(list th-elt)
+				(pvs-error "Theory ~a not found in ~a.prf"
+				  theoryid filename)))
+			  file-proofs)))
+      (setq proofs th-proofs)))
+  ;; Now proofs is a list of the form ((thid ...) (thid ...) ...)
   (when (and proofs
 	     (or *loading-prelude*
 		 (write-permission?)))
     (let ((oproofs (read-orphaned-proofs))
-	  (filename (context-file-of theoryid))
 	  (count 0))
-      (ignore-file-errors
-       (with-open-file (orph "orphaned-proofs.prf"
-			     :direction :output
-			     :if-exists :append
-			     :if-does-not-exist :create)
-	 (mapc #'(lambda (prf)
-		   (let ((oprfs (remove-if-not
-				    #'(lambda (prf)
-					(and (equal filename (car prf))
-					     (eq theoryid (cadr prf))))
-				  oproofs)))
-		     (unless (member prf oprfs
-				     :test #'(lambda (x y) (proofs-equal x (cddr y))))
-		       (incf count)
-		       (write (cons filename (cons theoryid prf))
-			      :length nil :level nil :escape t :pretty nil
-			      :stream orph))))
-	       proofs)))
+      ;; Now we copy new proofs into oproofs entries
+      (dolist (th-prf proofs)
+	(dolist (decl-proof (cdr th-prf))
+	  (let ((oprf `(,filename ,(car proofs) ,@decl-proof)))
+	    ;;(break "copy-proofs-to-orphan-file")
+	    (unless (member oprf oproofs :test #'equalp)
+	      (incf count)
+	      (push oprf oproofs)))))
+      (if *proof-file-debug*
+	  (with-open-file (orph "orphaned-proofs.prf"
+				:direction :output
+				:if-exists :append
+				:if-does-not-exist :create)
+	    (write oproofs :stream orph))
+	  (handler-case
+	      (with-open-file (orph "orphaned-proofs.prf"
+				    :direction :output
+				    :if-exists :append
+				    :if-does-not-exist :create)
+		(write oproofs :stream orph))
+	    (file-error (err) (pvs-error "~a" err))))
       (unless (zerop count)
 	(pvs-message
-	    "Added ~d proof~:p from theory ~a to orphaned-proofs.prf"
-	  count theoryid)))))
+	    "Added ~d proof~:p from file ~a.prf~:[~;~:*, theory ~a~] to orphaned-proofs.prf"
+	  count filename theoryid)))))
 
 (defun proofs-equal (proof1 proof2)
   (and (eq (car proof1) (car proof2)) ; formula id
-       (= (cadr proof1) (cadr proof2)) ; index
+       (eql (cadr proof1) (cadr proof2)) ; index
        (every #'proofs-equal* (cddr proof1) (cddr proof2))))
 
 (defun proofs-equal* (proof1 proof2)
@@ -2105,27 +2154,18 @@ Note that the lists might not be the same length."
        ;; decision-procedure-used
        ))
 
+(defun orph-proofs-equal (proofs oproof)
+  ;; Orphaned proofs just keep the formula id and proofscript
+  (and (eq (car proofs) (car oproof)) ; formula id
+       (some #'(lambda (prf) (orph-proofs-equal* (cddr prf) oproof)) proofs)))
 
-(defun read-theory-proofs (theoryref)
-  (let* ((filename (context-file-of theoryref))
-	 (tid (ref-to-id theoryref))
-	 (prffile (when filename (make-prf-pathname filename))))
-    (when (and prffile (file-exists-p prffile))
-      (multiple-value-bind (proofs error)
-	  (with-open-file (in prffile :direction :input)
-	    (labels ((findprfs ()
-			       (let ((prfs (read in nil nil)))
-				 (when prfs
-				   (if (eq (car prfs) tid)
-				       prfs
-				       (findprfs))))))
-	      (findprfs)))
-	(cond (error
-	       (pvs-message "Error reading proof file ~a"
-		 (namestring prffile))
-	       (pvs-log (format nil "  ~a" error))
-	       nil)
-	      (t proofs))))))
+(defun orph-proofs-equal* (proofs oproof)
+  (some #'(lambda (prf) (equalp (fourth prf) (cdr oproof))) (cddr proofs)))
+
+
+(defun read-theory-proofs (filename thid)
+  (let ((fproofs (read-pvs-file-proofs filename)))
+    (assoc thid fproofs :test #'string=)))
 
 (defvar *proof-file-debug* nil)
 
@@ -2198,7 +2238,7 @@ Note that the lists might not be the same length."
 ;;; using different readtables, according to the depth of the parentheses.
 
 ;;; A proof file (extension .prf) has the following form:
-;;; proof-file := {'(' theoryid  {'(' declid proof+ ')'} + ')'} +
+;;; proof-file := {'(' theoryid  {'(' declid index proof + ')'} + ')'} +
 ;;; proof := '(' proofid      % symbol
 ;;;              description  % string
 ;;;              create-date  % integer
@@ -2211,6 +2251,13 @@ Note that the lists might not be the same length."
 ;;;              interactive? % symbol
 ;;;              decision-procedure-used % symbol
 ;;;          ')'
+
+;;; orphaned-proofs.prf is similar:
+;;; orphaned-proofs := { '(' filename theoryid declid index proof ')' }+
+
+;;; The reason for this is that individual declarations may have their
+;;; proofs orphaned, so it makes no sense to try and keep them by filename
+;;; and theoryid
 
 ;;; The theoryid, declid, proofid, and refers-to should be read in a case
 ;;; sensitive way, but the status, interactive? and decision-procedure-used
@@ -2439,25 +2486,26 @@ Note that the lists might not be the same length."
 
 (defun convert-proof-form (id description create-date script refers-to
 			   decision-procedure-used &optional origin)
-  (assert (or (stringp description) (memq description '(|nil| NIL))))
-  (assert (or (listp script) (memq script '(|nil| NIL))))
-  (assert (or (listp refers-to) (memq refers-to '(|nil| NIL))))
+  (assert (or (stringp description) (null (filter-nil-form description))))
+  (assert (listp (filter-nil-form script)))
+  (assert (or (listp refers-to) (null (filter-nil-form refers-to))))
   (assert (symbolp decision-procedure-used))
   (if #+allegro (eq excl:*current-case-mode* :case-sensitive-lower)
       #-allegro nil
       ;; Allegro in case-sensitive mode
       ;; May need to convert a proof done in case-insensitive mode
       (let* ((check (check-if-case-change-needed script))
-	     (desc (unless (eq description 'NIL) description))
+	     (desc (filter-nil-form description))
 	     (scr (if check
 		      (convert-proof-form-to-lowercase script)
 		      script))
 	     ;; refers-to should be fixed for Allegro/SBCL
 	     (ref (if check
-		      (unless (eq refers-to 'NIL)
+		      (when (filter-nil-form refers-to)
 			(convert-refersto-to-lowercase refers-to))
 		      refers-to))
-	     (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
+	     (dec (when (filter-nil-form decision-procedure-used)
+		    decision-procedure-used)))
 	(if origin
 	    (list id desc create-date scr ref dec origin)
 	    (list id desc create-date scr ref dec)))
@@ -2511,24 +2559,162 @@ Note that the lists might not be the same length."
 		(setf (default-proof fdecl) (nth (fourth prf) prfs)))
 	      (format t "~%Couldn't find proof for ~a" (id fdecl))))))))
 
-(defun read-orphaned-proofs (&optional theoryref)
-  (let ((orph-file (if *loading-prelude*
-		       (format nil "~a/lib/orphaned-proofs.prf" *pvs-path*)
-		       "orphaned-proofs.prf")))
-    (when (uiop:file-exists-p orph-file)
-      (ignore-file-errors
-       (with-open-file (orph orph-file :direction :input)
-	 (let ((proofs nil)
-	       (tid (when theoryref (ref-to-id theoryref))))
-	   (labels ((readprf ()
-		      (let ((prf (read orph nil 'eof)))
-			(unless (eq prf 'eof)
-			  (when (or (null tid)
-				    (eq tid (cadr prf)))
-			    (pushnew prf proofs :test #'equal))
-			  (readprf)))))
-	     (readprf))
-	   proofs))))))
+(defun read-orphaned-proofs (&optional (dir (current-context-path)))
+  (let ((file (cond ((uiop:directory-exists-p dir)
+		     (merge-pathnames "orphaned-proofs.prf"
+				      (ensure-trailing-slash dir)))
+		    ((and (uiop:file-exists-p dir)
+			  (string= (pathname-name dir) "orphaned-proofs")
+			  (string= (pathname-type dir) "prf"))
+		     dir)
+		    (t (error "Invalid argument to read-orphaned-proofs: ~s"
+			      dir)))))
+    (when (uiop:file-exists-p file)
+      ;; (pvs-message "Reading ~a" file)
+      (handler-case
+	  (with-open-file (orph-strm file :direction :input)
+	    (multiple-value-bind (oproofs total dropped)
+		(read-orphaned-file-entries orph-strm)
+	      (pvs-message "Orphan file ~a returned ~d proofs, found ~d bad ones"
+		file total dropped)
+	      oproofs))
+	(file-error (err)
+	  (pvs-message "~a" err))))))
+
+(defun read-orphaned-file-entries (orph-strm &optional proofs (total 0) (dropped 0))
+  (ignore-errors
+    (let ((prf (read orph-strm nil 'eof)))
+      (cond ((eq prf 'eof)
+	     (values (nreverse proofs) total dropped))
+	    (t (let* ((nprf (get-orphaned-proof-entry prf))
+		      (nproofs (cond (nprf
+				      (pushnew nprf proofs :test #'equalp))
+				     (t (incf dropped)
+					(pvs-log "Ignored bad orphaned-proofs.prf entry")
+					proofs))))
+		 (read-orphaned-file-entries orph-strm nproofs (1+ total) dropped)))))))
+
+(defun get-orphaned-proof-entry (prf)
+  ;; orphaned-proofs := { '(' filename theoryid declid index proof ')' }+
+  (when (true-listp prf)
+    (multiple-value-bind (filename theoryid declid index)
+	(values-list prf)
+      (when (and (or (symbolp declid) (stringp declid))
+		 (> (length prf) 4))
+	(let ((proofs (cddddr prf))
+	      (changed? nil))
+	  (or (> (length prf) 4)
+	      (break "get-orphaned-proof-entry: length"))
+	  (setq filename (filter-nil-form filename))
+	  (setq theoryid (filter-nil-form theoryid))
+	  (unless (or (null filename) (stringp filename))
+	    (if (and (symbolp filename)
+		     (symbolp theoryid)
+		     (equal declid ""))
+		(let ((proof (list (gentemp "prfid-") "" nil (cddr prf) nil nil)))
+		  ;; proofid description create-date script refers-to decision-procedure-used
+		  (setf declid theoryid
+			theoryid filename
+			filename nil
+			index 0
+			proofs (list proof)
+			changed? t))
+		(break "get-orphaned-proof-entry: filename = ~a" filename)))
+	  (unless (integerp index)
+	    (when (or (equal index "")
+		      (and (consp index)
+			   (string-equal (car index) :new-ground?)))
+	      (let* ((script (if (equal index "") (cdddr prf) (cddddr prf)))
+		     (proof (list (gentemp "prfidx-") "" nil script nil nil)))
+		(assert (and (listp script) (or (null script) (equal (car script) ""))))
+		(setf index 0
+		      proofs (list proof)
+		      changed? t))))
+	  ;; Give up if we can't find or create an index
+	  (when (integerp index)
+	    (or (symbolp theoryid)
+		(break "get-orphaned-proof-entry: theoryid"))
+	    (or (symbolp declid) 
+		(break "get-orphaned-proof-entry: declid = ~s" declid))
+	    (let ((nproofs nil))
+	      (dolist (prf proofs)
+		(let ((nprf (get-proofs-entry prf)))
+		  (if nprf
+		      (pushnew nprf nproofs :test #'equalp)
+		      (setf changed? t))))
+	      (setf nproofs (nreverse nproofs))
+	      (if (and (equal nproofs proofs)
+		       (not changed?))
+		  prf
+		  `(,filename ,theoryid ,declid ,index ,@nproofs)))))))))
+
+(defun get-proofs-entry (proof)
+  (let* ((nproof (mapcar #'filter-nil-form proof))
+	 (changed? (not (equal nproof proof))))
+    (multiple-value-bind (proofid description create-date run-date script status refers-to
+				  real-time run-time interactive? decision-procedure-used
+				  tcc-origin)
+	(values-list nproof)
+      (when (or (integerp run-date) ;; Actual run-date
+		(null run-date)	    ;; none provided
+		(and (listp run-date) (equal (car run-date) ""))) ;; script from old entry
+	(cond ((<= 10 (length proof) 12)
+	       ;; proof := '(' proofid      % symbol
+	       ;;              description  % string
+	       ;;              create-date  % integer
+	       ;;              run-date     % integer
+	       ;;              script       % sexpr
+	       ;;              status       % symbol
+	       ;;              refers-to    % list of declaration references
+	       ;;              real-time    % integer
+	       ;;              run-time     % integer
+	       ;;              interactive? % symbol
+	       ;;              decision-procedure-used % symbol
+	       ;;              tcc-origin   % (root kind expr type place)
+	       ;;          ')'
+	       )
+	      ((<= 6 (length proof) 7)
+	       ;; proofid description create-date script refers-to decision-procedure-used
+	       (assert (or (null run-date)
+			   (and (listp run-date) (equal (car run-date) "")))) ;; script
+	       (assert (or (listp script))) ;; refers-to
+	       (when (= (length proof) 7)
+		 (setf tcc-origin refers-to))
+	       (setf refers-to script)
+	       (setf script run-date)
+	       (setf decision-procedure-used status)
+	       (setf status nil)
+	       (setf run-date nil)
+	       (setf changed? t))
+	      (t (break "(length proof) = ~d" (length proof))))
+	(or (symbolp proofid) (stringp proofid)
+	    (break "proofid = ~s" proofid))
+	(unless (or (null description) (stringp description))
+	  (break "description = ~a" description))
+	(or (null create-date) (integerp create-date)
+	    (break "create-date = ~a" create-date))
+	(or (null run-date) (integerp run-date)
+	    ;; (break "run-date")
+	    )
+	(or (symbolp status)
+	    (break "status"))
+	(unless (listp refers-to)
+	  (break "refers-to = ~a" refers-to))
+	(unless (or (null real-time) (integerp real-time))
+	  (break "real-time = ~a" real-time))
+	(unless (or (null run-time) (integerp run-time))
+	  (break "run-time = ~a" run-time))
+	(or (symbolp interactive?)
+	    (break "interactive?"))
+	(or (symbolp decision-procedure-used)
+	    (break "decision-procedure-used"))
+	(when (and (listp script) (or (null script) (equalp (car script) "")))
+	  (if (and (<= 10 (length proof) 12)
+		   (not changed?))
+	      proof
+	      (list proofid description create-date run-date script status refers-to
+		    real-time run-time interactive? decision-procedure-used tcc-origin)))))))
+
 
 (defvar *displayed-proofs* nil
   "The proofs currently being displayed in the Proofs buffer")
@@ -2748,17 +2934,18 @@ Note that the lists might not be the same length."
 	    (ce-theories entry))))
   (unless t ;;(probe-file (make-prf-pathname file))
     (mapc #'(lambda (nt)
-	      (let ((oproofs (read-orphaned-proofs nt)))
+	      (let ((oproofs (read-orphaned-proofs)))
 		(when oproofs
-		  (reload-theory-proofs nt oproofs))))
+		  (reload-theory-orphaned-proofs nt oproofs))))
 	  newtheories)))
 
-(defun reload-theory-proofs (theory proofs)
+(defun reload-theory-orphaned-proofs (theory oproofs)
   (mapc #'(lambda (decl)
 	    (when (typep decl 'formula-decl)
-	      (let ((prf-entry (car (member (id decl) proofs
+	      (let ((prf-entry (car (member (id decl) oproofs
 					    :test #'(lambda (id prf)
-						      (eq id (caddr prf)))))))
+						      ;; (file theory decl . proof-script)
+						      (string= id (caddr prf)))))))
 		(when (and prf-entry
 			   (null (justification decl)))
 		  (setf (justification decl)
@@ -2966,19 +3153,20 @@ each context, the theories are in alphabetic order."
 				      :type "prf#")))
 	(proofs nil))
     (when auto-saved-files
-      (ignore-file-errors
-       (with-open-file (orph "orphaned-proofs.prf"
-			     :direction :output
-			     :if-exists :append
-			     :if-does-not-exist :create)
-	 (dolist (auto-saved-file auto-saved-files)
-	   (with-open-file (asave auto-saved-file :direction :input)
-	     (let ((proof (read asave)))
-	       (write (cons (subseq (pathname-name auto-saved-file) 1) proof)
-		      :length nil :level nil :escape t :pretty nil
-		      :stream orph)
-	       (push proof proofs)))
-	   (delete-file auto-saved-file))))
+      (dolist (auto-saved-file auto-saved-files)
+	(with-open-file (asave auto-saved-file :direction :input)
+	  (let ((proof (read asave)))
+	    ;; proof has form
+	    ;; ((thy-id (fmla-id index proofs) (fmla-id ...) ...) (thy-id ...) ...)
+	    ;; proofs is a list of elements of the form
+	    ;; (proof-id description create-date script refers-to)
+	    ;; orhpaned-proof-entry has form
+	    ;; (filename thy-id fmla-id script)
+	    (push proof proofs)))
+	(delete-file auto-saved-file)
+	(let ((pvs-file (string-trim "#" auto-saved-file)))
+	  (when (file-exists-p pvs-file)
+	    (copy-proofs-to-orphan-file pvs-file))))
       (pvs-buffer "PVS Info"
 	(format nil
 	    "The following proofs have been copied from auto-saved files to~%~
@@ -3176,7 +3364,7 @@ binfile, not the filename."
 
 (defmethod proved? ((fe formula-entry))
   (or (and (member (fe-status fe) '("proved" "proved-complete" "proved-incomplete")
-		   :test #'string=)
+		   :test #'string-equal)
 	   t)
       ;; TODO: formula-decl also has this; should fix for formula-entries
       ;; (when (mapped-formula-decl? fe)
@@ -3436,7 +3624,7 @@ If there is no error, but the ls-files is empty"
 
 (defun te-formula (fe)
   `(("id" . ,(fe-id fe))
-    ("status" . ,(fe-status fe))
+    ("status" . ,(string (fe-status fe)))
     ("proof-refers-to" . ,(mapcar #'decl-entry (fe-proof-refers-to fe)))
     ;; ("decision-procedure-used" . ,(fe-decision-procedure-used fe))
     ;; ("proof-time" . ,(fe-proof-time fe))
@@ -3457,12 +3645,12 @@ If there is no error, but the ls-files is empty"
 	       (if (string= (fe-id fe) (id fdecl))
 		   (let ((prstat (proof-status fdecl))
 			 (festat (fe-status fe)))
-		     (unless (cond ((null prstat) (string= festat "untried"))
-				   ((string= prstat "proved")
+		     (unless (cond ((null prstat) (string-equal festat "untried"))
+				   ((string-equal prstat "proved")
 				    (member festat
 					    '("proved-complete" "proved-incomplete")
-					    :test #'string=))
-				   (t (string= prstat festat)))
+					    :test #'string-equal))
+				   (t (string-equal prstat festat)))
 		       (setq all-good nil)
 		       (error "proof/fe status mismatch: ~a vs ~a"
 			      (or prstat "untried") festat)))
