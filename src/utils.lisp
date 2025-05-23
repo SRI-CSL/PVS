@@ -485,7 +485,6 @@ is replaced with replacement."
        (error "Need to handle special variables for this version of lisp")
        t))
 
-
 #+allegro
 (defun run-program (command &key arguments)
   (let* ((shell (pathname-name (sys:getenv "SHELL")))
@@ -5455,6 +5454,12 @@ we can get this method using
     (values dir file)))
 
 (defmethod get-pvs-file-ref ((file-ref string))
+  "file-ref ::= '{' json '}'
+              | '(' lisp ')'
+              | dir/file
+              | dir/          ;; file is nil
+              | file          ;; dir is nil
+Returns values dir file"
   (let* ((fref (strim file-ref)))
     (cond ((char= (char fref 0) #\{)
 	   (let* ((json:*json-identifier-name-to-lisp* 'identity)
@@ -5466,18 +5471,23 @@ we can get this method using
 	  ((find #\/ fref)
 	   (let* ((dir-pos (1+ (position #\/ fref :from-end t)))
 		  (dir (subseq fref 0 dir-pos))
-		  (file (subseq fref dir-pos)))
+		  (file (unless (= dir-pos (length fref)) (subseq fref dir-pos))))
 	     (values dir file)))
 	  ((find #\@ fref)
 	   (let* ((at-pos (position #\@ fref))
 		  (lib (subseq fref 0 at-pos))
-		  (file (subseq fref (1+ at-pos)))
+		  (file (unless (= at-pos (length fref)) (subseq fref (1+ at-pos))))
 		  (ldir (get-library-path lib)))
 	     (unless ldir (error "library ~a not found" lib))
 	     (values ldir file)))
 	  (t (values nil fref)))))
 
 (defmethod get-theory-ref ((theoryref string))
+  "theoryref ::= dir/file#thry | lib@file#thry     ;; full theoryref
+               | file#thry                         ;; current workspace
+               | dir/#thry | lib@#thry             ;; no file given
+               | #thry | thry                      ;; theory only
+Result is values dir file thry"
   (let ((th-pos (position #\# theoryref)))
     (multiple-value-bind (dir file)
 	(get-pvs-file-ref (if th-pos
@@ -5485,7 +5495,9 @@ we can get this method using
 			      theoryref))
       (if th-pos
 	  (values dir file (subseq theoryref (1+ th-pos)))
-	  (values dir nil file)))))
+	  (if (and dir file)
+	      (values dir nil file)
+	      (values nil nil (or dir file)))))))
 
 (defmethod get-theory-ref ((theoryref symbol))
   (get-theory-ref (string theoryref)))
@@ -6110,7 +6122,9 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 
 #+sbcl
 (defun dbg ()
-  (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
+  "Sets optimization for debugging, giving more visibility to subsequently
+loaded files and defuns."
+  (declaim (optimize (safety 3) (speed 0) (cl:debug 3))))
 
 #+sbcl
 (defun control-stack-size ()
