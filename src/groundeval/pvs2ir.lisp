@@ -1000,7 +1000,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			       (and (lambda-expr-with-type? expr)(return-type expr))))
 	   (ir-rangetype (or (and expected (pvs2ir-type expected-range in-bindings))
 			     (pvs2ir-expr-type  expression in-bindings)))
-	   (eta-form? (and (application? expression)
+	   (eta-form? (and (not (eq expr (decl-defn *pvs2c-current-decl*)));;don't eta reduce the definition
+			   (application? expression)
 			   (not (name-expr? (operator expression)))
 			   (eql (length expr-bindings)
 				(length (arguments expression)))
@@ -1012,7 +1013,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	   (ir-expr (if eta-form?
 			(pvs2ir* (operator expression) bindings expected)
 		      (pvs2ir* expression in-bindings  expected-range)))
-	   (dummy (when (and ir-expected-domvars (not (eql (length ir-binds)(length ir-expected-domvars))))(break "lambda-expr")));(break "lambda-expr")
+	   ;(dummy (when (and ir-expected-domvars (not (eql (length ir-binds)(length ir-expected-domvars))))(break "lambda-expr")))
 	   (lambda-ir (if eta-form?
 			  ir-expr
 			  (if ir-expected-domvars
@@ -1383,8 +1384,20 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	    ;;(newcounter *var-counter*)
 	    (let* ((context (decl-context decl))
 		   (type (find-supertype (type decl)))
+		   
+		   
 		   (ir-defn (if defn
-				(pvs2ir defn *ir-theory-tbindings* context type)
+				(if (lambda-expr? defn)
+				    (with-slots (bindings expression) defn
+				      (let* ((ir-binds
+					      (pvs2ir-lambda-bindings bindings *ir-theory-tbindings*))
+					     (in-bindings (append (pairlis bindings ir-binds)
+								  *ir-theory-tbindings*))
+					     (expected-range (dependent-function-range type bindings))
+					     (ir-rangetype (pvs2ir-type expected-range in-bindings))
+					     (ir-body (pvs2ir expression in-bindings context expected-range)))
+					(mk-ir-lambda ir-binds ir-rangetype ir-body)))
+				    (pvs2ir defn *ir-theory-tbindings* context type))
 				(pvs2c-err "Missing definition for ~a" (id decl))))
 		   (ir-defn-with-tformals
 		    (if *ir-theory-formals*
