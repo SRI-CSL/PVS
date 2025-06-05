@@ -486,7 +486,7 @@
 
 (defcl formal-const-decl (formal-decl typed-declaration)
   (possibly-empty-type? :restore-as nil)
-  (eval-info :fetch-as nil))
+  eval-info) ;; :fetch-as nil))
 
 (defcl decl-formal-const-decl (decl-formal formal-const-decl))
 
@@ -530,7 +530,7 @@
   (definition :parse t)
   def-axiom
   (positive-types :initform :none)
-  (eval-info :fetch-as nil))
+  eval-info) ;; :fetch-as nil
 
 (defcl macro-decl (const-decl))
 
@@ -650,7 +650,7 @@ restored, the TCCs are checked")
 (defcl monotonicity-tcc (tcc-decl))
 
 (defcl test-formula (formula-decl)
-  (eval-info :fetch-as nil))
+  eval-info);; :fetch-as nil
 
 ;;; judgement class is a mixin
 (defcl judgement (typed-declaration)

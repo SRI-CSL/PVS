@@ -714,9 +714,8 @@
       ;; (loop for thy in  *preceding-mono-theories*
       ;; 	  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
       (format output "~%~%//cc -O3 -Wall -o ~a" theory-id )
-      (format output " -I ~a/include" *pvs-path*)
-      (format output " ~a/lib/pvslib.c " *pvs-path*)
-      (format output " -I ~alib" *pvs-path*)
+      (format output " -L ~alib/pvs2c/lib" *pvs-path*)
+      (format output " -I ~alib/pvs2c/include" *pvs-path*)
       ;; (loop for thy in preceding-prelude-theories
       ;; 	    do (format output " ~alib/~a_c.c" *pvs-path* (id thy)))
       ;; (loop for thy in preceding-prelude-theories
@@ -725,16 +724,18 @@
       ;; 			      (declare (ignore y))
       ;; 			      (format output  " ~a_c.c" x))
       ;; 			  (ht-instance-clone thy))))
-      ;; (loop for thy in preceding-theories
-      ;; 	    do (format output " ~a_c.c" (id thy))
-      ;; 	    (when (ht-instance-clone thy)
-      ;; 	      (maphash #'(lambda (x y)
-      ;; 			   (declare (ignore y))
-      ;; 			   (format output  " ~a_c.c" x))
-      ;; 		       (ht-instance-clone thy))))
-      ;; (loop for thy in  *preceding-mono-theories*
-      ;; 	  do (format output " ~a_c.c" (id thy)))
-      (format output " -lgmp ")
+      (loop for thy in *pvs2c-theory-importings*
+	    when (not (from-prelude? thy))
+	    do (format output " ~a_c.c" (id thy))
+	    (when (ht-instance-clone thy)
+	      (maphash #'(lambda (x y)
+			   (declare (ignore y))
+			   (format output  " ~a_c.c" x))
+		       (ht-instance-clone thy))))
+      (loop for thy in  *preceding-mono-theories*
+       	    do (format output " ~a_c.c" (id thy)))
+      (format output " ~a_c.c <your main>.c " theory-id)
+      (format output " -lgmp -lpvs-prelude ")
       ;; (when (formals theory) (format output "~%typedef pointer_t"))
       (loop for formal in (formals theory)
 	    when (formal-type-decl? formal)
