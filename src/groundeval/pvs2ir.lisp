@@ -2098,9 +2098,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				       (mk-ir-let apply-return-var ;op-range-type
 						  (mk-ir-apply op-ir-function op-domain-vars nil) ;op-range-type
 						  apply-return-var))))))))
-    (let* ((op-ir-type (pvs2ir-type (type op) bindings))
+    (let* ((op-ir-type (pvs2ir-type (pvs2c-safe-pvs-type op) bindings));;NSH(6-7-25)
 	   (op-var (new-irvartype op-ir-type))
-	   (op-ir (pvs2ir* op bindings nil)) ; expected is nil 
+	   (op-ir (pvs2ir* op bindings (type op))) ;inserted (type op) for expected; expected is nil 
 	   (arg-vartypes (mk-variables-from-ir-domain-types op-ir-type nil (eql (length args-ir) 1))))  
       (if (ir-array? op-ir-type)
 	  (mk-ir-let op-var op-ir
@@ -2421,8 +2421,30 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defun pvs2ir-fields (assignments bindings expected)
   (pvs2ir-field-assignments assignments bindings expected  nil nil nil nil nil))
 
+(defun pvs2c-safe-pvs-type (expr);;avoids dependencies so that we don't get [below[k] -> T]
+					;where k happens to evaluate to a fixnum bound
+  (pvs2c-safe-pvs-type* expr))
+
+(defmethod pvs2c-safe-pvs-type* ((expr field-application))
+  (with-slots (id argument) expr
+    (let* ((argtype (type argument))
+	   (fields (fields (find-supertype argtype)))
+	   (id-field (find id fields :key #'id)))
+      (type id-field))))
+
+(defmethod pvs2c-safe-pvs-type* ((expr projection-application))
+    (with-slots (index argument) expr
+      (let* ((argtype (type argument))
+	     (types (types (find-supertype argtype)))
+	     (nth-type (nth (1- index) types)))
+	(type nth-type))))
+
+(defmethod pvs2c-safe-pvs-type* ((expr application))
+  (with-slots (operator argument) expr
+    (range (type operator))))
+
 (defmethod pvs2ir* ((expr field-application) bindings expected)
-  (declare (ignore expected))
+  ;(declare (ignore expected))
   (with-slots (id argument) expr
 	      (let* ((ir-argument (pvs2ir* argument bindings nil));don't know the exact record type of argument
 		     (argtype (type argument))
@@ -3040,7 +3062,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	       ((subtype-of? type *number*) ;;treating number as real/mpq-need to fix this
 		'|mpq|)
 	       ((subtype-of? type *character*) '|char|)
-	       (t (pvs2ir-type* (supertype type) tbinding)))))
+	       (t (pvs2ir-type* (supertype type) tbinding)))));(break "pvs2ir-type*(subtype)")
     ;(format t "~%PVS type: ~a => IR type: ~a" type (print-ir result))
     result))
 
@@ -3650,7 +3672,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
       (when (consp ir-freevars)
 	(let ((new-ir-freevars (apply-bindings bindings ir-freevars)))
 	  (setf (ir-freevars result) new-ir-freevars)
-          (when (memq '|ivar_1| new-ir-freevars)(break "pp-ir*:around")))))
+          )))
       result))
 
 ;Irrelevant let-bindings are discarded
