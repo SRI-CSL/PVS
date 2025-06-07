@@ -1651,6 +1651,25 @@ filled with the symbol 'self-ref, and restore-type-value replaces it with type-d
 		   (t (break "tn"))))
 	       (copy tval 'print-type tn))))))
 
+;; (defmethod restore-object* :around ((obj eval-info))
+;;   (call-next-method)
+;;   (when (internal obj)
+;;     (restore-eval-defn (unary (internal obj)))
+;;     (restore-eval-defn (multiary (internal obj)))
+;;     (restore-eval-defn (destructive (internal obj))))
+;;   (when (external obj)
+;;     (restore-eval-defn (unary (external obj)))
+;;     (restore-eval-defn (multiary (external obj)))
+;;     (restore-eval-defn (destructive (external obj)))))
+
+(defmethod restore-object* :around ((obj eval-defn))
+  (call-next-method)
+  (when (and ;; (not (fboundp (name obj)))
+	     (definition obj))
+    (eval (definition obj))
+    (assert (fboundp (name obj)))))
+  
+
 (defmethod true-type-expr? (obj)
   (declare (ignore obj))
   nil)
