@@ -2443,6 +2443,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (with-slots (operator argument) expr
     (range (type operator))))
 
+(defmethod pvs2c-safe-pvs-type* ((expr t))
+  (type expr))
+
 (defmethod pvs2ir* ((expr field-application) bindings expected)
   ;(declare (ignore expected))
   (with-slots (id argument) expr
