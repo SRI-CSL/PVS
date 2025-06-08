@@ -47,15 +47,17 @@
   (interactive (complete-theory-name "Generate C code for theory: "))
   (pvs-bury-output)
   (pvs-message "Generating C code for theory %s..." theoryref)
-  (let* ((c-files (pvs-send-and-wait (format "(pvs2c-theory \"%s\")" theoryref)
-				     nil nil 'list))
-	 (buf (find-file-noselect (car c-files) t)))
-    (when buf
-      (with-current-buffer buf
-	(set (make-local-variable 'pvs-context-sensitive) t)
-	(c-mode))
-      (pvs-message "Generated C-file %s" (car c-files))
-      (pop-to-buffer buf))))
+  (let ((c-files (pvs-send-and-wait (format "(pvs2c-theory \"%s\")" theoryref)
+				    nil nil 'list)))
+    (if (and c-files (listp c-files))
+	(let ((buf (find-file-noselect (car c-files) t)))
+	  (when buf
+	    (with-current-buffer buf
+	      (set (make-local-variable 'pvs-context-sensitive) t)
+	      (c-mode))
+	    (pvs-message "Generated C-file %s" (car c-files))
+	    (pop-to-buffer buf)))
+	(pvs-message "Generated C files"))))
 
 (defpvs pvs-c-file find-file (filename)
   "Generates the C code for a given file"
