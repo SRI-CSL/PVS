@@ -68,33 +68,33 @@ fi
 
 AC_PROG_RANLIB	
 
-AC_CHECK_PROG(EMACS,emacs,emacs,no)
-AC_CHECK_PROG(XEMACS,xemacs,xemacs,no)
-if test \( "$EMACS" = no \) -a \( "$XEMACS" = no \); then
-	AC_MSG_ERROR(Cannot find emacs or xemacs)
-fi
-if test "$EMACS" != no; then
-   AC_MSG_CHECKING(for $EMACS version >= 19)
-   emacs_version=`$EMACS --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
-   maj_emacs_version=`echo $emacs_version | cut -d. -f 1`
-   min_emacs_version=`echo $emacs_version | cut -d. -f 2`
-   if test $maj_emacs_version -lt 19; then
-      AC_MSG_ERROR(found $emacs_version)
-   else
-      AC_MSG_RESULT(found $emacs_version)
-   fi
-fi
-dnl Don't need to check the xemacs version
+dnl AC_CHECK_PROG(EMACS,emacs,emacs,no)
+dnl AC_CHECK_PROG(XEMACS,xemacs,xemacs,no)
+dnl if test \( "$EMACS" = no \) -a \( "$XEMACS" = no \); then
+dnl 	AC_MSG_ERROR(Cannot find emacs or xemacs)
+dnl fi
+dnl if test "$EMACS" != no; then
+dnl    AC_MSG_CHECKING(for $EMACS version >= 19)
+dnl    emacs_version=`$EMACS --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
+dnl    maj_emacs_version=`echo $emacs_version | cut -d. -f 1`
+dnl    min_emacs_version=`echo $emacs_version | cut -d. -f 2`
+dnl    if test $maj_emacs_version -lt 19; then
+dnl       AC_MSG_ERROR(found $emacs_version)
+dnl    else
+dnl       AC_MSG_RESULT(found $emacs_version)
+dnl    fi
+dnl fi
+dnl dnl Don't need to check the xemacs version
 
 AC_CHECK_PROG(GREP,grep,grep,no)
 if test "$GREP" = no ; then
 	AC_MSG_ERROR(Cannot find grep)
 fi
 
-AC_CHECK_PROGS(ETAGS,etags etags-emacs etags.emacs,no)
-if test "$ETAGS" = no ; then
-	AC_MSG_WARN(Cannot find etags)
-fi
+dnl AC_CHECK_PROGS(ETAGS,etags etags-emacs etags.emacs,no)
+dnl if test "$ETAGS" = no ; then
+dnl 	AC_MSG_WARN(Cannot find etags)
+dnl fi
 
 AC_CHECK_PROG(MKDIR,mkdir,mkdir,no)
 if test "$MKDIR" = no ; then

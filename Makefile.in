@@ -32,8 +32,6 @@
 #  PVS methods file
 #  PVS Lisp compilation
 #  PVS Lisp image
-#  PVS Emacs prelude info file
-#  PVS Emacs compilation
 #  PVS tarfiles
 #  Clean
 
@@ -125,28 +123,25 @@ endif
 # Check to see if we are doing something that requires Emacs and Lisp
 # If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
 # then buildcmds will be nonempty
-ifeq ($(MAKECMDGOALS),)
-buildcmds = all
-else
-buildcmds = $(filter-out clean tarfiles, $(MAKECMDGOALS))
-endif
+# ifeq ($(MAKECMDGOALS),)
+# buildcmds = all
+# else
+# buildcmds = $(filter-out clean tarfiles, $(MAKECMDGOALS))
+# endif
 
-ifneq ($(buildcmds),)
-# Need an emacs to work with
-ifndef EMACS
-ifdef PVSEMACS
-EMACS = $(PVSEMACS)
-else
-EMACS = $(shell which emacs 2> /dev/null)
-endif
-endif
-ifeq ($(EMACS),)
-EMACS = $(shell which xemacs 2> /dev/null)
-endif
-ifeq ($(EMACS),)
-$(warning "No Emacs or Xemacs found")
-endif
-endif # end of buildcmds check
+# ifneq ($(buildcmds),)
+# # Check for emacs to work with
+# ifndef EMACS
+# ifdef PVSEMACS
+# EMACS = $(PVSEMACS)
+# else
+# EMACS = $(shell which emacs 2> /dev/null)
+# endif
+# endif
+# # ifeq ($(EMACS),)
+# # $(warning "No Emacs or Xemacs found")
+# # endif
+# endif # end of buildcmds check
 
 # Below this is only for dist; i.e., generating tar files
 
@@ -224,7 +219,7 @@ pvs-make-files = pvs.asd
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
 emacs-src = $(shell $(GIT) ls-files | $(GREP) -E ".*\.el$$" | $(GREP) -v "^\(doc\|src\|Examples\)")
-emacs-src += emacs/pvs-prelude-files-and-regions.el
+# emacs-src += emacs/pvs-prelude-files-and-regions.el
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
@@ -518,21 +513,23 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
-ifeq ($(EMACS),)
-emacs-deps =
-else
-emacs-deps = prelude-files-and-regions etags
-endif
+# ifeq ($(EMACS),)
+# emacs-deps =
+# else
+# emacs-deps = prelude-files-and-regions etags
+# endif
 
 .PHONY : all parser yices emacs prelude-files-and-regions
 
-all : $(HOME)/quicklisp $(pvs-images) yices $(emacs-deps)
+all : $(HOME)/quicklisp $(pvs-images) yices # $(emacs-deps)
 
 devel : $(allegro-devel) 
 
 runtime : $(sbcl-rt) # $(allegro-rt)
 
-prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
+# ifneq ($(EMACS),)
+# prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
+# endif
 
 # Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
 # This assumes quicklisp is installed in the default directory '~/quicklisp'
@@ -692,22 +689,24 @@ tar :
 # lib/strategies.lisp : src/prover/strategies.lisp
 # 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
-$(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
-                  $(pvs-images) \
-                  $(PVSPATH)emacs/pvs-set-prelude-info.el \
-                  $(PVSPATH)lib/prelude.pvs
-	-./pvs -batch -q -l emacs/pvs-set-prelude-info.el -f set-prelude-files-and-regions
+# ifneq ($(EMACS),)
+# $(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
+#                   $(pvs-images) \
+#                   $(PVSPATH)emacs/pvs-set-prelude-info.el \
+#                   $(PVSPATH)lib/prelude.pvs
+# 	-./pvs -batch -q -l emacs/pvs-set-prelude-info.el -f set-prelude-files-and-regions
 
-# We need to create the elc files, but this does not work well with make, as
-# we can't simply byte-compile each file separately.  So we create a dummy
-# .readme file.  It will be newer than all of the subdir source files, and
-# the byte compiled files will thne be newer than it.
+# # We need to create the elc files, but this does not work well with make, as
+# # we can't simply byte-compile each file separately.  So we create a dummy
+# # .readme file.  It will be newer than all of the subdir source files, and
+# # the byte compiled files will thne be newer than it.
 
-$(PVSPATH)emacs/.readme : $(emacs-src)
-	echo "File exists for make dependency usage" > $@
+# $(PVSPATH)emacs/.readme : $(emacs-src)
+# 	echo "File exists for make dependency usage" > $@
 
-$(emacs-elc) : $(PVSPATH)emacs/.readme
-	(cd emacs; $(EMACS) -batch -l pvs-byte-compile.el)
+# $(emacs-elc) : $(PVSPATH)emacs/.readme
+# 	(cd emacs; $(EMACS) -batch -l pvs-byte-compile.el)
+# endif
 
 install:
 	@echo "target install is not used for PVS - see INSTALL"
@@ -725,7 +724,7 @@ clean :
 	-find . -type f -name \*.elc -exec rm \{\} \;
 	-rm -f lib/*_adt.pvs
 	-for p in $(subst $(comma), ,$(platforms)) ; do \
-		rm -rf bin/$$p; \
+		rm -rf bin/$$p/runtime; \
 		$(MAKE) -C src/utils/$$p clean; \
 		$(MAKE) -C src/WS1S/$$p clean; \
 		$(MAKE) -C src/BDD/$$p clean; \

@@ -1667,7 +1667,9 @@ filled with the symbol 'self-ref, and restore-type-value replaces it with type-d
   (when (and ;; (not (fboundp (name obj)))
 	     (definition obj))
     (eval (definition obj))
-    (assert (fboundp (name obj)))))
+    #+pvsdebug (assert (or (eq (car (definition obj)) 'defstruct)
+			   (fboundp (name obj))))
+    ))
   
 
 (defmethod true-type-expr? (obj)
