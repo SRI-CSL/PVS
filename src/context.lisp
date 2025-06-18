@@ -2095,13 +2095,14 @@ corresponding formula declarations, but sometimes proofs are left over (decl
 renaming, etc.) which are then added to the orphaned-proofs.prf file"
   (unless (or proofs pfs?) ;; nil intensional
     (let* ((file-proofs (read-pvs-file-proofs filename))
-	   (th-proofs (if theoryid
+	   (th-proofs (unless (not file-proofs)
+			(if theoryid
 			  (let ((th-elt (assq theoryid file-proofs)))
 			    (if th-elt
 				(list th-elt)
 				(pvs-error "Theory ~a not found in ~a.prf"
-				  theoryid filename)))
-			  file-proofs)))
+					     theoryid filename)))
+			  file-proofs))))
       (setq proofs th-proofs)))
   ;; Now proofs is a list of the form ((thid ...) (thid ...) ...)
   (when (and proofs
