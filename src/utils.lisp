@@ -1022,6 +1022,9 @@ is replaced with replacement."
   (let ((*default-pathname-defaults* (context-path th)))
     (make-specpath (id th))))
 
+(defmethod make-specpath ((name pathname) &optional (ext "pvs"))
+  (make-specpath (namestring name)))
+
 (defmethod make-specpath ((name symbol) &optional (ext "pvs"))
   (make-pathname :defaults *default-pathname-defaults* :name (string name) :type ext))
 
