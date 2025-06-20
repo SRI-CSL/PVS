@@ -3409,9 +3409,9 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	 (fun (lambda (frames)
 		(declare (ignore frames))
 		(handler-case (eval e)
-		  (unbound-variable (c)
-				    (format t "[suppress-when] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e)
-				    nil)))))
+		  (unbound-variable
+		   (c)
+		   (format t "[suppress-when] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e))))))
     (setf (documentation fun 'function)
 	  (format nil "when expression ~a holds" e))
     fun))
@@ -3424,8 +3424,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 		(handler-case (not (eval e))
 		  (unbound-variable
 		   (c)
-		   (format t "[suppress-unless] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e)
-		   nil)))))
+		   (not (format t "[suppress-unless] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e)))))))
     (setf (documentation fun 'function)
 	  (format nil "unless expression ~a holds" e))
     fun))
