@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-8.0 (02/28/25)
+;; Release: Extrategies-8.0 (06/30/25)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -3403,6 +3403,33 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	  (format nil "(except ~a)" doc))
     fun))
 
+;; Suppresses printing when expr holds
+(defun suppress-when (expr)
+  (let* ((e   expr)
+	 (fun (lambda (frames)
+		(declare (ignore frames))
+		(handler-case (eval e)
+		  (unbound-variable (c)
+				    (format t "[suppress-when] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e)
+				    nil)))))
+    (setf (documentation fun 'function)
+	  (format nil "when expression ~a holds" e))
+    fun))
+
+;; Suppresses printing when expr holds
+(defun suppress-unless (expr)
+  (let* ((e   expr)
+	 (fun (lambda (frames)
+		(declare (ignore frames))
+		(handler-case (not (eval e))
+		  (unbound-variable
+		   (c)
+		   (format t "[suppress-unless] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e)
+		   nil)))))
+    (setf (documentation fun 'function)
+	  (format nil "unless expression ~a holds" e))
+    fun))
+
 ;; Format data for debug printing. Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or
 ;; a lisp EXPR.  For latter post-proccesing, this function returns a list ( ... <msgi> <vali> ..) for each input in data.
 ;; If the i-th data input is a string, <msgi> is the string and <vali> is NIL. Otherwise, if the i-th data input is formatted string, <msgi> is
@@ -3424,8 +3451,8 @@ when the list of FNUMS is over. Options are as in eval-formula."
 (defparameter *debug-fail-msg* "
 %%%
 %%% This code requires the feature :extra-debug. To avoid this error at compile time, 
-%%% use the conditional compilation directive #+extra-debug before (extra-debug-print ...) 
-%%% and (extra-debug-println ...).
+%%% use the conditional compilation directive #+extra-debug before (extra-debug-println ...),
+%%% (extra-debug-print ...), and (extra-debug-break ...).
 %%%
 ")
 
@@ -3468,10 +3495,27 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    ))
        (unless (and *extra-debug-suppress*
 		    (funcall *extra-debug-suppress* ,tempvar))
-	 (format t "~%[*extra-debug-print*~@[~a~]~@[~a~]~%~{~*~:[~;  ~]~2:*~a~@[ = ~a~]~%~}*extra-debug-print*]~%"
+	 (format t "~%[*extra-debug-print*~%~{~*~:[~;  ~]~2:*~a~@[ = ~a~]~%~}~@[~a~]~@[~a~]*extra-debug-print*]~%"
+		 (extra-debug-data ,data)
 		 (extra-frames-msg ,tempvar)
-		 (extra-strat-stack-msg *proof-strategy-stack*)
-		 (extra-debug-data ,data))))))
+		 (extra-strat-stack-msg *proof-strategy-stack*))))))
+
+;; Similar to extra-debug-print but breaks after printing data
+(defmacro extra-debug-break (&rest data)
+  (unless (member :extra-debug *features*)
+    (error *debug-fail-msg*))
+  (let ((tempvar (gensym)))
+    `(let ((,tempvar
+	    #+sbcl
+	    (sb-debug:list-backtrace :method-frame-style :minimal :count *extra-debug-frames*)
+	    ))
+       (unless (and *extra-debug-suppress*
+		    (funcall *extra-debug-suppress* ,tempvar))
+	 (format t "~%[*extra-debug-break*~%~{~*~:[~;  ~]~2:*~a~@[ = ~a~]~%~}~@[~a~]~@[~a~]*extra-debug-break*]~%"
+		 (extra-debug-data ,data)
+		 (extra-frames-msg ,tempvar)
+		 (extra-strat-stack-msg *proof-strategy-stack*))
+	 (break)))))
 
 ;; This function prints debugging data. It is supposed to be a light weight version of extra-debug-print.
 ;; Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or a lisp EXPR.
@@ -3482,7 +3526,6 @@ when the list of FNUMS is over. Options are as in eval-formula."
 ;; is the evaluation of <expr>. Compiling a call of this function without enabling debug mode through
 ;; (extra-set-debug-mode ...) results in a compilation error. This compilation error could be avoided by adding
 ;; the compilation directive #+extra-debug before the call to the function.
-
 
 (defmacro extra-debug-println (&rest data)
   (unless (member :extra-debug *features*)
@@ -3601,23 +3644,36 @@ When FILES is not null, sets *extra-debug-files* to FILES.  MODE can be
   disable: disables debug mode. Removes extra-debug to *features*
 If FRAMES is a number N >= 0, sets the value of *extra-debug-frames* to N. This parameter affects the
 number of frames (function scopes) printed by the function extra-debug-print.
-If SUPPRESS is provided, it should be a predicate on a list of current frames, up to *extra-debug-frames*,
+If SUPPRESS is provided, it should be a predicate on a list of stack frames, up to *extra-debug-frames*,
 used to suppress printing of (extra-debug-print ...). 
 The following functions are pre-defined:
- suppress-all: Suppresses all printing
- suppress-none: Suppresses no printing 
- (suppress-from <f1> .. <fn>): Suppresses printing from <f1>,.., and <fn>
- (suppress-but <f1> .. <fn>): Suppresses printing except from <f1>,.., or <fn>
- (suppress-in-scope <f1> .. <fn>): Suppresses printing within the scope of <f1>,.., and <fn>
+ - suppress-all: Suppress all printing
+ - suppress-none: Suppress no printing 
+ - (suppress-from <f1> .. <fn>): Suppress printing from <f1>,.., and <fn>
+ - (suppress-but <f1> .. <fn>): Suppress printing except from <f1>,.., or <fn>
+ - (suppress-in-scope <f1> .. <fn>): Suppress printing within the scope of <f1>,.., and <fn>
    up to *extra-debug-frames*.
- (suppress-out-scope <f1> .. <fn>): Suppresses printing outside the scope of <f1>,.., or <fn>
+ - (suppress-out-scope <f1> .. <fn>): Suppress printing outside the scope of <f1>,.., or <fn>
    up to *extra-debug-frames*.
- (suppress-from-strat <s1> .. <sn>): Suppresses printing from strategies <s1>,.., and <sn>
- (suppress-but-strat <s1> .. <sn>): Suppresses printing except from strategies <s1>,.., or <sn>
- (suppress-in-scope-strat <s1> .. <sn>): Suppresses printing within the scope of strategies <s1>,.., and <sn>
- (suppress-out-scope-strat <s1> .. <sn>): Suppresses printing outside the scope of strategies <s1>,.., or <sn>
- Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
- (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>).")
+ - (suppress-from-strat <s1> .. <sn>): Suppress printing from strategies <s1>,.., and <sn>
+ - (suppress-but-strat <s1> .. <sn>): Suppress printing except from strategies <s1>,.., or <sn>
+ - (suppress-in-scope-strat <s1> .. <sn>): Suppress printing within the scope of strategies <s1>,.., and <sn>
+ - (suppress-out-scope-strat <s1> .. <sn>): Suppress printing outside the scope of strategies <s1>,.., or <sn>
+ - (suppress-when <expr>): Suppress when lisp expression expr holds
+ - (suppress-unless <expr>): Suppress unless lisp expression expr holds
+ - Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
+   (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>)
+
+TECHNICAL NOTES:
+ * The stack of frames is provided by the SBCL function (sb-debug:list-backtrace ...)
+ * Glass-box strategies are inlined by the theorem prover, so they don't appear in
+   the *proof-strategy-stack*, which is used by the functions suppress-in-scope-strat and
+   suppress-out-scope-strat. Therefore, if STRAT is a glass-box strategy,
+   (suppress-in-scope-strat STRAT) never holds and (suppress-out-scope-strat STRAT)
+   always holds.
+ * EXPR in (suppress-when EXPR) and (suppress-unless EXPR) can be an arbitrary lisp code
+   globally scoped, i.e., it can use global variables.
+")
 
 (defstrat enable-debug-mode (&rest files)
   (let ((msg (extra-set-debug-mode 'enable (or files *extra-debug-files*))))

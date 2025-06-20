@@ -24,23 +24,41 @@
 
 The strategies `(set-debug-mode [<files>] :mode
 [toggle|enable|disable])`, `(enable-debug-mode [<files>])` and
-`(disable-debug-mode [<files>])` enable/disable, respectively debug
+`(disable-debug-mode [<files>])` enable/disable, respectively, debug
 mode. Once debug mode is enabled, the lisp functions
-`(extra-debug-print [string|fmted-string|expr]*)` and
-`(extra-debug-println [string|fmted-string|expr]*)` can be used to
+`(extra-debug-println [string|fmted-string|expr]*)`,
+`(extra-debug-print [string|fmted-string|expr]*)`, and
+`(extra-debug-break [string|fmted-string|expr]*)
+can be used to
 print messages, formatted messages, or lisp expressions and their
-values.  A `fmted-string` has the form `(:fmt <string> <e1> .. <en>)`
+values. A `fmted-string` has the form `(:fmt <string> <e1> .. <en>)`
 and will be printed as `(format t <string> <e1> .. <en>)`.  A Lisp
-expression `expr` will be printed as `<expr> = <val>` where `<expr>`
-is the string representation of `expr` and `<val>` is its Lisp evaluation.
+expression `<expr>` will be printed as `EXPR = VAL` where `EXPR`
+is the string representation of `<expr>` and `VAL` is its Lisp value.
 
-These functions will fail if debug mode is not enabled. Therefore, the typical way to use these functions is to add them to the lisp file containing the code to be debugged, e.g., `myfile.lisp`, and then to enable debug mode in that file, e.g., through the strategy `(enable-debug-mode "myfile.lisp")`. To discourage having debug code in the PVS binaries, function calls `(extra-debug-println ..)` or `(extra-debug-println ..)` will **fail** at compilation time. To avoid the compilation error, a conditional compilation directive `#+extra-debug` could be use, e.g.,
+These functions will fail if debug mode is not enabled. Therefore, the
+typical way to use these functions is to add them to the lisp file
+containing the code to be debugged, e.g., `myfile.lisp`, and then to
+enable debug mode in that file through the strategy
+`(enable-debug-mode "myfile.lisp")`. To discourage having debug code
+in the PVS binaries, function calls `(extra-debug-println ..)` or
+`(extra-debug-println ..)` will **fail** at compilation time. To avoid
+the compilation error, a conditional compilation directive
+`#+extra-debug` could be use, e.g.,
+
 
 ```
 #+extra-debug (extra-debug-println ...)
 ```
 
-The function `(extra-debug-println ..)` prints one line of information. The function `(extra-debug-print ..)` is more verbose, e.g., it prints back traces up to a user-specified number of frames, and allows a developer to suppress messages depending on the scope where the call appears.
+The function `(extra-debug-println ..)` prints one line of
+information. The function `(extra-debug-print ..)` also prints back
+the stack of frames up to a user-specified number of frames, and
+allows a developer to suppress messages via programmatic high-level
+functions.
+The function  `(extra-debug-break ..)` behaves exactly as
+`(extra-debug-print ..)` but breaks into the debugger before 
+it ends its execution.
 
 ### Use Case
 
@@ -93,7 +111,7 @@ Rule? (mystrat -1)
 ...
 ```
 
-The function `extra-debug-print` is more verbose than `extra-debug-println` and allows for more control on the information that is printed based on the scope where `(extra-debug-print ...)` is called. Let's assume that `mystrat` calls functions `f` and `g`, both of which call function `h`, and all functions `f`, `g`, and `h` have calls to `extra-debug-print`, e.g.,
+The function `extra-debug-print` is more verbose than `extra-debug-println` and allows for more control on the information that is printed. Let's assume that `mystrat` calls functions `f` and `g`, both of which call function `h`, and all functions `f`, `g`, and `h` have calls to `extra-debug-print`, e.g.,
 
 ```
 (defstep mystrat (fnum)
@@ -142,29 +160,39 @@ Rule? (mystrat -1)
 [*extra-debug-println*] **HERE**, FNUM = -1, (> FNUM 0) = NIL
 
 [*extra-debug-print*
+** G **
+  X = -1
+  
 [TOP FRAME] (G -1)
 
 [TOP STRAT] #<strat: (GG -1)>
 [STRAT  -1] #<strat: (MYSTRAT -1)>
-
-** G **
-  X = -1
 *extra-debug-print*]
 
 [*extra-debug-print*
+** H **
+  X = -1
 [TOP FRAME] (H -1)
 
 [TOP STRAT] #<strat: (GG -1)>
 [STRAT  -1] #<strat: (MYSTRAT -1)>
-
-** H **
-  X = -1
 *extra-debug-print*]
 ...
 ```
 
-By default, `extra-debug-print` prints the frame on the top of the
-execution stack and the stack of strategies. The number of frames to be printed is set by the strategy `(set-debug-mode :frames <n>)`, where `<n>` is the number of frames to be printed. The value 0 suppresses this information. Furthermore, the option `:suppress <supp>`, where `<supp>` is a predicate on a list of frames used to filter the information that is printed. This predicate could be a Lisp function defined by the user, but several pre-defined predicates are already available. For example, to only enable printing from function `h`, we could do
+By default, `extra-debug-print` prints the frame at the top of the
+execution stack and the stack of strategies. The number of frames to
+be printed is set by the strategy `(set-debug-mode :frames <n>)`,
+where `<n>` is the number of frames to be printed. The value 0
+suppresses this information. 
+
+The command `set-debug-mode` also accepts 
+the option `:suppress <supp>`, where `<supp>` is a predicate on a list of frames used to
+filter the information that is printed. This predicate could be a Lisp
+function defined by the user, but several pre-defined predicates are
+already available. For example, to only enable printing from function
+`h`, we could do
+
 
 ```
 Rule? (set-debug-mode :suppress (suppress-but "h"))
@@ -179,13 +207,13 @@ Rule? (mystrat 1)
 [*extra-debug-println*] **HERE**, FNUM = 1, (> FNUM 0) = T
 
 [*extra-debug-print*
+** H **
+  X = 1
+  
 [TOP FRAME] (H 1)
 
 [TOP STRAT] #<strat: (FF 1)>
 [STRAT  -1] #<strat: (MYSTRAT 1)>
-
-** H **
-  X = 1
 *extra-debug-print*]
 ...
 
@@ -193,18 +221,29 @@ Rule? (mystrat -1)
 [*extra-debug-println*] **HERE**, FNUM = -1, (> FNUM 0) = NIL
 
 [*extra-debug-print*
+** H **
+  X = -1
+  
 [TOP FRAME] (H -1)
 
 [TOP STRAT] #<strat: (GG -1)>
 [STRAT  -1] #<strat: (MYSTRAT -1)>
-
-** H **
-  X = -1
 *extra-debug-print*]
 ...
 ```
 
-Notice that only calls to `(extra-debug-print ...)` are affected by this setting. Let's assume that we want to only enable printing of `h`, when it appears in the scope of `f`. To do this, we need to provide a maximum depth for the search, i.e., the number of frames counting from the top one. In this example, we will use 2 frames. As filtering function, we could use
+Only calls to `(extra-debug-print ...)` and `(extra-debug-break ...)`
+are affected by the `:suppress` setting. The function
+`(extra-debug-println ...)`always
+prints information.
+
+Now, let's assume that we want to only enable printing of `h`, when it
+appears in the scope of `f`. To do this, we need to provide a maximum
+depth for the search, i.e., the number of stack frames counting from
+the top. 
+In this example, we will use 2 frames. As filtering function, we
+could use
+
 
 ```
 Rule? (set-debug-mode :frames 2 :suppress (suppress-not (suppress-and (suppress-from "h") (suppress-in-scope "f"))))
@@ -216,6 +255,8 @@ Rule? (mystrat 1)
 [*extra-debug-println*] **HERE**, FNUM = 1, (> FNUM 0) = T
 
 [*extra-debug-print*
+** H **
+  X = 1
 [TOP FRAME] (H 1)
 [FRAME  -1] (SB-INT:SIMPLE-EVAL-IN-LEXENV
              (LET* ((FNUM '1))
@@ -224,9 +265,6 @@ Rule? (mystrat 1)
 
 [TOP STRAT] #<strat: (FF 1)>
 [STRAT  -1] #<strat: (MYSTRAT 1)>
-
-** H **
-  X = 1
 *extra-debug-print*]
 ...
 
@@ -242,20 +280,34 @@ In the case of `(mystrat -1)`, printing from `h` is disabled since in that insta
 
 Other pre-defined suppress printing functions are:
 
-* `suppress-all`: Suppresses all printing
-* `suppress-none`: Suppresses nothing
-* `(suppress-from f1 .. fn)`: Suppresses printing from `f1`,.., and `fn`
-* `(suppress-but f1 .. fn)`: Suppresses printing except from `f1`,.., or `fn`
-* `(suppress-in-scope f1 .. fn)`: Suppresses printing within the scope of `f1`,.., and `fn` up to `*extra-debug-frames*`
-* `(suppress-out-scope f1 .. fn)`: Suppresses printing except outside the scope of `f1`,.., or `fn` up to `*extra-debug-frames*` 
-* `(suppress-from-strat s1 .. sn)`: Suppresses printing from strategies `s1`,.., and `sn`
-* `(suppress-but-strat s1 .. sn)`: Suppresses printing except from strategies `s1`,.., or `sn`
-* `(suppress-in-scope-strat s1 .. sn)`: Suppresses printing within the scope of strategies `s1`,.., and `sn`
-* `(suppress-out-scope-strat s1 .. sn)`: Suppresses printing outside the scope of strategies `s1`,.., or `sn`
+* `suppress-all`: Suppress all printing
+* `suppress-none`: Suppress nothing
+* `(suppress-from f1 .. fn)`: Suppress printing from `f1`,.., and `fn`
+* `(suppress-but f1 .. fn)`: Suppress printing except from `f1`,.., or `fn`
+* `(suppress-in-scope f1 .. fn)`: Suppress printing within the scope of `f1`,.., and `fn` up to `*extra-debug-frames*`
+* `(suppress-out-scope f1 .. fn)`: Suppress printing except outside the scope of `f1`,.., or `fn` up to `*extra-debug-frames*` 
+* `(suppress-from-strat s1 .. sn)`: Suppress printing from strategies `s1`,.., and `sn`
+* `(suppress-but-strat s1 .. sn)`: Suppress printing except from strategies `s1`,.., or `sn`
+* `(suppress-in-scope-strat s1 .. sn)`: Suppress printing within the scope of strategies `s1`,.., and `sn`
+* `(suppress-out-scope-strat s1 .. sn)`: Suppress printing outside the scope of strategies `s1`,.., or `sn`
+* `(suppress-when expr)`: Suppress when Lisp expression `expr` holds
+* `(suppress-unless expr)`: Suppress unless lisp expression `expr` holds
 
 Furthermore, suppress predicates can be combined using `(suppress-and <supp1> .. <suppn>)`, `(suppress-or <supp1> .. <suppn>)` and `(suppress-not <supp>)`. If provided by the developer, a suppress predicate should be a Lisp function on a list of current frames, up to `*extra-debug-frames*`, used to suppress printing of `(extra-debug-print ...)`.
 
-The options `:frames` and `:suppress` can be dynamically changed using the strategy `(set-debug-mode :frames <frames> :suppress <suppress-function>)` and don't require loading files afterwards.
+The options `:frames` and `:suppress` can be dynamically changed using
+the strategy `(set-debug-mode :frames <frames> :suppress
+<suppress-function>)` and don't require loading files afterwards.
+
+### Technical Notes
+ * The stack of frames is provided by the SBCL function `(sb-debug:list-backtrace ...)`
+ * Glass-box strategies are inlined by the theorem prover, so they don't appear in
+   the global variable `*proof-strategy-stack*`, which is used by the functions `suppress-in-scope-strat` and
+   `suppress-out-scope-strat`. Therefore, if `STRAT` is a glass-box strategy,
+   `(suppress-in-scope-strat STRAT)` never holds and `(suppress-out-scope-strat STRAT)`
+   always holds.
+ * `EXPR` in `(suppress-when EXPR)` and `(suppress-unless EXPR)` can be an arbitrary lisp code
+   globally scoped, i.e., it can use global variables.
 
 ### Compilation Error
 
@@ -266,12 +318,14 @@ Rule? (mystrat 1)
 ...
 %%%
 %%% This code requires the feature :extra-debug. To avoid this error at compile time, 
-%%% use the conditional compilation directive #+extra-debug before (extra-debug-print ...) 
-%%% and (extra-debug-println ...).
+%%% use the conditional compilation directive #+extra-debug before (extra-debug-println ...) 
+%%% (extra-debug-print ...), and (extra-debug-break ...).
 %%%
 ```
 
-This behavior is intentional to discourage the presence of debug code in the code base. The error could be avoided by adding the compilation directive `#+extra-debug` before function calls to `(extra-debug-print ...)` and `(extra-debug-println ...)`, e.g.,
+This behavior is intentional to discourage the presence of debug code
+in the code base. The error could be avoided by adding the compilation
+directive `#+extra-debug` as indicated in the error message, e.g.,
 
 ```
  (let ((expr (extra-get-formula fnum))
