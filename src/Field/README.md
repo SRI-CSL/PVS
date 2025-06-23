@@ -53,8 +53,8 @@ the compilation error, a conditional compilation directive
 
 The function `(extra-debug-println ..)` prints one line of
 information. The function `(extra-debug-print ..)` also prints back
-the stack of frames up to a user-specified number of frames, and
-allows a developer to suppress messages via programmatic high-level
+the stack of execution frames up to a user-specified number of frames, and
+allows a user to suppress messages via programmatic high-level
 functions.
 The function  `(extra-debug-break ..)` behaves exactly as
 `(extra-debug-print ..)` but breaks into the debugger before 
@@ -184,15 +184,19 @@ By default, `extra-debug-print` prints the frame at the top of the
 execution stack and the stack of strategies. The number of frames to
 be printed is set by the strategy `(set-debug-mode :frames <n>)`,
 where `<n>` is the number of frames to be printed. The value 0
-suppresses this information. 
+suppresses this information and a negative value means all frames.
 
 The command `set-debug-mode` also accepts 
-the option `:suppress <supp>`, where `<supp>` is a predicate on a list of frames used to
-filter the information that is printed. This predicate could be a Lisp
-function defined by the user, but several pre-defined predicates are
+the option `:suppress <supp>`, where `<supp>` is a lambda function on
+an association list of tags and their respective values that is called
+by `(extra-debug-print ...)` and `(extra-debug-break ...)` to decide
+if their actions  should be suppressed or no. The association list has
+the tags `:frame-stack`, associated to the current stack of frames,
+and `:strategy-stack`,  associated to the curent stack of strategies,
+in addition to those defined by the user. This function could be a Lisp
+lambda expression defined by the user, but several pre-defined predicates are
 already available. For example, to only enable printing from function
-`h`, we could do
-
+`h`, we could write
 
 ```
 Rule? (set-debug-mode :suppress (suppress-but "h"))
@@ -238,12 +242,10 @@ are affected by the `:suppress` setting. The function
 prints information.
 
 Now, let's assume that we want to only enable printing of `h`, when it
-appears in the scope of `f`. To do this, we need to provide a maximum
-depth for the search, i.e., the number of stack frames counting from
-the top. 
-In this example, we will use 2 frames. As filtering function, we
-could use
-
+appears in the scope of `f`. The default depth for the search is 1,
+i.e., the number of stack frames counting from the top but we
+can change this value. In this example, we will use 2 frames.
+As filtering function, we could use
 
 ```
 Rule? (set-debug-mode :frames 2 :suppress (suppress-not (suppress-and (suppress-from "h") (suppress-in-scope "f"))))
@@ -276,6 +278,10 @@ Rule? (mystrat -1)
 
 In the case of `(mystrat -1)`, printing from `h` is disabled since in that instance `h` doesn't appear in the scope of `f`.
 
+The options `:frames` and `:suppress` can be dynamically changed using
+the strategy `(set-debug-mode :frames <frames> :suppress
+<suppress-function>)` and don't require loading files afterwards.
+
 ### Suppress Printing Functions
 
 Other pre-defined suppress printing functions are:
@@ -293,19 +299,20 @@ Other pre-defined suppress printing functions are:
 * `(suppress-when expr)`: Suppress when Lisp expression `expr` holds
 * `(suppress-unless expr)`: Suppress unless lisp expression `expr` holds
 
-Furthermore, suppress predicates can be combined using `(suppress-and <supp1> .. <suppn>)`, `(suppress-or <supp1> .. <suppn>)` and `(suppress-not <supp>)`. If provided by the developer, a suppress predicate should be a Lisp function on a list of current frames, up to `*extra-debug-frames*`, used to suppress printing of `(extra-debug-print ...)`.
-
-The options `:frames` and `:suppress` can be dynamically changed using
-the strategy `(set-debug-mode :frames <frames> :suppress
-<suppress-function>)` and don't require loading files afterwards.
+Furthermore, suppress predicates can be combined using `(suppress-and
+<supp1> .. <suppn>)`, `(suppress-or <supp1> .. <suppn>)` and
+`(suppress-not <supp>)`. The global variable `*extra-debug-suppress*`
+has the current suppress function, which can be combined to form a new one.
 
 ### Technical Notes
- * The stack of frames is provided by the SBCL function `(sb-debug:list-backtrace ...)`
- * Glass-box strategies are inlined by the theorem prover, so they don't appear in
-   the global variable `*proof-strategy-stack*`, which is used by the functions `suppress-in-scope-strat` and
-   `suppress-out-scope-strat`. Therefore, if `STRAT` is a glass-box strategy,
-   `(suppress-in-scope-strat STRAT)` never holds and `(suppress-out-scope-strat STRAT)`
-   always holds.
+* The stack of frames is provided by the SBCL function `(sb-debug:list-backtrace ...)`,
+   Functions that are inlined by the compiler don't appear in the stack. Therefore, if `FUN`
+   is the name of a function inlined by the compiler, `(suppress-in-scope FUN` never holds and
+   `(suppress-out-scope FUN)` always holds.
+* The stack of strategies is provided by PVS global variable `*proof-strategy-stack*`.
+   Glass-box strategies are inlined by the theorem prover, so they don't appear in
+   the stack. Therefore, if `STRAT` is the name a glass-box strategy, `(suppress-in-scope-strat STRAT)`
+   never holds and `(suppress-out-scope-strat STRAT)` always holds.
  * `EXPR` in `(suppress-when EXPR)` and `(suppress-unless EXPR)` can be an arbitrary lisp code
    globally scoped, i.e., it can use global variables.
 
