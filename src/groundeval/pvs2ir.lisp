@@ -2053,7 +2053,10 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			    collect (if (formal-const-decl? formal)
 					(pvs2ir-expr-type (expr actual) bindings) ; was (pvs2ir-type (type (expr..)))
 					*type-actual-ir-name*)))
-		     (op-domain-vars (mk-variables-from-types (types (domain (find-supertype (type op)))) bindings))
+		     (op-domain-vars
+		      (if (singleton? args)
+			  (mk-variables-from-types (list (domain (find-supertype (type op)))) bindings)
+			  (mk-variables-from-types (types (domain (find-supertype (type op)))) bindings)))
 		     ;; (let ((ir-args (ir-args (ir (eval-info opdecl)))))
 		     ;; 		    (if ir-args
 		     ;; 			(loop for ir-var in ir-args
@@ -2277,9 +2280,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ;;Need to handle bindings in the expected.  
 (defmethod pvs2ir* ((expr tuple-expr) bindings expected)
   (let* ((expressions (exprs expr))
-	 (ir-assignments (pvs2ir*  expressions bindings (and expected (types (find-supertype expected)))))
+	 (expected-types (and expected (types (find-supertype expected))))
+	 (field-types (or expected-types
+			  (mapcar #'type expressions)))
+	 (ir-assignments (pvs2ir*  expressions bindings field-types))
 	 (ir-field-vars (new-irvars (length expressions)))
-	 (ir-field-types (pvs2ir-type (mapcar #'type expressions) bindings))
+	 (ir-field-types (pvs2ir-type field-types bindings))
 	 (ir-field-var-types (mk-vartype-list  ir-field-vars
 					       ir-field-types))
 	 (ir-fields (loop for i from 1 to (length expressions)
