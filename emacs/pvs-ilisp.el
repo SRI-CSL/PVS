@@ -1394,6 +1394,7 @@ is emptied."
 	  (message "Resetting PVS")
 	  (when pvs-in-checker
 	    (comint-simple-send (ilisp-process) (format "(quit)y\nno")))
+	  (setq pvs-in-checker nil)
 	  ;; (pvs-exit-debugger)
  	  (sleep-for 1)
 	  (interrupt-process (ilisp-process))

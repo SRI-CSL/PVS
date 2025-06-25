@@ -4337,8 +4337,11 @@ generated")
 
 (defmethod acc-reduce-selection* ((te subtype) red fname fdom adt)
   (if (finite-set-type? te)
-      (let ((nfun (acc-reduce-selection*
-		   (domain (supertype te)) red fname fdom adt)))
+      (let* ((nfdom (if (finite-set-type? fdom)
+			(domain (supertype fdom))
+			fdom))
+	     (nfun (acc-reduce-selection*
+		    (domain (supertype te)) red fname nfdom adt)))
 	(if (identity-fun? nfun)
 	    (mk-identity-fun te)
 	    (mk-application '|image| nfun)))

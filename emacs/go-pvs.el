@@ -1,4 +1,4 @@
-;;;
+;;;  -*- lexical-binding: t; -*-
 ;;; go-pvs.el dave_sc 12/1/98
 ;;;
 ;;; Try to determine the version of Emacs being run, setup the load-path,
