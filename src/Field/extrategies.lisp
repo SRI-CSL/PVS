@@ -1405,7 +1405,7 @@ use.")
 	       (enabled-delete-hide (cdr bindings) dlab hlab (cons lab nlab)))))
     (list dlab hlab nlab)))
 
-(defhelper with-fresh-labels__ (bindings thn steps)
+(defhelper with-fresh-labels__ (bindings thn steps debug)
   (when steps
     (let ((bindings (enlist-bindings bindings))
 	  ;; Bind variables to new labels
@@ -1453,13 +1453,13 @@ use.")
 			     (touch (delabel ,nlab))
 			     (touch (delabel ,hlab :hide? t)))))
 	  #+extra-debug
-	  (dummy (extra-debug-print step))
+	  (dummy (when debug (extra-debug-print step)))
 	  )
       step))
   "[Extrategies] Internal strategy." "")
 
-(defstrat with-fresh-labels (bindings &rest steps)
-  (else (with-fresh-labels__$ bindings then steps) (skip))
+(defstrat with-fresh-labels (bindings &key debug &rest steps)
+  (else (with-fresh-labels__$ bindings then steps debug) (skip))
   "[Extrategies] Creates fresh labels and binds them to formulas
 specified in BINDINGS. Then, sequentially applies STEPS to all
 branches. All created labels are removed before the strategy exits.
@@ -1498,10 +1498,14 @@ For example,
 creates fresh labels denoted l, m, and n. The strategy applies the
 following commands in sequence: (label l 1) (label m -1) (label n -3)
 (tccs-formula m) (inst? l :where m) (hide n). Finally, it removes all
-added TCCs and labels.")
+added TCCs and labels.
 
-(defstrat with-fresh-labels@ (bindings &rest steps)
-  (else (with-fresh-labels__$ bindings then@ steps) (skip))
+TECHNICAL NOTE:
+The optional key debug requires debug mode enabled.
+")
+
+(defstrat with-fresh-labels@ (bindings &key debug &rest steps)
+  (else (with-fresh-labels__$ bindings then@ steps debug) (skip))
   "[Extrategies] Creates fresh labels and binds them to formulas
 specified in BINDINGS. Then, sequentially applies STEPS to the main
 branch. Created labels are removed before ending. BINDINGS are
@@ -1511,7 +1515,7 @@ specified as in WITH-FRESH-LABELS.")
   (mapstep #'(lambda(x)`(expand ,(car x) :assert? none)) vnms)
   "[Extrategies] Internal strategy." "")
 
-(defhelper with-fresh-names__ (bindings thn steps)
+(defhelper with-fresh-names__ (bindings thn steps debug)
   (when steps
     (let ((bindings (enlist-bindings bindings))
 	  ;; Get list of expressions (same length as bindings)
@@ -1594,13 +1598,13 @@ specified as in WITH-FRESH-LABELS.")
 			(delete ,lbtccs)
 			(touch (delabel ,allbs)))))
 	  #+extra-debug
-	  (dummy (extra-debug-print step)))
+	  (dummy (when debug (extra-debug-print step))))
       step))
   "[Extrategies] Internal strategy." "")
 
-(defstrat with-fresh-names (bindings &rest steps)
+(defstrat with-fresh-names (bindings &key debug &rest steps)
   (else
-   (with-fresh-names__$ bindings then steps) (skip)) 
+   (with-fresh-names__$ bindings then steps debug) (skip))
   "[Extrategies] Creates fresh names and binds them to expressions
  specified in BINDINGS.  Then, sequentially applies STEPS to all
  branches. All created names are expanded before the strategy exits.
@@ -1642,10 +1646,14 @@ creates fresh names e and f, and issues the proof commands (name e
 \"x+2\"), (name f \"sqrt(x)\"), and (tccs-expression \"sqrt(x)\").
 Then, the strategy instantiates formula 1 with the expressions denoted
 by e and f. Finally, it expands names e and f and removes all added
-hypotheses and labels.")
+hypotheses and labels.
 
-(defstrat with-fresh-names@ (bindings &rest steps)
-  (else (with-fresh-names__$ bindings then@ steps) (skip))
+TECHNICAL NOTE:
+The optional key debug requires debug mode enabled.
+")
+
+(defstrat with-fresh-names@ (bindings &key debug &rest steps)
+  (else (with-fresh-names__$ bindings then@ steps debug) (skip))
   "[Extrategies] Creates fresh names and binds them to expressions
 specified in BINDINGS.  Then, sequentially applies STEPS to the main
 branch. BINDINGS are specified as in WITH-FRESH-NAMES.")
