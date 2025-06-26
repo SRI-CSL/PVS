@@ -707,7 +707,7 @@
 	    ((decimal? expr)
 	     (/ (number (args1 expr)) (number (args2 expr))))
 	    ((not shallow?)
-	     (let ((val (evalexpr expr)))
+	     (let ((val (evalexpr expr nil nil t)))
 	       (when val
 		 (extra-get-number-from-expr val t))))))))
 
@@ -859,7 +859,7 @@
     (if (number-expr? expr) expr
       (let ((val (cdr (assoc expr *extra-evalexprs* :test #'compare*))))
 	(or val
-	    (let ((exval (evalexpr expr)))
+	    (let ((exval (evalexpr expr nil nil t)))
 	      (when exval 
 		(unless (or (compare* expr exval)
 			    (same-neg fmexpr exval)
