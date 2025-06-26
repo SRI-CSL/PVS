@@ -3208,6 +3208,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 ;; Do not set them unless you know what you are doing
 (defvar *extra-debug-frame-count* 1) ;; Number of frames to be displayed
 (defvar *extra-debug-files* nil)     ;; Files that have been loaded
+(defvar *extra-debug-verbose* nil)   ;; Verbose mode
 
 ;; The following are examples of functions that can be used for *extra-debug-suppress*
 
@@ -3221,7 +3222,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	   (format nil "~a" (car l))))))
 
 ;; Suppress printing from funcnames
-(defun suppress-from (&rest funcnames)
+(defun suppress-from-quoted (funcnames)
   (let ((fun
 	 (lambda (tags)
 	   (let* ((frames (cdr (assoc :frame-stack tags)))
@@ -3235,8 +3236,11 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    (format nil "never")))
     fun))
 
+(defmacro suppress-from (&rest funcnames)
+  `(suppress-from-quoted ',funcnames))
+
 ;; Suppress printing but funcnames
-(defun suppress-but (&rest funcnames)
+(defun suppress-but-quoted (funcnames)
   (let ((fun
 	 (lambda (tags)
 	   (let* ((frames (cdr (assoc :frame-stack tags)))
@@ -3251,6 +3255,9 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    (format nil "always")))
     fun))
 
+(defmacro suppress-but (&rest funcnames)
+  `(suppress-but-quoted ',funcnames))
+
 ;; In scope means that a call to name appears in the stack frame.
 (defun extra-in-scope (name frame)
   (when (consp frame)
@@ -3262,7 +3269,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    (extra-in-scope name (cdr frame)))))))
 
 ;; Suppress printing within the scope of funcnames (up to depth *extra-debug-frame-count*)
-(defun suppress-in-scope (&rest funcnames)
+(defun suppress-in-scope-quoted (funcnames)
   (let ((fun
 	 (lambda (tags)
 	   (let ((frames (cdr (assoc :frame-stack tags))))
@@ -3272,13 +3279,16 @@ when the list of FNUMS is over. Options are as in eval-formula."
 			 thereis (extra-in-scope name frame)))))))
     (setf (documentation fun 'function)
 	  (if funcnames
-	      (format nil "within the scope of ~a up to ~a"
+	      (format nil "within the scope of ~a up to ~a frame"
 		      (format-list-andor funcnames "and") *extra-debug-frame-count*)
 	    (format nil "never")))
     fun))
 
+(defmacro suppress-in-scope (&rest funcnames)
+  `(suppress-in-scope-quoted ',funcnames))
+
 ;; Suppress printing not in the scope of funcnames (up to depth *extra-debug-frame-count*)
-(defun suppress-out-scope (&rest funcnames)
+(defun suppress-out-scope-quoted (funcnames)
   (let ((fun
 	 (lambda (tags)
 	   (let ((frames (cdr (assoc :frame-stack tags))))
@@ -3288,13 +3298,16 @@ when the list of FNUMS is over. Options are as in eval-formula."
 			 thereis (extra-in-scope name frame)))))))
     (setf (documentation fun 'function)
 	  (if funcnames
-	      (format nil "outside the scope of ~a up to ~a"
+	      (format nil "outside the scope of ~a up to ~a frame"
 		      (format-list-andor funcnames "or") *extra-debug-frame-count*)
 	    (format nil "always")))
     fun))
 
+(defmacro suppress-out-scope (&rest funcnames)
+  `(suppress-out-scope-quoted ',funcnames))
+
 ;; Suppress printing from stratnames
-(defun suppress-from-strat (&rest stratnames)
+(defun suppress-from-strat-quoted (stratnames)
   (let ((fun
 	 (lambda (tags)
 	   (let* ((frames (cdr (assoc :strategy-stack tags)))
@@ -3309,8 +3322,11 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    (format nil "never")))
     fun))
 
+(defmacro suppress-from-strat (&rest stratnames)
+  `(suppress-from-strat-quoted ',stratnames))
+
 ;; Suppress printing but from statnames
-(defun suppress-but-strat (&rest stratnames)
+(defun suppress-but-strat-quoted (stratnames)
   (let ((fun
 	 (lambda (tags)
 	   (let* ((frames (cdr (assoc :strategy-stack tags)))
@@ -3325,8 +3341,11 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    (format nil "always")))
     fun))
 
+(defmacro suppress-but-strat (&rest stratnames)
+  `(suppress-but-strat-quoted ',stratnames))
+
 ;; Suppress printing within the scope of stratnames
-(defun suppress-in-scope-strat (&rest stratnames)
+(defun suppress-in-scope-strat-quoted (stratnames)
   (let ((fun
 	 (lambda (tags)
 	   (let ((frames (mapcar #'topstep (cdr (assoc :strategy-stack tags)))))
@@ -3342,8 +3361,11 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	    (format nil "never")))
     fun))
 
+(defmacro suppress-in-scope-strat (&rest stratnames)
+  `(suppress-in-scope-strat-quoted ',stratnames))
+
 ;; Suppress printing not in the scope of stratnames
-(defun suppress-out-scope-strat (&rest stratnames)
+(defun suppress-out-scope-strat-quoted (stratnames)
   (let ((fun
 	 (lambda (tags)
 	   (let ((frames (mapcar #'topstep (cdr (assoc :strategy-stack tags)))))
@@ -3358,6 +3380,9 @@ when the list of FNUMS is over. Options are as in eval-formula."
 		      (format-list-andor stratnames "or"))
 	    (format nil "always")))
     fun))
+
+(defmacro suppress-out-scope-strat (&rest stratnames)
+  `(suppress-out-scope-strat-quoted ',stratnames))
 
 ;; Suppress all printing
 (setq suppress-all (suppress-but))
@@ -3408,48 +3433,78 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	  (format nil "(except ~a)" doc))
     fun))
 
-;; Suppress printing when expr holds
-(defun suppress-when (expr)
-  (let* ((e   expr)
-	 (fun (lambda (tags)
-		(declare (ignore tags))
-		(handler-case (eval e)
-		  (unbound-variable
-		   (c)
-		   (format t "[suppress-when] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e))))))
-    (setf (documentation fun 'function)
-	  (format nil "when expression ~a holds" e))
-    fun))
+(defun suppress-make-let (tags)
+  (loop for tag in tags
+	collect (list (intern (string-upcase (format nil "~a" (car tag))) :pvs)
+		      (if (atom (cdr tag))
+			  (cdr tag)
+			(list 'quote (cdr tag))))))
 
 ;; Suppress printing when expr holds
-(defun suppress-unless (expr)
-  (let* ((e   expr)
-	 (fun (lambda (tags)
-		(declare (ignore tags))
-		(handler-case (not (eval e))
-		  (unbound-variable
-		   (c)
-		   (not (format t "[suppress-unless] Variable ~A in ~A must be a global variable~%" (cell-error-name c) e)))))))
+(defun suppress-when-quoted (expr)
+  (let ((fun (lambda (tags)
+	       (let ((e `(let ,(suppress-make-let tags) ,expr)))
+		 (handler-case (eval e)
+		   (unbound-variable
+		    (c)
+		    (when *extra-debug-verbose*
+		      (format t "[suppress-when] Variable ~a is unbound in ~a. Expression assumed not to hold~%" (cell-error-name c) expr))))))))
     (setf (documentation fun 'function)
-	  (format nil "unless expression ~a holds" e))
+	  (format nil "when expression ~a holds" expr))
     fun))
 
-;; Format data for debug printing. Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or
-;; a lisp EXPR.  For latter post-proccesing, this function returns a list ( ... <msgi> <vali> ... ) for each input in data.
-;; If the i-th data input is a string, <msgi> is the string and <vali> is NIL. Otherwise, if the i-th data input is formatted string, <msgi> is
-;; the string resulting from applying the Lisp function format to <FMSTRING> and <e1> ... <en>, and <vali> is NIL. Otherwise, when the
-;; i-th data input is a lisp expression EXPR, <msgi> is the string representation of EXPR and <vali> is its value.
-(defmacro extra-debug-data (data)
+(defmacro suppress-when (expr)
+  `(suppress-when-quoted ',expr))
+
+;; Suppress printing when expr holds
+(defun suppress-unless-quoted (expr)
+  (let ((fun (lambda (tags)
+	       (let ((e `(let ,(suppress-make-let tags) ,expr)))
+		 (handler-case (not (eval e))
+		   (unbound-variable
+		    (c)
+		    (not
+		     (when *extra-debug-verbose*
+		       (format t "[suppress-unless] Variable ~a is unbound in ~a. Expression assummed not to hold~%" (cell-error-name c) expr)))))))))
+    (setf (documentation fun 'function)
+	  (format nil "unless expression ~a holds" expr))
+    fun))
+
+(defmacro suppress-unless (expr)
+  `(suppress-unless-quoted ',expr))
+
+(defun extra-str-but-atom (a)
+  (if (atom a) a (format nil "~a" a)))
+
+;; Format data for debug printing. Data is a list of the form ( ... [ <stri> | <expri> | <fmtstri> | <tagi> <expri> ] ...), where
+;; <stri> and <expri> are a string and a Lisp expression, respectively. A formated string <fmstri> hast the form
+;; (:fmt FMTSTRING <e1 ... en>).  A <tagi> is a Lisp keyword, i.e., a symbol prefixed with a colon.
+;; For latter post-processing, this function returns a list ( ... <msgi> <vali> ... ) for each <stri>, <expri>, and <fmtstri> in data.
+;; If the i-th input is a string <stri>, <msgi> is the string and <vali> is NIL. If the i-th data input is formatted string, <msgi> is
+;; the evaluation of (format nil FMSTRING <e1> ... <en>) and <vali> is NIL. Otherwise, when the i-th input is a Lisp expression <expri>,
+;; <msgi> is the string representation of <expri> and <vali> is the evaluation of (list <expri>). If <tagi> is provided, the <msgi> is
+;; <tagi> instead of the string representation of <expri>.
+(defmacro extra-debug-data (data &optional tag)
   (when data
     (let ((quode `,(car data)))
       (cond ((stringp quode)
-	     `(cons (format nil "~a" ,(car data))
-		    (cons nil (extra-debug-data ,(cdr data)))))
+	     (if tag
+		 `(cons ,tag
+			(cons (list (format nil "~a" ,(car data)))
+			      (extra-debug-data ,(cdr data))))
+	       `(cons (extra-str-but-atom ,(car data))
+		    (cons nil (extra-debug-data ,(cdr data))))))
 	    ((and (listp quode) (eq (car quode) ':fmt))
-	     `(cons (format nil ,(cadr (car data)) ,@(cddr (car data)))
-		    (cons nil (extra-debug-data ,(cdr data)))))
-	    (t `(cons (format nil "~a" ',(car data))
-		      (cons (format nil "~s" ,(car data))
+	     (if tag
+		 `(cons ,tag
+			(cons (list (format nil ,(cadr (car data)) ,@(cddr (car data))))
+			      (extra-debug-data ,(cdr data))))
+	       `(cons (format nil ,(cadr (car data)) ,@(cddr (car data)))
+		      (cons nil (extra-debug-data ,(cdr data))))))
+	    ((keywordp quode)
+	     `(extra-debug-data ,(cdr data) ,quode))
+	    (t `(cons (or ,tag (extra-str-but-atom ',(car data)))
+		      (cons (list ,(car data))
 			    (extra-debug-data ,(cdr data)))))))))
 
 (defparameter *debug-fail-msg* "
@@ -3478,11 +3533,20 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	      (car stack)
 	      nfs))))
 
+
+;; Add data (from extra-debug-data) to association list al
+(defun extra-tag-list (al data)
+     (if data
+	 (let ((tag (car data))
+	       (val (caadr data)))
+	   (extra-tag-list (if (symbolp tag) (acons tag val al) al) (cddr data)))
+       al))
+
 ;; This function prints debugging data. Data is a list of either a string, a formatted string of the
-;; form (:fmt <FMTSTRING> <e1 ... en>), or a lisp EXPR. Each input in data will be printed in one line.
+;; form (:fmt <FMTSTRING> <e1 ... en>), or a Lisp EXPR. Each input in data will be printed in one line.
 ;; If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
 ;; it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
-;; when the i-th data input is a lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
+;; when the i-th data input is a Lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
 ;; is the evaluation of <expr>. In addition, this function will print backtrace frames (according to
 ;; global variable *extra-debug-frame-count* and status of strategies stack at the point where the functions is
 ;; called. Compiling a call of this function through (extra-set-debug-mode ...) without enabling debug mode
@@ -3492,20 +3556,24 @@ when the list of FNUMS is over. Options are as in eval-formula."
 (defmacro extra-debug-aux (mssg data &optional break)
   (unless (member :extra-debug *features*)
     (error *debug-fail-msg*))
-  (let ((framesvar  (gensym)))
+  (let ((framesvar  (gensym))
+	(datavar    (gensym)))
     `(let ((,framesvar
 	    #+sbcl
 	    (if (>= *extra-debug-frame-count* 0)
 		(sb-debug:list-backtrace :method-frame-style :minimal :count *extra-debug-frame-count*)
-	      (sb-debug:list-backtrace :method-frame-style :minimal))))
+	      (sb-debug:list-backtrace :method-frame-style :minimal)))
+	   (,datavar (extra-debug-data ,data)))
        (unless (and *extra-debug-suppress*
-		    (funcall *extra-debug-suppress*
-			     (pairlis (list :frame-stack :strategy-stack) (list ,framesvar *proof-strategy-stack*))))
-	 (format t "~%[~a~%~{~*~:[~;  ~]~2:*~a~@[ = ~a~]~%~}~@[~a~]~@[~a~]~a]~%"
+		    (funcall
+		     *extra-debug-suppress*
+		     (extra-tag-list (pairlis (list :frame-stack :strategy-stack) (list ,framesvar *proof-strategy-stack*))
+				     ,datavar)))
+	 (format t "~%[~a~%~{~*~:[~;  ~]~2:*~a~@[ = ~{~s~}~]~%~}~@[~a~]~@[~a~]~a]~%"
 		 ,mssg
-		 (extra-debug-data ,data)
-		 (extra-frames-msg ,framesvar)
-		 (extra-strat-stack-msg *proof-strategy-stack*)
+		 ,datavar
+		 (when *extra-debug-verbose* (extra-frames-msg ,framesvar))
+		 (when *extra-debug-verbose* (extra-strat-stack-msg *proof-strategy-stack*))
 		 ,mssg)
 	 (when ,break (break))))))
 
@@ -3518,10 +3586,10 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 ;; This function prints debugging data. It is supposed to be a light weight version of extra-debug-print.
 ;; Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or
-;; a lisp EXPR. All input in data will be printed in one line.
+;; a Lisp EXPR. All input in data will be printed in one line.
 ;; If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
 ;; it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
-;; when the i-th data input is a lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
+;; when the i-th data input is a Lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
 ;; is the evaluation of <expr>. Compiling a call of this function without enabling debug mode through
 ;; (extra-set-debug-mode ...) results in a compilation error. This compilation error could be avoided by adding
 ;; the compilation directive #+extra-debug before the call to the function.
@@ -3529,17 +3597,18 @@ when the list of FNUMS is over. Options are as in eval-formula."
 (defmacro extra-debug-println (&rest data)
   (unless (member :extra-debug *features*)
     (error *debug-fail-msg*))
-  `(format t "~%[*extra-debug-println*] ~{~a~@[ = ~a~]~^, ~}~%"
+  `(format t "~%[*extra-debug-println*] ~{~a~@[ = ~{~s~}~]~^, ~}~%"
 	   (extra-debug-data ,data)))
 
 (defun extra-show-debug-mode (&optional notfound msgs)
    (format nil "~%*extra-debug-frame-count*: ~a~
                 ~%*extra-debug-files*: ~a~
+                ~%*extra-debug-verbose*: ~a~
               ~@[~%*extra-debug-suppress*: Printing and breaking are suppressed ~a~]~
                  ~%Debug mode: ~:[DISABLED~;ENABLED~]~%~
                 ~@[Files not found: ~{~a~^, ~}~%~]~
                 ~@[Error: ~{~a~^, ~}~%~]"
-	   *extra-debug-frame-count* *extra-debug-files*
+	   *extra-debug-frame-count* *extra-debug-files* *extra-debug-verbose*
 	   (documentation *extra-debug-suppress* 'function)
 	   (member :extra-debug *features*) notfound msgs))
 
@@ -3590,11 +3659,13 @@ when the list of FNUMS is over. Options are as in eval-formula."
     (cdr loaded-notfound)))
 
 ;; See set-debug mode
-(defun extra-set-debug-mode (&optional mode files frames suppress)
+(defun extra-set-debug-mode (&optional mode files frames (verbose 'none) suppress)
   (let ((msgs))
+    (unless (equal verbose 'none)
+      (setq *extra-debug-verbose* (when verbose t)))
     (cond ((eq mode 'toggle)
 	   (extra-set-debug-mode
-	    (if (member :extra-debug *features*) 'disable 'enable) files frames))
+	    (if (member :extra-debug *features*) 'disable 'enable) files frames verbose))
 	  ((eq mode 'enable)
 	   (pushnew :extra-debug *features*))
 	  ((eq mode 'disable)
@@ -3611,8 +3682,8 @@ when the list of FNUMS is over. Options are as in eval-formula."
     (let ((notfound (when files (extra-load-files files t))))
       (extra-show-debug-mode notfound msgs))))
 
-(defstrat set-debug-mode (&key mode frames suppress &rest files)
-  (let ((msg (extra-set-debug-mode mode files frames suppress)))
+(defstrat set-debug-mode (&key mode frames (verbose none) suppress &rest files)
+  (let ((msg (extra-set-debug-mode mode files frames verbose suppress)))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer enabling/disabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
@@ -3621,8 +3692,11 @@ When FILES is not null, set *extra-debug-files* to FILES.  MODE can be
   toggle : Switch from/to enabled/disabled debug modes. Update global variable *features*
   enable : Enable debug mode. Add extra-debug to *features*
   disable: Disable debug mode. Remove extra-debug to *features*
+When VERBOSE is set to nil, only print information that is explicitly specified in extra-debug-print and 
+extra-debug-break. Otherwise, print the stack of frames and the stack of strategies 
+as well. Do not change verbosity level when verbpse equals to NONE.
 FRAMES specifies the number of frames (function scopes) printed by the functions
-extra-debug-print and extra-debug-break. If FRAMES is negative, the full stack of frames is printed.
+extra-debug-print and extra-debug-break. A negative number species all the frames.
 SUPPRESS is a lambda function on an association list of tags and their respective values that is called 
 by (extra-debug-print ...) and (extra-debug-break ...) to decide if their actions should be suppressed or no. 
 The association list has the tags :frame-stack, associated to the current stack of frames, and 
@@ -3640,8 +3714,8 @@ the user. The following suppress functions are pre-defined.
  - (suppress-but-strat <s1> .. <sn>): Suppress printing except from strategies <s1>,.., or <sn>
  - (suppress-in-scope-strat <s1> .. <sn>): Suppress printing within the scope of strategies <s1>,.., and <sn>
  - (suppress-out-scope-strat <s1> .. <sn>): Suppress printing outside the scope of strategies <s1>,.., or <sn>
- - (suppress-when <expr>): Suppress when lisp expression expr holds
- - (suppress-unless <expr>): Suppress unless lisp expression expr holds
+ - (suppress-when <expr>): Suppress when Lisp expression <expr> holds
+ - (suppress-unless <expr>): Suppress unless Lisp expression <expr> holds
  - Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
    (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>). The global variable
    *extra-debug-suppress* has the current suppress function, which can be combined to form a new one.
@@ -3653,10 +3727,11 @@ TECHNICAL NOTES:
    (suppress-out-scope FUN) always holds.
  - The stack of strategies is provided by PVS global variable *proof-strategy-stack*. 
    Glass-box strategies are inlined by the theorem prover, so they don't appear in
-   the stack. Therefore, if STRAT is the name a glass-box strategy, (suppress-in-scope-strat STRAT) 
+   the strategy stack. Therefore, if STRAT is the name a glass-box strategy, (suppress-in-scope-strat STRAT)
    never holds and (suppress-out-scope-strat STRAT) always holds.
- - EXPR in (suppress-when EXPR) and (suppress-unless EXPR) can be an arbitrary lisp code
-   globally scoped, i.e., it can use global variables.
+ - EXPR in (suppress-when EXPR) and (suppress-unless EXPR) can be an arbitrary Lisp code including
+   global variables, variables that are printed by extra-debug-print and extra-debug-break, and tags
+   that are specified by those functions.
 ")
 
 (defstrat enable-debug-mode (&rest files)
