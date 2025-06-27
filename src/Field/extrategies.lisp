@@ -484,7 +484,7 @@
     (loop for i from 1 to n
 	  collect (freshname prefix))))
 
-;; (:fnum  <fnum1> ... <fnumn>) --> All the formulas in fnum1 ... fnumn
+;; (:fnums  <fnum1> ... <fnumn>) --> All the formulas in fnum1 ... fnumn
 ;; (:fnum  <fnum1> ... <fnumn>) --> The first formula in fnum1 ... fnumn
 ;; (:in <fnum1> ... <fnumn>) --> The intersection of formulas in fnum1 .. fnumn
 ;; (:diff <fnum> <fnum-but1> ... <fnum-butn>) --> Formulas in <fnum> but not in <fnum-but1> .. <fnum-butn>
@@ -505,8 +505,11 @@
 (defun extra-extract-fnums (fnums)
   (when fnums
     (if (consp fnums)
-	(cond ((equal (car fnums) :fnums) (extra-extract-fnums (cdr fnums)))
-	      ((equal (car fnums) :fnum) (enlist-it (car (extra-extract-fnums (cdr fnums)))))
+	(cond ((equal (car fnums) :fnums)
+	       (loop for fn in (cdr fnums)
+		     append (extra-extract-fnums fn)))
+	      ((equal (car fnums) :fnum)
+	       (enlist-it (car (extra-extract-fnums (cdr fnums)))))
 	      ((equal (car fnums) :in)
 	       (if (null (cddr fnums))
 		   (extra-extract-fnums (cadr fnums))
