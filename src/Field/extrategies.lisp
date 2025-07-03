@@ -1069,11 +1069,11 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 ;; This variable can be used to suppress printing by printf
 (defparameter *extra-suppress-printing* nil)
 
-;; By PVS suppresses printing inside defsteps (e.g., after the second step in a then).
+;; By default, PVS suppresses printing inside defstep (e.g., after the second step in a then).
 ;; In contrast to SKIP-MSG, PRINTF sets force-printing? to t by default.
-;; So, printf messages can be suppresed setting force-printing? to nil, or
-;; using the global variable *extra-suppress-printing*, as done for example by the
-;; strategy quitely.
+;; To suppress printf messages, set force-printing? to nil or
+;; set the global variable *extra-suppress-printing* to t, as done
+;; by the strategy (quitely ...).
 
 (defstrat printf (msg &key (force-printing? t) &rest args)
   (let ((quiet *extra-suppress-printing*))
