@@ -78,10 +78,10 @@
 	ilisp-arglist-command "(ILISP:ilisp-arglist \"%s\" \"%s\")"
 	ilisp-find-source-command "(ILISP:source-file \"%s\" \"%s\" \"%s\")"
 
-        comint-fix-error ":r abort"
-	comint-continue ":go"
-	ilisp-reset ":r toplevel"
-	comint-interrupt-regexp "interrupted at"
+        comint-fix-error "abort"
+	comint-continue "continue"
+	ilisp-reset "toplevel"
+	comint-interrupt-regexp "interrupt at"
 
         ;; Hardcoded binary extensions are undesirable.
         ;; Since ilisp-cl.el takes care of ilisp-binary-command and
