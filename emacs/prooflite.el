@@ -24,6 +24,7 @@
 (defpvs write-prooflite-scripts-to-file edit-proof ()
   "Write prooflite scripts for all the proof obligations in the current theory."
   (interactive)
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -45,6 +46,7 @@
 Installs ProofLite scripts in the current theory as default proofs except
 for formulas that are already proved."
   (interactive)
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -71,6 +73,7 @@ for formulas that are already proved."
 Installs the ProofLite script at the current cursor position unless 
 the formula is already proved."
   (interactive)
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -92,6 +95,7 @@ the formula is already proved."
 Installs ProofLite scripts of all formulas in the current theory as 
 default proofs even if formulas are already proved."
   (interactive)
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -118,6 +122,7 @@ default proofs even if formulas are already proved."
 Installs the ProofLite script at the current cursor position even if
 the formula is already proved."
   (interactive)
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -150,6 +155,7 @@ the formula is already proved."
 Inserts the ProofLite script of the default proof of the formula closest
 to (moving forward) the current cursor position into the working theory."
   (interactive)
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
@@ -193,6 +199,7 @@ to (moving forward) the current cursor position into the working theory."
 Displays the ProofLite script of the default proof of formula
 in the \"ProofLite\" buffer."
   (interactive (complete-formula-name))
+  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
