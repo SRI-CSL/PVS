@@ -225,6 +225,14 @@
   "Tries to quit from all existing proof sessions"
   (pvs:quit-all-proof-sessions))
 
+(defrequest pvsio-start (theory-ref)
+  "Starts PVSio on the given theory"
+  (pvs::pvsio-init theory-ref))
+
+(defrequest pvsio-eval (session-id expr kind)
+  "Evaluates EXPR in the pvsio session SESSION-ID"
+  (pvs::pvsio-eval session-id expr kind))
+
 (defrequest prove-formula (formula-ref &optional rerun?)
   "Starts interactive proof of a formula from a given theory.  First it
 determines the formula declaration, then creates a new proof-session,

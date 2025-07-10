@@ -184,13 +184,19 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 			  ;; (t (format t "Hit an error (use \"debug\" to debug):~%~a" c)))
 			  (t (format t "~a~%" c)))
 			(invoke-restart 'return-to-pvsio)))))
-	(evaluate-pvsio* input-stream))
+	(evaluate-pvsio* (read-pvsio input-stream)))
     (return-to-pvsio () nil))
   (evaluate-pvsio input-stream))
 
-(defun evaluate-pvsio* (input-stream)
-  (let* ((input      (read-pvsio input-stream))
-	 (pr-input   (pc-parse input 'expr))
+(defun evaluate-pvsio* (input &optional
+				(result-stream *standard-output*)
+				(pvsio-stdout *standard-output*)
+				(debug-stream *standard-output*)
+				(tcc-stream *standard-output*)
+				(error-stream *error-output*)
+				(interactive? t))
+  (handler-case
+      (let* ((pr-input   (pc-parse input 'expr))
 	 (*tccforms* nil)
 	 (tc-input   (pc-typecheck pr-input))
 	 (quiet      nil)
@@ -201,36 +207,48 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 				    nil "~a" 
 				    (print-type (type tc-input)))))))
     (when *evaluator-debug*
-      (format t "~%Expression ~a typechecks to: ~%" pr-input)
-      (show tc-input))
+      (format debug-stream "~%Expression ~a typechecks to: ~%" pr-input)
+      (let ((*standard-output* debug-stream))
+	(show tc-input)))
     (when *tccforms*
-      (format t "~%Typechecking ~a produced the following TCCs:~%" pr-input)
-      (evaluator-print-tccs *tccforms*)
+      (format tcc-stream "~%Typechecking ~a produced the following TCCs:~%" pr-input)
+      (let ((*standard-output* tcc-stream))
+	(evaluator-print-tccs *tccforms*))
       (format 
-	  t 
+	  tcc-stream 
 	  "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
       (clear-input)
-      (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
-	(assert (find-restart 'return-to-pvsio))
-	(invoke-restart 'return-to-pvsio)))
+      (if interactive?
+	  (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
+	    (assert (find-restart 'return-to-pvsio))
+	    (invoke-restart 'return-to-pvsio))
+	  (format tcc-stream "Warning: proceeding with evaluation~%")))
     (let ((cl-input (pvs2cl tc-input)))
       (when *evaluator-debug*
-	(format t "~%PVS expression ~a translates to the Common Lisp expression:~%~a~%" 
-	  tc-input cl-input))
-      (handler-case-pvsio-eval quiet
-       (let ((cl-eval
-	      (if *pvs-eval-do-timing*
-		  (time (eval cl-input))
-		(eval cl-input))))
-	 (when *evaluator-debug*
-	   (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
-	 (when (and *convert-back-to-pvs* (not isvoid))
-	   (let ((pvs-val (cl2pvs cl-eval (type tc-input))))
-	     (assert (expr? pvs-val))
-	     (format t *pvsio-promptout*)
-	     (force-output)
-	     (unparse pvs-val))))))
-    (format t "~%")))
+	(format debug-stream "~%PVS expression ~a translates to the Common Lisp expression:~%~a~%" 
+		tc-input cl-input))
+      
+	  (handler-case-pvsio-eval
+	   quiet
+	   (let ((cl-eval
+		  (if *pvs-eval-do-timing*
+		      (let ((*trace-output* debug-stream))
+			(time
+			 (let ((*standard-output* pvsio-stdout))
+			   (eval cl-input))))
+		      (let ((*standard-output* pvsio-stdout))
+			(eval cl-input)))))
+	     (when *evaluator-debug*
+	       (format debug-stream "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
+	     (when (and *convert-back-to-pvs* (not isvoid))
+	       (let ((pvs-val (cl2pvs cl-eval (type tc-input))))
+		 (assert (expr? pvs-val))
+		 (format t *pvsio-promptout*)
+		 (force-output)
+		 (format result-stream (unparse pvs-val :string t))))))
+	  (format result-stream  "~%")))
+    (pvs-error (condition) (format error-stream "~a" condition))
+    (error (condition) (format error-stream "~a" condition))))
 
 (defun read-pvsio (input-stream)
   (when (not input-stream)

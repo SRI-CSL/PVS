@@ -17,7 +17,7 @@
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "8.0 (August 4, 2023)")
+(defparameter *pvsio-version* "8.0 (July 10, 2025)")
 (defparameter *pvsio-imported* nil)
 (defparameter *pvsio-update-files* (make-hash-table :test #'equal))
 
