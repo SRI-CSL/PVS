@@ -97,8 +97,8 @@
 	  ;; will have jreq-id, jreq-method, and jreq-params
 	  ;; used in pvs-message, etc.
 	  (cond (pvs:*in-evaluator*
-		 (unless (string-equal (jreq-method req) "pvsio-command")
-		   (error "In PVSio, only pvsio-command requests are accepted"))
+		 (unless (string-equal (jreq-method req) "pvsio-eval")
+		   (error "In PVSio, only pvsio-command requests are accepted, but received ~a" (jreq-method req)))
 		 (apply reqfun (jreq-params req)))
 		;; Otherwise, expect a result and send it back
 		(t (let* ((result (apply reqfun (jreq-params req)))
