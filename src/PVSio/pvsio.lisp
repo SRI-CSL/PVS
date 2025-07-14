@@ -638,6 +638,7 @@ strings. "
 	      (*eval-untranslatable* nil)
 	      (*pvs2cl-mappings* nil)
 	      (*pvs-message-hook* (lambda (str) (format t "~a~%" str))))
+	  (load-pvs-attachments)
 	  (restart-case
 	      (evaluate-in-session sess)
 	    (pvsio-quit () (format t "Finished PVSio session ~a~%" session-id) nil)))
