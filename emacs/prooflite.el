@@ -19,21 +19,18 @@
 (declare-function current-line-number "pvs-mode")
 (declare-function pvs-send-and-wait "pvs-ilisp")
 (declare-function pvs-bury-output "pvs-ilisp")
-(declare-function confirm-not-in-checker "pvs-eval")
+(declare-function wait-for-typechecker "pvs-prover")
 
 (defpvs write-prooflite-scripts-to-file edit-proof ()
   "Write prooflite scripts for all the proof obligations in the current theory."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (let* ((theory (cadr (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (pvs-send-and-wait
        (format "(write-all-prooflite-scripts-to-file \"%s\")" theory)))
@@ -46,16 +43,13 @@
 Installs ProofLite scripts in the current theory as default proofs except
 for formulas that are already proved."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (let* ((theory (cadr (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (let((prl-filename (format "%s.prl" theory)))
 	(when (file-exists-p prl-filename)
@@ -73,7 +67,6 @@ for formulas that are already proved."
 Installs the ProofLite script at the current cursor position unless 
 the formula is already proved."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -81,9 +74,7 @@ the formula is already proved."
 	 (file (current-pvs-file))
 	 (line (current-line-number))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (pvs-send-and-wait 
        (format "(install-prooflite-scripts \"%s\" \"%s\" %s nil)"
@@ -95,16 +86,13 @@ the formula is already proved."
 Installs ProofLite scripts of all formulas in the current theory as 
 default proofs even if formulas are already proved."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (let* ((theory (when (current-theory) (cadr (split-string (current-theory) "#"))))
 	 (file   (current-pvs-file))
  	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			       file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (let((prl-filename (format "%s.prl" theory)))
 	(when (file-exists-p prl-filename)
@@ -122,7 +110,6 @@ default proofs even if formulas are already proved."
 Installs the ProofLite script at the current cursor position even if
 the formula is already proved."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
@@ -130,9 +117,7 @@ the formula is already proved."
 	 (file (current-pvs-file))
 	 (line (current-line-number))
  	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (pvs-send-and-wait 
        (format "(install-prooflite-scripts \"%s\" \"%s\" %s t)"
@@ -155,7 +140,6 @@ the formula is already proved."
 Inserts the ProofLite script of the default proof of the formula closest
 to (moving forward) the current cursor position into the working theory."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
@@ -165,9 +149,7 @@ to (moving forward) the current cursor position into the working theory."
 	 (pvs-error nil))
     (when (eq kind 'pvs)
       (save-some-pvs-buffers)
-      (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			     file)
-			 nil 'tc 'dont-care)
+      (wait-for-typechecker file)
       (unless pvs-error
 	(when (get-buffer "ProofLite")
 	  (kill-buffer "ProofLite"))
@@ -199,16 +181,13 @@ to (moving forward) the current cursor position into the working theory."
 Displays the ProofLite script of the default proof of formula
 in the \"ProofLite\" buffer."
   (interactive (complete-formula-name))
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (let* ((file (current-pvs-file))
 	 (theory (current-theory))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			       file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (when (get-buffer "ProofLite")
 	(kill-buffer "ProofLite"))

@@ -99,9 +99,15 @@ This is set and unset in prove-decl.")
 (defvar pvs-x-show-proofs nil
   "Set to t to always invoke x-show-proofs for M-x prove")
 
-(defun confirm-not-in-typechecker ()
-  (when (pvs-send-and-wait "*typechecking-module*")
-    (error "Still typechecking")))
+(defun wait-for-typechecker (fname)
+  "Typechecks the given filename, after first ensuring the typechecker isn't
+already busy"
+  (while ;;(pvs-send-and-wait "*typechecking-module*")
+      (with-current-buffer ilisp-buffer
+	(not (member comint-status '(" :ready" " :error"))))
+    (sleep-for 1))
+  (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)" fname)
+		     nil 'tc 'dont-care))
 
 ;;; Proof commands
 
@@ -115,7 +121,6 @@ be asked whether to go ahead and run it or to start anew.  Note that
 starting a new proof will not delete the old proof unless you allow the
 prover to overwrite it at the end of the proof session."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
@@ -124,9 +129,7 @@ prover to overwrite it at the end of the proof session."
 	 (pvs-error nil))
     (cond ((eq kind 'pvs)
 	   (save-some-pvs-buffers)
-	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				  fname)
-			      nil 'tc 'dont-care))
+	   (wait-for-typechecker fname))
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
@@ -159,7 +162,6 @@ current cursor position.  It starts the proof whether or not the formula
 has already been proved, and automatically runs any proof associated with
 the formula.  With an argument, runs the proof in the background."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
@@ -168,9 +170,7 @@ the formula.  With an argument, runs the proof in the background."
 	 (pvs-error nil))
     (cond ((eq kind 'pvs)
 	   (save-some-pvs-buffers)
-	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				  fname)
-			      nil 'tc 'dont-care))
+	   (wait-for-typechecker fname))
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
@@ -190,7 +190,7 @@ the formula.  With an argument, runs the proof in the background."
 (defvar pvs-prove-in-thread nil)
 
 (defun pvs-prove-formula (fref &optional rerun-proof background display
-			       unproved)
+				 unproved)
   (let* ((pvs-error nil)
 	 (kind (pvs-fref-kind fref))
 	 (fname (pvs-fref-file fref))
@@ -203,13 +203,15 @@ the formula.  With an argument, runs the proof in the background."
 	 (rerun (pvs-send-and-wait
 		 (format "(rerun-proof-at? \"%s\" %s %d \"%s\" %s %s)"
 		     (or fname theory) fmlastr line kind rerun-proof unproved)
-		 nil nil "t\\|T\\|no\\|NO")))
-; evw   (pushw)
-    (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s %s)"
-		     (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
-		     poff background display unproved pvs-prove-in-thread)))
-      (comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
-      (ilisp-send input nil 'pr (not background)))))
+		 nil nil "nil\\|NIL\\|t\\|T\\|no\\|NO")))
+					; evw   (pushw)
+    (unless (memq rerun '(no NO))
+      (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s %s)"
+		       (or fname theory) fmlastr line (if (memq rerun '(t T)) t)
+		       kind buf poff background display unproved
+		       pvs-prove-in-thread)))
+	(comint-log (ilisp-process) (format "\nsent:{%s}\n" input))
+	(ilisp-send input nil 'pr (not background))))))
 
 ;; (defun pvs-proof-thread (init-ps)
 ;;   (setq xxx init-ps))
@@ -223,7 +225,6 @@ be asked whether to go ahead and run it or to start anew.  Note that
 starting a new proof will not delete the old proof unless you allow the
 prover to overwrite it at the end of the proof session."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
@@ -232,9 +233,7 @@ prover to overwrite it at the end of the proof session."
 	 (pvs-error nil))
     (cond ((eq kind 'pvs)
 	   (save-some-pvs-buffers)
-	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				  fname)
-			      nil 'tc 'dont-care))
+	   (wait-for-typechecker fname))
 	  ((memq kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
@@ -669,7 +668,6 @@ current cursor position.  The current buffer must be a PVS buffer, a TCC
 buffer, a ppe buffer, or a prelude (file or theory) buffer.  See the
 documentation for edit-proof-mode for more information."
   (interactive)
-  (confirm-not-in-typechecker)
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
 	 (fname (pvs-fref-file fref))
@@ -683,9 +681,7 @@ documentation for edit-proof-mode for more information."
 	 (pvs-error nil))
     (cond ((eq kind 'pvs)
 	   (save-some-pvs-buffers)
-	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				  fname)
-			      nil 'tc 'dont-care))
+	   (wait-for-typechecker fname))
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
@@ -1426,7 +1422,6 @@ debugging."
 The step-proof command invokes the prover and sets up proof stepping
 through using the edit-proof command."
   (interactive)
-  (confirm-not-in-typechecker)
   (confirm-not-in-checker)
   ;;(pushw)
   (delete-other-windows)
@@ -1442,9 +1437,7 @@ through using the edit-proof command."
 	 (pvs-error nil))
     (cond ((eq kind 'pvs)
 	   (save-some-pvs-buffers)
-	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				  fname)
-			      nil 'tc 'dont-care))
+	   (wait-for-typechecker fname))
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
