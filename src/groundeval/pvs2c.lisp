@@ -284,7 +284,12 @@
 (defmethod pvs2c-theory* ((rectype recursive-type) &optional force?)
   (let ((th (adt-theory rectype)))
     (with-workspace th
-      (pvs2c-theory-body th force?))))
+      (pvs2c-theory-body th force?)
+      (when (adt-map-theory rectype)
+	(pvs2c-theory-body (adt-map-theory rectype) force?))
+      (when (adt-reduce-theory rectype)
+	(pvs2c-theory-body (adt-reduce-theory rectype) force?)))))
+  
 
 (defmethod pvs2c-theory* ((th module) &optional force?)
   (with-workspace th

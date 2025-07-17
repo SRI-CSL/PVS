@@ -1032,8 +1032,8 @@ restored, the TCCs are checked")
   ir
   cdefn
   c-type-info-table
-  internal  ;both are eval-defn-info 
-  external)
+  (internal :restore-as nil)  ;both are eval-defn-info/
+  (external :restore-as nil))
 
 
 (defcl eval-type-info ()
