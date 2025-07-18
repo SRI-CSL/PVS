@@ -366,6 +366,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 :ir-body body))
 
 (defun mk-ir-lett (vartype bind-type expr body)
+  (when (not (or (ir-variable? expr)(ir-last? expr)))
+    (break "mk-ir-lett"))
   (make-instance 'ir-lett
 		 :ir-vartype vartype
 		 :ir-bind-type bind-type
@@ -2462,11 +2464,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		     (argvar (mk-ir-variable (new-irvar) argirtype))
 		     (return-ir-expr (mk-ir-get argvar id))
 		     (body-ir-expr (if expected
-				       (let ((exprvar (mk-ir-variable (new-irvar) (pvs2ir-type expected bindings))))
-					 (mk-ir-lett exprvar
-						   exprirtype
-						   return-ir-expr
-						   exprvar))
+				       (let ((exprvar (mk-ir-variable (new-irvar) (pvs2ir-type expected bindings)))
+					     (returnvar (mk-ir-variable (new-irvar) exprirtype)))
+					 (mk-ir-let returnvar return-ir-expr
+						    (mk-ir-lett exprvar
+								exprirtype
+								returnvar
+								exprvar)))
 				       return-ir-expr)))
 		(mk-ir-let argvar
 			   ir-argument
@@ -2482,11 +2486,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		     (argvar (mk-ir-variable (new-irvar) argirtype))
 		     (return-ir-expr (mk-ir-get argvar (intern (format nil "project_~a" index))))
 		     (body-ir-expr (if expected
-				       (let ((exprvar (mk-ir-variable (new-irvar) (pvs2ir-type expected bindings))))
-					 (mk-ir-lett exprvar
-						   exprirtype
-						   return-ir-expr
-						   exprvar))
+				       (let ((exprvar (mk-ir-variable (new-irvar) (pvs2ir-type expected bindings)))
+					     (returnvar (mk-ir-variable (new-irvar) exprirtype)))
+					 (mk-ir-let returnvar return-ir-expr
+						    (mk-ir-lett exprvar
+								exprirtype
+								return-ir-expr
+								exprvar)))
 				       return-ir-expr)))
 		(mk-ir-let argvar
 			   ir-argument
