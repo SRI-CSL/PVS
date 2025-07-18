@@ -19,7 +19,7 @@
 (declare-function current-line-number "pvs-mode")
 (declare-function pvs-send-and-wait "pvs-ilisp")
 (declare-function pvs-bury-output "pvs-ilisp")
-(declare-function confirm-not-in-checker "pvs-eval")
+(declare-function wait-for-typechecker "pvs-prover")
 
 (defpvs write-prooflite-scripts-to-file edit-proof ()
   "Write prooflite scripts for all the proof obligations in the current theory."
@@ -30,9 +30,7 @@
   (let* ((theory (cadr (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (pvs-send-and-wait
        (format "(write-all-prooflite-scripts-to-file \"%s\")" theory)))
@@ -51,9 +49,7 @@ for formulas that are already proved."
   (let* ((theory (cadr (split-string (current-theory) "#")))
 	 (file   (current-pvs-file))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (let((prl-filename (format "%s.prl" theory)))
 	(when (file-exists-p prl-filename)
@@ -78,9 +74,7 @@ the formula is already proved."
 	 (file (current-pvs-file))
 	 (line (current-line-number))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (pvs-send-and-wait 
        (format "(install-prooflite-scripts \"%s\" \"%s\" %s nil)"
@@ -98,9 +92,7 @@ default proofs even if formulas are already proved."
   (let* ((theory (when (current-theory) (cadr (split-string (current-theory) "#"))))
 	 (file   (current-pvs-file))
  	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			       file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (let((prl-filename (format "%s.prl" theory)))
 	(when (file-exists-p prl-filename)
@@ -125,9 +117,7 @@ the formula is already proved."
 	 (file (current-pvs-file))
 	 (line (current-line-number))
  	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			   file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (pvs-send-and-wait 
        (format "(install-prooflite-scripts \"%s\" \"%s\" %s t)"
@@ -159,9 +149,7 @@ to (moving forward) the current cursor position into the working theory."
 	 (pvs-error nil))
     (when (eq kind 'pvs)
       (save-some-pvs-buffers)
-      (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			     file)
-			 nil 'tc 'dont-care)
+      (wait-for-typechecker file)
       (unless pvs-error
 	(when (get-buffer "ProofLite")
 	  (kill-buffer "ProofLite"))
@@ -199,9 +187,7 @@ in the \"ProofLite\" buffer."
   (let* ((file (current-pvs-file))
 	 (theory (current-theory))
 	 (pvs-error nil))
-    (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-			       file)
-		       nil 'tc 'dont-care)
+    (wait-for-typechecker file)
     (unless pvs-error
       (when (get-buffer "ProofLite")
 	(kill-buffer "ProofLite"))
