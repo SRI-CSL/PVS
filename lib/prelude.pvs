@@ -5080,7 +5080,7 @@ array_sequences [T: TYPE]: THEORY
 
   full_aseq?(a): bool = (a`length = maxsize)
 
-  aseq_appl(a): [below[length(a)] -> T] = a`seq;
+  aseq_appl(a): ARRAY[below[length(a)] -> T] = a`seq;
 
   aseq_add(x : T, (a  | NOT full_aseq?(a))): aseq = 
      a WITH [`length := a`length + 1,

@@ -366,8 +366,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 :ir-body body))
 
 (defun mk-ir-lett (vartype bind-type expr body)
-  (when (not (or (ir-variable? expr)(ir-last? expr)))
-    (break "mk-ir-lett"))
+  ;; (when (not (or (ir-variable? expr)(ir-last? expr)))
+  ;;   (break "mk-ir-lett"))
   (make-instance 'ir-lett
 		 :ir-vartype vartype
 		 :ir-bind-type bind-type
