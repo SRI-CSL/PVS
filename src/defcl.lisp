@@ -32,7 +32,7 @@
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (unless (find-package :pvs)
     (defpackage :pvs
-      (:use :cl-user :lisp)
+      (:use :cl-user :common-lisp)
       (:export :copy :defcl :lcopy :memq :write-deferred-methods-to-file)
       )))
 
@@ -111,7 +111,7 @@ In addition to the usual, slots may have the following attributes:
 	 args))
     (when (fboundp 'declare-make-instance)
       (declare-make-instance ,name))
-    (proclaim '(inline ,(intern (format nil "~a?" name) :pvs)))
+    (declaim (inline ,(intern (format nil "~a?" name) :pvs)))
     (defun ,(intern (format nil "~a?" name) :pvs) (obj)
       (typep obj ',name))
     (eval-when (:execute :compile-toplevel :load-toplevel)
@@ -239,9 +239,10 @@ In addition to the usual, slots may have the following attributes:
 	 (push-word (store-obj ',name))
 	 ,@(mapcar #'(lambda (a)
 		       (let* ((sslot (assoc a stored-slots))
-			      (store-as (when sslot (cadr (memq :store-as (cdr sslot))))))
+			      (store-as (when sslot (memq :store-as (cdr sslot)))))
 			 (if store-as
-			     `(push-word (store-obj (,store-as obj)))
+			     `(push-word (store-obj ,(when (cadr store-as)
+						       (list (cadr store-as) 'obj))))
 			     `(push-word (store-obj ,(if (equal a '(cvar var)) 'cvar a)))))
 		       ;;`(push-word (store-obj ,(if (eq (car a) 'var) 'cvar (car a))))
 		       )
@@ -326,5 +327,6 @@ In addition to the usual, slots may have the following attributes:
 
 ;; Same as describe, but returns the object, rather than nil
 (defun show (obj)
+  (format t "class: ~(~a~)" (class-name (class-of obj)))
   (describe obj)
   obj)
