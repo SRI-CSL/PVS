@@ -1488,7 +1488,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	 (new-theory-id (format nil "~a_~{~a~^_~}" (simple-id (id theory))
 				type-actuals))
 	 (intern-theory-id (intern new-theory-id :pvs))
-	 )	       
+	 );(break "pvs2ir-constant-ir")	       
     (if (and (null (cdefn (eval-info decl))) ;;NSH(2/6/25): Added check for call to non-executable operation
 	     (not (eq decl *pvs2c-current-decl*)))
 	(pvs2c-err "Found non-executable operation ~a while code generating for ~a" (id decl)(id *pvs2c-current-decl*))
@@ -1504,15 +1504,18 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			     new-instance)))
 		      (dummy2 (when thclone (format t "~%Found thclone")))
 		      (instdecl (find  decl (theory theory-instance) :key #'generated-by))
-		      ) 
+		      );(break "pvs2ir-constant-ir0") 
 		 (cond (thclone
 			(format t "~%Pushing ~a" intern-theory-id)
+			(unless (memq theory-instance *preceding-mono-theories*)
+			  (pvs2c-theory-body-step theory-instance t nil))
 			(pushnew theory-instance *preceding-mono-theories*)
 			(ir (eval-info instdecl)))
 		       (t (unless monoclones (setf (ht-instance-clone theory)(make-hash-table :test #'eq)))
 			  (setf (gethash intern-theory-id (ht-instance-clone theory)) theory-instance)
 			  (pvs2c-theory-body-step theory-instance t nil) ;;NSH(3/20/22): Need to clear inherited eval-info
 			  (format t "~%Pushing ~a" intern-theory-id)
+			  ;(break "pvs2ir-constant-ir")
 			  (pushnew theory-instance *preceding-mono-theories*)
 			  ;; (if (memq theory *preceding-prelude-theories*)
 			  ;; 	 (push theory-instance *preceding-prelude-theories*)
@@ -1633,7 +1636,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	     (cvar (mk-ir-variable (new-irvar) ctypename))
 	     (cbody-record (mk-ir-record cbody-fields cbody-recordtype))
 	     (cbody (mk-ir-let indexvar (mk-ir-integer index)
-			       (mk-ir-let cvar cbody-record cvar))))
+			       (mk-ir-let cvar cbody-record cvar))));(break "pvs2ir-adt-record-constructor")
 	(setf (ir-constructor-type (ir einfo)) ctypename)
 	(setf (ir-function-name (ir einfo))
 	      (mk-ir-function constructor-ir-id cdecl)
@@ -7999,9 +8002,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8T if (x->count == 1 && i < x->max){y = x;}~%~16T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2  ? (i < 2*x->max  ? 2*x->max : i) : UINT32_MAX;~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);} else {y = copy_~a(x);~%~22Tx->count--;};~%~8T~
-                     ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;}~%~8T~
-                     if (yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->size = i+1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xmax; j < newmax; j++){y->elems[j] = NULL;};~%~28Trelease_~a(x~a);}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
+                     ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;};~%~8T~
+                     if (i < xmax && yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string
 	      type-name-root
 	      type-name-root c-range-root type-name-root c-param-arg-string;i > x->max case
@@ -8009,7 +8012,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	      c-range-root
 	      (make-release-call ir-range c-range-root "yelems[i]" c-param-arg-string)
 	      )
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y; ~%~8T if (x->count == 1 && i < x->max){y = x;}~%~10T else if (i > x->max){uint32_t newmax = x->max <= UINT32_MAX/2 ? 2*x->max: UINT32_MAX;~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~10T else if (i >= xmax){uint32_t newmax = ((xmax < UINT32_MAX/2) ? ((i < 2 * (xmax + 1)) ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
                     ~a;~%~8T~
                     return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string type-name-root
