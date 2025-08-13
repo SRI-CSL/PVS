@@ -1357,9 +1357,10 @@ escapes here."
 (defun merge-parsed-theory (odecl ndecl othy nthy)
   (let* ((odecls (all-decls othy))
 	 ;;(ndecls (all-decls nthy))
-	 (gdecl (when odecl (or (and (not (eq (theory-section-of odecl othy) 'formals))
-				     (car (last (generated odecl))))
-				odecl)))
+	 (gdecl (when odecl
+		  (or (and (not (eq (theory-section-of odecl othy) 'formals))
+			   (car (last (generated odecl))))
+		      odecl)))
 	 (replaced (when gdecl (memq gdecl odecls)))
 	 ;;(ohead (ldiff odecls replaced))
 	 ;;(ntail (memq ndecl ndecls))
@@ -2857,19 +2858,25 @@ Note that even proved ones get overwritten"
 ;;; declaration could not be found.
 
 (defun rerun-proof-at? (name declname line &optional origin rerun? unproved?)
+  "Returns nil = start proof, don't rerun
+           t = rerun
+           'no = don't even run proof"
   (let ((fdecl (formula-decl-to-prove name declname line origin unproved?)))
     (cond ((and fdecl rerun?)
 	   (if (justification fdecl)
-	       rerun?
-	       (pvs-message "Formula has no associated proof")))
+	       t
+	       (pvs-message "Formula has no associated proof"))) ; returns nil
 	  (fdecl
 	   (if (justification fdecl)
-	       (and (or (unproved? fdecl)
-			(pvs-y-or-n-p-with-timeout
-			 "Formula has already been proved: try again? "))
-		    (if (pvs-y-or-n-p-with-timeout "Rerun Existing proof? ")
-			t 'no))
-	       'no))
+	       (if (unproved? fdecl)
+		   (if (pvs-y-or-n-p-with-timeout "Rerun Existing proof? ")
+		       t nil)
+		   (if (pvs-y-or-n-p-with-timeout
+			"Formula has already been proved: try again? ")
+		       (if (pvs-y-or-n-p-with-timeout "Rerun Existing proof? ")
+			   t nil)
+		       'no))
+	       nil))
 	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message
 		 "Not at a formula declaration (line ~d)~@[ - ~a buffer may be invalid~]"
