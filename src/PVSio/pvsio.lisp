@@ -193,7 +193,7 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 				(pvsio-stdout *standard-output*)
 				(debug-stream *standard-output*)
 				(tcc-stream *standard-output*)
-				(error-stream *error-output*)
+				(error-stream *standard-output*)
 				(interactive? t))
   (handler-case
       (let* ((pr-input   (pc-parse input 'expr))

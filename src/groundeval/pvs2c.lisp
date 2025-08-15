@@ -914,7 +914,8 @@ successful."
 	(dolist (tform test-formulas)
 	  (format main "~2%~Tprintf(\"~a.~a ==> %s\\n\", ~a() ? \"true\" : \"false\");"
 	    (id (module tform)) (id tform) (op-name (cdefn (eval-info tform)))))
-	(format main "~%}~%")))))
+	(format main "~%}~%")
+	(format t "Writing ~a" filename)))))
 
 (defun collect-test-formulas ()
   (let ((th-hash (current-pvs-theories))
