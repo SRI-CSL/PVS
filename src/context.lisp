@@ -1587,7 +1587,7 @@ are all the same."
 	     (curproofs (collect-theories-proofs theories)))
 	#+pvsdebug
 	(current-proofs-contain-old-proofs curproofs oldproofs theories)
-	(unless (or force? (equal oldproofs curproofs))
+	(when (or force? (not (equal oldproofs curproofs)))
 	  (when (and (file-exists-p filestring)
 		     (> *number-of-proof-backups* 0))
 	    (backup-proof-file filestring))
