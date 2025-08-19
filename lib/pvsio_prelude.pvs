@@ -55,23 +55,18 @@ BEGIN
 %% Used for untyped lisp attachments
   Lisp_ : TYPE+  
 
-  Lisp[T:TYPE+] : TYPE+  %% Used for PVS-typed lisp attachments
+  Lisp[T:TYPE+] : TYPE+  %% Used when lisp attachments need the type
 
-  to_lisp[T:TYPE+](t:T) : Lisp  % To PVS-typed lisp
+  to_lisp[T:TYPE](t:T) : Lisp[T]  % To PVS-typed lisp
   
-  to_lisp_[T:TYPE+](t:T) : Lisp_ % To untyped lisp
+  to_lisp_[T:TYPE](t:T) : Lisp_ % To untyped lisp
 
-  list2listlisp[T:TYPE+](l:list[T]) : list[Lisp[T]] =
-    map(LAMBDA(t:T): to_lisp(t))(l)
-
-  ;>>[T:TYPE] : [list[T]->list[Lisp[T]]] = list2listlisp
-
-  {||}[T:TYPE](t:T) : Lisp = to_lisp(t)
+  {||}[T:TYPE](t:T) : Lisp[T] = to_lisp(t)
 
   unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
 
   % Evaluate t, returning its value. The cleanup code will be evaluated if control leaves t.
-  unwind_protect[T:TYPE+](t:T,cleanup:void) : MACRO T =
+  unwind_protect[T:TYPE](t:T,cleanup:void) : MACRO T =
     unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
 
   type_of_domain_lisp[T:TYPE](f:[T->void]): string
@@ -887,13 +882,13 @@ BEGIN
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
       fread_lisp(f,the_type)
 
-  FileReader[T:TYPE+] : TYPE = [[IStream]->T]
+  FileReader[T:TYPE] : TYPE = [[IStream]->T]
 
-  fread_reader[T:TYPE+] : JUDGEMENT
+  fread_reader[T:TYPE] : JUDGEMENT
     fread[T] HAS_TYPE FileReader
 
   % Iterates a function on a file n times
-  fmap[T:TYPE+](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
+  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
     RECURSIVE T =
     IF fopen?(f) THEN
       IF n=0 or eof?(f) THEN t
@@ -907,12 +902,12 @@ BEGIN
     MEASURE n
 
   % Iterates a function on a file until the end. Closes file when done (no matter what)
-  fmap[T:TYPE+](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
+  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread,t,st,l),fclose(f))
 
   % Iterates a function on a file line by line until the end. Closes file when done (no matter what)
-  fmap_line[T:TYPE+](f:IStream,t:T,st:[[string,T]->T]):T =
+  fmap_line[T:TYPE](f:IStream,t:T,st:[[string,T]->T]):T =
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread_line,t,st,l),fclose(f))
 
@@ -1067,7 +1062,7 @@ BEGIN
 	  {| hms(realtime), realtime, hms(runtime), runtime |})
 
   %% Time profiler of a function
-  time_profiler[T:TYPE+](fun:T) : MACRO T =
+  time_profiler[T:TYPE](fun:T) : MACRO T =
     LET (result,atoc) = prog[[T,Toc]](tic,(fun,toc)) IN
       prog(print(strtoc(atoc)),
     	   result)
