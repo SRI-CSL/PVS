@@ -98,6 +98,11 @@
 
 (defun json-theory (theory)
   `(("id" . ,(string (pvs:id theory)))
+    ("fileName" . ,(let ((fname (pvs::pvs-filename theory)))
+			   (if (and (> (length fname) 4)
+				    (string= (subseq fname (- (length fname) 4)) ".pvs"))
+			       fname
+			       (format nil "~a.pvs" fname))))
     ("decls" . ,(json-theory-decls (pvs:all-decls theory)))))
 
 (defun json-theory-decls (decls &optional thdecls)
@@ -185,6 +190,7 @@
 	   ("kind" . "formula")
 	   ("proved?" . ,proved?)
 	   ("complete?" . ,complete?)
+	   ("provable" . ,(pvs::provable-formula? decl))
 	   ("has-proofscript?" . ,has-proofscript?)
 	   ("place" . ,(pvs:place-list decl))))))
 
@@ -463,6 +469,16 @@ or unproved."
   "Returns the tccs, as with the show-tccs command."
   (pvs:get-tccs fname))
 
+(defrequest collect-theory-usings (thref &optional exclude (in-context? t))
+  "Returns the collection of theories in the transitive closure of importings."
+  (pvs::with-theory (theory) thref
+    (let*((all-usings (pvs::collect-theory-usings theory exclude))
+          (result (if in-context? 
+                    (remove-if-not 
+                      #'(lambda (th) (pvs::file-equal (pvs::context-path th) (pvs::context-path theory)))
+                      all-usings)
+                    all-usings)))
+      (json-theories result))))
 
 ;;; In PVS, there are frequent references to workspaces, files, theories,
 ;;; declarations, etc.  Toward this end a pvsref will be defined as one of:

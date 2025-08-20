@@ -333,7 +333,7 @@ are accepted, which is what track-rewrites does")
   `(unless *suppress-printing*
      (let ((fstr (format nil ,string ,@args)))
        (or (session-output fstr)
-	   (format t fstr)))))
+	   (format t "~a" fstr)))))
 
 (defmacro format-if (string &rest args)
   `(commentary ,string ,@args))
