@@ -325,9 +325,13 @@ It cannot be evaluated in a formal proof."
   "Pops value of the mutable variable and fails silently when mutable variable is undefined"
   (and (pop (cdr gvar)) t))
 
+(defun pvsio_get_gvar_lisp (name)
+  "Returns lisp representation of Global variable. It assumes the variable is defined."
+  (eval (pvs2cl (extra-get-expr name))))
+
 (defun pvsio_get_gvar_by_name (name)
   "Returns the current value of a PVSio Global variable. It assumes the variable is defined."
-  (let ((gvar (eval (pvs2cl (extra-get-expr name)))))
+  (let ((gvar (pvsio_get_gvar_lisp name)))
     (pvsio_val_gvar gvar)))
 
 ;; Apply "PVSio" function pvsio (string), which maybe fully qualified,

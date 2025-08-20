@@ -316,12 +316,14 @@ BEGIN
   Floor        : MACRO RoundingMode = TowardsNegInfnty
 
   % set(PRECISION,<precision>) sets default precision to 10^(-val(PRECISION)) for computations and printing
+  %% This global variable is used in pp.lisp
   PRECISION : Global[nat,6] 
 
   % set(ROUNDING,<mode>) sets default rounding mode for computation and printing
   ROUNDING  : Global[RoundingMode,TowardsZero]
 
   %% set(PP_RATIONALS,<bool>) sets default for pretty printing rational numbers in PVSio
+  %% This global variable is used in pp.lisp
   PP_RATIONALS : Global[bool,TRUE]
 
   RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
@@ -413,8 +415,7 @@ BEGIN
   format_lisp[T:TYPE](s:string,t:T):string
 
   format[T:TYPE](s:string,t:T): MACRO string =
-    with_mutable(PP_RATIONALS,false,
-      format_lisp[T](s,t))
+    format_lisp[T](s,t)
  
   %% Converts real number to string decimal representation using given precision, i.e., natural
   %% number n denoting 10^(-n), rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
@@ -573,8 +574,7 @@ BEGIN
 
   %% May throw exception CantTranslateBack 
   pvs2str[T:TYPE](t:T) : MACRO string =
-    with_mutable(PP_RATIONALS,false,
-      pvs2str_lisp[T](t))
+    pvs2str_lisp[T](t)
 
  END stdstr
 

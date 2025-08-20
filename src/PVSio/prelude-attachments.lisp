@@ -196,8 +196,13 @@ is replaced with replacement."
 
 (defattach |format_lisp| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_))))))
-     (apply #'format (cons nil (cons s (formatargs e the-type))))))
+   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_)))))
+	 (pprat    (pvsio_get_gvar_lisp "stdmath.PP_RATIONALS")))
+     (unwind-protect
+	 (progn
+	   (pvsio_push_gvar pprat nil)
+	   (apply #'format (cons nil (cons s (formatargs e the-type)))))
+       (pvsio_pop_gvar pprat))))
 
 (defattach |rat2decstr_with_zeros| (r precision rounding zeros)
   "Converts rational number to string decimal representation using given precision, i.e., natural number n
@@ -291,9 +296,14 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |pvs2str_lisp| (e)
   "Translates PVS expresion E to a string"
-  (let ((the-domain (domain the-pvs-type_)))
-    (handler-case 
-	(str (cl2pvs e (pc-typecheck the-domain)))
+  (let ((the-domain (domain the-pvs-type_))
+	(pprat      (pvsio_get_gvar_lisp "stdmath.PP_RATIONALS")))
+    (handler-case
+	(unwind-protect
+	    (progn
+	      (pvsio_push_gvar pprat nil)
+	      (str (cl2pvs e (pc-typecheck the-domain))))
+	 (pvsio_pop_gvar pprat))
       (pvseval-error
        (condition)
        (throw-pvsio-exc "CantTranslateBack"
