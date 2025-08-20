@@ -1870,15 +1870,14 @@
 (defun xt-string-to-codes (string pos len place codes)
   (if (>= pos len)
       (nreverse codes)
-      (multiple-value-bind (code npos)
+      (multiple-value-bind (code npos bkslash?)
 	  (next-string-code string pos len place)
-	(xt-string-to-codes string npos len place
-			    (acons code
-				   (vector (starting-row place)
-					   (+ (starting-col place) pos)
-					   (starting-row place)
-					   (+ (starting-col place) npos))
-				   codes)))))
+	(let* ((strow (starting-row place))
+	       (stcol (starting-col place))
+	       (nplace (vector strow (+ stcol pos) strow (+ stcol npos)))
+	       (acodes (acons code nplace codes))
+	       (ncodes (if bkslash? (acons code nplace acodes) acodes)))
+	  (xt-string-to-codes string npos len place ncodes)))))
 
 (defun next-string-code (string pos len place)
   "Returns the next char and new string position. If the char is a
@@ -1905,7 +1904,7 @@ backslash, interpret the usual \n, \', etc. as well as \x (hex), \0 (octal),
 		 (#\' (values (char-code #\') (+ pos 2)))
 		 (#\" (values (char-code #\") (+ pos 2)))
 		 (#\? (values (char-code #\?) (+ pos 2)))
-		 ;; (#\\ (values (char-code #\\) (+ pos 2)))
+		 (#\\ (values (char-code #\\) (+ pos 2) t))
 		 ((#\x #\X)
 		  (if (digit-char-p (char string (+ pos 2)) 16)
 		      (parse-integer string :radix 16 :start (+ pos 2)
