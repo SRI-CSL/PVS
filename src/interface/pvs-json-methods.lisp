@@ -42,7 +42,8 @@
 (defrequest lisp (string)
   "Just evaluate the string in lisp"
   (let ((*package* (find-package :pvs)))
-    (format nil "~a" (eval (read-from-string string)))))
+    (let ((result (eval (read-from-string string))))
+      (when result (format nil "~a" result)))))
 
 (defrequest change-workspace (dir)
   "Change PVS workspace"
@@ -204,7 +205,7 @@
 
 (defrequest find-declaration (id)
   "Searches for all declarations with the given id"
-  (pvs:find-declaration id))
+  (arr (pvs:find-declaration id)))
 
 (defrequest reset ()
   "Resets PVS"
