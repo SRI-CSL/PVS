@@ -4075,7 +4075,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
       ((|uint8| |uint16| |uint32| |uint64| |__uint128|)
        (case rhs-type
 	 (|mpz| (list (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs)))
-	 (|mpq| (list (let ((tmp (gentemp "tmp")))
+	 (|mpq| (let ((tmp (gentemp "tmp")))
+		  (list 
 		    (format nil "mpz_t ~a" tmp)
 		    (format nil "mpz_init(~a)" tmp)
 		    (format nil "mpz_set_q(~a, ~a)" tmp rhs)
@@ -4085,7 +4086,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     ((|int8| |int16| |int32| |int64| |__int128|)
      (case rhs-type
        (|mpz| (list (format nil "~a = (~a_t)mpz_get_si(~a)" lhs lhs-type rhs)))
-       (|mpq| (list (let ((tmp (gentemp "tmp")))
+       (|mpq| (let ((tmp (gentemp "tmp")))
+		(list 
 		    (format nil "mpz_t ~a" tmp)
 		    (format nil "mpz_init(~a)" tmp)
 		    (format nil "mpz_set_q(~a, ~a)" tmp rhs)
