@@ -23,6 +23,16 @@
 
 (eval '(attachments |stdpvs|
 
+(defattach |format_lisp| (s e)
+   "Formats expression E using Common Lisp format string S"
+   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_)))))
+	 (pprat    (pvsio_get_gvar_lisp "stdmath.PP_RATIONALS")))
+     (unwind-protect
+	 (progn
+	   (pvsio_push_gvar pprat nil)
+	   (apply #'format (cons nil (cons s (formatargs e the-type)))))
+       (pvsio_pop_gvar pprat))))
+
 (defattach |error| (mssg)
   "Signals the error message MSSG to the ground evaluator"
   (error 'pvsio-error :message mssg))
@@ -193,16 +203,6 @@ is replaced with replacement."
 (defprimitive |strconcat| (s1 s2)
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
-
-(defattach |format_lisp| (s e)
-   "Formats expression E using Common Lisp format string S"
-   (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_)))))
-	 (pprat    (pvsio_get_gvar_lisp "stdmath.PP_RATIONALS")))
-     (unwind-protect
-	 (progn
-	   (pvsio_push_gvar pprat nil)
-	   (apply #'format (cons nil (cons s (formatargs e the-type)))))
-       (pvsio_pop_gvar pprat))))
 
 (defattach |rat2decstr_with_zeros| (r precision rounding zeros)
   "Converts rational number to string decimal representation using given precision, i.e., natural number n
@@ -396,12 +396,11 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |fopenout_lisp| (s i) 
   "Opens file output stream named S"
-  (let ((f (cond ((= i 0) (open s :direction :output :if-exists nil))
-		 ((= i 1) (open s :direction :output :if-exists :supersede))
-		 ((= i 2) (open s :direction :output :if-exists :append))
-		 ((= i 3) (open s :direction :output :if-exists :overwrite))
-		 ((= i 4) (open s :direction :output :if-exists :rename)))))
-    (or f (throw-pvsio-exc "FileAlreadyExists" s))))
+ (cond ((= i 0) (unless (open s :direction :output :if-exists nil)
+		  (throw-pvsio-exc "FileAlreadyExists" s)))
+       ((= i 1) (open s :direction :output :if-exists :supersede))
+       ((= i 2) (open s :direction :output :if-exists :append))
+       ((= i 3) (open s :direction :output :if-exists :overwrite))))
 
 (defattach |sopenout| (s) 
   "Opens string output stream"
@@ -440,8 +439,16 @@ non-repeating digits. Truncated indicates that the infinite representation was t
   (output-stream-p f))
 
 (defattach |fname_lisp| (f)
-  "Gets the name of a file stream"
+  "Get the name of a file stream"
   (namestring f))
+
+(defattach |frename| (oldname newname)
+  "Rename a file stream named oldname with newname"
+  (handler-case
+      (rename-file oldname newname)
+    (error (condition)
+      (declare (ignore (condition)))
+      (throw-pvsio-exc "FileNotFound" oldname))))
   
 (defattach |fgetstr_lisp| (f) 
   "Gets string from string output stream F"
@@ -527,7 +534,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
      (if (subtype-of? the-type1 the-type2)
 	 (cdr type-pvs)
        (throw-pvsio-exc
-	"CantTranslateBack"
+	"CantTranslateBack" (format nil "~a::~a" (cdr type-pvs) (car type-pvs))
 	(format nil "Read value has type ~a, which is not a sub-type of ~a" the-type1 the-type2)))))
 
 )))
@@ -624,14 +631,17 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 )))
 
 (define-condition pvsio-exception (simple-error)
-  ((str-tag :accessor str-tag  :initarg :str-tag)
-   (val :accessor val :initarg :val))
+  ((tag :accessor tag  :initarg :tag)
+   (val :accessor val :initarg :val)
+   (mssg :accessor mssg :initarg :mssg))
   (:report
    (lambda (condition stream)
-     (format stream "PVSio Exception (~a)~@[: ~a~]" (str-tag condition) (val condition)))))
+     (let ((str (mssg condition)))
+       (format stream "PVSio Exception (~a)~@[: ~a~]"
+	       (tag condition) (unless (string= str "") str))))))
 
-(defun throw-pvsio-exc (str-tag val)
-  (error 'pvsio-exception :str-tag str-tag :val val))
+(defun throw-pvsio-exc (tag val &optional mssg)
+  (error 'pvsio-exception :tag tag :val val :mssg (or mssg (format nil "~a" val))))
 
 (define-condition pvsio-error (simple-error)
   ((message :accessor message  :initarg :message))
@@ -662,23 +672,27 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 (defun stdcatch-attachments ()
 
 (eval '(attachments |stdcatch|
-	     
+
+(defun starts-with-tag (tag string)
+  (and (>= (length string) (length tag))
+       (string= tag string :end2 (length tag))
+       (or (= (length string) (length tag))
+	   (string= (subseq string (length tag) (1+ (length tag))) ":"))))
+
 (defattach |catch_lift| (tag f1 f2)
   "If F1 throws the exception e tagged tag, then evaluates F2(e). Otherwise, returns F1"
   (handler-case
       (pvs-funcall f1 nil)
     (pvsio-exception
      (condition)
-     (if (equal tag (str-tag condition))
+     (if (starts-with-tag tag (tag condition))
 	 (let* ((exc (pvs2cl_record tag (val condition))))
 	   (pvs-funcall f2 exc))
        (error condition)))))
 
-(defattach |throw| (exc)
-  "Throws the exception EXC"
-  (let ((str-tag (elt exc 0))
-	(val     (elt exc 1)))
-    (throw-pvsio-exc str-tag val)))
+(defattach |throw_lisp| (tag mssg val)
+  "Throws the exception with TAG using MSSG and VAL"
+ (throw-pvsio-exc tag val mssg))
 
 )))
 

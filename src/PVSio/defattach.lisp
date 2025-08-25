@@ -286,7 +286,7 @@ It cannot be evaluated in a formal proof."
 ;; Reports running-time errors in attachments
 (defmacro attach-error (&optional msg)
   "Reports an error in the execution of a semantic attachment."
-  `(throw-pvsio-exc "PVSioError" (when ,msg (format nil "~a" ,msg))))
+  `(error 'pvsio-error :message ,msg))
 
 ;; Global variables are represented by a list (name val1 val2 ... valn). Name is
 ;; non-empty for mutable variables of type Global.
@@ -311,7 +311,9 @@ It cannot be evaluated in a formal proof."
   "Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(gvar)"
   (if (cdr gvar)
       (cadr gvar)
-    (throw-pvsio-exc "UndefinedMutableVariable" (format nil "Mutable variable~@[ ~a~] is undefined" (car gvar)))))
+      (let ((varname (when (car gvar) (format nil "~a" (car gvar)))))
+	(throw-pvsio-exc "UndefinedMutableVariable" varname
+			 (format nil "Mutable variable~@[ ~a~] is undefined" varname)))))
 
 (defun pvsio_reset_gvar (gvar)
   "Sets mutable variable to undefined"
