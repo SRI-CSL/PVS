@@ -3828,19 +3828,24 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod preprocess-ir* ((ir-expr ir-ift) livevars bindings)
   (with-slots (ir-condition ir-then ir-else) ir-expr
     (if (last-cond-expr? ir-expr)
-	(preprocess-ir* ir-else livevars bindings)
+	(preprocess-ir* ir-then livevars bindings)
       (let* ((pre-then (preprocess-ir* ir-then livevars bindings))
 	     (pre-else (preprocess-ir* ir-else livevars bindings))
 	     (then-freevars (apply-bindings bindings (pvs2ir-freevars* pre-then)))
 	     (then-marked (set-difference then-freevars livevars :test #'eq))		     
 	     (else-freevars (apply-bindings bindings (pvs2ir-freevars* pre-else)))
 	     (else-marked (set-difference else-freevars livevars :test #'eq))
+	     (pre-cond (preprocess-ir* ir-condition
+				       (union then-freevars
+					      (union else-freevars livevars :test #'eq)
+					      :test #'eq)
+				       bindings))
 	     (then-release		;(extract-reference-vars
 	      (set-difference else-marked then-marked :test #'eq))
 	     (else-release		;(extract-reference-vars
 	      (set-difference then-marked else-marked :test #'eq))
 	     )
-	(mk-ir-ift ir-condition ;;always a variable
+	(mk-ir-ift pre-cond ;;always a variable
 		   (if then-release (mk-ir-release then-release nil pre-then)
 		     pre-then)
 		   (if else-release (mk-ir-release else-release nil pre-else)
