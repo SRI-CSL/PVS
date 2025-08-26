@@ -276,7 +276,7 @@
 
 (defun pvs2c-theory (theoryref &optional force?)
   (let* ((theory (get-typechecked-theory theoryref nil t))
-	 (all-imported-theories (all-imported-theories theory)))
+	 (all-imported-theories (when theory (all-imported-theories theory))))
     (pvs2c-theories all-imported-theories force?);;NSH(4-25-25)
     (pvs2c-theory* theory force?)))
 
