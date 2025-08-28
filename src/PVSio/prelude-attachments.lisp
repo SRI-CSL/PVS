@@ -26,7 +26,7 @@
 (defattach |format_lisp| (s e)
    "Formats expression E using Common Lisp format string S"
    (let ((the-type (pc-typecheck (cadr (types (domain the-pvs-type_)))))
-	 (pprat    (pvsio_get_gvar_lisp "stdmath.PP_RATIONALS")))
+	 (pprat    (pvsio-eval-lisp "stdmath.PP_RATIONALS")))
      (unwind-protect
 	 (progn
 	   (pvsio_push_gvar pprat nil)
@@ -297,18 +297,18 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 (defattach |pvs2str_lisp| (e)
   "Translates PVS expresion E to a string"
   (let ((the-domain (domain the-pvs-type_))
-	(pprat      (pvsio_get_gvar_lisp "stdmath.PP_RATIONALS")))
+	(pprat      (pvsio-eval-lisp "stdmath.PP_RATIONALS")))
     (handler-case
 	(unwind-protect
-	    (progn
-	      (pvsio_push_gvar pprat nil)
-	      (str (cl2pvs e (pc-typecheck the-domain))))
-	 (pvsio_pop_gvar pprat))
-      (pvseval-error
-       (condition)
-       (throw-pvsio-exc "CantTranslateBack"
-			(format nil "~a" condition))))))
-
+	     (progn
+	       (pvsio_push_gvar pprat nil)
+	       (str (cl2pvs e (pc-typecheck the-domain))))
+	  (pvsio_pop_gvar pprat))
+      (groundeval-error
+	  (condition)
+	(declare (ignore condition))
+	(throw-pvsio-exc "PVS2String"
+			 (format nil "PVS Object doesn't have literal representation"))))))
 )))
 
 (defun prompt (s)
@@ -396,8 +396,8 @@ non-repeating digits. Truncated indicates that the infinite representation was t
 
 (defattach |fopenout_lisp| (s i) 
   "Opens file output stream named S"
- (cond ((= i 0) (unless (open s :direction :output :if-exists nil)
-		  (throw-pvsio-exc "FileAlreadyExists" s)))
+ (cond ((= i 0) (let ((f (open s :direction :output :if-exists nil)))
+		  (or f (throw-pvsio-exc "FileAlreadyExists" s))))
        ((= i 1) (open s :direction :output :if-exists :supersede))
        ((= i 2) (open s :direction :output :if-exists :append))
        ((= i 3) (open s :direction :output :if-exists :overwrite))))
@@ -443,11 +443,11 @@ non-repeating digits. Truncated indicates that the infinite representation was t
   (namestring f))
 
 (defattach |frename| (oldname newname)
-  "Rename a file stream named oldname with newname"
+  "Rename a file stream named oldname with newname. Return long newname"
   (handler-case
-      (rename-file oldname newname)
+      (namestring (rename-file oldname newname))
     (error (condition)
-      (declare (ignore (condition)))
+      (declare (ignore condition))
       (throw-pvsio-exc "FileNotFound" oldname))))
   
 (defattach |fgetstr_lisp| (f) 
@@ -534,8 +534,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
      (if (subtype-of? the-type1 the-type2)
 	 (cdr type-pvs)
        (throw-pvsio-exc
-	"CantTranslateBack" (format nil "~a::~a" (cdr type-pvs) (car type-pvs))
-	(format nil "Read value has type ~a, which is not a sub-type of ~a" the-type1 the-type2)))))
+	"ReadPVS" (format nil "Type ~a is not of a sub-type of ~a" the-type1 the-type2)))))
 
 )))
 
@@ -631,17 +630,21 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 )))
 
 (define-condition pvsio-exception (simple-error)
-  ((tag :accessor tag  :initarg :tag)
+  ((tag :accessor tag :initarg :tag)
    (val :accessor val :initarg :val)
    (mssg :accessor mssg :initarg :mssg))
   (:report
    (lambda (condition stream)
-     (let ((str (mssg condition)))
-       (format stream "PVSio Exception (~a)~@[: ~a~]"
-	       (tag condition) (unless (string= str "") str))))))
+     (format stream "[~a]~@[ ~a~]"
+	     (tag condition) (mssg condition)))))
 
-(defun throw-pvsio-exc (tag val &optional mssg)
-  (error 'pvsio-exception :tag tag :val val :mssg (or mssg (format nil "~a" val))))
+(defun throw-pvsio-exctag (tag val mssg)
+  (error 'pvsio-exception :tag tag :val val :mssg  mssg))
+
+(defun throw-pvsio-exc (exc val &optional mssg)
+  (let ((tag (pvsio-eval-lisp (format nil "~a`tag" exc)))
+	(msg (or mssg (pvsio-funcall (format nil "~a`formatter" exc) val))))
+    (throw-pvsio-exctag tag val msg)))
 
 (define-condition pvsio-error (simple-error)
   ((message :accessor message  :initarg :message))
@@ -673,26 +676,29 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 (eval '(attachments |stdcatch|
 
-(defun starts-with-tag (tag string)
-  (and (>= (length string) (length tag))
-       (string= tag string :end2 (length tag))
-       (or (= (length string) (length tag))
-	   (string= (subseq string (length tag) (1+ (length tag))) ":"))))
+(defun starts-with-tag (exctag string)
+  (let ((lstr (length string))
+	(lexc (length exctag)))
+    (and (>= lstr lexc)
+	 (string= exctag string :end2 lexc)
+	 (or (= lstr lexc)
+	     (and (> lstr (+ 2 lexc))
+		  (string= (subseq string lexc (+ 2 lexc)) "::"))))))
 
-(defattach |catch_lift| (tag f1 f2)
-  "If F1 throws the exception e tagged tag, then evaluates F2(e). Otherwise, returns F1"
+(defattach |catch_lift| (exctag f1 f2)
+  "If F1 throws the exception tagged exctag, then evaluates f2(val). Otherwise, returns F1"
   (handler-case
       (pvs-funcall f1 nil)
     (pvsio-exception
      (condition)
-     (if (starts-with-tag tag (tag condition))
-	 (let* ((exc (pvs2cl_record tag (val condition))))
+     (if (starts-with-tag exctag (tag condition))
+	 (let* ((exc (val condition)))
 	   (pvs-funcall f2 exc))
        (error condition)))))
 
-(defattach |throw_lisp| (tag mssg val)
-  "Throws the exception with TAG using MSSG and VAL"
- (throw-pvsio-exc tag val mssg))
+(defattach |throw_lisp| (exctag val mssg)
+  "Throws the exception tagged EXCTAG using VAL and MSSG"
+ (throw-pvsio-exctag exctag val mssg))
 
 )))
 

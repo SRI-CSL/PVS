@@ -311,9 +311,7 @@ It cannot be evaluated in a formal proof."
   "Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(gvar)"
   (if (cdr gvar)
       (cadr gvar)
-      (let ((varname (when (car gvar) (format nil "~a" (car gvar)))))
-	(throw-pvsio-exc "UndefinedMutableVariable" varname
-			 (format nil "Mutable variable~@[ ~a~] is undefined" varname)))))
+      (throw-pvsio-exc "UndefinedMutableVariable" (or (car gvar) ""))))
 
 (defun pvsio_reset_gvar (gvar)
   "Sets mutable variable to undefined"
@@ -327,13 +325,13 @@ It cannot be evaluated in a formal proof."
   "Pops value of the mutable variable and fails silently when mutable variable is undefined"
   (and (pop (cdr gvar)) t))
 
-(defun pvsio_get_gvar_lisp (name)
-  "Returns lisp representation of Global variable. It assumes the variable is defined."
-  (eval (pvs2cl (extra-get-expr name))))
+(defun pvsio-eval-lisp (expr)
+  "Returns Lisp representation of expr"
+  (eval (pvs2cl (extra-get-expr expr))))
 
 (defun pvsio_get_gvar_by_name (name)
   "Returns the current value of a PVSio Global variable. It assumes the variable is defined."
-  (let ((gvar (pvsio_get_gvar_lisp name)))
+  (let ((gvar (pvsio-eval-lisp name)))
     (pvsio_val_gvar gvar)))
 
 ;; Apply "PVSio" function pvsio (string), which maybe fully qualified,

@@ -89,35 +89,35 @@ END stdpvs
 %% Definition of exception type
 %% NOTE: PVSio exceptions can be programatically caught
 
-stdexc[T:TYPE] : THEORY
+stdexc[ExceptionType:TYPE] : THEORY
 BEGIN
 
   ExceptionTag : TYPE = string
 
   Exception : TYPE = [#
     tag       : ExceptionTag,
-    formatter : [T->string]
+    formatter : [ExceptionType->string]
   #]
 
-  make_exception(new_tag:ExceptionTag,fmter:[T->string]) : Exception =
+  make_exception(new_tag:ExceptionTag,fmter:[ExceptionType->string]) : MACRO Exception =
     (# tag := new_tag,
        formatter := fmter #)
 
   CONVERSION make_exception
 
-  tag2exception(tag:ExceptionTag) : Exception =
-    make_exception(tag,LAMBDA(t:T):format("~a",t))
+  tag2exception(tag:ExceptionTag) : MACRO Exception =
+    make_exception(tag,LAMBDA(t:ExceptionType):format("~a",t))
 
   % For backward compatibility, ExceptionTags are converted into simple root exceptions
   % with a default formatter
   CONVERSION tag2exception
 
-  ;<<(exc:Exception,tag:ExceptionTag) : Exception =
-    exc WITH [ `tag := format("~a:~a",{| exc`tag, tag |}) ]
+  ;<<(exc:Exception,tag:ExceptionTag) : MACRO Exception =
+    exc WITH [ `tag := format("~a::~a",{| exc`tag, tag |}) ]
 
-  ;<<(exc:Exception,tagfmtr:[ExceptionTag,[T->string]]) : Exception =
+  ;<<(exc:Exception,tagfmtr:[ExceptionTag,[ExceptionType->string]]) : MACRO Exception =
     LET (tag,fmtr) = tagfmtr IN
-    exc WITH [ `tag := format("~a:~a",{| exc`tag, tag |}), `formatter := fmtr ]
+    exc WITH [ `tag := format("~a::~a",{| exc`tag, tag |}), `formatter := fmtr ]
 
 END stdexc
 
@@ -129,25 +129,58 @@ BEGIN
   % PVSioException
   PVSioException : Exception[string] = "PVSioException"
 
-  % Mutable Exception Tag
-  UndefinedMutableVariable : Exception[string] = PVSioException << "UndefinedMutableVariable"
+  ifstr(str:string) : MACRO Lisp_ =
+    IF str = "" THEN to_lisp_(FALSE) ELSE to_lisp_(str) ENDIF
 
-  % Conversion Exceptions
-  ConversionExc     : Exception[string] = PVSioException << "ConversionExc"
-  NotABoolean       : Exception[string] = ConversionExc  << "NotABoolean"
-  NotARealNumber    : Exception[string] = ConversionExc  << "NotARealNumber"
-  NotAnInteger      : Exception[string] = ConversionExc  << "NotAnInteger"
-  CantTranslateBack : Exception[string] = ConversionExc << "CantTranslateBack"
+  % Mutable Exception
+  UndefinedMutableVariable : Exception[string] = PVSioException <<
+    ("UndefinedMutableVariable",
+     LAMBDA(str:string):format("Mutable variable is undefined~@[ (~a)~]", {| ifstr(str) |}))
 
-  MathConversionExceptions : list[Exception[string]] =
+  % String2PVS Exceptions
+  String2PVS: Exception[string] = PVSioException << "String2PVS"
+
+  NotALiteral: Exception[string] = PVSioException << "NotALiteral"
+
+  NotABoolean: Exception[string] = String2PVS <<
+    ("NotABoolean",
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS Boolean",str))
+
+  NotARealNumber: Exception[string] = String2PVS <<
+    ("NotARealNumber",
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS real number",str))
+
+  NotAnInteger: Exception[string] = String2PVS <<
+    ("NotAnInteger",
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS integer",str))
+
+  String2PVSNumberExceptions : list[Exception[string]] =
     (: NotARealNumber, NotAnInteger :)
 
-  % I/O Exception Tags
-  IOException           : Exception[string] = PVSioException << "IOException"
-  FileNotFound          : Exception[string] = IOException << "FileNotFound"
-  FileAlreadyExists     : Exception[string] = IOException << "FileAlreadyExists"
-  ClosedStream          : Exception[string] = IOException << "ClosedStream"
-  EndOfFile             : Exception[string] = IOException << "EndOfFile"
+  % PVS2String Exceptions
+
+  PVS2String: Exception[string] = PVSioException << "PVS2String"
+
+  % I/O Exceptions
+  IOException: Exception[string] = PVSioException << "IOException"
+
+  ReadPVS : Exception[string] = IOException << "ReadPVS"
+
+  FileNotFound: Exception[string] = IOException <<
+    ("FileNotFound",
+     LAMBDA(str:string):format("File not found (~a)",str))
+
+  FileAlreadyExists: Exception[string] = IOException <<
+    ("FileAlreadyExists",
+     LAMBDA(str:string):format("File already exists (~a)",str))
+     
+  ClosedStream: Exception[string] = IOException <<
+    ("ClosedStream",
+     LAMBDA(str:string):format("File is closed~@[ (~a)~]", {| ifstr(str) |}))
+
+  EndOfFile: Exception[string] = IOException <<
+    ("EndOfFile",
+     LAMBDA(str:string):format("Reached end of file~@[ (~a)~]", {| ifstr(str) |}))
 
 END stdexc_tags
 
@@ -157,49 +190,49 @@ END stdexc_tags
 stdcatch[ResultType:TYPE+,ExceptionType:TYPE] : THEORY
 BEGIN
 
-  catch_lift(exc:Exception[ExceptionType],
+  catch_lift(exctag:ExceptionTag[ExceptionType],
              result:[Dummy->ResultType],
-             handler:[Exception[ExceptionType]->ResultType]) : ResultType
+             handler:[ExceptionType->ResultType]) : ResultType
 
   % Catch with a handler
   catch(exc:Exception[ExceptionType],
         result:ResultType,
-        handler:[Exception[ExceptionType]->ResultType]) : MACRO ResultType =
-    catch_lift(exc,LAMBDA(d:Dummy):result,handler)
+        handler:[ExceptionType->ResultType]) : MACRO ResultType =
+    catch_lift(exc`tag,LAMBDA(d:Dummy):result,handler)
 
   % Catch with an exceptional result
   catch(exc:Exception[ExceptionType],result,exc_result:ResultType): MACRO ResultType =
-    catch(exc,result,LAMBDA(e:Exception[ExceptionType]):exc_result)
+    catch(exc,result,LAMBDA(val:ExceptionType):exc_result)
 
   catch_list_lift(l:list[Exception[ExceptionType]],
                   f1:[Dummy->ResultType],
-                  f2:[Exception[ExceptionType]->ResultType]) : RECURSIVE ResultType =
+                  f2:[ExceptionType->ResultType]) : RECURSIVE ResultType =
     CASES l OF
       null : f1(dummy),
-      cons(e,r) : catch_lift(e,
-                             LAMBDA(d:Dummy):catch_list_lift(r,f1,f2),
+      cons(exc,rest) : catch_lift(exc`tag,
+                             LAMBDA(d:Dummy):catch_list_lift(rest,f1,f2),
                              f2)
     ENDCASES
     MEASURE l BY <<  
 
   % Catch list with a handler
   catch(l:list[Exception[ExceptionType]],
-        result:ResultType,handler:[Exception[ExceptionType]->ResultType]) : MACRO ResultType =
+        result:ResultType,handler:[ExceptionType->ResultType]) : MACRO ResultType =
     catch_list_lift(l,LAMBDA(d:Dummy):result,handler)
 
   % Catch list with an exceptional result
   catch(l:list[Exception[ExceptionType]],result,exc_result:ResultType) : MACRO ResultType =
-    catch(l,result,LAMBDA(e:Exception[ExceptionType]):exc_result)
+    catch(l,result,LAMBDA(val:ExceptionType):exc_result)
 
-  throw_lisp(tag:ExceptionTag[ExceptionType],mssg:string,val:ExceptionType):ResultType
+  throw_lisp(tag:ExceptionTag[ExceptionType],val:ExceptionType,mssg:string): ResultType
 
   % Throw exception using default formatter
   throw(exc:Exception[ExceptionType],val:ExceptionType) : MACRO ResultType =
-    throw_lisp(exc`tag,exc`formatter(val),val)
+    throw_lisp(exc`tag,val,exc`formatter(val))
 
   % Throw exception using specific message
-  throw(exc:Exception[ExceptionType],mssg:string,val:ExceptionType): MACRO ResultType =
-    throw_lisp(exc`tag,mssg,val)
+  throw(exc:Exception[ExceptionType],val:ExceptionType,mssg:string): MACRO ResultType =
+    throw_lisp(exc`tag,val,mssg)
 
 END stdcatch
 
@@ -587,8 +620,8 @@ BEGIN
 
   pvs2str_lisp[T:TYPE](t:T) : string
 
-  %% Return string representing a PVS object. Throw exception CantTranslateBack
-  %% is string representation exists, e.g., object is not a literal.
+  %% Return string representing a PVS object. Throw exception PVS2String
+  %% if string representation doen't exist, e.g., object is not a literal.
   pvs2str[T:TYPE](t:T) : MACRO string =
     pvs2str_lisp[T](t)
 
@@ -905,7 +938,7 @@ BEGIN
   fread_lisp[T:TYPE+](f:IStream,typ:string) : T
 
   % Read a PVS object of type T from an input stream written by fwrite.
-  % Throw CantTranslateBack exception if read object is not of type T
+  % Throw ReadPVS exception if read object is not of type T
   fread[T:TYPE+](f:IStream) : MACRO T =
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
       fread_lisp(f,the_type)
@@ -1057,10 +1090,10 @@ BEGIN
     LET t = get_time IN
     format("~2,'0d-~2,'0d-~d",{| day(t), month(t), year(t) |})
 
-  %% Now in format yyyymmdd_hhmmss
-  time_stamp : string =
+  %% Timestamp in format yyyymmddhhmmss
+  time_yyyymmddhhmmss : string =
     LET t = get_time IN
-    format("~d~2,'0d~2,'0d_~2,'0d~2,'0d~2,'0d",
+    format("~d~2,'0d~2,'0d~2,'0d~2,'0d~2,'0d",
            {| year(t), month(t), day(t), hour(t), minute(t), second(t) |})
 
   real_time : nat % Realtime in internal units
