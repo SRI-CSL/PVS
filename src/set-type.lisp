@@ -1089,7 +1089,7 @@ resolution with a macro matching the signature of the arguments."
   ;; Note that (expr act) now has its actuals and maps set,
   ;; but that (type-value act) and act itself may still not be fully typed.
   ;;(assert (fully-typed? (type-value act)))
-  (when (typep formal '(and nonempty-type-decl (not decl-formal-type)))
+  (when (typep formal 'nonempty-type-decl)
     ;; May need to generate existence TCC
     (unless (eq *generate-tccs* 'none)
       (check-nonempty-type (type-value act) (current-declaration)))))
@@ -1855,9 +1855,11 @@ type of the lhs."
 	    (multiple-value-bind (jtypes jdecls)
 		(let ((*generate-tccs* 'none))
                   (judgement-types+ ex))
+	      (declare (ignore jdecls))
 	      (multiple-value-bind (incs jdecl)
 		  (let ((*generate-tccs* 'none))
                     (compatible-predicates jtypes expected ex))
+		(declare (ignore jdecl))
 		;; (when (and jdecl
 		;; 	   (assuming (module jdecl)))
 		(when incs
@@ -5779,9 +5781,10 @@ type of the lhs."
 (defun subst-for-formals (obj alist)
   (if (some #'(lambda (fp) (assq (declaration fp) alist))
 	    (free-params obj))
-      (gensubst obj
-	#'(lambda (ex) (subst-for-formals! ex alist))
-	#'(lambda (ex) (subst-for-formals? ex alist)))
+      (let ((*gensubst-subst-types* t))
+	(gensubst obj
+	  #'(lambda (ex) (subst-for-formals! ex alist))
+	  #'(lambda (ex) (subst-for-formals? ex alist))))
       obj))
 
 (defmethod subst-for-formals? ((ex name) alist)
