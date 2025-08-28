@@ -259,6 +259,7 @@
   )
 
 (defcl string-expr (application)
+  orig-string
   (string-value :restore-as nil))
 
 (defcl char-expr (application)

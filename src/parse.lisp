@@ -1833,13 +1833,15 @@
 char-exprs"
   (let* ((string (ds-string (term-arg0 expr)))
 	 (place (term-place expr))
-	 (ne (mk-name-expr '|char|))
-	 (char-list (xt-string-to-charlist string place)))
-    (make-instance 'string-expr
-      :string-value string
-      :operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
-      :argument char-list
-      :place place)))
+	 (ne (mk-name-expr '|char|)))
+    (multiple-value-bind (char-list nstring)
+	(xt-string-to-charlist string place)
+      (make-instance 'string-expr
+	:orig-string string
+	:string-value nstring
+	:operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
+	:argument char-list
+	:place place))))
 
 (defun xt-string-to-charlist (string place)
   (place-bind (srow scol erow ecol) place
@@ -1871,17 +1873,21 @@ char-exprs"
 	    (xt-string-to-charlist* string nrow ncol erow ecol npos
 				    (cons char-ex char-exprs)))))
       (let ((null-ex (add-place (make-instance 'null-expr :id '|null|)
-				(vector srow scol erow ecol))))
+				(vector srow scol erow ecol)))
+	    (len (length char-exprs)))
 	(assert (and (= srow erow) (= scol ecol)))
-	(xt-list-char-exprs char-exprs null-ex erow ecol))))
+	(xt-list-char-exprs char-exprs null-ex
+			    (make-string len) (- len 1)
+			    erow ecol))))
 
-(defun xt-list-char-exprs (char-exprs list-expr lrow lcol)
+(defun xt-list-char-exprs (char-exprs list-expr nstring spos lrow lcol)
   (if (null char-exprs)
-      list-expr
+      (values list-expr nstring)
       (place-bind (srow scol erow ecol) (place (car char-exprs))
 	(let* ((lplace (vector srow scol lrow lcol))
 	       (nlist-expr (mk-list-expr (car char-exprs) list-expr lplace)))
-	  (xt-list-char-exprs (cdr char-exprs) nlist-expr lrow lcol)))))
+	  (setf (char nstring spos) (code-char (code (car char-exprs))))
+	  (xt-list-char-exprs (cdr char-exprs) nlist-expr nstring (- spos 1) lrow lcol)))))
 
 (defun backslash-translation (string bs-pos)
   (let ((echar (char string (1+ bs-pos))))
