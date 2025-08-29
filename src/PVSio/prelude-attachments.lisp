@@ -54,7 +54,7 @@
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
    (handler-case 
-       (loop (pvs-funcall f nil))
+       (loop (pvs-funcall f 0))
      (pvsio-break
       (condition)
       (val condition))))
@@ -70,8 +70,8 @@
 (defattach |unwind_protect_lift| (ft fcu)
   "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
   (unwind-protect
-      (pvs-funcall ft nil)
-    (pvs-funcall fcu nil)))
+      (pvs-funcall ft 0)
+    (pvs-funcall fcu 0)))
 
 (defattach |type_of_domain_lisp| (e)
   (declare (ignore e))		      
@@ -688,7 +688,7 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 (defattach |catch_lift| (exctag f1 f2)
   "If F1 throws the exception tagged exctag, then evaluates f2(val). Otherwise, returns F1"
   (handler-case
-      (pvs-funcall f1 nil)
+      (pvs-funcall f1 0)
     (pvsio-exception
      (condition)
      (if (starts-with-tag exctag (tag condition))
