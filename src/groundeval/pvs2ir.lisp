@@ -5081,7 +5081,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	      ((|__uint128| |__int128|) (break "128-bit GMP arithmetic not available." ))
 	      ((|int8| |int16| |int32| |int64|)
 	       (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg1)
-		     (format nil "mpz_add_si(~a, ~a (int64_t)~a)" return-var return-var arg2)))
+		     (format nil "mpz_add_si(~a, ~a, (int64_t)~a)" return-var return-var arg2)))
 	      (|mpz| (list (format nil "mpz_mk_add_si(~a, ~a, (int64_t)~a)" return-var arg2 arg1)))
 	      (|mpq| (list (format nil "mpz_mk_set_q(~a, ~a)" return-var arg2)
 			 (format nil "mpz_add_si(~a, ~a, ~a)" return-var return-var arg1)))))
