@@ -1639,7 +1639,6 @@ The dependent types are created only when needed."
       (assert (fully-instantiated? (measure decl)))
       (setf (recursive-signature decl) (compute-recursive-signature decl)))
     ;;(assert (null (freevars (recursive-signature decl))))
-    (set-nonempty-type rtype decl)
     (put-decl decl)
     (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	  (*added-recursive-defn-conversions* nil))
@@ -1654,6 +1653,7 @@ The dependent types are created only when needed."
 		   (definition decl))))
     (assert (fully-instantiated? (definition decl)))
     (check-positive-types decl)
+    (set-nonempty-type rtype decl)
     (make-def-axiom decl))
   decl)
 
