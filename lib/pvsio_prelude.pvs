@@ -68,6 +68,13 @@ BEGIN
   
   to_lisp_[T:TYPE](t:T) : Lisp_ % To untyped lisp
 
+  %% {| e |} makes a lisp representation of the PVS expression e suitable as input to format's directives.
+  %% {| a1,..,an |} becomes a1 ... an parameters to format
+  %% {| (: a1,..,an :) |} becomes a list to format's iterative directive ~{ ... ~}
+  %% If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if e is, respectively,
+  %% FALSE, the empty string, undef, or None. Otherwise, it returns its value. So, this makes {| e |}
+  %% suitable as input to the fomat's conditional directive ~@[ ... ~]
+
   {||}[T:TYPE](t:T) : Lisp[T] = to_lisp(t)
 
   unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
@@ -129,13 +136,10 @@ BEGIN
   % PVSioException
   PVSioException : Exception[string] = "PVSioException"
 
-  ifstr(str:string) : MACRO Lisp_ =
-    IF str = "" THEN to_lisp_(FALSE) ELSE to_lisp_(str) ENDIF
-
   % Mutable Exception
   UndefinedMutableVariable : Exception[string] = PVSioException <<
     ("UndefinedMutableVariable",
-     LAMBDA(str:string):format("Mutable variable is undefined~@[ (~a)~]", {| ifstr(str) |}))
+     LAMBDA(str:string):format("Mutable variable is undefined~@[ (~a)~]", {| str |}))
 
   % String2PVS Exceptions
   String2PVS: Exception[string] = PVSioException << "String2PVS"
@@ -176,11 +180,11 @@ BEGIN
      
   ClosedStream: Exception[string] = IOException <<
     ("ClosedStream",
-     LAMBDA(str:string):format("File is closed~@[ (~a)~]", {| ifstr(str) |}))
+     LAMBDA(str:string):format("File is closed~@[ (~a)~]", {| str |}))
 
   EndOfFile: Exception[string] = IOException <<
     ("EndOfFile",
-     LAMBDA(str:string):format("Reached end of file~@[ (~a)~]", {| ifstr(str) |}))
+     LAMBDA(str:string):format("Reached end of file~@[ (~a)~]", {| str |}))
 
 END stdexc_tags
 

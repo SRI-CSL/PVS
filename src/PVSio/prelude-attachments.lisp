@@ -573,6 +573,12 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 )))
 
+;; This function makes a lisp representation of PVS objects suitable as inputs to format's directives.
+;; {| a1,..,an |} becomes a1 ... an parameters to format
+;; {| (: a1,..,an :) |} becomes a list to format's iterative directives
+;; If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if e is, respectively,
+;; FALSE, the empty string, undef, or None. Otherwise, it returns its value. So, this makes {| e |}
+;; suitable as input to the fomat's conditional directive ~@[...~].
 (defun formatargs (e type)
   (cond
    ((and (type-name? type)(equal (id type) '|Lisp|))
@@ -584,7 +590,13 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 	     (loop for ei across e
 		   for ti in (types ptype)
 		   append (formatargs ei ti)))
+	    ((and (type-name? ptype) (eq (id ptype) '|Mutable|))
+	     (list (when (cdr e) (cadr e))))
+	    ((and (type-name? ptype) (eq (id ptype) '|Maybe|))
+	     (list (when (slot-exists-p e '|val|)
+		     (slot-value e '|val|))))
 	    ((numberp e) (list (rat2double e)))
+	    ((stringp e) (list (unless (string= e "") e)))
 	    (t (list e)))))
    ((or (tc-eq (find-supertype type) *number*)
 	(tc-eq (find-supertype type) *string-type*))
