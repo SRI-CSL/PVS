@@ -286,7 +286,7 @@ It cannot be evaluated in a formal proof."
 ;; Reports running-time errors in attachments
 (defmacro attach-error (&optional msg)
   "Reports an error in the execution of a semantic attachment."
-  `(throw-pvsio-exc "PVSioError" (when ,msg (format nil "~a" ,msg))))
+  `(error 'pvsio-error :message ,msg))
 
 ;; Global variables are represented by a list (name val1 val2 ... valn). Name is
 ;; non-empty for mutable variables of type Global.
@@ -311,7 +311,7 @@ It cannot be evaluated in a formal proof."
   "Returns value of mutable variable. Throws exception UndefinedMutableVariable when undefined?(gvar)"
   (if (cdr gvar)
       (cadr gvar)
-    (throw-pvsio-exc "UndefinedMutableVariable" (format nil "Mutable variable~@[ ~a~] is undefined" (car gvar)))))
+      (throw-pvsio-exc "UndefinedMutableVariable" (or (car gvar) ""))))
 
 (defun pvsio_reset_gvar (gvar)
   "Sets mutable variable to undefined"
@@ -325,13 +325,13 @@ It cannot be evaluated in a formal proof."
   "Pops value of the mutable variable and fails silently when mutable variable is undefined"
   (and (pop (cdr gvar)) t))
 
-(defun pvsio_get_gvar_lisp (name)
-  "Returns lisp representation of Global variable. It assumes the variable is defined."
-  (eval (pvs2cl (extra-get-expr name))))
+(defun pvsio-eval-lisp (expr)
+  "Returns Lisp representation of expr"
+  (eval (pvs2cl (extra-get-expr expr))))
 
 (defun pvsio_get_gvar_by_name (name)
   "Returns the current value of a PVSio Global variable. It assumes the variable is defined."
-  (let ((gvar (pvsio_get_gvar_lisp name)))
+  (let ((gvar (pvsio-eval-lisp name)))
     (pvsio_val_gvar gvar)))
 
 ;; Apply "PVSio" function pvsio (string), which maybe fully qualified,

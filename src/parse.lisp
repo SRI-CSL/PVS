@@ -35,6 +35,9 @@
 
 (defvar *newline-comments* nil)
 
+(defmacro place-bind (vars place &rest body)
+  `(destructuring-bind ,vars (coerce ,place 'list) ,@body))
+
 ;;; Makes extensive use of the following functions from ERGO:
 ;;;	sim-term-op - returns the symbol which is the operator of a term
 ;;;	is-sop	    - checks whether a given symbol is the operator of a term
@@ -1826,39 +1829,123 @@
       :place (term-place expr))))
 
 (defun xt-string-expr (expr)
-  (let ((string (ds-string (term-arg0 expr)))
-	(ne (mk-name-expr '|char|)))
-    (make-instance 'string-expr
-      :string-value string
-      :operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
-      :argument (xt-string-to-charlist string (term-place expr))
-      :place (term-place expr))))
+  "Returns a string-expr, i.e., an application of list2finseq to the list of
+char-exprs"
+  (let* ((string (ds-string (term-arg0 expr)))
+	 (place (term-place expr))
+	 (ne (mk-name-expr '|char|)))
+    (multiple-value-bind (char-list nstring)
+	(xt-string-to-charlist string place)
+      (make-instance 'string-expr
+	:orig-string string
+	:string-value nstring
+	:operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
+	:argument char-list
+	:place place))))
 
 (defun xt-string-to-charlist (string place)
-  (let ((codes (xt-string-to-codes string 0 (length string) place nil)))
-    (xt-string-to-charlist* codes place)))
+  (place-bind (srow scol erow ecol) place
+    (xt-string-to-charlist* string srow scol erow ecol)))
 
-(defun xt-string-to-charlist* (codes place)
-  (if (null codes)
-      (add-place (make-instance 'null-expr
-		   :id '|null|)
-		 (vector (ending-row place) (ending-col place)
-			 (ending-row place) (ending-col place)))
-      (let* ((code (caar codes))
-	     (cplace (cdar codes))
-	     (aplace (vector (starting-row cplace) (starting-col cplace)
-			     (ending-row place) (ending-col place)))
-	     (scar (add-place
-		    (mk-application (add-place (mk-name-expr '|char|) cplace)
-		      (add-place (mk-number-expr code) cplace))
-		    cplace))
-	     (scdr (xt-string-to-charlist* (cdr codes) place)))
-	 (make-instance 'list-expr
-	   :operator (add-place (mk-name-expr '|cons|) cplace)
-	   :argument (make-instance 'arg-tuple-expr
-		       :exprs (list scar scdr)
-		       :place aplace)
-	   :place aplace))))
+(defun xt-string-to-charlist* (string srow scol erow ecol
+			       &optional (pos 0) char-exprs)
+  ;; pos is the position in the string
+  (if (< pos (length string))
+      (let ((char (char string pos)))
+	(multiple-value-bind (ch-code npos double?)
+	    ;; The following awkwardness is because and, or, etc. don't play
+	    ;; nice with multiple-values
+	    (if (char= char #\\)
+		(backslash-translation string pos)
+		(values (char-code char) (1+ pos)))
+	  (let* ((ncol (+ scol (- npos pos)))
+		 (cplace (vector srow scol srow ncol))
+		 (char-ex (mk-char-expr ch-code cplace))
+		 (nrow (if (or (char= char #\\) (/= ch-code 10)) ;; #\Newline
+			   srow (1+ srow)))
+		 (ncol (if (= nrow srow) ncol 1)))
+	    (when double?
+	      ;; Modifies ncol, npos, and char-exprs
+	      (let* ((cplace2 (vector srow (1+ scol) srow (incf ncol)))
+		     (char-ex2 (mk-char-expr ch-code cplace2)))
+		(incf npos)
+		(push char-ex2 char-exprs)))
+	    (xt-string-to-charlist* string nrow ncol erow ecol npos
+				    (cons char-ex char-exprs)))))
+      (let ((null-ex (add-place (make-instance 'null-expr :id '|null|)
+				(vector srow scol erow ecol)))
+	    (len (length char-exprs)))
+	(assert (and (= srow erow) (= scol ecol)))
+	(xt-list-char-exprs char-exprs null-ex
+			    (make-string len) (- len 1)
+			    erow ecol))))
+
+(defun xt-list-char-exprs (char-exprs list-expr nstring spos lrow lcol)
+  (if (null char-exprs)
+      (values list-expr nstring)
+      (place-bind (srow scol erow ecol) (place (car char-exprs))
+	(let* ((lplace (vector srow scol lrow lcol))
+	       (nlist-expr (mk-list-expr (car char-exprs) list-expr lplace)))
+	  (setf (char nstring spos) (code-char (code (car char-exprs))))
+	  (xt-list-char-exprs (cdr char-exprs) nlist-expr nstring (- spos 1) lrow lcol)))))
+
+(defun backslash-translation (string bs-pos)
+  (let ((echar (char string (1+ bs-pos))))
+    (case echar
+      (#\\ (values 92 (+ bs-pos 1) t)) ; #\\
+      (#\a (values 7 (+ bs-pos 2))) ; #\Bel
+      (#\b (values 8 (+ bs-pos 2))) ; #\Backspace
+      (#\e (values 27 (+ bs-pos 2))) ; #\Escape
+      (#\f (values 12 (+ bs-pos 2))) ; #\Page
+      (#\n (values 10 (+ bs-pos 2))) ; #\Newline
+      (#\r (values 13 (+ bs-pos 2))) ; #\Return
+      (#\t (values 9 (+ bs-pos 2))) ; #\Tab
+      (#\v (values 11 (+ bs-pos 2))) ; #\VT
+      ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7)
+       (multiple-value-bind (code npos)
+	   (parse-integer string :radix 8
+			  :start (+ bs-pos 1)
+			  :end (min (+ bs-pos 4) (length string))
+			  :junk-allowed t)
+	 (if (and code
+		  (< code 256))
+	     (values code npos)
+	     (error "octal number must be < 256"))))
+      (#\x
+       (multiple-value-bind (code npos)
+	   (parse-integer string :radix 16
+			  :start (+ bs-pos 2)
+			  :end (min (+ bs-pos 4) (length string))
+			  :junk-allowed t)
+	 (if code
+	     (values code npos)
+	     (error "\\x without following hex digit"))))
+      (#\u
+       (multiple-value-bind (code npos)
+	   (parse-integer string :start (+ bs-pos 2) :end (+ bs-pos 6)
+			  :radix 16)
+	 (if code
+	     (values code npos)
+	     (error "\\u requires 4 hex digits"))))
+      (#\U
+       (error "\\U not currently supported"))
+      (t (values 92 (+ bs-pos 1))))))
+
+;; (defun increment-place (place &optional (delta 1))
+;;   (let* ((srow (starting-row place))
+;; 	 (scol (starting-col place))
+;; 	 (ecol (ending-col place))
+;; 	 (cplace (vector srow scol srow (1+ scol)))
+;; 	 (nplace (vector srow (1+ scol) srow ecol)))
+;;     (values cplace nplace)))
+
+(defun mk-list-expr (elt list-expr place)
+  (make-instance 'list-expr
+    :operator (add-place (mk-name-expr '|cons|) place)
+    :argument (make-instance 'arg-tuple-expr
+		:exprs (list elt list-expr)
+		:place place)
+    :place place))
 
 (defun mk-char-expr (code place)
   (let ((ex (add-place
@@ -1866,91 +1953,6 @@
 	       (add-place (mk-number-expr code) place))
 	     place)))
     (change-class ex 'char-expr :code code)))
-
-(defun xt-string-to-codes (string pos len place codes)
-  (if (>= pos len)
-      (nreverse codes)
-      (multiple-value-bind (code npos bkslash?)
-	  (next-string-code string pos len place)
-	(let* ((strow (starting-row place))
-	       (stcol (starting-col place))
-	       (nplace (vector strow (+ stcol pos) strow (+ stcol npos)))
-	       (acodes (acons code nplace codes))
-	       (ncodes (if bkslash? (acons code nplace acodes) acodes)))
-	  (xt-string-to-codes string npos len place ncodes)))))
-
-(defun next-string-code (string pos len place)
-  "Returns the next char and new string position. If the char is a
-backslash, interpret the usual \n, \', etc. as well as \x (hex), \0 (octal),
-\# (decimal). If not followed by one of these, it's returned as a backslash."
-  (let ((char (char string pos)))
-    (cond ((or *tex-mode*
-	       (char/= char #\\))
-	   (values (char-code char) (1+ pos)))
-	  ;; have a backslash below
-	  ((>= (1+ pos) len)
-	   (let ((cplace (vector (svref place 0) (+ (svref place 1) pos)
-				 (svref place 0) (+ (svref place 1) pos))))
-	     (parse-error cplace "String ends with a '\\'")))
-	  (t (let ((echar (char string (1+ pos))))
-	       (case echar
-		 (#\a (values (char-code #-gcl #\Bell #+gcl #\^G) (+ pos 2)))
-		 (#\b (values (char-code #\Backspace) (+ pos 2)))
-		 (#\f (values (char-code #\Page) (+ pos 2)))
-		 (#\n (values (char-code #\Newline) (+ pos 2)))
-		 (#\r (values (char-code #\Return) (+ pos 2)))
-		 (#\t (values (char-code #\Tab) (+ pos 2)))
-		 (#\v (values (char-code #-gcl #\VT #+gcl #\^K) (+ pos 2)))
-		 (#\' (values (char-code #\') (+ pos 2)))
-		 (#\" (values (char-code #\") (+ pos 2)))
-		 (#\? (values (char-code #\?) (+ pos 2)))
-		 (#\\ (values (char-code #\\) (+ pos 2) t))
-		 ((#\x #\X)
-		  (if (digit-char-p (char string (+ pos 2)) 16)
-		      (parse-integer string :radix 16 :start (+ pos 2)
-				     :end (min (+ pos 4) len) :junk-allowed t)
-		      (let ((cplace (vector (svref place 0)
-					    (+ (svref place 1) pos 2)
-					    (svref place 0)
-					    (+ (svref place 1) pos 2))))
-			(parse-error cplace
-			  "Illegal character after '\\X': must be a hex digit"
-			  ))))
-		 (#\0
-		  (if (digit-char-p (char string (+ pos 2)) 8)
-		      (multiple-value-bind (chcode npos)
-			  (parse-integer string :radix 8 :start (+ pos 2)
-					 :end (min (+ pos 5) len)
-					 :junk-allowed t)
-			(if (< chcode 256)
-			    (values chcode npos)
-			    (let ((cplace (vector (svref place 0)
-						  (+ (svref place 1) pos 2)
-						  (svref place 0)
-						  (+ (svref place 1) pos 2))))
-			      (parse-error cplace
-				"Octal code must be less than 0400"))))
-		      (let ((cplace (vector (svref place 0)
-					    (+ (svref place 1) pos 2)
-					    (svref place 0)
-					    (+ (svref place 1) pos 2))))
-			(parse-error cplace
-			  "Illegal character after '\\0': must be a octal digit"
-			  ))))
-		 ((digit-char-p echar)
-		  (multiple-value-bind (chcode npos)
-		      (parse-integer string :radix 10 :start (1+ pos)
-				     :end (min (+ pos 4) len)
-				     :junk-allowed t)
-		    (if (< chcode 256)
-			(values chcode npos)
-			(let ((cplace (vector (svref place 0)
-					      (+ (svref place 1) pos 1)
-					      (svref place 0)
-					      (+ (svref place 1) pos 1))))
-			  (parse-error cplace
-			    "Decimal code must be less than 256")))))
-		 (t (values (char-code char) (1+ pos)))))))))
 
 (defun xt-list-expr (expr)
   (let* ((place (term-place expr))
