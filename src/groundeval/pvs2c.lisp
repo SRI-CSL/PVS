@@ -899,8 +899,8 @@ successful."
 
 (defun make-c-tests-main (name &optional (path *default-pathname-defaults*))
   (with-workspace path
-    (let* ((filename (format nil "~a.c" name))
-	   (theory (get-typechecked-theory name nil t))
+    (let* ((theory (get-typechecked-theory name nil t))
+	   (filename (format nil "~a/~a.c" (context-path theory) name))
 	   (test-formulas (remove-if-not #'test-formula? (all-decls theory))))
       (unless test-formulas
 	(error "No test-formulas found in typechecked theory" name))
