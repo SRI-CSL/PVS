@@ -647,14 +647,14 @@ In either case, if the second value is 0, the rational has a finite decimal repr
    (mssg :accessor mssg :initarg :mssg))
   (:report
    (lambda (condition stream)
-     (format stream "[~a]~@[ ~a~]"
+     (format stream "[PVSioException~{::~a~}]~@[ ~a~]"
 	     (tag condition) (mssg condition)))))
 
 (defun throw-pvsio-exctag (tag val mssg)
   (error 'pvsio-exception :tag tag :val val :mssg  mssg))
 
 (defun throw-pvsio-exc (exc val &optional mssg)
-  (let ((tag (pvsio-eval-lisp (format nil "~a`tag" exc)))
+  (let ((tag (pvsio-eval-lisp (format nil "qid(~a`tag)" exc)))
 	(msg (or mssg (pvsio-funcall (format nil "~a`formatter" exc) val))))
     (throw-pvsio-exctag tag val msg)))
 
@@ -688,14 +688,12 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 (eval '(attachments |stdcatch|
 
-(defun starts-with-tag (exctag string)
-  (let ((lstr (length string))
-	(lexc (length exctag)))
-    (and (>= lstr lexc)
-	 (string= exctag string :end2 lexc)
-	 (or (= lstr lexc)
-	     (and (> lstr (+ 2 lexc))
-		  (string= (subseq string lexc (+ 2 lexc)) "::"))))))
+;; Check if list of strings tag1 is a prefix of the the list of strings tag2
+(defun starts-with-tag (tag1 tag2)
+  (or (null tag1)
+      (and (car tag1) (car tag2)
+	   (string= (car tag1) (car tag2))
+	   (starts-with-tag (cdr tag1) (cdr tag2)))))
 
 (defattach |catch_lift| (exctag f1 f2)
   "If F1 throws the exception tagged exctag, then evaluates f2(val). Otherwise, returns F1"
@@ -703,14 +701,15 @@ In either case, if the second value is 0, the rational has a finite decimal repr
       (pvs-funcall f1 0)
     (pvsio-exception
      (condition)
-     (if (starts-with-tag exctag (tag condition))
+     (if (starts-with-tag (slot-value exctag '|qid|) (tag condition))
 	 (let* ((exc (val condition)))
 	   (pvs-funcall f2 exc))
        (error condition)))))
 
 (defattach |throw_lisp| (exctag val mssg)
   "Throws the exception tagged EXCTAG using VAL and MSSG"
- (throw-pvsio-exctag exctag val mssg))
+ (let ((tag (slot-value exctag '|qid|)))
+   (throw-pvsio-exctag tag val mssg)))
 
 )))
 

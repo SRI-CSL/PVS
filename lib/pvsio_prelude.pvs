@@ -64,7 +64,7 @@ BEGIN
 
   Lisp[T:TYPE+] : TYPE+  %% Used when lisp attachments need the type
 
-  to_lisp[T:TYPE](t:T) : Lisp[T]  % To PVS-typed lisp
+  to_lisp[T:TYPE+](t:T) : Lisp[T]  % To PVS-typed lisp
   
   to_lisp_[T:TYPE](t:T) : Lisp_ % To untyped lisp
 
@@ -75,7 +75,7 @@ BEGIN
   %% FALSE, the empty string, undef, or None. Otherwise, it returns its value. So, this makes {| e |}
   %% suitable as input to the fomat's conditional directive ~@[ ... ~]
 
-  {||}[T:TYPE](t:T) : Lisp[T] = to_lisp(t)
+  {||}[T:TYPE+](t:T) : Lisp[T] = to_lisp(t)
 
   unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
 
@@ -99,32 +99,75 @@ END stdpvs
 stdexc[ExceptionType:TYPE] : THEORY
 BEGIN
 
-  ExceptionTag : TYPE = string
+  ExceptionTag : DATATYPE
+  BEGIN
+    NewExceptionTag(qid:list[string]) : ExceptionTag?
+  END ExceptionTag
+
+  MakeExceptionTag(id:string) : ExceptionTag =
+    NewExceptionTag((: id :))
+
+  % For backward compatibility, strings are converted to ExceptionTags
+  CONVERSION MakeExceptionTag
 
   Exception : TYPE = [#
     tag       : ExceptionTag,
     formatter : [ExceptionType->string]
   #]
 
-  make_exception(new_tag:ExceptionTag,fmter:[ExceptionType->string]) : MACRO Exception =
-    (# tag := new_tag,
-       formatter := fmter #)
-
-  CONVERSION make_exception
+  % For backward compatibility, ExceptionTags are converted to root Exceptions
 
   tag2exception(tag:ExceptionTag) : MACRO Exception =
-    make_exception(tag,LAMBDA(t:ExceptionType):format("~a",t))
+    (# tag := tag,
+       formatter := LAMBDA(t:ExceptionType):format("~@[~a~]",t) #)
 
-  % For backward compatibility, ExceptionTags are converted into simple root exceptions
-  % with a default formatter
   CONVERSION tag2exception
 
-  ;<<(exc:Exception,tag:ExceptionTag) : MACRO Exception =
-    exc WITH [ `tag := format("~a::~a",{| exc`tag, tag |}) ]
+  mk_exception_id(id:string) : MACRO Exception = MakeExceptionTag(id)
 
-  ;<<(exc:Exception,tagfmtr:[ExceptionTag,[ExceptionType->string]]) : MACRO Exception =
-    LET (tag,fmtr) = tagfmtr IN
-    exc WITH [ `tag := format("~a::~a",{| exc`tag, tag |}), `formatter := fmtr ]
+  CONVERSION mk_exception_id
+
+  mk_exception_idmssg(id:string, mssg:string) : MACRO Exception =
+    (# tag := MakeExceptionTag(id),
+       formatter := LAMBDA(t:ExceptionType):mssg #)
+
+  CONVERSION mk_exception_idmssg
+
+  mk_exception(id:string,
+               fmter:[ExceptionType->string]) : MACRO Exception =
+    (# tag := MakeExceptionTag(id),
+       formatter := fmter #)
+
+  CONVERSION mk_exception
+
+  ;<<(exc:Exception,id:string) : MACRO Exception =
+    exc WITH [ `tag := NewExceptionTag(append(qid(exc`tag),(: id :))) ]
+
+  ;<<(exc:Exception,idmssg:[string,string]) : MACRO Exception =
+    LET (id,mssg) = idmssg IN
+    exc WITH [ `tag := NewExceptionTag(append(qid(exc`tag),(: id :))),
+               `formatter := LAMBDA(t:ExceptionType):mssg ]
+
+  ;<<(exc:Exception,idfmtr:[string,[ExceptionType->string]]) : MACRO Exception =
+    LET (id,fmtr) = idfmtr IN
+    exc WITH [ `tag := NewExceptionTag(append(qid(exc`tag),(: id :))),
+               `formatter := fmtr ]
+
+  % NOTE: Exceptions can be created as follows.
+  % 1. Using an id, e.g.,
+  %      MyExc1   : Exception[T] = "MyExc1"
+  %    In this case, the qualified name is "MyExc1" and the formatter is the default one
+  % 2. Using an id and a formatter, e.g.,
+  %      MyExc2 : Exception[T] = ("MyExc2", LAMBDA(t:T): <str>)
+  %    In this case, the qualified name is "MyExc2" and the formatter is LAMBDA(t:T):<str>
+  % 3. Using an already defined exception and a new id, e.g.,
+  %      MyExc3 : Exception[T] = MyExc2 << "MyExc3"
+  %    In this case, the qualified name is "MyExc2::MyExc3" and the formmater is the one of MyExc2
+  % 4. Using an arelady defined exception, a new id, and a new formmater, e.g.,
+  %      MyExc4 : Exception[T] = MyExc2 << ("MyExc4", LAMBDA(t:T): <str>)
+  %    In this case, the qualified name is "MyExc2::MyExc4" and the formmater is the one
+  %    provided by the user.
+  % By convention, the id should be the same as the name of the variable.
 
 END stdexc
 
@@ -133,18 +176,15 @@ BEGIN
 
   % Exceptions are hierarchical and they can be caught through the hierarchy
 
-  % PVSioException
-  PVSioException : Exception[string] = "PVSioException"
-
   % Mutable Exception
-  UndefinedMutableVariable : Exception[string] = PVSioException <<
+  UndefinedMutableVariable : Exception[string] =
     ("UndefinedMutableVariable",
      LAMBDA(str:string):format("Mutable variable is undefined~@[ (~a)~]", {| str |}))
 
   % String2PVS Exceptions
-  String2PVS: Exception[string] = PVSioException << "String2PVS"
+  String2PVS: Exception[string] = "String2PVS"
 
-  NotALiteral: Exception[string] = PVSioException << "NotALiteral"
+  NotALiteral: Exception[string] = "NotALiteral"
 
   NotABoolean: Exception[string] = String2PVS <<
     ("NotABoolean",
@@ -163,10 +203,10 @@ BEGIN
 
   % PVS2String Exceptions
 
-  PVS2String: Exception[string] = PVSioException << "PVS2String"
+  PVS2String: Exception[string] = "PVS2String"
 
   % I/O Exceptions
-  IOException: Exception[string] = PVSioException << "IOException"
+  IOException: Exception[string] = "IOException"
 
   ReadPVS : Exception[string] = IOException << "ReadPVS"
 
@@ -186,6 +226,17 @@ BEGIN
     ("EndOfFile",
      LAMBDA(str:string):format("Reached end of file~@[ (~a)~]", {| str |}))
 
+  SimpleExceptionType : TYPE = Lisp[void]
+
+  SimpleExceptionVal : SimpleExceptionType = {| fail |}
+
+  SimpleException : TYPE = Exception[SimpleExceptionType]
+
+  PVSioException : SimpleException = (#
+    tag := NewExceptionTag[SimpleExceptionType](null),
+    formatter := LAMBDA(t:SimpleExceptionType):""
+  #)
+
 END stdexc_tags
 
 %% stdcatch.pvs
@@ -204,8 +255,9 @@ BEGIN
         handler:[ExceptionType->ResultType]) : MACRO ResultType =
     catch_lift(exc`tag,LAMBDA(d:Dummy):result,handler)
 
-  % Catch with an exceptional result
-  catch(exc:Exception[ExceptionType],result,exc_result:ResultType): MACRO ResultType =
+  % Catch with an exceptional result (exc_result)
+  catch(exc:Exception[ExceptionType],
+        result,exc_result:ResultType): MACRO ResultType =
     catch(exc,result,LAMBDA(val:ExceptionType):exc_result)
 
   catch_list_lift(l:list[Exception[ExceptionType]],
@@ -224,18 +276,21 @@ BEGIN
         result:ResultType,handler:[ExceptionType->ResultType]) : MACRO ResultType =
     catch_list_lift(l,LAMBDA(d:Dummy):result,handler)
 
-  % Catch list with an exceptional result
-  catch(l:list[Exception[ExceptionType]],result,exc_result:ResultType) : MACRO ResultType =
+  % Catch list with an exceptional result (exc_result)
+  catch(l:list[Exception[ExceptionType]],
+        result,exc_result:ResultType) : MACRO ResultType =
     catch(l,result,LAMBDA(val:ExceptionType):exc_result)
 
-  throw_lisp(tag:ExceptionTag[ExceptionType],val:ExceptionType,mssg:string): ResultType
+  throw_lisp(tag:ExceptionTag[ExceptionType],
+             val:ExceptionType,mssg:string): ResultType
 
   % Throw exception using default formatter
   throw(exc:Exception[ExceptionType],val:ExceptionType) : MACRO ResultType =
     throw_lisp(exc`tag,val,exc`formatter(val))
 
-  % Throw exception using specific message
-  throw(exc:Exception[ExceptionType],val:ExceptionType,mssg:string): MACRO ResultType =
+  % Throw exception with specific message
+  throw(exc:Exception[ExceptionType],
+        val:ExceptionType,mssg:string): MACRO ResultType =
     throw_lisp(exc`tag,val,mssg)
 
 END stdcatch
@@ -246,14 +301,20 @@ END stdcatch
 stdprog[T:TYPE+] : THEORY
 BEGIN
 
-  % Throw a PVSioException with a given message
-  throw(mssg:string): MACRO T = throw[T,string](PVSioException,mssg)
+  % Catch any PVSioException using an exceptional result (exc_result)
+  catch(result,exc_result:T): MACRO T =
+    catch(PVSioException,result,exc_result)
 
-  % Catch a PVSioException with an exceptional value texc
-  catch(t,texc:T): MACRO T =
-    catch(PVSioException,t,texc)
+  % Throw a simple PVSioException with a specific message
+  throw(mssg:string): MACRO T = throw(PVSioException,SimpleExceptionVal,mssg)
 
-  % Mutable data
+  throw(exc:SimpleException,mssg:string) : MACRO T =
+    throw(exc,SimpleExceptionVal,mssg)
+
+  throw(exc:SimpleException) : MACRO T =
+    throw(exc,"")
+
+% Mutable data
 
   Mutable : TYPE+
 
@@ -947,9 +1008,9 @@ BEGIN
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
       fread_lisp(f,the_type)
 
-  FileReader[T:TYPE] : TYPE = [[IStream]->T]
+  FileReader[T:TYPE+] : TYPE = [[IStream]->T]
 
-  fread_reader[T:TYPE] : JUDGEMENT
+  fread_reader[T:TYPE+] : JUDGEMENT
     fread[T] HAS_TYPE FileReader
 
   % Iterate a function on a file n times. Throw exception ClosedStream if stream is not open
