@@ -94,9 +94,9 @@ uint32_t uint32_hash(uint32_t x){
 
 void mpz_add_si(mpz_t x, mpz_t y, int64_t i){
   if (i < 0) {
-      mpz_add_ui(x, y, -i);
+      mpz_sub_ui(x, y, -i);
     } else {
-    mpz_sub_ui(x, y, -i);
+    mpz_add_ui(x, y, i);
   }
 }
 
@@ -104,7 +104,7 @@ void mpz_sub_si(mpz_t x, mpz_t y, int64_t i){
   if (i < 0) {
       mpz_add_ui(x, y, -i);
     } else {
-    mpz_sub_ui(x, y, -i);
+    mpz_sub_ui(x, y, i);
   }
 }
 
