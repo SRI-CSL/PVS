@@ -946,7 +946,9 @@ looking in bindings and substs."
 (defun check-nonempty-type (te expr)
   (let ((type (if (dep-binding? te) (type te) te)))
     (unless (nonempty? type)
-      (cond ((member type (decls-upto :pred #'existence-tcc?)
+      (cond ((member type (decls-upto :pred #'(lambda (d)
+						(and (existence-tcc? d)
+						     (exists-expr? (definition d)))))
 		     :test #'tc-eq :key #'type)
 	     (setf (nonempty? type) t)
 	     (when (print-type type)
@@ -2286,11 +2288,21 @@ the same id for the substitution."
 	   (tcc-evaluates-to-true* (cdr exprs)))))
 
 (defun tcc-origin-place (expr type)
-  (or (place *set-type-actuals-name*)
-      (place expr)
-      (place type)
-      (place *set-type-subtype*)
-      (place *set-type-expr*)))
+  (let ((place (or (place *set-type-actuals-name*)
+		   (place expr)
+		   (place type)
+		   (place *set-type-subtype*)
+		   (place *set-type-expr*))))
+    ;; (check-place-within-current-declaration place)
+    place))
+
+(defun check-place-within-current-declaration (place)
+  (when place
+    (let ((spos (list (svref place 0) (svref place 1)))
+	  (epos (list (svref place 2) (svref place 3)))
+	  (dplace (place (current-declaration))))
+      (unless (and (within-place spos dplace) (within-place epos dplace))
+	(break "Why a bad place?")))))
 
 (defun add-tcc-comment (kind expr type
 			&optional reason subsumed-by (decl (current-declaration)))
