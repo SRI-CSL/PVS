@@ -4688,7 +4688,7 @@ ground prover until they are exposed."
   (let* ((exprlis (collect-all-subexprs-with-useful-typepreds sforms))
          (cmdlis (loop for x in exprlis collect `(typepred ,x)))
          (cmd (cons 'then cmdlis)))
-    (format t "Generating typepreds for expressions:~{~%  ~a~^~}" exprlis)
+    (format-if "Generating typepreds for expressions:~{~%  ~a~^~}" exprlis)
     cmd))
 
 (defun collect-all-subexprs-with-useful-typepreds (sforms)
