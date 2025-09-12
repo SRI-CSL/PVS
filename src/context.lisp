@@ -2100,7 +2100,7 @@ renaming, etc.) which are then added to the orphaned-proofs.prf file"
 			  (let ((th-elt (assq theoryid file-proofs)))
 			    (if th-elt
 				(list th-elt)
-				(pvs-error "Theory ~a not found in ~a.prf"
+				(pvs-message "Theory ~a has no proofs in ~a.prf"
 					     theoryid filename)))
 			  file-proofs))))
       (setq proofs th-proofs)))

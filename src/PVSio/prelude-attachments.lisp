@@ -19,6 +19,8 @@
 (decimals:define-decimal-formatter c (:round-magnitude -6) (:show-trailing-zeros t))
 (decimals:define-decimal-formatter d (:round-magnitude -6))
 
+(defvar *pvsio-dummy-val* t)
+
 (defun stdpvs-attachments ()
 
 (eval '(attachments |stdpvs|
@@ -54,7 +56,7 @@
 (defattach |loop_lift| (f)
    "Applies F in an infinite loop"
    (handler-case 
-       (loop (pvs-funcall f 0))
+       (loop (pvs-funcall f *pvsio-dummy-val*))
      (pvsio-break
       (condition)
       (val condition))))
@@ -70,8 +72,8 @@
 (defattach |unwind_protect_lift| (ft fcu)
   "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
   (unwind-protect
-      (pvs-funcall ft 0)
-    (pvs-funcall fcu 0)))
+      (pvs-funcall ft *pvsio-dummy-val*)
+    (pvs-funcall fcu *pvsio-dummy-val*)))
 
 (defattach |type_of_domain_lisp| (e)
   (declare (ignore e))		      
@@ -573,6 +575,12 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 )))
 
+;; This function makes a lisp representation of PVS objects suitable as inputs to format's directives.
+;; {| a1,..,an |} becomes a1 ... an parameters to format
+;; {| (: a1,..,an :) |} becomes a list to format's iterative directives
+;; If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if e is, respectively,
+;; FALSE, the empty string, undef, or None. Otherwise, it returns its value. So, this makes {| e |}
+;; suitable as input to the fomat's conditional directive ~@[...~].
 (defun formatargs (e type)
   (cond
    ((and (type-name? type)(equal (id type) '|Lisp|))
@@ -584,7 +592,13 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 	     (loop for ei across e
 		   for ti in (types ptype)
 		   append (formatargs ei ti)))
+	    ((and (type-name? ptype) (eq (id ptype) '|Mutable|))
+	     (list (when (cdr e) (cadr e))))
+	    ((and (type-name? ptype) (eq (id ptype) '|Maybe|))
+	     (list (when (slot-exists-p e '|val|)
+		     (slot-value e '|val|))))
 	    ((numberp e) (list (rat2double e)))
+	    ((stringp e) (list (unless (string= e "") e)))
 	    (t (list e)))))
    ((or (tc-eq (find-supertype type) *number*)
 	(tc-eq (find-supertype type) *string-type*))
@@ -635,14 +649,14 @@ In either case, if the second value is 0, the rational has a finite decimal repr
    (mssg :accessor mssg :initarg :mssg))
   (:report
    (lambda (condition stream)
-     (format stream "[~a]~@[ ~a~]"
+     (format stream "[PVSioException~{::~a~}]~@[ ~a~]"
 	     (tag condition) (mssg condition)))))
 
 (defun throw-pvsio-exctag (tag val mssg)
   (error 'pvsio-exception :tag tag :val val :mssg  mssg))
 
 (defun throw-pvsio-exc (exc val &optional mssg)
-  (let ((tag (pvsio-eval-lisp (format nil "~a`tag" exc)))
+  (let ((tag (pvsio-eval-lisp (format nil "qid(~a`tag)" exc)))
 	(msg (or mssg (pvsio-funcall (format nil "~a`formatter" exc) val))))
     (throw-pvsio-exctag tag val msg)))
 
@@ -676,29 +690,28 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 (eval '(attachments |stdcatch|
 
-(defun starts-with-tag (exctag string)
-  (let ((lstr (length string))
-	(lexc (length exctag)))
-    (and (>= lstr lexc)
-	 (string= exctag string :end2 lexc)
-	 (or (= lstr lexc)
-	     (and (> lstr (+ 2 lexc))
-		  (string= (subseq string lexc (+ 2 lexc)) "::"))))))
+;; Check if list of strings tag1 is a prefix of the the list of strings tag2
+(defun starts-with-tag (tag1 tag2)
+  (or (null tag1)
+      (and (car tag1) (car tag2)
+	   (string= (car tag1) (car tag2))
+	   (starts-with-tag (cdr tag1) (cdr tag2)))))
 
 (defattach |catch_lift| (exctag f1 f2)
   "If F1 throws the exception tagged exctag, then evaluates f2(val). Otherwise, returns F1"
   (handler-case
-      (pvs-funcall f1 0)
+      (pvs-funcall f1 *pvsio-dummy-val*)
     (pvsio-exception
      (condition)
-     (if (starts-with-tag exctag (tag condition))
+     (if (starts-with-tag (slot-value exctag '|qid|) (tag condition))
 	 (let* ((exc (val condition)))
 	   (pvs-funcall f2 exc))
        (error condition)))))
 
 (defattach |throw_lisp| (exctag val mssg)
   "Throws the exception tagged EXCTAG using VAL and MSSG"
- (throw-pvsio-exctag exctag val mssg))
+ (let ((tag (slot-value exctag '|qid|)))
+   (throw-pvsio-exctag tag val mssg)))
 
 )))
 

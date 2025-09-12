@@ -1875,7 +1875,6 @@ char-exprs"
       (let ((null-ex (add-place (make-instance 'null-expr :id '|null|)
 				(vector srow scol erow ecol)))
 	    (len (length char-exprs)))
-	(assert (and (= srow erow) (= scol ecol)))
 	(xt-list-char-exprs char-exprs null-ex
 			    (make-string len) (- len 1)
 			    erow ecol))))
