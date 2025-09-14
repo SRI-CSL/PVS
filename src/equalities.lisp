@@ -2980,15 +2980,17 @@
 	(multiple-value-bind (ty cpreds)
 	    (subtype-preds (type fld1) (type fld2))
 	  (when ty
-	    (let ((npreds (subtype-record-preds* cpreds var fld2)))
-	      (subtype-record-preds (if dep?
-					(substit (cdr flds1)
-					  (acons (car flds1)
-						 (make!-field-application
-						  (id fld1) var)
-						 nil))
-					(cdr flds1))
-				    flds2 type2 vb var dep?
+	    (let* ((npreds (subtype-record-preds* cpreds var fld2))
+		   (rem-flds2 (remove fld2 flds2))
+		   (cdr-flds1 (if dep?
+				  (substit (cdr flds1)
+				    (acons fld1 (make!-field-application (id fld1) var) nil))
+				  (cdr flds1)))
+		   (cdr-flds2 (if dep?
+				  (substit rem-flds2
+				    (acons fld2 (make!-field-application (id fld2) var) nil))
+				  rem-flds2)))
+	      (subtype-record-preds cdr-flds1 cdr-flds2 type2 vb var dep?
 				    (nconc npreds preds))))))))
 
 (defun subtype-record-preds* (cpreds var fld &optional preds)
