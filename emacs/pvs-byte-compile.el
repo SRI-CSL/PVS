@@ -72,8 +72,6 @@
 		  prooflite
 		  
 		  pvs-byte-compile
-		  pvs-prelude-files-and-regions
-		  pvs-set-prelude-info
 		  )))
   (mapc #'(lambda (a) (pvs-compile a))
     pvsfiles))

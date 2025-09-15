@@ -219,7 +219,6 @@ pvs-make-files = pvs.asd
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
 emacs-src = $(shell $(GIT) ls-files | $(GREP) -E ".*\.el$$" | $(GREP) -v "^\(doc\|src\|Examples\)")
-# emacs-src += emacs/pvs-prelude-files-and-regions.el
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
@@ -513,23 +512,13 @@ dist-sbclisp-gzip = $(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 
 # @echo $(shell $(GIT) rev-parse HEAD) > git-commit
 
-# ifeq ($(EMACS),)
-# emacs-deps =
-# else
-# emacs-deps = prelude-files-and-regions etags
-# endif
-
-.PHONY : all parser yices emacs prelude-files-and-regions
+.PHONY : all parser yices emacs
 
 all : $(HOME)/quicklisp $(pvs-images) yices # $(emacs-deps)
 
 devel : $(allegro-devel) 
 
 runtime : $(sbcl-rt) # $(allegro-rt)
-
-# ifneq ($(EMACS),)
-# prelude-files-and-regions : $(PVSPATH)emacs/pvs-prelude-files-and-regions.el
-# endif
 
 # Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
 # This assumes quicklisp is installed in the default directory '~/quicklisp'
@@ -689,13 +678,6 @@ tar :
 # lib/strategies.lisp : src/prover/strategies.lisp
 # 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
-# ifneq ($(EMACS),)
-# $(PVSPATH)emacs/pvs-prelude-files-and-regions.el : \
-#                   $(pvs-images) \
-#                   $(PVSPATH)emacs/pvs-set-prelude-info.el \
-#                   $(PVSPATH)lib/prelude.pvs
-# 	-./pvs -batch -q -l emacs/pvs-set-prelude-info.el -f set-prelude-files-and-regions
-
 # # We need to create the elc files, but this does not work well with make, as
 # # we can't simply byte-compile each file separately.  So we create a dummy
 # # .readme file.  It will be newer than all of the subdir source files, and
@@ -742,8 +724,7 @@ distclean :
 	done
 	find . -type f -name \*.elc -exec rm \{\} \; ; \
 	rm -f Makefile TAGS autoloads.out config.log config.status configure \
-              emacs/pvs-prelude-files-and-regions.el lib/*_adt.pvs \
-              pvs pvsio
+              lib/*_adt.pvs pvs pvsio
 	rm -f src/pvs-info.lisp src/pvs-lexer.lisp src/pvs-methods.lisp \
               src/pvs-parser.lisp src/pvs-sorts.lisp
 	rm -rf emacs/emacs19/*.{el,elc} emacs/emacs24 emacs/emacs23 \
