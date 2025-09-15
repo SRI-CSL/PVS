@@ -7936,9 +7936,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					;size
 				   c-range-root c-param-arg-string)
 			 (if (eq elemtype '|mpz|)
-			     (format nil "tmp = (mpz_cmp(x->elems[i], y->elems[i]) == 0)")
+			     (format nil "while  (i < x->size && tmp){tmp = (mpz_cmp(x->elems[i], y->elems[i]) == 0); i++;}")
 			   (if (eq elemtype '|mpq|)
-			       (format nil "tmp = (mpq_cmp(x->elems[i], y->elems[i]) == 0)")
+			       (format nil "while  (i < x->size && tmp){tmp = (mpq_cmp(x->elems[i], y->elems[i]) == 0); i++;}")
 			     (format nil "while (i < x->size && tmp){tmp = (x->elems[i] == y->elems[i]); i++;}"
 					;size
 				     )))))))
@@ -8009,8 +8009,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->size = i+1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xmax; j < newmax; j++){y->elems[j] = NULL;};~%~28Trelease_~a(x~a);}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
-                     ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8Tuint32_t xsize = x->size;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xmax; j < newmax; j++){y->elems[j] = NULL;};~%~28Trelease_~a(x~a);}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
+                     ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;};~%~8Ty->size = xsize > i ? xsize : i + 1;~%~8T~
                      if (i < xmax && yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string
 	      type-name-root

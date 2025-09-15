@@ -381,7 +381,7 @@ then ${PVSEMACS} -nw ${pvsemacsinit} ${emacsargs} ${otherargs}
 else
   pvsrun="${PVSEMACS} -name pvs ${pvsemacsinit} ${PVSXINIT} ${emacsargs} ${otherargs}"
   if [ -z ${nobg} ]
-  then (${pvsrun} &)
+  then (${pvsrun} --chdir `pwd` &)
   else ${pvsrun}
   fi
 fi
