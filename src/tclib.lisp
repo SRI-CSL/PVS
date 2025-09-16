@@ -1075,11 +1075,11 @@ abspath as a subdirectory.  If it is found, and is a valid library id, it is ret
 (defun all-decls (theory)
   (or (all-declarations theory)
       (let ((decls (append (formals theory)
-			   (mapcan #'(lambda (d)
-				       (when (typep d '(or formal-subtype-decl
-							formal-struct-subtype-decl))
-					 (remove-if #'tcc? (generated d))))
-			     (formals theory))
+			   (mapappend #'(lambda (d)
+					  (when (typep d '(or formal-subtype-decl
+							   formal-struct-subtype-decl))
+					    (remove-if #'tcc? (generated d))))
+				      (formals theory))
 			   (when (recursive-type? theory)
 			     (importings theory))
 			   (theory-formal-decls theory)
