@@ -8276,7 +8276,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 						 (ir-type-id (car constructor))
 						 "x"
 						 c-param-arg-string)))))
-    (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp = safe_malloc(24); sprintf(tmp, \"{ \\\"constructor\\\": %u,\", x->~a_index); tmp = safe_strcat(tmp, \" \\\"value\\\": \");~%~8Tswitch  (x->~a_index) {~{~%~16T~a;~}~%~8T};~%~8Ttmp = safe_strcat(tmp, \" }\");~%~8Treturn tmp;~%}" type-name-root type-name-root c-param-decl-string
+    (format nil "char * json_~a(~a_t x~a){~%~8Tchar * tmp = safe_malloc(24); sprintf(tmp, \"{ \\\"constructor\\\": %u,\", x->~a_index); tmp = safe_strcat(tmp, \" \\\"value\\\": \");~%~8Tswitch  (x->~a_index) {~{~%~16T~a;~}~%~16Tdefault: tmp = safe_strcat(tmp, \"null\");~%~8T};~%~8Ttmp = safe_strcat(tmp, \" }\");~%~8Treturn tmp;~%}" type-name-root type-name-root c-param-decl-string
 	    type-name-root type-name-root json-constructor-instrs)))
 
 (defun make-record-equal-ptr-info (type-name-root theory-c-params-variadic c-param-arg-string)

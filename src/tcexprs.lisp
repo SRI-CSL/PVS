@@ -2166,11 +2166,9 @@ with dependencies lifted up to the update expr depth."
       te
       (let* ((assn (car assignments))
 	     (args (arguments assn))
-	     (value (expression assn)))
-	(find-update-commontype
-	 (find-update-commontype* te expr args value (maplet? assn))
-	 expr
-	 (cdr assignments)))))
+	     (value (expression assn))
+	     (cty (find-update-commontype* te expr args value (maplet? assn))))
+	(find-update-commontype cty expr (cdr assignments)))))
 
 (defmethod find-update-commontype* ((te funtype) expr args value maplet?)
   (if (null args)
@@ -2183,9 +2181,7 @@ with dependencies lifted up to the update expr depth."
 		(tc-eq dom dtype))
 	    (let ((ran (find-update-commontype*
 			(range te)
-			(typecheck* (copy-untyped
-				     (mk-application* expr (car args)))
-				    (range te) nil nil)
+			(make!-application* expr (car args))
 			(cdr args) value maplet?)))
 	      (if (and (tc-eq dom dtype) (tc-eq ran (range te)))
 		  te

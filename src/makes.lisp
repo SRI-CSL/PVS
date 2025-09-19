@@ -177,18 +177,20 @@
     :place place
     :positive-types positive-types))
 
-(defun mk-inductive-decl (id type &optional definition formals dtype)
+(defun mk-inductive-decl (id type &optional definition formals dtype decl-formals)
   (make-instance 'inductive-decl
     :id id
+    :decl-formals decl-formals
     :formals (if (every@ #'consp formals) formals (list formals))
     :declared-type (or dtype type)
     :type type
     :definition definition
     :semi t))
 
-(defun mk-coinductive-decl (id type &optional definition formals dtype)
+(defun mk-coinductive-decl (id type &optional definition formals dtype decl-formals)
   (make-instance 'coinductive-decl
     :id id
+    :decl-formals decl-formals
     :formals (if (every@ #'consp formals) formals (list formals))
     :declared-type (or dtype type)
     :type type
@@ -1079,6 +1081,9 @@
 
 (defun mk-tcc-proof-info (id description create-date script refers-to
 			  &optional decision-procedure origin)
+  (assert (symbolp id))
+  (assert (or (null description) (stringp description)))
+  (assert (typep script '(or list justification)))
   (make-instance 'tcc-proof-info
     :id id
     :description description
@@ -2252,13 +2257,14 @@
 
 (defun make!-update-expr (expression assignments)
   (assert (type expression))
-  (let ((uexpr (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
-			  assignments)
-		   (make-instance 'update-expr
-		     :expression expression
-		     :assignments assignments
-		     :type (find-supertype (type expression)))
-		   (make-update-expr expression assignments))))
+  (let* ((has-maplet? (some #'(lambda (ass) (typep ass  'maplet)) assignments))
+	 (utype (if has-maplet?
+		    (find-update-commontype (type expression) expression assignments)
+		    (find-supertype (type expression))))
+	 (uexpr (make-instance 'update-expr
+		  :expression expression
+		  :assignments assignments
+		  :type utype)))
     (when (place expression)
       (set-extended-place uexpr assignments
 			  "creating update expr from ~a and ~a"
