@@ -1081,6 +1081,7 @@
 
 (defun mk-tcc-proof-info (id description create-date script refers-to
 			  &optional decision-procedure origin)
+  (when (eq description '|nil|) (setf description nil))
   (assert (symbolp id))
   (assert (or (null description) (stringp description)))
   (assert (typep script '(or list justification)))
