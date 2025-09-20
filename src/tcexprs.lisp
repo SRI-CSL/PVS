@@ -2181,7 +2181,11 @@ with dependencies lifted up to the update expr depth."
 		(tc-eq dom dtype))
 	    (let ((ran (find-update-commontype*
 			(range te)
-			(make!-application* expr (car args))
+			(if (and (type expr) (every #'type (car args)))
+			    (make!-application* expr (car args))
+			    (typecheck* (copy-untyped
+					 (mk-application* expr (car args)))
+					(range te) nil nil))
 			(cdr args) value maplet?)))
 	      (if (and (tc-eq dom dtype) (tc-eq ran (range te)))
 		  te
