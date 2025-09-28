@@ -1104,14 +1104,19 @@ restored, the TCCs are checked")
 ;; *all-workspace-sessions* is a list of workspace-session instances, which are used
 ;; by with-pvs-context to execute a given expression under a different
 ;; context.
-(defcl workspace-session ()
-  (path :documentation "An absolute pathname")
-  (pvs-files :initform (make-hash-table :test #'equal))
+(defcl workspace ()
   (pvs-theories :initform (make-hash-table :test #'eq :size 20 :rehash-size 10))
   (prelude-libs :initform nil :documentation "list of abspaths")
   (prelude-context :initform nil
 		   :documentation
 		   "the context that includes the prelude and all prelude-libraries")
+  (all-subst-mod-params-caches :initform (make-pvs-hash-table :strong-eq? t)
+			       :documentation "see subst-mod-params.lisp"
+			       :fetch-as nil :ignore t))
+
+(defcl workspace-session (workspace)
+  (path :documentation "An absolute pathname")
+  (pvs-files :initform (make-hash-table :test #'equal))
   (lisp-files :initform nil :documentation "list of loaded lisp-files")
   (subdir-alist :initform :unbound
 		:documentation "alist of subdirectories of this workspace to ids,
@@ -1121,12 +1126,20 @@ restored, the TCCs are checked")
   (pvs-context-changed :initform nil
 		       :documentation "if t, .pvscontext needs to be saved")
   (strat-file-dates :initform (list 0 0 0))
-  (all-subst-mod-params-caches :initform (make-pvs-hash-table :strong-eq? t)
-			       :documentation "see subst-mod-params.lisp"
-			       :fetch-as nil :ignore t))
+  )
 
-;;; A structure for collecting proof scripts from .prf files.
-;;; Don't want the overhead of defcl for these.
+;; (defcl workspace-instance (workspace)
+;;   ;; Same as workspace, used to create a consistent set of instantiations.
+;;   ;; E.g., result of (subst-mod-params-modinsts
+;;   ;;                    '(("lift[nat]" . lift_nat) ("list[lift[nat]]" . . list_lift_nat)))
+;;   ;; is a workspace-instance where pvs-theories contains entries for
+;;   ;;   lift_nat and list_lift_nat datatypes, as well as theories for
+;;   ;;   lift_nat_adt, lift_nat_adt_reduce, list_lift_nat_adt, list_lift_nat_adt_reduce
+  
+
+;; ;;; A structure for collecting proof scripts from .prf files.
+;; ;;; Don't want the overhead of defcl for these.
+;;   )
 
 (defstruct (proof-scripts (:conc-name pscripts-))
   pvs-file
