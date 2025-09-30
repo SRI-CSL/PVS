@@ -4347,6 +4347,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod ir2c* ((ir-expr ir-type-actual) return-var return-type)
   (with-slots (ir-actual-type) ir-expr
+;    (break "ir2c*(ir-type-actual)")
     (let ((ir2c-return-type (ir2c-type return-type))
 	  (ir2c-type (ir2c-type ir-actual-type))) 
       (if (ir-actualparameter-type? ir2c-type)
@@ -4506,7 +4507,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     ((|uint64| |__uint128| |int64| |__int128|) '|uint64|);64/128 get coerced to uint64.
     ((|int8| |int16| |int32| |uint8| |uint16| |uint32|) '|uint32|)
     ((|mpz|) '|mpz|)
-    (t nil)))
+    (t nil)))o
 	 ;;using ir2c-type to return u/intx or mpz
 
 (defmethod ir-array? ((ir-typ ir-arraytype))
@@ -7724,6 +7725,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (ir-reference-type? ir-type))
 
 (defun make-json-call (ir-type c-ir-type expr c-param-arg-string)
+  (when (ir-typename? ir-type)(break "make-json-call"))
   (if (ir-formal-typename? ir-type)
       (let ((ir-var-for-type-binding (assoc (type-declaration ir-type) *ir-theory-tbindings*)))
 	(if ir-var-for-type-binding
@@ -7880,9 +7882,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			(format nil "~a->json_ptr(x->elems[i], ~a)"
 				c-range-root c-range-root)
 		      (if (ir-reference-type? elemtype)
-			  (format nil "json_~a(x->elems[i]~a)"
-					;size
-				  c-range-root c-param-arg-string)
+			  (if (and (ir-typename? elemtype)
+				   (not (eq (module (type-declaration elemtype)) *current-pvs2c-theory*)))
+			      (format nil "json_~a(x->elems[i])"
+				  c-range-root)
+			      (format nil "json_~a(x->elems[i]~a)"
+				      c-range-root c-param-arg-string))
 			(format nil "json_~a(x->elems[i])"
 					;size
 				c-range-root))))
@@ -7932,9 +7937,15 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					;size
 				     c-range-root c-range-root)
 		       (if (ir-reference-type? elemtype)
-			   (format nil "while (i < x->size && tmp){tmp = equal_~a(x->elems[i], y->elems[i]~a); i++;}"
+			   (let ((c-param-string
+				  (if (and (ir-typename? elemtype)
+					   (not (eq (module (type-declaration elemtype))
+						    *current-pvs2c-theory*)))
+				      ""
+				      c-param-arg-string)))
+			     (format nil "while (i < x->size && tmp){tmp = equal_~a(x->elems[i], y->elems[i]~a); i++;}"
 					;size
-				   c-range-root c-param-arg-string)
+				     c-range-root c-param-string))
 			 (if (eq elemtype '|mpz|)
 			     (format nil "while  (i < x->size && tmp){tmp = (mpz_cmp(x->elems[i], y->elems[i]) == 0); i++;}")
 			   (if (eq elemtype '|mpq|)
