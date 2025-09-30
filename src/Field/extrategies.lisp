@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-8.0 (06/30/25)
+;; Release: Extrategies-8.0 (09/30/25)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -30,13 +30,14 @@
 %  Let-in: skoletin, skoletin*, redlet, redlet*
 %  Quantifiers: skeep, skeep*, skodef, skodef*, insteep, insteep*, unroll
 %  TCCs: tccs-expression, tccs-formula, tccs-formula*, tccs-step,
-%    if-tcc-sequent, with-tccs
+%    if-tcc-sequent, with-tccs, extra-typepreds
 %  Ground evaluation (PVSio): eval-formula, eval-formula*, eval-expr, eval
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
+%  Assumptions: all-assumptions
 %  Strategy debugging (experts only): skip-steps, show-debug-mode, 
 %    enable-debug-mode, disable-debug-mode, set-debug-mode, load-files")
 
-(defparameter *extrategies-version* "Extrategies-8.0 (02/28/25)")
+(defparameter *extrategies-version* "Extrategies-8.0 (09/30/2025)")
 
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
@@ -124,14 +125,31 @@
 	 (error-msg ,errmsg))
        ,docmsg ,format))))
 
-;; Load filename from dir relative to a path in *pvs-library-path*
-(defun extra-load-from-lib (lib filename)
-  (let* ((dir
-         (loop for d in *pvs-library-path*
-               for p = (merge-pathnames (make-pathname :name lib) d)
-               when (file-exists-p p) return p)))
-    (when dir
-      (libload (format nil "~a/~a" dir filename)))))
+(defmacro extra-load-local-files (&rest filenames)
+  "[Extrategies] Load a list of files from the same directory where
+the macro is called. This is particular useful when
+loading files from pvs-attachments and pvs-strategies"
+  `(loop
+      for filename in (quote ,filenames)
+      do (let ((file (if *load-truename* (merge-pathnames filename *load-truename*) filename)))
+	   (load file))))
+
+(defun extra-libfile (filename)
+  "[Extrategies] Return the full path to a filename that is specified relative to the PVS
+home directory, e.g., src/Field/extrategies.lisp, or to a directory in the PVS Library Path, e.g.,
+prelude.pvs (since lib is in the PVS Library Path)"
+  (loop for d in (cons *pvs-path* *pvs-library-path*)
+	for p = (merge-pathnames filename d)
+	when (file-exists-p p)
+	return p))
+
+(defun extra-load-libfile (filename)
+  "[Extrategies] Load a Lisp file that is specified relative to the PVS home directory or
+to a directory in the PVS Library Path"
+  (let ((file (extra-libfile filename)))
+    (if file
+	(load file)
+      (error "File ~a not found in the PVS home directory or in the PVS library path" filename))))
 
 ;; Executes command in the operating system and returns a pair (status . string)
 (defun extra-system-call (command)
@@ -143,10 +161,6 @@
 	:ignore-error-status t)
     (declare (ignore err))
     (cons status (string-trim '(#\Space #\Newline) out))))
-
-;; Get the absolute path to the PVS NASA library -- DEPRECATED use (nasalib-path) instead
-;;(defun extra-pvs-nasalib ()
-;;  (loop for path in *pvs-library-path* when (probe-file (format nil "~a.nasalib" path)) return path))
 
 ;;; Utility functions and additional strategies
 
@@ -1698,7 +1712,7 @@ labels are also copied."
 	  (unless hide? (reveal labprc))))
      step))
   "[Extrategies] Protects formulas FNUMS so that they are not afected by STEP. The protected formulas
- are labeled LABEL(s), if LABEL is not nil."
+ are labeled LABEL(s), if LABEL is not nil. Protected formulas are hidden after STEP when HIDE? is t."
   "Protecting formulas in ~a")
 
 (defhelper with-focus-on__ (fnums step)
@@ -1724,6 +1738,15 @@ CAVEAT: Formulas in the sequent my be reorganized after the application of this 
   "[Extrategies]  Hides all but formulas in FNUMS, applies STEPS to main branch, and the reveals hidden
 formulas.
 CAVEAT:Formulas in the sequent my be reorganized after the application of this strategy.")
+
+(defstep all-assumptions ()
+  (let ((theory (current-theory))
+	(assumptions (loop for assuming in (assuming theory)
+			   when (formula-decl? assuming)
+			   collect (id assuming))))
+    (mapstep (lambda(x)`(lemma ,x)) assumptions))
+  "[Extrategies] Adds assumptions of current theory as lemmas."
+  "Adding all assumptions")
 
 ;;; Defining tactics
 
@@ -1826,6 +1849,23 @@ is found in STEPS. This rule may only be used in the definition of the oracle OR
 	(when hide?
 	  (hide lab2)))
   "[Extrategies] Internal strategy." "")
+
+(defstep extra-typepreds (&optional (fnums *) select)
+  (let ((sforms (select-seq (s-forms (current-goal *ps*)) fnums))
+        (exprlis (select-extra-typepreds sforms (eval select))))
+    (mapstep (lambda (x)`(typepred ,x)) exprlis))
+  "[Extrategies] Similar to all-typepreds, but provides additional parameter SELECT
+to control the selection of subexpressions in FNUMS. SELECT is Lisp function on
+PVS CLOS expressions that returns T if expression should be selected for typepred."
+  "Adding type information on selected subexpressions")
+
+(defun select-extra-typepreds (sforms select)
+  (let ((exprlis (loop for x in (collect-all-subexprs-with-useful-typepreds sforms)
+			when (or (null select) (funcall select x))
+			collect x)))
+    (when exprlis
+      (format-if "Generating typepreds for selected expressions:~{~%  ~a~^~}" exprlis)
+      exprlis)))
 
 ;; Expression is a valid expression
 (defun get-tccs-expression (expr)
@@ -2610,9 +2650,9 @@ TCCs generated during the execution of the command are discharged with the proof
 ;; from the following grammar (pattern step [:fnums fnums] [:onums onums])
 ;; pattern can be ELSE
 
-(defun mk-cond-match (patt-step &optional (condmatch (make-condmatch)))
+(defun mk-cond-match (patt-step condmatch)
   (if (consp patt-step)
-      (cond ((member (car patt-step) '(:onums :onum))
+      (cond ((eq (car patt-step) :onums)
 	     (setf (get-onums condmatch) (list (cadr patt-step)))
       	     (mk-cond-match (cddr patt-step) condmatch))
 	    ((eq (car patt-step) :comment)
@@ -2631,9 +2671,9 @@ TCCs generated during the execution of the command are discharged with the proof
     (when (get-match condmatch)
       condmatch)))
 
-(defun match-list (conds fnums dry-run)
+(defun match-list (conds fnums onums dry-run)
   (when conds
-    (let ((condmatch (mk-cond-match (car conds))))
+    (let ((condmatch (mk-cond-match (car conds)  (make-condmatch :onums onums))))
       (unless condmatch
 	(error "~s is not a valid (PATTERN [STEP] [:ONUMS ONUMS] [:COMMENT COMMENT])" (car conds)))
       (if (eq (get-match condmatch) 'else)
@@ -2652,13 +2692,13 @@ TCCs generated during the execution of the command are discharged with the proof
 	       (show     (when dry-run '(show))))
 	  (cons 
 	   `(match$ ,@show ,@(get-match condmatch) ,@(get-onums condmatch) step ,step ,@fnums)
-	   (match-list (cdr conds) fnums dry-run)))))))
+	   (match-list (cdr conds) fnums onums dry-run)))))))
 
-(defstrat cond-match (&key (fnums *) dry-run &rest conds)
+(defstrat cond-match (&key (fnums *) (onums 1) dry-run &rest conds)
   (when conds
     (let ((match-steps
 	   (handler-case
-	       (match-list conds (when fnums (list :fnums fnums)) dry-run)
+	       (match-list conds (when fnums (list :fnums fnums)) (when onums (list onums)) dry-run)
 	     (error (condition) (format nil "~a" condition)))))
       (if (stringp match-steps)
 	  (warning-msg "[cond-match] ~a" match-steps)
@@ -2682,6 +2722,9 @@ in FNUMS.
 Optionally, the following keys could be provided:
 :fnums FNUMS
   Matches only the formulas in FNUMS. By default FNUMS is all formulas
+:onums ONUMS
+  Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
+  By default ONUMS is set to 1 occurence
 :dry-run t 
   Prints expansion of the strategy and instances of successful matchings
 
@@ -3553,17 +3596,6 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	   (extra-tag-list (if (symbolp tag) (acons tag val al) al) (cddr data)))
        al))
 
-;; This function prints debugging data. Data is a list of either a string, a formatted string of the
-;; form (:fmt <FMTSTRING> <e1 ... en>), or a Lisp EXPR. Each input in data will be printed in one line.
-;; If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
-;; it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
-;; when the i-th data input is a Lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
-;; is the evaluation of <expr>. In addition, this function will print backtrace frames (according to
-;; global variable *extra-debug-frame-count* and status of strategies stack at the point where the functions is
-;; called. Compiling a call of this function through (extra-set-debug-mode ...) without enabling debug mode
-;; results in a compilation error. This compilation error could be avoided by adding the compilation
-;; directive #+extra-debug before the call to the function.
-
 (defmacro extra-debug-aux (mssg data &optional break)
   (unless (member :extra-debug *features*)
     (error *debug-fail-msg*))
@@ -3589,98 +3621,167 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	 (when ,break (break))))))
 
 (defmacro extra-debug-print (&rest data)
+  "[Extrategies] This function prints debugging data. Data is a list of either a string, a formatted
+string of the form (:fmt <FMTSTRING> <e1 ... en>), or a Lisp EXPR. Each input in data will be printed
+in one line. If the i-th data input is a string, it prints the string.If the i-th data input is formatted
+string, it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
+when the i-th data input is a Lisp expression EXPR, it prints the line <expr> = <va>, where <val>
+is the evaluation of <expr>. In addition, this function will print backtrace frames (according to
+global variable *extra-debug-frame-count* and status of strategies stack at the point where the functions is
+called. Compiling a call of this function through (extra-set-debug-mode ...) without enabling debug mode
+results in a compilation error. This compilation error could be avoided by adding the compilation
+directive #+extra-debug before the call to the function."
   `(extra-debug-aux "*extra-debug-print*" ,data))
 
-;; Similar to extra-debug-print but breaks after printing data
 (defmacro extra-debug-break (&rest data)
+  "[Extrategies] Similar to extra-debug-print but breaks after printing data."
   `(extra-debug-aux "*extra-debug-break*" ,data t))
 
-;; This function prints debugging data. It is supposed to be a light weight version of extra-debug-print.
-;; Data is a list of either a string, a formatted string of the form (:fmt <FMTSTRING> <e1 ... en>), or
-;; a Lisp EXPR. All input in data will be printed in one line.
-;; If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
-;; it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
-;; when the i-th data input is a Lisp expression EXPR, it prints the line "<expr> = <va>", where <val>
-;; is the evaluation of <expr>. Compiling a call of this function without enabling debug mode through
-;; (extra-set-debug-mode ...) results in a compilation error. This compilation error could be avoided by adding
-;; the compilation directive #+extra-debug before the call to the function.
-
 (defmacro extra-debug-println (&rest data)
+  "[Extrategies] This function prints debugging data. It is supposed to be a light weight version of
+extra-debug-print. Data is a list of either a string, a formatted string of the form
+(:fmt <FMTSTRING> <e1 ... en>), or a Lisp EXPR. All input in data will be printed in one line.
+If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
+it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
+when the i-th data input is a Lisp expression EXPR, it prints the line <expr> = <va>, where <val>
+is the evaluation of <expr>. Compiling a call of this function without enabling debug mode through
+(extra-set-debug-mode ...) results in a compilation error. This compilation error could be avoided by adding
+the compilation directive #+extra-debug before the call to the function."
   (unless (member :extra-debug *features*)
     (error *debug-fail-msg*))
   `(format t "~%[*extra-debug-println*] ~{~a~@[ = ~{~s~}~]~^, ~}~%"
 	   (extra-debug-data ,data)))
 
-(defun extra-show-debug-mode (&optional notfound msgs)
-   (format nil "~%*extra-debug-frame-count*: ~a~
+(defun extra-show-debug-mode (&optional msgs)
+   (format nil "~&*extra-debug-frame-count*: ~a~
                 ~%*extra-debug-files*: ~a~
                 ~%*extra-debug-verbose*: ~a~
               ~@[~%*extra-debug-suppress*: Printing and breaking are suppressed ~a~]~
                  ~%Debug mode: ~:[DISABLED~;ENABLED~]~%~
-                ~@[Files not found: ~{~a~^, ~}~%~]~
-                ~@[Error: ~{~a~^, ~}~%~]"
+                ~@[~%Error: ~{~a~^, ~}~%~]"
 	   *extra-debug-frame-count* *extra-debug-files* *extra-debug-verbose*
 	   (documentation *extra-debug-suppress* 'function)
-	   (member :extra-debug *features*) notfound msgs))
+	   (member :extra-debug *features*) msgs))
 
 (defstrat show-debug-mode ()
   (let ((msg (extra-show-debug-mode)))
     (printf "~a" msg))
   "[Extrategies] Show current debug mode.")
 
-;; FILES can be a list of files/directories.
-;; In case of directories, function loads all .lisp, pvs-attachments, and pvs-strategies files.
-;; Returns a pair of loaded files and files not found
-(defun extra-load-files-raw (files &optional loaded notfound)
+(defun extra-load-files-aux (files &optional loaded)
+"[Extrategies] Load FILES, which can be a list of files or directories (ending in '/').
+In case of directories, load all .lisp, pvs-attachments, and pvs-strategies files.
+Return list of loaded files"
   (if files
     (let* ((file (car files))
 	   (path (probe-file file)))
       (if path
 	  (if (pathname-name path) ;; Is a file
 	      (if (member path loaded :test #'equal)
-		  (extra-load-files-raw (cdr files) loaded notfound)
+		  (extra-load-files-aux (cdr files) loaded)
 		(progn
 		  (load path)
-		  (push path *extra-debug-files*)
-		  (extra-load-files-raw (cdr files) (cons path loaded) notfound)))
-	    (let* ((pvs-attachments (enlist-it
-				     (probe-file (format nil "~a/pvs-attachments" path))))
-		   (pvs-strategies (enlist-it
-				    (probe-file (format nil "~a/pvs-strategies" path))))
+		  (extra-load-files-aux (cdr files) (cons path loaded))))
+	    (let* ((pvs-attachments
+		    (enlist-it (probe-file (format nil "~a/pvs-attachments" path))))
+		   (pvs-strategies
+		    (enlist-it (probe-file (format nil "~a/pvs-strategies" path))))
 		   (dirfiles  ;; Is a directory
-		    (append
-		     (remove-if
-		      #'(lambda (p) (equal 0 (position #\. (pathname-name p))))
-		      (directory (format nil "~a/*.lisp" path)))
-		     pvs-attachments pvs-strategies)))
-	      (extra-load-files-raw (append dirfiles (cdr files)) loaded notfound)))
-	(extra-load-files-raw (cdr files) loaded (cons (car files) notfound))))
-    (cons (reverse loaded) notfound)))
+		    (append (directory (format nil "~a/*.lisp" path))
+			    pvs-attachments pvs-strategies)))
+	      (extra-load-files-aux (append dirfiles (cdr files)) loaded)))
+	(extra-load-files-aux (cdr files) loaded)))
+    (reverse loaded)))
 
-;; FILES can be a list of files/directories.
-;; In case of directories, it loads all .lisp, pvs-attachments, and pvs-strategies files.
-;; When RESET is nil, loads *extra-debug-files* in addition to FILES.
-;; Sets *extra-debug-files* to the list of loaded files.
-;; Returns a list of files not found.
-(defun extra-load-files (&optional files reset)
-  (let* ((files	(enlist-it files))
-	 (all-files (append files (unless reset *extra-debug-files*)))
-	 (loaded-notfound (extra-load-files-raw all-files)))
-    (setq *extra-debug-files* (car loaded-notfound))
-    (cdr loaded-notfound)))
+(defun extra-exist-filenames (files &optional lib found notfound)
+  "[Extrategies] Return a list where the car is a list of filenames from FILES that satisfies
+file-exists-p and the cdr are those that don't. If LIB is set to t, search for the filenames
+relative to the the PVS home diretory or to any directory in the PVS Library Path. LIB is disregarded
+when the first character of filename is '.' or '/'."
+  (if files
+      (let* ((filename (car files))
+	     (file (if (and lib (stringp filename)
+			    (not (memq (char filename 0) '(#\. #\/))))
+		       (extra-libfile filename)
+		    (when (file-exists-p filename) filename))))
+	(if file
+	    (extra-exist-filenames (cdr files) lib (cons file found) notfound)
+	  (extra-exist-filenames (cdr files) lib found (cons filename notfound))))
+    (cons (reverse found) (reverse notfound))))
+
+(defun extra-load-files (&optional files &key reset lib)
+  "[Extrategies] Load FILES, which can be a list of files or directories (ending in '/'),
+and add the list of loaded files to *extra-debug-files*. In case of directories, it loads all .lisp,
+pvs-attachments, and pvs-strategies files. Unless :RESET is t, this function also loads all files
+previously in *extra-debug-files*. When :LIB is t, it treats the file names in FILES as relative to the
+PVS home directory or to any directory in the PVS Library Path. Return a list where the car is the list
+of loaded files and the cdr is the list of files not found."
+  (let* ((found-notfound (extra-exist-filenames (enlist-it files) lib))
+	 (all-files      (append (unless reset *extra-debug-files*) (car found-notfound)))
+	 (loaded         (extra-load-files-aux all-files)))
+    (setq *extra-debug-files* loaded)
+    (cons loaded (cdr found-notfound))))
 
 ;; See set-debug mode
-(defun extra-set-debug-mode (&optional mode files frames (verbose 'none) suppress)
+(defun extra-set-debug-mode (&optional mode &key files frames (verbose 'none) suppress)
+  "[Extrategies] Load files or directories specified in FILES afer enabling/disabling debug mode.
+In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
+When FILES is not null, set *extra-debug-files* to FILES.  MODE can be
+  nil    : Don't change debug mode
+  toggle : Switch from/to enabled/disabled debug modes. Update global variable *features*
+  enable : Enable debug mode. Add extra-debug to *features*
+  disable: Disable debug mode. Remove extra-debug to *features*
+When VERBOSE is set to nil, only print information that is explicitly specified in extra-debug-print and
+extra-debug-break. Otherwise, print the stack of frames and the stack of strategies
+as well. Do not change verbosity level when verbpse equals to NONE.
+FRAMES specifies the number of frames (function scopes) printed by the functions
+extra-debug-print and extra-debug-break. A negative number species all the frames.
+SUPPRESS is a lambda function on an association list of tags and their respective values that is called
+by (extra-debug-print ...) and (extra-debug-break ...) to decide if their actions should be suppressed or no.
+The association list has the tags :frame-stack, associated to the current stack of frames, and
+:strategy-stack, associated to the current stack of strategies,in addition to those defined by
+the user. The following suppress functions are pre-defined.
+ - suppress-all: Suppress all
+ - suppress-none: Suppress none
+ - (suppress-from <f1> .. <fn>): Suppress printing from <f1>,.., and <fn>
+ - (suppress-but <f1> .. <fn>): Suppress printing except from <f1>,.., or <fn>
+ - (suppress-in-scope <f1> .. <fn>): Suppress printing within the scope of <f1>,.., and <fn>
+   up to *extra-debug-frame-count*.
+ - (suppress-out-scope <f1> .. <fn>): Suppress printing outside the scope of <f1>,.., or <fn>
+   up to *extra-debug-frame-count*.
+ - (suppress-from-strat <s1> .. <sn>): Suppress printing from strategies <s1>,.., and <sn>
+ - (suppress-but-strat <s1> .. <sn>): Suppress printing except from strategies <s1>,.., or <sn>
+ - (suppress-in-scope-strat <s1> .. <sn>): Suppress printing within the scope of strategies <s1>,.., and <sn>
+ - (suppress-out-scope-strat <s1> .. <sn>): Suppress printing outside the scope of strategies <s1>,.., or <sn>
+ - (suppress-when <expr>): Suppress when Lisp expression <expr> holds
+ - (suppress-unless <expr>): Suppress unless Lisp expression <expr> holds
+ - Suppress-functions can be combined using (suppress-and <supp1> .. <suppn>),
+   (suppress-or <supp1> .. <suppn>) and (suppress-not <supp>). The global variable
+   *extra-debug-suppress* has the current suppress function, which can be combined to form a new one.
+
+TECHNICAL NOTES:
+ - The stack of frames is provided by the SBCL function (sb-debug:list-backtrace ...),
+   Functions that are inlined by the compiler don't appear in the stack. Therefore, if FUN 
+   is the name of a function inlined by the compiler, (suppress-in-scope FUN) never holds and 
+   (suppress-out-scope FUN) always holds.
+ - The stack of strategies is provided by PVS global variable *proof-strategy-stack*. 
+   Glass-box strategies are inlined by the theorem prover, so they don't appear in
+   the strategy stack. Therefore, if STRAT is the name a glass-box strategy, (suppress-in-scope-strat STRAT)
+   never holds and (suppress-out-scope-strat STRAT) always holds.
+ - EXPR in (suppress-when EXPR) and (suppress-unless EXPR) can be an arbitrary Lisp code including
+   global variables, variables that are printed by extra-debug-print and extra-debug-break, and tags
+   that are specified by those functions."
   (let ((msgs))
     (unless (equal verbose 'none)
       (setq *extra-debug-verbose* (when verbose t)))
     (cond ((eq mode 'toggle)
 	   (extra-set-debug-mode
-	    (if (member :extra-debug *features*) 'disable 'enable) files frames verbose))
+	    (if (member :extra-debug *features*) 'disable 'enable) :files files :frames frames :verbose verbose))
 	  ((eq mode 'enable)
 	   (pushnew :extra-debug *features*))
 	  ((eq mode 'disable)
-	   (setq *features* (delete :extra-debug *features*))))
+	   (setq *features* (delete :extra-debug *features*)))
+	  (mode (push "MODE should be one of toggle, enable, or disable" msgs)))
     (when frames
       (if (numberp frames)
 	  (setq *extra-debug-frame-count* frames)
@@ -3690,11 +3791,13 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	(if (typep fsuppress 'function)
 	    (setq *extra-debug-suppress* fsuppress)
 	  (push (format nil "SUPPRESS (~a) must be a function" suppress) msgs))))
-    (let ((notfound (when files (extra-load-files files t))))
-      (extra-show-debug-mode notfound msgs))))
+    (when files
+      (let ((notfound (cdr (extra-load-files files :reset t))))
+	(when notfound (format nil "Files not found: ~{~s~^, ~}" notfound))))
+    (extra-show-debug-mode msgs)))
 
 (defstrat set-debug-mode (&key mode frames (verbose none) suppress &rest files)
-  (let ((msg (extra-set-debug-mode mode files frames verbose suppress)))
+  (let ((msg (extra-set-debug-mode mode :files files :frames frames :verbose verbose :suppress suppress)))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer enabling/disabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
@@ -3746,29 +3849,76 @@ TECHNICAL NOTES:
 ")
 
 (defstrat enable-debug-mode (&rest files)
-  (let ((msg (extra-set-debug-mode 'enable (or files *extra-debug-files*))))
+  (let ((msg (extra-set-debug-mode 'enable :files (or files *extra-debug-files*))))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer enabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
 If FILES is null, load files in *extra-debug-files*.")
 
 (defstrat disable-debug-mode (&rest files)
-  (let ((msg (extra-set-debug-mode 'disable (or files *extra-debug-files*))))
+  (let ((msg (extra-set-debug-mode 'disable :files (or files *extra-debug-files*))))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer disabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
 If FILES is null, load files in *extra-debug-files*.")
 
-(defstrat load-files (&key reset &rest files)
-  (let ((notfound (extra-load-files files reset))
-	(loaded   *extra-debug-files*)
-	(some     (or notfound loaded)))
-    (when some
+(defstrat load-files (&key reset lib &rest files)
+  (let ((loaded-notfound (extra-load-files files :reset reset :lib lib))
+	(loaded          (car loaded-notfound))
+	(notfound        (cdr loaded-notfound)))
+    (when loaded-notfound
       (printf "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~s~^, ~}~]"
 	      loaded notfound)))
-  "[Extrategies] Load files or directories specified in FILES and updates *extra-debug-files* with
-the loaded files. In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies 
-in the directory. Unless RESET is set to T, files in *extra-debug-files* are loaded afeter FILES.")
+  "[Extrategies] Load FILES, which can be a list of files or directories (ending in '/'),
+and add the list of loaded files to *extra-debug-files*. In case of directories, it loads
+all .lisp, pvs-attachments, and pvs-strategies files. Unless :RESET is t, this function also
+loads all files previously in *extra-debug-files*. When :LIB is t, it treats the file names
+in FILES as relative to the PVS home directory or to any directory in the PVS Library Path.")
+
+(defun set-confirmation-behavior (&optional all proofs undo)
+  "Globally set how to handle confirmation questions during proof sessions.
+:all    VALUE  Define behavior for all questions. The values :noquestions and :overwrite have
+               precedence over configuration of :proofs and :undo
+:proofs VALUE  Define behavior when a proof finishes
+:undo   VALUE  Define behavior for undoing a proof step
+VALUE can be
+:ask         Always ask
+:noquestions Don't ask (silently)
+:overwrite   Don't ask (verbose)"
+  (when (and all (memq all '(:ask :noquestions :overwrite)))
+    (setq *multiple-proof-default-behavior* all))
+  (when (and proofs (memq proofs '(:ask :noquestions :overwrite)))
+    (setq *multiple-proof-default-behavior* proofs))
+  (when (and undo (memq undo '(:ask :noquestions :overwrite)))
+    (setq *undo-default-behavior* undo))
+  (format-if "Current setting of confimation behavior:
+:all    = ~a
+:proofs = ~a
+:undo   = ~a~%"
+	     *multiple-proof-default-behavior*
+	     *multiple-proof-default-behavior*
+	     *undo-default-behavior*))
+
+(defun get-confirmation-value (val)
+  (cond ((eq val 'ask) :ask)
+	((eq val 'noquestions) :noquestions)
+	((eq val 'overwrite) :overwrite)
+	(val (format t "~a is not one of ask, noquestions, or overwrite~%" val))))
+
+(defstrat set-confirmation-behavior (&key all proofs undo)
+  (let ((all    (get-confirmation-value all))
+	(proofs (get-confirmation-value proofs))
+	(undo   (get-confirmation-value undo)))
+    (sklisp (set-confirmation-behavior all proofs undo)))
+  "[Extrategies] Globally set how to handle confirmation questions during proof sessions.
+:all    VALUE  Define behavior for all questions. The values :noquestions and :overwrite have
+               precedence over configuration of :proofs and :undo
+:proofs VALUE  Define behavior when a proof finishes
+:undo   VALUE  Define behavior for undoing a proof step
+VALUE can be
+ask         Always ask
+noquestions Don't ask (silently)
+overwrite   Don't ask (verbose)")
 
 (defstep skip-steps (&key touch? &rest steps)
   (when touch?
