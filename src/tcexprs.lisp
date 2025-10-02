@@ -2560,7 +2560,7 @@ with dependencies lifted up to the update expr depth."
 	     (or new-arg
 		 (setq new-arg
 		       (let ((*generate-tccs* 'none))       
-			 (typecheck* (copy-untyped arg) stype nil nil))))))
+			 (typecheck* (parse-unparse arg) stype nil nil))))))
       (if (or (some #'(lambda (ty) (subtype-of? ty type)) (ptypes arg))
 	      (some #'(lambda (jty) (subtype-of? jty type))
 		    (judgement-types+ (new-arg))))
