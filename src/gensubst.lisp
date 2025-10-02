@@ -1314,7 +1314,7 @@ behavior:
 		  (t nex))))
       (copy act
 	'expr cex
-	'type-value (unless expr (copy-untyped* type-value))))))
+	'type-value nil))))
 
 (defmethod copy-untyped* ((ex table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
