@@ -812,9 +812,10 @@
 (defun mk-null-expr ()
   (make-instance 'null-expr :id '|null|))
 
-(defun mk-list-expr (elt list-ex)
+(defun mk-list-expr (elt list-ex &optional lplace)
   (assert (typep list-ex '(or null-expr list-expr)))
-  (let ((list-place (concat-places (place elt) (place list-ex)))
+  (let ((list-place (or lplace
+			(concat-places (place elt) (place list-ex))))
 	(cons-op (make-instance 'name-expr
 		   :id '|cons|
 		   :place (place elt))))
