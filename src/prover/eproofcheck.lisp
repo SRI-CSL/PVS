@@ -537,7 +537,7 @@
 		script
 		(not (equal script '("" (postpone) nil nil)))
 		(not (equal (script prinfo) script))
-		(or (eq *multiple-proof-default-behavior* :noquestions)
+		(or (pvs-dont-ask *multiple-proof-default-behavior*)
 		    auto-fixed-prf
 		    (let ((ids (mapcar #'id
 				 (remove-if-not
@@ -550,8 +550,7 @@
                     Would you like the proof to be saved~@[ anyway~]? "
 		       ids ids))))
 	   (cond ((and (not auto-fixed-prf)
-		       (or (memq *multiple-proof-default-behavior*
-				 '(:overwrite :noquestions))
+		       (or (pvs-dont-ask *multiple-proof-default-behavior*)
 			   (and (eq *multiple-proof-default-behavior* :ask)
 				(pvs-yes-or-no-p
 				 "Would you like to overwrite the current proof (named ~a)? "
@@ -793,12 +792,12 @@
 		    (format-if "~%~s~%"  (eval (cadr input)))
 		    (qread prompt))
 		   ((quit-command-p input)
-		    (if (or (eq *multiple-proof-default-behavior* :noquestions)
+		    (if (or (pvs-dont-ask *multiple-proof-default-behavior*)
 			    (pvs-y-or-n-p "~%Do you really want to quit? "))
 			(throw 'quit nil)
 			(qread prompt)))
 		   ((eq input 'abort)
-		    (if (or (eq *multiple-proof-default-behavior* :noquestions)
+		    (if (or (pvs-dont-ask *multiple-proof-default-behavior*)
 			    (pvs-y-or-n-p "~%Do you really want to abort? "))
 			(throw 'abort nil)
 			(qread prompt)))
@@ -2386,7 +2385,8 @@
 	       (setf (strategy ps)(query*-step))
 	       ps)
 	      (t (let ((response
-			(or (eq *multiple-proof-default-behavior* :noquestions)
+			(or (pvs-dont-ask *multiple-proof-default-behavior*)
+			    (pvs-dont-ask *undo-default-behavior*)
 			    (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
 					  newps))))
 		   (cond (response

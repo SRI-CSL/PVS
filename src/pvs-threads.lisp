@@ -100,7 +100,17 @@
   "Defines how to handle when a proof finishes:
  :ask = asks whether to save the proof, and if yes, whether to overwrite, etc.
  :noquestions = no questions, automatically overwrites if the proof is different
- :overwrite = same as :noquestions, but sys that it is overwriting")
+ :overwrite = same as :noquestions, but verbose")
+
+(defvar *undo-default-behavior* :ask
+  "Defines how to handle an undo:
+ :ask = asks whether to undo
+ :noquestions = no questions, automatically undo (silently)
+ :overwrite = same as :noquestions but verbose")
+
+(defun pvs-dont-ask (value)
+  "Return t if the value is either :noquestions or :overwrite"
+  (memq value '(:noquestions :overwrite)))
 
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)
