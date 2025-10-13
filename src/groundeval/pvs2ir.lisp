@@ -4347,7 +4347,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod ir2c* ((ir-expr ir-type-actual) return-var return-type)
   (with-slots (ir-actual-type) ir-expr
-;    (break "ir2c*(ir-type-actual)")
+;;    (break "ir2c*(ir-type-actual)")
     (let ((ir2c-return-type (ir2c-type return-type))
 	  (ir2c-type (ir2c-type ir-actual-type))) 
       (if (ir-actualparameter-type? ir2c-type)
@@ -7725,7 +7725,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (ir-reference-type? ir-type))
 
 (defun make-json-call (ir-type c-ir-type expr c-param-arg-string)
-  (when (ir-typename? ir-type)(break "make-json-call"))
+  ;;(when (ir-typename? ir-type)(break "make-json-call"))
   (if (ir-formal-typename? ir-type)
       (let ((ir-var-for-type-binding (assoc (type-declaration ir-type) *ir-theory-tbindings*)))
 	(if ir-var-for-type-binding
@@ -8020,17 +8020,17 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8Tuint32_t xsize = x->size;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xmax; j < newmax; j++){y->elems[j] = NULL;};~%~28Trelease_~a(x~a);}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8Tuint32_t xsize = x->size;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xsize; j < newmax; j++){y->elems[j] = NULL;};}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
                      ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;};~%~8Ty->size = xsize > i ? xsize : i + 1;~%~8T~
                      if (i < xmax && yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string
 	      type-name-root
-	      type-name-root c-range-root type-name-root c-param-arg-string;i > x->max case
+	      type-name-root c-range-root; type-name-root c-param-arg-string;i > x->max case
 	      type-name-root ; copy
 	      c-range-root
 	      (make-release-call ir-range c-range-root "yelems[i]" c-param-arg-string)
 	      )
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~10T else if (i >= xmax){uint32_t newmax = ((xmax < UINT32_MAX/2) ? ((i < 2 * (xmax + 1)) ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~10T else if (i >= xmax){uint32_t newmax = ((xmax < UINT32_MAX/2) ? ((i < 2 * (xmax + 1)) ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
                     ~a;~%~8T~
                     return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string type-name-root
