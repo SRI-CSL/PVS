@@ -7725,11 +7725,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (ir-reference-type? ir-type))
 
 (defun make-json-call (ir-type c-ir-type expr c-param-arg-string)
-<<<<<<< HEAD
   ;;(when (ir-typename? ir-type)(break "make-json-call"))
-=======
-  ; (when (ir-typename? ir-type)(break "make-json-call"))
->>>>>>> e14c3f8ffb0671bc0d511461a5f3f864c4a19a53
   (if (ir-formal-typename? ir-type)
       (let ((ir-var-for-type-binding (assoc (type-declaration ir-type) *ir-theory-tbindings*)))
 	(if ir-var-for-type-binding
