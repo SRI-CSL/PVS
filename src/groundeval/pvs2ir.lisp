@@ -7725,11 +7725,6 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (ir-reference-type? ir-type))
 
 (defun make-json-call (ir-type c-ir-type expr c-param-arg-string)
-<<<<<<< HEAD
-  ;;(when (ir-typename? ir-type)(break "make-json-call"))
-=======
-  ; (when (ir-typename? ir-type)(break "make-json-call"))
->>>>>>> e14c3f8ffb0671bc0d511461a5f3f864c4a19a53
   (if (ir-formal-typename? ir-type)
       (let ((ir-var-for-type-binding (assoc (type-declaration ir-type) *ir-theory-tbindings*)))
 	(if ir-var-for-type-binding
@@ -7834,30 +7829,30 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defun make-array-copy-defn (copy-name type-name-root size elemtype c-range-root c-param-decl-string)
   (declare (ignore size c-param-decl-string))
   (let ((copy-instr (if (ir-reference-type? elemtype)
-			(format nil "for (uint32_t i = 0; i < x->size; i++){tmp->elems[i] = x->elems[i];~%~
-                                     ~16Tx->elems[i]->count++;}"
+			(format nil "for (uint32_t i = 0; i < x->max; i++){tmp->elems[i] = x->elems[i];~%~
+                                     ~16Tif (i < x->size) x->elems[i]->count++;}"
 					;size
 			  )
 			(if (ir-formal-typename? elemtype)
-			    (format nil "for (uint32_t i = 0; i < x->size; i++){~a;~%~16Tif (~a->tag == 'p') x->elems[i]->count++;}"
+			    (format nil "for (uint32_t i = 0; i < x->max; i++){~a;~%~16Tif (i < x->size && ~a->tag == 'p') x->elems[i]->count++;}"
 					;size
 			      (make-c-assignment "tmp->elems[i]" c-range-root
 						 "x->elems[i]" c-range-root)
 			      (ir-type-id elemtype))
 			  (if (mpnumber-type? elemtype)
-			      (format nil "for (uint32_t i = 0; i < x->size; i++){~16T~a;~%~16T~a;~%~16T~a;}"
+			      (format nil "for (uint32_t i = 0; i < x->max; i++){~16T~a;~%~16T~a;~%~16Tif (i < x->size) ~a;}"
 					;size
 				      (format nil "tmp->elems[i] = (~a_ptr_t)safe_malloc(sizeof(~a_t))"
 					      c-range-root c-range-root)
 				      (format nil "~a_init(tmp->elems[i])" c-range-root)
 				      (make-c-assignment "tmp->elems[i]" c-range-root
 							 "x->elems[i]" c-range-root))
-				(format nil "for (uint32_t i = 0; i < x->size; i++){~a;}"
+				(format nil "for (uint32_t i = 0; i < x->max; i++){~a;}"
 					;size
 					(make-c-assignment "tmp->elems[i]" c-range-root
 						 "x->elems[i]" c-range-root)))))))
-    (format nil "~a_t ~a(~a_t x){~%~8T~a_t tmp = new_~a(x->size);~%~8T~
-               tmp->count = 1;~
+    (format nil "~a_t ~a(~a_t x){~%~8T~a_t tmp = new_~a(x->max);~%~8T~
+               tmp->count = 1;~%~8Ttmp->size = x->max;~
 	       ~%~8T~a;~%~8T return tmp;}"   
       type-name-root copy-name 
       type-name-root type-name-root type-name-root copy-instr)))
