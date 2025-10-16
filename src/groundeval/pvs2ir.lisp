@@ -4347,6 +4347,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod ir2c* ((ir-expr ir-type-actual) return-var return-type)
   (with-slots (ir-actual-type) ir-expr
+;;    (break "ir2c*(ir-type-actual)")
     (let ((ir2c-return-type (ir2c-type return-type))
 	  (ir2c-type (ir2c-type ir-actual-type))) 
       (if (ir-actualparameter-type? ir2c-type)
@@ -4506,7 +4507,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     ((|uint64| |__uint128| |int64| |__int128|) '|uint64|);64/128 get coerced to uint64.
     ((|int8| |int16| |int32| |uint8| |uint16| |uint32|) '|uint32|)
     ((|mpz|) '|mpz|)
-    (t nil)))
+    (t nil)))o
 	 ;;using ir2c-type to return u/intx or mpz
 
 (defmethod ir-array? ((ir-typ ir-arraytype))
@@ -7828,30 +7829,30 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defun make-array-copy-defn (copy-name type-name-root size elemtype c-range-root c-param-decl-string)
   (declare (ignore size c-param-decl-string))
   (let ((copy-instr (if (ir-reference-type? elemtype)
-			(format nil "for (uint32_t i = 0; i < x->size; i++){tmp->elems[i] = x->elems[i];~%~
-                                     ~16Tx->elems[i]->count++;}"
+			(format nil "for (uint32_t i = 0; i < x->max; i++){tmp->elems[i] = x->elems[i];~%~
+                                     ~16Tif (i < x->size) x->elems[i]->count++;}"
 					;size
 			  )
 			(if (ir-formal-typename? elemtype)
-			    (format nil "for (uint32_t i = 0; i < x->size; i++){~a;~%~16Tif (~a->tag == 'p') x->elems[i]->count++;}"
+			    (format nil "for (uint32_t i = 0; i < x->max; i++){~a;~%~16Tif (i < x->size && ~a->tag == 'p') x->elems[i]->count++;}"
 					;size
 			      (make-c-assignment "tmp->elems[i]" c-range-root
 						 "x->elems[i]" c-range-root)
 			      (ir-type-id elemtype))
 			  (if (mpnumber-type? elemtype)
-			      (format nil "for (uint32_t i = 0; i < x->size; i++){~16T~a;~%~16T~a;~%~16T~a;}"
+			      (format nil "for (uint32_t i = 0; i < x->max; i++){~16T~a;~%~16T~a;~%~16Tif (i < x->size) ~a;}"
 					;size
 				      (format nil "tmp->elems[i] = (~a_ptr_t)safe_malloc(sizeof(~a_t))"
 					      c-range-root c-range-root)
 				      (format nil "~a_init(tmp->elems[i])" c-range-root)
 				      (make-c-assignment "tmp->elems[i]" c-range-root
 							 "x->elems[i]" c-range-root))
-				(format nil "for (uint32_t i = 0; i < x->size; i++){~a;}"
+				(format nil "for (uint32_t i = 0; i < x->max; i++){~a;}"
 					;size
 					(make-c-assignment "tmp->elems[i]" c-range-root
 						 "x->elems[i]" c-range-root)))))))
-    (format nil "~a_t ~a(~a_t x){~%~8T~a_t tmp = new_~a(x->size);~%~8T~
-               tmp->count = 1;~
+    (format nil "~a_t ~a(~a_t x){~%~8T~a_t tmp = new_~a(x->max);~%~8T~
+               tmp->count = 1;~%~8Ttmp->size = x->max;~
 	       ~%~8T~a;~%~8T return tmp;}"   
       type-name-root copy-name 
       type-name-root type-name-root type-name-root copy-instr)))
@@ -7880,9 +7881,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			(format nil "~a->json_ptr(x->elems[i], ~a)"
 				c-range-root c-range-root)
 		      (if (ir-reference-type? elemtype)
-			  (format nil "json_~a(x->elems[i]~a)"
-					;size
-				  c-range-root c-param-arg-string)
+			  (if (and (ir-typename? elemtype)
+				   (not (eq (module (type-declaration elemtype)) *current-pvs2c-theory*)))
+			      (format nil "json_~a(x->elems[i])"
+				  c-range-root)
+			      (format nil "json_~a(x->elems[i]~a)"
+				      c-range-root c-param-arg-string))
 			(format nil "json_~a(x->elems[i])"
 					;size
 				c-range-root))))
@@ -7932,9 +7936,15 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					;size
 				     c-range-root c-range-root)
 		       (if (ir-reference-type? elemtype)
-			   (format nil "while (i < x->size && tmp){tmp = equal_~a(x->elems[i], y->elems[i]~a); i++;}"
+			   (let ((c-param-string
+				  (if (and (ir-typename? elemtype)
+					   (not (eq (module (type-declaration elemtype))
+						    *current-pvs2c-theory*)))
+				      ""
+				      c-param-arg-string)))
+			     (format nil "while (i < x->size && tmp){tmp = equal_~a(x->elems[i], y->elems[i]~a); i++;}"
 					;size
-				   c-range-root c-param-arg-string)
+				     c-range-root c-param-string))
 			 (if (eq elemtype '|mpz|)
 			     (format nil "while  (i < x->size && tmp){tmp = (mpz_cmp(x->elems[i], y->elems[i]) == 0); i++;}")
 			   (if (eq elemtype '|mpq|)
@@ -8009,17 +8019,17 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defun make-array-upgrade-defn (upgrade-name type-name-root ir-range c-range-root c-param-arg-string c-param-decl-string)
   (if (ir-reference-type? ir-range) ;;NSH(2/6/20):upgrade is only invoked on last-marked array variable
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8Tuint32_t xsize = x->size;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xmax; j < newmax; j++){y->elems[j] = NULL;};~%~28Trelease_~a(x~a);}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T ~a_t y;~%~8Tuint32_t xmax = x->max;~%~8Tuint32_t xsize = x->size;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~16T else if (i >= xmax){~%~28Tuint32_t newmax = ((xmax < UINT32_MAX/2)  ? ((i < 2 * (xmax + 1))  ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~28Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~28Ty->count = 1;~%~28Ty->max = newmax;~%~28Tfor (uint32_t j = xsize; j < newmax; j++){y->elems[j] = NULL;};}~%~24T else {y = copy_~a(x);~%~28Tx->count--;};~%~8T~
                      ~a_t * yelems = y->elems;~%~8Tif (v != NULL){v->count++;};~%~8Ty->size = xsize > i ? xsize : i + 1;~%~8T~
                      if (i < xmax && yelems[i] != NULL){~a;};~%~8T yelems[i] = v;~%~8T return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string
 	      type-name-root
-	      type-name-root c-range-root type-name-root c-param-arg-string;i > x->max case
+	      type-name-root c-range-root; type-name-root c-param-arg-string;i > x->max case
 	      type-name-root ; copy
 	      c-range-root
 	      (make-release-call ir-range c-range-root "yelems[i]" c-param-arg-string)
 	      )
-      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~10T else if (i >= xmax){uint32_t newmax = ((xmax < UINT32_MAX/2) ? ((i < 2 * (xmax + 1)) ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;~%~16Trelease_~a(x~a);}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
+      (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v~a){~%~8T~a_t y;~%~8Tuint32_t xmax = x->max;~%~8T if (x->count == 1 && i < xmax){y = x;}~%~10T else if (i >= xmax){uint32_t newmax = ((xmax < UINT32_MAX/2) ? ((i < 2 * (xmax + 1)) ? 2 * (xmax + 1) : i + 1) : UINT32_MAX);~%~16Ty = safe_realloc(x, sizeof(struct ~a_s) + (newmax * sizeof(~a_t)));~%~16Ty->count = 1;~%~16Ty->size = i+1;~%~16Ty->max = newmax;}~%~10T else {y = copy_~a(x );~%~16Tx->count--;};~%~8T~
                     ~a;~%~8T~
                     return y;}"
 	      type-name-root upgrade-name type-name-root c-range-root c-param-decl-string type-name-root
