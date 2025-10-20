@@ -662,12 +662,7 @@
   (judgements-graph :initform nil))
 
 ;; Structures primarily for .pvscontext and used in context.lisp
-(defstruct (context-entry (:conc-name ce-)
-			  (:print-function
-			   (lambda (ce stream depth)
-			     (declare (ignore depth))
-			     (format stream "<CE ~a>"
-			       (ce-file ce)))))
+(defstruct (context-entry (:conc-name ce-))
   file
   write-date
   proofs-date
@@ -677,12 +672,7 @@
   extension
   (md5sum 0))
 
-(defstruct (theory-entry (:conc-name te-)
-			 (:print-function
-			   (lambda (te stream depth)
-			     (declare (ignore depth))
-			     (format stream "<TE ~a>"
-			       (te-id te)))))
+(defstruct (theory-entry (:conc-name te-))
   id
   status
   dependencies ;; An alist ((lib-ref theory-id ...) ... (nil theory-id ...))
@@ -696,24 +686,14 @@
 ;;; and is now used only for providing the proof summary if the
 ;;; theories have not been parsed.
 
-(defstruct (formula-entry (:conc-name fe-)
-			  (:print-function
-			   (lambda (fe stream depth)
-			     (declare (ignore depth))
-			     (format stream "<FE ~a>"
-			       (fe-id fe)))))
+(defstruct (formula-entry (:conc-name fe-))
   id
   status
   proof-refers-to
   decision-procedure-used
   proof-time)
 
-(defstruct (declaration-entry (:conc-name de-)
-			      (:print-function
-			       (lambda (de stream depth)
-				 (declare (ignore depth))
-				 (format stream "<DE ~a.~a>"
-				   (de-theory-id de) (de-id de)))))
+(defstruct (declaration-entry (:conc-name de-))
   id
   class
   type

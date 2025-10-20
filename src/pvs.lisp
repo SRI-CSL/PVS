@@ -736,7 +736,7 @@ use binfiles."
     (let* ((filename (pvs-filename fname))
 	   (*current-file* filename)
 	   (file (make-specpath filename))
-	   (theories (get-theories file)))
+	   (cur-theories (get-theories file)))
       (cond ((not (file-exists-p file))
 	     (unless no-message?
 	       (pvs-message "PVS file ~a is not in the current context" filename)))
@@ -745,9 +745,9 @@ use binfiles."
 		  (parsed-file? file))
 	     (unless no-message?
 	       (pvs-message "~a is already parsed" filename))
-	     theories)
+	     cur-theories)
 	    ((and typecheck?
-		  (null theories)
+		  (null cur-theories)
 		  (not forced?)
 		  (check-binfiles filename)
 		  ;;(valid-binfile? filename)
@@ -768,33 +768,29 @@ use binfiles."
 		   (if typecheck?
 		       (typecheck-file dep forced? nil nil no-message?)
 		       (parse-file dep forced? no-message? typecheck?))))))
-	    (t (let ((fe (get-context-file-entry filename)))
-		 (when fe
-		   ;;(format t "~%parse-file: ~a setting ce-object-date to nil" fe)
-		   (setf (ce-object-date fe) nil)))
-	       (multiple-value-bind (theories changed-theories)
-		   (parse-file* filename file theories forced? typecheck?)
+	    (t (multiple-value-bind (new-theories th-diffs)
+		   (parse-file* filename file cur-theories forced? typecheck?)
+		 (assert (every #'datatype-or-module? new-theories))
 		 (when (eq forced? 'all)
-		   (parse-importchain theories typecheck?))
-		 (dolist (th theories)
-		   (remove-associated-buffers (id th)))
+		   (parse-importchain new-theories typecheck?))
+		 (when th-diffs
+		   (dolist (elt th-diffs)
+		     (remove-associated-buffers (id (car th-diffs)))))
 		 (assert (gethash (pvs-filename filename) (current-pvs-files)))
-		 ;; If no changed-theories, then all current proofs are still OK
-		 (when changed-theories
-		   (when (and *in-checker*
-			      (some #'(lambda (cth)
-					(or (eq cth (current-theory))
-					    (memq cth (all-importings (current-theory)))))
-				    changed-theories))
-		     (setq *context-modified* t))
-		   (dolist (sess *all-sessions*)
-		     (let ((sess-th (module (formula-decl sess))))
-		       (when (some #'(lambda (cth)
-				       (or (eq cth sess-th)
-					   (memq cth (all-importings sess-th))))
-				   changed-theories)
-			 (prover-step (id sess) "(lisp (setq *context-modified* t))")))))
-		 (values theories nil changed-theories)))))))
+		 (when (and *in-checker*
+			    (some #'(lambda (cth)
+				      (or (eq cth (current-theory))
+					  (memq cth (all-importings (current-theory)))))
+				  new-theories))
+		   (setq *context-modified* t))
+		 (dolist (sess *all-sessions*)
+		   (let ((sess-th (module (formula-decl sess))))
+		     (when (some #'(lambda (cth)
+				     (or (eq cth sess-th)
+					 (memq cth (all-importings sess-th))))
+				 new-theories)
+		       (prover-step (id sess) "(lisp (setq *context-modified* t))"))))
+		 (values new-theories nil t)))))))
 
 (defun parse-all-pvs-files (dir)
   (dolist (file (directory dir))
@@ -872,15 +868,15 @@ use binfiles."
       (check-for-theory-clashes new-theories filename forced?))
     ;;(check-import-circularities new-theories)
     (add-comments-to-theories new-theories comments)
-    (let ((changed
-	   (update-parsed-file filename file theories new-theories forced?)))
+    (let ((merged-theories
+	   (update-parsed-file filename file theories new-theories forced? typecheck?)))
       (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
-      #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
-				new-theories))
+      (assert (every #'(lambda (nth) (and (datatype-or-module? nth)
+					  (eq nth (get-theory (id nth)))))
+		     merged-theories))
       ;; (assert (parsed-file? filename))
       ;; (assert (every #'parsed? theories))
-      (values (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)
-	      changed))))
+      merged-theories)))
 
 (defun add-comments-to-theories (theories comments)
   ;; Comment entries are lists, car is the comment, cadr the place
@@ -1271,102 +1267,143 @@ escapes here."
 	  (push iname imp-names))))
       (values imp-theories imp-names)))
 
-(defun update-parsed-file (filename file theories new-theories forced?)
+(defun update-parsed-file (filename file old-theories new-theories forced? typecheck?)
   (handle-deleted-theories filename new-theories)
   (cond (forced?
 	 (reset-typecheck-caches)
 	 (dolist (nthy new-theories)
 	   (when (module? nthy)
-	     (let ((othy (find nthy theories :test #'same-id)))
-	       (dolist (sec '(formals assuming theory))
-		 (dolist (d (slot-value nthy sec))
-		   (when (formula-decl? d)
-		     (let ((fe (get-context-formula-entry d)))
-		       (when fe
-			 (setf (fe-status fe) 'unchecked))))))
+	     (let ((othy (find nthy old-theories :test #'same-id)))
 	       (setf (formals-sans-usings nthy)
 		     (remove-if #'importing-param? (formals nthy)))
 	       (untypecheck-usedbys othy)))
 	   (setf (gethash (id nthy) (current-pvs-theories)) nthy))
 	 (setf (gethash filename (current-pvs-files))
-	       (cons (file-write-date file) new-theories)))
-	(t (multiple-value-bind (mth changed)
-	       (update-parsed-theories filename file theories new-theories)
+	       (cons (file-write-date file) new-theories))
+	 new-theories)
+	((null old-theories)
+	 (setf (gethash (pvs-filename filename) (current-pvs-files))
+	       (cons (file-write-date file) new-theories))
+	 (dolist (nthy new-theories)
+	   (setf (gethash (id nthy) (current-pvs-theories)) nthy))
+	 (unless typecheck?
+	   (update-context filename))
+	 new-theories)
+	(t (multiple-value-bind (merged-theories th-diffs)
+	       ;; merged-theories will be a mix of new and old
+	       ;; th-diffs has elts of the form (othy nthy diff)
+	       (update-parsed-theories filename file old-theories new-theories)
+	     (assert (every #'datatype-or-module? merged-theories))
 	     (setf (gethash (pvs-filename filename) (current-pvs-files))
-		   (cons (file-write-date file) mth))
-	     (update-context filename)
-	     changed))))
+		   (cons (file-write-date file) merged-theories))
+	     (unless typecheck?
+	       (update-context filename))
+	     merged-theories))))
 
-(defun update-parsed-theories (filename file oldtheories new-theories
-			       &optional result changed)
+(defun update-parsed-theories (filename file old-theories new-theories
+			       &optional merged-theories th-diffs)
   (if (null new-theories)
-      (values (nreverse result) (nreverse changed))
+      ;; merged-theories is generally a mix of new and old theories, depending on
+      ;; whether the old theory was replaced or modified.
+      ;; th-diffs is a list of elements of the form (othy nthy diff)
+      ;; Where diff is the merged-theories from compare
+      (let ((theory-diffs (nreverse th-diffs)))
+	(values (nreverse merged-theories) theory-diffs))
       (let* ((nthy (car new-theories))
-	     (othy (find nthy oldtheories :test #'same-id))
-	     (kept? nil)
-	     (changed? nil))
-	;; (update-context-formula-proof-info filename file nthy othy)
-	;; (setf (filename nthy) filename)
+	     (othy (find nthy old-theories :test #'same-id))
+	     (replace? nil)) ;; Whether to replace instead of modify old-theory
 	(if (and othy (memq 'typechecked (status othy)))
 	    (let* ((*current-context* (saved-context othy))
 		   (diff (compare othy nthy)))
-	      ;; diff is nil, (odecl . ndecl), (odecl . nil) or (nil . ndecl)
+	      ;; diff is nil - lexical changes only
+	      ;;         (odecl . ndecl) - first place where othy and nthy differ
+	      ;;         (odecl . nil) - odecl on was removed from end
+	      ;;         (nil . ndecl) - ndecl was inserted
+	      (assert (or (null diff)
+			  (and (consp diff)
+			       (or (and (datatype-or-module? (car diff))
+					(datatype-or-module? (cdr diff)))
+				   (if (theory-element? (car diff))
+				       (or (null (cdr diff))
+					   (theory-element? (cdr diff)))
+				       (and (null (car diff))
+					    (theory-element? (cdr diff))))))))
 	      (cond ((null diff) ;; Only lexical diffs, e.g., whitespace, comments
-		     (setq kept? t)
 		     (copy-lex othy nthy))
 		    ((datatype-or-module? (car diff))
 		     ;; Whole module needs to be retypechecked
 		     (reset-typecheck-caches)
-		     (when (module? nthy)
-		       (dolist (sec '(formals assuming theory))
-			 (dolist (d (slot-value nthy sec))
-			   (when (formula-decl? d)
-			     (let ((fe (get-context-formula-entry d)))
-			       (when fe
-				 (setf (fe-status fe) 'unchecked)))))))
 		     (setf (formals-sans-usings nthy)
 			   (remove-if #'importing-param? (formals nthy)))
 		     (untypecheck-usedbys othy)
-		     (setf (gethash (id nthy) (current-pvs-theories)) nthy))
+		     (setq replace? t)
+		     ;; (setf (gethash (id nthy) (current-pvs-theories)) nthy)
+		     (push (list othy nthy) th-diffs))
 		    ((and (consp diff) ;; (car diff) is an odecl
 			  (module? othy)
 			  (car diff))
 		     (assert (memq (car diff) (all-decls othy)))
-		     ;; Copies lexical info from new to old, up to diff.
-		     ;; This is info that can't change the semantcs, like
-		     ;; place info, and keywords FORMULA vs LEMMA.
-		     (copy-lex-upto diff othy nthy)
-		     (merge-parsed-theory (car diff) (cdr diff) othy nthy)
-		     (setq changed? t)
-		     (setq kept? t))
-		    (t (append-parsed-theory (cdr diff) othy nthy)
-		       (setq changed? t)))))
+		     (let* ((odecl (or (car (last (generated (car diff))))
+				       (car diff)))
+			    (otail (memq odecl (all-decls othy)))
+			    (last-kept-decl (car (last (ldiff (all-decls othy) otail)))))
+		       (cond (last-kept-decl
+			      ;; Copies lexical info from new to old, up to diff.
+			      ;; This is info that can't change the semantcs, like
+			      ;; place info, and keywords FORMULA vs LEMMA.
+			      (let ((prev-kept-decl-entry
+				     (assq (id othy) (last-kept-decls *workspace-session*))))
+				(assert (or (null prev-kept-decl-entry)
+					    (memq (cdr prev-kept-decl) othy)))
+				(if prev-kept-decl-entry
+				    ;; Check if last-kept-decl needs updating for this theory
+				    (if (memq last-kept-decl (memq prev-kept-decl othy))
+					(setf (cdr prev-kept-decl) last-kept-decl)
+					(setq last-kept-decl (cdr prev-kept-decl)))
+				    (push (cons (id othy) last-kept-decl)
+					  (last-kept-decls *workspace-session*))))
+			      (copy-lex-upto diff othy nthy)
+			      (unless (memq last-kept-decl (all-decls othy))
+				(break "update-parsed-theories last-kept-decl not in othy"))
+			      (setf (status othy) '(parsed)) ; all-decls won't use cache
+			      (merge-parsed-theory last-kept-decl (cdr diff) othy nthy)
+			      (assert (memq last-kept-decl (all-decls othy)) ()
+				      "update-parsed-theories - merge-parsed-theory broke invariant")
+			      ;;(assert (memq last-kept-decl (all-decls nthy)))
+			      )
+			     (t ;; No kept decls, treat as entire module replacement
+			      (reset-typecheck-caches)
+			      (setf (formals-sans-usings nthy)
+				    (remove-if #'importing-param? (formals nthy)))
+			      (untypecheck-usedbys othy)
+			      (setq replace? t)
+			      ;; (setf (gethash (id nthy) (current-pvs-theories)) nthy)
+			      (push (list othy nthy) th-diffs))
+			      )))
+		    (t (append-parsed-theory (cdr diff) othy nthy)))))
 	;; Don't need to do anything here, since othy was never typechecked.
-	(unless kept?
+	(when (or (null othy) replace?)
 	  (setf (gethash (id nthy) (current-pvs-theories)) nthy))
 	(assert (gethash (id nthy) (current-pvs-theories)))
 	(update-parsed-theories filename file
-				(remove othy oldtheories) (cdr new-theories)
-				(cons (if kept? othy nthy) result)
-				(if changed? (cons (if kept? othy nthy) changed) changed)))))
+				(remove othy old-theories) (cdr new-theories)
+				(cons (if replace? nthy othy) merged-theories)
+				th-diffs))))
 
-;; odecl occurs in othy, and is the first place where there's a difference
+;; odecl occurs in othy, and is the last place where there's no difference
 ;; between othy and nthy. ndecl might be a change to odecl, or a newly
 ;; inserted decl, or an indication that the odecl has been deleted, or even
 ;; simply a reordering of decls at that point.
 (defun merge-parsed-theory (odecl ndecl othy nthy)
   (let* ((odecls (all-decls othy))
 	 ;;(ndecls (all-decls nthy))
-	 (gdecl (when odecl
-		  (or (and (not (eq (theory-section-of odecl othy) 'formals))
-			   (car (last (generated odecl))))
-		      odecl)))
-	 (replaced (when gdecl (memq gdecl odecls)))
+	 (replaced (when odecl (memq odecl odecls)))
 	 ;;(ohead (ldiff odecls replaced))
 	 ;;(ntail (memq ndecl ndecls))
 	 )
     ;; Can only keep assuming instances for importings before odecl
-    (when (and gdecl (assuming-instances othy))
+    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 1")
+    (when (and odecl (assuming-instances othy))
       (let ((pdecls (memq odecl (reverse odecls))))
 	(assert pdecls)
 	(if (cdr pdecls)
@@ -1376,14 +1413,8 @@ escapes here."
 		(setf (assuming-instances othy) vis-instances)))
 	    (setf (assuming-instances othy) nil))))
     (setf (all-declarations othy) nil)
+    (setf (status othy) '(parsed))
     (setf (saved-context othy) nil)
-    ;; (setf (tccs-tried? othy) nil)
-    (dolist (d replaced)
-      (when (formula-decl? d)
-	(let ((fe (get-context-formula-entry d)))
-	  (when fe
-	    (setf (fe-status fe) 'unchecked)))))
-    ;; tcc-comments
     (dolist (d replaced)
       (let ((dcmts (assq d (tcc-comments othy))))
 	(when dcmts
@@ -1419,14 +1450,17 @@ escapes here."
     (setf (immediate-usings othy) 'unbound)
     ;; Now apply the diffs - modifies the old theory,
     ;; keeping everything above odecl
-    (merge-parsed-theory-decls gdecl ndecl othy nthy))
-  ;; formals-sans-usings
-  (setf (formals-sans-usings othy) (remove-if #'importing-param? (formals othy)))
-  (reset-typecheck-caches)
-  (when (recursive-type? othy)
-    (break "recursive-type"))
-  (untypecheck-usedbys othy)
-  (setf (status othy) '(parsed)))
+    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 2")
+    (merge-parsed-theory-decls odecl ndecl othy nthy)
+    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 3")
+    ;; formals-sans-usings
+    (setf (formals-sans-usings othy) (remove-if #'importing-param? (formals othy)))
+    (reset-typecheck-caches)
+    (when (recursive-type? othy)
+      (break "recursive-type"))
+    (untypecheck-usedbys othy)
+    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 4")
+    replaced))
 
 (defun theory-section-of (decl theory)
   ;; Note that these are also the slot-values of theory
@@ -1436,25 +1470,29 @@ escapes here."
 	((memq decl (theory theory)) 'theory)
 	(t (error "decl ~a not found in theory ~a" (id decl) (id theory)))))
 
-(defun merge-parsed-theory-decls (odecl ndecl othy nthy)
-  ;; odecl belongs to one of the sections:
+(defun merge-parsed-theory-decls (last-kept-decl ndecl othy nthy)
+  ;; last-kept-decl belongs to one of the sections:
   ;;   formals, theory-formal-decls, assuming, theory
-  (let ((osec (when odecl (theory-section-of odecl othy)))
+  (let ((osec (when last-kept-decl (theory-section-of last-kept-decl othy)))
 	(nsec (when ndecl (theory-section-of ndecl nthy)))
 	(found-diff nil))
     (assert (or osec nsec))
+    (assert (memq last-kept-decl (all-decls othy)) () "merge-parsed-theory-decls - 1")
     (unless (or (null osec) (null nsec) (eq osec nsec))
       (break "merge-parsed-theory-decls: different sections"))
     ;; (null osec) => ndecl tail is all new
-    ;; (null nsec) => odecl tail should be deleted
-    ;; else => odecl tail is replaced by ndecl tail
+    ;; (null nsec) => last-kept-decl tail should be deleted
+    ;; else => last-kept-decl tail is replaced by ndecl tail
     (dolist (cursec '(formals theory-formal-decls assuming theory))
       (let ((section (slot-value othy cursec)))
 	(setq found-diff (or found-diff (eq cursec (or osec nsec))))
+	(assert (memq last-kept-decl (all-decls othy)) () "merge-parsed-theory-decls - 1")
 	(cond ((eq cursec osec)
-	       (setf (slot-value othy cursec)
-		     (append (ldiff section (memq odecl section))
-			     (when ndecl (memq ndecl (slot-value nthy cursec))))))
+	       (let ((newsec (append (ldiff section (cdr (memq last-kept-decl section)))
+				     (when ndecl (memq ndecl (slot-value nthy cursec))))))
+		 (assert (memq last-kept-decl newsec) ()
+			 "merge-parsed-theory-decls - 2")
+		 (setf (slot-value othy cursec) newsec)))
 	      ((eq cursec nsec)
 	       (setf (slot-value othy cursec)
 		     (append section (memq ndecl (slot-value nthy cursec)))))
@@ -1463,6 +1501,7 @@ escapes here."
 	       (setf (slot-value othy cursec) (slot-value nthy cursec)))
 	      ;; No need for else - othy is fine to keep
 	      )))
+    (assert (memq last-kept-decl (all-decls othy)) () "merge-parsed-theory-decls - 3")
     (assert (null (compare othy nthy)))))
 
 (defun append-parsed-theory (ndecl othy nthy)
@@ -1509,6 +1548,7 @@ escapes here."
 	(reset-proof-statuses th)
 	(untypecheck-theory th)
 	(tcdebug "~%~a untypechecked" (id th)))))
+  (when *tc-theories* (break "untypecheck-usedbys"))
   (dolist (pair *tc-theories*)
     (reset-proof-statuses (car pair))
     (untypecheck-theory (car pair)))
@@ -1580,7 +1620,7 @@ escapes here."
 	   (member 'stdpvs *prelude-theories* :key #'id))
 	  (t
 	   (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
-	     (multiple-value-bind (theories restored? changed-theories)
+	     (multiple-value-bind (theories restored? th-diffs)
 		 (parse-file filename forced? nomsg? t)
 	       (let ((*current-file* filename)
 		     (*typechecking-module* nil))
@@ -1605,6 +1645,21 @@ escapes here."
 			    (delete-generated-adt-files theories))
 			  (typecheck-theories filename theories)
 			  #+pvsdebug (assert (every #'typechecked? theories))
+			  (dolist (th theories)
+			    (let ((last-kept-entry
+				   (assq (id th) (last-kept-decls *workspace-session*))))
+			      (assert (or forced?
+					  (null last-kept-entry)
+					  (memq (cdr last-kept-entry) (all-decls th))))
+			      (when last-kept-entry
+				(unless forced?
+				  (dolist (thelt (cdr (memq (cdr last-kept-entry)
+							    (all-decls th))))
+				    (when (formula-decl? thelt)
+				      (setf (proof-status thelt) 'unchecked))))
+				(setf (last-kept-decls *workspace-session*)
+				      (delete last-kept-entry
+					      (last-kept-decls *workspace-session*))))))
 			  ;; .pvscontext
 			  (update-context filename)
 			  ;;(update-info-file filename theories)
@@ -1613,11 +1668,12 @@ escapes here."
 		   (if *in-checker*
 		       (pvs-message
 			   "Must exit the prover before running typecheck-prove")
-		       (prove-tccs* theories importchain?)))
+		       (let ((*noninteractive* t))
+			 (prove-tccs* theories importchain?))))
 		 (if outside-call?
 		     ;; Emacs expects t or nil - error will not get here
-		     (and changed-theories t)
-		     (values theories changed-theories)))))))))
+		     (and th-diffs t)
+		     (values theories th-diffs)))))))))
 
 (defun prove-tccs (fileref &optional importchain?)
   (with-pvs-file (filename) fileref
@@ -1797,7 +1853,8 @@ escapes here."
 	    (*justifications-changed?* nil))
 	(unless (every #'proved? tccs)
 	  (mapc #'(lambda (d)
-		    (when (tcc? d)
+		    (when (and (tcc? d)
+			       (memq (proof-status d) '(unchecked untried)))
 		      (let ((*current-context* (context d)))
 			(prove-tcc d))))
 		(append (assuming theory) (theory theory))))
@@ -3881,6 +3938,9 @@ nil is returned in that case."
 		   (let ((th (get-theory thname)))
 		     (when (and th (typechecked? th))
 		       th)))
+	      (and *adt* (adt-theory *adt*)
+		   (eq (id thname) (id (adt-theory *adt*)))
+		   (adt-theory *adt*))
 	      (let ((theory (get-parsed-theory thname t t)))
 		(when theory
 		  (unless (or *in-checker*
@@ -3895,7 +3955,7 @@ nil is returned in that case."
 		  (unless (from-prelude? theory)
 		    (with-workspace (context-path theory)
 		      (unless (check-binfiles (filename theory))
-			(setf (pvs-context-changed *workspace-session*) t)))))
+			(setf (current-pvs-context-changed) t)))))
 		(assert (or (null theory) (typechecked? theory)))
 		(assert (or (null theory) (saved-context theory)))
 		theory)))))
