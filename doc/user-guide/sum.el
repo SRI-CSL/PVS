@@ -2,11 +2,11 @@
 (show-tccs "sum")
 (save-excursion
   (set-buffer "sum.tccs")
-  (write-file "sum-tccs.tex"))
+  (write-file "sum-tccs"))
 (if (file-exists-p "pvs-tex.sub")
     (delete-file "pvs-tex.sub"))
 (latex-pvs-file "sum")
-(copy-file "sum.tex" "sum-nosub.tex" t)
+(copy-file "pvstex/sum.tex" "sum-nosub.tex" t)
 (save-excursion
   (set-buffer (find-file-noselect "pvs-tex.sub" t))
   (erase-buffer)
@@ -14,4 +14,4 @@
 sum 1 2 {\\sum_{i = 0}^{#1} i}")
   (save-buffer))
 (latex-pvs-file "sum")
-(copy-file "sum.tex" "sum-sub.tex" t)
+(copy-file "pvstex/sum.tex" "sum-sub.tex" t)

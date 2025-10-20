@@ -587,11 +587,11 @@
 			  c-header 
 			  c-result-decl
 			  c-body ;;NSH(2-11-25): added static-result-var for mpz/mpq
-			  (if static-result-var (format nil "~a_mk_set(result, ~a);" c-result-type static-result-var)
-			    "")
-			  ;; (if (ir-reference-type? ir-result-type)
-			  ;;     "result->count++;"
-			  ;;   "")
+			  (if static-result-var
+			      (format nil "~a_mk_set(result, ~a);" c-result-type static-result-var)
+			      (if (ir-reference-type? ir-result-type)
+				  "result->count++;"
+				  ""))
 			  ))
 	       ;; (case c-result-type
 	       ;; 	       ((|mpq| |mpz|)
