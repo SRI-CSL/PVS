@@ -343,7 +343,20 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream "#<workspace ~a>" (path ws))))
-  
+
+
+(defmethod print-object ((ce context-entry) stream)
+  (format stream "<context-entry ~a, ce-theories:~{ ~a~}>"
+    (ce-file ce) (ce-theories ce)))
+
+(defmethod print-object ((te theory-entry) stream)
+  (format stream "<TE ~a>" (te-id te)))
+
+(defmethod print-object ((fe formula-entry) stream)
+  (format stream "<FE ~a>" (fe-id fe)))
+
+(defmethod print-object ((de declaration-entry) stream)
+  (format stream "<DE ~a.~a>" (de-theory-id de) (de-id de)))
 
 (defmethod pp* ((pt store-print-type))
   (format t "<#store-print-type ~a>"
