@@ -2845,21 +2845,44 @@
 	(subtype-preds (range t1) (range t2))
       (when (or eq-inc ty)
 	(let* ((xid (make-new-variable '|x| (list t1 t2)))
-	       (tupty (dep-binding-type (domain t2)))
-	       (xb (mk-bind-decl xid tupty tupty))
+	       (domty (dep-binding-type (domain t2)))
+	       (xb (mk-bind-decl xid domty domty))
 	       (xvar (mk-name-expr xid nil nil
 				   (make-resolution xb
-				     (current-theory-name) tupty)))
+				     (current-theory-name) domty)))
 	       (vid (make-new-variable '|f| (list t1 t2)))
 	       (vb (mk-bind-decl vid t2 t2))
 	       (var (mk-name-expr vid nil nil
 				  (make-resolution vb
 				    (current-theory-name) t2)))
-	       (rapps (mapcar #'(lambda (pred)
-				  (make!-application pred
-				    (make!-application var
-				      xvar)))
-			preds))
+	       (rapps
+		(mapcar #'(lambda (pred)
+			    (let* ((rapp (make!-application pred
+					   (make!-application var xvar)))
+				   (dbdg2 (when (and (dep-binding? (domain t2))
+						     (member (domain t2) (freevars pred)
+							     :key #'declaration))
+					    (domain t2)))
+				   (dbdg1 (when (and (dep-binding?(domain t1))
+						     (not (eq (domain t1) (domain t2)))
+						     (member (domain t1) (freevars pred)
+							     :key #'declaration))
+					    (domain t1)))
+				   (dbdg (if dbdg2
+					     (if dbdg1
+						 (break "subtype-preds (funtype) problem")
+						 dbdg2)
+					     dbdg1)))
+			      (if dbdg
+				  (let* ((dvid (make-new-variable '|d| domty))
+					 (dvb (mk-bind-decl dvid domty domty))
+					 (dvar (mk-name-expr dvid nil nil
+							     (make-resolution dvb
+							       (current-theory-name) domty)))
+					 (drapp (substit rapp (acons dbdg dvar nil))))
+				    (make!-forall-expr (list dvb) drapp))
+				  rapp)))
+		  preds))
 	       (conj (make!-conjunction*
 		      (if eq-inc
 			  (cons eq-inc rapps)
