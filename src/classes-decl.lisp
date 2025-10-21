@@ -1126,6 +1126,10 @@ restored, the TCCs are checked")
   (pvs-context-changed :initform nil
 		       :documentation "if t, .pvscontext needs to be saved")
   (strat-file-dates :initform (list 0 0 0))
+  ;; Keeps track of parsing differences that are needed after typechecking
+  ;; to make sure TCC proof statuses are consistent. A list with elts of the
+  ;; form (thy-id . decl), where decl is the last decl kept from the old theory
+  (last-kept-decls :initform nil)
   )
 
 ;; (defcl workspace-instance (workspace)
