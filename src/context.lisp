@@ -1594,7 +1594,7 @@ are all the same."
   (dolist (fe (te-formula-info te))
     (when (member (fe-status fe) '("proved-complete" "proved-incomplete")
 		  :test #'string-equal)
-      (break "invalidate-theory-proofs")
+      ; (break "invalidate-theory-proofs")
       (setf (fe-status fe) "unchecked")
       (setf (current-pvs-context-changed) t))))
   
