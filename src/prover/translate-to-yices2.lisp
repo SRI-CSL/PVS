@@ -338,7 +338,7 @@
   (translate-to-yices2* (type ty) bindings))
 
 (defmethod translate-to-yices2* ((ty funtype) bindings)
-  (with-slots (domain range) ty (break "tty2(funtype)")
+  (with-slots (domain range) ty ; (break "tty2(funtype)")
 	      (let* ((sdom (if (dep-binding? domain)  ;;NSH(4-16-11)
 			      (find-supertype (type domain))
 			     (find-supertype domain))) %was bypassing int for real on the domain
