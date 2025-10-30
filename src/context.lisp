@@ -1594,7 +1594,6 @@ are all the same."
   (dolist (fe (te-formula-info te))
     (when (member (fe-status fe) '("proved-complete" "proved-incomplete")
 		  :test #'string-equal)
-      (break "invalidate-theory-proofs")
       (setf (fe-status fe) "unchecked")
       (setf (current-pvs-context-changed) t))))
   
@@ -1610,7 +1609,6 @@ are all the same."
 			  (when (memq (status prinfo)
 				      '(proved proved-complete
 					       proved-incomplete))
-			    (break "invalidate-proofs")
 			    (setf (status prinfo) 'unchecked)))
 		      (proofs d))))
 	  (append (assuming theory) (theory theory)))))
