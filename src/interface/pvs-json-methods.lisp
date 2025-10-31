@@ -76,8 +76,8 @@
 
 (defrequest typecheck (filename &optional content force?)
   "Typecheck a file"
-  ;; (format t "~%Request tc ~s" filename)
-  (when content
+  ;; (format t "~%Request tc ~s force? ~s" filename force?) ;; debug
+  (when (and content (< 0 (length content)))
     ;; Try to write the file
     (with-open-file (out filename :direction :output :if-exists :supersede)
       (write content :stream out :escape nil)))
