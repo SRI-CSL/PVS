@@ -3922,6 +3922,8 @@ modulo_arithmetic : THEORY
 
   rem_floor: LEMMA FORALL b, x: x = rem(b)(x) + b * floor(x / b)
 
+  ndiv_floor_div: LEMMA ndiv(x, b) = floor(x / b)
+
   rem_base: LEMMA
     FORALL b, x, i, n:
       rem(b)(x) = rem(b + n)(x + i) IFF divides(b + n, i - n * floor(x / b))
