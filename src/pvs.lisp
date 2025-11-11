@@ -1312,7 +1312,8 @@ escapes here."
       (let* ((nthy (car new-theories))
 	     (othy (find nthy old-theories :test #'same-id))
 	     (replace? nil)) ;; Whether to replace instead of modify old-theory
-	(if (and othy (memq 'typechecked (status othy)))
+	(if (and othy ;; (memq 'typechecked (status othy))
+		 )
 	    (let* ((*current-context* (saved-context othy))
 		   (diff (compare othy nthy)))
 	      ;; diff is nil - lexical changes only
@@ -1351,17 +1352,19 @@ escapes here."
 			      ;; Copies lexical info from new to old, up to diff.
 			      ;; This is info that can't change the semantcs, like
 			      ;; place info, and keywords FORMULA vs LEMMA.
-			      (let ((prev-kept-decl-entry
-				     (assq (id othy) (last-kept-decls *workspace-session*))))
+			      (let* ((prev-kept-decl-entry
+				      (assq (id othy) (last-kept-decls *workspace-session*)))
+				     (prev-kept-decl (cdr prev-kept-decl-entry)))
 				(assert (or (null prev-kept-decl-entry)
-					    (memq (cdr prev-kept-decl) othy)))
-				(if prev-kept-decl-entry
-				    ;; Check if last-kept-decl needs updating for this theory
-				    (if (memq last-kept-decl (memq prev-kept-decl othy))
-					(setf (cdr prev-kept-decl) last-kept-decl)
-					(setq last-kept-decl (cdr prev-kept-decl)))
-				    (push (cons (id othy) last-kept-decl)
-					  (last-kept-decls *workspace-session*))))
+					    (memq prev-kept-decl (all-decls othy))))
+				(unless (eq prev-kept-decl last-kept-decl)
+				  (if prev-kept-decl
+				      ;; Check if last-kept-decl needs updating for this theory
+				      (if (memq last-kept-decl (memq prev-kept-decl (all-decls othy)))
+					  (setf (cdr prev-kept-decl-entry) last-kept-decl)
+					  (setq last-kept-decl prev-kept-decl))
+				      (push (cons (id othy) last-kept-decl)
+					    (last-kept-decls *workspace-session*)))))
 			      (copy-lex-upto diff othy nthy)
 			      (unless (memq last-kept-decl (all-decls othy))
 				(break "update-parsed-theories last-kept-decl not in othy"))
@@ -1395,9 +1398,10 @@ escapes here."
 ;; inserted decl, or an indication that the odecl has been deleted, or even
 ;; simply a reordering of decls at that point.
 (defun merge-parsed-theory (odecl ndecl othy nthy)
+  ;; odecl is the last kept theory
   (let* ((odecls (all-decls othy))
 	 ;;(ndecls (all-decls nthy))
-	 (replaced (when odecl (memq odecl odecls)))
+	 (replaced (when odecl (cdr (memq odecl odecls))))
 	 ;;(ohead (ldiff odecls replaced))
 	 ;;(ntail (memq ndecl ndecls))
 	 )
@@ -1415,39 +1419,7 @@ escapes here."
     (setf (all-declarations othy) nil)
     (setf (status othy) '(parsed))
     (setf (saved-context othy) nil)
-    (dolist (d replaced)
-      (let ((dcmts (assq d (tcc-comments othy))))
-	(when dcmts
-	  (setf (tcc-comments othy)
-		(delete dcmts (tcc-comments othy))))))
-    ;; info
-    (dolist (dinfo (info othy))
-      (when (memq (car dinfo) replaced)
-	(setf (info othy) (delete dinfo (info othy)))))
-    ;; warnings
-    (dolist (dwarn (warnings othy))
-      (when (memq (car dwarn) replaced)
-	(setf (warnings othy) (delete dwarn (warnings othy)))))
-    ;; conversion-messages
-    (dolist (dcnv (conversion-messages othy))
-      (when (memq (car dcnv) replaced)
-	(setf (conversion-messages othy)
-	      (delete dcnv (conversion-messages othy)))))
-    ;; all-imported-theories
-    (setf (all-imported-theories othy) 'unbound)
-    ;; all-imported-names
-    (setf (all-imported-names othy) 'unbound)
-    ;; nonempty-types
-    (when (nonempty-types othy)
-      (setf (nonempty-types othy)
-	    (remove-if #'(lambda (ty-decl)
-			   (when (memq (cdr ty-decl) replaced)
-			     (setf (nonempty? (car ty-decl)) nil)
-			     t))
-	      (nonempty-types othy))))
-    ;; all-usings
-    ;; immediate-usings
-    (setf (immediate-usings othy) 'unbound)
+    (remove-from-theory-attributes replaced othy)
     ;; Now apply the diffs - modifies the old theory,
     ;; keeping everything above odecl
     (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 2")
@@ -1461,6 +1433,42 @@ escapes here."
     (untypecheck-usedbys othy)
     (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 4")
     replaced))
+
+(defun remove-from-theory-attributes (replaced othy)
+  ;; tcc-comments
+  (dolist (d replaced)
+    (let ((dcmts (assq d (tcc-comments othy))))
+      (when dcmts
+	(setf (tcc-comments othy)
+	      (delete dcmts (tcc-comments othy))))))
+  ;; info
+  (dolist (dinfo (info othy))
+    (when (memq (car dinfo) replaced)
+      (setf (info othy) (delete dinfo (info othy)))))
+  ;; warnings
+  (dolist (dwarn (warnings othy))
+    (when (memq (car dwarn) replaced)
+      (setf (warnings othy) (delete dwarn (warnings othy)))))
+  ;; conversion-messages
+  (dolist (dcnv (conversion-messages othy))
+    (when (memq (car dcnv) replaced)
+      (setf (conversion-messages othy)
+	    (delete dcnv (conversion-messages othy)))))
+  ;; all-imported-theories
+  (setf (all-imported-theories othy) 'unbound)
+  ;; all-imported-names
+  (setf (all-imported-names othy) 'unbound)
+  ;; nonempty-types
+  (when (nonempty-types othy)
+    (setf (nonempty-types othy)
+	  (remove-if #'(lambda (ty-decl)
+			 (when (memq (cdr ty-decl) replaced)
+			   (setf (nonempty? (car ty-decl)) nil)
+			   t))
+	    (nonempty-types othy))))
+  ;; all-usings
+  ;; immediate-usings
+  (setf (immediate-usings othy) 'unbound))
 
 (defun theory-section-of (decl theory)
   ;; Note that these are also the slot-values of theory
@@ -1488,10 +1496,14 @@ escapes here."
 	(setq found-diff (or found-diff (eq cursec (or osec nsec))))
 	(assert (memq last-kept-decl (all-decls othy)) () "merge-parsed-theory-decls - 1")
 	(cond ((eq cursec osec)
-	       (let ((newsec (append (ldiff section (cdr (memq last-kept-decl section)))
-				     (when ndecl (memq ndecl (slot-value nthy cursec))))))
+	       (let* ((kept-part (ldiff section (cdr (memq last-kept-decl section))))
+		      (new-part (when ndecl (memq ndecl (slot-value nthy cursec))))
+		      (newsec (append kept-part new-part)))
 		 (assert (memq last-kept-decl newsec) ()
 			 "merge-parsed-theory-decls - 2")
+		 (assert (= (length (slot-value nthy cursec))
+			    (length (remove-if #'generated-by newsec))))
+		 ;; This is destructive - othy has been modified
 		 (setf (slot-value othy cursec) newsec)))
 	      ((eq cursec nsec)
 	       (setf (slot-value othy cursec)
@@ -3967,6 +3979,7 @@ nil is returned in that case."
   (let* ((path (make-specpath filename))
 	 (fname (pvs-filename filename)))
     (when (gethash fname (current-pvs-files))
+      (break "reset-parsed-date ~a" (file-write-time path))
       (setf (car (gethash fname (current-pvs-files)))
 	    (file-write-time path)))
     nil))
