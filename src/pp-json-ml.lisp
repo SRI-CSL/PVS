@@ -1084,7 +1084,7 @@
 	       (*log-proofs* t)
 	       (*noninteractive* t)
 	       (*rewrite-msg-off* t) ;; *suppress-printing* isn't enough to shut off these messages
-	       (*multiple-proof-default-behavior* :noquestions)
+	       (*proceed-without-asking* t)
 	       (def-prf (default-proof fdecl))
 	       (input-list (when def-prf
 			     (flatten-proof-script
@@ -1574,7 +1574,7 @@
 	       (*log-proofs* t)
 	       (*noninteractive* t)
 	       (*rewrite-msg-off* t) ;; *suppress-printing* isn't enough to shut off these messages
-	       (*multiple-proof-default-behavior* :noquestions)
+	       (*proceed-without-asking* t)
 	       (def-prf (default-proof fdecl))
 	       (input-list (when def-prf
 			     (flatten-proof-script

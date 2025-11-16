@@ -537,7 +537,7 @@
 		script
 		(not (equal script '("" (postpone) nil nil)))
 		(not (equal (script prinfo) script))
-		(or (pvs-dont-ask *multiple-proof-default-behavior*)
+		(or (pvs-noquestions *proof-prompt-behavior*)
 		    auto-fixed-prf
 		    (let ((ids (mapcar #'id
 				 (remove-if-not
@@ -550,17 +550,16 @@
                     Would you like the proof to be saved~@[ anyway~]? "
 		       ids ids))))
 	   (cond ((and (not auto-fixed-prf)
-		       (or (pvs-dont-ask *multiple-proof-default-behavior*)
-			   (and (eq *multiple-proof-default-behavior* :ask)
-				(pvs-yes-or-no-p
-				 "Would you like to overwrite the current proof (named ~a)? "
-				 (id prinfo)))))
-		  (when (eq *multiple-proof-default-behavior* :overwrite)
+		       (or (pvs-noquestions *proof-prompt-behavior*)
+			   (pvs-yes-or-no-p
+			    "Would you like to overwrite the current proof (named ~a)? "
+			    (id prinfo))))
+		  (when (pvs-dont-ask *proof-prompt-behavior*)
 		    (format t "Overwriting proof named ~a" (id prinfo)))
 		  (setf (script prinfo) script))
 		 ((let ((sess (current-session)))
 		    (when sess
-		      ;; Note that it isn't made the derault
+		      ;; Note that it isn't made the default
 		      (setq prinfo
 			    (make-prf-info decl script (id sess) "")))))
 		 (t (let ((id (read-proof-id (next-proof-id decl)))
@@ -595,7 +594,8 @@
 
 ;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun read-proof-id (default)
-  (cond ((and (not *auto-fix-on-rerun*)(eq *multiple-proof-default-behavior* :ask))
+  (cond ((and (not *auto-fix-on-rerun*)
+	      (pvs-ask *proof-prompt-behavior*))
 	 (let ((id (pvs-dialog "Please enter an id (default ~a): " default)))
 	   (cond ((equal id "") default)
 		 ((valid-proof-id id) (intern id :pvs))
@@ -614,7 +614,8 @@
 
 ;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun read-proof-description ()
-  (cond ((and (not *auto-fix-on-rerun*)(eq *multiple-proof-default-behavior* :ask))
+  (cond ((and (not *auto-fix-on-rerun*)
+	      (pvs-ask *proof-prompt-behavior*))
 	 (let ((descr (pvs-dialog "Please enter a description~@[ (default ~s)~]: "
 				  *default-proof-description*)))
 	   (if (string-equal descr "")
@@ -792,15 +793,15 @@
 		    (format-if "~%~s~%"  (eval (cadr input)))
 		    (qread prompt))
 		   ((quit-command-p input)
-		    (if (or (pvs-dont-ask *multiple-proof-default-behavior*)
+		    (if (or (pvs-noquestions *quit-prompt-behavior*)
 			    (pvs-y-or-n-p "~%Do you really want to quit? "))
 			(throw 'quit nil)
-			(qread prompt)))
+		      (qread prompt)))
 		   ((eq input 'abort)
-		    (if (or (pvs-dont-ask *multiple-proof-default-behavior*)
+		    (if (or (pvs-noquestions *quit-prompt-behavior*)
 			    (pvs-y-or-n-p "~%Do you really want to abort? "))
 			(throw 'abort nil)
-			(qread prompt)))
+		      (qread prompt)))
 		   ((eq input :reset) ;; from M-x reset-pvs 
 		    (throw 'quit 'pvs-reset))
 		   (t (auto-save-proof)
@@ -2298,7 +2299,8 @@
 		      (setf (status-flag ps) '*)
 		      ps)
 		     (t ;;(run-prover-output-hooks ps)
-			(undo-proof signal ps))))))
+		      ;; [CM] updates has the value of force? of undo (rules.lisp)
+			(undo-proof signal ps updates))))))
 	  ((typep (topstep step) 'strategy)
 	   (setf (status-flag ps) '?
 		 ;;		 (current-rule ps) (strategy-input rule)
@@ -2350,7 +2352,7 @@
 		     (t (list value)))))))))
 
 
-(defun undo-proof (info ps)
+(defun undo-proof (info ps &optional force?) ;; [CM] Added force?
   (if (eq info 'undo)
       (cond ((and *record-undone-proofstate*
 		  (eq ps (car *record-undone-proofstate*)))
@@ -2385,10 +2387,12 @@
 	       (setf (strategy ps)(query*-step))
 	       ps)
 	      (t (let ((response
-			(or (pvs-dont-ask *multiple-proof-default-behavior*)
-			    (pvs-dont-ask *undo-default-behavior*)
+			(or force?
+			    (pvs-noquestions *undo-prompt-behavior*)
 			    (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
 					  newps))))
+		   (when (or force? (pvs-dont-ask *undo-prompt-behavior*))
+		     (format t "To revert undo, use (undo undo)~%"))
 		   (cond (response
 			  (commentary "~&Undoing last proof command application,~%this simplifies to:") ;; [2024] @M3
 			  (when *displaying-proof*

@@ -96,21 +96,72 @@
 (defvar *done-sessions* nil
   "An alist of (id . status) pairs, status is quit, proved, or aborted")
 
-(defvar *multiple-proof-default-behavior* :ask
-  "Defines how to handle when a proof finishes:
- :ask = asks whether to save the proof, and if yes, whether to overwrite, etc.
- :noquestions = no questions, automatically overwrites if the proof is different
- :overwrite = same as :noquestions, but verbose")
+(defvar *proceed-without-asking* nil
+  "Defines how to handle when PVS asks for Y/N confirmation. If set to nil,
+the behavior depends on the setting of the global variables
+*proof-prompt-behavior*, *undo-prompt-behavior*, and *quit-prompt-behavior*.
+If set to t, PVS ignores those global variables and proceeds silently without asking questions.")
 
-(defvar *undo-default-behavior* :ask
-  "Defines how to handle an undo:
- :ask = asks whether to undo
- :noquestions = no questions, automatically undo (silently)
- :overwrite = same as :noquestions but verbose")
+(defvar *proof-prompt-behavior* :ask
+  "Indicates the kind of prompting at the end of a proof. One of
+ :ask = ask whether to save the proof, and if yes, whether to overwrite, etc.
+ :dont-ask = overwrite if the proof is different and announce the change
+ :noquestions = same as :dont-ask, but silent")
+
+(defvar *undo-prompt-behavior* :ask
+  "Indicates the kind of prompting when undoing a proof command. One of
+ :ask = ask whether to undo
+ :dont-ask = no questions, automatically undo
+ :noquestions = same as :dont-ask but silent")
+
+(defvar *quit-prompt-behavior* :ask
+  "Indicates the kind of prompting when quitting or aborting a proof. One of
+ :ask = ask whether to quit or abort
+ :dont-ask = no questions, automatically quit or abort
+ :noquestions = same as :dont-ask but silent")
+
+(defun pvs-noquestions (value)
+  "Return t if *proceed-without-asking* is t or if value is
+either :noquestions or :dont-ask"
+  (or *proceed-without-asking* (member value '(:noquestions :dont-ask) :test #'string-equal)))
+
+(defun pvs-ask (value)
+  "Return t if *proceed-without-asking* is null and value is :ask"
+  (unless *proceed-without-asking* (string-equal value :ask)))
 
 (defun pvs-dont-ask (value)
-  "Return t if the value is either :noquestions or :overwrite"
-  (memq value '(:noquestions :overwrite)))
+  "Return t if *proceed-without-asking* is null and value is :dont-ask"
+  (unless *proceed-without-asking* (string-equal value :dont-ask)))
+
+(defun pvs-valid-prompt-value (value)
+  (cond ((string-equal value :ask) :ask)
+	((string-equal value :dont-ask) :dont-ask)
+	((string-equal value :noquestions) :noquestions)))
+
+(defun pvs-set-prompt-behavior (&key all proof undo quit)
+  "Globally set how to handle prompting during proof sessions.
+:all   VALUE  Set prompting for all questions (could be overwritten using :proof, :undo, or :quit)
+:proof VALUE  Set prompting at the end of a proof (see *proof-prompt-behavior*)
+:undo  VALUE  Set prompting when undoing a proof step (see *undo-prompt-behavior*)
+:quit  VALUE  Set prompting when quitting or aborting a proof (see *quit-prompt-behavior*)
+
+VALUE can be
+:ask         Always ask
+:dont-ask    Don't ask (verbose)
+:noquestions Don't ask (silent)
+
+NOTE: When *proceed-without-asking* is set to t, the global variables *proof-prompt-behavior*,
+*undo-prompt-behavior*, and *quit-prompt-behavior* are ignored and PVS proceeds silently without
+asking questions."
+  (let ((proof (pvs-valid-prompt-value (or proof all)))
+	(undo  (pvs-valid-prompt-value (or undo all)))
+	(quit  (pvs-valid-prompt-value (or quit all))))
+    (when proof
+      (setq *proof-prompt-behavior* proof))
+    (when undo
+      (setq *undo-prompt-behavior* undo))
+    (when quit
+      (setq *quit-prompt-behavior* quit))))
 
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)
@@ -290,7 +341,7 @@ Returns a list of the form ((id . status) (id . status) ...)"
 (defun prove-formula-in-session (id fdecl rerun? input-hook)
   "This is the function run in a proof-session thread."
   ;; For some reason, a waiting thread in Allegro is difficult to delete,
-  (let ((*multiple-proof-default-behavior* :noquestions)
+  (let ((*proceed-without-asking* t)
 	(*pvs-emacs-interface* nil)
 	(*prover-input-hooks* (if input-hook
 				  (cons input-hook *prover-input-hooks*)

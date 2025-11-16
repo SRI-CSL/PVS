@@ -282,7 +282,7 @@
 
 (defun prove-as-black-box-prove (fdecl neg-fdecl interactive
 				       failure-response depth)
-  (let* ((*multiple-proof-default-behavior* :noquestions)
+  (let* ((*proceed-without-asking* t)
 	 (*noninteractive* (not interactive))
 	 (proof (prove-as-black-box-prove* fdecl interactive)))
     (cond ((eq (status-flag proof) '!)

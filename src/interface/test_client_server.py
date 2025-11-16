@@ -74,7 +74,7 @@ class TestPVS(TestCase):
 
   def test_basic_pvs(self):
     result = self.request('lisp', ['(setq *output-proofstate-p* t)'])
-    result = self.request('lisp', ['(setq *multiple-proof-default-behavior* :noquestions)'])
+    result = self.request('lisp', ['(setq *proceed-without-asking* t)'])
     self.assertEqual(result, 'noquestions')
     cdir = os.path.dirname(os.path.abspath(__file__))
     result = self.request('change-context', [cdir])

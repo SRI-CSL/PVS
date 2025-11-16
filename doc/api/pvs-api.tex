@@ -3591,7 +3591,31 @@ The hash table of strategies defined using
 \begin{globalvar}{*subgoals*}
 \end{globalvar}
 
-\begin{globalvar}{*multiple-proof-default-behavior*}
+\begin{globalvar}{*proceed-without-asking*}
+ Defines how to handle when PVS asks for Y/N confirmation. If set to \texttt{nil},
+the behavior depends on the setting of the global variables
+\globalnm{*proof-prompt-behavior*}, \globalnm{*undo-prompt-behavior*},
+and
+\globalnm{*quit-prompt-behavior*}.
+If set to \texttt{t}, PVS ignores those global variables and proceeds silently without asking questions.
+\end{globalvar}
+
+\begin{globalvar}{*proof-prompt-behavior*}
+ Indicates the kind of prompting at the end of
+ a proof; one of \texttt{:ask}, \texttt{:dont-ask}, or \texttt{:noquestions} (same as \texttt{:dont-ask},
+ but silent)
+\end{globalvar}
+
+\begin{globalvar}{*undo-prompt-behavior*}
+Indicates the kind of prompting when undoing a
+proof command; one of \texttt{:ask}, \texttt{:dont-ask} or \texttt{:noquestions} (same as \texttt{:dont-ask},
+ but silent)
+\end{globalvar}
+
+\begin{globalvar}{*quit-prompt-behavior*}
+Indicates the kind of prompting when quitting or aborting a
+proof; one of \texttt{:ask}, \texttt{:dont-ask} or \texttt{:noquestions} (same as \texttt{:dont-ask},
+ but silent)
 \end{globalvar}
 
 \begin{globalvar}{*dump-sequents-to-file*}

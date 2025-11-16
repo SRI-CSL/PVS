@@ -207,21 +207,22 @@ pending subgoals.  When PRINT? is nil, commentary is suppressed." )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The undo rule 
-(defun undo (to)
+(defun undo (to &optional force?)
   #'(lambda (ps) 
       (declare (ignore ps))
       (if (or (numberp to)
 	      (stringp to)
 	      (let ((name (if (consp to)(car to) to)))
 		(memq name (prover-commands))))
-	  (values to nil nil)
+	  (values to nil force?)  ;; [CM] Sending force? in "updates" of rule-apply (eproofcheck.lisp)
 	  (values 'X nil nil))))
 	    
-(addrule 'undo () ((to 1))
-  (undo to)
+(addrule 'undo () ((to 1) force?)
+  (undo to force?)
   "Undoes proof back n steps or to label or command name.
-The last undo may be undone if no commands have been
-used since the undo by (undo undo)")
+The last undo may be undone, if no commands have been
+used since the undo, by (undo undo). When FORCE? is t,
+the undo command doesn't ask for confirmation.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun lisp-rule (lexp)

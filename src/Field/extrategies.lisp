@@ -34,6 +34,7 @@
 %  Ground evaluation (PVSio): eval-formula, eval-formula*, eval-expr, eval
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
 %  Assumptions: all-assumptions
+%  Interactive behavior: set-prompt-behavior
 %  Strategy debugging (experts only): skip-steps, show-debug-mode, 
 %    enable-debug-mode, disable-debug-mode, set-debug-mode, load-files")
 
@@ -3875,50 +3876,31 @@ all .lisp, pvs-attachments, and pvs-strategies files. Unless :RESET is t, this f
 loads all files previously in *extra-debug-files*. When :LIB is t, it treats the file names
 in FILES as relative to the PVS home directory or to any directory in the PVS Library Path.")
 
-(defun set-confirmation-behavior (&optional all proofs undo)
-  "Globally set how to handle confirmation questions during proof sessions.
-:all    VALUE  Define behavior for all questions. The values :noquestions and :overwrite have
-               precedence over configuration of :proofs and :undo
-:proofs VALUE  Define behavior when a proof finishes
-:undo   VALUE  Define behavior for undoing a proof step
-VALUE can be
-:ask         Always ask
-:noquestions Don't ask (silently)
-:overwrite   Don't ask (verbose)"
-  (when (and all (memq all '(:ask :noquestions :overwrite)))
-    (setq *multiple-proof-default-behavior* all))
-  (when (and proofs (memq proofs '(:ask :noquestions :overwrite)))
-    (setq *multiple-proof-default-behavior* proofs))
-  (when (and undo (memq undo '(:ask :noquestions :overwrite)))
-    (setq *undo-default-behavior* undo))
-  (format-if "Current setting of confimation behavior:
-:all    = ~a
-:proofs = ~a
-:undo   = ~a~%"
-	     *multiple-proof-default-behavior*
-	     *multiple-proof-default-behavior*
-	     *undo-default-behavior*))
+(defstrat set-prompt-behavior (&key all proof undo quit)
+  (let ((set   (pvs-set-prompt-behavior :all all :proof proof :undo undo :quit quit))
+	(msg   (format nil "Current prompting behavior:
+*proof-prompt-behavior* = ~a
+*undo-prompt-behavior* = ~a
+*quit-prompt-behavior* = ~a
+"
+		       *proof-prompt-behavior*
+		       *undo-prompt-behavior*
+		       *quit-prompt-behavior*)))
+    (sklisp (format t msg)))
+  "[Extrategies] Globally set how to handle prompting during proof sessions.
+:all   VALUE  Set prompting for all questions (could be overwritten using :proof, :undo, or :quit)
+:proof VALUE  Set prompting at the end of a proof (see *proof-prompt-behavior*)
+:undo  VALUE  Set prompting when undoing a proof step (see *undo-prompt-behavior*)
+:quit  VALUE  Set prompting when quitting or aborting a proof (see *quit-prompt-behavior*)
 
-(defun get-confirmation-value (val)
-  (cond ((eq val 'ask) :ask)
-	((eq val 'noquestions) :noquestions)
-	((eq val 'overwrite) :overwrite)
-	(val (format t "~a is not one of ask, noquestions, or overwrite~%" val))))
-
-(defstrat set-confirmation-behavior (&key all proofs undo)
-  (let ((all    (get-confirmation-value all))
-	(proofs (get-confirmation-value proofs))
-	(undo   (get-confirmation-value undo)))
-    (sklisp (set-confirmation-behavior all proofs undo)))
-  "[Extrategies] Globally set how to handle confirmation questions during proof sessions.
-:all    VALUE  Define behavior for all questions. The values :noquestions and :overwrite have
-               precedence over configuration of :proofs and :undo
-:proofs VALUE  Define behavior when a proof finishes
-:undo   VALUE  Define behavior for undoing a proof step
 VALUE can be
 ask         Always ask
-noquestions Don't ask (silently)
-overwrite   Don't ask (verbose)")
+dont-ask    Don't ask (verbose)
+noquestions Don't ask (silent)
+
+NOTE: When *proceed-without-asking* is set to t, the global variables *proof-prompt-behavior*,
+*undo-prompt-behavior*, and *quit-prompt-behavior* are ignored and PVS proceeds silently without
+asking questions.")
 
 (defstep skip-steps (&key touch? &rest steps)
   (when touch?

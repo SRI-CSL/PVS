@@ -2364,7 +2364,7 @@ figure out whether a given rewrite rule should apply."
       (error "invalid strategy syntax"))))
 
 (defpvs pvs-set-proof-prompt-behavior prove (behavior)
-  "Set the behavior for interactive proofs
+  "Set the prompting behavior at the end of interactive proofs
 
 At the end of a proof a number of questions may be asked:
   Would you like the proof to be saved?
@@ -2373,21 +2373,69 @@ At the end of a proof a number of questions may be asked:
   Please enter a description:
 This may be annoying, and this function gives the user some control.
 The possible values are:
-  :ask - the default; all four questions are asked
-  :overwrite - similar to earlier PVS versions; asks if the proof should be
-               saved and then simply overwrites the earlier one.
-  :add - asks if the proof should be saved, then creates a new proof with a
-         generated id and empty description."
+  ask - the default; ask all questions
+  dont-ask - overwrite if the proof is different and announce the change
+  noquestions - same as dont-ask but silent"
   (interactive (list (completing-read "Set default proof behavior to: "
-		       '((":ask") (":overwrite") (":add")))))
-  (pvs-send-and-wait (format "(setq *multiple-proof-default-behavior* %s)"
-			 behavior)))
-  
+				      '(("ask") ("dont-ask") ("noquestions")))))
+  (unless (equal behavior "")
+    (pvs-send-and-wait (format "(pvs-set-prompt-behavior :proof \"%s\")"
+			       behavior))
+    (message "Proof prompting behavior is set to %s"
+	     (pvs-send-and-wait "*proof-prompt-behavior*"))))
+
+(defpvs pvs-set-undo-prompt-behavior prove (behavior)
+  "Set the prompting behavior when undoing proof commands
+
+The possible values are:
+  ask - the default; ask whether to undo
+  dont-ask - automatically undo without asking questions
+  noquestions - same as dont-ask but silent"
+  (interactive (list (completing-read "Set default undo behavior to: "
+				      '(("ask") ("dont-ask") ("noquestions")))))
+  (unless (equal behavior "")
+    (pvs-send-and-wait (format "(pvs-set-prompt-behavior :undo \"%s\")"
+			       behavior))
+    (message "Undo prompting behavior is set to %s"
+	     (pvs-send-and-wait "*undo-prompt-behavior*"))))
+
+(defpvs pvs-set-quit-prompt-behavior prove (behavior)
+  "Set the prompting behavior when quitting or aborting proofs
+
+The possible values are:
+  ask - the default; ask whether to quit or abort
+  dont-ask - automatically quit or abort without asking questions
+  noquestions - same as dont-ask but silent"
+  (interactive (list (completing-read "Set default quit behavior to: "
+				      '(("ask") ("dont-ask") ("noquestions")))))
+  (unless (equal behavior "")
+    (pvs-send-and-wait (format "(pvs-set-prompt-behavior :quit \"%s\")"
+			       behavior))
+    (message "Quit prompting behavior is set to %s"
+	     (pvs-send-and-wait "*quit-prompt-behavior*"))))
+
+(defpvs pvs-set-all-prompt-behavior prove (behavior)
+  "Set the prompting behavior for proof, undo, and quit commands
+
+The possible values are:
+  ask - the default; always ask
+  dont-ask - proceed without asking
+  noquestions - same as dont-ask but silent"
+  (interactive (list (completing-read "Set default prompting behavior to: "
+				      '(("ask") ("dont-ask") ("noquestions")))))
+  (unless (equal behavior "")
+    (pvs-send-and-wait (format "(pvs-set-prompt-behavior :all \"%s\")"
+			       behavior))
+    (message "Proof, undo, and quit prompting behaviors are set to %s, %s, and %s, respectively"
+	     (pvs-send-and-wait "*proof-prompt-behavior*")
+	     (pvs-send-and-wait "*undo-prompt-behavior*")
+	     (pvs-send-and-wait "*quit-prompt-behavior*"))))
+
 (defpvs pvs-set-proof-default-description prove (string)
   "Set the default description for interactive proofs
 
 Sets the default description string for interactive proofs."
-  (interactive "sEnter the default description: ")
+  (interactive "Enter the default description: ")
   (pvs-send-and-wait (format "(setq *default-proof-description* \"%s\")"
 			 string)))
 

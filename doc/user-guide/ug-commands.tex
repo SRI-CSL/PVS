@@ -936,12 +936,24 @@ types \\
 \icmd{usedby-proofs} & Display formulas whose proofs refer to the \\
  & declaration at the cursor \\
 \icmd{pvs-set-proof-parens} & Control parentheses display in proofs \\
-\icmd{pvs-set-proof-prompt-behavior} & Indicates the kind of prompting at
-the end of a proof;\\
- & one of \texttt{:ask}, \texttt{:overwrite}, or
-\texttt{:new} \\
 \icmd{pvs-set-proof-default-description} & Sets a default description
 string for saved proofs \\
+\icmd{pvs-set-proof-prompt-behavior} & Sets the kind of prompting at
+the end of a proof;\\
+ & one of \texttt{ask}, \texttt{dont-ask}, or
+ \texttt{noquestions} (same as \texttt{dont-ask} but silent)\\
+ \icmd{pvs-set-undo-prompt-behavior} & Sets the kind of prompting when
+undoing a proof command;\\
+ & one of \texttt{ask}, \texttt{dont-ask}, or
+ \texttt{noquestions} (same as \texttt{dont-ask} but silent)\\
+ \icmd{pvs-set-quit-prompt-behavior} & Sets the kind of prompting when
+quitting or aborting a proof;\\
+ & one of \texttt{ask}, \texttt{dont-ask}, or
+ \texttt{noquestions} (same as \texttt{dont-ask} but silent)\\
+ \icmd{pvs-set-all-prompt-behavior} & Sets the kind of prompting for
+proof, undo, and quit commands;\\
+ & one of \texttt{ask}, \texttt{dont-ask}, or
+\texttt{noquestions} (same as \texttt{dont-ask} but silent)\\
 \end{pvscmdsna}
 
 These commands work only while an interactive proof is being developed,
@@ -1054,12 +1066,9 @@ The \cmd{pvs-set-proof-prompt-behavior} command allows you to control this
 behavior.  The possible values for the prompt behavior are:
 
 \begin{tabular}{rp{11cm}}
-  \texttt{:ask} & the default; all four questions are asked \\
-  \texttt{:overwrite} & similar to earlier PVS versions; asks if the proof
-                        should be saved and then simply overwrites the
-                        earlier one \\ 
-  \texttt{:add} & asks if the proof should be saved, then creates a new
-                  proof with a generated id and empty description.
+  \texttt{ask} & the default; all four questions are asked \\
+  \texttt{dont-ask} & overwrite the earlier proof and announce the change\\
+  \texttt{noquestions} & same as \texttt{dont-ask} but silent.
 \end{tabular}
 
 The \cmd{pvs-set-proof-default-description} command allows you to set a
