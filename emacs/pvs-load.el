@@ -39,6 +39,7 @@
 (declare-function pvs-init "pvs-ilisp")
 (declare-function pvs-view-mode "pvs-view")
 (declare-function pvs-send "pvs-ilisp")
+(declare-function get-pvs-build-date "pvs-cmds")
 (declare-function get-pvs-version-information "pvs-cmds")
 (declare-function exit-pvs-process "pvs-cmds")
 
@@ -191,8 +192,10 @@
 	    |  PPP             VVV        SSSSSSSS   |
             |                                        |
             +----------------------------------------+")
-          (insert "\n\n   Welcome to the PVS\n   Specification and Verification System")))
-    (insert "                            Version 8.0\n")
+	  (insert "\n")))
+    ;;(insert "\n\n   Welcome to the PVS\n   Specification and Verification System\n")
+    ;;[CAM]
+    (insert (format "\n   Version 8.0 -- Build %s" (get-pvs-build-date)))
     (insert "\n   SRI International -- Computer Science Laboratory\n")
     (setq cpoint (point))
     (insert "\n   Type C-c h for a summary of the commands.")

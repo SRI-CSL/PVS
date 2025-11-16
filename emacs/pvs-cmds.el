@@ -1632,6 +1632,13 @@ underlying Lisp in the minibuffer."
 		  (format ", %s" (cadddr vers)))))
       (car (cddddr vers)) (cadr (cddddr vers)))))
 
+(defvar pvs-build-date nil) ;; [CM]
+
+(defun get-pvs-build-date () ;; [CM]
+  (or pvs-build-date
+      (let ((str (pvs-send-and-wait "(pvs-build-date)")))
+	(setq pvs-build-date str))))
+
 (defvar pvs-version-information nil)
 
 (defun get-pvs-version-information ()
