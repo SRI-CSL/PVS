@@ -3163,8 +3163,8 @@ quantifier, if provided."
      (pvsio-break      (condition) (unless ,quiet (format ,error-stream "~%[pvsio-break] ~a" condition)))
      (pvsio-return     (condition) (unless ,quiet (format ,error-stream "~%[pvsio-return] ~a" condition)))
      (pvsio-exit       (condition) (declare (ignore condition)) (unless ,quiet (format ,error-stream "~%[pvsio-exit]")))
-     (pvsio-error      (condition) (unless ,quiet (format ,error-stream "~a" condition)))
-     (pvsio-exception  (condition) (unless ,quiet (format ,error-stream "~a" condition)))))
+     (pvsio-error      (condition) (unless ,quiet (format ,error-stream "~%~a" condition)))
+     (pvsio-exception  (condition) (unless ,quiet (format ,error-stream "~%~a" condition)))))
 
 ;; Evaluates ground expression expr.
 ;; When safe is t, evaluation doesn't proceed when there are TCCs.
