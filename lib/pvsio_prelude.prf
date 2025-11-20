@@ -6,7 +6,8 @@
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
     (T DECL-FORMAL-TYPE NIL |stdpvs| NIL))
-   SHOSTAK (|last_iteration| EXISTENCE "" "[stdpvs.T -> stdpvs.T]")))
+   SHOSTAK
+   (|last_iteration| EXISTENCE "" "[stdpvs.T -> stdpvs.T]" (51 2 51 31))))
  (|return_TCC1| 0
   (|return_TCC1-1| NIL 3920556130 ("" (INST 1 "id[T]") NIL NIL)
    ((|id| CONST-DECL "(bijective?[T, T])" |identity| NIL)
@@ -14,21 +15,38 @@
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
     (T DECL-FORMAL-TYPE NIL |stdpvs| NIL))
-   SHOSTAK (|return| EXISTENCE "" "[stdpvs.T -> stdpvs.T]"))))
-(|stdexc|)
-(|stdexc_tags|)
-(|stdcatch|
- (|catch_list_lift_TCC1| 0
-  (|catch_list_lift_TCC1-1| |nil| 3729453539 ("" (TERMINATION-TCC) NIL NIL)
-   ((<< ADT-DEF-DECL "(strict_well_founded?[list])" |list_adt| NIL)) SHOSTAK
-   (|catch_list_lift| TERMINATION
-    "stdcatch.catch_list_lift(stdcatch.r, stdcatch.f1, stdcatch.f2)" "NIL"))))
+   SHOSTAK (|return| EXISTENCE "" "[stdpvs.T -> stdpvs.T]" (53 2 53 23))))
+ (|unwind_protect_TCC1| 0
+  (|unwind_protect_TCC1-1| NIL 3968950215 ("" (EXISTENCE-TCC))
+   ((T DECL-FORMAL-TYPE NIL |stdpvs| NIL)) SHOSTAK
+   (|unwind_protect| EXISTENCE "" "stdpvs.T" (97 4 97 23)))))
 (|stdprog|)
 (|stdglobal|)
 (|stdmutable|)
+(|stdexc|
+ (|say_TCC1| 0
+  (|say_TCC1-1| NIL 3972489439 ("" (SUBTYPE-TCC))
+   ((|val| CONST-DECL "T" |stdprog| NIL)) SHOSTAK
+   (|say| SUBTYPE "stdprog[Exception_].val(stdexc.exc)`formatter_"
+    "(stdexc.fmter?)" (274 12 274 31)))))
+(|stdexceptions|)
+(|stdcatch|
+ (|catch_list_lift_TCC1| 0
+  (|catch_list_lift_TCC1-1| NIL 3729453539 ("" (TERMINATION-TCC) NIL NIL)
+   ((<< ADT-DEF-DECL "(strict_well_founded?[list])" |list_adt| NIL)) SHOSTAK
+   (|catch_list_lift| TERMINATION
+    "stdcatch.catch_list_lift(stdcatch.rest, stdcatch.f1, stdcatch.f2)" "NIL"
+    (402 45 402 72))))
+ (|throw_TCC1| 0
+  (|throw_TCC1-1| NIL 3972489439 ("" (SUBTYPE-TCC))
+   ((|val| CONST-DECL "T" |stdprog| NIL)) SHOSTAK
+   (|throw| SUBTYPE
+    "stdprog[Exception_[ExceptionType]].val(stdcatch.exc)`formatter_"
+    "(stdexc[stdcatch.ExceptionType].fmter?)" (271 16 271 35)))))
+(|stdsimplexc|)
 (|stdmath|
- (RANDOM_TCC1 0
-  (RANDOM_TCC1-1 |nil| 3729453539 ("" (INST 1 "0") NIL NIL)
+ (|RANDOM_lisp_TCC1| 0
+  (|RANDOM_lisp_TCC1-1| NIL 3968856655 ("" (INST 1 "0") NIL NIL)
    ((|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
     (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
     (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
@@ -40,10 +58,12 @@
     (|nnreal| TYPE-EQ-DECL NIL |real_types| NIL)
     (<= CONST-DECL "bool" |reals| NIL)
     (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL))
-   SHOSTAK (RANDOM EXISTENCE "" "{y: real_types.nnreal | reals.<=(y, 1)}")))
- (NRANDOM_TCC1 0
-  (NRANDOM_TCC1-1 |nil| 3729453539
-   ("" (INST 1 "lambda (x: posnat): 0") NIL NIL)
+   SHOSTAK
+   (|RANDOM_lisp| EXISTENCE "" "{y: real_types.nnreal | reals.<=(y, 1)}"
+    (500 2 500 35))))
+ (|NRANDOM_lisp_TCC1| 0
+  (|NRANDOM_lisp_TCC1-1| NIL 3968856675
+   ("" (INST 1 "LAMBDA(n:posnat):0") NIL NIL)
    ((> CONST-DECL "bool" |reals| NIL)
     (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
     (< CONST-DECL "bool" |reals| NIL)
@@ -62,10 +82,36 @@
     (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
     (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL))
    SHOSTAK
-   (NRANDOM EXISTENCE ""
-    "[n: posnat -> {y: naturalnumbers.nat | reals.<(y, n)}]")))
- (|rat2numden_TCC1| 0
-  (|rat2numden_TCC1-1| NIL 3904825051
+   (|NRANDOM_lisp| EXISTENCE ""
+    "[n: posnat -> {y: naturalnumbers.nat | reals.<(y, n)}]" (501 2 501 42))))
+ (|rational_lisp_TCC1| 0
+  (|rational_lisp_TCC1-1| NIL 3968856736
+   ("" (INST 1 "LAMBDA(x:real): IF rational?(x) THEN x ELSE 0 ENDIF")
+    (("1" (GRIND) NIL NIL) ("2" (GRIND) NIL NIL)) NIL)
+   ((NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rat| NONEMPTY-TYPE-EQ-DECL NIL |rationals| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (IMPLIES CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|rational?| CONST-DECL "bool" |rationals| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (IF CONST-DECL
+        "[boolean, T, T -> T]"
+        |if_def|
+        NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL))
+   SHOSTAK
+   (|rational_lisp| EXISTENCE ""
+    "[x: real -> {q: rationals.rat | booleans.IMPLIES(rationals.rational?(x), q = x)}]"
+    (509 2 509 60))))
+ (|rat2numden_lisp_TCC1| 0
+  (|rat2numden_lisp_TCC1-1| NIL 3968856855
    ("" (LEMMA "rational_pred_ax2")
     (("" (INST 1 "LAMBDA(r:rat):choose({nd : [int,posnat] | r = nd`1/nd`2})")
       (("" (SKOLEM 1 "r")
@@ -111,114 +157,96 @@
     (|member| CONST-DECL "bool" |sets| NIL)
     (|rational_pred_ax2| FORMULA-DECL NIL |rational_props| NIL))
    SHOSTAK
-   (|rat2numden| EXISTENCE ""
-    "[r: rat -> {nd: [integers.int, integers.posnat] | r = number_fields./(nd`1, nd`2)}]"))))
+   (|rat2numden_lisp| EXISTENCE ""
+    "[r: rat -> {nd: [integers.int, integers.posnat] | r = number_fields./(nd`1, nd`2)}]"
+    (513 2 513 80)))))
 (|stdstr|
+ (|charcode_TCC1| 0
+  (|charcode_TCC1-1| NIL 3904825051
+   (""
+    (INST 1 "LAMBDA(x:nat):(# length := 1, seq := LAMBDA(k:below(1)): ' '#)")
+    NIL NIL)
+   ((|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|StringChar| TYPE-EQ-DECL NIL |stdstr| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|char| ADT-CONSTRUCTOR-DECL "[below[0x110000] -> (char?)]" |character_adt|
+     NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL))
+   SHOSTAK (|charcode| EXISTENCE "" "[nat -> StringChar]" (546 2 546 30))))
  (|space_TCC1| 0
   (|space_TCC1-1| NIL 3904825051 ("" (GRIND) NIL NIL)
    ((|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
      NIL)
     (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
     (|length| DEF-DECL "nat" |list_props| NIL))
-   SHOSTAK (|space| SUBTYPE "\" \"" "StringChar")))
+   SHOSTAK (|space| SUBTYPE "\" \"" "StringChar" (552 29 552 30))))
  (|singlequote_TCC1| 0
   (|singlequote_TCC1-1| NIL 3904825051 ("" (GRIND) NIL NIL)
    ((|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
      NIL)
     (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
     (|length| DEF-DECL "nat" |list_props| NIL))
-   SHOSTAK (|singlequote| SUBTYPE "\"'\"" "StringChar")))
+   SHOSTAK (|singlequote| SUBTYPE "\"'\"" "StringChar" (555 29 555 30))))
  (|backquote_TCC1| 0
   (|backquote_TCC1-1| NIL 3904825051 ("" (GRIND) NIL NIL)
    ((|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
      NIL)
     (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
     (|length| DEF-DECL "nat" |list_props| NIL))
-   SHOSTAK (|backquote| SUBTYPE "\"`\"" "StringChar")))
- (|spaces_TCC1| 0
-  (|spaces_TCC1-1| NIL 3904825051
-   ("" (INST 1 "LAMBDA(n:nat):choose({s:string | length(s)=n})")
-    (("" (INDUCT "n")
-      (("1" (GRIND) (("1" (INST -1 "emptystr") (("1" (GRIND) NIL NIL)) NIL))
-        NIL)
-       ("2" (SKEEP)
-        (("2" (EXPAND "nonempty?")
-          (("2" (EXPAND "empty?")
-            (("2" (SKOLEM 1 "x")
-              (("2" (INST -2 "add(' ',x)") (("2" (GRIND) NIL NIL)) NIL)) NIL))
-            NIL))
-          NIL))
-        NIL))
-      NIL))
-    NIL)
-   ((|pred| TYPE-EQ-DECL NIL |defined_types| NIL)
-    (|nat_induction| FORMULA-DECL NIL |naturalnumbers| NIL)
-    (|emptystr| CONST-DECL "string" |stdstr| NIL)
-    (|length| DEF-DECL "nat" |list_props| NIL)
-    (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
-    (|empty?| CONST-DECL "bool" |sets| NIL)
-    (|member| CONST-DECL "bool" |sets| NIL)
-    (|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
-     NIL)
+   SHOSTAK (|backquote| SUBTYPE "\"`\"" "StringChar" (556 29 556 30))))
+ (|spaces_lisp_TCC1| 0
+  (|spaces_lisp_TCC1-1| NIL 3968939400
+   (""
+    (INST 1 "LAMBDA(n:nat):(# length := n, seq := LAMBDA(i:below(n)):' ' #)")
+    NIL NIL)
+   ((|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "bool" |reals| NIL) (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
     (|char| ADT-CONSTRUCTOR-DECL "[below[0x110000] -> (char?)]" |character_adt|
      NIL)
-    (< CONST-DECL "bool" |reals| NIL)
-    (|add| CONST-DECL "finseq[T]" |more_finseq| NIL)
-    (|finseq| TYPE-EQ-DECL NIL |finite_sequences| NIL)
-    (|seq| TYPE-EQ-DECL NIL |more_finseq| NIL)
-    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
-     NIL)
-    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
-    (|choose| CONST-DECL "(p)" |sets| NIL)
-    (|nonempty?| CONST-DECL "bool" |sets| NIL)
-    (|set| TYPE-EQ-DECL NIL |sets| NIL) (>= CONST-DECL "bool" |reals| NIL)
-    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
-    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
-    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
-    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
-    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
-    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
-    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
-    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
-    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
-    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
-    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
-    (|string| TYPE-EQ-DECL NIL |strings| NIL)
-    (|char| TYPE-EQ-DECL NIL |strings| NIL)
-    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
-    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
-    (|character| TYPE-DECL NIL |character_adt| NIL)
-    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
-    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL))
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL))
    SHOSTAK
-   (|spaces| EXISTENCE ""
-    "[n: nat -> {str: strings.string | length(str) = n}]")))
- (|charcode_TCC1| 0
-  (|charcode_TCC1-1| NIL 3904825051 ("" (INST 1 "LAMBDA(x:nat):space") NIL NIL)
-   ((|space| CONST-DECL "StringChar" |stdstr| NIL)
-    (|StringChar| TYPE-EQ-DECL NIL |stdstr| NIL)
-    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
-    (|string| TYPE-EQ-DECL NIL |strings| NIL)
-    (|char| TYPE-EQ-DECL NIL |strings| NIL)
-    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
-    (|character| TYPE-DECL NIL |character_adt| NIL)
-    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
-    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
-    (>= CONST-DECL "bool" |reals| NIL)
-    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
-    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
-    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
-    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
-    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
-    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
-    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
-    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
-    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
-    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
-    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL))
-   SHOSTAK (|charcode| EXISTENCE "" "[nat -> StringChar]")))
- (|upcase_TCC1| 0
-  (|upcase_TCC1-1| NIL 3904825051 ("" (INST 1 "LAMBDA(s:string):s") NIL NIL)
+   (|spaces_lisp| EXISTENCE ""
+    "[n: nat -> {str: strings.string | length(str) = n}]" (559 2 559 52))))
+ (|upcase_lisp_TCC1| 0
+  (|upcase_lisp_TCC1-1| NIL 3968939421
+   ("" (INST 1 "LAMBDA(s:string):s") NIL NIL)
    ((= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
     (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
     (|char| TYPE-EQ-DECL NIL |strings| NIL)
@@ -229,11 +257,45 @@
     (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
     (|string| TYPE-EQ-DECL NIL |strings| NIL))
    SHOSTAK
-   (|upcase| EXISTENCE ""
-    "[s: string -> {str: strings.string | length(str) = length(s)}]")))
- (|strfind_TCC1| 0
-  (|strfind_TCC1-1| NIL 3904825051
-   ("" (INST 1 "LAMBDA(d:[string,string]):length(d`2) - length(d`1)") NIL NIL)
+   (|upcase_lisp| EXISTENCE ""
+    "[s: string -> {str: strings.string | length(str) = length(s)}]"
+    (562 2 562 62))))
+ (|strfind_lisp_TCC1| 0
+  (|strfind_lisp_TCC1-1| NIL 3968939434 ("" (SUBTYPE-TCC) NIL NIL)
+   ((< CONST-DECL "bool" |reals| NIL) (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK
+   (|strfind_lisp| SUBTYPE "(number_fields.+)(stdstr.i, stdstr.k)"
+    "below(length(stdstr.s2))" (575 17 575 20))))
+ (|strfind_lisp_TCC2| 0
+  (|strfind_lisp_TCC2-1| NIL 3968939458
+   ("" (INST 1 "LAMBDA(s1,s2:string):-1") NIL NIL)
    ((|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
     (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
     (|character| TYPE-DECL NIL |character_adt| NIL)
@@ -251,20 +313,24 @@
     (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
     (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (IMPLIES CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
     (<= CONST-DECL "bool" |reals| NIL)
     (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
     (- CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
-    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+    (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|get| CONST-DECL "char" |gen_strings| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL))
    SHOSTAK
-   (|strfind| EXISTENCE ""
-    "[d: [string, string] -> {i: integers.int | reals.<=(i, (number_fields.-)(length(d`2), length(d`1)))}]")))
- (|strconcat_TCC1| 0
-  (|strconcat_TCC1-1| NIL 3904825051 ("" (SUBTYPE-TCC))
-   ((O CONST-DECL "finseq" |finite_sequences| NIL)) SHOSTAK
-   (|strconcat| SUBTYPE "finite_sequences[char].o(stdstr.s1, stdstr.s2)"
-    "{str: strings.string | length(str) = (number_fields.+)(length(stdstr.s1), length(stdstr.s2))}")))
- (|pad_TCC1| 0
-  (|pad_TCC1-1| |nil| 3729453539 ("" (SUBTYPE-TCC) NIL NIL)
+   (|strfind_lisp| EXISTENCE ""
+    "[d: [string, string] -> {i: integers.int | booleans.IMPLIES(reals.>=(i, 0), (booleans.AND(reals.<=(i, (number_fields.-)(length(d`2), length(d`1))), FORALL (k: naturalnumbers.below(length(d`1))): gen_strings.get(d`1, k) = gen_strings.get(d`2, (number_fields.+)(i, k)))))}]"
+    (572 2 575 23))))
+ (|substring_lisp_TCC1| 0
+  (|substring_lisp_TCC1-1| NIL 3968939468 ("" (GRIND) NIL NIL)
    ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
@@ -273,23 +339,519 @@
     (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
     (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
     (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
-    (>= CONST-DECL "bool" |reals| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
     (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
     (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
     (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
     (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
     (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|real_plus_real_is_real| APPLICATION-JUDGEMENT "real" |reals| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
+    (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL))
+   SHOSTAK
+   (|substring_lisp| SUBTYPE "(number_fields.+)(stdstr.i, stdstr.k)"
+    "below(length(stdstr.s))" (592 56 592 59))))
+ (|substring_lisp_TCC2| 0
+  (|substring_lisp_TCC2-1| NIL 3968939477 ("" (GRIND) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_plus_real_is_real| APPLICATION-JUDGEMENT "real" |reals| NIL)
+    (|real_minus_real_is_real| APPLICATION-JUDGEMENT "real" |reals| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
+    (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL))
+   SHOSTAK
+   (|substring_lisp| SUBTYPE "(number_fields.-)(stdstr.i, stdstr.k)"
+    "below(length(stdstr.s))" (594 56 594 59))))
+ (|substring_lisp_TCC3| 0
+  (|substring_lisp_TCC3-1| NIL 3968948385
+   (""
+    (INST 1
+     "LAMBDA(s:string,i:below(length(s)),j:below(length(s))): IF i <= j THEN (# length := j-i+1, seq:= LAMBDA(
+k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): get(s,i-k) #) ENDIF")
+    (("1" (GRIND) NIL NIL) ("2" (GRIND) NIL NIL) ("3" (GRIND) NIL NIL)
+     ("4" (GRIND) NIL NIL) ("5" (GRIND) NIL NIL) ("6" (GRIND) NIL NIL))
+    NIL)
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_minus_real_is_real| APPLICATION-JUDGEMENT "real" |reals| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (IFF CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (IMPLIES CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (- CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
+    (<= CONST-DECL "bool" |reals| NIL)
+    (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL)
+    (IF CONST-DECL
+        "[boolean, T, T -> T]"
+        |if_def|
+        NIL)
+    (|get| CONST-DECL "char" |gen_strings| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|nat_min| APPLICATION-JUDGEMENT "{k: nat | k <= i AND k <= j}" |real_defs|
+     NIL)
+    (|nat_max| APPLICATION-JUDGEMENT "{k: nat | i <= k AND j <= k}" |real_defs|
+     NIL)
+    (|nonneg_rat_max| APPLICATION-JUDGEMENT
+     "{s: nonneg_rat | s >= q AND s >= r}" |real_defs| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK
+   (|substring_lisp| EXISTENCE ""
+    "[d: [s: string, below(length(s)), below(length(s))] -> {str: strings.string | booleans.AND(length(str) = (number_fields.-)((number_fields.+)(1, real_defs.max(d`2, d`3)), real_defs.min(d`2, d`3)), IF reals.<=(d`2, d`3) THEN FORALL (k: naturalnumbers.below(length(str))): gen_strings.get(str, k) = gen_strings.get(d`1, (number_fields.+)(d`2, k)) ELSE FORALL (k: naturalnumbers.below(length(str))): gen_strings.get(str, k) = gen_strings.get(d`1, (number_fields.-)(d`2, k)) ENDIF)}]"
+    (589 2 595 10))))
+ (|substring_lisp_j| 0
+  (|substring_lisp_j-1| NIL 3968939303
+   ("" (SKEEP)
+    (("" (TYPEPRED "substring_lisp(s,i,j)")
+      (("" (HIDE-ALL-BUT (-1 1))
+        (("" (REPLACES -1) (("" (GRIND) NIL NIL)) NIL)) NIL))
+      NIL))
+    NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (- CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
+    (<= CONST-DECL "bool" |reals| NIL)
+    (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL)
+    (IF CONST-DECL
+        "[boolean, T, T -> T]"
+        |if_def|
+        NIL)
+    (|get| CONST-DECL "char" |gen_strings| NIL)
+    (|substring_lisp| CONST-DECL "{str: string |
+   length(str) = max(i, j) - min(i, j) + 1 AND
+    IF i <= j
+      THEN FORALL (k: below(length(str))): get(str, k) = get(s, i + k)
+    ELSE FORALL (k: below(length(str))): get(str, k) = get(s, i - k)
+    ENDIF}"
+     |stdstr| NIL)
+    (IMPLIES CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (TRUE CONST-DECL "bool" |booleans| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|nat_min| APPLICATION-JUDGEMENT "{k: nat | k <= i AND k <= j}" |real_defs|
+     NIL)
+    (|nat_max| APPLICATION-JUDGEMENT "{k: nat | i <= k AND j <= k}" |real_defs|
+     NIL)
+    (|nonneg_rat_max| APPLICATION-JUDGEMENT
+     "{s: nonneg_rat | s >= q AND s >= r}" |real_defs| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   SHOSTAK
+   (|substring_lisp_j| SUBTYPE
+    "stdstr.substring_lisp(stdstr.s, stdstr.i, stdstr.j)"
+    "{str: strings.string | reals.>(length(str), 0)}" (598 4 598 18))))
+ (|substring_TCC1| 0
+  (|substring_TCC1-1| NIL 3972489077 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK
+   (|substring| SUBTYPE "stdstr.i" "below(length(stdstr.s))" (604 23 604 24))))
+ (|substring_TCC2| 0
+  (|substring_TCC2-1| NIL 3972489091 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK
+   (|substring| SUBTYPE "stdstr.j" "below(length(stdstr.s))" (604 25 604 26))))
+ (|strreverse_j_TCC1| 0
+  (|strreverse_j_TCC1-1| NIL 3968948705 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL))
+   SHOSTAK
+   (|strreverse_j_| SUBTYPE
+    "(number_fields.-)((number_fields.-)(length(stdstr.s), 1), stdstr.k)"
+    "below(length(stdstr.s))" (618 13 618 26))))
+ (|strreverse_j| 0
+  (|strreverse_j-1| NIL 3968939902
+   ("" (SKEEP)
+    (("" (NAME "REV" "strreverse(s)")
+      (("" (REPLACE -1 :ACTUALS? T)
+        (("" (EXPAND "strreverse")
+          (("" (LIFT-IF)
+            (("" (SPLIT -1)
+              (("1" (FLATTEN) (("1" (ASSERT) (("1" (SKEEP) NIL NIL)) NIL)) NIL)
+               ("2" (FLATTEN)
+                (("2" (EXPAND "substring")
+                  (("2" (LIFT-IF)
+                    (("2" (ASSERT)
+                      (("2" (TYPEPRED "substring_lisp(s,length(s)-1,0)")
+                        (("2" (REPLACE -5 :ACTUALS? T)
+                          (("2" (CASE-REPLACE "length(s) = 1")
+                            (("1" (ASSERT)
+                              (("1" (EXPAND "max")
+                                (("1" (EXPAND "min")
+                                  (("1" (ASSERT)
+                                    (("1" (HIDE -4)
+                                      (("1" (INST -3 "0")
+                                        (("1" (SKEEP :PREDS? T)
+                                          (("1" (CASE-REPLACE "k=0")
+                                            (("1" (ASSERT) NIL NIL)
+                                             ("2" (ASSERT) NIL NIL))
+                                            NIL))
+                                          NIL))
+                                        NIL))
+                                      NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL)
+                             ("2" (EXPAND "max")
+                              (("2" (ASSERT)
+                                (("2" (HIDE -2)
+                                  (("2" (EXPAND "min") (("2" (ASSERT) NIL NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL))
+                            NIL))
+                          NIL))
+                        NIL))
+                      NIL))
+                    NIL))
+                  NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|strreverse| CONST-DECL "string" |stdstr| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|int_min| APPLICATION-JUDGEMENT "{k: int | k <= i AND k <= j}" |real_defs|
+     NIL)
+    (|int_max| APPLICATION-JUDGEMENT "{k: int | i <= k AND j <= k}" |real_defs|
+     NIL)
+    (|rat_max| APPLICATION-JUDGEMENT "{s: rat | s >= q AND s >= r}" |real_defs|
+     NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|substring| CONST-DECL "string" |stdstr| NIL)
+    (|substring_lisp_j| APPLICATION-JUDGEMENT "{str: string | length(str) > 0}"
+     |stdstr| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|nat_min| APPLICATION-JUDGEMENT "{k: nat | k <= i AND k <= j}" |real_defs|
+     NIL)
+    (|nat_max| APPLICATION-JUDGEMENT "{k: nat | i <= k AND j <= k}" |real_defs|
+     NIL)
+    (|nonneg_rat_max| APPLICATION-JUDGEMENT
+     "{s: nonneg_rat | s >= q AND s >= r}" |real_defs| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|odd_minus_odd_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|minus_i16_u16| APPLICATION-JUDGEMENT "int32" |integertypes| NIL)
+    (|minus_i32_u32| APPLICATION-JUDGEMENT "int64" |integertypes| NIL)
+    (|minus_u8_u8| APPLICATION-JUDGEMENT "int16" |integertypes| NIL)
+    (|int_times_even_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|times_i8_u8| APPLICATION-JUDGEMENT "int16" |integertypes| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL) (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (- CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
+    (<= CONST-DECL "bool" |reals| NIL)
+    (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL)
+    (IF CONST-DECL
+        "[boolean, T, T -> T]"
+        |if_def|
+        NIL)
+    (|get| CONST-DECL "char" |gen_strings| NIL)
+    (|substring_lisp| CONST-DECL "{str: string |
+   length(str) = max(i, j) - min(i, j) + 1 AND
+    IF i <= j
+      THEN FORALL (k: below(length(str))): get(str, k) = get(s, i + k)
+    ELSE FORALL (k: below(length(str))): get(str, k) = get(s, i - k)
+    ENDIF}"
+     |stdstr| NIL)
+    (IMPLIES CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (> CONST-DECL "bool" |reals| NIL))
+   SHOSTAK
+   (|strreverse_j| SUBTYPE "stdstr.strreverse(stdstr.s)"
+    "{str: strings.string | booleans.AND(length(str) = length(stdstr.s), FORALL (k: naturalnumbers.below(length(str))): gen_strings.get(str, k) = gen_strings.get(stdstr.s, (number_fields.-)((number_fields.-)(length(stdstr.s), 1), k)))}"
+    (616 4 616 14))))
+ (|str2boolean_TCC1| 0
+  (|str2boolean_TCC1-1| NIL 3972489156 ("" (SKEEP) (("" (ASSERT) NIL NIL)) NIL)
+   NIL SHOSTAK
+   (|str2boolean| SUBTYPE
+    "stdprog[Exception_[string]].val(stdexceptions.NotABoolean)`formatter_"
+    "(stdexc[string].fmter?)" (271 16 271 35))))
+ (|strconcat_lisp_TCC1| 0
+  (|strconcat_lisp_TCC1-1| NIL 3968948750 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
     (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
      |real_props| NIL)
     (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
-   SHOSTAK (|pad| SUBTYPE "(number_fields.-)(stdstr.n, 1)" "nat")))
- (|pad_TCC2| 0
-  (|pad_TCC2-1| |nil| 3729453539 ("" (TERMINATION-TCC) NIL NIL) NIL SHOSTAK
-   (|pad| TERMINATION "stdstr.pad((number_fields.-)(stdstr.n, 1), stdstr.s)"
-    "NIL")))
- (|strcmp_TCC1| 0
-  (|strcmp_TCC1-1| NIL 3904825051
-   ("" (INST 1 "LAMBDA(d:[string,string,bool]):0") NIL NIL)
+   SHOSTAK
+   (|strconcat_lisp| SUBTYPE "(number_fields.-)(stdstr.k, length(stdstr.s1))"
+    "below(length(stdstr.s2))" (725 26 725 38))))
+ (|strconcat_lisp_TCC2| 0
+  (|strconcat_lisp_TCC2-1| NIL 3968949419
+   (""
+    (INST 1
+     "LAMBDA(s1,s2:string): (# length := length(s1)+length(s2), seq := LAMBDA (k:below(length(s1)+length(s2))):
+IF k < length(s1) THEN get(s1,k) ELSE get(s2,k-length(s1)) ENDIF #)")
+    (("1" (GRIND) NIL NIL) ("2" (GRIND) NIL NIL)) NIL)
+   ((|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (IMPLIES CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL) (< CONST-DECL "bool" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (IF CONST-DECL
+        "[boolean, T, T -> T]"
+        |if_def|
+        NIL)
+    (|get| CONST-DECL "char" |gen_strings| NIL)
+    (- CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK
+   (|strconcat_lisp| EXISTENCE ""
+    "[d: [string, string] -> {str: strings.string | booleans.AND(length(str) = (number_fields.+)(length(d`1), length(d`2)), FORALL (k: naturalnumbers.below(length(str))): IF reals.<(k, length(d`1)) THEN gen_strings.get(str, k) = gen_strings.get(d`1, k) ELSE gen_strings.get(str, k) = gen_strings.get(d`2, (number_fields.-)(k, length(d`1))) ENDIF)}]"
+    (721 2 726 7))))
+ (|strcompare_lisp_TCC1| 0
+  (|strcompare_lisp_TCC1-1| NIL 3968948822
+   ("" (INST 1 "LAMBDA(s1,s2:string,b:bool):0") NIL NIL)
    ((|subrange| TYPE-EQ-DECL NIL |integers| NIL)
     (<= CONST-DECL "bool" |reals| NIL)
     (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
@@ -311,23 +873,192 @@
     (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
     (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL))
    SHOSTAK
-   (|strcmp| EXISTENCE "" "[[string, string, bool] -> subrange(-1, 1)]"))))
+   (|strcompare_lisp| EXISTENCE ""
+    "[[string, string, bool] -> subrange(-1, 1)]" (742 2 742 61))))
+ (|pad_TCC1| 0
+  (|pad_TCC1-1| NIL 3971440188 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK
+   (|pad| SUBTYPE "(number_fields.-)(stdstr.n, 1)" "nat" (774 15 774 18))))
+ (|pad_TCC2| 0
+  (|pad_TCC2-1| NIL 3971440199 ("" (SUBTYPE-TCC) NIL NIL) NIL SHOSTAK
+   (|pad| TERMINATION "stdstr.pad((number_fields.-)(stdstr.n, 1), stdstr.s)"
+    "NIL" (774 11 774 21))))
+ (|pad_j_TCC1| 0
+  (|pad_j_TCC1-1| NIL 3971440206
+   ("" (SKEEP) (("" (HIDE -1) (("" (GRIND) NIL NIL)) NIL)) NIL)
+   ((|nnint_times_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|emptystr| CONST-DECL "string" |stdstr| NIL)
+    (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
+    (|length| DEF-DECL "nat" |list_props| NIL))
+   SHOSTAK
+   (|pad_j_| SUBTYPE "stdstr.emptystr"
+    "{str: strings.string | length(str) = number_fields.*(stdstr.n, length(stdstr.s))}"
+    (1 14 1 22))))
+ (|pad_j_TCC2| 0
+  (|pad_j_TCC2-1| NIL 3971440223
+   ("" (SKEEP)
+    (("" (TYPEPRED "v(n-1,s)")
+      (("1" (EXPAND "strconcat")
+        (("1" (TYPEPRED "strconcat_lisp(s, v(n - 1, s))")
+          (("1" (HIDE -2) (("1" (ASSERT) NIL NIL)) NIL)) NIL))
+        NIL)
+       ("2" (ASSERT) NIL NIL))
+      NIL))
+    NIL)
+   ((|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (= CONST-DECL "[T, T -> boolean]" |equalities| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|character| TYPE-DECL NIL |character_adt| NIL)
+    (|char?| ADT-RECOGNIZER-DECL "[character -> boolean]" |character_adt| NIL)
+    (|char| TYPE-EQ-DECL NIL |strings| NIL)
+    (|string| TYPE-EQ-DECL NIL |strings| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (* CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (- CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|strconcat_lisp| CONST-DECL "{str: string |
+   length(str) = length(s1) + length(s2) AND
+    FORALL (k: below(length(str))):
+      IF k < length(s1) THEN get(str, k) = get(s1, k)
+      ELSE get(str, k) = get(s2, k - length(s1))
+      ENDIF}"
+     |stdstr| NIL)
+    (|get| CONST-DECL "char" |gen_strings| NIL)
+    (IF CONST-DECL
+        "[boolean, T, T -> T]"
+        |if_def|
+        NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "bool" |reals| NIL)
+    (+ CONST-DECL "[numfield, numfield -> numfield]" |number_fields| NIL)
+    (AND CONST-DECL "[bool, bool -> bool]" |booleans| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|strconcat| CONST-DECL "string" |stdstr| NIL)
+    (|nnint_times_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL))
+   SHOSTAK
+   (|pad_j_| SUBTYPE
+    "stdstr.strconcat(stdstr.s, stdstr.v((number_fields.-)(stdstr.n, 1), stdstr.s))"
+    "{str: strings.string | length(str) = number_fields.*(stdstr.n, length(stdstr.s))}"
+    (1 28 1 53)))))
 (|stdio|
  (|with_openin_file_TCC1| 0
   (|with_openin_file_TCC1-1| NIL 3904825051 ("" (SUBTYPE-TCC))
    ((|input_mode?| CONST-DECL "bool" |stdio| NIL)) SHOSTAK
-   (|with_openin_file| SUBTYPE "stdio.input" "(stdio.input_mode?)")))
+   (|with_openin_file| SUBTYPE "stdio.input" "(stdio.input_mode?)"
+    (960 21 960 26))))
  (|with_openout_file_TCC1| 0
   (|with_openout_file_TCC1-1| NIL 3904825051 ("" (SUBTYPE-TCC))
    ((|output_mode?| CONST-DECL "bool" |stdio| NIL)) SHOSTAK
-   (|with_openout_file| SUBTYPE "stdio.output" "(stdio.output_mode?)")))
+   (|with_openout_file| SUBTYPE "stdio.output" "(stdio.output_mode?)"
+    (989 22 989 28))))
+ (|fgetstr_TCC1| 0
+  (|fgetstr_TCC1-1| NIL 3972489442 ("" (SUBTYPE-TCC))
+   ((|val| CONST-DECL "T" |stdprog| NIL)
+    (|ClosedStream| CONST-DECL "Exception[string]" |stdexceptions| NIL)
+    (|make_exception| CONST-DECL "Exception" |stdexc| NIL)
+    (|{\|\|}| CONST-DECL "Lisp[T]" |stdpvs| NIL)
+    (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
+    (|OStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL)
+    (|OStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK
+   (|fgetstr| SUBTYPE
+    "stdprog[Exception_[string]].val(stdexceptions.ClosedStream)`formatter_"
+    "(stdexc[string].fmter?)" (271 16 271 35))))
+ (|eof?_TCC1| 0
+  (|eof?_TCC1-1| NIL 3972489442 ("" (SUBTYPE-TCC))
+   ((|val| CONST-DECL "T" |stdprog| NIL)
+    (|ClosedStream| CONST-DECL "Exception[string]" |stdexceptions| NIL)
+    (|make_exception| CONST-DECL "Exception" |stdexc| NIL)
+    (|{\|\|}| CONST-DECL "Lisp[T]" |stdpvs| NIL)
+    (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
+    (|IStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL)
+    (|IStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK
+   (|eof?| SUBTYPE
+    "stdprog[Exception_[string]].val(stdexceptions.ClosedStream)`formatter_"
+    "(stdexc[string].fmter?)" (271 16 271 35))))
+ (|flength_TCC1| 0
+  (|flength_TCC1-1| NIL 3972489442 ("" (SUBTYPE-TCC))
+   ((|val| CONST-DECL "T" |stdprog| NIL)
+    (|ClosedStream| CONST-DECL "Exception[string]" |stdexceptions| NIL)
+    (|make_exception| CONST-DECL "Exception" |stdexc| NIL)
+    (|{\|\|}| CONST-DECL "Lisp[T]" |stdpvs| NIL)
+    (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL))
+   SHOSTAK
+   (|flength| SUBTYPE
+    "stdprog[Exception_[string]].val(stdexceptions.ClosedStream)`formatter_"
+    "(stdexc[string].fmter?)" (271 16 271 35))))
+ (|fcheck_TCC1| 0
+  (|fcheck_TCC1-1| NIL 3972489442 ("" (SUBTYPE-TCC))
+   ((|EndOfFile| CONST-DECL "Exception[string]" |stdexceptions| NIL)
+    (|val| CONST-DECL "T" |stdprog| NIL)
+    (|tag| CONST-DECL "ExceptionTag" |stdexc| NIL)
+    (|ClosedStream| CONST-DECL "Exception[string]" |stdexceptions| NIL)
+    (|make_exception| CONST-DECL "Exception" |stdexc| NIL)
+    (|{\|\|}| CONST-DECL "Lisp[T]" |stdpvs| NIL)
+    (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (|IStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|IStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL))
+   SHOSTAK
+   (|fcheck| SUBTYPE
+    "stdprog[Exception_[string]].val(stdexceptions.EndOfFile)`formatter_"
+    "(stdexc[string].fmter?)" (271 16 271 35))))
  (|filename_without_extension_TCC1| 0
   (|filename_without_extension_TCC1-1| NIL 3904825051 ("" (GRIND) NIL NIL)
    ((|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
      NIL)
     (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
     (|length| DEF-DECL "nat" |list_props| NIL))
-   SHOSTAK (|filename_without_extension| SUBTYPE "\".\"" "StringChar")))
+   SHOSTAK
+   (|filename_without_extension| SUBTYPE "\".\"" "StringChar"
+    (1126 24 1126 25))))
  (|fmap_TCC1| 0
   (|fmap_TCC1-1| NIL 3920556131 ("" (SUBTYPE-TCC))
    ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
@@ -351,20 +1082,91 @@
     (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
-   SHOSTAK (|fmap| SUBTYPE "(number_fields.-)(stdio.n, 1)" "nat")))
+   SHOSTAK
+   (|fmap| SUBTYPE "(number_fields.-)(stdio.n, 1)" "nat" (1175 29 1175 32))))
  (|fmap_TCC2| 0
   (|fmap_TCC2-1| NIL 3920556131 ("" (TERMINATION-TCC))
    ((|eof?| CONST-DECL "bool" |stdio| NIL)
-    (|make_exc| CONST-DECL "Exception" |stdexc| NIL)
     (|fname| CONST-DECL "string" |stdio| NIL)
     (|emptystr| CONST-DECL "string" |stdstr| NIL)
-    (|ClosedStream| CONST-DECL "ExceptionTag[string]" |stdexc_tags| NIL)
+    (|tag| CONST-DECL "ExceptionTag" |stdexc| NIL)
+    (|ClosedStream| CONST-DECL "Exception[string]" |stdexceptions| NIL)
+    (|make_exception| CONST-DECL "Exception" |stdexc| NIL)
+    (|qid| CONST-DECL "list[string]" |stdexc| NIL)
+    (|val| CONST-DECL "T" |stdprog| NIL)
+    (|{\|\|}| CONST-DECL "Lisp[T]" |stdpvs| NIL)
     (|list2finseq| CONST-DECL "finseq[T]" |list2finseq| NIL)
     (|length| DEF-DECL "nat" |list_props| NIL))
    SHOSTAK
    (|fmap| TERMINATION
     "stdio.fmap(stdio.f, stdio.fread, stdio.nt, stdio.st, (number_fields.-)(stdio.n, 1))"
-    "NIL"))))
+    "NIL" (1175 10 1175 33))))
+ (|fmap_TCC3| 0
+  (|fmap_TCC3-1| NIL 3968950222 ("" (EXISTENCE-TCC))
+   ((T DECL-FORMAL-TYPE NIL |stdio| NIL)
+    (|IStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL)
+    (|IStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK (|fmap| EXISTENCE "" "stdio.T" (423 4 423 14))))
+ (|fmap_TCC4| 0
+  (|fmap_TCC4-1| NIL 3968950222 ("" (EXISTENCE-TCC))
+   ((T DECL-FORMAL-TYPE NIL |stdio| NIL)
+    (|IStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL)
+    (|IStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK (|fmap| EXISTENCE "" "stdio.T" (423 4 423 14))))
+ (|fmap_TCC5| 0
+  (|fmap_TCC5-1| NIL 3968950222 ("" (EXISTENCE-TCC))
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (T DECL-FORMAL-TYPE NIL |stdio| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|IStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL)
+    (|IStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK (|fmap| EXISTENCE "" "stdio.T" (97 4 97 23))))
+ (|fmap_line_TCC1| 0
+  (|fmap_line_TCC1-1| NIL 3968950223 ("" (EXISTENCE-TCC))
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (T DECL-FORMAL-TYPE NIL |stdio| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (>= CONST-DECL "bool" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|IStream| NONEMPTY-TYPE-FROM-DECL NIL |stdio| NIL)
+    (|IStream_pred| CONST-DECL "[Stream -> boolean]" |stdio| NIL)
+    (|Stream| NONEMPTY-TYPE-DECL NIL |stdio| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
+   SHOSTAK (|fmap_line| EXISTENCE "" "stdio.T" (97 4 97 23)))))
 (|stdpvsio|)
 (|stdsys|)
 

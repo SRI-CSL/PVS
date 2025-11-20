@@ -1671,15 +1671,21 @@ then uses unpindent* to add the indent to each line"
 	 (write-char #\)))
 	(t (call-next-method))))
 
+;; The following global variables could be reset through PVSio global variables
+;; stdmath.PRECISION and stdmath.PP_RATIONALS
+
+(defconstant +pvsio-default-precision+ 6)
+(defvar *pvsio-precision* `("stdmath.PRECISION" ,+pvsio-default-precision+))
+(defvar *pvsio-pp_rationals* '("stdmath.PP_RATIONALS" t))
+
 (defmethod pp* ((ex rational-expr))
   (let ((nbr (number ex)))
     (if *in-evaluator*
-	(with-context *prelude-context*
-	  (let* ((precision  (pvsio_get_gvar_by_name "stdmath.PRECISION"))
-		 (pprat      (pvsio_get_gvar_by_name "stdmath.PP_RATIONALS"))
-		 (rat-prec   (if pprat precision -1)))
-	    ;; pp-rat defined in src/PVSio/prelude-attachments.lisp
-	    (write (pp-rat nbr rat-prec))))
+	(let* ((precision  (or (cadr *pvsio-precision*) +pvsio-default-precision+))
+	       (pprat      (cadr *pvsio-pp_rationals*))
+	       (rat-prec   (if pprat precision -1)))
+	  ;; pp-rat defined in src/PVSio/prelude-attachments.lisp
+	  (write (pp-rat nbr rat-prec)))
       (write nbr))))
 
 (defmethod pp* ((ex number-expr-with-radix))

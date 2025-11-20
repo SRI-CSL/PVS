@@ -59,18 +59,19 @@
       (uninterpreted expr fmt-str)))
 
 ;;These variables are special
-(defvar *destructive?* nil)  ;;tracks if the translation is in the destructive mode
-(defvar *output-vars* nil) ;;
+(defvar *destructive?* nil
+  "Tracks if the translation is in the destructive mode.")
+(defvar *output-vars* nil)
 (defvar *external* nil)
 
 (defvar *pvs2cl-decl* nil
   "Tracks the current declaration being compiled, for help in debugging undefined, etc.")
 
-;;lisp-id generates a Lisp identifier for a PVS identifier that
-;;doesn't clash with existing Lisp constants and globals.
-
 (defvar *lisp-id-hash* (make-hash-table :test #'eq))
-(defun lisp-id (id) ;;id must be a symbol
+(defun lisp-id (id)
+  "Generates a Lisp identifier for a PVS identifier that
+doesn't clash with existing Lisp constants and globals.
+id must be a symbol."
   (if (special-variable-p id) 
       (let ((lid (gethash id *lisp-id-hash*)))
 	(or lid
@@ -78,7 +79,6 @@
 	      (setf (gethash id *lisp-id-hash*) new-lid)
 	      new-lid)))
       id))
-
 
 ;need to exploit the fact that at most one makes sense
 ;if external needs actuals, then internal will crash.
@@ -110,55 +110,24 @@
 							 'destructive (make-instance 'eval-defn))))
 	   (eval-info decl))))
 
-;; Return module when expr is a PVSio global variable, i.e., of type stdprog.Global or stdglobal.Global
-(defun pvsio-global-variable (expr)
-  (let* ((decl       (declaration expr))
-	 (decltype   (when decl (declared-type decl))))
-    (and (type-name? decltype)
-	 (eq '|Global| (id decltype))
-	 (let* ((resolution (when decltype (car (resolutions decltype))))
-		(mod        (when resolution (module-instance resolution))))
-	   (when (and mod (member (id mod) '(|stdprog| |stdglobal|)))
-	     mod)))))
-
 (defun undefined (expr &optional message)
-  "Creates and compiles a new function, returning the name.  If the expr is
-a const-decl, of type 'Global', creates an attachment instance (part of
-PVSio).  Otherwise creates an 'undefined' function, which invokes an error
-if called."
-  (let* ((th       (string (if (declaration? expr)
-			       (id (module expr))
-			     (id (current-theory)))))
-	 (nm       (when (const-decl? expr) (string (id expr))))
-	 (nargs    (when nm (arity expr)))
-	 (mod      (and nm (= nargs 0) (pvsio-global-variable expr))))
-    (if mod
-	(let* ((fname (gentemp "global"))
-	       (act   (actuals mod))
-	       (doc (format nil "Global mutable variable ~a of type ~a" 
-			    nm (car act)))
-	       (arg (if (eq '|stdprog| (id mod))
-			`(pvsio_new_gvar ,nm)
-		      `(pvsio_ref_gvar ,(pvs2cl (expr (cadr act))) ,nm)))
-	       (fbody `(progn 
-			 (defparameter ,fname ,arg)
-			 (defattach-th-nm ,th ,(id expr) () ,doc ,fname))))
-	  (eval fbody)
-	  (makesym "pvsio_~a_~a_~a" th nm nargs))
-      (let* ((fname (gentemp "undefined"))
-	     (msg-fmt
-	      (or message
-		  "Hit uninterpreted term ~a during evaluation (undefined)"))
-	     (fbody (if (and nargs (> nargs 0))
-			`(defun ,fname (&rest x)
-			   (declare (ignore x))
-			   (uninterpreted-fun ,expr ,msg-fmt))
-		      `(defun ,fname (&rest x)
-			 (declare (ignore x))
-			 (uninterpreted ,expr ,msg-fmt)))))
-	(eval fbody)
-	(compile fname)
-	fname))))
+  "Creates and compiles a new undefined function, returning its name.
+This function invokes an error when called."
+  (let* ((fname (gentemp "undefined"))
+	 (msg-fmt
+	  (or message
+	      "Hit uninterpreted term ~a during evaluation (undefined)"))
+	 (nargs  (when (const-decl? expr) (arity expr)))
+	 (fbody (if (and nargs (> nargs 0))
+		    `(defun ,fname (&rest x)
+		       (declare (ignore x))
+		       (uninterpreted-fun ,expr ,msg-fmt))
+		  `(defun ,fname (&rest x)
+		     (declare (ignore x))
+		     (uninterpreted ,expr ,msg-fmt)))))
+    (eval fbody)
+    (compile fname)
+    fname))
 
 ;  lisp-function
 ;  lisp-function2
@@ -168,7 +137,6 @@ if called."
 ;  external-lisp-definition
 ;  external-lisp-function2
 ;  external-lisp-definition2)
-
 
 ;;initialize context.  If ground expression then translate to common-lisp,
 ;;evaluate, then translate back.  
@@ -190,8 +158,6 @@ if called."
 
 ;;Function application for non-name functions.
 ;;If function is an array, then svref, else funcall
-
-
 ;;mk-funcall defined to be pvs-funcall for backward compatibility.
 (defun mk-funcall (fun args)
   `(pvs-funcall ,fun ,@args))
@@ -235,16 +201,9 @@ if called."
 
 ;;String literals are translated directly to strings. 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
-  ;;  (call-next-method)
   (declare (ignore bindings livevars))
-;  (break "string-expr")
-  (let ((str (string-value expr)))
-    str))
-;;   `(pvs2cl_record (length ,str) ,str)))
-;;;    (concatenate 'string "\"" (string-value expr) "\"")
+  (string-value expr))
 
-
-  
 (defun pvs2cl-operator2 (op actuals arguments def-formals livevars bindings)
   (declare (ignore bindings))
   (pvs2cl-resolution2 op)
@@ -303,7 +262,6 @@ if called."
 	       (mk-modname (id (module decl)) nil)
 	       type)))
     (mk-name-expr (id decl) nil nil res))) ;; 'constant
-    
 
 ;;External application.  Actuals, if any, are appended to the
 ;;front of argument list.  
@@ -337,8 +295,36 @@ if called."
 				     livevars))))
 	(mk-funapp (pvs2cl-operator2 op nil arguments arg-formals
 				     livevars bindings)
-		   ;;(pvs2cl-resolution2 op)
 		   (pvs2cl_up* arguments  bindings livevars)))))
+
+(defun mk-pvsioapp (pvsioattach args &optional type theory-actuals)
+  "Similar to mk-funapp, but adds the key parameter :the-pvs-type-key_,
+which may be used by PVSio attachments to inspect their type, and
+:the-theory-actuals_, which has the list of theory arguments."
+  (let* ((type-key  (gentemp "pvsio-type"))
+	 (pvsiosymb (attachment-fsymbol pvsioattach))
+	 (nformals  (length (attachment-formals pvsioattach)))
+	 (nactuals  (length args))
+	 (letvars   (when (and (> nformals 1) (= nactuals 1))
+		      (loop for i from 1 to nformals
+			    collect (gentemp "letvar"))))
+	 (letbind   (loop for var in letvars
+			  for i from 1
+			  collect `(,var (project ,i ,(car args)))))
+	 (nargs     (cond ((and (= nformals 1) (> nactuals 1))
+			   ;; Formal type is a tuple (only one argument)
+			   (list `(pvs2cl_tuple ,@args)))
+			  ((and (> nformals 1) (= nactuals 1))
+			   ;; Formal type is a product (many arguments)
+			   letvars)
+			  (t args)))
+	 (actuals   (when theory-actuals
+		      `(:the-theory-actuals_ (list ,@theory-actuals))))
+	 (app (mk-funapp pvsiosymb
+			 (append nargs `(:the-pvs-type-key_ ',type-key)
+				 actuals))))
+    (setf (gethash type-key *pvsio-type-hash*) type)
+    (if letbind `(let ,letbind ,app) app)))
 
 ;;If primitive app, use pvs2cl-primitive-app.
 ;;If datatype constant, then ignore actuals and use pvs2cl-resolution.
@@ -348,21 +334,27 @@ if called."
 ;;NSH(8.31.98): Operator free variables should be live in the arguments
 ;;in case these appear in the operator closure that is evaluated flg. the
 ;;arguments.
-;;Modified treatment of PVSio primitives (Feb 20 2015) [CM]
-(defun pvs2cl-primitive-app (expr bindings livevars &optional pvsiosymb expr-actuals)
+(defun pvs2cl-primitive-app (expr bindings livevars expr-actuals)
   (let* ((op    (operator* expr))
 	 (args* (arguments* expr));;NSH(1-17-17)
 	 (args  (append expr-actuals (loop for arg in args* append arg)))
-	 (xtra  (when pvsiosymb (list (type op))))
 	 (nargs (length args)))
-    (cond (pvsiosymb (mk-funapp pvsiosymb (append (pvs2cl_up* args bindings livevars) xtra)))
-	  ((> nargs 1)
-	   (if (equality-disequality? op)
-	       (pvs2cl-equality op args bindings livevars)
-	     (mk-funapp (pvs2cl-primitive2 op)
-		        (pvs2cl_up* args bindings livevars))))
-	  (t (mk-funapp (pvs2cl-primitive op)
-			(pvs2cl_up* args bindings livevars))))))
+    (if (> nargs 1)
+	(if (equality-disequality? op)
+	    (pvs2cl-equality op args bindings livevars)
+	  (mk-funapp (pvs2cl-primitive2 op)
+		     (pvs2cl_up* args bindings livevars)))
+      (mk-funapp (pvs2cl-primitive op)
+		 (pvs2cl_up* args bindings livevars)))))
+
+(defun pvs2cl-pvsio-app (expr bindings livevars expr-actuals pvsioattach)
+  "Appplication of a function defined as a PVSio attachment."
+  (let* ((op        (operator* expr))
+	 (args      (loop for arg in (arguments* expr) append arg)))
+    ;; [CM] In the PVSio attachment, the type of op is provided in the-pvs-type_.
+    ;; The theory arguments (expr-actuals) are provided in the-theory-actuals_
+    (mk-pvsioapp pvsioattach (pvs2cl_up* args bindings livevars)
+		 (type op) (pvs2cl_up* expr-actuals bindings livevars))))
 
 (defun pvs2cl-equality (op args bindings livevars);;op is either = or /=
   (let* ((id (id op))
@@ -417,28 +409,26 @@ if called."
 (defmethod pvs2cl_up* ((expr application) bindings livevars)
   (with-slots (operator argument) expr
     (let ((op* (operator* expr)))
-      (if (constant? op*) ;;assuming all primitive/datatype ops are
-	  ;;not curried.
-	  (let* ((actuals (expr-actuals (module-instance op*)))
-		 (pvsiosymb (when (name-expr? op*)
-			      (pvsio-symbol op* (+ (length actuals)(length (arguments expr)))))))
+      (if (constant? op*) ;;assuming all primitive/datatype ops are not curried.
+	  (let ((actuals     (expr-actuals (module-instance op*)))
+		(pvsioattach (pvsio-attachment op*)))
 	    (when (mappings (module-instance op*))
 	      (pvs2cl-mappings (mappings (module-instance op*))))
-	    (if (or (pvs2cl-primitive? op*) pvsiosymb)
-		(pvs2cl-primitive-app expr bindings livevars pvsiosymb actuals)
-		(if (datatype-constant? operator)
-		    (pvs2cl-datatype-application operator expr bindings livevars)
-		    ;; (mk-funapp (pvs2cl-resolution operator)
-		    ;;	  (pvs2cl_up* (arguments expr) bindings livevars))
-		    (pvs2cl-defn-application op* expr bindings livevars))))
-	  (mk-funcall (pvs2cl_up* operator bindings
-				  (append (updateable-vars
-					   argument)
-					  livevars))
-		      (list (pvs2cl_up* argument bindings
-					(append
-					 (updateable-free-formal-vars operator)
-					 livevars))))))))
+	    (cond (pvsioattach
+		   (pvs2cl-pvsio-app expr bindings livevars actuals pvsioattach))
+		  ((pvs2cl-primitive? op*)
+		   (pvs2cl-primitive-app expr bindings livevars actuals))
+		  ((datatype-constant? operator)
+		   (pvs2cl-datatype-application operator expr bindings livevars))
+		  (t (pvs2cl-defn-application op* expr bindings livevars))))
+	(mk-funcall (pvs2cl_up* operator bindings
+				(append (updateable-vars
+					 argument)
+					livevars))
+		    (list (pvs2cl_up* argument bindings
+				      (append
+				       (updateable-free-formal-vars operator)
+				       livevars))))))))
 
 (defmethod pvs2cl_up* ((expr equation) bindings livevars)
   (cond ((and (set-list-expr? (args1 expr))
@@ -485,8 +475,6 @@ if called."
 
 (defun codatatype-expression? (expr)
   (codatatype? (adt (find-supertype (type expr)))))
-  
-      
 
 (defun pvs2cl-defn-application (op* expr bindings livevars)
   (with-slots (operator argument) expr
@@ -680,7 +668,6 @@ if called."
 	    (append (updateable-vars (operator expr))
 		    livevars)))))
 
-
 ;;let* not needed, nested anyway.
 
 (defmethod pvs2cl_up* ((expr if-expr) bindings livevars)
@@ -834,8 +821,7 @@ if called."
 		(t
 		 (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~% ~a")))
 		   `(funcall ',undef)))))
-	(pvs2cl_up* body bindings livevars))))
-			
+      (pvs2cl_up* body bindings livevars))))
 
 (defmethod pvs2cl_up* ((expr name-expr) bindings livevars)
   (let* ((decl (declaration expr))
@@ -921,8 +907,6 @@ if called."
 	  `(project ,(1+ fieldnum) ,clarg))
       ;; )
       )))
-
-
 
 (defmethod no-livevars? ((expr update-expr) livevars assignments)
   (no-livevars? (expression expr) livevars
@@ -1257,13 +1241,12 @@ if called."
 		       (,exprvar ,expr))
 		   ,newexpr))))
 	(pvs2cl-update-nondestructive*
-	 type 
+	 type
 	 newexpr-with-let
 	 (cdr assign-args)(cdr assign-exprs) bindings
 	 (append (updateable-free-formal-vars (car assign-exprs))
 		 livevars)))
-      expr))
-
+    expr))
 
 ;;recursion over nested update arguments in a single update.
 (defun pvs2cl-update-nd-type (type expr args assign-expr
@@ -1343,7 +1326,6 @@ if called."
 				   assign-expr bindings livevars)
   (break "Need to fix this"))
 
-
 ;;assign-arg-livevars can be ignored since args are evaluated before
 ;;expression and have no updateable results. 		 
 ;;even the RHS-livevars can be ignored since the nested updates
@@ -1421,8 +1403,6 @@ if called."
 		(lambda (,lamvar)
 		  (let ,letbind ,cl-body))))))))
 
-
-
 (defun pvs2cl-make-bindings (bind-decls bindings)
   (if (consp bind-decls)
       (let* ((bb (car bind-decls))
@@ -1449,61 +1429,67 @@ if called."
 
 ;;Added support for PVSio's constants (Feb 20 2015) [CM]
 (defun pvs2cl-constant (expr bindings livevars)
-  (cond ((pvs2cl-primitive? expr)
-	 (if (memq (id expr) *primitive-constants*) ;the only constants
-	     (pvs2cl-primitive expr)	;else need to return closures.
+  (let ((pvsioattach (pvsio-attachment expr)))
+    (cond (pvsioattach
+	   (let* ((type      (type expr))
+		  (nargs     (length (attachment-formals pvsioattach)))
+		  (actuals   (pvs2cl_up* (expr-actuals (module-instance expr))
+					 bindings livevars)))
+	     (if (= nargs 0)
+		 ;; it's a PVSio constant
+		 (mk-pvsioapp pvsioattach nil type actuals)
+	       ;; it's a PVSio function. Needs to return a closure of 1 argument
+	       (let ((lamvar (list (pvs2cl-newid 'lamvar bindings))))
+		 `(lambda ,lamvar ,(mk-pvsioapp pvsioattach lamvar type actuals))))))
+	  ((pvs2cl-primitive? expr)
+	   (if (memq (id expr) *primitive-constants*) ;the only constants
+	       (pvs2cl-primitive expr)	;else need to return closures.
 	     `(function ,(pvs2cl-primitive expr))))
-	((lazy-random-function? expr)
-	 (generate-lazy-random-lisp-function expr))
-	((pvs2cl-mapped? expr)
-	 (generate-pvs2cl-mapped-function expr))
-	(t 
-	 (let* ((nargs (if (funtype? (type expr)) (arity expr) 0))
-		(pvsiosymb (pvsio-symbol expr nargs)))
-	   (cond ((and pvsiosymb (= nargs 0))
-		  (mk-funapp pvsiosymb (list (type expr)))) ; it's a PVSio constant
-		 (pvsiosymb `(function ,pvsiosymb)) ; need to return a closure (it's a PVSio function)
-		 (t
-		  (pvs2cl-resolution expr)
-		  (if (datatype-constant? expr)
-		      (if (scalar-constant? expr)
-			  (lisp-function (declaration expr))
-			(let ((fun (or (lisp-function (declaration expr))
-				       (pvs2cl-lisp-function (declaration expr)))))
-			  (assert fun)
-			  (if (constructor? expr)
-			      (mk-funapp fun nil)
-			    `(function ,fun))
-			  ;; (if (not (funtype? (find-supertype (type expr))))
-			  ;; 	 (mk-funapp fun nil)
-			  ;; 	 `(function ,fun))
-			  ));;actuals irrelevant for datatypes
-		    (let* ((actuals (expr-actuals (module-instance expr)))
-			   (decl (declaration expr))
-			   (internal-actuals
-			    (or actuals
-				(and (eq (module decl) *external*)
-				     (loop for x in (formals (module decl))
-					   when (formal-const-decl? x)
-					   collect (make-constant-from-decl x)))))
-			   (defns (def-axiom decl))
-			   (defn (when defns(args2 (car (last (def-axiom decl))))))
-			   (def-formals (when (lambda-expr? defn)
-					  (bindings defn)))
-			   (fun (if defns
-				    (if def-formals
-					(if internal-actuals
-					    (external-lisp-function (declaration expr))
-					  (lisp-function (declaration expr)))
-				      (pvs2cl-operator2 expr actuals nil nil
-							livevars bindings))
-				    (if internal-actuals
-					(external-lisp-function (declaration expr))
-					(lisp-function (declaration expr))))))
-		      (assert fun)
-		      (mk-funapp fun (pvs2cl_up* internal-actuals
-						 bindings livevars))))))))))
-	 
+	  ((lazy-random-function? expr)
+	   (generate-lazy-random-lisp-function expr))
+	  ((pvs2cl-mapped? expr)
+	   (generate-pvs2cl-mapped-function expr))
+	  (t
+	   (pvs2cl-resolution expr)
+	   (if (datatype-constant? expr)
+	       (if (scalar-constant? expr)
+		   (lisp-function (declaration expr))
+		 (let ((fun (or (lisp-function (declaration expr))
+				(pvs2cl-lisp-function (declaration expr)))))
+		   (assert fun)
+		   (if (constructor? expr)
+		       (mk-funapp fun nil)
+		     `(function ,fun))
+		   ;; (if (not (funtype? (find-supertype (type expr))))
+		   ;; 	 (mk-funapp fun nil)
+		   ;; 	 `(function ,fun))
+		   ));;actuals irrelevant for datatypes
+	     (let* ((actuals (expr-actuals (module-instance expr)))
+		    (decl (declaration expr))
+		    (internal-actuals
+		     (or actuals
+			 (and (eq (module decl) *external*)
+			      (loop for x in (formals (module decl))
+				    when (formal-const-decl? x)
+				    collect (make-constant-from-decl x)))))
+		    (defns (def-axiom decl))
+		    (defn (when defns(args2 (car (last (def-axiom decl))))))
+		    (def-formals (when (lambda-expr? defn)
+				   (bindings defn)))
+		    (fun (if defns
+			     (if def-formals
+				 (if internal-actuals
+				     (external-lisp-function (declaration expr))
+				   (lisp-function (declaration expr)))
+			       (pvs2cl-operator2 expr actuals nil nil
+						 livevars bindings))
+			   (if internal-actuals
+			       (external-lisp-function (declaration expr))
+			     (lisp-function (declaration expr))))))
+	       (assert fun)
+	       (mk-funapp fun (pvs2cl_up* internal-actuals
+					  bindings livevars))))))))
+
 (defun expr-actuals (modinst)
   (loop for act in (actuals modinst)
 	when (null (type-value act))
@@ -1543,7 +1529,7 @@ if called."
   (and (adt-name-expr? expr)
        (not (pvs2cl-primitive? expr))))
 
-(defun pvs2cl-resolution2 (expr) ;(break "pvs2cl-resolution2")
+(defun pvs2cl-resolution2 (expr)
   (pvs2cl-resolution expr)
   (if (datatype-constant? expr)
       (lisp-function2 (declaration expr))
@@ -1584,26 +1570,31 @@ if called."
 	    (or (lisp-function (declaration expr))
 		(pvs2cl-lisp-function (declaration expr)))))))
 
-(defun mk-newsymb (x &optional (counter 0))
-  (let ((str (format nil "~a_~a" x counter)))
-    (if (find-symbol str)
-	(mk-newsymb x (1+ counter))
-      (intern str :pvs))))
-
 ;;dummy function to initialize symbol-function of a new function symbol
 (defun init-undef (&rest x)
   (declare (ignore x))
-  0)
+  nil)
 
 (defun mk-newfsymb (x &optional counter)
+  "Returns a new function symbol."
   (handler-case
-      (let ((fsym (intern (format nil "~a~@[_~a~]" x counter) :pvs)))
+      (let ((fsym (makesym "~a~@[_~a~]" x counter)))
 	(cond ((fboundp fsym)
 	       (mk-newfsymb x (if counter (1+ counter) 0)))
 	      (t (setf (symbol-function fsym) #'init-undef) fsym)))
     #+sbcl (sb-ext:symbol-package-locked-error () (mk-newfsymb x 0))
     ;; Not sure the allegro error is necessary, but it's here just in case
     #+allegro (excl:package-locked-error () (mk-newfsymb x 0))))
+
+(defun pvs2cl-newfsymb (ctl &rest args)
+  "Returns a new function symbol with the prefix pvs2cl-. CTL is a control string,
+which is processed with the parameters ARGS."
+  (let* ((prefix "pvs2cl-")
+	 (fmt    (format nil "~a~a" prefix ctl))
+	 (str    (if (stringp ctl)
+		     (apply #'format nil fmt args)
+		   fmt)))
+    (mk-newfsymb str)))
 
 (defun pvs2cl-id (x)
   (if (eq (id x) 'O)
@@ -1614,8 +1605,10 @@ if called."
 (defun pvs2cl-external-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* (module decl))
-	 (*pvs2cl-decl* decl))
-    (cond ((null defax)
+	 (*pvs2cl-decl* decl)
+	 ;; PVSio Global declarations may be undefined [CM]
+	 (global (pvsio-global-variable decl)))
+    (cond ((and (not global) (null defax))
 	   (let ((undef (undefined decl)))
 	     (make-c-eval-info decl)
 	     (setf (ex-name decl) undef
@@ -1624,91 +1617,102 @@ if called."
 	     undef))
 	  (t (let ((ctheory (current-theory))
 		   (formals (loop for x in (formals (module decl))
-			       when (formal-const-decl? x)
-			       collect x)))
+				  when (formal-const-decl? x)
+				  collect x)))
 	       (setf (current-theory) (module decl))
 	       (unwind-protect
-		    (if (null formals)
-			(or (lisp-function decl)
-			    (pvs2cl-lisp-function decl))
-			(let* ((id (mk-newfsymb (format nil "~a_~a"
-						  (id (module decl))
-						  (pvs2cl-id decl))))
-			       (id-d (mk-newfsymb (format nil "~a!~a"
-						    (id (module decl))
-						    (pvs2cl-id decl))))
-			       (formal-ids (loop for x in formals
+		   (if (null formals)
+		       (or (lisp-function decl)
+			   (pvs2cl-lisp-function decl))
+		     (let* ((id (pvs2cl-newfsymb "~a_~a"
+						 (id (module decl))
+						 (pvs2cl-id decl)))
+			    (id-d (pvs2cl-newfsymb "~a!~a"
+						   (id (module decl))
+						   (pvs2cl-id decl)))
+			    (formal-ids (loop for x in formals
 					      collect (lisp-id (id x))))
-			       (bindings (pairlis formals formal-ids))
-			       (defn (args2 (car (last defax))))
-			       (defn-bindings (when (lambda-expr? defn)
-						(loop for bnd in
-						     (bindings* defn)
+			    (bindings (pairlis formals formal-ids))
+			    (defn (when defax (args2 (car (last defax)))))
+			    (defn-bindings (when (lambda-expr? defn)
+					     (loop for bnd in
+						   (bindings* defn)
 						   append bnd)))
-			       (defn-expr (body* defn))
-			       (defn-binding-ids
-				(make-binding-ids-without-dups defn-bindings nil))
-			       (formal-ids2 (append formal-ids
-						    defn-binding-ids))
-			       (declarations
-				(pvs2cl-declare-vars formal-ids2
-						     (append formals defn-bindings))))
-			  (make-c-eval-info decl)
-			  (setf (ex-name decl) id)
-			  (let ((id2 (mk-newfsymb (format nil "~a__~a"
-						    (id (module decl))
-						    (pvs2cl-id decl)))))
-			    (setf (ex-name-m decl) id2)
-			    (let ((*destructive?* nil))
-			      (setf (definition (ex-defn-m decl))
-				    `(defun ,id2 ,formal-ids2
-				       ,@(append (when declarations
-						   (list declarations))
-						 (list 
+			    (defn-expr (body* defn))
+			    (defn-binding-ids
+			      (make-binding-ids-without-dups defn-bindings nil))
+			    (formal-ids2 (append formal-ids
+						 defn-binding-ids))
+			    (declarations
+			     (pvs2cl-declare-vars formal-ids2
+						  (append formals defn-bindings)))
+			    (fcode (when (pvsio-value decl defn)
+				     (pvs2cl-lisp-fvalue id
+							 (format nil "~a.~a" (id (module decl)) (id decl))
+							 defn-expr global))))
+		       (make-c-eval-info decl)
+		       (setf (ex-name decl) id)
+		       (let ((id2 (pvs2cl-newfsymb "~a__~a"
+						   (id (module decl))
+						   (pvs2cl-id decl))))
+			 (setf (ex-name-m decl) id2)
+			 (let ((*destructive?* nil)
+			       (ex-defn-m
+				`(defun ,id2 ,formal-ids2
+				   ,@(append (when declarations
+					       (list declarations))
+					     (or fcode
+						 (list
 						  (pvs2cl_up* defn-expr
 							      (append (pairlis
 								       defn-bindings
 								       defn-binding-ids)
 								      bindings)
-							      nil))))))
-			    (eval (definition (ex-defn-m decl)))
-			    (assert id2)
-			    (compile id2)
-			    )
-			  (setf (ex-name-d decl) id-d)
-			  (let ((*destructive?* t)
-				(*output-vars* nil))
-			    (setf (definition (ex-defn-d decl))
-				  `(defun ,id-d ,formal-ids2
-				     ,declarations
-				     ,@(append (when declarations
-						 (list declarations))
-					       (list 
+							      nil)))))))
+			   (setf (definition (ex-defn-m decl))
+				 ex-defn-m))
+			 (eval (definition (ex-defn-m decl)))
+			 (assert id2)
+			 (compile id2))
+		       (setf (ex-name-d decl) id-d)
+		       (let ((*destructive?* t)
+			     (*output-vars* nil)
+			     (ex-defn-d
+			      `(defun ,id-d ,formal-ids2
+				 ,declarations
+				 ,@(append (when declarations
+					     (list declarations))
+					   (or fcode
+					       (list
 						(pvs2cl-till-output-stable
 						 (ex-defn-d decl)
 						 defn-expr
 						 (append (pairlis defn-bindings
 								  defn-binding-ids)
 							 bindings)
-						 nil)))))
-			    ;;setf output-vars already in
-			    ;;pvs2cl-till-output-stable
-			    (setf (output-vars (ex-defn-d decl)) *output-vars*))
-			  (eval (definition (ex-defn-d decl)))
-			  (assert id-d)
-			  (compile id-d)
-			  (let ((*destructive?* nil)
-				(declarations (pvs2cl-declare-vars formal-ids formals)))
-			    (setf (definition (ex-defn decl))
-				  `(defun ,id ,formal-ids
-				     ,@(append (when declarations
-						 (list declarations))
-					       (list
-						(pvs2cl_up* defn  bindings nil))))))
-			  (eval (definition (ex-defn decl)))
-			  (assert id)
-			  (compile id)
-			  ))
+						 nil)))))))
+			 (setf (definition (ex-defn-d decl))
+			       ex-defn-d)
+			 ;;setf output-vars already in
+			 ;;pvs2cl-till-output-stable
+			 (setf (output-vars (ex-defn-d decl)) *output-vars*))
+		       (eval (definition (ex-defn-d decl)))
+		       (assert id-d)
+		       (compile id-d)
+		       (let* ((*destructive?* nil)
+			      (declarations (pvs2cl-declare-vars formal-ids formals))
+			      (ex-defn
+			       `(defun ,id ,formal-ids
+				  ,@(append (when declarations
+					      (list declarations))
+					    (or fcode
+						(list
+						 (pvs2cl_up* defn  bindings nil)))))))
+			 (setf (definition (ex-defn decl))
+			       ex-defn))
+		       (eval (definition (ex-defn decl)))
+		       (assert id)
+		       (compile id)))
 		 (setf (current-theory) ctheory)))))))
 
 (defun pvs2cl-till-output-stable (defn-slot expr bindings livevars)
@@ -1758,7 +1762,6 @@ if called."
 	 (null (const-params decl))
 	 (not (null defax))
 	 (not (lambda-expr? (args2 (car (last defax))))))))
-	 
 
 ;;
 ;; BD: allegro goes nuts if we try to compile things like 
@@ -1782,25 +1785,90 @@ if called."
 ;; End of Hack
 ;;
 
+(defun is-print-type (type type-name theory-name)
+  "Check if TYPE is a print-type of TYPE-NAME in given THEORY-NAME.
+If T, return theory module."
+  (let* ((ptype      (or (print-type type) type))
+	 (resolution (when (type-name? ptype) (car (resolutions ptype)))))
+    (when resolution
+      (or
+       (and (string= (id ptype) type-name)
+	    (string= (id (module-instance resolution)) theory-name)
+	    (module-instance resolution))
+       (let ((decl (declaration resolution)))
+	 (and (type-eq-decl? decl)
+	      (is-print-type (type-expr decl) type-name theory-name)))))))
+
+(defvar *pvs2cl-extra-code* (make-hash-table) ;; [CM]
+  "Hash table indexed by function ID, with additional lisp code needed to
+define function. This is variable is only used in generate-lisp-for-theory.")
+
+(defun pvs2cl-lisp-fvalue (id name defn-body global)
+  "Declaration called NAME is of type PVSioValue and has no bindings. In this case,
+translate using a defparameter. If declaration is also a PVSio Global variable,
+set its value and name. Return body of pvs2cl-<decl>."
+  (let* ((fname  (gentemp (if global "pvsio-global" "pvsio-value")))
+	 (body   (cond (defn-body
+			 (pvs2cl_up* defn-body nil nil))
+		       ((string= (id global) '|stdprog|)
+			`(pvsio_new_gvar ,name))
+		       (t ;; It's a stdglobal, i.e., it has an init-value
+			`(pvsio_ref_gvar ,(pvs2cl (expr (cadr (actuals global)))) ,name))))
+	 (fpara `(defparameter ,fname ,body))
+	 (rename (when global
+		   (list `(unless (car ,fname) (setf (car ,fname) ,name)))))
+	 (fcode  (cons fpara rename)))
+    (setf (gethash id *pvs2cl-extra-code*) fcode)
+    (eval `(progn ,@fcode))
+    (if defn-body
+	(list fname)
+      (list `(pvsio-not-in-prover ,name) fname))))
+
+(defun pvsio-global-variable (decl)
+  "Check if DECL is a PVSio global variable, i.e., of type stdprog.Global
+or stdglobal.Global. If T, return theory module of Global."
+  (and (const-decl? decl)
+       (null (formals decl))
+       (or (is-print-type (type decl) '|Global| '|stdprog|)
+	   (is-print-type (type decl) '|Global| '|stdglobal|))))
+
+(defun dependent-on-theory-actuals (decl references)
+  (when references
+    (let ((reference (car references)))
+      (or (formal-const-decl? reference)
+	  (if (and (const-decl? reference)
+		   (eq (id (module decl)) (id (module reference))))
+	      (dependent-on-theory-actuals decl (append (cdr references)
+							(refers-to reference)))
+	    (dependent-on-theory-actuals decl (cdr references)))))))
+
+(defun pvsio-value (decl defn)
+  "Constants of type stdvps.PVSioValue with no bindings can be
+implemented using defparameters except when they depend on
+theory formals."
+  (and (not (lambda-expr? defn))
+       (is-print-type (type decl) '|PVSioValue| '|stdpvs|)
+       (not (dependent-on-theory-actuals decl (refers-to decl)))))
+
 ;;Local variable undef moved to case where defax is null (Feb 20 2015) [CM]
 (defun pvs2cl-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* nil)
-	 (*pvs2cl-decl* decl))
-    (cond ((null defax)
+	 (*pvs2cl-decl* decl)
+	 ;; PVSio Global declarations may be undefined [CM]
+	 (global (pvsio-global-variable decl)))
+    (cond ((and (not global) (null defax))
 	   (let ((undef (undefined decl)))
 	     (setf (in-name decl) undef
 		   (in-name-m decl) undef
 		   (in-name-d decl) undef)
 	     undef))
-	  (t (let* ((id (mk-newfsymb (format nil "~@[~a_~]~a"
-					     (generated-by decl) (pvs2cl-id decl))))
-		    ;; (idc (mk-newfsymb (format nil "~@[~a_~]~a_c"
-		    ;; 			     (generated-by decl) (pvs2cl-id decl))) )
-		    (id-d (mk-newfsymb (format nil "~@[~a_~]~a!"
-					       (generated-by decl)
-					       (pvs2cl-id decl))))
-		    (defn (args2 (car (last (def-axiom decl)))))
+	  (t (let* ((id (pvs2cl-newfsymb "~@[~a_~]~a"
+					 (generated-by decl) (pvs2cl-id decl)))
+		    (id-d (pvs2cl-newfsymb "~@[~a_~]~a!"
+					   (generated-by decl)
+					   (pvs2cl-id decl)))
+		    (defn (when defax (args2 (car (last (def-axiom decl))))))
 		    (defn-bindings (when (lambda-expr? defn)
 				     (loop for bnd in
 					   (bindings* defn)
@@ -1810,46 +1878,56 @@ if called."
 		    (defn-binding-ids
 		      (make-binding-ids-without-dups defn-bindings nil))
 		    (declarations (pvs2cl-declare-vars defn-binding-ids
-						       defn-bindings)))
+						       defn-bindings))
+		    (fcode (when (pvsio-value decl defn)
+			     (pvs2cl-lisp-fvalue id
+						 (format nil "~a.~a" (id (module decl)) (id decl))
+						 defn-body global))))
 	       (setf (in-name decl) id)
-	       (let ((id2 (mk-newfsymb (format nil "_~@[~a_~]~a"
-					 (generated-by decl)
-					 (pvs2cl-id decl)))))
+	       (let ((id2 (pvs2cl-newfsymb "_~@[~a_~]~a"
+					   (generated-by decl)
+					   (pvs2cl-id decl))))
 		 (when *eval-verbose*
 		   (format t "~%~a <internal_app> ~a" (id decl) id2))
 		 (setf (in-name-m decl) id2)
-		 (let ((*destructive?* nil))
-		   (setf (definition (in-defn-m decl))
-			 `(defun ,id2 ,defn-binding-ids
-				   ,@(append (when declarations
-					       (list declarations))
-					     (list 
-					      (pvs2cl_up* defn-body
-							  (pairlis defn-bindings
-								   defn-binding-ids)
-							  nil))))))
+		 (let ((*destructive?* nil)
+		       ;; Multi-ary definition
+		       (in-defn-m
+			`(defun ,id2 ,defn-binding-ids
+			   ,@(append (when declarations
+				       (list declarations))
+				     (or fcode
+					 (list
+					  (pvs2cl_up* defn-body
+						      (pairlis defn-bindings
+							       defn-binding-ids)
+						      nil)))))))
+		   (setf (definition (in-defn-m decl)) in-defn-m))
 		 (eval (definition (in-defn-m decl)))
 		 (assert id2)
 		 (when *eval-verbose*
-		   (format t "~%IN pvs2cl-lisp-function: compile ~a,~_   args = ~a,~_   long-list: ~a~%"
-		     id2 defn-binding-ids (expr_is_long_list defn-body 0)))
+		   (format t "~%IN pvs2cl-lisp-function: compile ~a,~_   args = ~a,~_   long-list: ~a"
+			   id2 defn-binding-ids (expr_is_long_list defn-body 0)))
 		 (or skip-compile (compile id2)))
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
 	       (setf (in-name-d decl) id-d)
 	       (let ((*destructive?* t)
-		     (*output-vars* nil))
-		 (setf (definition (in-defn-d decl))
-		       `(defun ,id-d ,defn-binding-ids
-			  ,@(append (when declarations
-				      (list declarations))
-				    (list 
-				     (pvs2cl-till-output-stable
-				      (in-defn-d decl)
-				      defn-body
-				      (pairlis defn-bindings
-					       defn-binding-ids)
-				      nil)))))
+		     (*output-vars* nil)
+		     ;; Destructive definition
+		     (in-defn-d
+		      `(defun ,id-d ,defn-binding-ids
+			 ,@(append (when declarations
+				     (list declarations))
+				   (or fcode
+				       (list
+					(pvs2cl-till-output-stable
+					 (in-defn-d decl)
+					 defn-body
+					 (pairlis defn-bindings
+						  defn-binding-ids)
+					 nil)))))))
+		 (setf (definition (in-defn-d decl)) in-defn-d)
 		 ;;setf output-vars already in
 		 ;;pvs2cl-till-output-stable
 		 (when (and *eval-verbose* *output-vars*)
@@ -1859,21 +1937,16 @@ if called."
 	       (eval (definition (in-defn-d decl)))
 	       (assert id-d)
 	       (or skip-compile (compile id-d))
-	       ;;	       (compile id-d)
 	       (when *eval-verbose*
-		 (format t "~%~a <internal_0> ~a" (id decl) id))
+		 (format t "~%~a <internal_lmbd> ~a" (id decl) id))
 	       (let* ((*destructive?* nil)
-		      (in-defn `(defun ,id ()
-				  ,(pvs2cl_up* defn nil nil)))
-		      ;; (defconst (when (null defn-bindings);same as pvs-defconstant? test
-		      ;; 		  `(defconstant ,idc ,(car (last (definition (in-defn-d decl)))))))
-		      )
-		 (setf (definition (in-defn decl))
-			 in-defn))
+		      ;; HO definition (LAMBDA)
+		      (in-defn `(defun ,id () ,@(or fcode
+						    (list (pvs2cl_up* defn nil nil))))))
+		 (setf (definition (in-defn decl)) in-defn))
 	       (eval (definition (in-defn decl)))
-	       (assert id);;(break "pvs2cl-lisp-function")
+	       (assert id)
 	       (or skip-compile (compile id)))))))
-;;	       (compile id))))))
 
 (defun pvs2cl-theory (theory)
   (with-context theory
@@ -1976,7 +2049,7 @@ if called."
 				   :test #'eq :key #'id))
 		    (recognizer (recognizer constructor))
 		    (rec-decl (declaration recognizer))
-		    (rec-id (mk-newsymb (id recognizer)))
+		    (rec-id (makenewsym "~a" (id recognizer)))
 		    (rec-defn `(defun ,rec-id (x) (eql x ,pos))))
 	       (unless (eval-info decl) (make-c-eval-info decl))
 	       (setf (in-name decl) pos)
@@ -2002,8 +2075,7 @@ if called."
 		       constructor-symbol)
 		 (when accessors
 		   ;; Added :pvs to intern (Feb 20 2015) [CM]
-		   (let* ((uname (intern 
-				  (format nil "~a_~a" constructor-symbol "unary") :pvs))
+		   (let* ((uname (makesym "~a_~a" constructor-symbol "unary"))
 			  (unary-binding (when accessors
 					   (if (cdr accessors)
 					       (loop for ac in accessors
@@ -2158,7 +2230,6 @@ if called."
        (eq (mod-id i)
 	   (id (module-instance n)))))
 
-;;Modified treatment of PVSio primitives (Feb 20 2015) [CM]
 (defmethod pvs2cl-primitive? ((expr name-expr))
   (member expr *pvs2cl-primitives*
 	  :test #'same-primitive?))
@@ -2167,7 +2238,7 @@ if called."
   nil)
 
 ;
-; This is sound as we've already gone through pvs2cl-primitve?
+; This is sound as we've already gone through pvs2cl-primitive?
 ; by this point.  However - should do it properly at some point
 ; as there could be overloading of the names of primitives (assuming
 ; different theory)
@@ -2178,12 +2249,11 @@ if called."
 	((eq (id expr) '|null|) nil)
 	((and (eq (id expr) '-) ;;hard to distinguish unary,binary.
 	      (tupletype? (domain (find-supertype (type expr)))))
-	 (intern (format nil "pvs_--") :pvs))
-	(t (intern (format nil "pvs_~a" (id expr)) :pvs))))
+	 (makesym "pvs_--"))
+	(t (makesym "pvs_~a" (id expr)))))
 
 (defun pvs2cl-primitive2 (expr) ;;assuming expr is an id but not = or /=
-  (let* ((id (id expr)))
-    (intern (format nil "pvs__~a" id) :pvs)))
+  (makesym "pvs__~a" (id expr)))
 
 ;;;
 ;;; this clearing is now done automatically by untypecheck
@@ -2224,6 +2294,9 @@ if called."
 	  (t (terpri)(terpri) (ppr defn)))))
 
 (defun write-decl-defns (dec output)
+  ;; CM Printing extra code, e.g., from PVSioValue definitions
+  (let ((extra-code (gethash (in-name dec) *pvs2cl-extra-code*)))
+    (dolist (code extra-code) (write-defn code output)))
   (write-defn (definition (in-defn dec)) output)
   (write-defn (definition (in-defn-m dec)) output)
   (write-defn (definition (in-defn-d dec)) output)

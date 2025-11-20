@@ -50,16 +50,16 @@
       (format output
 	  ";;; In general for a definiton foo in an ~
                unparameterized~%;;; theory th, the names are:~
-           ~%;;;    foo  - takes no arguments, returns a unary closure~
-           ~%;;;   _foo  - the nondestructive version of the function~
-           ~%;;;    foo! - the destructive version of the function")
+           ~%;;;   pvs2cl_foo  - takes no arguments, returns a unary closure~
+           ~%;;;   pvs2cl__foo  - the nondestructive version of the function~
+           ~%;;;   pvs2cl_foo! - the destructive version of the function")
       (format output
 	  ";;; If the definition appears in a parameterized theory th, ~
                additional functions are generated ~%;;; that take arguments ~
                corresponding to the theory parameters, take names are:~
-           ~%;;;    th_foo  - takes no arguments, returns a unary closure~
-           ~%;;;   _th_foo  - the nondestructive version of the function~
-           ~%;;;    th_foo! - the destructive version of the function")
+           ~%;;;   pvs2cl_th_foo  - takes no arguments, returns a unary closure~
+           ~%;;;   pvs2cl__th_foo  - the nondestructive version of the function~
+           ~%;;;   pvs2cl_th_foo! - the destructive version of the function")
       (format output
 	  "~%;;; Function names must be unique, so a number may be appended, ~
             and the type~%;;; is included for functions associated with ~

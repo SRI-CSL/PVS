@@ -373,7 +373,7 @@ to a directory in the PVS Library Path"
 
 (defun is-tcc-goal? (&optional (ps *ps*))
   "Determines if PS is a goal generated from a TCC. PS default value is the current proofstate."
-  (typep *ps* 'tcc-proofstate))
+  (typep ps 'tcc-proofstate))
 
 ;; If l is not a list put it into a list
 (defun enlist-it (l)
@@ -1065,9 +1065,8 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 ;; Return pair of current day and time in format (dd-mm-yyyy.hh:mm:ss)
 (defun now-dd-mm-yyyy ()
   (multiple-value-bind
-      (second minute hour date month year day-of-week dst-p tz)
+      (second minute hour date month year)
       (get-decoded-time)
-    (declare (ignore dst-p))
     (cons (format nil "~2,'0d-~2,'0d-~d" 
 		  date
 		  month
@@ -3161,10 +3160,10 @@ quantifier, if provided."
      (groundeval-error (condition) (unless ,quiet (format ,error-stream "~%[groundeval-error] ~a" condition)))
      (cl2pvs-error     (condition) (unless ,quiet (format ,error-stream "~%[cl2pvs-error] ~a" condition)))
      (pvsio-inprover   (condition) (unless ,quiet (format ,error-stream "~%[pvsio-inprover] ~a" condition)))
-     (pvsio-error      (condition) (unless ,quiet (format ,error-stream "~%[pvsio-error] ~a" condition)))
      (pvsio-break      (condition) (unless ,quiet (format ,error-stream "~%[pvsio-break] ~a" condition)))
      (pvsio-return     (condition) (unless ,quiet (format ,error-stream "~%[pvsio-return] ~a" condition)))
      (pvsio-exit       (condition) (declare (ignore condition)) (unless ,quiet (format ,error-stream "~%[pvsio-exit]")))
+     (pvsio-error      (condition) (unless ,quiet (format ,error-stream "~a" condition)))
      (pvsio-exception  (condition) (unless ,quiet (format ,error-stream "~a" condition)))))
 
 ;; Evaluates ground expression expr.
@@ -3440,10 +3439,10 @@ when the list of FNUMS is over. Options are as in eval-formula."
   `(suppress-out-scope-strat-quoted ',stratnames))
 
 ;; Suppress all printing
-(setq suppress-all (suppress-but))
+(defparameter suppress-all (suppress-but))
 
 ;; Suppress no printing
-(setq suppress-none (suppress-from))
+(defparameter suppress-none (suppress-from))
 
 ;; Function on an association list of tags that is used to suppress the actions of extra-debug-print
 ;; and extra-debug-break

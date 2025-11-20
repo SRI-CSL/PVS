@@ -378,7 +378,7 @@
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"
   (cond ((eq x y) t)
         ((and (symbolp x) (symbolp y)) nil)
-        ((characterp x) (and (characterp y) (char-equal x y)))
+        ((characterp x) (and (characterp y) (char= x y)))
 	((stringp x) (and (stringp y)(string= x y)))
         ((numberp x) (and (numberp y) (= x y)))
         ((consp x)

@@ -1,10 +1,10 @@
 % PVSio support theories
 
-%% stdpvs 
-%% Basic language definitions
-
 %% stdlang.pvs
 %% In PVS-8.0, stdlang theory was integrated into stdpvs
+
+%% stdpvs
+%% Basic language definitions
 
 stdpvs : THEORY
 BEGIN
@@ -33,24 +33,31 @@ BEGIN
   format[T:TYPE](s:string,t:T): MACRO string =
     format_lisp[T](s,t)
 
-%% Throw a PVSio error with a message provided by the user
-%% NOTE: PVSio errors, in contrast to PVSio exceptions, cannot be programatically caught
-  error[T:TYPE+](mssg:string):T 
+  format(s:string) : MACRO string =
+    format[Dummy](s,dummy)
 
-%% Exit the current evaluation and return to PVSio
+  %% Throw a PVSio error with a message provided by the user.
+  %% PVSio errors, in contrast to PVSio exceptions, cannot be
+  %% programatically caught
+  error_lisp[T:TYPE+](mssg:string):T
+
+  error[T:TYPE+](mssg:string): MACRO T =
+    error_lisp(mssg)
+
+  %% Exit the current evaluation and return to PVSio
   exit[T:TYPE+] : T
 
-%% last_iteration breaks a loop with a given value
+  %% last_iteration breaks a loop with a given value
   last_iteration[T:TYPE](t:T):T
 
   return[T:TYPE](t:T):T 
 
-%% Loops
+  %% Loops
   loop_lift[T:TYPE+](f:[Dummy->void]): T
 
   loop[T:TYPE+](s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
 
-%% While loops
+  %% While loops
   break : MACRO void = last_iteration(skip)
 
   while(b:bool,s:void) : MACRO void =
@@ -59,320 +66,128 @@ BEGIN
   for(si:void,b:bool,sinc,s:void): MACRO void =
     si & while(b,s & sinc)
 
-%% Used for untyped lisp attachments
+  %% Used for untyped lisp attachments
   Lisp_ : TYPE+  
 
-  Lisp[T:TYPE+] : TYPE+  %% Used when lisp attachments need the type
+  %% Used when lisp attachments need the type
+  Lisp[T:TYPE+] : TYPE+
 
-  to_lisp[T:TYPE+](t:T) : Lisp[T]  % To PVS-typed lisp
-  
-  to_lisp_[T:TYPE](t:T) : Lisp_ % To untyped lisp
+  %% To PVS-typed lisp
+  to_lisp[T:TYPE+](t:T) : Lisp[T]
 
-  %% {| e |} makes a lisp representation of the PVS expression e suitable as input to format's directives.
+  %% To untyped lisp
+  to_lisp_[T:TYPE](t:T) : Lisp_
+
+  %% {| e |} makes a lisp representation of the PVS expression e suitable as
+  %% input to format's directives.
   %% {| a1,..,an |} becomes a1 ... an parameters to format
-  %% {| (: a1,..,an :) |} becomes a list to format's iterative directive ~{ ... ~}
-  %% If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if e is, respectively,
-  %% FALSE, the empty string, undef, or None. Otherwise, it returns its value. So, this makes {| e |}
-  %% suitable as input to the fomat's conditional directive ~@[ ... ~]
+  %% {| (: a1,..,an :) |} becomes a list to format's iterative directive ~{...~}
+  %% If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if
+  %% e is, respectively, FALSE, the empty string, undef, or None. Otherwise,
+  %% it returns its value. So, this makes {| e |} suitable as input to the
+  %% fomat's conditional directive ~@[...~]
 
   {||}[T:TYPE+](t:T) : Lisp[T] = to_lisp(t)
 
   unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
 
-  % Evaluate t, returning its value. The cleanup code will be evaluated if control leaves t.
+  %% Evaluate t, returning its value. The cleanup code will be evaluated if
+  %% control leaves t.
   unwind_protect[T:TYPE](t:T,cleanup:void) : MACRO T =
     unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
 
   type_of_domain_lisp[T:TYPE](f:[T->void]): string
 
-  %% Return string representing the type of t (t may be an uninterpreted constant)
+  %% Return string representing the type of t (t may be an uninterpreted
+  %% constant)
   typeof[T:TYPE](t:T) : MACRO string =
     type_of_domain_lisp[T](dummy_fun)
 
+  %% Functionally PVSioValue[T] is the same as T. Computationally, in the
+  %% following constant declaration, <expr> is evaluated only once and assigned
+  %% to <name> at compilation time
+  %%   <name> : PVSioValue[T] = <expr>
+  PVSioValue[T:TYPE] : TYPE = T
+
 END stdpvs
 
-
-%% stdexc.pvs
-%% Definition of exception type
-%% NOTE: PVSio exceptions can be programatically caught
-
-stdexc[ExceptionType:TYPE] : THEORY
-BEGIN
-
-  ExceptionTag : DATATYPE
-  BEGIN
-    NewExceptionTag(qid:list[string]) : ExceptionTag?
-  END ExceptionTag
-
-  MakeExceptionTag(id:string) : ExceptionTag =
-    NewExceptionTag((: id :))
-
-  % For backward compatibility, strings are converted to ExceptionTags
-  CONVERSION MakeExceptionTag
-
-  Exception : TYPE = [#
-    tag       : ExceptionTag,
-    formatter : [ExceptionType->string]
-  #]
-
-  % For backward compatibility, ExceptionTags are converted to root Exceptions
-
-  tag2exception(tag:ExceptionTag) : MACRO Exception =
-    (# tag := tag,
-       formatter := LAMBDA(t:ExceptionType):format("~@[~a~]",t) #)
-
-  CONVERSION tag2exception
-
-  mk_exception_id(id:string) : MACRO Exception = MakeExceptionTag(id)
-
-  CONVERSION mk_exception_id
-
-  mk_exception_idmssg(id:string, mssg:string) : MACRO Exception =
-    (# tag := MakeExceptionTag(id),
-       formatter := LAMBDA(t:ExceptionType):mssg #)
-
-  CONVERSION mk_exception_idmssg
-
-  mk_exception(id:string,
-               fmter:[ExceptionType->string]) : MACRO Exception =
-    (# tag := MakeExceptionTag(id),
-       formatter := fmter #)
-
-  CONVERSION mk_exception
-
-  ;<<(exc:Exception,id:string) : MACRO Exception =
-    exc WITH [ `tag := NewExceptionTag(append(qid(exc`tag),(: id :))) ]
-
-  ;<<(exc:Exception,idmssg:[string,string]) : MACRO Exception =
-    LET (id,mssg) = idmssg IN
-    exc WITH [ `tag := NewExceptionTag(append(qid(exc`tag),(: id :))),
-               `formatter := LAMBDA(t:ExceptionType):mssg ]
-
-  ;<<(exc:Exception,idfmtr:[string,[ExceptionType->string]]) : MACRO Exception =
-    LET (id,fmtr) = idfmtr IN
-    exc WITH [ `tag := NewExceptionTag(append(qid(exc`tag),(: id :))),
-               `formatter := fmtr ]
-
-  % NOTE: Exceptions can be created as follows.
-  % 1. Using an id, e.g.,
-  %      MyExc1   : Exception[T] = "MyExc1"
-  %    In this case, the qualified name is "MyExc1" and the formatter is the default one
-  % 2. Using an id and a formatter, e.g.,
-  %      MyExc2 : Exception[T] = ("MyExc2", LAMBDA(t:T): <str>)
-  %    In this case, the qualified name is "MyExc2" and the formatter is LAMBDA(t:T):<str>
-  % 3. Using an already defined exception and a new id, e.g.,
-  %      MyExc3 : Exception[T] = MyExc2 << "MyExc3"
-  %    In this case, the qualified name is "MyExc2::MyExc3" and the formmater is the one of MyExc2
-  % 4. Using an arelady defined exception, a new id, and a new formmater, e.g.,
-  %      MyExc4 : Exception[T] = MyExc2 << ("MyExc4", LAMBDA(t:T): <str>)
-  %    In this case, the qualified name is "MyExc2::MyExc4" and the formmater is the one
-  %    provided by the user.
-  % By convention, the id should be the same as the name of the variable.
-
-END stdexc
-
-stdexc_tags : THEORY
-BEGIN
-
-  % Exceptions are hierarchical and they can be caught through the hierarchy
-
-  % Mutable Exception
-  UndefinedMutableVariable : Exception[string] =
-    ("UndefinedMutableVariable",
-     LAMBDA(str:string):format("Mutable variable is undefined~@[ (~a)~]", {| str |}))
-
-  % String2PVS Exceptions
-  String2PVS: Exception[string] = "String2PVS"
-
-  NotALiteral: Exception[string] = "NotALiteral"
-
-  NotABoolean: Exception[string] = String2PVS <<
-    ("NotABoolean",
-     LAMBDA(str:string):format("String ~s doesn't represent a PVS Boolean",str))
-
-  NotARealNumber: Exception[string] = String2PVS <<
-    ("NotARealNumber",
-     LAMBDA(str:string):format("String ~s doesn't represent a PVS real number",str))
-
-  NotAnInteger: Exception[string] = String2PVS <<
-    ("NotAnInteger",
-     LAMBDA(str:string):format("String ~s doesn't represent a PVS integer",str))
-
-  String2PVSNumberExceptions : list[Exception[string]] =
-    (: NotARealNumber, NotAnInteger :)
-
-  % PVS2String Exceptions
-
-  PVS2String: Exception[string] = "PVS2String"
-
-  % I/O Exceptions
-  IOException: Exception[string] = "IOException"
-
-  ReadPVS : Exception[string] = IOException << "ReadPVS"
-
-  FileNotFound: Exception[string] = IOException <<
-    ("FileNotFound",
-     LAMBDA(str:string):format("File not found (~a)",str))
-
-  FileAlreadyExists: Exception[string] = IOException <<
-    ("FileAlreadyExists",
-     LAMBDA(str:string):format("File already exists (~a)",str))
-     
-  ClosedStream: Exception[string] = IOException <<
-    ("ClosedStream",
-     LAMBDA(str:string):format("File is closed~@[ (~a)~]", {| str |}))
-
-  EndOfFile: Exception[string] = IOException <<
-    ("EndOfFile",
-     LAMBDA(str:string):format("Reached end of file~@[ (~a)~]", {| str |}))
-
-  SimpleExceptionType : TYPE = Lisp[void]
-
-  SimpleExceptionVal : SimpleExceptionType = {| fail |}
-
-  SimpleException : TYPE = Exception[SimpleExceptionType]
-
-  PVSioException : SimpleException = (#
-    tag := NewExceptionTag[SimpleExceptionType](null),
-    formatter := LAMBDA(t:SimpleExceptionType):""
-  #)
-
-END stdexc_tags
-
-%% stdcatch.pvs
-%% Definition of catch and throw 
-
-stdcatch[ResultType:TYPE+,ExceptionType:TYPE] : THEORY
-BEGIN
-
-  catch_lift(exctag:ExceptionTag[ExceptionType],
-             result:[Dummy->ResultType],
-             handler:[ExceptionType->ResultType]) : ResultType
-
-  % Catch with a handler
-  catch(exc:Exception[ExceptionType],
-        result:ResultType,
-        handler:[ExceptionType->ResultType]) : MACRO ResultType =
-    catch_lift(exc`tag,LAMBDA(d:Dummy):result,handler)
-
-  % Catch with an exceptional result (exc_result)
-  catch(exc:Exception[ExceptionType],
-        result,exc_result:ResultType): MACRO ResultType =
-    catch(exc,result,LAMBDA(val:ExceptionType):exc_result)
-
-  catch_list_lift(l:list[Exception[ExceptionType]],
-                  f1:[Dummy->ResultType],
-                  f2:[ExceptionType->ResultType]) : RECURSIVE ResultType =
-    CASES l OF
-      null : f1(dummy),
-      cons(exc,rest) : catch_lift(exc`tag,
-                             LAMBDA(d:Dummy):catch_list_lift(rest,f1,f2),
-                             f2)
-    ENDCASES
-    MEASURE l BY <<  
-
-  % Catch list with a handler
-  catch(l:list[Exception[ExceptionType]],
-        result:ResultType,handler:[ExceptionType->ResultType]) : MACRO ResultType =
-    catch_list_lift(l,LAMBDA(d:Dummy):result,handler)
-
-  % Catch list with an exceptional result (exc_result)
-  catch(l:list[Exception[ExceptionType]],
-        result,exc_result:ResultType) : MACRO ResultType =
-    catch(l,result,LAMBDA(val:ExceptionType):exc_result)
-
-  throw_lisp(tag:ExceptionTag[ExceptionType],
-             val:ExceptionType,mssg:string): ResultType
-
-  % Throw exception using default formatter
-  throw(exc:Exception[ExceptionType],val:ExceptionType) : MACRO ResultType =
-    throw_lisp(exc`tag,val,exc`formatter(val))
-
-  % Throw exception with specific message
-  throw(exc:Exception[ExceptionType],
-        val:ExceptionType,mssg:string): MACRO ResultType =
-    throw_lisp(exc`tag,val,mssg)
-
-END stdcatch
-
 %% stdprog.pvs
-%% Imperative aspects such as exceptions and mutables 
+%% Imperative aspects such as mutables and global variables
 
 stdprog[T:TYPE+] : THEORY
 BEGIN
 
-  % Catch any PVSioException using an exceptional result (exc_result)
-  catch(result,exc_result:T): MACRO T =
-    catch(PVSioException,result,exc_result)
-
-  % Throw a simple PVSioException with a specific message
-  throw(mssg:string): MACRO T = throw(PVSioException,SimpleExceptionVal,mssg)
-
-  throw(exc:SimpleException,mssg:string) : MACRO T =
-    throw(exc,SimpleExceptionVal,mssg)
-
-  throw(exc:SimpleException) : MACRO T =
-    throw(exc,"")
-
-% Mutable data
-
+  %% Mutable data
   Mutable : TYPE+
 
-  % Create a mutable variable and sets it to given value
-  ref(t:T) : Mutable
+  %% Create a mutable variable and sets it to given value
+  ref(t:T): Mutable
 
-  % Create a new mutable variable with an undefined value
-  new      : Mutable 
+  %% Create a new mutable variable with an undefined value
+  new: Mutable
 
-  % Set mutable variable to undefined
-  reset(v:Mutable) : void
+  %% Set mutable variable to undefined
+  reset(v:Mutable): void
 
-  % Return TRUE if mutable variable is undefined"
-  undef(v:Mutable)    : bool
+  %% Return TRUE if mutable variable is undefined"
+  undef(v:Mutable): bool
 
-  undefined?(v:Mutable) : MACRO bool =
+  undefined?(v:Mutable): MACRO bool =
     undef(v)
 
-  defined?(v:Mutable) : MACRO bool =
+  defined?(v:Mutable): MACRO bool =
     NOT undef(v)
 
-  val_lisp(v:Mutable) : T
+  val_lisp(v:Mutable): T
 
-  % Return value of mutable variable.
-  % Throw exception UndefinedMutableVariable when undefined?(v)"
-  val(v:Mutable): T =
-    val_lisp(v)
+  %% Return value of mutable variable.
+  %% Throw exception UndefinedMutableVariable when undefined?(v)"
+  val(v:Mutable): T = val_lisp(v)
 
-  % Set mutable variable gvar to given value
+  %% Set mutable variable gvar to given value
   def(v:Mutable,t:T) : T = t
 
-  set(v:Mutable,t:T) : void = 
+  set(v:Mutable,t:T) : void =
     LET nt = def(v,t) IN
     skip
 
-  %% Mutable variables can be used as stacks, where val is the top of the stack.
-  %% Stack is empty when undef is true
-  
+%% Mutable variables can be used as stacks, where val is the top of the stack.
+%% Stack is empty when undef is true
+
   push_lisp(v:(defined?),t:T) : void
 
-  % Push value to the top of the mutable variable and skips
-  push(v:Mutable,t:T) : MACRO void =
+  %% Push value to the top of the mutable variable and skips
+  push_val(v:Mutable,t:T) : MACRO void =
     IF undef(v) THEN set(v,t)
     ELSE push_lisp(v,t)
     ENDIF
 
   pop_lisp(v:(defined?)) : void
 
-  % Pop value of the mutable variable and fails silently when mutable variable is undefined
-  pop(v:Mutable) : MACRO void =
+  %% Pop value of the mutable variable and fails silently when mutable variable
+  %% is undefined
+  pop_val(v:Mutable) : MACRO void =
     IF undef(v) THEN fail
     ELSE pop_lisp(v)
     ENDIF
 
+  %% Top value with a default value if Mutable is undef
+  top_val(v:Mutable,default:T) : T =
+    IF undef(v) THEN default
+    ELSE val(v)
+    ENDIF
+
   CONVERSION val
 
-  % Global uninitilized variables
-  Global : TYPE+ = Mutable
+  %% Global mutable variables
+  Global : TYPE+ = PVSioValue[Mutable]
+
+  %% Return name of Global variable. Issue an error if parameter is not
+  %% a global variable.
+  name_of(g:Global): string
+
+  %% Return TRUE iff mutable is a Global variable
+  global?(m:Mutable): bool
 
 END stdprog
 
@@ -382,7 +197,7 @@ END stdprog
 stdglobal[T:TYPE,t:T] : THEORY
 BEGIN
 
-  Global : TYPE+ = Mutable[T]
+  Global : TYPE+ = PVSioValue[Mutable[T]]
 
 END stdglobal
 
@@ -395,8 +210,8 @@ BEGIN
   save_lift(fp:[Dummy->P],gv:Mutable[T],val:T):P =
     unwind_protect(fp(dummy),set(gv,val))
 
-  %% Save mutable variable gv of type T and restore its value after p of type P is evaluated,
-  %% even if control leaves p, e.g., due to an exception
+  %% Save mutable variable gv of type T and restore its value after p of type
+  %% P is evaluated, even if control leaves p, e.g., due to an exception
   with_mutable(gv:Mutable[T],p:P) : MACRO P =
     IF undef(gv) THEN
       unwind_protect(p,reset(gv))
@@ -404,12 +219,237 @@ BEGIN
       save_lift(LAMBDA(dummy:Dummy):p,gv,val(gv))
     ENDIF
 
-  %% Set mutable variable gv to t and restore its value after p of type P is evaluated,
-  %% even if control leaves p, e.g., due to an exception
+  %% Set mutable variable gv to t and restore its value after p of type P is
+  %% evaluated, even if control leaves p, e.g., due to an exception
   with_mutable(gv:Mutable[T],t:T,p:P) : MACRO P =
    with_mutable(gv,prog(set(gv,t),p))
- 
+
 END stdmutable
+
+%% stdexc.pvs
+%% Definition of exception type
+%% For usage see:
+%% https://github.com/SRI-CSL/PVS/tree/master/src/PVSio#exceptions
+
+stdexc[ExceptionType:TYPE] : THEORY
+BEGIN
+
+  Formatter : DATATYPE
+  BEGIN
+    NoFmter : nofmter?
+    Fmter(fmter:[ExceptionType->string]) : fmter?
+  END Formatter
+
+  Exception_ : TYPE = [#
+    root_      : list[string],
+    formatter_ : Formatter
+  #]
+
+  mk_corexc_ : Exception_ = (#
+    root_ := null,
+    formatter_ := NoFmter
+  #)
+
+  CoreException : TYPE = Global[Exception_,mk_corexc_]
+
+  PVSioException : CoreException
+
+  mk_exc_ : Exception_ = (#
+    root_ := (: name_of(PVSioException) :),
+    formatter_ := NoFmter
+  #)
+
+  Exception : TYPE = Global[Exception_,mk_exc_]
+
+  qid(exc:Exception) : list[string] =
+    IF global?(exc) AND defined?(exc) THEN
+      append(root_(val(exc)),(: name_of(exc) :))
+    ELSE error("Only exceptions declared as constants can be thrown or caught")
+    ENDIF
+
+  say(exc:Exception)(t:ExceptionType) : MACRO string =
+    IF nofmter?(val(exc)`formatter_) THEN
+      format("~@[~a~]",t)
+    ELSE
+      fmter(val(exc)`formatter_)(t)
+    ENDIF
+
+  make_exception(exc:Exception) : Exception =
+    ref[Exception_]((#
+      root_ := qid(exc),
+      formatter_ := formatter_(val(exc))
+    #))
+
+  make_exception(exc:Exception,fmter:[ExceptionType->string]) : Exception =
+    ref[Exception_]((#
+      root_ := qid(exc),
+      formatter_ := Fmter(fmter)
+    #))
+
+  str2fmter(mssg:string)(t:ExceptionType):string =
+    mssg
+
+  make_exception(exc:Exception,mssg:string) : Exception =
+    make_exception(exc,str2fmter(mssg))
+
+  mk_exc_fmter(fmter:[ExceptionType->string]) : MACRO Exception =
+    make_exception(PVSioException,fmter)
+
+  mk_exc_str(mssg:string) : MACRO Exception =
+    mk_exc_fmter(str2fmter(mssg))
+
+  CONVERSION mk_exc_str
+
+  make_exception(fmter:[ExceptionType->string]) : Exception =
+    mk_exc_fmter(fmter)
+
+  make_exception(mssg:string) : Exception =
+    mk_exc_str(mssg)
+
+  %% The following definition forces the type ExceptionType to be
+  %% relevant for the list of strings. This is used to guarantee
+  %% type correctness of the throw/catch mechanism.
+  ExceptionTag : DATATYPE
+  BEGIN
+    NewExceptionTag(qid:list[string]) : ExceptionTag?
+  END ExceptionTag
+
+  tag(exc:Exception) : ExceptionTag =
+    NewExceptionTag(qid(exc))
+
+END stdexc
+
+stdexceptions : THEORY
+BEGIN
+
+  %% A Simple exeption is an exception that doesn't return a value
+
+  SimpleExceptionType : TYPE = Lisp[void]
+
+  SimpleExceptionVal : SimpleExceptionType = {| fail |}
+
+  SimpleException : TYPE = Exception[SimpleExceptionType]
+
+  PVSioSimpleException : SimpleException =
+    PVSioException[SimpleExceptionType]
+
+  %% Exceptions are hierarchical and they can be caught through the hierarchy
+
+  %% Conversion Exceptions
+  String2PVS: Exception[string]
+
+  NotABoolean: Exception[string] = make_exception(String2PVS,
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS Boolean",str))
+
+  NotANumber : Exception[string] = make_exception(String2PVS,
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS number",str))
+
+  NotARealNumber: Exception[string] = make_exception(NotANumber,
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS real number",str))
+
+  NotAnInteger: Exception[string] = make_exception(NotANumber,
+     LAMBDA(str:string):format("String ~s doesn't represent a PVS integer",str))
+
+  PVS2String: Exception[string] = make_exception(LAMBDA(str:string):
+    format("PVS Object ~a doesn't have literal representation",str))
+
+  %% I/O Exceptions
+  IOException: Exception[string]
+
+  ReadPVS : Exception[string] = make_exception(IOException)
+
+  FileNotFound: Exception[string] = make_exception(IOException,
+     LAMBDA(str:string):format("File not found (~a)",str))
+
+  FileAlreadyExists: Exception[string] = make_exception(IOException,
+     LAMBDA(str:string):format("File already exists (~a)",str))
+     
+  ClosedStream: Exception[string] = make_exception(IOException,
+     LAMBDA(str:string):format("File is closed~@[ (~a)~]", {| str |}))
+
+  EndOfFile: Exception[string] = make_exception(IOException,
+     LAMBDA(str:string):format("Reached end of file~@[ (~a)~]", {| str |}))
+
+END stdexceptions
+
+%% stdcatch.pvs
+%% Definition of catch and throw 
+
+stdcatch[ResultType:TYPE+,ExceptionType:TYPE] : THEORY
+BEGIN
+
+  catch_lift(exctag:ExceptionTag[ExceptionType],
+             result:[Dummy->ResultType],
+             handler:[ExceptionType->ResultType]) : ResultType
+
+  %% Catch with a handler
+  catch(exc:Exception[ExceptionType],
+        result:ResultType,
+        handler:[ExceptionType->ResultType]) : MACRO ResultType =
+    catch_lift(tag(exc),LAMBDA(d:Dummy):result,handler)
+
+  %% Catch with an exceptional result (exc_result)
+  catch(exc:Exception[ExceptionType],
+        result,exc_result:ResultType): MACRO ResultType =
+    catch(exc,result,LAMBDA(val:ExceptionType):exc_result)
+
+  catch_list_lift(l:list[Exception[ExceptionType]],
+                  f1:[Dummy->ResultType],
+                  f2:[ExceptionType->ResultType]) : RECURSIVE ResultType =
+    CASES l OF
+      null : f1(dummy),
+      cons(exc,rest) : catch_lift(tag(exc),
+                             LAMBDA(d:Dummy):catch_list_lift(rest,f1,f2),
+                             f2)
+    ENDCASES
+    MEASURE l BY <<  
+
+  %% Catch list with a handler
+  catch(l:list[Exception[ExceptionType]],
+        result:ResultType,
+	handler:[ExceptionType->ResultType]) : MACRO ResultType =
+    catch_list_lift(l,LAMBDA(d:Dummy):result,handler)
+
+  %% Catch list with an exceptional result (exc_result)
+  catch(l:list[Exception[ExceptionType]],
+        result,exc_result:ResultType) : MACRO ResultType =
+    catch(l,result,LAMBDA(val:ExceptionType):exc_result)
+
+  throw_lisp(tag:ExceptionTag[ExceptionType],
+             val:ExceptionType,mssg:string): ResultType
+
+  %% Throw exception using default formatter
+  throw(exc:Exception[ExceptionType],val:ExceptionType) : MACRO ResultType =
+    throw_lisp(tag(exc),val,say(exc)(val))
+
+  %% Throw exception with specific message
+  throw(exc:Exception[ExceptionType],
+        val:ExceptionType,mssg:string): MACRO ResultType =
+    throw_lisp(tag(exc),val,mssg)
+
+END stdcatch
+
+%% stdsimplexc.pvs
+%% Definition of catch and throw for PVSioSimpleException
+
+stdsimplexc[ResultType:TYPE+] : THEORY
+BEGIN
+
+  %% Catch any PVSioException using an exceptional result (exc_result)
+  catch(result,exc_result:ResultType): MACRO ResultType =
+    catch(PVSioSimpleException,result,exc_result)
+
+  %% Throw a simple PVSioException with a specific message
+  throw(mssg:string): MACRO ResultType =
+    throw(PVSioSimpleException,SimpleExceptionVal,mssg)
+
+  throw(exc:SimpleException,mssg:string) : MACRO ResultType =
+    throw(exc,SimpleExceptionVal,mssg)
+
+  throw(exc:SimpleException): MACRO ResultType =
+    throw(exc,"")
+
+END stdsimplexc
 
 %% stdmath.pvs
 %% PVSio math library 
@@ -430,47 +470,65 @@ BEGIN
   %% ln, exp, e:lnexp@ln_exp
   %% sinh, cosh, tanh: lnexp@hyperbolic
 
-  % Rounding Modes
-  RoundingMode : TYPE = {TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty}
+  %% Rounding Modes
+  RoundingMode : TYPE = {TowardsZero,
+			 TowardsInfnty,
+			 TowardsNegInfnty,
+			 TowardsPosInfnty}
+
   Truncate     : MACRO RoundingMode = TowardsZero
   AwayFromZero : MACRO RoundingMode = TowardsInfnty
   Ceiling      : MACRO RoundingMode = TowardsPosInfnty
   Floor        : MACRO RoundingMode = TowardsNegInfnty
 
-  % set(PRECISION,<precision>) sets default precision to 10^(-val(PRECISION)) for computations and printing
-  %% This global variable is used in pp.lisp
-  PRECISION : Global[nat,6] 
+  %% set(ROUNDING,<mode>) sets default rounding mode for computation
+  %% and printing
+  ROUNDING  : Global[RoundingMode] = ref(TowardsZero)
 
-  % set(ROUNDING,<mode>) sets default rounding mode for computation and printing
-  ROUNDING  : Global[RoundingMode,TowardsZero]
+  %% set(PRECISION,<precision>) sets default precision to 10^(-val(PRECISION))
+  %% for computations and printing.
+  %% This global variable corresponds to *pvsio-precision* in in pp.lisp and
+  %% has the initial value 6
+  PRECISION : Global[nat]
 
-  %% set(PP_RATIONALS,<bool>) sets default for pretty printing rational numbers in PVSio
-  %% This global variable is used in pp.lisp
-  PP_RATIONALS : Global[bool,TRUE]
+  %% set(PP_RATIONALS,<bool>) sets default for pretty printing rational
+  %% numbers in PVSio.
+  %% This global variable corresponds to *pvsio-pp_rationals* in pp.lisp and
+  %% has the initial value t
+  PP_RATIONALS : Global[bool]
 
-  RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
-  NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
+  RANDOM_lisp : {y:nnreal | y <= 1}
+  NRANDOM_lisp(n:posnat) : {y:nat | y < n}
+
+  RANDOM            : MACRO nnreal = RANDOM_lisp
+  NRANDOM(n:posnat) : MACRO nat = NRANDOM_lisp(n)
   BRANDOM           : bool = (NRANDOM(2) = 0)
 
-  % Return a rational number that is close to the real number (identity when input is rational)
-  rational(x:real) : rat
+  %% Return a rational number that is close to the real number (identity when
+  %% input is rational)
+  rational_lisp(x:real) : {q:rat | rational?(x) IMPLIES q=x}
+  rational(x:real) : MACRO rat = rational_lisp(x)
 
-  % Return numerator,denominator of rational number
-  rat2numden(r:rat) : {nd:[int,posnat] | LET (num,den) = nd IN r = num/den}
+  %% Return numerator,denominator of rational number
+  rat2numden_lisp(r:rat) : {nd:[int,posnat] | LET (num,den) = nd IN r = num/den}
 
-  % Return numerator of rational number
+  rat2numden(r:rat) : [int,posnat] = rat2numden_lisp(r)
+
+  %% Return numerator of rational number
   numerator(r:rat) : int =
     rat2numden(r)`1
 
-  % Return denominator of rational number
+  %% Return denominator of rational number
   denominator(r:rat): posnat =
     rat2numden(r)`2
 
-  % Compute the decimal precision of a rational number. Return 2 values. The first one is the number of
-  % non-repeating digits. If maxperiod is negative, the second value is the period of the repeating
-  % digits. Computing the period is expensive for rationals with large denominators. Therefore, if
-  % maxperiod is non-negative, the second value is the minimum between the period and maxperiod+1.
-  % In either case, if the second value is 0, the rational has a finite decimal representation.
+  %% Compute the decimal precision of a rational number. Return 2 values.
+  %% The first one is the number of non-repeating digits. If maxperiod is
+  %% negative, the second value is the period of the repeating digits.
+  %% Computing the period is expensive for rationals with large denominators.
+  %% Therefore, if maxperiod is non-negative, the second value is the minimum
+  %% between the period and maxperiod+1. In either case, if the second value
+  %% is 0, the rational has a finite decimal representation.
   decimal_precision(r:rat,maxperiod:int) : [nat,nat] 
 
 END stdmath
@@ -483,41 +541,69 @@ stdstr: THEORY
 BEGIN
 
   StringChar : TYPE = {str:string | length(str) = 1}
-  
-% Print standard table of characters
-  chartable     : void 
 
-  emptystr      : string = ""
-  space         : StringChar = " "
-  newline       : StringChar 
-  tab           : string 
-  singlequote   : StringChar = "'"
-  backquote     : StringChar = "`"
-  spaces(n:nat) : {str : string | length(str)=n} 
-
-% Char from code n
+  %% StringChar from code n
   charcode(n:nat) : StringChar
-  doublequote   : StringChar = charcode(34)
 
-  upcase(s:string): {str: string | length(str)=length(s)}
-  downcase(s:string): {str: string | length(str)=length(s)}
-  capitalize(s:string): {str: string | length(str)=length(s)}
-  
+  %% Print standard table of characters
+  chartable   : void
+
+  emptystr    : string = ""
+  space       : StringChar = " "
+  newline     : StringChar
+  tab         : StringChar
+  singlequote : StringChar = "'"
+  backquote   : StringChar = "`"
+  doublequote : StringChar = charcode(34)
+
+  spaces_lisp(n:nat) : {str: string | length(str)=n}
+  spaces(n:nat) : MACRO string = spaces_lisp(n)
+
+  upcase_lisp(s:string): {str: string | length(str)=length(s)}
+  upcase(s:string): MACRO string = upcase_lisp(s)
+
+  downcase_lisp(s:string): {str: string | length(str)=length(s)}
+  downcase(s:string): MACRO string = downcase_lisp(s)
+
+  capitalize_lisp(s:string): {str: string | length(str)=length(s)}
+  capitalize(s:string): MACRO string = capitalize_lisp(s)
+
   %% Index of leftmost occurrence of s1 in s2 or -1 if s1 doesn't occur in s2
-  strfind(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
+  strfind_lisp(s1,s2:string): {i:int | i >= 0 IMPLIES
+			       (i <= length(s2)-length(s1) AND
+			       FORALL(k:below(length(s1))):get(s1,k) =
+			       get(s2,i+k))}
+
+  strfind(s1,s2:string): MACRO int = strfind_lisp(s1,s2)
 
   %% Index of rightmost occurrence of s1 in s2 or -1 if s1 doesn't occur in s2
-  strfind_from_end(s1,s2:string): {i:int | i <= length(s2)-length(s1)}
+  strfind_from_end_lisp(s1,s2:string): {i:int | i >= 0 IMPLIES
+                                        (i <= length(s2)-length(s1) AND
+					FORALL(k:below(length(s1))):get(s1,k) =
+					get(s2,i+k))}
 
-  %% If i <= j returns substring S[i..j]. Otherwise, returns substring
-  %% S[j..i]. Empty if indices are out of range    
-  %% NOTE: Name changed in PVS-8.0 from substr to substring to avoid clash
-  %% with charstring.substr. stdstr.substr is still available but requires full
-  %% qualification
-  substring(s:string,i,j:int) : string
+  strfind_from_end(s1,s2:string): MACRO int = strfind_from_end_lisp(s1,s2)
 
-  substr(s:string,i,j:int) : string =
-    substring(s,i,j)
+  %% If i <= j returns substring s[i..j]. Otherwise, returns substring s[j..i].
+  %% When 0 <= i < j < length(s), substring(s,i,j) is the same as gen_strings.substr(s,i,j+1)
+  substring_lisp(s:string,i,j:below(length(s))) :
+    {str:string | length(str) = max(i,j)-min(i,j)+1 AND
+		  IF i <= j THEN
+		    FORALL (k:below(length(str))): get(str,k) = get(s,i+k)
+		  ELSE
+		    FORALL (k:below(length(str))): get(str,k) = get(s,i-k)
+		  ENDIF}
+
+  substring_lisp_j : JUDGEMENT
+    substring_lisp(s:string,i,j:below(length(s))) HAS_TYPE
+      {str : string | length(str) > 0}
+
+  %% Returns empty string if i and j are out of range
+  substring(s:string,i,j:int) : string =
+    IF 0 <= i < length(s) AND 0 <= j < length(s) THEN
+      substring_lisp(s,i,j)
+    ELSE emptystr
+    ENDIF
 
   %% Reverse string
   strreverse(s:string) : string =
@@ -526,6 +612,11 @@ BEGIN
       substring(s,length(s)-1,0)
     ENDIF
 
+  strreverse_j : JUDGEMENT
+    strreverse(s:string) HAS_TYPE {str : string | length(str) = length(s) AND
+                                   FORALL (k:below(length(str))):get(str,k) =
+				   get(s,length(s)-1-k)}
+
   %% Return a new string in which all the occurences of part in s
   %% is replaced with replacement
   strreplace(s,part,replacement:string): string
@@ -533,26 +624,30 @@ BEGIN
   %% Split str using separator
   strsplit(str: string, separator: StringChar): list[string]
 
-  %% Convert real number to string decimal representation using given precision, i.e., natural
-  %% number n denoting 10^(-n), rounding mode, i.e, TowardsZero,TowardsInfnty,TowardsNegInfnty,
-  %% TowardsPosInfnty. Display trailing zeros when zeros is set to TRUE
-  rat2decstr_with_zeros(r:rat,precision:nat,rounding:RoundingMode,zeros:bool) : string
+  %% Convert real number to string decimal representation using given precision,
+  %% i.e., natural number n denoting 10^(-n), rounding mode, i.e, TowardsZero,
+  %% TowardsInfnty,TowardsNegInfnty, TowardsPosInfnty. Display trailing zeros
+  %% when zeros is set to TRUE
+  rat2decstr_with_zeros(r:rat,precision:nat,rounding:RoundingMode,zeros:bool) :
+    string
 
   rat2decstr(r:rat,precision:nat,rounding:RoundingMode) : string =
     rat2decstr_with_zeros(r,precision,rounding,FALSE)
 
-  %% Convert rational number to string decimal representation, truncating at precision, and with
-  %% trailing zeros when significant
+  %% Convert rational number to string decimal representation, truncating at
+  %% precision, and with trailing zeros when significant
   rat2decstr(r:rat,precision:nat) : string =
     LET (finp,infp) = decimal_precision(r,precision),
-        prec = IF infp = 0 AND finp <= precision THEN finp ELSE precision ENDIF IN
-    rat2decstr_with_zeros(r,prec,Truncate,TRUE)    
- 
+        prec = IF infp = 0 AND finp <= precision THEN finp ELSE precision ENDIF
+    IN
+      rat2decstr_with_zeros(r,prec,Truncate,TRUE)
+
   rat2decstr(r:rat) : string =
     rat2decstr(r,val(PRECISION))
 
-  %% Convert rational number to string. The rational is printed in decimal representation if the
-  %% representation is finite. Otherwise, it prints its rational form.
+  %% Convert rational number to string. The rational is printed in decimal
+  %% representation if the representation is finite. Otherwise, it prints its
+  %% rational form.
   rat2str(r:rat) : string =
     LET (finp,infp) = decimal_precision(r,0) IN
     IF infp = 0 THEN
@@ -561,26 +656,29 @@ BEGIN
       format("~a",r)
     ENDIF
       
-  %% Pretty-print decimal using overline to indicate repeating digits. Finp is the number of
-  %% non-repeating digits. Truncated indicates that the infinite representation was truncated.
+  %% Pretty-print decimal using overline to indicate repeating digits. Finp is
+  %% the number of non-repeating digits. Truncated indicates that the infinite
+  %% representation was truncated.
   pp_decstr(str:string,finp:nat,truncated:bool) : string 
 
-  %% Pretty prints rational numbers upto precision using overline to indicate repeating digits
-  %% and ellipsis when decimal expansion is truncated.
+  %% Pretty prints rational numbers upto precision using overline to indicate
+  %% repeating digits and ellipsis when decimal expansion is truncated.
   pp_rat(r:rat) : string =
     LET  precision = val(PRECISION),
          (finp,infp) = decimal_precision(r,precision),
-	 str = rat2decstr_with_zeros(r,min(precision,finp+infp),Truncate,TRUE) IN
-    pp_decstr(str,finp,finp+infp > precision)
+	 str = rat2decstr_with_zeros(r,min(precision,finp+infp),Truncate,TRUE)
+    IN
+      pp_decstr(str,finp,finp+infp > precision)
 
-  %% Convert real number r to string using a given precision and rounding, where the precision represents
-  %% the accuracy  10^-precision and rounding mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,
-  %% TowardsPosInfnty.
+  %% Convert real number r to string using a given precision and rounding,
+  %% where the precision represents the accuracy 10^-precision and rounding
+  %% mode is one of TowardsZero,TowardsInfnty,TowardsNegInfnty,TowardsPosInfnty.
   real2decstr(r:real,precision:nat,rounding:RoundingMode) : string =
     LET rat  = rational(r) IN
       rat2decstr(rat,precision,rounding)
 
-  %% Convert real number to string decimal representation using default precision and rounding mode
+  %% Convert real number to string decimal representation using default
+  %% precision and rounding mode
   real2str(r:real) :string =
     real2decstr(r,val(PRECISION),val(ROUNDING))
 
@@ -595,15 +693,18 @@ BEGIN
   tostr(r:real): MACRO string = real2str(r)
   tostr(b:bool): MACRO string = bool2str(b)
 
-  %% String to real. Throw exception NotARealNumber is string doesn't represent a PVS real number
+  %% String to real. Throw exception NotARealNumber is string doesn't
+  %% represent a PVS real number
   str2real(s:string): rat
 
-  %% String to real. Throw exception NotAnInteger if string doesn't represent an integer
+  %% String to real. Throw exception NotAnInteger if string doesn't represent
+  %% an integer
   str2int(s:string) : int
   
   str2bool(s,answer:string):bool = downcase(s) = downcase(answer)
 
-  %% Convert from string to boolean. Throw exception NotABoolean if string doesn't represent a PVS boolean
+  %% Convert from string to boolean. Throw exception NotABoolean if string
+  %% doesn't represent a PVS boolean
   str2boolean(s:string): bool =
     IF str2bool(s,"TRUE")  THEN TRUE
     ELSIF str2bool(s,"FALSE") THEN FALSE
@@ -617,12 +718,15 @@ BEGIN
   int?(s:string):bool
 
   %% String concatenation
-  strconcat(s1:string,s2:string):{ str:string | length(str)=length(s1)+length(s2) } =
-    s1 o s2
+  strconcat_lisp(s1:string,s2:string):
+    { str:string | length(str)=length(s1)+length(s2) AND
+      FORALL(k:below(length(str))) :
+        IF k < length(s1) THEN get(str,k) = get(s1,k)
+	ELSE get(str,k) = get(s2,k-length(s1))
+	ENDIF}
 
-  %% This name is DEPRECATED. Use strconcat instead
-  concat(s1:string,s2:string) : MACRO string =
-    strconcat(s1,s2)
+  strconcat(s1:string,s2:string) : string =
+    strconcat_lisp(s1,s2)
 
   ;+(s1:string,s2:string): MACRO string = strconcat(s1,s2)
   ;+(r:real,s:string): MACRO string = strconcat(tostr(r),s)
@@ -630,27 +734,15 @@ BEGIN
   ;+(b:bool,s:string): MACRO string = strconcat(tostr(b),s)
   ;+(s:string,b:bool): MACRO string = strconcat(s,tostr(b))
 
-  %% Concatenates n-times string s
-  pad(n:nat,s:string): RECURSIVE string = 
-    IF n=0 THEN emptystr
-    ELSE s+pad(n-1,s)
-    ENDIF
-    MEASURE n
-
   %% String comparison, with case sensitivity
   %% = 0 if s1 = s2
   %% < 0 if s1 < s2
   %% > 0 if s1 > s2
-  strcmp(s1,s2:string,sensitive:bool):subrange(-1,1)
+  %% NOTE: strcompare(s1,s2,TRUE) is the same as gen_strings.strcmp(s1,s2)
+  strcompare_lisp(s1,s2:string,sensitive:bool):subrange(-1,1)
 
-  %% NOTE: Name changed in PVS-8.0 from strcmp to strcompare to avoid clash
-  %% with charstring.strcmp. The function stdstr.strcmp is still available but
-  %% requires full qualification
-  strcompare(s1,s2:string): subrange(-1,1) = 
-    strcmp(s1,s2,TRUE)
-
-  strcmp(s1,s2:string) : subrange(-1,1) =
-    strcmp(s2,s2,TRUE)  
+  strcompare(s1,s2:string,sensitive:bool): MACRO int =
+    strcompare_lisp(s1,s2,sensitive)
 
   %% A substring of s2, with all the characters in s1 stripped of
   %% the beginning and end
@@ -676,6 +768,26 @@ BEGIN
   %% the end
   trim_right(s:string):string
 
+  %% Concatenates n-times string s
+  pad(n:nat,s:string): RECURSIVE string =
+    IF n=0 THEN emptystr
+    ELSE s+pad(n-1,s)
+    ENDIF
+    MEASURE n
+
+  pad_j : RECURSIVE JUDGEMENT
+    pad(n:nat,s:string) HAS_TYPE { str: string | length(str) = n*length(s) }
+
+  ;^(s:string,n:nat) : MACRO string = pad(n,s)
+
+  %% Formatting functions
+
+  center(col:nat,s:string):string = format("~"+col+":@<~a~>",s)
+
+  flushleft(col:nat,s:string) :string = format("~"+col+"a",s)
+
+  flushright(col:nat,s:string):string = format("~"+col+"@a",s)
+
   %% Return TRUE if T1 is a subtype of T2 (types are represented using strings).
   %% Uses subtype judgements, but otherwise it's essentially syntactic
   subtypeof?(T1,T2:string) : bool
@@ -690,7 +802,7 @@ BEGIN
   pvs2str[T:TYPE](t:T) : MACRO string =
     pvs2str_lisp[T](t)
 
- END stdstr
+END stdstr
 
 %% stdio.pvs
 %% Input/output operations
@@ -716,50 +828,72 @@ BEGIN
 
 %% Reading
 
-  % Querying from stdin with prompt message
+  %% Querying from stdin with prompt message
   query_token(mssg,s:string): string
   query_word(mssg:string)   : MACRO string = query_token(mssg,emptystr) 
   query_line(mssg:string)   : string
 
-  % Read a real number. Throw exception NotARealNumber if string doesn't represent a PVS real number
+  %% Read a real number. Throw exception NotARealNumber if string doesn't
+  %% represent a PVS real number
   query_real(mssg:string)   : rat
 
-  % Read an integer. Throw exception NotAnInteger if string doesn't represent an integer
+  %% Read an integer. Throw exception NotAnInteger if string doesn't represent
+  %% an integer
   query_int(mssg:string)    : int
 
-  % Read a boolean. Throw exception NotABoolean if string doesn't represent a boolean
+  %% Read a boolean. Throw exception NotABoolean if string doesn't represent
+  %% a boolean
   query_bool(mssg,answer:string):bool = str2bool(query_word(mssg),answer)
 
-  % Reads from stdin
+  %% Reads from stdin
   read_token(s:string): MACRO string = query_token(emptystr,s)
   read_word : MACRO string = query_word(emptystr)
   read_line : MACRO string = query_line(emptystr)
 
-  % Read a real number. Throw exception NotARealNumber if string doesn't represent a PVS real number
-  read_real : MACRO rat    = query_real(emptystr)
+  %% Read a real number. Throw exception NotARealNumber if string doesn't
+  %% represent a PVS real number
+  read_real : MACRO rat = query_real(emptystr)
 
-  % Read an integer. Throw exception NotAnInteger if string doesn't represent an integer
-  read_int  : MACRO int    = query_int(emptystr)
+  %% Read an integer. Throw exception NotAnInteger if string doesn't represent
+  %% an integer
+  read_int  : MACRO int = query_int(emptystr)
 
-  % Read a boolean. Throw exception NotABoolean if string doesn't represent a boolean
-  read_bool(answer:string): MACRO bool   = query_bool(emptystr,answer)
+  %% Read a boolean. Throw exception NotABoolean if string doesn't represent a
+  %% boolean
+  read_bool(answer:string): MACRO bool = query_bool(emptystr,answer)
 
 %% Character Streams
   Stream   : TYPE+ 
   IStream  : TYPE+ FROM Stream
   OStream  : TYPE+ FROM Stream
 
-  fclose(f:Stream)     :void =   %% Close an stream
-    skip
-  fexists(s:string)    :bool     %% true IFF file s exists
-  fopen?(f:Stream)     :bool     %% Open stream?
-  strstream?(f:Stream) :bool     %% String stream?
-  filestream?(f:Stream):bool     %% File stream?
-  sdtstream?(f:Stream) :bool =   %% Standard stream?
+  %% Close an stream
+  fclose(f:Stream) :void = skip
+
+  %% true IFF file s exists
+  fexists(s:string): bool
+
+  %% Open stream?
+  fopen?(f:Stream): bool
+
+  %% String stream?
+  strstream?(f:Stream): bool
+
+  %% File stream?
+  filestream?(f:Stream): bool
+
+  %% Standard stream?
+  sdtstream?(f:Stream): bool =
     NOT (filestream?(f) OR strstream?(f))
-  finput?(f:Stream)    :bool     %% Input stream?
-  foutput?(f:Stream)   :bool     %% Output stream?
-  frename(oldname,newname:string) : string %% Rename file. Return newname
+
+  %% Input stream?
+  finput?(f:Stream): bool
+
+  %% Output stream?
+  foutput?(f:Stream)   :bool
+
+  %% Rename file. Return newname
+  frename(oldname,newname:string) : string
 
 %% Standard I/O Steams
   stdin    : IStream 
@@ -767,13 +901,24 @@ BEGIN
   stderr   : OStream
 
   Mode   : TYPE = {
-    input,  % Open input file stream or throw exception FileNotFound if file doesn't exist
-    output, % Open output file stream or throw exception FileAlreadyExists if file does exist
-    create, % Create output file stream regardless of existence of the file
-    append, % Open output file stream and prepare for writing at end of stream (create file if it doesn't exist)
-    overwrite, % Open output file stream and prepare for writing at beggining of stream (create file if it doesn't exist)
-    rename, % Open output file stream (rename old file as name.bak if file does exist)
-    str     % Open string stream for input or output
+    %% Open input file stream or throw exception FileNotFound if file doesn't
+    %% exist
+    input,
+    %% Open output file stream or throw exception FileAlreadyExists if file
+    %% does exist
+    output,
+    %% Create output file stream regardless of existence of the file
+    create,
+    %% Open output file stream and prepare for writing at end of stream
+    %% (create file if it doesn't exist)
+    append,
+    %% Open output file stream and prepare for writing at beggining of stream
+    %% (create file if it doesn't exist)
+    overwrite,
+    %% Open output file stream (rename old file as name.bak if file does exist)
+    rename,
+    %% Open string stream for input or output
+    str
   }    
  
   input_mode?(m:Mode) : bool =
@@ -799,18 +944,18 @@ BEGIN
       fopenin_lisp(s)
     ENDIF
 
-  % Open a file as an input stream
+  %% Open a file as an input stream
   fopenin(m:(input_mode?),s:string) : IStream = 
     IF m = input THEN fopenin(s)
     ELSE sopenin(s) %% m = str
     ENDIF
 
-  % Close file when done (no matter what)
+  %% Close file when done (no matter what)
   with_openin_file[P:TYPE+](m:(input_mode?),s:string,fp:[IStream->P]): P =
     LET fin = fopenin(m,s) IN
     unwind_protect(fp(fin),fclose(fin))
 
-  % Close file when done (no matter what)
+  %% Close file when done (no matter what)
   with_openin_file[P:TYPE+](s:string,fp:[IStream->P]): MACRO P =
     with_openin_file(input,s,fp)
 
@@ -820,7 +965,7 @@ BEGIN
       fopenout_lisp(s,0)
     ENDIF
 
-  % Open a file as an oput stream
+  %% Open a file as an oput stream
   fopenout(m:(output_mode?),s:string): OStream =
     IF m = output THEN fopenout(s)
     ELSIF m = create THEN fopenout_lisp(s,1)
@@ -829,17 +974,17 @@ BEGIN
     ELSIF m = overwrite THEN
       IF fexists(s) THEN fopenout_lisp(s,3) ELSE fopenout_lisp(s,1) ENDIF
     ELSIF m = rename THEN
-      LET name = IF fexists(s) THEN frename(s,format("~a.bak",s)) ELSE s ENDIF IN
-        fopenout_lisp(s,1)
-    ELSE sopenout(s) %% m = str
+      LET name = IF fexists(s) THEN frename(s,format("~a.bak",s)) ELSE s ENDIF
+      IN fopenout_lisp(s,1)
+    ELSE sopenout(s) % m = str
     ENDIF
 
-  % Close file when done (no matter what)
+  %% Close file when done (no matter what)
   with_openout_file[P:TYPE+](m:(output_mode?),s:string,fp:[OStream->P]): P =
     LET fout = fopenout(m,s) IN
     unwind_protect(fp(fout),fclose(fout))
 
-  % Close file when done (no matter what)
+  %% Close file when done (no matter what)
   with_openout_file[P:TYPE+](s:string,fp:[OStream->P]): MACRO P =
     with_openout_file(output,s,fp)
 
@@ -851,7 +996,7 @@ BEGIN
   fsetpos_lisp(f:Stream,n:nat)   :void   
   fprint_lisp(f:OStream,s:string):void = skip
 
-  % Get the full name of a file string
+  %% Get the full name of a file string
   fname(f:Stream):string =
     if filestream?(f) then 
       fname_lisp(f)
@@ -859,13 +1004,15 @@ BEGIN
       emptystr
     endif
 
-  % Get string from an *output string* stream. Throw exception ClosedStream when stream is not open.
+  %% Get string from an *output string* stream. Throw exception ClosedStream
+  %% when stream is not open.
   fgetstr(f:OStream):string =
     if fopen?(f) then fgetstr_lisp(f)
     else throw(ClosedStream,fname(f))
     endif
 
-  %% true IFF f has reached EOF. Throw exception ClosedStream when stream is not open.
+  %% true IFF f has reached EOF. Throw exception ClosedStream when stream is
+  %% not open.
   eof?(f:IStream):bool =
     if fopen?(f) then eof_lisp(f)
     else throw(ClosedStream,fname(f))
@@ -883,7 +1030,7 @@ BEGIN
     else throw(ClosedStream,fname(f))
     endif
 
-  % Print to a stream. Throw exception ClosedStream when stream is not open.
+  %% Print to a stream. Throw exception ClosedStream when stream is not open.
   fprint(f:OStream,s:string):void = 
     if fopen?(f) then fprint_lisp(f,s)
     else throw(ClosedStream,fname(f))
@@ -892,78 +1039,86 @@ BEGIN
   fprint(f:OStream,r:real)    : MACRO void = fprint(f,r+emptystr)
   fprint(f:OStream,b:bool)    : MACRO void = fprint(f,b+emptystr)
   
-  %% Set current positions. Throw exception ClosedStream when stream is not open.
+  %% Set current positions. Throw exception ClosedStream when stream is not
+  %% open.
   fsetpos(f:Stream,n:nat):void =
     if fopen?(f) then fsetpos_lisp(f,n)
     else throw(ClosedStream,fname(f))
     endif
 
-  % Println to a stream
+  %% Println to a stream
   fprintln(f:OStream,s:string): MACRO void = fprint(f,s+newline)
   fprintln(f:OStream,r:real)  : MACRO void = fprint(f,r+newline)
   fprintln(f:OStream,b:bool)  : MACRO void = fprint(f,b+newline)
 
-  % Print to a stream and echoes to stdout
+  %% Print to a stream and echoes to stdout
   echo(f:OStream,s:string): MACRO void = print(s) & fprint(f,s) 
   echo(f:OStream,r:real)  : MACRO void = print(r) & fprint(f,r) 
   echo(f:OStream,b:bool)  : MACRO void = print(b) & fprint(f,b) 
 
-  % Println to a stream and echo to stdout
+  %% Println to a stream and echo to stdout
   echoln(f:OStream,s:string): MACRO void = println(s) & fprintln(f,s)
   echoln(f:OStream,r:real)  : MACRO void = println(r) & fprintln(f,r) 
   echoln(f:OStream,b:bool)  : MACRO void = println(b) & fprintln(f,b) 
 
 %% Input functions
+
   fread_token_lisp(f:IStream,s:string) : string
   fread_line_lisp(f:IStream) : string
   fread_real_lisp(f:IStream) : rat
   fread_int_lisp(f:IStream)  : int
 
-  % Throw an exception if stream is closed or it's EOF
+  %% Throw an exception if stream is closed or it's EOF
   fcheck(f:IStream): bool = 
     (fopen?(f)   OR throw(ClosedStream,fname(f))) AND
     (NOT eof?(f) OR throw(EndOfFile,fname(f)))
 
-  % Read a token from f separated by characters in s from a stream
+  %% Read a token from f separated by characters in s from a stream
   fread_token(f:IStream,s:string) : string =
     prog(fcheck(f),fread_token_lisp(f,s))
 
-  % Read a word from f
+  %% Read a word from f
   fread_word(f:IStream) : MACRO string =
     fread_token(f,emptystr)
 
-  % Read a line from f
+  %% Read a line from f
   fread_line(f:IStream) : string =
     prog(fcheck(f),fread_line_lisp(f))
 
-  % Read a real number from f. Throw exception NotARealNumber if next string doesn't represent a PVS real number
+  %% Read a real number from f. Throw exception NotARealNumber if next string
+  %% doesn't represent a PVS real number
   fread_real(f:IStream) : rat =
     prog(fcheck(f),fread_real_lisp(f))
 
-  % Read an integer from f. Throw exception NotAnInteger if next string doesn't represent an integer
+  %% Read an integer from f. Throw exception NotAnInteger if next string
+  %% doesn't represent an integer
   fread_int(f:IStream)  : int =
     prog(fcheck(f),fread_int_lisp(f))
 
-  % Read a boolean from f. Throw exception NotABoolean if next string doesn't represent a PVS boolean
+  %% Read a boolean from f. Throw exception NotABoolean if next string doesn't
+  %% represent a PVS boolean
   fread_bool(f:IStream,answer:string): MACRO bool=
     str2bool(fread_word(f),answer)
 
-  % Return the name part of a file name
+  %% Return the name part of a file name
   filename(s:string):string
 
-  % Return the directory part of a file name
+  %% Return the directory part of a file name
   directory(s:string):string
 
   %% Return path name as a list of directories
   pathname_path(name:string) : list[string]
 
-  %% Split filename given a seprator
+  %% Split filename given a separator
+  %% If name starts or ends with separator, the separator is considered part of
+  %% the name
   split_filename(name:string,separator:StringChar) : [string,string] =
     LET pos = strfind_from_end(separator,name) IN
-      IF pos < 0 THEN
+      IF pos <= 0 OR pos+1 = length(name) THEN
         (name,"")
-       ELSE
-        (substring(name,0,pos-1),substring(name,pos+1,length(name)-1))
+      ELSE
+        (substring(name,0,pos-1),
+	 substring(name,pos+1,length(name)-1))
       ENDIF
 
   %% Filename without extension
@@ -974,23 +1129,18 @@ BEGIN
   filename_extension(name:string) : string =
     split_filename(name,".")`2
 
-  %% Formatting functions
-  center(col:nat,s:string):string = format("~"+col+":@<~a~>",s)
-
-  flushleft(col:nat,s:string) :string = format("~"+col+"a",s)
-
-  flushright(col:nat,s:string):string = format("~"+col+"@a",s)
-
   printf(s:string) : MACRO void =
-    print(format(s,""))
+    print(format(s))
 
   fprintf(f:OStream,s:string): MACRO void =
-    fprint(f,format(s,""))
+    fprint(f,format(s))
 
-  % Write a PVS object to an output stream, so that it can be retrieved afterwards by fread
+  %% Write a PVS object to an output stream, so that it can be retrieved
+  %% afterwards by fread
   fwrite_lisp(f:OStream,typ:string,t:Lisp_) : void
 
-  % Write a PVS object to an output stream, so that it can be retrieved afterwards by fread
+  %% Write a PVS object to an output stream, so that it can be retrieved
+  %% afterwards by fread
   fwrite[T:TYPE](f:OStream,t:T) : MACRO void =
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
     fwrite_lisp(f,the_type,to_lisp_[T](t))
@@ -1002,8 +1152,8 @@ BEGIN
 
   fread_lisp[T:TYPE+](f:IStream,typ:string) : T
 
-  % Read a PVS object of type T from an input stream written by fwrite.
-  % Throw ReadPVS exception if read object is not of type T
+  %% Read a PVS object of type T from an input stream written by fwrite.
+  %% Throw ReadPVS exception if read object is not of type T
   fread[T:TYPE+](f:IStream) : MACRO T =
     LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
       fread_lisp(f,the_type)
@@ -1013,8 +1163,9 @@ BEGIN
   fread_reader[T:TYPE+] : JUDGEMENT
     fread[T] HAS_TYPE FileReader
 
-  % Iterate a function on a file n times. Throw exception ClosedStream if stream is not open
-  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
+  %% Iterate a function on a file n times. Throw exception ClosedStream if
+  %% stream is not open
+  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat): 
     RECURSIVE T =
     IF fopen?(f) THEN
       IF n=0 or eof?(f) THEN t
@@ -1027,17 +1178,19 @@ BEGIN
     ENDIF
     MEASURE n
 
-  % Iterate a function on a file until the end. Closes file when done (no matter what)
+  %% Iterate a function on a file until the end. Closes file when done
+  %% (no matter what)
   fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread,t,st,l),fclose(f))
 
-  % Iterate a function on a file line by line until the end. Closes file when done (no matter what)
+  %% Iterate a function on a file line by line until the end. Closes file when
+  %% done (no matter what)
   fmap_line[T:TYPE](f:IStream,t:T,st:[[string,T]->T]):T =
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread_line,t,st,l),fclose(f))
 
-  % Formatting text to a file
+  %% Formatting text to a file
   printf[T:TYPE](s:string,t:T): MACRO void =
     print(format(s,t))
 
@@ -1134,7 +1287,8 @@ BEGIN
     format(", ~2,'0d:~2,'0d:~2,'0d ",{| hour(t),minute(t),second(t) |})+
     format("(GMT~@d)",-tz(t))
     
-  get_time : Time     % Get current time
+  %% Get current time
+  get_time : Time
 
   %% Today in US format mm/dd/yy
   today : string =
@@ -1161,11 +1315,18 @@ BEGIN
     format("~d~2,'0d~2,'0d~2,'0d~2,'0d~2,'0d",
            {| year(t), month(t), day(t), hour(t), minute(t), second(t) |})
 
-  real_time : nat % Realtime in internal units
-  run_time  : nat % Realtime in internal units
-  internal_time_units : posreal % Internal units
+  %% Realtime in internal units
+  real_time : nat
 
-  Stamp : Global[[nat,nat],(0,0)]  % (realtime,runtime)
+  %% Runtime in internal units
+  run_time  : nat
+
+  %% Internal units
+  internal_time_units : posreal
+
+  %% (realtime,runtime)
+  Stamp : Global[[nat,nat]] =
+    LET zeros : [nat, nat] = (0,0) IN ref(zeros)
 
   tic : void =
     set[[nat,nat]](Stamp,(real_time,run_time))
@@ -1179,7 +1340,7 @@ BEGIN
       (max(0,(ret-re0))/internal_time_units,
        max(0,(rut-ru0)/internal_time_units))
 
-  % t is in secods; returns formatted string in the form "<h>h:<m>m:<s>s"
+  %% t is in secods; returns formatted string in the form "<h>h:<m>m:<s>s"
   hms(t:real) : string =
     LET ts : int = floor(t),
 	ms : real = t-ts,
@@ -1199,13 +1360,15 @@ BEGIN
       prog(print(strtoc(atoc)),
     	   result)
 
-  sleep(n:nat): void  % Sleep n seconds 
+  %% Sleep n seconds
+  sleep(n:nat): void
 
-  get_env(name,default:string):string % Get environment variable (default)
+  %% Get environment variable (default)
+  get_env(name,default:string):string
 
   get_env(name:string): MACRO string = get_env(name,emptystr)
 
-  % Make a system call and return status and output string
+  %% Make a system call and return status and output string
   system_call(call:string) : [nat,string]
 
 END stdsys
