@@ -203,7 +203,7 @@ Main function
 
 BDDPTR mu___modelcheck_formula (Formula fml)
  { auto int return_value;
-   extern BDDPTR modelcheck_formula();
+   extern BDDPTR modelcheck_formula(Formula fml);
    BDDPTR mcvalue;
 
    bdd_interrupted = 0;
@@ -221,7 +221,7 @@ BDDPTR mu___modelcheck_formula (Formula fml)
 
 BDD_LIST bdd___bdd_sum_of_cubes (BDDPTR f, int irredundant)
  { auto int return_value;
-   extern BDD_LIST bdd_sum_of_cubes();
+   extern BDD_LIST bdd_sum_of_cubes(BDDPTR f, int irredundant);
    BDD_LIST mcvalue;
 
    bdd_interrupted = 0;
