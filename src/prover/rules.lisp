@@ -122,10 +122,10 @@
 
 ;;The help rule
 (defun help-rule-fun (rule-name)
-  #'(lambda (ps) (help-rule rule-name)
+  #'(lambda (ps) (help-rule rule-name ps)
       (values 'X nil nil)))
 
-(defun help-rule (rule-name)
+(defun help-rule (rule-name ps)
   (cond ((string= rule-name '*)
 	 (funcall (help-rule-fun 'rules) ps)
 	 (funcall (help-rule-fun 'defined-rules) ps)
