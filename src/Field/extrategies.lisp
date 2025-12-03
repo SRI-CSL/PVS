@@ -184,6 +184,20 @@ to a directory in the PVS Library Path"
     (skip))
   "[Extrategies] Evaluates lispexpr and skips")
 
+(defun insert-into-sorted-list (element sorted-list test-fn &key (duplicates t))
+  "Inserts ELEMENT into SORTED-LIST while maintaining the order defined by TEST-FN. If DUPLICATES
+is set to NIL, avoids duplicates."
+  (cond ((null sorted-list)
+	 (list element))
+	((funcall test-fn element (car sorted-list))
+	 (cons element sorted-list))
+	((or duplicates (funcall test-fn (car sorted-list) element))
+	 (cons (car sorted-list)
+	       (insert-into-sorted-list element (cdr sorted-list) test-fn
+					:duplicates duplicates)))
+	(t (insert-into-sorted-list element (cdr sorted-list) test-fn
+				    :duplicates duplicates))))
+
 ;; Merge lists
 (defun merge-lists-rec (l)
   (when (and l (notany #'null l))
@@ -450,6 +464,15 @@ to a directory in the PVS Library Path"
   (when *current-context*
     (loop for i from 1 to n
 	  collect (freshlabel prefix))))
+
+(defun const-decls-of-theory (theory &optional name)
+  "Returns constant declarations in THEORY with a given NAME.
+If NAME is not provided, returns all constant declarations."
+  (let ((thmod (if (typep theory 'module) theory (get-theory theory))))
+    (when thmod
+      (remove-if-not (lambda (decl) (and (const-decl? decl)
+					 (or (null name) (string= name (id decl)))))
+		     (all-decls thmod)))))
 
 ;; Check if name has been defined in the proof context
 (defun check-name (name)

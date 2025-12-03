@@ -251,7 +251,7 @@ non-repeating digits. Truncated indicates that the infinite representation was t
   (format nil "~a~a" s1 s2))
 
 (defattach |strcompare_lisp| (s1 s2 sensitive)
-  "Returns 0 if s1 = s2, -1 if s1 < s2, 1 if s1 > s2. If sensitive is TRUE, comparise is case sensitive."
+  "Returns 0 if S1 = S2, -1 if S1 < S2, 1 if S1 > S2. If sensitive is T, comparison is case sensitive."
   (if sensitive
       (cond ((string= s1 s2) 0)
 	    ((string< s1 s2) -1)
