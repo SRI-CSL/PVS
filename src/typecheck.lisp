@@ -206,7 +206,8 @@
 					     (formals-sans-usings m)))
 				   (free-params elt))))
 		(current-known-subtypes)))
-	(setf (saved-context m) *current-context*))
+	(setf (saved-context m) *current-context*)
+	(setf (typecheck-time m) (get-universal-time)))
       (push 'typechecked (status m))
       m)))
 
@@ -491,8 +492,9 @@ if imported."
 				  (mappings inst)))
 			(subst-mod-params thname inst theory)
 			(remove-indirect-formals-of-name thname)))
-	     (iname (if (and (lib-datatype-or-theory? itheory)
-			     (null (library ename)))
+	     (iname (if (and (null (library ename))
+			     (not (file-equal (context-path itheory)
+					      *default-pathname-defaults*)))
 			(copy ename
 			  :library (get-library-id (context-path itheory)))
 			ename)))
