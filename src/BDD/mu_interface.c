@@ -178,7 +178,7 @@ Formula mu_check_mk_bool_var (char *name)
   return R;
  }
 
-LIST empty_list ()
+LIST empty_list (void)
 {return NULL_LIST;}
 
 /* returns the name of a boolean variable */
@@ -198,7 +198,7 @@ Main function
   extern int optind;
 //extern FILE *freopen ();
   int option;
-  extern int yyparse ();
+  extern int yyparse (void);
 /*  extern int yylineno = 0;  */
 
 BDDPTR mu___modelcheck_formula (Formula fml)

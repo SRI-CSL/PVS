@@ -6,11 +6,11 @@ UTILS = ../bdd/utils
 MACOSX_DEPLOYMENT_TARGET=11
 CC=clang
 INCLUDES=-I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
-CFLAGS=-g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=apple-a14 $(INCLUDES)
+CFLAGS=-g -O2 -Wall -pedantic -std=gnu99 -mtune=native -mcpu=native $(INCLUDES)
 XCFLAGS=-O2
 LD=ld
 SDK=$(shell xcrun --show-sdk-path)
-LDFLAGS = -dylib -flat_namespace -undefined suppress -arch arm64 -platform_version macos 11.0.0 12.0 -L $(SDK)/usr/lib
+LDFLAGS = -dylib -flat_namespace -arch arm64 -L $(SDK)/usr/lib
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 
@@ -26,7 +26,7 @@ utilobj = double.o list.o hash.o alloc.o
 all : mu.dylib
 
 mu.dylib : ${muobj} bdd_table.o mu_table.o ${utilobj}
-	$(LD) $(LDFLAGS) -o mu.dylib ${muobj} ${utilobj} bdd_table.o mu_table.o -lm -lc
+	$(LD) $(LDFLAGS) -o $@ $^ -lm -lc
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}

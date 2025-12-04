@@ -4,14 +4,14 @@
 
 UTILS=../utils
 
-INCLUDES   = -I. -I$(UTILS)
+INCLUDES   = -I. -I$(UTILS) -I/opt/X11/include
 
 ARS = $(UTILS)/libutils.a
 
 # specify appropriate C compiler flags here:
 #CFLAGS=  -Aa -D_POSIX_SOURCE $(INCLUDES)
 #CFLAGS= -D_POSIX_SOURCE $(INCLUDES)
-CFLAGS= -march=core2 -g -Wall -O2 -D_FORTIFY_SOURCE=2 -pipe $(INCLUDES)
+CFLAGS= -g -Wall -O2 -D_FORTIFY_SOURCE=2 -pipe $(INCLUDES)
 XCFLAGS= 
 XLDFLAGS=
 

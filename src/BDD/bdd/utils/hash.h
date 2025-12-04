@@ -71,7 +71,7 @@ typedef struct HASHTAB {
   int nr_rehashes;		/* nr. rehashes */
   int primes_index;		/* curr. index in primes[] table */
 #ifdef ALLOW_REHASH
-  void (*rehash_function) ();	/* function called when non-NULL */
+  void (*rehash_function) (int, int);	/* function called when non-NULL */
 				/* to process change of entry */
 				/* when rehashing in process. */
 				/* Rehashing might happen upon lookup with */

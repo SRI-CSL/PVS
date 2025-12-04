@@ -4,13 +4,14 @@
 
 UTILS=../utils
 SRC=../src
-INCLUDES   = -I. -I${SRC} -I$(UTILS) -I/usr/include/X11R5
+INCLUDES   = -I. -I${SRC} -I$(UTILS) -I/opt/X11/include
 
 ARS = ${SRC}/libbdd2.a $(UTILS)/libutils.a
 
 # specify appropriate C compiler flags here:
 #CFLAGS= -O -D_POSIX_SOURCE $(INCLUDES)
-CFLAGS= -O -Aa -D_POSIX_SOURCE $(INCLUDES)
+CFLAGS= -O -D_POSIX_C_SOURCE=200809L $(INCLUDES)
+# CFLAGS= -O -Aa -D_POSIX_SOURCE $(INCLUDES)
 LDFLAGS=-s
 
 objbdd= ${SRC}/bdd_vfns.o ${SRC}/bdd_factor.o ${SRC}/bdd_fns.o ${SRC}/bdd_quant.o \
@@ -22,7 +23,7 @@ objP=	main.o plot.o draw_ps.o
 objB=	main.o plot.o draw_backdraw.o
 
 bdd2X : ${objX}
-	$(CC) $(LDFLAGS) -o bdd2X ${objX} $(ARS) -ll -lm -L/usr/lib/X11R5 -lX11
+	$(CC) $(LDFLAGS) -o bdd2X ${objX} $(ARS) -ll -lm -L/opt/X11/lib -lX11
 #	$(CC) -o bdd2X ${objX} $(ARS) -ll
 
 bdd2ascii : ${objA}
