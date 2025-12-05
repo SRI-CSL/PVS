@@ -533,6 +533,37 @@ BEGIN
 
 END stdmath
 
+%% stdchar.pvs
+%% Char operations
+
+stdchar : THEORY
+BEGIN
+
+  char_space   : char = ' '
+  char_tab     : char = char(9)  % Tabular
+  char_newline : char = char(10) % New line
+  char_dquote  : char = char(34) % Double quote
+  char_squote  : char = char(39) % Single quote
+  char_bquote  : char = '`'
+
+  ascii?(c:char) : bool =
+    code(c) <= 127
+
+  printable?(c:char) : bool =
+    32 <= code(c) <= 126
+
+  printable_j : JUDGEMENT (printable?) SUBTYPE_OF (ascii?)
+
+  %% Char comparison, with case sensitivity
+  %% = 0 if c1 = c2
+  %% < 0 if c1 < c2
+  %% > 0 if c1 > c2
+  char_compare_lisp(c1,c2:char,sensitive:bool) : subrange(-1,1)
+
+  char_compare(c1,c2:char,sensitive:bool) : MACRO int =
+    char_compare_lisp(c1,c2,sensitive)
+
+END stdchar
 
 %% stdstr.pvs
 %% String operations
@@ -542,19 +573,16 @@ BEGIN
 
   StringChar : TYPE = {str:string | length(str) = 1}
 
-  %% StringChar from code n
-  charcode(n:nat) : StringChar
-
-  %% Print standard table of characters
-  chartable   : void
+  char2string(c:char) : StringChar =
+    gen_strings.unit(c)
 
   emptystr    : string = ""
   space       : StringChar = " "
-  newline     : StringChar
-  tab         : StringChar
-  singlequote : StringChar = "'"
-  backquote   : StringChar = "`"
-  doublequote : StringChar = charcode(34)
+  newline     : StringChar = char2string(char_newline)
+  tab         : StringChar = char2string(char_tab)
+  singlequote : StringChar = char2string(char_squote)
+  backquote   : StringChar = char2string(char_bquote)
+  doublequote : StringChar = char2string(char_dquote)
 
   spaces_lisp(n:nat) : {str: string | length(str)=n}
   spaces(n:nat) : MACRO string = spaces_lisp(n)
@@ -825,6 +853,16 @@ BEGIN
   println(s:string) : MACRO void = print(s+newline)
   println(r:real)   : MACRO void = print(r+newline)
   println(b:bool)   : MACRO void = print(b+newline)
+
+  %% Print standard table of ASCII characters
+  ascii_table : void =
+    (FORALL(i:upto(127)):
+      LET str = format("~:c",{| char(i) |}) IN
+        print(format("~3d : ~10a",{| i,str |})) &
+        IF mod(i,5) = 4 THEN print(newline)
+        ELSE skip
+        ENDIF) &
+    print(newline)
 
 %% Reading
 

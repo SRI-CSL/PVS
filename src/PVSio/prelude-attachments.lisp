@@ -131,32 +131,24 @@ representation is finite. Otherwise, it prints its rational form."
 	  (t (let ((str (ratio2decimal-with-rounding-mode r 0 (min precision (+ finp infp)) t)))
 	       (pp-decstr str finp (> (+ finp infp) precision)))))))
 
+(defun stdchar-attachments ()
+
+(eval '(attachments |stdchar|
+
+(defattach |char_compare_lisp| (c1 c2 sensitive)
+ "Returns 0 if C1 = C2, -1 if C1 < C2, 1 if C1 > C2. If sensitive is T, comparison is case sensitive."
+ (if sensitive
+     (cond ((char= c1 c2) 0)
+           ((char< c1 c2) -1)
+           (t 1))
+     (cond ((char-equal c1 c2) 0)
+           ((char-lessp c1 c2) -1)
+           (t 1))))
+)))
+
 (defun stdstr-attachments ()
 
 (eval '(attachments |stdstr|
-
-(defattach |charcode| (n)
-  "Char whose code is N"
-  (format nil "~a" (code-char n)))
-
-(defattach |chartable| ()
-  "Standard char table"
-  (or 
-   (do ((i 0 (+ i 1)))
-       ((>= i 128))
-       (let ((c (code-char i)))
-	 (when (and (graphic-char-p c)
-		    (standard-char-p c))
-	   (format t "~3d : ~a " i c))))
-   t))
-   
-(defattach |newline| ()
-  "New line"
-  (format nil "~a" #\Newline))
-
-(defattach |tab| ()
-  "Tabular"
-  (format nil "~a" #\Tab))
 
 (defattach |spaces_lisp| (n)
   "N spaces"
@@ -804,6 +796,7 @@ declared as a Global variable"
 
 (defun initialize-prelude-attachments ()
   (stdpvs-attachments)
+  (stdchar-attachments)
   (stdstr-attachments)
   (stdio-attachments)
   (stdmath-attachments)
