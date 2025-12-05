@@ -6,3 +6,4 @@ numpy<2
 urllib3<2
 llama-cpp-python
 huggingface_hub
+fastapi[standard]
