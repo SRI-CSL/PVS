@@ -1,0 +1,8 @@
+transformers
+torch
+prompt_toolkit
+rich
+numpy<2
+urllib3<2
+llama-cpp-python
+huggingface_hub
