@@ -481,17 +481,13 @@ delimiter."
     (while (and string-start (simple-in-pvs-comment))
       (setq string-start (re-search-forward "\"" nil t)))
     (when string-start
-      (let ((string-end (re-search-forward "\"" nil t)))
-	(while (and string-end
-		    (save-excursion (forward-char -2)
-				    (and (looking-at "\\\\")
-					 (forward-char -1)
-					 (not (looking-at "\\\\")))))
-	  (setq string-end (re-search-forward "\"" nil t)))
+      (forward-char -1)
+      (forward-sexp)
+      (let ((string-end (point)))
 	(unless string-end
 	  (goto-char string-start)
 	  (error "Extra \""))
-	(cons (1- string-start) (1- string-end))))))
+	(cons (1- string-start) string-end)))))
 
 (defun simple-in-pvs-comment ()
   (let ((limit (point)))
