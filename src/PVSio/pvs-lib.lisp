@@ -17,42 +17,164 @@
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "8.0 (July 10, 2025)")
-(defparameter *pvsio-imported* nil)
-(defparameter *pvsio-update-files* (make-hash-table :test #'equal))
+(defparameter *pvsio-version* "8.0 (December 31, 2025)")
 
-(defun load-update-attachments (dir filename &optional force (verbose t))
-  (let* ((file (merge-pathnames dir filename)))
-    (when (probe-file file)
-      (let ((date    (gethash file *pvsio-update-files*))
-	    (newdate (file-write-date file)))
-	(when (or force (not date) (not newdate) (< date newdate))
-	  (setf (gethash file *pvsio-update-files*) newdate)
-	  (load (compile-file file :verbose verbose)))))))
-		
-(defun libload-attachments (dir file &optional force (verbose t))
-  (if (probe-file (merge-pathnames dir file))
-      (load-update-attachments dir file force verbose)
-    (some #'(lambda (path) 
-	      (let ((lib (format nil "~a~a" path dir)))
-		(load-update-attachments lib file force verbose)))
-	  *pvs-library-path*)))
+(defun pvsio-version ()
+  (pvs-message *pvsio-version*))
 
-(defun load-imported-attachments (dir &optional force (verbose t))
-  (when (or (not (member dir *pvsio-imported* :test #'file-equal))
-	    force)
-    (prog1 (libload-attachments dir "pvs-attachments" force verbose)
-      (pushnew dir *pvsio-imported* :test #'file-equal))))
+(defparameter *pvsio-loaded-files* (make-hash-table :test #'equal)
+  "Hash table of loadedfile's indexed by their path")
+
+(defstruct loadedfile
+  date      ;; UTC time when the file was loaded
+  theories  ;; Association list of theory id and tc-time (if type-checked), of theories
+            ;; with attachments in this file
+)
+
+(defparameter *pvs-attachment-source-file* nil
+  "The value of this global variable should always be nil, except when locally
+used by load-pvs-attachment. In this case, it is set to a pair where the
+first elelement is the source file and the second element is either nil (instructing
+PVSio to reload the attachments in the file) or the association list in the field theories,
+which is used by PVSio to only load the attachement of theories that have been
+re-typechecked since the last load.")
+
+(defun outdated-sourcefile (source)
+  "Update source file information in *pvsio-loaded-files* if currently loaded file is outdated.
+Assume source is not NIL."
+  (let ((newdate    (file-write-date source))
+	(loadedfile (gethash source *pvsio-loaded-files*)))
+    (cond ((null loadedfile)
+	   (setf (gethash source *pvsio-loaded-files*)
+		 (make-loadedfile :date newdate :theories nil)))
+	  ((< (loadedfile-date loadedfile) newdate)
+	   (setf (loadedfile-date loadedfile) newdate)
+	   (setf (loadedfile-theories loadedfile) nil)))))
+
+(defun outdated-theories (source)
+  "Return association list of theories and type-check times, if one of them is outdated.
+Assume source is not NIL."
+  (let ((loadedfile (gethash source *pvsio-loaded-files*)))
+    (when loadedfile
+      (let ((theories (loadedfile-theories loadedfile)))
+	(when (some (lambda (theo-date)
+		      (let* ((theory (get-theory (car theo-date)))
+			     (date   (cdr theo-date)))
+			(when theory
+			  (or (null date)
+			      (< date (typecheck-time theory))))))
+		    theories)
+	  (setf (loadedfile-theories loadedfile) nil)
+	  theories)))))
+
+(defun outdated-theory (theory theories)
+  "Return T if theory is not in theories or is outdated with respect to type-check time.
+Asume theory is not NIL."
+  (let* ((theo-date (assoc (id theory) theories :test #'string=))
+	 (date      (cdr theo-date))
+	 (newdate (typecheck-time theory)))
+    (or (null date) (< date newdate))))
+
+(defun add-updated-theory (theory loadedfile)
+  "Add (id theory) to loadfile with current type-check time.
+Assume theory is not NIL."
+  (when loadedfile
+    (let* ((theoryid  (id theory))
+	   (theories  (loadedfile-theories loadedfile))
+	   (theo-date (assoc theoryid theories :test #'string=)))
+      (unless theo-date
+	(let ((new-theories (acons theoryid (typecheck-time theory) theories)))
+	  (setf (loadedfile-theories loadedfile) new-theories))))))
+
+(defun add-dangling-theory (theoryid loadedfile)
+  "Add theoryid to loadfile, without type-check time.
+Assume loadedfile is not null and there is not theory with theoryid in current context."
+  (let* ((theories  (loadedfile-theories loadedfile))
+	 (theo-date (assoc theoryid theories :test #'string=)))
+    (unless theo-date
+      (let ((new-theories (acons theoryid nil theories)))
+	(setf (loadedfile-theories loadedfile) new-theories)))))
+
+(defun load-pvs-attachment (file &optional force (verbose t))
+  "Load file containing PVS attachment. FILE is provided as an absolute path, e.g.,
+using make-pathname or merge-pathnames."
+  (let ((source (probe-file file)))
+    (when source
+      (let ((outdated-src (outdated-sourcefile source)))
+	(if (or force outdated-src)
+	    (let ((*pvs-attachment-source-file* (cons source nil)))
+	      (load (compile-file source :verbose verbose)))
+	    (let ((outdated-ths (outdated-theories source)))
+	      (when outdated-ths
+		(let ((*pvs-attachment-source-file* (cons source outdated-ths)))
+		  (load (compile-file source :verbose verbose)))))))
+      (list source))))
+
+(defun reset-pvs-attachments ()
+  "Initialize all global variables related to PVSio attachments."
+  (clrhash *pvsio-loaded-files*)
+  (clrhash *pvsio-attachments*)
+  (setq *pvs-attachment-source-file* nil))
+
+(defun pvsio-internal-theories (theories)
+  (mapcan (lambda (theodate)
+	    (let ((theory (car theodate))
+		  (date   (if (cdr theodate) (date-string (cdr theodate))
+			      "<non-typechecked>")))
+	      (list theory date)))
+	  theories))
+
+(defun print-pvsio-internals ()
+  (cond ((= (hash-table-count *pvsio-loaded-files*) 0)
+	 (format t "No loaded pvs-attachment files~%"))
+	(t
+	 (format t "Loaded pvs-attachment files:~%")
+	 (maphash (lambda (source loadedfile)
+		    (let ((date     (date-string (loadedfile-date loadedfile)))
+			  (theories (pvsio-internal-theories (loadedfile-theories loadedfile))))
+		      (format t "  ~a (~a)~@[:~{~%    ~a - ~a~}~]~%" source date theories)))
+		  *pvsio-loaded-files*))))
+
+(defun purge-attachment-files (found-files)
+  "Remove attachment files that from *pvsio-loaded-files* that are no longer found."
+  (maphash #'(lambda (key attach)
+	       (declare (ignore attach))
+	       (unless (member key found-files :test #'equal)
+		 (remhash key *pvsio-loaded-files*)))
+	   *pvsio-loaded-files*))
+
+(defun attachment-source-not-found (source)
+  "Return T if source is not NIL and doesn't exist in *pvsio-loaded-files*."
+  (when source
+    (not (gethash source *pvsio-loaded-files*))))
+
+(defun purge-pvsio-attachments ()
+  "Remove attachments that are outdated because the theory has been re-typechecked
+since they were loaded."
+  (maphash #'(lambda (key attach)
+	       (let ((theory (get-theory (attachment-theory attach))))
+		 (when (or (attachment-source-not-found (attachment-source attach))
+			   (not theory)
+			   (< (attachment-tc-time attach) (typecheck-time theory)))
+                   (remhash key *pvsio-attachments*))))
+             *pvsio-attachments*))
 
 (defun load-pvs-attachments (&optional force (verbose t))
-  (when verbose (pvs-message "Loading semantic attachments~%"))
-  (when force (initialize-prelude-attachments))
+  (when verbose
+    (pvs-message "Loading semantic attachments ~:[~;(force: t)~]~%" force))
+  (when force
+    (reset-pvs-attachments))
+  (when (= (hash-table-count *pvsio-attachments*) 0)
+    (initialize-prelude-attachments))
+  (let ((found-files
+	 (append
+	  (loop for ws in *all-workspace-sessions*
+		append (load-pvs-attachment
+			(merge-pathnames "pvs-attachments" (path ws)) force verbose))
+	  (load-pvs-attachment (merge-pathnames ".pvs-attachments" "~/") force verbose))))
+    (purge-attachment-files found-files)
+    (purge-pvsio-attachments)))
   ;;(load-imported-attachments (current-prelude-libraries) force verbose)
-  ;; Was: (load-imported-attachments *all-workspace-sessions* force verbose)
-  (dolist (ws *all-workspace-sessions*)
-    (when (or (not (member (path ws) *pvsio-imported* :test #'file-equal))
-	      force)
-      (load-imported-attachments (path ws) force verbose)))
-  (load-update-attachments "~/" ".pvs-attachments" force verbose)
-  (load-update-attachments *default-pathname-defaults* "pvs-attachments" force verbose))
-
+  ;; The following is unneccesary since *default-pathname-defaults* should be
+  ;; part of *all-workspace-sessions* [CM]
+  ;; (load-pvs-attachment (merge-pathnames "pvs-attachment" *default-pathname-defaults*) force verbose)

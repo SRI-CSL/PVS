@@ -16,11 +16,8 @@
 
 (in-package :pvs)
 
-(defun pvsio-version ()
-  (pvs-message *pvsio-version*))
-
 (defvar *pvsio-attachments* (make-hash-table :test #'equal)
-  "Hash table of PVSio attachments indexed by theory.decl-id.")
+  "Hash table of PVSio attachments indexed by pvsio-attachment-key.")
 
 (defstruct attachment
   theory     ;; PVS theory name
@@ -28,9 +25,10 @@
              ;; attachement with the same name for the same theory
   formals    ;; Formal arguments of the PVSio definition
   proto      ;; Prototype of the PVSio definition
-  decl-id    ;; Unique id of the PVS declaration
+  tc-time    ;; UTC type-check time (used in the the computation of pvsio-attachment-key)
   decl-proto ;; Prototype of the PVS declaration (proto should match decl-proto)
   primitive  ;; NIL unless this attachment a primitive, i.e., trusted by the PVS theorem prover
+  source     ;; Path to pvs-attachment where this attachment is defined
   fsymbol)   ;; Symbol of the PVSio function defining this attachment
 
 (defvar *pvsio-type-hash* (make-hash-table)
@@ -45,7 +43,7 @@ parameter :the-pvs-type-key_.")
 	   (string< (attachment-name att1) (attachment-name att2)))))
 
 (defun list-of-attachments (&key theory name)
-  "Lists attachments in a given THEORY with a given NAME, sorted by THEORY and NAME.
+  "List attachments in a given THEORY with a given NAME, sorted by THEORY and NAME.
 The value NIL represents any NAME or any THEORY."
   (loop for attach being the hash-value of *pvsio-attachments*
 	with attachments = nil
@@ -55,21 +53,21 @@ The value NIL represents any NAME or any THEORY."
 	finally (return attachments)))
 
 (defun pvsio-attachment (expr)
-  "If EXPR is a name-expr?, returns its PVSio attachment (if any)."
+  "If EXPR is a name-expr?, return its PVSio attachment (if any)."
   (when (and (name-expr? expr) (= (length (resolutions expr)) 1))
     (let* ((decl (declaration (car (resolutions expr))))
 	   (key  (pvsio-attachment-key decl)))
       (gethash key *pvsio-attachments*))))
 
 (defun remove-attachment-theory (theory)
-  "Removes attachments of THEORY."
+  "Remove attachments of THEORY."
   (maphash #'(lambda (key attach)
                (when (string= (attachment-theory attach) theory)
                  (remhash key *pvsio-attachments*)))
            *pvsio-attachments*))
 
 (defun attachment-names ()
-  "Returns a sorted list of attachment names."
+  "Return a sorted list of attachment names."
   (loop for attach being the hash-value of *pvsio-attachments*
 	with names = nil
 	do (setq names (insert-into-sorted-list (attachment-name attach) names #'string<
@@ -77,7 +75,7 @@ The value NIL represents any NAME or any THEORY."
 	finally (return names)))
 
 (defun attachment-theories ()
-  "Returns the sorted list of attachment theories."
+  "Return the sorted list of attachment theories."
   (loop for attach being the hash-value of *pvsio-attachments*
 	with theories = nil
 	do (setq theories (insert-into-sorted-list (attachment-theory attach) theories #'string<
@@ -85,7 +83,7 @@ The value NIL represents any NAME or any THEORY."
 	finally (return theories)))
 
 (defun defattach-long-name (attach)
-  "Returns the the long name of an attachment including name,
+  "Return the the long name of an attachment including name,
 pretty-printed prototype, and whether is primitive or not."
   (format nil "~a::~a~:[~; [primitive]~]"
 	  (attachment-name attach)
@@ -95,9 +93,9 @@ pretty-printed prototype, and whether is primitive or not."
 (defun list-pvs-attachments-str ()
   (let ((l (loop for theory in (attachment-theories)
 		 for atts = (mapcar #'defattach-long-name (list-of-attachments :theory theory))
-		 collect (format nil "Theory ~a: ~{~a~^, ~}.~2%" theory atts))))
+		 collect (format nil "Theory ~a:~{~%  ~a~}~%" theory atts))))
     (if l (format nil "~{~a~}" l)
-      (format nil "No semantics attachments loaded in current context.~2%"))))
+      (format nil "No semantics attachments loaded in current context.~%"))))
 
 (defun list-pvs-attachments ()
   (format t "~a" (list-pvs-attachments-str)))
@@ -234,64 +232,78 @@ and the cdr is the list of matched prototypes."
 		  (pp-proto (car prototype))))
       (format nil "~a" (pp-proto (car prototype))))))
 
-(defun defattach-theory-name (theory name declformals body &key primitive)
-  (let* ((quiet  theory)
-	 (th_nm  (split_thnm name))
-	 (theory (if (car th_nm) (get-theory (car th_nm)) theory))
-	 (name   (cdr th_nm)))
-    (cond ((and (null theory) (null (car th_nm)))
+(defun defattach-thnm (thnm declformals body &key primitive)
+  (let* ((th_nm      (split_thnm thnm))
+	 (theory     (when (car th_nm) (get-theory (car th_nm))))
+	 (name       (cdr th_nm))
+	 (source     (car *pvs-attachment-source-file*))
+         (theories   (cdr *pvs-attachment-source-file*))
+	 (loadedfile (when source (gethash source *pvsio-loaded-files*))))
+    (cond ((null (car th_nm))
 	   (pvs-message "Error (pvs-attachments): Theory qualification of attachment ~a is missing."
 			name))
-	  ((null theory)
-	   (pvs-message "Error (pvs-attachments): Theory ~a not found in current context." (car th_nm)))
+	  ((and theory (outdated-theory theory theories))
+	   (add-updated-theory theory loadedfile)
+	   (attach-theory-name theory name declformals body :primitive primitive :verbose t))
+	  (theory
+	   (or (add-updated-theory theory loadedfile)) t)
+	  (loadedfile
+	   (or (add-dangling-theory (car th_nm) loadedfile)) t)
 	  (t
-	   (let* ((thnm           (format nil "~a.~a" (id theory) name))
-		  (declarations   (const-decls-of-theory theory name))
-		  (proto-formals  (when declarations (get-attach-formals declformals)))
-		  (proto          (car proto-formals))
-		  (best-matched   (find-matching-prototypes proto declarations))
-		  (best-decl      (car best-matched))
-		  (matched-protos (cdr best-matched))
-		  (best-proto     (car matched-protos)))
-	     (cond ((null declarations)
-		    (pvs-message "Error (pvs-attachments): Declaration ~a not found."
-				 thnm))
-		   ((null matched-protos)
-		    (pvs-message "Error (pvs-attachments): Declaration ~a::~a not found."
-				 thnm (pp-prototype proto)))
-		   ((null best-decl)
-		    (pvs-message "Error (pvs-attachments): Declaration ~a::~a could be resolved to:~%~
+	   (pvs-message "Error (pvs-attachments): Theory ~a not found in current context."
+			(car th_nm))))))
+
+(defun attach-theory-name (theory name declformals body &key primitive verbose)
+  (let* ((thnm           (format nil "~a.~a" (id theory) name))
+	 (declarations   (const-decls-of-theory theory name))
+	 (proto-formals  (when declarations (get-attach-formals declformals)))
+	 (proto          (car proto-formals))
+	 (best-matched   (find-matching-prototypes proto declarations))
+	 (best-decl      (car best-matched))
+	 (matched-protos (cdr best-matched))
+	 (best-proto     (car matched-protos)))
+    (cond ((null declarations)
+	   (pvs-message "Error (pvs-attachments): Declaration ~a not found."
+			thnm))
+	  ((null matched-protos)
+	   (pvs-message "Error (pvs-attachments): Declaration ~a::~a not found."
+			thnm (pp-prototype proto)))
+	  ((null best-decl)
+	   (pvs-message "Error (pvs-attachments): Declaration ~a::~a could be resolved to:~%~
                         ~{~a::~a~%~}~
                         To resolve ambiguity, annotate attchment variables with type names."
-				 thnm (pp-prototype proto)
-				 (mapcan (lambda (p) (list thnm (pp-prototype p))) matched-protos)))
-		   (t (unless quiet
-			(pvs-message "Loading semantic ~:[attachment~;primitive~] of ~a::~a~%"
-				     primitive thnm (pp-prototype best-proto)))
-		      (defattach-pvsio best-decl name declformals body :primitive primitive))))))))
+			thnm (pp-prototype proto)
+			(mapcan (lambda (p) (list thnm (pp-prototype p))) matched-protos)))
+	  (t (when verbose
+	       (pvs-message "Loading semantic ~:[attachment~;primitive~] of ~a::~a~%"
+			    primitive thnm (pp-prototype best-proto)))
+	     (defattach-pvsio best-decl name declformals body :primitive primitive)))))
 
 (defun pvsio-attachment-key (decl)
+  "Compute unique id based on internal decl id and time stamp of the declaraton's theory."
   (when (const-decl? decl)
-    (format nil "~a.~a"
-	    (id (module decl))
-	    (get-unique-id decl))))
+    (let ((theory (module decl)))
+      (format nil "~a_~a.~a"
+	      (id theory)
+	      (typecheck-time theory)
+	      (get-unique-id decl)))))
 
 (defun defattach-pvsio (decl name declformals body &key primitive)
-  (let* ((theory        (id (module decl)))
+  (let* ((theory        (module decl))
 	 (proto-formals (get-attach-formals declformals))
 	 (proto         (car proto-formals))
 	 (formals       (cdr proto-formals))
-	 (uid           (get-unique-id decl))
 	 (key 		(pvsio-attachment-key decl))
 	 (decl-proto    (find-prototype decl))
-	 (fpvsio        (makesym "~a-~a.~a" "pvsio" theory uid))
-	 (attach        (make-attachment :theory theory
+	 (fpvsio        (makesym "pvsio-~a.~a" (id theory) (get-unique-id decl)))
+	 (attach        (make-attachment :theory (id theory)
 					 :name name
 					 :formals formals
 					 :proto proto
-					 :decl-id uid
+					 :tc-time (typecheck-time theory)
 					 :decl-proto decl-proto
 					 :primitive primitive
+					 :source (car *pvs-attachment-source-file*)
 					 :fsymbol fpvsio)))
     (setf (gethash key *pvsio-attachments*) attach)
     (defattach-body attach body)))
@@ -316,6 +328,8 @@ It cannot be evaluated in a formal proof." name))))
 	    (attachment-proto attachment))
 	   (fsymbol
 	    (attachment-fsymbol attachment))
+	   (source
+	    (attachment-source attachment))
 	   (formalstr
 	    (format nil "~@[(~{~a~@[::~a~]~^,~})~]~@[::~a~]"
 		    (merge-lists formals (cdr proto)) (car proto)))
@@ -332,11 +346,13 @@ It cannot be evaluated in a formal proof." name))))
 	   (newdoc
 	    (format nil "~
 PVSio Declaration: ~a.~a~a
-PVS Resolution: ~a
-Lisp function symbol: ~a~
+PVS Resolution: ~a~
+~@[~%Source File: ~a~]
+Lisp Function Symbol: ~a~
 ~@[~%~a~]"
 		    theory name formalstr
 		    thnmpro
+		    source
 		    fsymbol
 		    (car dobo)))
 	   (newformals
@@ -350,31 +366,41 @@ Lisp function symbol: ~a~
 	      (cons newdoc newbody)))))
 
 (defmacro defattach (thnm formals &rest body)
-  (defattach-theory-name nil (symbol-name thnm) formals body))
+  (defattach-thnm (symbol-name thnm) formals body))
 
 (defmacro defprimitive (thnm formals &rest body)
-  (defattach-theory-name nil (symbol-name thnm) formals body :primitive t))
+  (defattach-thnm (symbol-name thnm) formals body :primitive t))
 
-(defun defattach-theory (theory attachments)
+(defun attach-theory (theory attachments)
   (mapcar #'(lambda (defattach)
 	      (if (and (consp defattach) (memq (car defattach) '(defattach defprimitive)))
 		  (let ((primitive (eq (car defattach) 'defprimitive))
 			(name      (symbol-name (cadr defattach)))
 			(formals   (caddr defattach))
 			(body      (cdddr defattach)))
-		    (defattach-theory-name theory name formals body :primitive primitive))
-		defattach))
+		    (attach-theory-name theory name formals body
+					:primitive primitive))
+		  defattach))
 	  attachments))
 
 (defmacro attachments (theory-id &rest attachments)
-  (let ((theory (get-theory theory-id)))
-    (if theory
-	(progn
-	  (remove-attachment-theory theory-id)
-	  (pvs-message "Loading semantic attachments of theory ~a." theory-id)
-	  `(progn
-	     ,@(defattach-theory theory attachments)))
-      (pvs-message "Error (pvs-attachments): Theory ~a not found in current context." theory-id))))
+  (let* ((source     (car *pvs-attachment-source-file*))
+         (theories   (cdr *pvs-attachment-source-file*))
+	 (loadedfile (when source (gethash source *pvsio-loaded-files*)))
+	 (theory     (get-theory theory-id)))
+    (cond ((and theory (outdated-theory theory theories))
+	   (add-updated-theory theory loadedfile)
+	   (remove-attachment-theory theory-id)
+	   (pvs-message "Loading semantic attachments of theory ~a." theory-id)
+	   `(progn
+	      ,@(attach-theory theory attachments)))
+	  (theory
+	   (or (add-updated-theory theory loadedfile)) t)
+	  (loadedfile
+	   (or (add-dangling-theory theory-id loadedfile)) t)
+	  (t
+	   (pvs-message "Error (pvs-attachments): Theory ~a not found in current context."
+			theory-id)))))
 
 ;; Reports running-time errors in attachments
 (defmacro attach-error (fmtstr &rest args)
