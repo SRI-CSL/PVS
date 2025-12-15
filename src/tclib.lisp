@@ -1073,7 +1073,8 @@ abspath as a subdirectory.  If it is found, and is a valid library id, it is ret
       :test #'equal :key #'lib-ref :from-end t)))
 
 (defun all-decls (theory)
-  (or (all-declarations theory)
+  (or (and (memq 'typechecked (status theory))
+	   (all-declarations theory))
       (let ((decls (append (formals theory)
 			   (mapappend #'(lambda (d)
 					  (when (typep d '(or formal-subtype-decl
