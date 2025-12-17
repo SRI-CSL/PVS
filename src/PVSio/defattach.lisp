@@ -281,7 +281,8 @@ and the cdr is the list of matched prototypes."
 
 (defun pvsio-attachment-key (decl)
   "Compute unique id based on internal decl id and time stamp of the declaraton's theory."
-  (when (const-decl? decl)
+  (when (and (const-decl? decl)
+	     (not (skolem-const-decl? decl)))
     (let ((theory (module decl)))
       (format nil "~a_~a.~a"
 	      (id theory)
