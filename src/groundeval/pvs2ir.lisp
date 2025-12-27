@@ -4077,7 +4077,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defun make-c-application-assignment (lhs lhs-type fname args rhs-type)
   (let ((rhs (format nil "~a(~a)" fname args)))
     (case lhs-type
-      ((|uint8| |uint16| |uint32| |uint64| |__uint128|)
+      ((|uint8| |uint16| |uint32| |uint64|); |__uint128|)
        (case rhs-type
 	 (|mpz| (list (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs)))
 	 (|mpq| (let ((tmp (gentemp "tmp")))
@@ -4088,7 +4088,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		    (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs)
 		    (format nil "mpz_clear(~a)" tmp))))
 	 (t (list (format nil "~a = (~a_t)~a" lhs (mppointer-type lhs-type) rhs)))))
-    ((|int8| |int16| |int32| |int64| |__int128|)
+    ((|int8| |int16| |int32| |int64|); |__int128|)
      (case rhs-type
        (|mpz| (list (format nil "~a = (~a_t)mpz_get_si(~a)" lhs lhs-type rhs)))
        (|mpq| (let ((tmp (gentemp "tmp")))
@@ -4236,6 +4236,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (list (format nil "pvs2cerror(~s, ~a)" ir-message ir-code))))
 
 (defmethod ir2c* ((ir-expr ir-string) return-var return-type)
+;  (break "ir-string")
   (with-slots (ir-stringval) ir-expr
     (let ((stringvar (gentemp "string"))
 	  (lenvar (gentemp "len"))
@@ -4504,7 +4505,10 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ;;only used when ir-index? is nil - returns the index type
 (defun ir-hashable-index? (ctype)
   (case ctype
-    ((|uint64| |__uint128| |int64| |__int128|) '|uint64|);64/128 get coerced to uint64.
+    ((|uint64| ;|__uint128|
+      |int64|
+      ;|__int128|
+      ) '|uint64|);64/128 get coerced to uint64.
     ((|int8| |int16| |int32| |uint8| |uint16| |uint32|) '|uint32|)
     ((|mpz|) '|mpz|)
     (t nil)))o
@@ -4673,6 +4677,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
     (|mpq| '|q|)
     (t "")))
 
+(defun c-primtype? (ir-type)
+  (case ir-type
+    ((|int8| |int16| |int32| |int64| |int128| |uint8| |uint16| |uint32| |uint64| |uint128| |mpz| |mpq| |bool|) true)
+    (t nil)))
+  
+
 (defun ir2c-primitive-apply (return-var return-type ir-function-name ir-args ir-arg-names)
 ;  (cond ((ir-primitive-function-name? ir-function-name);
   (let* ((arg-types (loop for ir-var in ir-args
@@ -4739,12 +4749,16 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   (case c-type
     ((|uint8| |uint16| |uint32| |uint64| |__uint128|) "ui")
     ((|int8| |int16| |int32| |int64| |__int128|) "si")
+    (|mpz| "z");NSH(12/27/2025)
+    (|mpq| "q")
     (t "")))
 
 (defun uint-or-int (c-type)
   (case c-type
-    ((|uint8| |uint16| |uint32| |uint64| |__uint128|) "uint")
-    ((|int8| |int16| |int32| |int64| |__int128|) "int")
+    ((|uint8| |uint16| |uint32| |uint64| ;|__uint128|
+	      ) "uint")
+    ((|int8| |int16| |int32| |int64|; |__int128|
+	     ) "int")
     (t "")))
 
 (defun fixnum-type (c-type)
@@ -4799,9 +4813,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 (list (format nil "mpq_t ~a" arg1-mpq-var)
 		       (format nil "mpq_init(~a)" arg1-mpq-var)
 		       (format nil "mpq_set_z(~a, ~a)" arg1-mpq-var arg1)
-		       (format nil "mpq_mk_set_~a(~a, (~a_t)~a, 1)"
-			       (gmp-ui-or-si arg1-c-type)
-			       return-var (uint-or-int arg1-c-type) arg2)
+		       (format nil "mpq_mk_set_~a(~a, (~a64_t)~a, 1)"
+			       (gmp-ui-or-si arg2-c-type)
+			       return-var (uint-or-int arg2-c-type) arg2)
 		       (format nil "mpq_mk_div(~a, ~a, ~a)" return-var
 			       arg1-mpq-var return-var)
 		       (format nil "mpq_clear(~a)" arg1-mpq-var)
@@ -7201,7 +7215,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   
 
 (defmethod add-c-type-definition ((ir2c-type t) &optional tname)
-  (cond (tname
+  (cond ((c-primtype? ir2c-type) ir2c-type)
+	(tname 
 	 (let ((c-type-info (get-c-type-info-by-name tname)))
 	   (cond (c-type-info tname)
 		 (t (let ((c-type-info (mk-simple-c-type-info ir2c-type tname (format nil "typedef ~a_t ~a_t;" ir2c-type tname) nil (format nil "~a" (id *pvs2c-current-decl*)))));;replace nil with act-defn
@@ -8703,6 +8718,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod copy-type* ((texpr1 ir-funtype)(texpr2 ir-arraytype) lhs rhs)
   (break "copy-type*(funtype,arraytype)"));;(NSH: 5-17-25): leaving this break for now
+
+(defmethod copy-type* ((texpr1 ir-funtype)(texpr2 ir-funtype) lhs rhs)
+  (break "copy-type*(funtype,arraytype)"));;(NSH: 12-21-25): leaving this break for now
 
 (defmethod copy-type* ((texpr1 ir-arraytype)(texpr2 ir-funtype) lhs rhs)
   (with-slots ((size1 size)(high1 high)(et1 ir-range)) texpr1
