@@ -96,6 +96,7 @@ extern int64_t div_int64_uint64(int64_t x, uint64_t y);
 extern int64_t div_int64_uint32(int64_t x, uint32_t y);
 extern uint128_t div_uint128_uint128(int128_t x, uint128_t y);
 extern int128_t div_int128_uint128(int128_t x, uint128_t y); //deprecated
+extern uint64_t div_mpz_uint64(mpz_t x, uint64_t y);
 extern uint32_t rem_uint32_uint32(uint32_t x, uint32_t y);
 extern uint32_t rem_int32_uint32(int32_t x, uint32_t y);
 extern uint64_t rem_uint64_uint64(uint64_t x, uint64_t y);

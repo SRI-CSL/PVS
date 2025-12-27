@@ -190,6 +190,10 @@ int128_t div_int128_uint128(int128_t x, uint128_t y){
   return x/y;
 }
 
+uint64_t div_mpz_uint64(mpz_t x, uint64_t y){
+  return  mpz_fdiv_ui(x, y);
+}
+
 
 uint32_t rem_uint32_uint32(uint32_t x, uint32_t y){
   return x%y;
