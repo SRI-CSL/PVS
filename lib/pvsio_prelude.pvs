@@ -23,7 +23,6 @@ BEGIN
 
   Dummy : TYPE  = bool
   dummy : MACRO Dummy = FALSE
-  dummy_fun[T:TYPE](t:T): Dummy = dummy
 
   prog[T:TYPE](s:void,t:T): T = t
 
@@ -50,7 +49,7 @@ BEGIN
   %% last_iteration breaks a loop with a given value
   last_iteration[T:TYPE](t:T):T
 
-  return[T:TYPE](t:T):T 
+  return[T:TYPE](t:T):T
 
   %% Loops
   loop_lift[T:TYPE+](f:[Dummy->void]): T
@@ -67,7 +66,7 @@ BEGIN
     si & while(b,s & sinc)
 
   %% Used for untyped lisp attachments
-  Lisp_ : TYPE+  
+  Lisp_ : TYPE+
 
   %% Used when lisp attachments need the type
   Lisp[T:TYPE+] : TYPE+
@@ -96,12 +95,15 @@ BEGIN
   unwind_protect[T:TYPE](t:T,cleanup:void) : MACRO T =
     unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
 
-  type_of_domain_lisp[T:TYPE](f:[T->void]): string
+  %% Return the string represantion of a type. Since types are not
+  %% first-class objects in PVS, the type is passed as
+  %% a declaration formal.
+  type2str[T:TYPE]: string
 
   %% Return string representing the type of t (t may be an uninterpreted
   %% constant)
   typeof[T:TYPE](t:T) : MACRO string =
-    type_of_domain_lisp[T](dummy_fun)
+    type2str[T]
 
   %% Functionally PVSioValue[T] is the same as T. Computationally, in the
   %% following constant declaration, <expr> is evaluated only once and assigned
@@ -363,7 +365,7 @@ BEGIN
 
   FileAlreadyExists: Exception[string] = make_exception(IOException,
      LAMBDA(str:string):format("File already exists (~a)",str))
-     
+
   ClosedStream: Exception[string] = make_exception(IOException,
      LAMBDA(str:string):format("File is closed~@[ (~a)~]", {| str |}))
 
@@ -373,7 +375,7 @@ BEGIN
 END stdexceptions
 
 %% stdcatch.pvs
-%% Definition of catch and throw 
+%% Definition of catch and throw
 
 stdcatch[ResultType:TYPE+,ExceptionType:TYPE] : THEORY
 BEGIN
@@ -402,7 +404,7 @@ BEGIN
                              LAMBDA(d:Dummy):catch_list_lift(rest,f1,f2),
                              f2)
     ENDCASES
-    MEASURE l BY <<  
+    MEASURE l BY <<
 
   %% Catch list with a handler
   catch(l:list[Exception[ExceptionType]],
@@ -452,7 +454,7 @@ BEGIN
 END stdsimplexc
 
 %% stdmath.pvs
-%% PVSio math library 
+%% PVSio math library
 
 stdmath : THEORY
 BEGIN
@@ -529,7 +531,7 @@ BEGIN
   %% Therefore, if maxperiod is non-negative, the second value is the minimum
   %% between the period and maxperiod+1. In either case, if the second value
   %% is 0, the rational has a finite decimal representation.
-  decimal_precision(r:rat,maxperiod:int) : [nat,nat] 
+  decimal_precision(r:rat,maxperiod:int) : [nat,nat]
 
 END stdmath
 
@@ -636,7 +638,7 @@ BEGIN
   %% Reverse string
   strreverse(s:string) : string =
     IF length(s) = 0 THEN s
-    ELSE 
+    ELSE
       substring(s,length(s)-1,0)
     ENDIF
 
@@ -683,11 +685,11 @@ BEGIN
     ELSE
       format("~a",r)
     ENDIF
-      
+
   %% Pretty-print decimal using overline to indicate repeating digits. Finp is
   %% the number of non-repeating digits. Truncated indicates that the infinite
   %% representation was truncated.
-  pp_decstr(str:string,finp:nat,truncated:bool) : string 
+  pp_decstr(str:string,finp:nat,truncated:bool) : string
 
   %% Pretty prints rational numbers upto precision using overline to indicate
   %% repeating digits and ellipsis when decimal expansion is truncated.
@@ -728,7 +730,7 @@ BEGIN
   %% String to real. Throw exception NotAnInteger if string doesn't represent
   %% an integer
   str2int(s:string) : int
-  
+
   str2bool(s,answer:string):bool = downcase(s) = downcase(answer)
 
   %% Convert from string to boolean. Throw exception NotABoolean if string
@@ -777,7 +779,7 @@ BEGIN
   strtrim(s1,s2:string):string
 
   %% Return a substring of s2, with all the characters in s1 stripped of
-  %% the beginning 
+  %% the beginning
   strtrim_left(s1,s2:string):string
 
   %% Return a substring of s2, with all the characters in s1 stripped of
@@ -789,7 +791,7 @@ BEGIN
   trim(s:string):string
 
   %% Return a substring of s, with all the space characters stripped of
-  %% the beginning 
+  %% the beginning
   trim_left(s:string):string
 
   %% Return a substring of s, with all the space characters stripped of
@@ -821,7 +823,7 @@ BEGIN
   subtypeof?(T1,T2:string) : bool
 
   %% Return a PVS object represented by a string
-  str2pvs[T:TYPE+](s:string):T 
+  str2pvs[T:TYPE+](s:string):T
 
   pvs2str_lisp[T:TYPE](t:T) : string
 
@@ -842,7 +844,7 @@ BEGIN
   assert(b:bool,str:string):void =
     try(b,error[void](format("PVSio Assertion Failure: ~a",str)) & fail)
 
-%% Print, Println 
+%% Print, Println
 
   %% Print lisp format of string s
   printstr(s:string):void = skip
@@ -868,7 +870,7 @@ BEGIN
 
   %% Querying from stdin with prompt message
   query_token(mssg,s:string): string
-  query_word(mssg:string)   : MACRO string = query_token(mssg,emptystr) 
+  query_word(mssg:string)   : MACRO string = query_token(mssg,emptystr)
   query_line(mssg:string)   : string
 
   %% Read a real number. Throw exception NotARealNumber if string doesn't
@@ -901,7 +903,7 @@ BEGIN
   read_bool(answer:string): MACRO bool = query_bool(emptystr,answer)
 
 %% Character Streams
-  Stream   : TYPE+ 
+  Stream   : TYPE+
   IStream  : TYPE+ FROM Stream
   OStream  : TYPE+ FROM Stream
 
@@ -934,8 +936,8 @@ BEGIN
   frename(oldname,newname:string) : string
 
 %% Standard I/O Steams
-  stdin    : IStream 
-  stdout   : OStream 
+  stdin    : IStream
+  stdout   : OStream
   stderr   : OStream
 
   Mode   : TYPE = {
@@ -957,8 +959,8 @@ BEGIN
     rename,
     %% Open string stream for input or output
     str
-  }    
- 
+  }
+
   input_mode?(m:Mode) : bool =
     (m = input OR m = str)
 
@@ -968,22 +970,22 @@ BEGIN
 
   mode2str(m:Mode) : string = pvs2str[Mode](m)
 
-  tostr(m:Mode) : MACRO string = mode2str(m) 
+  tostr(m:Mode) : MACRO string = mode2str(m)
 
-  fopenin_lisp(s:string)        : IStream 
+  fopenin_lisp(s:string)        : IStream
   fopenout_lisp(s:string,n:nat) : OStream
-  
+
   sopenin(s:string)             : IStream
   sopenout(s:string)            : OStream
 
   fopenin(s:string) : IStream =
     IF length(s) = 0 THEN stdin
-    ELSE 
+    ELSE
       fopenin_lisp(s)
     ENDIF
 
   %% Open a file as an input stream
-  fopenin(m:(input_mode?),s:string) : IStream = 
+  fopenin(m:(input_mode?),s:string) : IStream =
     IF m = input THEN fopenin(s)
     ELSE sopenin(s) %% m = str
     ENDIF
@@ -1028,15 +1030,15 @@ BEGIN
 
   fname_lisp(f:Stream)           :string
   fgetstr_lisp(f:OStream)        :string
-  eof_lisp(f:IStream)            :bool           
-  flength_lisp(f:Stream)         :nat          
-  fgetpos_lisp(f:Stream)         :nat         
-  fsetpos_lisp(f:Stream,n:nat)   :void   
+  eof_lisp(f:IStream)            :bool
+  flength_lisp(f:Stream)         :nat
+  fgetpos_lisp(f:Stream)         :nat
+  fsetpos_lisp(f:Stream,n:nat)   :void
   fprint_lisp(f:OStream,s:string):void = skip
 
   %% Get the full name of a file string
   fname(f:Stream):string =
-    if filestream?(f) then 
+    if filestream?(f) then
       fname_lisp(f)
     else
       emptystr
@@ -1063,20 +1065,20 @@ BEGIN
     endif
 
   %% Get current position. Throw exception ClosedStream when stream is not open.
-  fgetpos(f:Stream):nat = 
+  fgetpos(f:Stream):nat =
     if fopen?(f) then fgetpos_lisp(f)
     else throw(ClosedStream,fname(f))
     endif
 
   %% Print to a stream. Throw exception ClosedStream when stream is not open.
-  fprint(f:OStream,s:string):void = 
+  fprint(f:OStream,s:string):void =
     if fopen?(f) then fprint_lisp(f,s)
     else throw(ClosedStream,fname(f))
     endif
 
   fprint(f:OStream,r:real)    : MACRO void = fprint(f,r+emptystr)
   fprint(f:OStream,b:bool)    : MACRO void = fprint(f,b+emptystr)
-  
+
   %% Set current positions. Throw exception ClosedStream when stream is not
   %% open.
   fsetpos(f:Stream,n:nat):void =
@@ -1090,14 +1092,14 @@ BEGIN
   fprintln(f:OStream,b:bool)  : MACRO void = fprint(f,b+newline)
 
   %% Print to a stream and echoes to stdout
-  echo(f:OStream,s:string): MACRO void = print(s) & fprint(f,s) 
-  echo(f:OStream,r:real)  : MACRO void = print(r) & fprint(f,r) 
-  echo(f:OStream,b:bool)  : MACRO void = print(b) & fprint(f,b) 
+  echo(f:OStream,s:string): MACRO void = print(s) & fprint(f,s)
+  echo(f:OStream,r:real)  : MACRO void = print(r) & fprint(f,r)
+  echo(f:OStream,b:bool)  : MACRO void = print(b) & fprint(f,b)
 
   %% Println to a stream and echo to stdout
   echoln(f:OStream,s:string): MACRO void = println(s) & fprintln(f,s)
-  echoln(f:OStream,r:real)  : MACRO void = println(r) & fprintln(f,r) 
-  echoln(f:OStream,b:bool)  : MACRO void = println(b) & fprintln(f,b) 
+  echoln(f:OStream,r:real)  : MACRO void = println(r) & fprintln(f,r)
+  echoln(f:OStream,b:bool)  : MACRO void = println(b) & fprintln(f,b)
 
 %% Input functions
 
@@ -1107,7 +1109,7 @@ BEGIN
   fread_int_lisp(f:IStream)  : int
 
   %% Throw an exception if stream is closed or it's EOF
-  fcheck(f:IStream): bool = 
+  fcheck(f:IStream): bool =
     (fopen?(f)   OR throw(ClosedStream,fname(f))) AND
     (NOT eof?(f) OR throw(EndOfFile,fname(f)))
 
@@ -1180,8 +1182,7 @@ BEGIN
   %% Write a PVS object to an output stream, so that it can be retrieved
   %% afterwards by fread
   fwrite[T:TYPE](f:OStream,t:T) : MACRO void =
-    LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
-    fwrite_lisp(f,the_type,to_lisp_[T](t))
+    fwrite_lisp(f,type2str[T],to_lisp_[T](t))
 
   FileWriter[T:TYPE]  : TYPE = [[OStream,T]->void]
 
@@ -1193,8 +1194,7 @@ BEGIN
   %% Read a PVS object of type T from an input stream written by fwrite.
   %% Throw ReadPVS exception if read object is not of type T
   fread[T:TYPE+](f:IStream) : MACRO T =
-    LET the_type = type_of_domain_lisp(dummy_fun[T]) IN
-      fread_lisp(f,the_type)
+    fread_lisp(f,type2str[T])
 
   FileReader[T:TYPE+] : TYPE = [[IStream]->T]
 
@@ -1203,7 +1203,7 @@ BEGIN
 
   %% Iterate a function on a file n times. Throw exception ClosedStream if
   %% stream is not open
-  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat): 
+  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat):
     RECURSIVE T =
     IF fopen?(f) THEN
       IF n=0 or eof?(f) THEN t
@@ -1252,9 +1252,9 @@ END stdio
 stdpvsio : THEORY
 BEGIN
 
-  help_pvs_attachment(s:string) : void 
+  help_pvs_attachment(s:string) : void
 
-  help_pvs_theory_attachments(s:string) : void 
+  help_pvs_theory_attachments(s:string) : void
 
   pvsio_version : string
 
@@ -1265,12 +1265,12 @@ BEGIN
 END stdpvsio
 
 %% stdsys.pvs
-%% PVSio sytem library 
+%% PVSio sytem library
 
 stdsys : THEORY
 BEGIN
-  
-  Time : TYPE = [# 
+
+  Time : TYPE = [#
     second : below(60),
     minute : below(60),
     hour   : below(24),
@@ -1279,7 +1279,7 @@ BEGIN
     year   : nat,
     dow    : below(7), % Day of week: 0 Monday
     dst    : bool,     % Dayligth saving time?
-    tz     : {x:rat| -24 <= x AND x <= 24} % Time zone 
+    tz     : {x:rat| -24 <= x AND x <= 24} % Time zone
   #]
 
   tinybang : Time = (#
@@ -1298,12 +1298,12 @@ BEGIN
     if    dow=0 then "Monday"
     elsif dow=1 then "Tuesday"
     elsif dow=2 then "Wednesday"
-    elsif dow=3 then "Thursday" 
+    elsif dow=3 then "Thursday"
     elsif dow=4 then "Friday"
     elsif dow=5 then "Saturday"
     else  "Sunday"
     endif
- 
+
   months(month:subrange(1,12)):string =
     if    month=1  then "January"
     elsif month=2  then "February"
@@ -1324,7 +1324,7 @@ BEGIN
     format(" ~2,'0d ",day(t))+year(t)+
     format(", ~2,'0d:~2,'0d:~2,'0d ",{| hour(t),minute(t),second(t) |})+
     format("(GMT~@d)",-tz(t))
-    
+
   %% Get current time
   get_time : Time
 
@@ -1370,9 +1370,9 @@ BEGIN
     set[[nat,nat]](Stamp,(real_time,run_time))
 
   Toc : TYPE = [nnreal,nnreal]
-  
+
   %% Return times in seconds
-  toc : Toc = 
+  toc : Toc =
     LET (ret,rut) = (real_time,run_time),
         (re0,ru0) = val[[nat,nat]](Stamp) IN
       (max(0,(ret-re0))/internal_time_units,
@@ -1388,7 +1388,7 @@ BEGIN
     format("~ah:~am:~,3fs",{|h,m,s|})
 
   strtoc(atoc:Toc) : MACRO string =
-    LET (realtime,runtime) = atoc IN 
+    LET (realtime,runtime) = atoc IN
     format("Real Time: ~a (~,3f sec). Run Time: ~a (~,3f sec)~%",
 	  {| hms(realtime), realtime, hms(runtime), runtime |})
 

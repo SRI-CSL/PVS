@@ -22,16 +22,19 @@
 (defun pvsio-version ()
   (pvs-message *pvsio-version*))
 
-(defparameter *pvsio-loaded-files* (make-hash-table :test #'equal)
+(defvar *pvsio-loaded-files* (make-hash-table :test #'equal)
   "Hash table of loadedfile's indexed by their path")
 
 (defstruct loadedfile
-  date      ;; UTC time when the file was loaded
-  theories  ;; Association list of theory id and tc-time (if type-checked), of theories
-            ;; with attachments in this file
+  ;; UTC time when the file was loaded.
+  date
+  ;; Association list of theory id and tc-time (if type-checked), of theories
+  ;; with attachments in this file. Theory identifiers are strings with a fully qualified
+  ;; theory id, i.e., "<lib>@<theory>".
+  theories
 )
 
-(defparameter *pvs-attachment-source-file* nil
+(defvar *pvs-attachment-source-file* nil
   "The value of this global variable should always be nil, except when locally
 used by load-pvs-attachment. In this case, it is set to a pair where the
 first elelement is the source file and the second element is either nil (instructing
@@ -46,10 +49,12 @@ Assume source is not NIL."
 	(loadedfile (gethash source *pvsio-loaded-files*)))
     (cond ((null loadedfile)
 	   (setf (gethash source *pvsio-loaded-files*)
-		 (make-loadedfile :date newdate :theories nil)))
+		 (make-loadedfile :date newdate :theories nil))
+	   t)
 	  ((< (loadedfile-date loadedfile) newdate)
 	   (setf (loadedfile-date loadedfile) newdate)
-	   (setf (loadedfile-theories loadedfile) nil)))))
+	   (setf (loadedfile-theories loadedfile) nil)
+	   t))))
 
 (defun outdated-theories (source)
   "Return association list of theories and type-check times, if one of them is outdated.
@@ -58,7 +63,7 @@ Assume source is not NIL."
     (when loadedfile
       (let ((theories (loadedfile-theories loadedfile)))
 	(when (some (lambda (theo-date)
-		      (let* ((theory (get-theory (car theo-date)))
+		      (let* ((theory (extra-get-theory (car theo-date)))
 			     (date   (cdr theo-date)))
 			(when theory
 			  (or (null date)
@@ -70,16 +75,16 @@ Assume source is not NIL."
 (defun outdated-theory (theory theories)
   "Return T if theory is not in theories or is outdated with respect to type-check time.
 Asume theory is not NIL."
-  (let* ((theo-date (assoc (id theory) theories :test #'string=))
+  (let* ((theo-date (assoc (extra-qid-theory theory) theories :test #'string=))
 	 (date      (cdr theo-date))
-	 (newdate (typecheck-time theory)))
+	 (newdate   (typecheck-time theory)))
     (or (null date) (< date newdate))))
 
 (defun add-updated-theory (theory loadedfile)
-  "Add (id theory) to loadfile with current type-check time.
+  "Add qid of theory to loadfile with current type-check time.
 Assume theory is not NIL."
   (when loadedfile
-    (let* ((theoryid  (id theory))
+    (let* ((theoryid  (extra-qid-theory theory))
 	   (theories  (loadedfile-theories loadedfile))
 	   (theo-date (assoc theoryid theories :test #'string=)))
       (unless theo-date
@@ -136,7 +141,7 @@ using make-pathname or merge-pathnames."
 		  *pvsio-loaded-files*))))
 
 (defun purge-attachment-files (found-files)
-  "Remove attachment files that from *pvsio-loaded-files* that are no longer found."
+  "Remove attachment files from *pvsio-loaded-files* that are no longer found."
   (maphash #'(lambda (key attach)
 	       (declare (ignore attach))
 	       (unless (member key found-files :test #'equal)
@@ -152,7 +157,7 @@ using make-pathname or merge-pathnames."
   "Remove attachments that are outdated because the theory has been re-typechecked
 since they were loaded."
   (maphash #'(lambda (key attach)
-	       (let ((theory (get-theory (attachment-theory attach))))
+	       (let ((theory (extra-get-theory (attachment-theo-qid attach))))
 		 (when (or (attachment-source-not-found (attachment-source attach))
 			   (not theory)
 			   (< (attachment-tc-time attach) (typecheck-time theory)))

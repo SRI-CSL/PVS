@@ -72,7 +72,7 @@
   "Generates a Lisp identifier for a PVS identifier that
 doesn't clash with existing Lisp constants and globals.
 id must be a symbol."
-  (if (special-variable-p id) 
+  (if (special-variable-p id)
       (let ((lid (gethash id *lisp-id-hash*)))
 	(or lid
 	    (let ((new-lid (intern (symbol-name (gensym (string id))) :pvs)))
@@ -139,13 +139,13 @@ This function invokes an error when called."
 ;  external-lisp-definition2)
 
 ;;initialize context.  If ground expression then translate to common-lisp,
-;;evaluate, then translate back.  
+;;evaluate, then translate back.
 (defun norm (expr &optional context)
   (let ((context (or context *current-context*)))
 	(cl2pvs (eval (pvs2cl expr)) (type expr) context)))
 
 ;;initialize context and translate to common-lisp with null bindings
-;;and live-variables, i.e., still active in yet-to-be-evaluated expressions.  
+;;and live-variables, i.e., still active in yet-to-be-evaluated expressions.
 (defun pvs2cl (expr &optional context)
   (let ((*current-context*
 	 (if context context *current-context*))
@@ -199,7 +199,7 @@ This function invokes an error when called."
 		,(call-next-method)))
 	(call-next-method))))
 
-;;String literals are translated directly to strings. 
+;;String literals are translated directly to strings.
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
   (declare (ignore bindings livevars))
   (string-value expr))
@@ -230,7 +230,7 @@ This function invokes an error when called."
 			  (append (or actuals module-formals)
 				  arguments)))
 	       (check (check-output-vars
-		       output-vars 
+		       output-vars
 		       (pairlis formals fargs)
 		       livevars)))
 	  (when (and (null check)
@@ -264,7 +264,7 @@ This function invokes an error when called."
     (mk-name-expr (id decl) nil nil res))) ;; 'constant
 
 ;;External application.  Actuals, if any, are appended to the
-;;front of argument list.  
+;;front of argument list.
 (defun mk-fun2-application (op arguments arg-formals bindings livevars)
   (let* ((decl (declaration op))
 	 (actuals (expr-actuals  (module-instance op)))
@@ -297,12 +297,12 @@ This function invokes an error when called."
 				     livevars bindings)
 		   (pvs2cl_up* arguments  bindings livevars)))))
 
-(defun mk-pvsioapp (pvsioattach args &optional type theory-actuals)
-  "Similar to mk-funapp, but adds the key parameter :the-pvs-type-key_,
-which may be used by PVSio attachments to inspect their type, and
-:the-theory-actuals_, which has the list of theory arguments."
-  (let* ((type-key  (gentemp "pvsio-type"))
-	 (pvsiosymb (attachment-fsymbol pvsioattach))
+(defun pvs2cl-pvsio-app (pvsioattach args &optional decl-actuals)
+  "Call PVSio attachment. Fix miss-match between number of arguments
+and number of parameters. Also, add the key parameter :decl-actuals_,
+which could be used by PVSio attachments to inspect the declaration
+type and declaration actuals (including theory arugments)."
+  (let* ((pvsiosymb (attachment-fsymbol pvsioattach))
 	 (nformals  (length (attachment-formals pvsioattach)))
 	 (nactuals  (length args))
 	 (letvars   (when (and (> nformals 1) (= nactuals 1))
@@ -318,12 +318,9 @@ which may be used by PVSio attachments to inspect their type, and
 			   ;; Formal type is a product (many arguments)
 			   letvars)
 			  (t args)))
-	 (actuals   (when theory-actuals
-		      `(:the-theory-actuals_ (list ,@theory-actuals))))
-	 (app (mk-funapp pvsiosymb
-			 (append nargs `(:the-pvs-type-key_ ',type-key)
-				 actuals))))
-    (setf (gethash type-key *pvsio-type-hash*) type)
+	 (actuals   (when decl-actuals
+		      `(:decl-actuals_ (list ,@decl-actuals))))
+	 (app (mk-funapp pvsiosymb (append nargs actuals))))
     (if letbind `(let ,letbind ,app) app)))
 
 ;;If primitive app, use pvs2cl-primitive-app.
@@ -346,15 +343,6 @@ which may be used by PVSio attachments to inspect their type, and
 		     (pvs2cl_up* args bindings livevars)))
       (mk-funapp (pvs2cl-primitive op)
 		 (pvs2cl_up* args bindings livevars)))))
-
-(defun pvs2cl-pvsio-app (expr bindings livevars expr-actuals pvsioattach)
-  "Appplication of a function defined as a PVSio attachment."
-  (let* ((op        (operator* expr))
-	 (args      (loop for arg in (arguments* expr) append arg)))
-    ;; [CM] In the PVSio attachment, the type of op is provided in the-pvs-type_.
-    ;; The theory arguments (expr-actuals) are provided in the-theory-actuals_
-    (mk-pvsioapp pvsioattach (pvs2cl_up* args bindings livevars)
-		 (type op) (pvs2cl_up* expr-actuals bindings livevars))))
 
 (defun pvs2cl-equality (op args bindings livevars);;op is either = or /=
   (let* ((id (id op))
@@ -406,16 +394,43 @@ which may be used by PVSio attachments to inspect their type, and
   (let ((reverse-expr (reverse-list-expr expr nil)))
     `(list ,@(pvs2cl-reverse-list-expr reverse-expr bindings livevars nil))))
 
+(defun pvsio-decl-type (type)
+  "Put type in *pvsio-type-hash* and return its key."
+  (let ((type-key (gentemp "pvsio-type")))
+    (setf (gethash type-key *pvsio-type-hash*) type)
+    (list 'quote type-key)))
+
+(defun pvsio-decl-actuals (bindings livevars xformals type theo-actuals decl-actuals)
+  (when xformals
+    (let ((xformal (car xformals)))
+      (cons (if (null (extra-formal-param xformal))
+		(pvsio-decl-type type)
+	      (let ((nth-param (nth (extra-formal-pos xformal)
+				    (if (eq (extra-formal-where xformal) :theo)
+					theo-actuals
+				      decl-actuals))))
+		(when nth-param
+		  (if (eq (extra-formal-kind xformal) :type)
+		      (pvsio-decl-type (type-value nth-param))
+		    (pvs2cl_up* (expr nth-param) bindings livevars)))))
+	    (pvsio-decl-actuals bindings livevars (cdr xformals)
+				type theo-actuals decl-actuals)))))
+
 (defmethod pvs2cl_up* ((expr application) bindings livevars)
   (with-slots (operator argument) expr
     (let ((op* (operator* expr)))
       (if (constant? op*) ;;assuming all primitive/datatype ops are not curried.
-	  (let ((actuals     (expr-actuals (module-instance op*)))
-		(pvsioattach (pvsio-attachment op*)))
-	    (when (mappings (module-instance op*))
-	      (pvs2cl-mappings (mappings (module-instance op*))))
+	  (let* ((modinst     (module-instance op*))
+		 (actuals     (expr-actuals modinst))
+		 (pvsioattach (pvsio-attachment op*)))
+	    (when (mappings modinst)
+	      (pvs2cl-mappings (mappings modinst)))
 	    (cond (pvsioattach
-		   (pvs2cl-pvsio-app expr bindings livevars actuals pvsioattach))
+		   (let* ((args         (loop for arg in (arguments* expr) append arg))
+			  (decl-actuals (pvsio-decl-actuals
+					 bindings livevars (attachment-xformals pvsioattach)
+					 (type op*) (actuals modinst) (dactuals modinst))))
+		     (pvs2cl-pvsio-app pvsioattach (pvs2cl_up* args bindings livevars) decl-actuals)))
 		  ((pvs2cl-primitive? op*)
 		   (pvs2cl-primitive-app expr bindings livevars actuals))
 		  ((datatype-constant? operator)
@@ -509,7 +524,7 @@ which may be used by PVSio attachments to inspect their type, and
 	      (pvs2cl-application operator argument bindings livevars)))
 	(pvs2cl-application operator argument bindings livevars))))
 
-(defun pvs2cl-application (operator argument bindings livevars)	
+(defun pvs2cl-application (operator argument bindings livevars)
   (let ((clop (pvs2cl_up* operator bindings ;in case of actuals
 			  (append (updateable-vars argument)
 				  livevars)))
@@ -546,7 +561,7 @@ which may be used by PVSio attachments to inspect their type, and
 	      `(let ,let-pairs ,cl-expression)))
 	(let* ((arg (pvs2cl_up* (car args) bindings livevars))
 	       (argvar (gentemp "A"))
-	       (let-pairs 
+	       (let-pairs
 		(loop for bnd in let-bindings
 		      as i from 1
 		      collect (list bnd `(project ,i ,argvar)))))
@@ -598,7 +613,7 @@ which may be used by PVSio attachments to inspect their type, and
 			  (cl-expression (pvs2cl_up* expression
 						     bindings
 						     livevars)))
-							
+
 		     (values cl-expression nil))))
 	   (loop for (x . y) in output-vars
 		 do (push-output-var x y)) ; *output-vars*
@@ -634,12 +649,12 @@ which may be used by PVSio attachments to inspect their type, and
   		  collect (list 'type (pvs2cl-lisp-type typ) var))))
     `(declare ,@decls)))
 
-						    
+
 (defmethod pvs2cl_up* ((expr let-expr) bindings livevars)
   (let* ((let-bindings (bindings (operator expr)))
 	(arg (argument expr))
 	(args (arguments expr))
-	(arg-type (find-supertype (type arg))) 
+	(arg-type (find-supertype (type arg)))
 	(expression (expression (operator expr))))
     (let* ((let-variables
 	    (pvs2cl-make-bindings  let-bindings bindings))
@@ -835,7 +850,7 @@ which may be used by PVSio attachments to inspect their type, and
 	    (mk-funapp (cdr bnd)
 		       (pvs2cl-actuals (expr-actuals (module-instance expr))
 				       bindings livevars))
-	    (cdr bnd)) 
+	    (cdr bnd))
 	(if (const-decl? decl)
 	    (pvs2cl-constant expr bindings livevars)
 	    (let ((undef (undefined expr "Hit untranslateable expression ~a")))
@@ -861,7 +876,7 @@ which may be used by PVSio attachments to inspect their type, and
 (defun make-pvslisp-string (size expr)
   (let ((charlist (loop for i from 0 to (1- size) collect (pvs-funcall expr i))))
   (coerce charlist 'string)))
-  
+
 
 (defmethod pvs2cl_up* ((expr record-expr) bindings livevars)
   ;;add special case for strings
@@ -882,10 +897,10 @@ which may be used by PVSio attachments to inspect their type, and
 (defmethod pvs2cl_up* ((expr injection-application) bindings livevars)
     `(inject ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
 
-(defun sorted-fields (typ)                
-  (let ((restructure   (copy-list (fields typ))))     
-    (sort restructure                            
-          #'string-lessp                         
+(defun sorted-fields (typ)
+  (let ((restructure   (copy-list (fields typ))))
+    (sort restructure
+          #'string-lessp
           :key #'(lambda (x) (id x)))))
 
 (defun get-field-num (id typ)
@@ -899,7 +914,7 @@ which may be used by PVSio attachments to inspect their type, and
 	   (fieldnum (get-field-num (id expr) argtype)))
       (if (finseq-type? argtype)
 	  (let* ((argvar (gentemp "arg"));;NSH(1/12/25: pvs-funcall handles string literals
-		 (fldapp (if (zerop fieldnum) `(length ,argvar) argvar))) 
+		 (fldapp (if (zerop fieldnum) `(length ,argvar) argvar)))
 	    `(let ((,argvar ,clarg))
 	       (if (stringp ,argvar)
 		   ,fldapp
@@ -958,7 +973,7 @@ which may be used by PVSio attachments to inspect their type, and
 				     livevars))))
     (pvs2cl-update* expr-type cl-expr
 		    assigns bindings
-		    (append (updateable-vars expr) livevars)))) 
+		    (append (updateable-vars expr) livevars))))
 
 (defun pvs2cl-update* (type cl-expr assigns bindings livevars)
     (if (consp assigns)
@@ -992,7 +1007,7 @@ which may be used by PVSio attachments to inspect their type, and
 				 ,new-cl-expr
 				 ,exprvar))
 	       (newexpr-with-let
-		(if lhs-bindings 
+		(if lhs-bindings
 		    `(let ,lhs-bindings ,new-expr-body)
 		    new-expr-body))
 		   )
@@ -1069,7 +1084,7 @@ which may be used by PVSio attachments to inspect their type, and
       (let* ((field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
 	     (newexpr `(svref ,cl-expr-var ,field-num))
 	     (field-type (type (find id fields :key #'id) ))
- 	     (dep-fields (sort-fields (fields type) t))	;;dependent sort
+	     (dep-fields (sort-fields (fields type) t))	;;dependent sort
  	     (new-bindings (pvs2cl-add-dep-field-bindings  dep-fields fields id
 							   cl-expr-var bindings))
 	     (other-updateable-types ;;to prevent updates to aliases
@@ -1107,7 +1122,7 @@ which may be used by PVSio attachments to inspect their type, and
 	 (tupsel-type (nth (1- num) types))
 	 (other-updateable-types
 	  (loop for fld in types
-		as pos from 1  
+		as pos from 1
 		when (not (eql pos num))
 		nconc (top-updateable-types fld nil)))
 	 (new-bindings (pvs2cl-add-dep-tuple-bindings types (1- num) 0 cl-expr-var
@@ -1140,9 +1155,9 @@ which may be used by PVSio attachments to inspect their type, and
 	  (pvs2cl-add-dep-tuple-bindings  (cdr dep-tuple-types)
 					      position (1+ index)  expr
 					      bindings))))
-	
+
 (defun mk-fun-array (expr size &optional update-index) ;;okay to use aref here instead of pvs-setf
-  (cond ((or (simple-vector-p expr) 
+  (cond ((or (simple-vector-p expr)
 	  (hash-table-p expr) (null size))
 	 expr)
 	((vectorp expr)
@@ -1171,7 +1186,7 @@ which may be used by PVSio attachments to inspect their type, and
 	(t (let ((arr (make-array size :initial-element 0
 				       :fill-pointer size
 				       :adjustable t)))
-	     (loop for i from 0 to (1- size);;unless avoids evaluating expr on 
+	     (loop for i from 0 to (1- size);;unless avoids evaluating expr on
 		   unless (eql i update-index) do ;;newly expanded index
 		   (setf (aref arr i)(funcall expr i)))
 	     arr))))
@@ -1264,12 +1279,12 @@ which may be used by PVSio attachments to inspect their type, and
 	 (cl-arg1 (pvs2cl_up*  (car arg1) bindings
 			      (append (updateable-vars restargs)
 				      livevars)))
-	 (newexpr (pvs2cl-update-nd-type 
+	 (newexpr (pvs2cl-update-nd-type
 		   (range type) (mk-funcall expr (list arg1var))
 		   restargs assign-expr bindings livevars)))
 ;;    (break "outer-array-update")
     (push (list arg1var cl-arg1) *lhs-args*)
-    (if bound 
+    (if bound
 	`(pvs-outer-array-update ,expr ,arg1var ,newexpr ,cl-bound)
       `(pvs-function-update (mkcopy-pvs-closure-hash ,expr)  ,arg1var ,newexpr))))
 
@@ -1278,10 +1293,10 @@ which may be used by PVSio attachments to inspect their type, and
   (let* ((id (id (car arg1)))
 	 (fields  (sort-fields (fields type)))
 	 (field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
-	 (cl-expr-var (gentemp "E"))	 
-	 (new-expr `(svref ,cl-expr-var ,field-num))	 
+	 (cl-expr-var (gentemp "E"))
+	 (new-expr `(svref ,cl-expr-var ,field-num))
 	 (field-type (type (find id fields :key #'id) ))
- 	 (dep-fields (sort-fields (fields type) t));;dependent sort	 
+ 	 (dep-fields (sort-fields (fields type) t));;dependent sort
 	 (new-bindings (pvs2cl-add-dep-field-bindings  dep-fields fields id
 						  cl-expr-var bindings))
 	 (newval (pvs2cl-update-nd-type field-type new-expr
@@ -1327,9 +1342,9 @@ which may be used by PVSio attachments to inspect their type, and
   (break "Need to fix this"))
 
 ;;assign-arg-livevars can be ignored since args are evaluated before
-;;expression and have no updateable results. 		 
+;;expression and have no updateable results.
 ;;even the RHS-livevars can be ignored since the nested updates
-;;are done nondestructively.  
+;;are done nondestructively.
 (defmethod pvs2cl_up* ((expr update-expr) bindings livevars)
   (if (updateable? (type (expression expr)))
       (if (and *destructive?*
@@ -1373,7 +1388,7 @@ which may be used by PVSio attachments to inspect their type, and
 	       (makesym "~a#~a" id i)))
 	  (and (null (rassoc tmp bindings))
 	       tmp))))
-    
+
 (defun pvs2cl-lambda (bind-decls expr bindings) ;;removed livevars
   (let* ((*destructive?* nil)
 	 (bind-ids (pvs2cl-make-bindings bind-decls bindings))
@@ -1412,7 +1427,7 @@ which may be used by PVSio attachments to inspect their type, and
 			(pvs2cl-newid (id bb) bindings))))
 	(cons newid (pvs2cl-make-bindings (cdr bind-decls) bindings)))
       nil))
-      
+
 
 (defun pvs2cl-bindings (bind-decls bindings)
   (if (consp bind-decls)
@@ -1431,16 +1446,18 @@ which may be used by PVSio attachments to inspect their type, and
 (defun pvs2cl-constant (expr bindings livevars)
   (let ((pvsioattach (pvsio-attachment expr)))
     (cond (pvsioattach
-	   (let* ((type      (type expr))
-		  (nargs     (length (attachment-formals pvsioattach)))
-		  (actuals   (pvs2cl_up* (expr-actuals (module-instance expr))
-					 bindings livevars)))
+	   (let* ((type         (type expr))
+		  (modinst      (module-instance expr))
+		  (decl-actuals (pvsio-decl-actuals
+				 bindings livevars (attachment-xformals pvsioattach)
+				 type (actuals modinst) (dactuals modinst)))
+		  (nargs        (length (attachment-formals pvsioattach))))
 	     (if (= nargs 0)
 		 ;; it's a PVSio constant
-		 (mk-pvsioapp pvsioattach nil type actuals)
+		 (pvs2cl-pvsio-app pvsioattach nil decl-actuals)
 	       ;; it's a PVSio function. Needs to return a closure of 1 argument
 	       (let ((lamvar (list (pvs2cl-newid 'lamvar bindings))))
-		 `(lambda ,lamvar ,(mk-pvsioapp pvsioattach lamvar type actuals))))))
+		 `(lambda ,lamvar ,(pvs2cl-pvsio-app pvsioattach lamvar decl-actuals))))))
 	  ((pvs2cl-primitive? expr)
 	   (if (memq (id expr) *primitive-constants*) ;the only constants
 	       (pvs2cl-primitive expr)	;else need to return closures.
@@ -1534,7 +1551,7 @@ which may be used by PVSio attachments to inspect their type, and
   (if (datatype-constant? expr)
       (lisp-function2 (declaration expr))
       (if (or (expr-actuals (module-instance expr))
-	      (eq (module (declaration expr)) *external*)) 
+	      (eq (module (declaration expr)) *external*))
 	  (external-lisp-function2 (declaration expr))
 	(lisp-function2 (declaration expr)))))
 
@@ -1722,7 +1739,7 @@ which is processed with the parameters ARGS."
 	   cl-expr)
 	  (t (setf (output-vars defn-slot) *output-vars*)
 	     (pvs2cl-till-output-stable defn-slot expr bindings livevars)))))
-    
+
 
 (defmethod body* ((expr lambda-expr))
   (body* (expression expr)))
@@ -1764,7 +1781,7 @@ which is processed with the parameters ARGS."
 	 (not (lambda-expr? (args2 (car (last defax))))))))
 
 ;;
-;; BD: allegro goes nuts if we try to compile things like 
+;; BD: allegro goes nuts if we try to compile things like
 ;;  (define x () <long-list of pairs of integers>)
 ;; but it takes no time to evaluate 'x'.
 ;;
@@ -2082,7 +2099,7 @@ theory formals."
 						     as i from 0
 						     collect (list (id ac)
 								   `(svref ,xvar ,i)))
-					     (list (list (id (car accessors)) xvar))))) ;; Let requires a list of list (March 17 2015) [CM] 
+					     (list (list (id (car accessors)) xvar))))) ;; Let requires a list of list (March 17 2015) [CM]
 			  ;;NSH(2-4-2014): delay co-constructor arguments
 			  (unary-form (when accessors
 					`(lambda (,xvar) (let ,unary-binding
@@ -2150,7 +2167,7 @@ theory formals."
     (setf (definition (in-defn acc)) defn)
     (eval defn)
     acc-id))
-    
+
 (defparameter *pvs2cl-primitives*
   (list (mk-name '= nil '|equalities|)
 	(mk-name '/= nil '|notequal|)
@@ -2158,19 +2175,19 @@ theory formals."
 	(mk-name 'FALSE nil '|booleans|)
 	(mk-name 'IMPLIES nil '|booleans|)
 	(mk-name '=> nil '|booleans|)
-	(mk-name '⇒ nil '|booleans|)	
+	(mk-name '⇒ nil '|booleans|)
 	(mk-name '<=> nil '|booleans|)
-	(mk-name '⇔ nil '|booleans|)	
+	(mk-name '⇔ nil '|booleans|)
 	(mk-name 'AND nil '|booleans|)
 	(mk-name '& nil '|booleans|)
-	(mk-name '∧ nil '|booleans|)	
+	(mk-name '∧ nil '|booleans|)
 	(mk-name 'OR nil '|booleans|)
-	(mk-name '∨ nil '|booleans|)	
+	(mk-name '∨ nil '|booleans|)
  	(mk-name 'NOT nil '|booleans|)
 	(mk-name '¬ nil '|booleans|)
 	(mk-name 'WHEN nil '|booleans|)
 	(mk-name 'IFF nil '|booleans|)
-	(mk-name 'XOR nil '|xor_def|)	
+	(mk-name 'XOR nil '|xor_def|)
 	(mk-name '+ nil '|number_fields|)
 	(mk-name '- nil '|number_fields|)
 	(mk-name '* nil '|number_fields|)
@@ -2186,7 +2203,7 @@ theory formals."
 	(mk-name '|rational_pred| nil '|rationals|)
 	(mk-name '|floor| nil '|floor_ceil|)
 	(mk-name '|ceiling| nil '|floor_ceil|)
-	(mk-name '|nrem| nil '|modulo_arithmetic|)	
+	(mk-name '|nrem| nil '|modulo_arithmetic|)
 	(mk-name '|rem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
 	(mk-name '|even?| nil '|integers|)
@@ -2287,7 +2304,7 @@ theory formals."
 
 (defun write-defn (defn output)
   (when defn
-    (cond (output 
+    (cond (output
 	   (format output "~%")
 	   (write defn :level nil :length nil
 	       :pretty t :stream output))
@@ -2402,7 +2419,7 @@ theory formals."
   (when (and (subtype? type)
 	     (tc-eq (type (predicate type))
 		    (type (predicate (below-subtype)))))
-    (let ((pred (predicate type)))      
+    (let ((pred (predicate type)))
       (if (and (lambda-expr? pred)(tc-eq (expression pred) *false*))
 	  (make-number-expr 0)
 	(let* ((bindings (make-empty-bindings (free-params (below-subtype))))

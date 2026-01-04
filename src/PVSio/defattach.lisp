@@ -20,35 +20,35 @@
   "Hash table of PVSio attachments indexed by pvsio-attachment-key.")
 
 (defstruct attachment
-  theory     ;; PVS theory name
-  name       ;; PVS definition name. Due to PVS overloading, there may be more than one
-             ;; attachement with the same name for the same theory
-  formals    ;; Formal arguments of the PVSio definition
-  proto      ;; Prototype of the PVSio definition
-  tc-time    ;; UTC type-check time (used in the the computation of pvsio-attachment-key)
-  decl-proto ;; Prototype of the PVS declaration (proto should match decl-proto)
-  primitive  ;; NIL unless this attachment a primitive, i.e., trusted by the PVS theorem prover
-  source     ;; Path to pvs-attachment where this attachment is defined
-  fsymbol)   ;; Symbol of the PVSio function defining this attachment
+  theo-qid    ;; PVS theory's qualified identifier (string of the form "[<lib>@]<id>")
+  name        ;; PVS definition name. Due to PVS overloading, there may be more than one
+              ;; attachement with the same name for the same theory
+  formals     ;; Formal arguments of the PVSio definition
+  xformals    ;; Extra-formals (theory parameters and decl-type)
+  proto       ;; Prototype of the PVSio definition
+  tc-time     ;; UTC type-check time (used in the the computation of pvsio-attachment-key)
+  declaration ;; PVS declaration whose prototype best matches proto
+  primitive   ;; T when this attachment a primitive, i.e., trusted by the PVS theorem prover
+  source      ;; Path to pvs-attachment where this attachment is defined
+  fsymbol)    ;; Symbol of the PVSio function defining this attachment
 
 (defvar *pvsio-type-hash* (make-hash-table)
-  "Hash table of dynamic types of PVSio functions, indexed by a unically
-generated symbol. The index is passed to PVSio functions using the key
-parameter :the-pvs-type-key_.")
+  "Hash table of resolved types used by PVSio functions, indexed by a unically
+generated symbol.")
 
 (defun attach-lt (att1 att2)
   "Lexicographic (THEORY,NAME) less-than order for attachments."
-  (or (string< (attachment-theory att1) (attachment-theory att2))
-      (and (string= (attachment-theory att1) (attachment-theory att2))
+  (or (string< (attachment-theo-qid att1) (attachment-theo-qid att2))
+      (and (string= (attachment-theo-qid att1) (attachment-theo-qid att2))
 	   (string< (attachment-name att1) (attachment-name att2)))))
 
 (defun list-of-attachments (&key theory name)
-  "List attachments in a given THEORY with a given NAME, sorted by THEORY and NAME.
-The value NIL represents any NAME or any THEORY."
+  "List attachments in a given THEORY (theory's qualified id) with a given NAME,
+sorted by THEORY and NAME. The value NIL represents any NAME or any THEORY."
   (loop for attach being the hash-value of *pvsio-attachments*
 	with attachments = nil
 	when (and (or (null name) (string= name (attachment-name attach)))
-		  (or (null theory) (string= theory (attachment-theory attach))))
+		  (or (null theory) (string= theory (attachment-theo-qid attach))))
 	do (setq attachments (insert-into-sorted-list attach attachments #'attach-lt))
 	finally (return attachments)))
 
@@ -60,9 +60,9 @@ The value NIL represents any NAME or any THEORY."
       (gethash key *pvsio-attachments*))))
 
 (defun remove-attachment-theory (theory)
-  "Remove attachments of THEORY."
+  "Remove attachments of THEORY (theory's qualified id)."
   (maphash #'(lambda (key attach)
-               (when (string= (attachment-theory attach) theory)
+               (when (string= (attachment-theo-qid attach) theory)
                  (remhash key *pvsio-attachments*)))
            *pvsio-attachments*))
 
@@ -78,8 +78,9 @@ The value NIL represents any NAME or any THEORY."
   "Return the sorted list of attachment theories."
   (loop for attach being the hash-value of *pvsio-attachments*
 	with theories = nil
-	do (setq theories (insert-into-sorted-list (attachment-theory attach) theories #'string<
-						   :duplicates nil))
+	do (setq theories (insert-into-sorted-list
+			   (attachment-theo-qid attach) theories #'string<
+			   :duplicates nil))
 	finally (return theories)))
 
 (defun defattach-long-name (attach)
@@ -87,7 +88,7 @@ The value NIL represents any NAME or any THEORY."
 pretty-printed prototype, and whether is primitive or not."
   (format nil "~a::~a~:[~; [primitive]~]"
 	  (attachment-name attach)
-	  (pp-prototype (attachment-decl-proto attach))
+	  (pp-prototype (get-prototype-decl (attachment-declaration attach)))
 	  (attachment-primitive attach)))
 
 (defun list-pvs-attachments-str ()
@@ -123,7 +124,7 @@ pretty-printed prototype, and whether is primitive or not."
 (defun help-pvs-attachment (name)
   (format t "~a" (help-attachment-str name)))
 
-(defun help_pvs_attachment (name) 
+(defun help_pvs_attachment (name)
   (help-pvs-attachment name))
 
 (defun split_thnm (thnm)
@@ -134,7 +135,7 @@ Otherwise, returns a tuple of NIL and the string THNM"
 		  (subseq thnm (+ pos 1)))
       (cons nil thnm))))
 
-(defun find-atomic-prototype (type &optional (rec t))
+(defun get-atomic-prototype (type &optional (rec t))
   "An atomic prototype is either a string representing the type-name or print-type
 of the type at the declared level, or NIL in case of a more complex type.
 For example, the atomic prototypes of the following constants are provided
@@ -147,13 +148,13 @@ f: [nat,bool]      % NIL
 g: (odd?)          % NIL
 h: [nat->bool]     % NIL"
   (cond ((print-type type)
-	 (find-atomic-prototype (print-type type) nil))
+	 (get-atomic-prototype (print-type type) nil))
 	((type-name? type)
 	 (symbol-name (id type)))
 	((and rec (subtype? type) (supertype type))
-	 (find-atomic-prototype  (supertype type) nil))))
+	 (get-atomic-prototype  (supertype type) nil))))
 
-(defun find-prototype (declaration)
+(defun get-prototype-decl (declaration)
   "Finds the prototype of a declaration. The prototype is a representation
 of the shape of the type of the declaration that only uses atomic protypes
 -- see definition above. This shape is used to statically disambiguate semantic
@@ -162,40 +163,73 @@ list (T0 T1 .. TN) representing a type of the form [[T1,..,TN]->T0], where N=0 i
 case of a constant. Each element Ti is an atomic prototype."
   (let ((decltype (type declaration)))
     (if (funtype? decltype)
-	(cons (find-atomic-prototype (range decltype))
-	      (mapcar (lambda (formal) (find-atomic-prototype (type formal)))
+	(cons (get-atomic-prototype (range decltype))
+	      (mapcar (lambda (formal) (get-atomic-prototype (type formal)))
 		      (car (formals declaration))))
-      (list (find-atomic-prototype decltype)))))
+      (list (get-atomic-prototype decltype)))))
 
-(defun get-attach-formals (declformals &optional return-type prototype formals)
-  "DELFORMALS is a list of the form (V0 .. VN), where each Vi is either a
-variable name (symbol) or a list of the form (Vi Ti), where Ti is a
-type name (string). The symbol Vi may be :return representing the return
-variable. Return a list where the car is the prototype of the attachment
-declaration and  the cdr are the formals of the declaration."
+(defstruct extra-formal
+  varid ;; Variable identifier (symbol)
+  kind  ;; :type (formal is a type), :const (formal is a const)
+  param ;; Parameter name
+  (where nil) ;; :decl (formal is a declaration), :theo (formal is a theory parameter)
+  (pos nil)   ;; Position of parameter in either theory parameters or declaration formals
+  )
+
+(defun parse-attach-formals (declformals &optional return-type prototype formals xformals)
+  "DECLFORMALS is a list of the form (V0 .. VN), where each Vi is either a
+parameter name (symbol) or one of the special list forms:
+* (V T),  where T is a PVS type name (symbol), indicating the parameter
+  V has PVS type T
+* (:return T), where T is a PVS type name, indicating that returned value
+  has type T
+* (V :decl-formal P), where V is a variable name (symbol) and P is a theory parameter,
+  indicating the value of P should be bound to variable V. If P is ommitted,
+  it is assumed that the name of the parameter is also V.
+* (V :decl-type), where V is a varible name (symbol), indicating that the
+  type of the PVS declaration should be bound to variable V
+Return muliple values in the following order.
+* declared prototype, i.e., shape of the declaration type
+* list of formals (variable names)
+* list of extra-formal"
   (if declformals
       (let ((arg (car declformals)))
-	(cond ((eq arg :return)
-	       (get-attach-formals (cdr declformals)
-				   return-type
-				   prototype
-				   formals))
-	      ((and (consp arg) (eq (car arg) :return))
-	       (get-attach-formals (cdr declformals)
-				   (cadr arg)
-				   prototype
-				   formals))
+	(cond ((and (consp arg) (eq (car arg) :return))
+	       (parse-attach-formals (cdr declformals)
+				     (cadr arg)
+				     prototype
+				     formals
+				     xformals))
+	      ((and (consp arg) (member (cadr arg) '(:decl-formal :decl-type)))
+	       (let* ((varid   (nth 0 arg))
+		      (kind    (when (eq (cadr arg) :decl-type)
+				 :type))
+		      (param   (when (eq (cadr arg) :decl-formal)
+				 (or (nth 2 arg) varid)))
+		      (xformal (make-extra-formal
+				:varid varid
+				:kind  kind
+				:param param)))
+		 (parse-attach-formals (cdr declformals)
+				       return-type
+				       prototype
+				       formals
+				       (append
+					xformals
+					(list xformal)))))
 	      ((consp arg)
-	       (get-attach-formals (cdr declformals)
-				   return-type
-				   (append prototype (list (cadr arg)))
-				   (append formals (list (car arg)))))
+	       (parse-attach-formals (cdr declformals)
+				     return-type
+				     (append prototype (list (cadr arg)))
+				     (append formals (list (car arg)))
+				     xformals))
 	      (t
-	       (get-attach-formals (cdr declformals)
-				   return-type
-				   (append prototype (list nil))
-				   (append formals (list arg))))))
-    (cons (cons return-type prototype) formals)))
+	       (parse-attach-formals (cdr declformals)
+				     return-type
+				     (append prototype (list nil))
+				     (append formals (list arg))
+				     xformals))))
+    (values (cons return-type prototype) formals xformals)))
 
 (defun prototype-match (proto1 proto2)
   "PROTO1 = (T0 T1 .. Tn) matches PROTO2 = (S0 S1 .. Sn) if their
@@ -210,7 +244,7 @@ length are the same and for all i, Ti = Si OR Ti = NIL."
 and the cdr is the list of matched prototypes."
   (if declarations
     (let* ((declaration (car declarations))
-	   (proto2      (find-prototype declaration)))
+	   (proto2      (get-prototype-decl declaration)))
       (if (prototype-match proto proto2)
 	  (find-matching-prototypes proto (cdr declarations)
 				    (unless matched-protos declaration)
@@ -222,19 +256,20 @@ and the cdr is the list of matched prototypes."
 
 (defun pp-prototype (prototype)
   "Pretty-prints prototype"
-  (flet ((pp-proto (arg) (or arg "_")))
-    (if (cdr prototype)
-	(let ((sqb (cddr prototype))) ;; Is domain a cartesian product?
-	  (format nil "[~:[~;[~]~{~a~^,~}~:[~;]~] -> ~a]"
-		  sqb
-		  (mapcar #'pp-proto (cdr prototype))
-		  sqb
-		  (pp-proto (car prototype))))
-      (format nil "~a" (pp-proto (car prototype))))))
+  (when prototype
+    (flet ((pp-proto (arg) (or arg "_")))
+      (if (cdr prototype)
+	  (let ((sqb (cddr prototype))) ;; Is domain a cartesian product?
+	    (format nil "[~:[~;[~]~{~a~^,~}~:[~;]~] -> ~a]"
+		    sqb
+		    (mapcar #'pp-proto (cdr prototype))
+		    sqb
+		    (pp-proto (car prototype))))
+      (format nil "~a" (pp-proto (car prototype)))))))
 
 (defun defattach-thnm (thnm declformals body &key primitive)
   (let* ((th_nm      (split_thnm thnm))
-	 (theory     (when (car th_nm) (get-theory (car th_nm))))
+	 (theory     (when (car th_nm) (extra-get-theory (car th_nm))))
 	 (name       (cdr th_nm))
 	 (source     (car *pvs-attachment-source-file*))
          (theories   (cdr *pvs-attachment-source-file*))
@@ -253,59 +288,117 @@ and the cdr is the list of matched prototypes."
 	   (pvs-message "Error (pvs-attachments): Theory ~a not found in current context."
 			(car th_nm))))))
 
+(defun check-xformals (xformals formals decl)
+  "Return string message if xformals isn't disjoint with formals or xformal doesn't appear
+as a formal in decl."
+  (when xformals
+    (let* ((xformal      (car xformals))
+	   (varid        (extra-formal-varid xformal))
+	   (param        (extra-formal-param xformal))
+	   (theo-params  (formals (module decl)))
+	   (decl-formals (decl-formals decl))
+	   (ntheo        (length theo-params))
+	   (ndecl        (length decl-formals))
+	   (find-theo    (when param (member param theo-params :test #'string= :key #'id)))
+	   (find-decl    (when param (member param decl-formals :test #'string= :key #'id))))
+      (cond ((member varid formals)
+	     (format nil "Formal parameter ~a appears more than once" varid))
+	    ((or (eq varid 't) (member 't formals))
+	     (format nil "Symbol ~a cannot be used as variable name" t))
+	    ((and param (not find-theo) (not find-decl))
+	     (format nil "~a is neither a theory parameter nor a declaration formal" param))
+	    (t
+	     (when find-theo
+	       (setf (extra-formal-kind xformal) (if (formal-type-decl? (car find-theo)) :type :const))
+	       (setf (extra-formal-where xformal) :theo)
+	       (setf (extra-formal-pos xformal) (- ntheo (length find-theo))))
+	     (when find-decl
+	       (setf (extra-formal-kind xformal) (if (decl-formal-type? (car find-decl)) :type :const))
+	       (setf (extra-formal-where xformal) :decl)
+	       (setf (extra-formal-pos xformal) (- ndecl (length find-decl))))
+	     (let ((rest (check-xformals (cdr xformals) formals decl)))
+	       (if (listp rest)
+		   (cons xformal rest)
+		 rest)))))))
+
+(defun proto-xformals (xformals atheo adecl)
+  (when xformals
+    (let* ((xformal (car xformals))
+	   (varid   (extra-formal-varid xformal))
+	   (param   (extra-formal-param xformal)))
+      (when param
+	(if (eq (extra-formal-where xformal) :theo)
+	    (setf (aref atheo (extra-formal-pos xformal)) varid)
+	  (setf (aref adecl (extra-formal-pos xformal)) varid)))
+      (proto-xformals (cdr xformals) atheo adecl))))
+
+(defun pp-xformals (attach)
+  (let* ((decl     (attachment-declaration attach))
+	 (atheo    (make-array (length (formals (module decl))) :initial-element '_))
+	 (adecl    (make-array (length (decl-formals decl)) :initial-element '_))
+	 (xformals (attachment-xformals attach)))
+    (when xformals
+      (proto-xformals xformals atheo adecl)
+      (cons
+       (when (and (> (length atheo) 0) (find-if-not (lambda (x) (eq x '_)) atheo))
+	 (format nil "[~{~a~^,~}]" (coerce atheo 'list)))
+       (when (and (> (length adecl) 0) (find-if-not (lambda (x) (eq x '_)) adecl))
+	 (format nil "[~{~a~^,~}]" (coerce adecl 'list)))))))
+
 (defun attach-theory-name (theory name declformals body &key primitive verbose)
-  (let* ((thnm           (format nil "~a.~a" (id theory) name))
-	 (declarations   (const-decls-of-theory theory name))
-	 (proto-formals  (when declarations (get-attach-formals declformals)))
-	 (proto          (car proto-formals))
-	 (best-matched   (find-matching-prototypes proto declarations))
-	 (best-decl      (car best-matched))
-	 (matched-protos (cdr best-matched))
-	 (best-proto     (car matched-protos)))
-    (cond ((null declarations)
-	   (pvs-message "Error (pvs-attachments): Declaration ~a not found."
-			thnm))
-	  ((null matched-protos)
-	   (pvs-message "Error (pvs-attachments): Declaration ~a::~a not found."
-			thnm (pp-prototype proto)))
-	  ((null best-decl)
-	   (pvs-message "Error (pvs-attachments): Declaration ~a::~a could be resolved to:~%~
+  (let ((thnm         (format nil "~a.~a" (extra-qid-theory theory) name))
+	(declarations (const-decls-of-theory theory name)))
+    (if declarations
+	(multiple-value-bind
+	    (proto formals xformals)
+	    (parse-attach-formals declformals)
+	  (let* ((best-matched   (find-matching-prototypes proto declarations))
+		 (best-decl      (car best-matched))
+		 (matched-protos (cdr best-matched))
+		 (best-proto     (pp-prototype (car matched-protos)))
+		 (chk-xfmls      (when best-decl (check-xformals xformals formals best-decl))))
+	    (cond ((null matched-protos)
+		   (pvs-message "Error (pvs-attachments): Declaration ~a::~a not found."
+				thnm (pp-prototype proto)))
+		  ((null best-decl)
+		   (pvs-message "Error (pvs-attachments): Declaration ~a::~a could be resolved to:~%~
                         ~{~a::~a~%~}~
-                        To resolve ambiguity, annotate attchment variables with type names."
-			thnm (pp-prototype proto)
-			(mapcan (lambda (p) (list thnm (pp-prototype p))) matched-protos)))
-	  (t (when verbose
-	       (pvs-message "Loading semantic ~:[attachment~;primitive~] of ~a::~a~%"
-			    primitive thnm (pp-prototype best-proto)))
-	     (defattach-pvsio best-decl name declformals body :primitive primitive)))))
+                        To resolve ambiguity, annotate attachment paramters with type names."
+				thnm (pp-prototype proto)
+				(mapcan (lambda (p) (list thnm (pp-prototype p))) matched-protos)))
+		  ((stringp chk-xfmls)
+		   (pvs-message "Error (pvs-attachments): ~a in attachment ~a::~a" chk-xfmls thnm best-proto))
+		  (t (when verbose
+		       (pvs-message "Loading semantic ~:[attachment~;primitive~] of ~a::~a"
+				    primitive thnm best-proto))
+		     (defattach-pvsio best-decl name proto formals chk-xfmls body primitive)))))
+      (pvs-message "Error (pvs-attachments): Declaration ~a not found."
+		   thnm))))
 
 (defun pvsio-attachment-key (decl)
   "Compute unique id based on internal decl id and time stamp of the declaraton's theory."
   (when (and (const-decl? decl)
 	     (not (skolem-const-decl? decl)))
     (let ((theory (module decl)))
-      (format nil "~a_~a.~a"
-	      (id theory)
-	      (typecheck-time theory)
-	      (get-unique-id decl)))))
+      (format nil "~a.~a-~a"
+	      (extra-qid-theory theory)
+	      (get-unique-id decl)
+	      (typecheck-time theory)))))
 
-(defun defattach-pvsio (decl name declformals body &key primitive)
-  (let* ((theory        (module decl))
-	 (proto-formals (get-attach-formals declformals))
-	 (proto         (car proto-formals))
-	 (formals       (cdr proto-formals))
-	 (key 		(pvsio-attachment-key decl))
-	 (decl-proto    (find-prototype decl))
-	 (fpvsio        (makesym "pvsio-~a.~a" (id theory) (get-unique-id decl)))
-	 (attach        (make-attachment :theory (id theory)
-					 :name name
-					 :formals formals
-					 :proto proto
-					 :tc-time (typecheck-time theory)
-					 :decl-proto decl-proto
-					 :primitive primitive
-					 :source (car *pvs-attachment-source-file*)
-					 :fsymbol fpvsio)))
+(defun defattach-pvsio (decl name proto formals xformals body primitive)
+  (let* ((theory     (module decl))
+	 (key 	     (pvsio-attachment-key decl))
+	 (fpvsio     (makenewsym "pvsio-~a.~a" (extra-qid-theory theory) (get-unique-id decl)))
+	 (attach     (make-attachment :theo-qid (extra-qid-theory theory)
+				      :name name
+				      :formals formals
+				      :xformals xformals
+				      :proto proto
+				      :tc-time (typecheck-time theory)
+				      :declaration decl
+				      :primitive primitive
+				      :source (car *pvs-attachment-source-file*)
+				      :fsymbol fpvsio)))
     (setf (gethash key *pvsio-attachments*) attach)
     (defattach-body attach body)))
 
@@ -315,12 +408,22 @@ and the cdr is the list of matched prototypes."
 ~a is defined as a semantic attachment.
 It cannot be evaluated in a formal proof." name))))
 
+(defun let-xformals (xformals n)
+  (when xformals
+    (let ((xformal (car xformals)))
+      (cons
+       (list (extra-formal-varid xformal)
+	     (if (eq (extra-formal-kind xformal) :type)
+		 `(gethash (nth ,n decl-actuals_) *pvsio-type-hash*)
+	       `(nth ,n decl-actuals_)))
+       (let-xformals (cdr xformals) (1+ n))))))
+
 ;; decls is a list of declarations for defun, e.g., (declare (ignore x))
 (defun defattach-body (attachment body &optional decls)
   (if (and body (listp (car body)) (equal (caar body) 'declare)) ;; Car of body is a declaration
       (defattach-body attachment (cdr body) (append decls (list (car body))))
     (let* ((theory
-	    (attachment-theory attachment))
+	    (attachment-theo-qid attachment))
 	   (name
 	    (attachment-name attachment))
 	   (formals
@@ -338,32 +441,33 @@ It cannot be evaluated in a formal proof." name))))
 	    (if (and body (cdr body) (stringp (car body)))
 		body
 	      (cons nil body)))
-	   (letbody
-	    `((let ((the-pvs-type_ (gethash the-pvs-type-key_ *pvsio-type-hash*)))
-		(declare (ignorable the-pvs-type_))
-		,@(cdr dobo))))
+	   (let-xformals
+	    (let-xformals (attachment-xformals attachment) 0))
+	   (let-body
+	    `((let (,@let-xformals) ,@(cdr dobo))))
+	   (theo-decl (pp-xformals attachment))
 	   (thnmpro
 	    (format nil "~a.~a" theory (defattach-long-name attachment)))
 	   (newdoc
 	    (format nil "~
-PVSio Declaration: ~a.~a~a
+PVSio Declaration: ~a~@[~a~].~a~@[~a~]~a
 PVS Resolution: ~a~
 ~@[~%Source File: ~a~]
 Lisp Function Symbol: ~a~
 ~@[~%~a~]"
-		    theory name formalstr
+		    theory (car theo-decl) name (cdr theo-decl) formalstr
 		    thnmpro
 		    source
 		    fsymbol
 		    (car dobo)))
 	   (newformals
-	    (append formals (list '&key 'the-pvs-type-key_ 'the-theory-actuals_)))
+	    (append formals (list '&key 'decl-actuals_)))
 	   (newbody
 	    (if (attachment-primitive attachment)
-		letbody
-	      (cons `(pvsio-not-in-prover ,thnmpro) letbody))))
+		let-body
+	      (cons `(pvsio-not-in-prover ,thnmpro) let-body))))
       (append `(defun ,fsymbol ,newformals)
-	      (cons '(declare (ignorable the-theory-actuals_)) decls)
+	      (cons '(declare (ignorable decl-actuals_)) decls)
 	      (cons newdoc newbody)))))
 
 (defmacro defattach (thnm formals &rest body)
@@ -388,11 +492,12 @@ Lisp Function Symbol: ~a~
   (let* ((source     (car *pvs-attachment-source-file*))
          (theories   (cdr *pvs-attachment-source-file*))
 	 (loadedfile (when source (gethash source *pvsio-loaded-files*)))
-	 (theory     (get-theory theory-id)))
+	 (theory     (extra-get-theory theory-id))
+	 (theoqid    (extra-qid-theory theory)))
     (cond ((and theory (outdated-theory theory theories))
 	   (add-updated-theory theory loadedfile)
-	   (remove-attachment-theory theory-id)
-	   (pvs-message "Loading semantic attachments of theory ~a." theory-id)
+	   (remove-attachment-theory theoqid)
+	   (pvs-message "Loading semantic attachments of theory ~a" theoqid)
 	   `(progn
 	      ,@(attach-theory theory attachments)))
 	  (theory

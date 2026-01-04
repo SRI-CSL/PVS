@@ -35,21 +35,21 @@
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices
 %  Assumptions: all-assumptions
 %  Interactive behavior: set-prompt-behavior
-%  Strategy debugging (experts only): skip-steps, show-debug-mode, 
+%  Strategy debugging (experts only): skip-steps, show-debug-mode,
 %    enable-debug-mode, disable-debug-mode, set-debug-mode, load-files")
 
 (defparameter *extrategies-version* "Extrategies-8.0 (09/30/2025)")
 
 (defstruct (TrustedOracle (:conc-name get-))
-  (name nil :read-only t)      ; Oracle name 
+  (name nil :read-only t)      ; Oracle name
   (internal nil :read-only t)  ; Internal oracle (always enabled)
   (info nil :read-only t)      ; Information, e.g., documentation
   (enabled t)                  ; Whether or not the oracle is enabled (internal oracles disrgard this setting)
   label)                       ; Label of sub-goal where oracle can be applied
-  
+
 ;; Associaltion list of oracles indexed by name of oracle. Keys should be compared with string-equal since
-;; oracles names are case insensitive. This is one of the reasons why a hash is not used. 
-(defparameter *extra-trusted-oracles* nil) 
+;; oracles names are case insensitive. This is one of the reasons why a hash is not used.
+(defparameter *extra-trusted-oracles* nil)
 
 (defun extra-get-trusted-oracle (orcl)
   (let* ((pair  (assoc orcl *extra-trusted-oracles* :test #'string-equal))
@@ -57,7 +57,7 @@
     (when (and pair (or (get-internal torcl) (get-enabled torcl)))
       torcl)))
 
-(defun extra-make-trusted-oracle (orcl info &optional internal) 
+(defun extra-make-trusted-oracle (orcl info &optional internal)
   (let ((pair  (assoc orcl *extra-trusted-oracles* :test #'string-equal))
 	(torcl (make-TrustedOracle :name orcl :internal internal :info info)))
     (if pair
@@ -95,7 +95,7 @@
   (extra-disable-oracles '_))
 
 (defun extra-list-oracles (&optional (enabled t))
-  (sort 
+  (sort
    (loop for pair in *extra-trusted-oracles*
 	 for name  = (string (car pair))
 	 for torcl = (cdr pair)
@@ -172,7 +172,7 @@ to a directory in the PVS Library Path"
 		   when (or (null test) (funcall test l))
 		   append (list i l))))
     (format nil "LAMBDA(i:nat): ~a"
-	    (if myl 
+	    (if myl
 		(format nil "~{IF i=~a THEN ~a ELS~}E ~a ENDIF" myl default)
 	      default))))
 
@@ -251,7 +251,7 @@ is set to NIL, avoids duplicates."
 		 (get-vars-from-expr-rec (nth 2 (arguments expr)) but)))
 	((is-function-expr expr)
 	 (get-vars-from-expr-rec (argument expr) but))
-	((quant-expr? expr) 
+	((quant-expr? expr)
 	 (get-vars-from-expr-rec (expression expr) (append but (mapcar #'id (bindings expr)))))
 	((arg-tuple-expr? expr)
 	 (loop for e in (exprs expr)
@@ -282,10 +282,10 @@ is set to NIL, avoids duplicates."
     (ratio2decimal rat over precision zeros)))
 
 ;; Compute the multiplicative order of n and r, when n and r are co-primes. Return 0 if they are
-;; not co-prime. The period of an infinite fraction m/n is the (mult-ord n 10), 
+;; not co-prime. The period of an infinite fraction m/n is the (mult-ord n 10),
 ;; assuming that n doesn't have factors of 2 or 5. This operation is expensive, for that reason
 ;; a maxperiod is provided. If this value is non-negative, the function returns the minimum between
-;; period and maxperiod+1. 
+;; period and maxperiod+1.
 (defun mult-ord (n r &optional (maxperiod 0))
   (if (> (gcd r n) 1) 0
       (loop for k from 1
@@ -337,9 +337,9 @@ is set to NIL, avoids duplicates."
 (defun is-variable-expr? (expr vars)
   (and vars (is-variable-expr expr vars)))
 
-;; Constants that are uninterpreted are considered to be variables unless they appear 
+;; Constants that are uninterpreted are considered to be variables unless they appear
 ;; in but
-(defun is-const-decl-expr (expr &optional but) 
+(defun is-const-decl-expr (expr &optional but)
   (and (name-expr? expr)
        (let ((decl (declaration (resolution expr))))
 	 (or (and (const-decl? decl)
@@ -349,7 +349,7 @@ is set to NIL, avoids duplicates."
 	     (and (formal-const-decl? decl)
 		  (member (id expr) (enlist-it but) :test #'string=))))))
 
-;; Is constant expr in names (null names means any name)? Constants that are uninterpreted 
+;; Is constant expr in names (null names means any name)? Constants that are uninterpreted
 ;; are not considered to be constants
 (defun is-constant-expr (expr &optional names)
   (and expr
@@ -399,7 +399,7 @@ is set to NIL, avoids duplicates."
 
 (alexandria:define-constant extra-all-symbols (append extra-fnum-symbols ext-expr-symbols deep-wild-symbols
 						      goto-index-symbols loc-ref-symbols) :test #'equal)
- 
+
 ;; Enlist l, but considers Manip's extensions, such as (^ ...) (? ...), etc, as atoms
 (defun enlist-ee (l)
   (if (and (listp l)
@@ -474,18 +474,64 @@ If NAME is not provided, returns all constant declarations."
 					 (or (null name) (string= name (id decl)))))
 		     (all-decls thmod)))))
 
-;; Check if name has been defined in the proof context
 (defun check-name (name)
+  "Check if name has been defined in the proof context."
   (let ((pc-name (pc-parse name 'expr)))
     (resolve pc-name 'expr nil *current-context*)))
 
-;; If qualified name doesn't occur in the current context, returns qualified theory name.
-;; Otherwise returns nil
+(defun extra-get-theory (theoryid)
+  "Return CLOS object representing theory THEORYID. In constrast to get-theory, this
+function returns NIL when THEORYID cannot be uniquely resolved."
+  (let ((theory (get-theory theoryid)))
+    (when (and theory (atom theory))
+      theory)))
+
+(defun extra-imported-theory? (theoryid &key qid)
+  "Find if THEORYID is an imported thoery in the current theory.
+Return NIL if not. Otherwise, return a list where the car is the
+CLOS of the theory."
+  (let ((ftest
+	 (if qid
+	     (lambda (th-id th) (string= th-id (extra-qid-theory th)))
+	   (lambda (th-id th) (string= th-id (id th))))))
+    (find theoryid (all-imported-theories (current-theory))
+	  :test ftest)))
+
+(defun extra-qid-theory (theory)
+  "Return string with the qualified name of theory, i.e., <lib>@<theory>.
+The prefix <lib>@ could be empty for prelude and local theories."
+  (when theory
+    (let ((th-id  (id theory))
+	  (lib-id (get-library-id theory)))
+      (format nil "~@[~a@~]~a" lib-id th-id))))
+
+(defhelper when-imported-theory__ (theory step)
+  (if (extra-imported-theory? theory :qid t)
+      step
+    (printf "Theory ~a is not imported in the current context." theory))
+  "[Extrategies] Internal strategy." "")
+
+(defstrat when-imported-theory (theory &rest steps)
+  (let ((step (cons 'then steps)))
+    (when-imported-theory__$ theory step))
+  "[Extrategies]  Sequentially applies STEPS to all branches if THEORY, which
+is a string of fully qualified theory name, is imported in the current context.")
+
+(defstrat when-imported-theory@ (theory &rest steps)
+  (let ((step (cons 'then@ steps)))
+    (when-imported-theory__$ theory step))
+  "[Extrategies]  Sequentially applies STEPS to the main branch if THEORY,
+which is a string of fully qualified theory name, is imported in the current
+context.")
 
 (defun no-qualified-name (name)
+  "DEPRECATED. Use strategy when-imported-theory instead.
+Return theory name, if name doesn't occur in the current context.
+This is mainly used in strategies to check if theories required by the strategy
+are imported."
   (when (and name (not (check-name name)))
-      (let* ((p  (or (position #\. name) (length name))))
-	(subseq name 0 p))))
+    (let* ((p  (or (position #\. name) 0)))
+      (subseq name 0 p))))
 
 ;; Check if an identifier is a free variable (and not in but list)
 ;; If a type is provided, check if the given name is a free variable of the given type.
@@ -515,7 +561,7 @@ If NAME is not provided, returns all constant declarations."
 	      for nn = (format nil "~a_~a_~a" prefix i counter)
 	      when (is-freevar nn)
 	      return nn)))))
-        
+
 ;; Generates n names with given prefix that are fresh in the current context
 (defun freshnames (prefix n)
   (when *current-context*
@@ -539,7 +585,7 @@ If NAME is not provided, returns all constant declarations."
 		 (if (member (car fnums) extra-fnum-symbols)
 		     (cdr fnums)
 		   fnums))))))
-  
+
 (defun extra-extract-fnums (fnums)
   (when fnums
     (if (consp fnums)
@@ -630,7 +676,7 @@ If NAME is not provided, returns all constant declarations."
     (let* ((fs    (if (> fn 0) (p-sforms *goal*) (n-sforms *goal*)))
 	   (index (- (abs fn) 1)))
       (nth index fs))))
-  
+
 ;; Get list of sequent formulas in fnums
 ;; If hidden? is t fnums should be a list of numbers or one of the symbols *,-,+
 (defun extra-get-seqfs (fnums &optional hidden?)
@@ -649,7 +695,7 @@ If NAME is not provided, returns all constant declarations."
 
 ;; Get formula from an *actual* formula number in the sequent.
 (defun extra-get-formula-from-fnum (fn)
-  (when fn 
+  (when fn
     (let* ((seqf (extra-get-seqf-from-fnum fn)))
       (when seqf
 	(if (> fn 0)
@@ -677,7 +723,7 @@ If NAME is not provided, returns all constant declarations."
     (union-list (loop for seq in (extra-get-seqfs fnums hidden?)
 		      collect (label seq)))))
 
-;; Returns relation if expr is an order relation 
+;; Returns relation if expr is an order relation
 (defun is-order-relation (expr)
   (let ((rel (car (is-relation expr))))
     (unless (equal rel '=) rel)))
@@ -699,7 +745,7 @@ If NAME is not provided, returns all constant declarations."
 	((equal rel '>=)  '<=)
 	((equal rel '=) '=)
 	((equal rel '/=) '/=)))
-  
+
 (defun relation2num (rel)
   (when rel
     (cond ((equal rel '<)  -2)
@@ -722,7 +768,7 @@ If NAME is not provided, returns all constant declarations."
     (cond ((equal rel1 rel2) rel1)    ; Same relation
 	  ((null rel1) rel2)          ; No relation vs. some relation
 	  ((null rel2) rel1)          ; Some relation vs. no relation
-	  ((and (null o1) 
+	  ((and (null o1)
 		(> (abs o2) 1)) rel2) ; /= vs. {>,<}
 	  ((and (null o1)
 		(> (abs o2) 0))       ; /= vs. {<=, >=}
@@ -733,7 +779,7 @@ If NAME is not provided, returns all constant declarations."
 	  ((and (= o1 0)              ; = vs. {<=,>=}
 		(= (abs o2) 1)) rel1)
 	  ((= o1 0) nil)                ; = vs. {<, >}
-	  ((= o2 0) 
+	  ((= o2 0)
 	   (extra-and-rel rel2 rel1))
 	  ((iff (> o1 0) (> o2 0))      ; Same direction
 	   (num2relation (* (sign o1) 2))))))
@@ -763,7 +809,7 @@ If NAME is not provided, returns all constant declarations."
       (and (subtype? type)
 	   (is-number-type (supertype type)))))
 
-;; Merges two lists in one string using 
+;; Merges two lists in one string using
 ;; :empty as the empty-string
 ;; :conc as the string-concatenator
 ;; :sep as the string-separator
@@ -776,17 +822,17 @@ If NAME is not provided, returns all constant declarations."
 		 collect (format nil "~a~a~a" a conc b))))
     (if l (format nil "~a~{~a~}" (car l) (loop for ab in (cdr l) append (list sep ab)))
       empty)))
-  
+
 ;; Sign of n (note that 0 returns 1).
 (defun sign (n)
   (if (>= n 0) 1 -1))
-  
+
 ;; String to int.
 (defun str2int (str)
   (multiple-value-bind (n l) (parse-integer str :junk-allowed t)
     (when (and n (= (length str) l)) n)))
 
-;; Expression to string. It tries to minimize parentheses 
+;; Expression to string. It tries to minimize parentheses
 (defun expr2str (expr)
   (when (and expr (or (atom expr) (expr? expr)))
     (cond ((stringp expr) expr)
@@ -801,8 +847,8 @@ If NAME is not provided, returns all constant declarations."
 	  (t (format nil "~a" expr)))))
 
 ;; Creates a list of numbers in the range from..to.
-(defun fromto (from to) 
-  (cond 
+(defun fromto (from to)
+  (cond
    ((< from to) (cons from (fromto (+ from 1) to)))
    ((> from to) (cons from (fromto (- from 1) to)))
    (t (list to))))
@@ -821,7 +867,7 @@ If NAME is not provided, returns all constant declarations."
     (if (= from (car fnums))
 	fnums
         (remove-before from (cdr fnums)))))
-	       
+
 ;; Removes numbers in list fnums that appear after to.
 (defun remove-after (to fnums)
   (when fnums
@@ -859,7 +905,7 @@ If NAME is not provided, returns all constant declarations."
 (defparameter *extra-varranges* (make-hash-table :test #'equal))
 
 ;; Association list of PVS ground expressions and evaluations
-(defparameter *extra-evalexprs* nil) 
+(defparameter *extra-evalexprs* nil)
 
 (defun extra-reset-evalexprs ()
   (setq *extra-evalexprs* nil))
@@ -879,7 +925,7 @@ If NAME is not provided, returns all constant declarations."
 	     (and
 	      (number-expr? n)
 	      (equal (- (number n)) nn)))))))
-    
+
 ;; Check if PVS expression n/m, where n and m are literals, is the same as the number expression n/m
 (defun same-div (div rat)
   (and (infix-application? div)
@@ -901,17 +947,17 @@ If NAME is not provided, returns all constant declarations."
       (let ((val (cdr (assoc expr *extra-evalexprs* :test #'compare*))))
 	(or val
 	    (let ((exval (evalexpr expr nil nil t)))
-	      (when exval 
+	      (when exval
 		(unless (or (compare* expr exval)
 			    (same-neg fmexpr exval)
 			    (same-div fmexpr exval))
 		  (push (cons expr exval) *extra-evalexprs*))
 		exval)))))))
 
-(defhelper extra-evalexprs (evalexprs &optional label (where *)) 
+(defhelper extra-evalexprs (evalexprs &optional label (where *))
   (when evalexprs
     (let ((eqs (expr2str (mk-conjunction (mapcar #'(lambda (x) (mk-equation (car x) (cadr x))) evalexprs)))))
-      (with-fresh-labels 
+      (with-fresh-labels
        (!xeqs)
        (branch (case eqs)
 	       ((then (label !xeqs -1)
@@ -921,8 +967,8 @@ If NAME is not provided, returns all constant declarations."
 			(replaces !xeqs :hide? nil :in where))
 		      (hide !xeqs))
 		(eval-formula))))))
- "[Extrategies] Internal strategy to be used in conjunction with the functions extra-reset-evalexpr, 
-extra-add-evalexpr, and extra-get-evalexprs. Parameter evalexprs is a list of expressions and ground 
+ "[Extrategies] Internal strategy to be used in conjunction with the functions extra-reset-evalexpr,
+extra-add-evalexpr, and extra-get-evalexprs. Parameter evalexprs is a list of expressions and ground
 evaluations. This strategy will introduce, as hypotheses, the equalities for those ground evaluations." "")
 
 (defstruct (xterval)
@@ -957,7 +1003,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 	       (extra-insert-range var lb t t)
 	       (extra-insert-range var ub nil t)))))))
 
-(defun get-var-range-from-abs (var fmexpr closed) 
+(defun get-var-range-from-abs (var fmexpr closed)
   (let* ((expr (extra-get-expr fmexpr))
 	 (val  (extra-add-evalexpr expr)))
     (when val
@@ -965,7 +1011,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 	(when ub
 	  (extra-insert-range var (- ub) t closed)
 	  (extra-insert-range var ub nil closed))))))
-    
+
 (defun get-var-range-from-rel (varexpr fmexpr rel)
   (let* ((closed (or (equal rel '>=) (equal rel '<=)))
 	 (neg    (is-prefix-operator varexpr '-))
@@ -982,7 +1028,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
 	      (extra-insert-range (if neg (args1 varexpr) varexpr)
 				  (if neg (- num) num)
 				  islb closed))))))))
-	  
+
 ; If neg is t, formula appears in a negated form
 (defun get-var-range-from-formula (fm vars &optional neg)
   (if (and (not neg)
@@ -991,14 +1037,14 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
       (get-var-range-from-interval (args1 fm) (args2 fm))
     (let* ((nrel (is-order-relation fm))
 	   (rel  (if neg (not-relation nrel) nrel)))
-      (when rel 
+      (when rel
 	(cond ((or (is-variable-expr? (args1 fm) vars)
 		   (and (or (is-prefix-operator (args1 fm) '-)
-			    (is-function-expr (args1 fm) '|abs|))  
+			    (is-function-expr (args1 fm) '|abs|))
 			(is-variable-expr? (args1 (args1 fm)) vars)))
 	       (get-var-range-from-rel (args1 fm) (args2 fm) rel))
 	      ((or (is-variable-expr? (args2 fm) vars)
-		   (and (or (is-prefix-operator (args2 fm) '-) 
+		   (and (or (is-prefix-operator (args2 fm) '-)
 			    (is-function-expr (args2 fm) '|abs|))
 			(is-variable-expr? (args1 (args2 fm)) vars)))
 	       (get-var-range-from-rel (args2 fm) (args1 fm) (neg-relation rel))))))))
@@ -1028,10 +1074,10 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
   (let* ((var (format nil "~a" (id var)))
 	 (xv  (or (gethash var *extra-varranges*)
 		  (make-xterval)))
-	 (did (if islb 
+	 (did (if islb
 		  (when (or (null (xterval-lb xv))
 			    (< (xterval-lb xv) val)
-			    (and (= (xterval-lb xv) val) 
+			    (and (= (xterval-lb xv) val)
 				 (xterval-lb-closed xv)
 				 (not isclosed)))
 		    (setf (xterval-lb xv) val)
@@ -1090,7 +1136,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
   (multiple-value-bind
       (second minute hour date month year)
       (get-decoded-time)
-    (cons (format nil "~2,'0d-~2,'0d-~d" 
+    (cons (format nil "~2,'0d-~2,'0d-~d"
 		  date
 		  month
 		  year)
@@ -1118,7 +1164,7 @@ evaluations. This strategy will introduce, as hypotheses, the equalities for tho
       (let ((fmtdmsg (apply 'format (cons nil (cons msg args)))))
 	(skip-msg fmtdmsg :force-printing? force-printing?))))
   "[Extrategies] Prints the Lisp-formatted string MSG using the format arguments
-ARGS. ARGS must be constant values. The option FORCE-PRINTING? can be set 
+ARGS. ARGS must be constant values. The option FORCE-PRINTING? can be set
 to force printing. By default, FORCE-PRINTING? is set to T.")
 
 (defstrat error-msg (msg &rest msg-args)
@@ -1144,7 +1190,7 @@ arguments ARGS. ARGS can only have constant values.")
 (defstrat quietly (&key (quiet? t) &rest steps)
   (when steps
     (if quiet?
-	(let ((do-step 
+	(let ((do-step
 	       `(unwind-protect$
 		 (then
 		  (sklisp
@@ -1154,7 +1200,7 @@ arguments ARGS. ARGS can only have constant values.")
 		     (setq *extra-suppress-printing* t)
 		     (setq *suppress-manip-messages* t)))
 		  ,@steps)
-		 (sklisp 
+		 (sklisp
 		  (progn
 		    (setq *rewrite-msg-off* ,*rewrite-msg-off*)
 		    (setq *print-conversions* ,*print-conversions*)
@@ -1163,7 +1209,7 @@ arguments ARGS. ARGS can only have constant values.")
 	  do-step)
       (let ((do-step `(then ,@steps)))
 	do-step)))
-  "Applies STEPS without printing messages. In general, this strategy should be used inside strategies. 
+  "Applies STEPS without printing messages. In general, this strategy should be used inside strategies.
 The key :quiet? serves to turn on verbosity programmatically.")
 
 ;;; Labeling and naming
@@ -1279,18 +1325,18 @@ ADVANCED USE: If LABL has the form (:pairing LAB1 ... LABn), PAIRING? is set to 
   "[Extrategies] Adds formula EXPR=NAME, where NAME is a new name, as
 a hypothesis and replaces EXPR by NAME in FNUMS. Options are as follows.
 * The added formula is labeled LABEL:. By default, LABEL is set to NAME.
-* DIR indicates the direction of the name definition, e.g., EXPR=NAME, 
-  if DIR is lr, or NAME=EXPR, if DIR is rl. 
-* The added formula is hidden when HIDE? is t. 
+* DIR indicates the direction of the name definition, e.g., EXPR=NAME,
+  if DIR is lr, or NAME=EXPR, if DIR is rl.
+* The added formula is hidden when HIDE? is t.
 * When FULL? is set to t, expression is named in fully-expanded form. This
   is sometimes necessary due to PVS overloading feature.
 * If TCC-STEP is not null and EXPR yields TCCs, these TCCs are added
-  as hypotheses to the main branch. 
-* If a TCC-LABEL is provided, these hypotheses are labeled TCC-LABEL. Otherwise, 
-  these hypotheses are labeled LABEL-TCC: and hidden from the sequent. 
+  as hypotheses to the main branch.
+* If a TCC-LABEL is provided, these hypotheses are labeled TCC-LABEL. Otherwise,
+  these hypotheses are labeled LABEL-TCC: and hidden from the sequent.
 * LABEL and TCC-LABEL can also be none, in this case no labels are set for the name
-  definition and its TCCs, respectively. 
-* In branches other than the main branch, the strategy tries to discharge 
+  definition and its TCCs, respectively.
+* In branches other than the main branch, the strategy tries to discharge
   generated TCCs with the proof command TCC-STEP."
 "Naming ~1@*~a as ~@*~a")
 
@@ -1424,7 +1470,7 @@ use.")
       (when opt-flag
 	(let* ((opt? (intern (format nil "~a?" opt) :keyword))
 	       (fv   (member opt? lopts)))
-	  (and 
+	  (and
 	   (not (keywordp (cadr fv)))
 	   (cadr fv))))))
 
@@ -1457,7 +1503,7 @@ use.")
 						 (freshlabels (string (car b)) (cadr ln))
 					       (freshlabel (string (car b))))))))
 	  ;; Find formulas with enabled TCCs. Return list of variable, fresh label, variable of tccs formulas,
-	  ;; and quoted variable of fresh label of tccs formulas. 
+	  ;; and quoted variable of fresh label of tccs formulas.
 	  (ftccs    (loop for b in bindings
 			  for opts = (cdr b)
 			  when (when (extra-get-fnums (car opts))
@@ -1504,21 +1550,21 @@ use.")
 specified in BINDINGS. Then, sequentially applies STEPS to all
 branches. All created labels are removed before the strategy exits.
 BINDINGS has either the form (VAR [FNUM] OPT*) or ((VAR1 [FNUM1]
-OPT1*) ...  (VARn [FNUMn] OPTn*)), where VARi denotes a fresh label 
-that represents formula FNUMi. 
+OPT1*) ...  (VARn [FNUMn] OPTn*)), where VARi denotes a fresh label
+that represents formula FNUMi.
 
 OPTi can be
 
-:hide     
+:hide
   Hide formulas labeled VARi before the strategy exits. This option
   can also be enabled/disabled programmatically using the option
   :hide? flag, where flag can be either t (enabled) or nil (disabled).
-:delete   
+:delete
   Delete formulas labeled VARi before the strategy exits. This option
   can also be enabled/disabled programmatically using the option
   :delete? flag, where flag can be either t (enabled) or nil
   (disabled).
-:tccs     
+:tccs
   Add TCCs of formula FNUMi as hypotheses to the sequent by applying
   (tccs-formulas FNUMi) before STEPS. The TCCs formulas of FNUMi are
   automatically labeled using a fresh label denoted by *VARi-tccs*.
@@ -1527,12 +1573,12 @@ OPTi can be
   option :tccs? flag, where flag can be eiter t (enabled) or nil
   (disabled).
 :list n
-  Bind VARi to a list of n fresh labels  
+  Bind VARi to a list of n fresh labels
 
 For example,
 
-(with-fresh-labels 
-  ((l 1) (m -1 :tccs) (n -3 :hide)) 
+(with-fresh-labels
+  ((l 1) (m -1 :tccs) (n -3 :hide))
   (inst? l :where m))
 
 creates fresh labels denoted l, m, and n. The strategy applies the
@@ -1577,7 +1623,7 @@ specified as in WITH-FRESH-LABELS.")
 	  (vlbs     (loop for b in bindings
 			  for e in exprs
 			  collect (let ((v (format nil "*~a*" (car b))))
-				    (list (intern v :pvs) 
+				    (list (intern v :pvs)
 					  (list 'quote (freshlabel (string (car b))))))))
 	  ;; List of variables and expressions
 	  (nmsexs   (loop for b in bindings
@@ -1629,7 +1675,7 @@ specified as in WITH-FRESH-LABELS.")
 	  (thenstep (cons thn steps))
 	  (allbs    (append lbtccs (mapcar #'car vlbs)))
 	  (step     `(let ,vrsnms
-		       (then 
+		       (then
 			(then@ (when ,nmsexs
 				 (name-label* ,nmsexs :hide? t :label ,plbvrs
 					      :tcc-label ,plbtccs :tcc-step ,ptccstp))
@@ -1678,8 +1724,8 @@ specified as in WITH-FRESH-LABELS.")
 
 For example,
 
-(with-fresh-names 
-  ((e \"x+2\") (f \"sqrt(x)\" :tccs)) 
+(with-fresh-names
+  ((e \"x+2\") (f \"sqrt(x)\" :tccs))
   (inst 1 e f))
 
 creates fresh names e and f, and issues the proof commands (name e
@@ -1750,14 +1796,14 @@ labels are also copied."
 
 (defstrat with-focus-on (fnums &rest steps)
   (let ((step (cons 'then steps)))
-    (with-focus-on__$ fnums step)) 
+    (with-focus-on__$ fnums step))
   "[Extrategies]  Hides all but formulas in FNUMS, applies STEPS to all branches, and the reveals hidden
-formulas. 
+formulas.
 CAVEAT: Formulas in the sequent my be reorganized after the application of this strategy.")
 
 (defstrat with-focus-on@ (fnums &rest steps)
   (let ((step (cons 'then@ steps)))
-    (with-focus-on__$ fnums step)) 
+    (with-focus-on__$ fnums step))
   "[Extrategies]  Hides all but formulas in FNUMS, applies STEPS to main branch, and the reveals hidden
 formulas.
 CAVEAT:Formulas in the sequent my be reorganized after the application of this strategy.")
@@ -1829,7 +1875,7 @@ defines a tactic that behaves as (tactic1) when used without parameters, e.g.,
 (tactic3 FNUMS)."
   "Defining local tactic ~a")
 
-;; This function performs a miracle on behalf of the trusted oracle ORCL. 
+;; This function performs a miracle on behalf of the trusted oracle ORCL.
 (defun trust! (orcl)
   #'(lambda (ps)
       (let* ((torcl    (extra-get-trusted-oracle orcl))
@@ -1841,10 +1887,10 @@ defines a tactic that behaves as (tactic1) when used without parameters, e.g.,
 	      (t
 	       (values 'X nil nil))))))
 
-;; This strategy performs a miracle on behalf of the trusted oracle ORCL. 
+;; This strategy performs a miracle on behalf of the trusted oracle ORCL.
 (addrule 'trust! (orcl) ()
 	 (trust! orcl)
-	 "This strategy performs a miracle on behalf of trusted orcale ORCL. 
+	 "This strategy performs a miracle on behalf of trusted orcale ORCL.
 This strategy *must* only be used in the definition of the oracle ORCL."
 	 "")
 
@@ -1856,7 +1902,7 @@ This strategy *must* only be used in the definition of the oracle ORCL."
 	      (stps (mapcar #'(lambda (x) (or (and (equal x '!) mrcl) x)) steps)))
 	  (try-branch step stps (skip)))
       (error-msg "~a is not a trusted oracle" orcl)))
-  "This strategy is like the strategy branch, but performs a miracle on behalf of ORCL when symbol ! 
+  "This strategy is like the strategy branch, but performs a miracle on behalf of ORCL when symbol !
 is found in STEPS. This rule may only be used in the definition of the oracle ORCL.")
 
 ;;; TCCs -- The following rules extend the internal proving capabilities of PVS.
@@ -1914,9 +1960,9 @@ PVS CLOS expressions that returns T if expression should be selected for typepre
 			    ((relabel-hide__ (flatten -1) label !tce hide?)
 			     (finalize tcc-step) !))))))))
   "[Extrategies] Adds TCCs of expression EXPR as hypotheses to the current sequent. Added hypotheses
-are labeled LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t. When full? is set to t, 
+are labeled LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t. When full? is set to t,
 expression is considered in fully-expanded form. This is sometimes necessary due to PVS overloading feature.
-TCCs generated during the execution of the command are discharged with the proof command TCC-STEP. 
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP.
 If TCC-STEP is nil, the strategy does nothing."
   "Adding TCCs of expression ~a as hypotheses" :internal t)
 
@@ -2017,7 +2063,7 @@ discharged with the proof command TCC-STEP. The strategy applies (assert)
 after step, unless ASSERT? is set to nil. The option OLD? is provided for
 backward compatibility. When OLD? is set to t, TCCs are not hidden when STEP is executed. This may cause problems if STEP explicitly refers to formula numbers in the sequent."
   "Applying ~a assumings TCCs")
-	     
+
 ;;; Control flow
 
 (defstrat try@ (step then-step else-step)
@@ -2037,7 +2083,7 @@ ELSE-STEP is applied to current goal.")
 			   :from-end t)))
     try-steps)
   "[Extrategies] Internal strategy." "")
- 
+
 (defstrat try-then (steps &optional (else-step (skip)))
   (try-then__$ steps try else-step)
   "[Extrategies] Successively applies the steps in STEPS to all
@@ -2108,13 +2154,13 @@ the execution model of strategies in PVS, FLAG must be a simple variable.")
 
 (defstrat when-label (label &rest steps)
   (let ((step (cons 'then steps)))
-    (when-label__$ label step)) 
+    (when-label__$ label step))
   "[Extrategies]  Sequentially applies STEPS to all branches as long as at least one
 formula in the sequent is labeled LABEL.")
 
 (defstrat when-label@ (label &rest steps)
   (let ((step (cons 'then@ steps)))
-    (when-label__$ label step)) 
+    (when-label__$ label step))
   "[Extrategies]  Sequentially applies STEPS to the main branch as long as at least one
 formula in the sequent is labeled LABEL.")
 
@@ -2125,13 +2171,13 @@ formula in the sequent is labeled LABEL.")
 
 (defstrat unless-label (label &rest steps)
   (let ((step (cons 'then steps)))
-    (unless-label__$ label step)) 
+    (unless-label__$ label step))
   "[Extrategies]  Sequentially applies STEPS to all branches as long as no formula in
 the sequent is labeled LABEL.")
 
 (defstrat unless-label@ (label &rest steps)
   (let ((step (cons 'then@ steps)))
-    (unless-label__$ label step)) 
+    (unless-label__$ label step))
   "[Extrategies]  Sequentially applies STEPS to the main branch as long as no formula in
 the sequent is labeled LABEL.")
 
@@ -2182,12 +2228,12 @@ LABEL. Otherwise, applies ELSE-STEP.")
   (or (member (id  bnd) subs
 	      :test #'(lambda (x y) (and (not (numberp (car y)))
 					 (string= x (car y)))))
-      (member i subs :test 
-	      #'(lambda (x y) (and 
+      (member i subs :test
+	      #'(lambda (x y) (and
 			       (numberp (car y))
 			       (or (equal x (car y))
 				   (equal x (+ 1 n (car y)))))))))
-      
+
 (defun select-skeep-names (bindings subs)
   (let ((n (length bindings)))
     (loop for bnd in bindings
@@ -2229,34 +2275,34 @@ LABEL. Otherwise, applies ELSE-STEP.")
 		     (mapcar #'(lambda(x) (format nil "~a~a" (id x) postfix)) bndgs)
 		     (mapcar #'type bndgs)
 		     (mapcar #'cadr but)))
-	    (names  (if but (select-skeep-names 
+	    (names  (if but (select-skeep-names
 			     (bindings expr)
 			     (append (mapcar #'(lambda (x y)(list (id x) y)) bndgs nnames) but))
 		      nnames)))
 	(then (skolem fn names preds?)
 	      (flatten)))))
    "[Extrategies] Skolemizes a universally quantified formula in FNUM, using the names
-of the bounded variables as the names of the skolem constants. If POSTFIX is provided, it 
+of the bounded variables as the names of the skolem constants. If POSTFIX is provided, it
 is appended to the variable names. Names that clash with other names in the current
-sequent are replaced by fresh names. Type predicates are introduced as hypothesis when 
+sequent are replaced by fresh names. Type predicates are introduced as hypothesis when
 PREDS? is t.
 
-BUT is a list of variable references of the form <VAR> or (<VAR> <NAME>), where <VAR> is either 
-a quantified variable name or a relative position of a variable in the quantifier (positive means 
-left to right, negative means right to left). If <NAME> is not provided, the variable referred to 
-by <VAR> will be excluded from the skolemization. If <NAME> is provided, it is used as the name of 
-the skolem constant for the variable <VAR>.  For example, (skeep :but \"x\") skolemizes all variables 
-but excludes \"x\", (skeep :but (\"x\" (\"y\" \"YY\"))) skolemizes all variables but \"x\" and 
-uses \"YY\" as the name of the skolem constant for \"y\"." 
+BUT is a list of variable references of the form <VAR> or (<VAR> <NAME>), where <VAR> is either
+a quantified variable name or a relative position of a variable in the quantifier (positive means
+left to right, negative means right to left). If <NAME> is not provided, the variable referred to
+by <VAR> will be excluded from the skolemization. If <NAME> is provided, it is used as the name of
+the skolem constant for the variable <VAR>.  For example, (skeep :but \"x\") skolemizes all variables
+but excludes \"x\", (skeep :but (\"x\" (\"y\" \"YY\"))) skolemizes all variables but \"x\" and
+uses \"YY\" as the name of the skolem constant for \"y\"."
    "Skolemizing and keeping names of the universal formula in ~a")
 
 (defstep skeep* (&optional (fnum '*) preds? postfix n)
   (with-fresh-labels
    ((!skp fnum))
    (for@ n (skeep !skp :preds? preds? :postfix postfix)))
-  "[Extrategies] Iterates N times skeep (or until it does nothing if N is nil) in a universally 
-quantified formula in FNUM. If POSTFIX is provided, it is appended to the names of the bounded 
-variables. Names that clash with other names in the current sequent are replaced by fresh 
+  "[Extrategies] Iterates N times skeep (or until it does nothing if N is nil) in a universally
+quantified formula in FNUM. If POSTFIX is provided, it is appended to the names of the bounded
+variables. Names that clash with other names in the current sequent are replaced by fresh
 names. Type predicates are introduced as hypothesis when PREDS? is t."
   "Iterating skeep in ~a")
 
@@ -2283,14 +2329,14 @@ names. Type predicates are introduced as hypothesis when PREDS? is t."
 	    (stp   (cons 'inst (cons fn exprs))))
 	stp)))
   "[Extrategies] Instantiates an existentially quantified formula in FNUM, using the names
-of the bounded variables. If POSTFIX is provided, it is appended to the variable names. 
+of the bounded variables. If POSTFIX is provided, it is appended to the variable names.
 
-BUT is a list of variable references of the form <VAR> or (<VAR> <EXPR>), where <VAR> is either 
-a quantified variable name or a relative position of a variable in the quantifier (positive means 
-left to right, negative means right to left). If <EXPR> is not provided, the variable referred to 
+BUT is a list of variable references of the form <VAR> or (<VAR> <EXPR>), where <VAR> is either
+a quantified variable name or a relative position of a variable in the quantifier (positive means
+left to right, negative means right to left). If <EXPR> is not provided, the variable referred to
 by <VAR> will be excluded from the instantiation. If <EXPR> is provided, <VAR> is instantiated with
 <EXPR>. For example, (insteep :but \"x\") instantiates all variables using the names of the quantified
-formula but excludes \"x\", (insteep :but (\"x\" (\"y\" \"100\"))) instantiates all variables but 
+formula but excludes \"x\", (insteep :but (\"x\" (\"y\" \"100\"))) instantiates all variables but
 \"x\" and instantiates \"\y\" with \"100\"."
   "Instantiating with the names of the existential formula in ~a")
 
@@ -2299,7 +2345,7 @@ formula but excludes \"x\", (insteep :but (\"x\" (\"y\" \"100\"))) instantiates 
    ((!instp fnum))
    (for@ n (insteep !instp :postfix postfix)))
   "[Extrategies] Iterates N times insteep (or until it does nothing if N is nil) in an
-existentially quantified formula in FNUM.  If POSTFIX is provided, it is appended to the 
+existentially quantified formula in FNUM.  If POSTFIX is provided, it is appended to the
 names of the bounded variables."
   "Iterating insteep in ~a")
 
@@ -2398,7 +2444,7 @@ variables can be specified using VAR."
   (let ((flabels (extra-get-labels-from-fnum fn))
 	(consq   (> fn 0))
 	(ret     (make-ret))
-	(nexpr   (sigmared expr name nth 
+	(nexpr   (sigmared expr name nth
 			   :newnames (enlist-it var)
 			   :postfix postfix :ret ret))
 	(retexpr (ret-expr ret))
@@ -2466,7 +2512,7 @@ strategy. TCCs generated during the execution of the command are discharged with
 proof command TCC-STEP.
 
 CAVEAT: The order in which formulas are introduced by skoletin in versions >= 6.0 is different
-from previous versions. The option OLD? reproduces the old order. 
+from previous versions. The option OLD? reproduces the old order.
 
 NOTE: This command works better when all let-in variables are explicitly typed as in
 LET x:posreal = 2 IN 1/x."
@@ -2587,7 +2633,7 @@ this strategy introduces a name definition <var>=expr as hypothesis and
 instantiates NAME in FNUM with <var>. By default, <var> is NAME, with
 a POSTFIX if provided. An explicit name can be provided using the option VAR.
 Names that clash with other names in the current sequent are replaced by
-fresh names. 
+fresh names.
 
 Name definitions are hidden when HIDE? is t; they can be recalled at any
 time with the command (reveal \"<name>:\"), where <name> is the name
@@ -2664,7 +2710,7 @@ TCCs generated during the execution of the command are discharged with the proof
 
 ;;; cond-match
 (defstruct (condmatch (:conc-name get-))
-  match 
+  match
   step
   onums
   comment)
@@ -2713,7 +2759,7 @@ TCCs generated during the execution of the command are discharged with the proof
 			     `(then (comment ,(get-comment condmatch)) ,pre-step)
 			   pre-step))
 	       (show     (when dry-run '(show))))
-	  (cons 
+	  (cons
 	   `(match$ ,@show ,@(get-match condmatch) ,@(get-onums condmatch) step ,step ,@fnums)
 	   (match-list (cdr conds) fnums onums dry-run)))))))
 
@@ -2734,12 +2780,12 @@ TCCs generated during the execution of the command are discharged with the proof
 	     (when dry-run
 	       (printf "cond-match expands to:~%~s" step))
 	     step))))))
-  "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn])) 
-finds the first PATTERNi that matches formulas in the current sequent and applies its 
+  "[Extrategies] In its simplest form (cond-match (PATTERN1 [STEP1]) .. (PATTERNn [STEPn]))
+finds the first PATTERNi that matches formulas in the current sequent and applies its
 corresponding STEPi. By default, STEPi is (SKIP) if none is provided. PATTERNi can be
 also a list of patterns, i.e., ((PATTERNi1 ..PATTERim) STEPi) applies STEPi if there
 is a match with any of the PARTERNij. The last pattern, PATTERNn, can be the
-symbol ELSE. In this case, STEPn is applied when none of the patterns matches a formula 
+symbol ELSE. In this case, STEPn is applied when none of the patterns matches a formula
 in FNUMS.
 
 Optionally, the following keys could be provided:
@@ -2748,10 +2794,10 @@ Optionally, the following keys could be provided:
 :onums ONUMS
   Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
   By default ONUMS is set to 1 occurence
-:dry-run t 
+:dry-run t
   Prints expansion of the strategy and instances of successful matchings
 
-Patterns and steps are formatted as in Manip's match (see Manip User's guide). 
+Patterns and steps are formatted as in Manip's match (see Manip User's guide).
 Furthermore, the following options could be added to any pattern/step specification.
 :onums ONUMS
   Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
@@ -2783,7 +2829,7 @@ For example, assume
 	(dry-run   (or dry-run (and (null step) (null else))))
 	(cond-stp `(cond-match (,pattern ,@match-stp ,@onums-opt) ,@else-stp ,@fnums-opt :dry-run ,dry-run)))
     cond-stp)
-  "[Extrategies] Applies STEP1 if PATTERN matches formulas in the current sequent. Otherwise, applies STEP2. 
+  "[Extrategies] Applies STEP1 if PATTERN matches formulas in the current sequent. Otherwise, applies STEP2.
 By default STEP1 and STEP2 are (SKIP).
 
 Optionally, the following keys could be provided:
@@ -2792,7 +2838,7 @@ Optionally, the following keys could be provided:
 :onums ONUMS
   Selects the ONUMS occurrences in case of multiple successful matchings in FNUMS.
   By default ONUMS is set to 1 occurence
-:dry-run t 
+:dry-run t
   Prints expansion of the strategy and instances of successful matchings. dry-run is
 by default T when STEP1 and STEP2 are not provided.
 
@@ -2836,8 +2882,8 @@ Also, see cond-match.")
   "[Extrategies] Iterates the proof command replace to rewrite with the formulas in FNUMS,
 respecting the order, the formulas in IN but not in BUT. The keys DIR and HIDE? are like
 in REPLACE. Notice that in contrast to REPLACE, the default value of HIDE? is T. Instead
-of using FNUMS, rewriting formulas can be addressed via FROM and TO. When ACTUALS?  is T, 
-the replacement is done within actuals of names in addition to the expression level 
+of using FNUMS, rewriting formulas can be addressed via FROM and TO. When ACTUALS?  is T,
+the replacement is done within actuals of names in addition to the expression level
 replacements, including in types."
   "Iterating replace")
 
@@ -2880,7 +2926,7 @@ replacements, including in types."
   (or (exists-expr? expr) (forall-expr? expr)))
 
 (defun get-suffices-expr (expr estr conseq forall var qn &optional (n 1) b)
-  (let ((thisq (or (and (null var) (null qn) 
+  (let ((thisq (or (and (null var) (null qn)
 			(not (if forall
 				 (forall-expr? (expression expr))
 			       (exists-expr? (expression expr)))))
@@ -2920,7 +2966,7 @@ replacements, including in types."
 	(form   (when expr (get-suffices-expr expr estr (> fn 0) (forall-expr? expr)
 					      after-var after-qn))))
     (when form
-      (with-fresh-labels 
+      (with-fresh-labels
        ((!sff fn :tccs))
        (branch (case form)
 	       ((skip)
@@ -2937,7 +2983,7 @@ quantifier, if provided."
 
 (defstrat extrategies-about ()
   (let ((version    *extrategies-version*)
-	(strategies *extrategies*)) 
+	(strategies *extrategies*))
     (printf "%--
 % ~a
 % https://shemesh.larc.nasa.gov/fm/pvs/Extrategies/
@@ -2992,7 +3038,7 @@ quantifier, if provided."
 (defun get-hypotheses (expr)
   (if (implication? expr)
       (let ((h (get-hypotheses (args2 expr))))
-	(cons (car h) (append 
+	(cons (car h) (append
 		       (get-ands-expr (args1 expr))
 		       (cdr h))))
     (list expr)))
@@ -3023,8 +3069,8 @@ quantifier, if provided."
     (cond ((and newnames (string= (car newnames) '_))
 	   (cons (format nil "~a~a" (car names) postfix)
 		 (merge-let-names (cdr names) (cdr newnames) postfix)))
-	  (newnames 
-	   (cons (car newnames) 
+	  (newnames
+	   (cons (car newnames)
 		 (merge-let-names (cdr names) (cdr newnames) postfix)))
 	  (t (mapcar #'(lambda (x) (format nil "~a~a" x postfix))
 		     names)))))
@@ -3041,7 +3087,7 @@ quantifier, if provided."
 			   :newnames newnames :postfix postfix :ret ret)
 	  (append l (cons e (cdr exprs)))))
     n))
-  
+
 (defun sigmared (expr name n &key newnames postfix ret)
   (cond
    ((<= n 0) n)
@@ -3069,7 +3115,7 @@ quantifier, if provided."
 		   (let*
 		       ((mergenames (when ret (skeepnames
 					       (merge-let-names names
-								newnames  
+								newnames
 								postfix))))
 			(newnamexpr (if ret (format nil "~{~a~^,~}" mergenames)
 				      namexpr))
@@ -3084,7 +3130,7 @@ quantifier, if provided."
 			(lbdapp     (format nil "(LAMBDA (~a):~a)(~a)"
 					    newtypes letexpr newnamexpr))
 			(pcexpr     (pc-parse lbdapp 'expr)))
-		     (progn 
+		     (progn
 		       (when ret (setf (ret-expr ret)
 				       (merge-lists mergenames
 						    strexprs)))
@@ -3109,7 +3155,7 @@ quantifier, if provided."
 			(dummy (setf (type nexpr) typelet))
 			(nargs (if (tuple-expr? namexpr)
 				   (format nil "~{~a~^,~}" (removepos p (exprs namexpr)))
-				 (merge2str (list namexpr) 
+				 (merge2str (list namexpr)
 					    (removepos
 					     p (fromto 1 (length names)))
 					    :conc "`" :sep ",")))
@@ -3264,7 +3310,7 @@ information of the ground evaluation."
 	    (result (evalexpr e safe? timing? quiet?)))
 	(when result
 	  (printf "~a~a~%" prompt result)))))
-  "[PVSio] Prints the evaluation of expression EXPR. If SAFE? is t and EXPR 
+  "[PVSio] Prints the evaluation of expression EXPR. If SAFE? is t and EXPR
 generates TCCs, the expression is not evaluated. This strategy evaluates
 semantic attachments unless safe? is set to t. When safe? is set to nil, the strategy may
 not terminate properly. When QUIET? is t, the strategy fails silently."
@@ -3273,7 +3319,7 @@ not terminate properly. When QUIET? is t, the strategy fails silently."
 (defstep eval-formula* (&optional (fnums *) safe? quiet?)
   (let ((fnms (extra-get-fnums fnums)))
     (mapstep #'(lambda (fnum) `(eval-formula ,fnum ,safe? ,quiet?))
-	     fnms)) 
+	     fnms))
   "[PVSio] Evaluates all the formula in FNUMS. The formulas are
 evaluated in order until the first one that discharges the sequent or
 when the list of FNUMS is over. Options are as in eval-formula."
@@ -3351,7 +3397,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	 (lambda (tags)
 	   (let ((frames (cdr (assoc :frame-stack tags))))
 	     (loop for name in funcnames
-		   thereis 
+		   thereis
 		   (loop for frame in frames
 			 thereis (extra-in-scope name frame)))))))
     (setf (documentation fun 'function)
@@ -3427,7 +3473,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 	 (lambda (tags)
 	   (let ((frames (mapcar #'topstep (cdr (assoc :strategy-stack tags)))))
 	     (loop for name in stratnames
-		   thereis 
+		   thereis
 		   (loop for frame in frames
 			 thereis (string-equal name (when frame (car (rule-input frame))))))))))
     (setf (documentation fun 'function)
@@ -3469,7 +3515,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 ;; Function on an association list of tags that is used to suppress the actions of extra-debug-print
 ;; and extra-debug-break
-(defvar *extra-debug-suppress* suppress-none) 
+(defvar *extra-debug-suppress* suppress-none)
 
 ;; Suppress AND
 (defun suppress-and (&rest suppressors)
@@ -3479,7 +3525,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 		     (funcall suppressor tags))))
 	(docs (loop for suppressor in suppressors
 		    collect
-		    (documentation suppressor 'function)))) 
+		    (documentation suppressor 'function))))
     (setf (documentation fun 'function)
 	  (if suppressors
 	      (format nil "~a" (format-list-andor docs "and"))
@@ -3494,7 +3540,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 		     (funcall suppressor tags))))
 	(docs (loop for suppressor in suppressors
 		    collect
-		    (documentation suppressor 'function)))) 
+		    (documentation suppressor 'function))))
     (setf (documentation fun 'function)
 	  (if suppressors
 	      (format nil "~a" (format-list-andor docs "or"))
@@ -3586,7 +3632,7 @@ when the list of FNUMS is over. Options are as in eval-formula."
 
 (defparameter *debug-fail-msg* "
 %%%
-%%% This code requires the feature :extra-debug. To avoid this error at compile time, 
+%%% This code requires the feature :extra-debug. To avoid this error at compile time,
 %%% use the conditional compilation directive #+extra-debug before (extra-debug-println ...),
 %%% (extra-debug-print ...), and (extra-debug-break ...).
 %%%
@@ -3732,11 +3778,11 @@ when the first character of filename is '.' or '/'."
 	  (extra-exist-filenames (cdr files) lib found (cons filename notfound))))
     (cons (reverse found) (reverse notfound))))
 
-(defun extra-load-files (&optional files &key reset lib)
+(defun extra-load-files__ (files reset lib)
   "[Extrategies] Load FILES, which can be a list of files or directories (ending in '/'),
 and add the list of loaded files to *extra-debug-files*. In case of directories, it loads all .lisp,
-pvs-attachments, and pvs-strategies files. Unless :RESET is t, this function also loads all files
-previously in *extra-debug-files*. When :LIB is t, it treats the file names in FILES as relative to the
+pvs-attachments, and pvs-strategies files. Unless RESET is t, this function also loads all files
+previously in *extra-debug-files*. When LIB is t, it treats the file names in FILES as relative to the
 PVS home directory or to any directory in the PVS Library Path. Return a list where the car is the list
 of loaded files and the cdr is the list of files not found."
   (let* ((found-notfound (extra-exist-filenames (enlist-it files) lib))
@@ -3744,6 +3790,17 @@ of loaded files and the cdr is the list of files not found."
 	 (loaded         (extra-load-files-aux all-files)))
     (setq *extra-debug-files* loaded)
     (cons loaded (cdr found-notfound))))
+
+(defun extra-load-files (&optional files &key reset lib)
+  "[Extrategies] Load FILES, which can be a list of files or directories (ending in '/'),
+and add the list of loaded files to *extra-debug-files*. In case of directories, it loads all .lisp,
+pvs-attachments, and pvs-strategies files. Unless :RESET is t, this function also loads all files
+previously in *extra-debug-files*. When :LIB is t, it treats the file names in FILES as relative to the
+PVS home directory or to any directory in the PVS Library Path."
+  (let ((loaded-notfound (extra-load-files__ files reset lib)))
+    (when loaded-notfound
+      (format t "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~a~^, ~}~]"
+	      (car loaded-notfound) (cdr loaded-notfound)))))
 
 ;; See set-debug mode
 (defun extra-set-debug-mode (&optional mode &key files frames (verbose 'none) suppress)
@@ -3784,10 +3841,10 @@ the user. The following suppress functions are pre-defined.
 
 TECHNICAL NOTES:
  - The stack of frames is provided by the SBCL function (sb-debug:list-backtrace ...),
-   Functions that are inlined by the compiler don't appear in the stack. Therefore, if FUN 
-   is the name of a function inlined by the compiler, (suppress-in-scope FUN) never holds and 
+   Functions that are inlined by the compiler don't appear in the stack. Therefore, if FUN
+   is the name of a function inlined by the compiler, (suppress-in-scope FUN) never holds and
    (suppress-out-scope FUN) always holds.
- - The stack of strategies is provided by PVS global variable *proof-strategy-stack*. 
+ - The stack of strategies is provided by PVS global variable *proof-strategy-stack*.
    Glass-box strategies are inlined by the theorem prover, so they don't appear in
    the strategy stack. Therefore, if STRAT is the name a glass-box strategy, (suppress-in-scope-strat STRAT)
    never holds and (suppress-out-scope-strat STRAT) always holds.
@@ -3815,7 +3872,7 @@ TECHNICAL NOTES:
 	    (setq *extra-debug-suppress* fsuppress)
 	  (push (format nil "SUPPRESS (~a) must be a function" suppress) msgs))))
     (when files
-      (let ((notfound (cdr (extra-load-files files :reset t))))
+      (let ((notfound (cdr (extra-load-files__ files t nil))))
 	(when notfound (format nil "Files not found: ~{~s~^, ~}" notfound))))
     (extra-show-debug-mode msgs)))
 
@@ -3829,15 +3886,15 @@ When FILES is not null, set *extra-debug-files* to FILES.  MODE can be
   toggle : Switch from/to enabled/disabled debug modes. Update global variable *features*
   enable : Enable debug mode. Add extra-debug to *features*
   disable: Disable debug mode. Remove extra-debug to *features*
-When VERBOSE is set to nil, only print information that is explicitly specified in extra-debug-print and 
-extra-debug-break. Otherwise, print the stack of frames and the stack of strategies 
+When VERBOSE is set to nil, only print information that is explicitly specified in extra-debug-print and
+extra-debug-break. Otherwise, print the stack of frames and the stack of strategies
 as well. Do not change verbosity level when verbpse equals to NONE.
 FRAMES specifies the number of frames (function scopes) printed by the functions
 extra-debug-print and extra-debug-break. A negative number species all the frames.
-SUPPRESS is a lambda function on an association list of tags and their respective values that is called 
-by (extra-debug-print ...) and (extra-debug-break ...) to decide if their actions should be suppressed or no. 
-The association list has the tags :frame-stack, associated to the current stack of frames, and 
-:strategy-stack, associated to the current stack of strategies,in addition to those defined by 
+SUPPRESS is a lambda function on an association list of tags and their respective values that is called
+by (extra-debug-print ...) and (extra-debug-break ...) to decide if their actions should be suppressed or no.
+The association list has the tags :frame-stack, associated to the current stack of frames, and
+:strategy-stack, associated to the current stack of strategies,in addition to those defined by
 the user. The following suppress functions are pre-defined.
  - suppress-all: Suppress all
  - suppress-none: Suppress none
@@ -3859,10 +3916,10 @@ the user. The following suppress functions are pre-defined.
 
 TECHNICAL NOTES:
  - The stack of frames is provided by the SBCL function (sb-debug:list-backtrace ...),
-   Functions that are inlined by the compiler don't appear in the stack. Therefore, if FUN 
-   is the name of a function inlined by the compiler, (suppress-in-scope FUN) never holds and 
+   Functions that are inlined by the compiler don't appear in the stack. Therefore, if FUN
+   is the name of a function inlined by the compiler, (suppress-in-scope FUN) never holds and
    (suppress-out-scope FUN) always holds.
- - The stack of strategies is provided by PVS global variable *proof-strategy-stack*. 
+ - The stack of strategies is provided by PVS global variable *proof-strategy-stack*.
    Glass-box strategies are inlined by the theorem prover, so they don't appear in
    the strategy stack. Therefore, if STRAT is the name a glass-box strategy, (suppress-in-scope-strat STRAT)
    never holds and (suppress-out-scope-strat STRAT) always holds.
@@ -3886,11 +3943,11 @@ In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strat
 If FILES is null, load files in *extra-debug-files*.")
 
 (defstrat load-files (&key reset lib &rest files)
-  (let ((loaded-notfound (extra-load-files files :reset reset :lib lib))
+  (let ((loaded-notfound (extra-load-files__ files reset lib))
 	(loaded          (car loaded-notfound))
 	(notfound        (cdr loaded-notfound)))
     (when loaded-notfound
-      (printf "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~s~^, ~}~]"
+      (printf "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~a~^, ~}~]"
 	      loaded notfound)))
   "[Extrategies] Load FILES, which can be a list of files or directories (ending in '/'),
 and add the list of loaded files to *extra-debug-files*. In case of directories, it loads
