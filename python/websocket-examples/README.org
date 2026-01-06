@@ -1,0 +1,83 @@
+* Websocket Examples
+
+This is a set of Websocket examples showing various uses of PVS through
+its API. These are intended to be used for scripting with external Python
+apps, e.g., LLMs. They are more useful as prototypes for creating real APIs.
+
+Websocket provides a bidirectional connection, and PVS uses the JSON-RPC
+protocol to ensure requests and responses are correlated.
+
+When sending simple requests, you need to create a unique =id=. This is
+used to recognize responses to the request.
+
+Most of these assume there's an existing PVS running as a server. Either
+start PVS with the =-port= flag, or use =M-x start-pvs-server= in a
+running PVS/Emacs.
+
+To try these, first run the PVS server:
+- from the command line with the =-port= argument (generally an integer
+  between 1024 and 65536)
+- in a running PVS/Emacs, run M-x pvs-server
+
+Note that this only needs to be done once to run all the examples below.
+
+** Introduction to Websockets and JSON-RPC
+
+Websockets is very simple, but provides bidirectional communication.
+PVS opens the connection, then waits for messages until the connection is
+closed or an error occurs.
+
+Since the messages sent to the server are arbitrary, we use JSON-RPC
+with its simple request/response protocol. Basically, each valid message
+is in JSON, where a request has the form
+-----
+  {"jsonrpc": "2.0", "id": id, "method": method, "params": [params] }
+-----
+The id is optional; if missing then it's treated as a broadcast and no
+response is possible.
+Otherwise the response is either a result:
+-----
+  {"jsonrpc": "2.0", "id": id, "result": result}
+-----
+or an error of the form:
+-----
+  {"jsonrpc": "2.0", "id": id,
+   "error": {"code": code, "message": message, "data": data}}
+-----
+The basic transaction thus is to send a request and wait for the response.
+Note that it shouldn't be assumed that the next message received after a
+request is a response, though it suffices in simple cases such as
+=list-methods.py= In general the messages received should be checked for
+responses of the correct form and id before using the result. This can be
+seen in =lisp-repl.py=.
+
+** list-methods.py
+
+Simply establishes a connection, then sends a =list-methods= request,
+waits for the response, and prints it. Only useful as a bare-bone example,
+and to test the connection.
+
+** lisp-repl.py
+
+This is a REPL built on the =lisp= method. In itself is of limited use, as
+it only provides a subset of the interface provided by the Emacs/Ilisp
+interface. But it does highlight a number of issues of interest to developers:
+- Finding a running websocket port with =ss=, using the first it finds
+  with a process name =pvs-sbclisp= and an open port. Note that this can
+  be a VSCode-PVS port.
+- Shows how to send a request, then wait for the response. For simplicity
+  this is single-threaded, so there's no need to keep track of open
+  requests.
+- On the other hand, PVS may send things that are not a response,
+  including =pvsMessage= requests, so it's best to have a positive check
+  for a valid response, and ignore or handle any others.
+- It exits on EOF (C-d).
+- It uses =uuid= to create a unique id for each request.
+
+** prover-ex.py
+
+NOTE: this still needs some fixes in PVS - coming soon.
+
+This one shows how multiple proofs can be started, and commands fed to
+them. This could be used as the basis for developing a lab for
+experimenting with proof commands, for example by a machine learner.
