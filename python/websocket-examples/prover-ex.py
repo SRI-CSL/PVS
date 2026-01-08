@@ -32,15 +32,17 @@ def valid_response(id, response):
 
 def print_proofstate(ps):
   print()
-  print(ps["label"])
+  print(f"Formula {ps["label"]} ({ps["id"]})")
   print_sequent(ps["sequent"])
 
 def print_sequent(seq):
-  for sform in seq["antecedents"]:
-    print_sform(sform)
+  if seq["antecedents"]:
+    for sform in seq["antecedents"]:
+      print_sform(sform)
   print('|-----')
-  for sform in seq["succedents"]:
-    print_sform(sform)
+  if seq["succedents"]:
+    for sform in seq["succedents"]:
+      print_sform(sform)
 
 def print_sform(sform):
   print(sform["labels"], ' ', sform["formula"])
@@ -49,20 +51,28 @@ async def prove_ex():
   async with websockets.connect('ws://localhost:23456') as ws:
     path = await request('lisp', ['*pvs-path*'], ws)
     formula = path + "/Examples/sum#closed_form"
+
+    print()
+    print(f"Starting proof session for {formula}")
     ps1 = await request("prove-formula", [ formula ], ws)
     if ps1:
-      prfid1 = ps1[0]["id"]
-      print_proofstate(ps1[0])
+      prfid1 = ps1[len(ps1)-1]["id"]
+      print_proofstate(ps1[len(ps1)-1])
+      print("Applying proof command: (induct \"n\")")
       ps1_1 = await request("proof-command", [ prfid1, "(induct \"n\")" ], ws)
       if ps1_1:
-        print_proofstate(ps1_1[0])
+        print_proofstate(ps1_1[len(ps1_1)-1])
+
+    print()
+    print(f"Starting proof session for {formula}")
     ps2 = await request("prove-formula", [ formula ], ws)
     if ps2:
       prfid2 = ps2[0]["id"]
       print_proofstate(ps2[0])
+      print("Applying proof command: (induct \"n\")")
       ps2_1 = await request("proof-command", [ prfid2, "(induct \"n\")" ], ws)
       if ps2_1:
-        print_proofstate(ps2_1[0])
+        print_proofstate(ps2_1[len(ps2_1)-1])
     qres = await request("quit-all-proof-sessions", [], ws)
     print('qres = ', qres)
     # os._exit(0)
