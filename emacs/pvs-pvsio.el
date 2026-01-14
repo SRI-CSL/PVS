@@ -25,25 +25,10 @@
   (interactive (progn (confirm-not-in-checker)
 		      (complete-theory-name "Use context of theory: ")))
   (confirm-not-in-checker)
-  (pvs-send-and-wait "(load-pvs-attachments)" nil nil 'dont-care)
   (pvs-evaluator-busy)
   (save-some-pvs-buffers)
   (pvs-bury-output)
   (ilisp-send (format "(evaluation-mode-pvsio \"%s\")" theory) nil 'pr t))
-
-; pvs-ground-evaluator
-(defpvs pvs-ground-evaluator prove (theory)
-  "Invokes the ground evaluator in the context of the given PVS theory"
-  (interactive (complete-theory-name "Use context of theory: "))
-  (confirm-not-in-checker)
-  (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
-			     nil 'tc nil)
-    (error "%s is not typechecked" theory)) 
-  (pvs-send-and-wait "(load-pvs-attachments)" nil nil 'dont-care)
-  (pvs-evaluator-busy)
-  (save-some-pvs-buffers)
-  (pvs-bury-output)
-  (ilisp-send (format "(evaluation-mode \"%s\")" theory) nil 'pr t))
 
 ; Auxiliary functions
 (defun complete-attachment-name (prompt)

@@ -26,7 +26,8 @@
 %    with-fresh-names, with-fresh-names@, cond-match, if-match
 %  Control flow: try@, try-then, try-then@, finalize, finalize*, touch,
 %    for, for@, when, when@, unless, unless@, when-label, when-label@,
-%    unless-label, unless-label@, if-label, sklisp
+%    unless-label, unless-label@, if-label, when-imported-theory,
+%    when-imported-theory@, sklisp
 %  Let-in: skoletin, skoletin*, redlet, redlet*
 %  Quantifiers: skeep, skeep*, skodef, skodef*, insteep, insteep*, unroll
 %  TCCs: tccs-expression, tccs-formula, tccs-formula*, tccs-step,
@@ -468,7 +469,7 @@ is set to NIL, avoids duplicates."
 (defun const-decls-of-theory (theory &optional name)
   "Returns constant declarations in THEORY with a given NAME.
 If NAME is not provided, returns all constant declarations."
-  (let ((thmod (if (typep theory 'module) theory (get-theory theory))))
+  (let ((thmod (if (typep theory 'module) theory (extra-get-theory theory))))
     (when thmod
       (remove-if-not (lambda (decl) (and (const-decl? decl)
 					 (or (null name) (string= name (id decl)))))
@@ -479,23 +480,25 @@ If NAME is not provided, returns all constant declarations."
   (let ((pc-name (pc-parse name 'expr)))
     (resolve pc-name 'expr nil *current-context*)))
 
-(defun extra-get-theory (theoryid)
+(defun extra-get-theory (theoryid &key imported)
   "Return CLOS object representing theory THEORYID. In constrast to get-theory, this
-function returns NIL when THEORYID cannot be uniquely resolved."
+function returns NIL when THEORYID cannot be uniquely resolved. When IMPORTED is
+T, returns NIL when theory is not imported in current theory."
   (let ((theory (get-theory theoryid)))
     (when (and theory (atom theory))
-      theory)))
+      (if imported
+	  (extra-imported-theory? theory)
+	  theory))))
 
-(defun extra-imported-theory? (theoryid &key qid)
-  "Find if THEORYID is an imported thoery in the current theory.
-Return NIL if not. Otherwise, return a list where the car is the
-CLOS of the theory."
-  (let ((ftest
-	 (if qid
-	     (lambda (th-id th) (string= th-id (extra-qid-theory th)))
-	   (lambda (th-id th) (string= th-id (id th))))))
-    (find theoryid (all-imported-theories (current-theory))
-	  :test ftest)))
+(defun extra-imported-theory? (theory)
+  "Find if THEORY is an imported thoery in the current theory.
+Return NIL if not."
+  (when theory
+    (let ((current-th (current-theory))
+	  (qid        (extra-qid-theory theory)))
+      (when current-th
+	(find qid (all-imported-theories current-th)
+	      :test (lambda (qid th) (string= qid (extra-qid-theory th))))))))
 
 (defun extra-qid-theory (theory)
   "Return string with the qualified name of theory, i.e., <lib>@<theory>.
@@ -506,7 +509,7 @@ The prefix <lib>@ could be empty for prelude and local theories."
       (format nil "~@[~a@~]~a" lib-id th-id))))
 
 (defhelper when-imported-theory__ (theory step)
-  (if (extra-imported-theory? theory :qid t)
+  (if (extra-get-theory theory :imported t)
       step
     (printf "Theory ~a is not imported in the current context." theory))
   "[Extrategies] Internal strategy." "")

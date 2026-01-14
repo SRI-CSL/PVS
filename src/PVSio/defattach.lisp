@@ -269,10 +269,10 @@ and the cdr is the list of matched prototypes."
 
 (defun defattach-thnm (thnm declformals body &key primitive)
   (let* ((th_nm      (split_thnm thnm))
-	 (theory     (when (car th_nm) (extra-get-theory (car th_nm))))
 	 (name       (cdr th_nm))
 	 (source     (car *pvs-attachment-source-file*))
          (theories   (cdr *pvs-attachment-source-file*))
+	 (theory     (when (car th_nm) (extra-get-theory (car th_nm) :imported source)))
 	 (loadedfile (when source (gethash source *pvsio-loaded-files*))))
     (cond ((null (car th_nm))
 	   (pvs-message "Error (pvs-attachments): Theory qualification of attachment ~a is missing."
@@ -444,7 +444,9 @@ It cannot be evaluated in a formal proof." name))))
 	   (let-xformals
 	    (let-xformals (attachment-xformals attachment) 0))
 	   (let-body
-	    `((let (,@let-xformals) ,@(cdr dobo))))
+	    (if let-xformals
+		`((let (,@let-xformals) ,@(cdr dobo)))
+		(cdr dobo)))
 	   (theo-decl (pp-xformals attachment))
 	   (thnmpro
 	    (format nil "~a.~a" theory (defattach-long-name attachment)))
@@ -453,12 +455,14 @@ It cannot be evaluated in a formal proof." name))))
 PVSio Declaration: ~a~@[~a~].~a~@[~a~]~a
 PVS Resolution: ~a~
 ~@[~%Source File: ~a~]
-Lisp Function Symbol: ~a~
+Lisp Function Symbol: ~a
+Lisp Code: ~{~a~}~
 ~@[~%~a~]"
 		    theory (car theo-decl) name (cdr theo-decl) formalstr
 		    thnmpro
 		    source
 		    fsymbol
+		    let-body
 		    (car dobo)))
 	   (newformals
 	    (append formals (list '&key 'decl-actuals_)))
@@ -492,7 +496,7 @@ Lisp Function Symbol: ~a~
   (let* ((source     (car *pvs-attachment-source-file*))
          (theories   (cdr *pvs-attachment-source-file*))
 	 (loadedfile (when source (gethash source *pvsio-loaded-files*)))
-	 (theory     (extra-get-theory theory-id))
+	 (theory     (extra-get-theory theory-id :imported source))
 	 (theoqid    (extra-qid-theory theory)))
     (cond ((and theory (outdated-theory theory theories))
 	   (add-updated-theory theory loadedfile)
