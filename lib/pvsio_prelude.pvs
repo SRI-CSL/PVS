@@ -74,8 +74,17 @@ BEGIN
   %% To PVS-typed lisp
   to_lisp[T:TYPE+](t:T) : Lisp[T]
 
+  %% From PVS-typed lisp
+  from_lisp[T:TYPE+](t:Lisp[T]) : T
+
   %% To untyped lisp
   to_lisp_[T:TYPE](t:T) : Lisp_
+
+  %% From untyped lisp
+  from_lisp_[T:TYPE+](t:Lisp_) : T
+
+  %% PVS type of untyped lisp object
+  typeof_lisp_(t:Lisp_) : string
 
   %% {| e |} makes a lisp representation of the PVS expression e suitable as
   %% input to format's directives.
@@ -94,16 +103,6 @@ BEGIN
   %% control leaves t.
   unwind_protect[T:TYPE](t:T,cleanup:void) : MACRO T =
     unwind_protect_lift(LAMBDA(d:Dummy):t,LAMBDA(d:Dummy):cleanup)
-
-  %% Return the string represantion of a type. Since types are not
-  %% first-class objects in PVS, the type is passed as
-  %% a declaration formal.
-  type2str[T:TYPE]: string
-
-  %% Return string representing the type of t (t may be an uninterpreted
-  %% constant)
-  typeof[T:TYPE](t:T) : MACRO string =
-    type2str[T]
 
   %% Functionally PVSioValue[T] is the same as T. Computationally, in the
   %% following constant declaration, <expr> is evaluated only once and assigned
@@ -353,12 +352,14 @@ BEGIN
      LAMBDA(str:string):format("String ~s doesn't represent a PVS integer",str))
 
   PVS2String: Exception[string] = make_exception(LAMBDA(str:string):
-    format("PVS Object ~a doesn't have literal representation",str))
+    format("PVS object ~a doesn't have literal representation",str))
+
+
+  Lisp2PVS: Exception[string] = make_exception(LAMBDA(str:string):
+    format("Common Lisp object cannot be converted into a PVS object~a",str))
 
   %% I/O Exceptions
   IOException: Exception[string]
-
-  ReadPVS : Exception[string] = make_exception(IOException)
 
   FileNotFound: Exception[string] = make_exception(IOException,
      LAMBDA(str:string):format("File not found (~a)",str))
@@ -818,6 +819,16 @@ BEGIN
 
   flushright(col:nat,s:string):string = format("~"+col+"@a",s)
 
+  %% Return the string represantion of a type. Since types are not
+  %% first-class objects in PVS, the type is passed as
+  %% a declaration formal.
+  type2str[T:TYPE]: string
+
+  %% Return string representing the type of t (t may be an uninterpreted
+  %% constant)
+  typeof[T:TYPE](t:T) : MACRO string =
+    type2str[T]
+
   %% Return TRUE if T1 is a subtype of T2 (types are represented using strings).
   %% Uses subtype judgements, but otherwise it's essentially syntactic
   subtypeof?(T1,T2:string) : bool
@@ -825,12 +836,9 @@ BEGIN
   %% Return a PVS object represented by a string
   str2pvs[T:TYPE+](s:string):T
 
-  pvs2str_lisp[T:TYPE](t:T) : string
-
   %% Return string representing a PVS object. Throw exception PVS2String
   %% if string representation doen't exist, e.g., object is not a literal.
-  pvs2str[T:TYPE](t:T) : MACRO string =
-    pvs2str_lisp[T](t)
+  pvs2str[T:TYPE](t:T) : string
 
 END stdstr
 
@@ -1175,26 +1183,24 @@ BEGIN
   fprintf(f:OStream,s:string): MACRO void =
     fprint(f,format(s))
 
-  %% Write a PVS object to an output stream, so that it can be retrieved
-  %% afterwards by fread
-  fwrite_lisp(f:OStream,typ:string,t:Lisp_) : void
+  fwrite_lisp(f:OStream,t:Lisp_) : void
 
   %% Write a PVS object to an output stream, so that it can be retrieved
   %% afterwards by fread
   fwrite[T:TYPE](f:OStream,t:T) : MACRO void =
-    fwrite_lisp(f,type2str[T],to_lisp_[T](t))
+    fwrite_lisp(f,to_lisp_[T](t))
 
   FileWriter[T:TYPE]  : TYPE = [[OStream,T]->void]
 
   fwrite_writer[T:TYPE] : JUDGEMENT
     fwrite[T] HAS_TYPE FileWriter
 
-  fread_lisp[T:TYPE+](f:IStream,typ:string) : T
+  fread_lisp(f:IStream) : Lisp_
 
   %% Read a PVS object of type T from an input stream written by fwrite.
-  %% Throw ReadPVS exception if read object is not of type T
+  %% Throw Lisp2PVS exception if read object is not of type T
   fread[T:TYPE+](f:IStream) : MACRO T =
-    fread_lisp(f,type2str[T])
+    from_lisp_[T](fread_lisp(f))
 
   FileReader[T:TYPE+] : TYPE = [[IStream]->T]
 
@@ -1203,14 +1209,14 @@ BEGIN
 
   %% Iterate a function on a file n times. Throw exception ClosedStream if
   %% stream is not open
-  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat):
+  fmap[T:TYPE](f:IStream,freader:FileReader[string],t:T,st:[[string,T]->T],n:nat):
     RECURSIVE T =
     IF fopen?(f) THEN
       IF n=0 or eof?(f) THEN t
       ELSE
-        LET s  = fread(f) IN
+        LET s  = freader(f) IN
         LET nt = st(s,t) IN
-          fmap(f,fread,nt,st,n-1)
+          fmap(f,freader,nt,st,n-1)
       ENDIF
     ELSE throw(ClosedStream,fname(f))
     ENDIF
@@ -1218,9 +1224,9 @@ BEGIN
 
   %% Iterate a function on a file until the end. Closes file when done
   %% (no matter what)
-  fmap[T:TYPE](f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
+  fmap[T:TYPE](f:IStream,freader:FileReader[string],t:T,st:[[string,T]->T]) : T =
     LET l = flength(f) IN
-    unwind_protect(fmap(f,fread,t,st,l),fclose(f))
+    unwind_protect(fmap(f,freader,t,st,l),fclose(f))
 
   %% Iterate a function on a file line by line until the end. Closes file when
   %% done (no matter what)

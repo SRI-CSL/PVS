@@ -388,7 +388,7 @@ as a formal in decl."
 (defun defattach-pvsio (decl name proto formals xformals body primitive)
   (let* ((theory     (module decl))
 	 (key 	     (pvsio-attachment-key decl))
-	 (fpvsio     (makenewsym "pvsio-~a.~a" (extra-qid-theory theory) (get-unique-id decl)))
+	 (fpvsio     (makesym "pvsio-~a.~a" (extra-qid-theory theory) (get-unique-id decl)))
 	 (attach     (make-attachment :theo-qid (extra-qid-theory theory)
 				      :name name
 				      :formals formals
