@@ -109,6 +109,7 @@
 ;******
 
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
+  (proclaim '(optimize (speed 3) (safety 3) (cl:debug 1)))
   (asdf/source-registry:initialize-source-registry)
   (setq *pvs-path* (initial-pvs-path path))
   (setq *pvs-log-stream* nil)
@@ -1928,8 +1929,9 @@ Needs to pay attention to sections."
 (defmethod tccs-tried? ((adt recursive-type))
   t)
 
-(defun prove-tcc (decl)
+(defun prove-tcc (decl &optional force?)
   (unless (and (default-proof decl)
+	       (not force?)
 	       (proved? decl))
     (unless (and (default-proof decl)
 		 (not (or (null (script (default-proof decl)))
@@ -1945,8 +1947,8 @@ Needs to pay attention to sections."
 		      (rerun-prove decl)))
 	   (fe (get-context-formula-entry decl)))
       (pvs-message
-	  "~:[Unable to prove~;Proved~] ~:[~;TCC ~]~a in ~,2,-3f seconds"
-	(eq (status-flag proof) '!) (tcc? decl) (id decl)
+	  "~:[Unable to prove~;Proved~] ~:[~;TCC ~]~a.~a in ~,2,-3f seconds"
+	(eq (status-flag proof) '!) (tcc? decl) (id (module decl)) (id decl)
 	(real-proof-time decl))
       ;; Must return non-NIL if proved, NIL otherwise.
       (cond ((eq (status-flag proof) '!)
@@ -2065,6 +2067,32 @@ Needs to pay attention to sections."
 (defun prove-tccs-theory (theoryname
 			  &optional (strategy '(grind)) also-proved? filename)
   (prove*-formulas-theory theoryname strategy also-proved? filename 'tccs))
+
+;;; reprove-tccs commands
+
+(defun reprove-tccs-importchain (theoryname &optional also-proved?)
+  (let ((th (get-typechecked-theory theoryname)))
+    (reprove-tccs (cons th (all-importings th)) also-proved?)
+    (status-proof-importchain theoryname nil t)))
+
+(defun reprove-tccs-pvs-file (filename &optional also-proved?)
+  (reprove-tccs (typecheck-file filename nil nil nil t) also-proved?)
+  (status-proof-pvs-file filename nil t))
+
+(defun reprove-tccs-theory (theoryname &optional also-proved?)
+  (let ((th (get-typechecked-theory theoryname)))
+    (reprove-tccs th also-proved?)
+    (status-proof-theory theoryname nil t)))
+
+(defmethod reprove-tccs ((th module) also-proved?)
+  (reprove-tccs (list th) also-proved?))
+
+(defmethod reprove-tccs ((theories list) also-proved?)
+  (dolist (th theories)
+    (let ((tccs (collect-tccs th)))
+      (dolist (tcc tccs)
+	(when (or also-proved? (not (proved? tcc)))
+	  (prove-tcc tcc also-proved?))))))
 
 ;;; The generic prove*-formulas- functions
 

@@ -265,7 +265,7 @@
 
 ;;; Status Proof Theory
 ;;; Called from Emacs
-(defun status-proof-theory (theoryref &optional unproved?)
+(defun status-proof-theory (theoryref &optional unproved? tccs-only?)
   (multiple-value-bind (dir file thname)
       (get-theory-ref theoryref)
     (declare (ignore file))
@@ -278,36 +278,36 @@
 	(if theory
 	    (pvs-buffer "PVS Status"
 	      (with-output-to-string (*standard-output*)
-		(proof-summary (id theory) unproved?))
+		(proof-summary (id theory) unproved? nil tccs-only?))
 	      t)
 	    (pvs-message "Theory ~a is not found" theoryref))))))
 
 
 ;;; Status Proof PVS File
 ;;; Called from Emacs
-(defun status-proof-pvs-file (filename &optional unproved?)
+(defun status-proof-pvs-file (filename &optional unproved? tccs-only?)
   (with-pvs-file (fname) filename
     (let ((theories (get-context-theory-names fname))
 	  (*disable-gc-printout* t))
       (if theories
 	  (pvs-buffer "PVS Status"
 	    (with-output-to-string (*standard-output*)
-	      (proof-summaries theories fname unproved?))
+	      (proof-summaries theories fname unproved? tccs-only?))
 	    t)
 	  (pvs-message "PVS file ~a not found" filename)))))
 
-(defun status-proof-theories (theories &optional unproved?)
+(defun status-proof-theories (theories &optional unproved? tccs-only?)
   (if theories
       (let ((*disable-gc-printout* t))
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories unproved?))
+	    (proof-summaries theories unproved? tccs-only?))
 	  t))
       (pvs-message "No theories given")))
 
 ;;; Status Proof Importchain
 ;;; Called from Emacs
-(defun status-proof-importchain (theoryref &optional unproved?)
+(defun status-proof-importchain (theoryref &optional unproved? tccs-only?)
   (multiple-value-bind (dir file thname)
       (get-theory-ref theoryref)
     (declare (ignore file))
@@ -319,24 +319,27 @@
 	(if theories
 	    (pvs-buffer "PVS Status"
 	      (with-output-to-string (*standard-output*)
-		(proof-summaries theories nil unproved?))
+		(proof-summaries theories nil unproved? tccs-only?))
 	      t)
 	    (pvs-message "Theory ~a is not found" theoryref))))))
 
 
-(defun proof-summaries (theory-ids &optional filename unproved?)
+(defun proof-summaries (theory-ids &optional filename unproved? tccs-only?)
   (unless (and unproved?
 	       (every #'(lambda (thid)
 			  (let* ((th (get-theory thid))
-				 (fdecls (when th (provable-formulas th))))
+				 (fdecls (when th
+					   (if tccs-only?
+					       (collect-tccs th)
+					       (provable-formulas th)))))
 			    (and th (every #'proved? fdecls))))
 		      theory-ids))
     (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
       (when filename
-	(format t "~2%Proof summary for file ~a.pvs" filename))
+	(format t "~2%~@[TCC ~*~]Proof summary for file ~a.pvs" tccs-only? filename))
       (dolist (theory theory-ids)
 	(multiple-value-bind (to pr uf ut tm)
-	    (proof-summary theory (when filename 2) unproved?)
+	    (proof-summary theory (when filename 2) unproved? tccs-only?)
 	  (incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
 	  (incf time tm)))
       (if filename
@@ -346,12 +349,12 @@
 	tot (+ proved unfin) proved time)
       (values tot proved unfin untried time))))
 
-(defun proof-summary (theory-id &optional (indent 0) unproved?)
+(defun proof-summary (theory-id &optional (indent 0) unproved? tccs-only?)
   (let* ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
 	 (theory (get-theory theory-id)))
     (if (and theory
 	     (typechecked? theory))
-	(let* ((fdecls (provable-formulas theory))
+	(let* ((fdecls (if tccs-only? (collect-tccs theory) (provable-formulas theory)))
 	       (maxtime (/ (reduce #'max fdecls
 				   :key #'(lambda (d)
 					    (or (run-proof-time d) 0))
@@ -365,7 +368,8 @@
 	       (timelength (length (format nil "~,2f" maxtime)))
 	       (idlength (- 79 4 statuslength dplength timelength 4 3)))
 	  (unless (and unproved? (every #'proved? fdecls))
-	    (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
+	    (format t "~2%~vT~@[TCC ~*~]Proof summary for theory ~a"
+	      indent tccs-only? (ref-to-id theory-id))
 	    (dolist (decl fdecls)
 	      (let ((tm (if (run-proof-time decl)
 			    (/ (run-proof-time decl)
