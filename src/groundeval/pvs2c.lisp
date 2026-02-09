@@ -691,7 +691,20 @@
 	 ;; (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory))
 	 ;; (theory-instances (when (ht-instance-clone theory)
 	 ;; 		     (maphash #'(lambda (x y) x) (ht-instance-clone theory))))
-	 )				;(break "print-header-file")
+	 (dependency-file-string
+	  (if *pvs2c-library-path*
+			  (format nil "~a/include/~a.deps" *pvs2c-library-path* theory-id)
+			  (format nil "~a.deps" theory-id))))
+    (with-open-file (output dependency-file-string :direction :output
+			    :if-exists :supersede :if-does-not-exist :create)
+      (let ((importings-string (format nil "~{\"~a\"~^, ~}"
+				       (loop for x in *pvs2c-theory-importings*
+					     collect (id x))))
+	    (mono-theories-string (format nil "~{\"~a\"~^, ~}"
+				   (loop for x in *preceding-mono-theories*
+					 collect (id x)))))
+      (format output "{\"theory\" : \"~a\", ~% \"importings\" : [~a], ~% \"monoTheories\" : [~a]~%}"
+	      theory-id importings-string mono-theories-string)))
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede :if-does-not-exist :create)
       (format output "//Code generated using pvs2ir")

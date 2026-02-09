@@ -1154,11 +1154,11 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(t body)))
 
 (defun make-ir-lett (vartype expr-type expr body)
-  (let ((ir-vtype (ir-vtype vartype)))  
+  (let ((ir-vtype (ir-type-def (ir-vtype vartype))))
     (if  (ir2c-tcompatible ir-vtype expr-type);;(ir-arraytype? expr-type)(ir-arraytype? ir-vtype))
       (make-ir-let vartype expr body)
-    (if (and (ir-funtype? expr-type)
-	     (ir-funtype? (ir-vtype vartype)))
+    (if (and (ir-funtype? (ir-type-def expr-type))
+	     (ir-funtype? ir-vtype))
 	;;The range types might not match, e.g., expr returns mpz_t but range(vartype) is uint8_t
 	;;we use eta-expansion on expr to get
 	;;(let ev expr (let vt (let earg nuv (lambda nuv->range (ev earg)))))
@@ -3728,10 +3728,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		      (let ((new-ir-expr (make-ir-lett new-ir-vartype (rename-type (ir-bind-type ir-expr) bindings)
 						       new-ir-bind-expr
 						       new-ir-body)))
-			;(format t "~%new-ir~%~s" (print-ir new-ir-expr))
 			new-ir-expr)
 		    (mk-ir-let  new-ir-vartype new-ir-bind-expr new-ir-body))))))
-					;(progn (format t "~%not free: ~a" (ir-name ir-vartype))
 	(preprocess-ir* ir-body livevars bindings)))))
 
 (defmethod preprocess-ir* ((ir-expr ir-record) livevars bindings)
@@ -4813,7 +4811,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 (list (format nil "mpq_t ~a" arg1-mpq-var)
 		       (format nil "mpq_init(~a)" arg1-mpq-var)
 		       (format nil "mpq_set_z(~a, ~a)" arg1-mpq-var arg1)
-		       (format nil "mpq_mk_set_~a(~a, (~a64_t)~a, 1)"
+		       (format nil "mpq_mk_set_~a(~a, (~a64_t)~a)"
 			       (gmp-ui-or-si arg2-c-type)
 			       return-var (uint-or-int arg2-c-type) arg2)
 		       (format nil "mpq_mk_div(~a, ~a, ~a)" return-var
@@ -8585,9 +8583,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod ir2c-tcompatible* ((texpr1 ir-stringtype)(texpr2 ir-stringtype))
   t)
 
-
+;;Need to apply ir2c-type since this is how typenames are stored
 (defmethod ir2c-tcompatible* ((texpr1 t)(texpr2 t))
-  (eq texpr1 texpr2));;Since the base case
+  (eq (ir2c-type texpr1) (ir2c-type texpr2)));;Since the base case
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;check compatibility of between a texpr and an ir-expr to see if casting is needed

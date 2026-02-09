@@ -3926,7 +3926,7 @@ in the given fnums."
 	(sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
 				(list fnum)))))
-    (decompose-equality-step sforms hide?))
+    (decompose-equality-step$ sforms hide?))
   "Decomposes an equality or disequality to the component equalities.
 This only works for equalities between functions, records, or tuples.  If
 HIDE? is T, the original (dis)equality is hidden.  If it is an equality in
