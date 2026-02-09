@@ -191,12 +191,11 @@ This function invokes an error when called."
     (if lisp-type
 	(if (eq lisp-type 'string)
 	    (let ((exprval (gentemp "stringval")))
-	    `(the string
-		  (let ((,exprval ,(call-next-method)))
-		    (if (stringp ,exprval) ,exprval
-		      (make-pvslisp-string (svref ,exprval 0)(svref ,exprval 1))))))
-	  `(the ,lisp-type
-		,(call-next-method)))
+	      `(let ((,exprval ,(call-next-method)))
+		 (if (stringp ,exprval) ,exprval
+		     (make-pvslisp-string (svref ,exprval 0)(svref ,exprval 1)))))
+	    `(the ,lisp-type
+		  ,(call-next-method)))
 	(call-next-method))))
 
 ;;String literals are translated directly to strings.

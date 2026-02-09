@@ -1808,9 +1808,8 @@ original proof is kept.  If a STRATEGY is supplied, it becomes the default
 for the next invocation of a prove-tccs- command."
   (interactive (append (complete-theory-name
 			"Prove TCCs in theory named: ")
-		       (get-pvs-strategy "Strategy to use: "
-					 default-tccs-strategy)))
-  (when (null strategy) (setq strategy default-tccs-strategy))
+		       (get-pvs-strategy "Strategy to use: " default-tccs-strategy)))
+  ;; (when (null strategy) (setq strategy default-tccs-strategy))
   (unless (equal strategy default-tccs-strategy)
     (check-pvs-strategy strategy)
     (setq default-tccs-strategy strategy))
@@ -1821,6 +1820,46 @@ for the next invocation of a prove-tccs- command."
 		theory strategy (and current-prefix-arg t)
 		(when (equal theory (current-theory))
 		  (format "\"%s\"" (current-pvs-file t))))
+	    nil))
+
+(defpvs reprove-tccs-importchain prove (theory)
+  "Attempt to reprove TCCs in the importchain.
+
+Attempts all unproved TCCs in the importchain rooted at the specified
+THEORY. With an argument (e.g., M-0 or C-u) attempts already proved
+TCCs as well."
+  (interactive (complete-theory-name "Reprove TCCs in importings of theory named: "))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(reprove-tccs-importchain \"%s\" %s)"
+		theory (and current-prefix-arg t))
+	    nil))
+
+(defpvs reprove-tccs-pvs-file prove (file)
+  "Attempt to prove TCCs in FILE
+
+Attempts all unproved TCCs in the specified PVS FILE. With an argument
+(e.g., M-0 or C-u) attempts already proved TCCs as well."
+  (interactive (complete-pvs-file-name "Reprove TCCs in PVS file named: "))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(reprove-tccs-pvs-file \"%s\" %s)"
+		file (and current-prefix-arg t))
+	    nil))
+
+(defpvs reprove-tccs-theory prove (theory)
+  "Attempt to prove TCCs in THEORY
+
+Attempts all unproved TCCs in the specified THEORY. With an argument (e.g.,
+M-0 or C-u) attempts already proved TCCs as well."
+  (interactive (complete-theory-name "Reprove TCCs in theory named: "))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(reprove-tccs-theory \"%s\" %s)"
+		theory (and current-prefix-arg t))
 	    nil))
 
 ;; (defpvs prove-parallel prove (pvs-path)

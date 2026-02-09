@@ -96,6 +96,7 @@ To change output prompt '~a':
 		   (*pvs2cl-mappings* nil)
 		   (input-stream (when input (make-string-input-stream input))))
 	       (unless (current-session)
+		 (load-pvs-attachments)
 		 (if banner?
 		     (format t "
 +---- 
@@ -584,7 +585,6 @@ strings. "
 		 (typecheck-file (file-namestring file) nil nil nil t)
 	      (fresh-line)
 	      (finish-output)))
-	  (load-pvs-attachments)
 	  (evaluation-mode-pvsio theory main tccs (null main))
 	  t)
       (declare (ignore val))

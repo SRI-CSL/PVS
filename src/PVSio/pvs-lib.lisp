@@ -164,6 +164,14 @@ since they were loaded."
                    (remhash key *pvsio-attachments*))))
              *pvsio-attachments*))
 
+
+(defun all-imported-paths ()
+  (let ((current-th (current-theory)))
+    (when current-th
+      (append (remove-duplicates (mapcar #'context-path (all-imported-theories current-th))
+				 :test #'file-equal)
+	      (list (context-path current-th))))))
+
 (defun load-pvs-attachments (&optional force (verbose t))
   (when verbose
     (pvs-message "Loading semantic attachments ~:[~;(force: t)~]~%" force))
@@ -173,13 +181,9 @@ since they were loaded."
     (initialize-prelude-attachments))
   (let ((found-files
 	 (append
-	  (loop for ws in *all-workspace-sessions*
+	  (loop for path in (all-imported-paths)
 		append (load-pvs-attachment
-			(merge-pathnames "pvs-attachments" (path ws)) force verbose))
+			(merge-pathnames "pvs-attachments" path) force verbose))
 	  (load-pvs-attachment (merge-pathnames ".pvs-attachments" "~/") force verbose))))
     (purge-attachment-files found-files)
     (purge-pvsio-attachments)))
-  ;;(load-imported-attachments (current-prelude-libraries) force verbose)
-  ;; The following is unneccesary since *default-pathname-defaults* should be
-  ;; part of *all-workspace-sessions* [CM]
-  ;; (load-pvs-attachment (merge-pathnames "pvs-attachment" *default-pathname-defaults*) force verbose)

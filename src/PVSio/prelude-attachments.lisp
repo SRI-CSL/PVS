@@ -22,6 +22,10 @@
 
 (defvar *pvsio-dummy-val* t)
 
+(defun clos-type2str (the-type)
+  "Return string represenation of a PVS type represented in CLOS"
+  (format nil "~a" (or (print-type the-type) the-type)))
+
 (defun stdpvs-attachments ()
 
 (eval '(attachments |stdpvs|
@@ -59,22 +63,35 @@
       (val condition))))
 
 (defattach |to_lisp| (pvs)
-  "Translates PVS object to Lisp"
+  "Translates PVS object to Common Lisp"
   pvs)
 
-(defattach |to_lisp_| (pvs)
-  "Translates PVS object to Lisp"
-  pvs)
+(defattach |from_lisp| (cl)
+  "Translates Common Lisp object to PVS"
+ cl)
+
+(defattach |to_lisp_| (pvs (the-type :decl-formal |T|))
+  "Encodes PVS object as a pair of Common Lisp object and CLOS type"
+  (cons pvs (clos-type2str the-type)))
+
+(defattach |from_lisp_| (cl (the-type :decl-formal |T|))
+ "Decodes a pair of Common Lisp object and CLOS type into a PVS object"
+ (let ((clos-type (pc-typecheck (pc-parse (cdr cl) 'type-expr))))
+   (if (subtype-of? clos-type the-type)
+       (car cl)
+       (throw-pvsio-exc
+	"stdexceptions.Lisp2PVS"
+	(format nil " (type ~a is not of a sub-type of ~a)" clos-type the-type)))))
+
+(defattach |typeof_lisp_| (cl)
+  "PVS type of encoded Common Lisp object"
+  (cdr cl))
 
 (defattach |unwind_protect_lift| (ft fcu)
   "Evaluate ft, returning its value. The cleanup code fcu will be evaluated if control leaves ft."
   (unwind-protect
       (pvs-funcall ft *pvsio-dummy-val*)
     (pvs-funcall fcu *pvsio-dummy-val*)))
-
-(defattach |type2str| ((the-type :decl-formal |T|))
-  "Returns the string value of the type T"
-  (format nil "~a" (or (print-type the-type) the-type)))
 
 )))
 
@@ -271,6 +288,10 @@ non-repeating digits. Truncated indicates that the infinite representation was t
    "A substring of s, with all the space characters stripped of the end"
    (string-right-trim '(#\Space #\Tab #\Newline) s))
 
+(defattach |type2str| ((the-type :decl-formal |T|))
+ "Returns the string value of the type T"
+ (clos-type2str the-type))
+
 (defattach |subtypeof?| (t1 t2)
   "Returns TRUE if T1 is a subtype of T2 (types are represented using strings).
 Uses subtype judgements, but otherwise it's essentially syntactic."
@@ -282,7 +303,7 @@ Uses subtype judgements, but otherwise it's essentially syntactic."
   "Translates string S to PVS format"
   (eval (pvs2cl (pc-typecheck (pc-parse s 'expr)))))
 
-(defattach |pvs2str_lisp| (e (the-type :decl-formal |T|))
+(defattach |pvs2str| (e (the-type :decl-formal |T|))
   "Translates PVS expresion E to a string"
   (handler-case
       (unwind-protect
@@ -507,22 +528,15 @@ Uses subtype judgements, but otherwise it's essentially syntactic."
          (cons "/" (cdr dirs))
        (cdr dirs))))
 
-(defattach |fwrite_lisp| (f typ pvs)
+(defattach |fwrite_lisp| (f pvs)
   "Writes a PVS object to output stream F of type TYP, so that it
 can be retrieved afterwards by fread"
-  (or (format f "~s~%" (cons typ pvs)) t))
+  (or (format f "~s~%" pvs) t))
 
-(defattach |fread_lisp| (f typ)
+(defattach |fread_lisp| (f)
   "Reads an PVS object of type TYP from an input stream F, which has been
 written by fwrite"
-  (let* ((type-pvs (read f))
-	 (the-type1 (pc-typecheck (pc-parse (car type-pvs) 'type-expr)))
-	 (the-type2 (pc-typecheck (pc-parse typ 'type-expr))))
-    (if (subtype-of? the-type1 the-type2)
-	(cdr type-pvs)
-      (throw-pvsio-exc
-       "stdexceptions.ReadPVS"
-       (format nil "Type ~a is not of a sub-type of ~a" the-type1 the-type2)))))
+  (read f))
 
 )))
 
