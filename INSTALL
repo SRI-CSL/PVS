@@ -66,7 +66,7 @@ For Allegro, set ALLEGRO_HOME to the directory containing the license file
 Note: if you have multiple lisps, you can set all desired variables and the
 make will create all images.
 
-Run ./configure and make
+Run autoconf , then ./configure and make
 
 Configure should be straightforward. Note you generally need to run it only
 once, even if you are building for many platforms.
