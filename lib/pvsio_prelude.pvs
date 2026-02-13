@@ -95,7 +95,7 @@ BEGIN
   %% it returns its value. So, this makes {| e |} suitable as input to the
   %% fomat's conditional directive ~@[...~]
 
-  {||}[T:TYPE+](t:T) : Lisp[T] = to_lisp(t)
+  ;{||}[T:TYPE+](t:T) : Lisp[T] = to_lisp(t)
 
   unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
 
@@ -1234,10 +1234,11 @@ BEGIN
     LET l = flength(f) IN
     unwind_protect(fmap(f,fread_line,t,st,l),fclose(f))
 
-  %% Formatting text to a file
+  %% Printing formatted text
   printf[T:TYPE](s:string,t:T): MACRO void =
     print(format(s,t))
 
+  %% Formatting text to a file
   fprintf[T:TYPE](f:OStream,s:string,t:T): MACRO void =
     fprint(f,format(s,t))
 
