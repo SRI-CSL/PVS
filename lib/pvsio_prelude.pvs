@@ -545,6 +545,7 @@ BEGIN
   char_space   : char = ' '
   char_tab     : char = char(9)  % Tabular
   char_newline : char = char(10) % New line
+  char_cr      : char = char(13) % Carry return
   char_dquote  : char = char(34) % Double quote
   char_squote  : char = char(39) % Single quote
   char_bquote  : char = '`'
