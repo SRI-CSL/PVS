@@ -117,6 +117,7 @@ using make-pathname or merge-pathnames."
 
 (defun reset-pvs-attachments ()
   "Initialize all global variables related to PVSio attachments."
+  (clear-all-eval-infos)
   (clrhash *pvsio-loaded-files*)
   (clrhash *pvsio-attachments*)
   (setq *pvs-attachment-source-file* nil))
