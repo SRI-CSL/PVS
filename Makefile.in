@@ -580,7 +580,7 @@ image-deps = $(pvs-make-files) \
 # yices1-version = 1.0.40
 yices2-version = 2.6.4
 # yices1-url = https://yices.csl.sri.com/old/binaries
-yices2-url = https://github.com/SRI-CSL/yices2/releases/download # # https://yices.csl.sri.com/releases
+yices2-url = https://github.com/SRI-CSL/yices2/releases/download# # https://yices.csl.sri.com/releases
 ifeq ($(PLATFORM),ix86_64-Linux)
 # yices1-tar = $(yices1-url)/yices-$(yices1-version)-x86_64-unknown-linux-gnu-static-gmp.tar.gz
 yices2-tar = $(yices2-url)/$(yices2-version)/yices-$(yices2-version)-x86_64-pc-linux-gnu.tar.gz
