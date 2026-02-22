@@ -2145,13 +2145,14 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 					     (ir-recordtype (ir-vtype (car ir-vartypes))))
 					(mk-ir-let (car ir-vartypes) (mk-ir-record ir-fields ir-recordtype)
 						   ir-body)))))))
-	      (make-ir-let op-var op-ir 
+	      (let ((ir-return-apply (mk-ir-let apply-return-var ;op-range-type
+						(mk-ir-apply op-var arg-vartypes nil) ;op-range-type
+							     apply-return-var)))
+		(make-ir-let op-var op-ir
 			   (make-ir-lett* arg-vartypes
 					  arg-types
 					  args-ir
-					  (mk-ir-let apply-return-var ;op-range-type
-						     (mk-ir-apply op-var arg-vartypes nil) ;op-range-type
-						     apply-return-var)))))))))
+					  ir-return-apply)))))))))
 	  
 				 ;; (if (eql (length arg-vartypes) 1)
 				 ;;     (mk-ir-apply op-var arg-vartypes)
@@ -6872,7 +6873,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	       (ir2c-rangetype (ir2c-type ir-rangetype))
 	       (c-rangetype (mppointer-type (add-c-type-definition ir2c-rangetype)))
 	       (c-domaintype (add-c-type-definition (ir2c-type ir-domaintype)))
-	       (c-funtype (or c-return-type (add-c-type-definition (ir2c-type (mk-ir-funtype ir-domaintype ir-rangetype)))))
+	       (ir-funtype (mk-ir-funtype ir-domaintype ir-rangetype))
+	       (c-funtype (or c-return-type (add-c-type-definition (ir2c-type ir-funtype))))
 	       ;(ir-body (ir-body ir-lambda-expr))
 	       (closure-name-root (format nil "~a_closure_~a" *theory-id* (length *c-type-info-table*)))
 	       (closure-type-name (format nil "~a_t" closure-name-root))
@@ -6914,9 +6916,10 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	       ;; (closure-cptr-header (format nil "struct ~a * ~a(struct ~a * closure)"
 	       ;; 				    closure-struct-name closure-cptr-name closure-struct-name))
 	       (closure-fptr-header
-		(format nil "~a_t ~a(struct ~a * closure, ~a_t bvar);"
+		(format nil "~a_t ~a(struct ~a * closure, ~a_t bvar~a);"
 			c-rangetype
-			closure-fptr-name closure-struct-name (mppointer-type c-domaintype)))
+			closure-fptr-name closure-struct-name (mppointer-type c-domaintype)
+			c-param-decl-string))
 		;; (case c-rangetype
 		;;   ((|mpq| |mpz|)
 		;;    (format nil "void ~a(struct ~a * closure, ~a_t result, ~a_t bvar);"
@@ -6924,10 +6927,11 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		;;   (t (format nil "~a_t ~a(struct ~a * closure, ~a_t bvar);"
 		;; 	     c-rangetype closure-fptr-name closure-struct-name c-domaintype)))
 	       (closure-mptr-header
-		(format nil "~a_t ~a(struct ~a * closure, ~{~a~^, ~});"
+		(format nil "~a_t ~a(struct ~a * closure, ~{~a~^, ~}~a);"
 			c-rangetype
 			closure-mptr-name closure-struct-name
-			bvar-cvar-decls))
+			bvar-cvar-decls
+			c-param-decl-string))
 		;; (case c-rangetype
 		;; 		      ((|mpq| |mpz|)
 		;; 		       (format nil "void ~a(struct ~a * closure, ~a_t result, ~{~a~^, ~});"
@@ -6937,8 +6941,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		;; 				 c-rangetype closure-mptr-name closure-struct-name
 		;; 				 bvar-cvar-decls)))
 	       (bvar-release-instrs (when (> (length ir-boundvars) 1)
-				      (list (format nil "release_~a(bvar~a)" c-domaintype
-						    c-param-arg-string))))
+				      (list (make-release-call ir-domaintype c-domaintype "bvar" c-param-arg-string))))
+					;(format nil "release_~a(bvar~a)" c-domaintype c-param-arg-string)
 	       (bvar_projections
 		(when (> (length ir-boundvars) 1)
 		  (nconc (loop for ir-bvar in ir-boundvars
@@ -6981,7 +6985,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	       ;;(hashable-range (ir-hashable-index? (ir2c-type ir-rangetype)))
 	       (closure-fptr-defn 
 		(if hashable-domain  ;;was (and hashable-domain hashable-range)
-		    (format nil "~a_t ~a(struct ~a * closure, ~a_t bvar){~
+		    (format nil "~a_t ~a(struct ~a * closure, ~a_t bvar~a){~
 ~%if (closure->htbl != NULL){~
 ~%~8T~a_htbl_t htbl = closure->htbl;~
 ~%~8Tuint32_t hash = ~a_hash(bvar);~
@@ -6990,18 +6994,19 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 ~%~8Tif (!keyzero || entry.keyhash != 0){~
 ~%~16T~a_t result;~
 ~{~%~16T~a;~}~
-~%~16Trelease_~a(closure);~
+~%~16T~a;~
 ~{~%~16T~a;~}~
 ~%~16Treturn result;}~
 ~%~8Telse {~
-~{~%~12T~a;~}~{~%~12T~a;~}~%~{~%~12T~a;~}~%~12Trelease_~a(closure);~
+~{~%~12T~a;~}~{~%~12T~a;~}~%~{~%~12T~a;~}~%~12T~a;~
 ~%~12T~a_t result;~%~12T~a;~%~12Treturn result;};~
 ~%~8T}
 ~%~6Telse {~
-~{~%~8T~a;~}~{~%~8T~a;~}~{~%~8T~a;~}~%~8Trelease_~a(closure);~
+~{~%~8T~a;~}~{~%~8T~a;~}~{~%~8T~a;~}~%~8T~a;~
 ~%~8T~a_t result;~%~8T~a;~%~8Treturn result;}~%}"
 			    c-rangetype closure-fptr-name ;return type, f_ function name
 			    closure-struct-name (mppointer-type c-domaintype); closure and bvar args
+			    c-param-decl-string
 			    c-funtype;hashtable type prefix
 			    hashable-domain;hash function type prefix
 			    c-funtype;hash lookup suffix
@@ -7011,12 +7016,13 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 							  (list c-domaintype '|uint8|)));keyzero = entry.key==0
 			    c-rangetype;rangetype for result
 			    bvar-release-instrs;release any boundvar(s) since they are not used in this branch
-			    closure-name-root ;release closure, also nevery used in this branch
+			    (make-release-call ir-funtype c-funtype "closure" c-param-arg-string);closure-name-root ;release closure, also nevery used in this branch
 			    (mk-c-assignment-with-count "result" c-rangetype
 			     				"entry.value" c-rangetype);assign entry.value to result (inc count)
 			    bvar_projections;on the hash failure branch: assign projections of bvar to bvar-projection variables
 			    fvar-init-instrs;initialize fvar freevars from closure
-			    fvar-incref-instrs closure-name-root;increment refcount of fvars in closure and release the closure
+			    fvar-incref-instrs ;closure-name-root;increment refcount of fvars in closure and release the closure
+			    (make-release-call ir-funtype c-funtype "closure" c-param-arg-string)
 			    c-rangetype;declare result var
 			    (mk-c-assignment "result" c-rangetype
 							(format nil "~a(~a)" closure-hptr-name bvar-fvar-args)
@@ -7024,20 +7030,21 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			    bvar_projections;if there's no hashtable, compute bvar projections
 			    fvar-init-instrs;initialize fvars
 			    fvar-incref-instrs;increment fvar refcounts
-			    closure-name-root;release closure
+			    (make-release-call ir-funtype c-funtype "closure" c-param-arg-string);closure-name-root;release closure
 			    c-rangetype;introduce result variable
 			    (mk-c-assignment "result" c-rangetype
 							(format nil "~a(~a)" closure-hptr-name bvar-fvar-args)
 							c-rangetype));assign result
-		(format nil "~a_t ~a(struct ~a * closure, ~a_t bvar){~{~%~8T~a;~}~{~%~8T~a;~}~{~%~8T~a;~}~%~8Trelease_~a(closure);~%~8T~a_t result;~%~8T~a;~%~8Treturn result;~%}"
+		(format nil "~a_t ~a(struct ~a * closure, ~a_t bvar~a){~{~%~8T~a;~}~{~%~8T~a;~}~{~%~8T~a;~}~%~8T~a;~%~8T~a_t result;~%~8T~a;~%~8Treturn result;~%}"
 			c-rangetype;return type
 			closure-fptr-name;fptr function name
 			closure-struct-name;closure-name-root?
 			(mppointer-type c-domaintype);bvar domain type
+			c-param-decl-string
 			bvar_projections;bvar projections
 			fvar-init-instrs;initialize fvars
 			fvar-incref-instrs;fvar refcount increments
-			closure-name-root;release closure var
+			(make-release-call ir-funtype c-funtype "closure" c-param-arg-string);closure-name-root;release closure var
 			c-rangetype;return type for result var
 			(mk-c-assignment "result" c-rangetype
 					 (format nil "~a(~a)" closure-hptr-name bvar-fvar-args)
@@ -7063,14 +7070,15 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	       (closure-fptr-definition (mk-c-noextern-defn-info closure-fptr-name closure-fptr-header
 							closure-fptr-defn))
 	       (closure-mptr-defn
-		(format nil "~a_t ~a(struct ~a * closure, ~{~a~^, ~}){~{~%~8T~a;~}~{~%~8T~a;~}~%~8Trelease_~a(closure);~%~8Treturn ~a(~a);}"
+		(format nil "~a_t ~a(struct ~a * closure, ~{~a~^, ~}~a){~{~%~8T~a;~}~{~%~8T~a;~}~%~8T~a;~%~8Treturn ~a(~a);}"
 			c-rangetype
 			closure-mptr-name
 			closure-struct-name
 			bvar-cvar-decls
+			c-param-decl-string
 			fvar-init-instrs
 			fvar-incref-instrs;fvar refcount increments
-			closure-name-root;release closure var
+			(make-release-call ir-funtype c-funtype "closure" c-param-arg-string); closure-name-root;release closure var
 			closure-hptr-name
 			bvar-fvar-args
 			)
