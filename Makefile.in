@@ -615,7 +615,7 @@ $(yices2-tgt) :
 	curl --output - $(yices2-tar) | tar xzf - -C ./yices/$(PLATFORM)
 
 $(yices2-lnk) : $(yices2-tgt)
-	ln -s ../../$< $@
+	ln -sf ../../$< $@
 
 # Here are the rules for building PVS using pvs.asd, which does most of the
 # work. It not only builds the image, it creates all the libraries

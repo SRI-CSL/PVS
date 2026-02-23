@@ -70,19 +70,6 @@
   "Translates Common Lisp object to PVS"
  cl)
 
-(defattach |to_lisp_| (pvs (the-type :decl-formal |T|))
-  "Encodes PVS object as a pair of Common Lisp object and CLOS type"
-  (cons pvs (clos-type2str the-type)))
-
-(defattach |from_lisp_| (cl (the-type :decl-formal |T|))
- "Decodes a pair of Common Lisp object and CLOS type into a PVS object"
- (let ((clos-type (pc-typecheck (pc-parse (cdr cl) 'type-expr))))
-   (if (subtype-of? clos-type the-type)
-       (car cl)
-       (throw-pvsio-exc
-	"stdexceptions.Lisp2PVS"
-	(format nil " (type ~a is not of a sub-type of ~a)" clos-type the-type)))))
-
 (defattach |typeof_lisp_| (cl)
   "PVS type of encoded Common Lisp object"
   (cdr cl))
@@ -619,6 +606,19 @@ In either case, if the second value is 0, the rational has a finite decimal repr
 
 (eval '(attachments |stdprog|
 
+(defattach |to_lisp_| (pvs (the-type :decl-formal |T|))
+    "Encodes PVS object as a pair of Common Lisp object and CLOS type"
+    (cons pvs (clos-type2str the-type)))
+
+(defattach |from_lisp_| (cl (the-type :decl-formal |T|))
+  "Decodes a pair of Common Lisp object and CLOS type into a PVS object"
+  (let ((clos-type (pc-typecheck (pc-parse (cdr cl) 'type-expr))))
+    (if (subtype-of? clos-type the-type)
+	(car cl)
+      (throw-pvsio-exc
+       "stdexceptions.Lisp2PVS"
+       (format nil " (type ~a is not of a sub-type of ~a)" clos-type the-type)))))
+
 (defattach |new| ()
   "Creates a new mutable variable with an undefined value"
   (pvsio_new_gvar))
@@ -806,11 +806,11 @@ declared as a Global variable"
 
 (defun initialize-prelude-attachments ()
   (stdpvs-attachments)
+  (stdprog-attachments)
+  (stdcatch-attachments)
+  (stdmath-attachments)
   (stdchar-attachments)
   (stdstr-attachments)
   (stdio-attachments)
-  (stdmath-attachments)
-  (stdprog-attachments)
-  (stdcatch-attachments)
   (stdpvsio-attachments)
   (stdsys-attachments))
