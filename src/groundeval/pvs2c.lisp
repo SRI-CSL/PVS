@@ -686,15 +686,15 @@
 (defun print-header-file (theory-id theory)
   (let* ((file-string (if *pvs2c-library-path*
 			  (format nil "~a/include/~a_c.h" *pvs2c-library-path* theory-id)
-			  (format nil "~a_c.h" theory-id)))
+			  (format nil "pvs2c/include/~a_c.h" theory-id)))
 	 ;; (preceding-theories (pvs2c-preceding-theories theory))
 	 ;; (preceding-prelude-theories (pvs2c-preceding-prelude-theories theory))
 	 ;; (theory-instances (when (ht-instance-clone theory)
 	 ;; 		     (maphash #'(lambda (x y) x) (ht-instance-clone theory))))
 	 (dependency-file-string
 	  (if *pvs2c-library-path*
-			  (format nil "~a/include/~a.deps" *pvs2c-library-path* theory-id)
-			  (format nil "~a.deps" theory-id))))
+			  (format nil "~a/include/~a.pvs2c" *pvs2c-library-path* theory-id)
+			  (format nil "pvs2c/include/~a.deps" theory-id))))
     (with-open-file (output dependency-file-string :direction :output
 			    :if-exists :supersede :if-does-not-exist :create)
       (let ((importings-string (format nil "~{\"~a\"~^, ~}"
@@ -884,7 +884,7 @@
 successful."
   (let* ((file-string (if *pvs2c-library-path*
 			  (format nil "~a/src/~a_c.c" *pvs2c-library-path* theory-id)
-			  (format nil "~a_c.c" theory-id)))
+			  (format nil "pvs2c/src/~a_c.c" theory-id)))
 	 (file-path (format nil "~a" (working-directory))))
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
