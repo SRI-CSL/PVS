@@ -77,25 +77,8 @@ BEGIN
   %% From PVS-typed lisp
   from_lisp[T:TYPE+](t:Lisp[T]) : T
 
-  %% To untyped lisp
-  to_lisp_[T:TYPE](t:T) : Lisp_
-
-  %% From untyped lisp
-  from_lisp_[T:TYPE+](t:Lisp_) : T
-
   %% PVS type of untyped lisp object
   typeof_lisp_(t:Lisp_) : string
-
-  %% {| e |} makes a lisp representation of the PVS expression e suitable as
-  %% input to format's directives.
-  %% {| a1,..,an |} becomes a1 ... an parameters to format
-  %% {| (: a1,..,an :) |} becomes a list to format's iterative directive ~{...~}
-  %% If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if
-  %% e is, respectively, FALSE, the empty string, undef, or None. Otherwise,
-  %% it returns its value. So, this makes {| e |} suitable as input to the
-  %% fomat's conditional directive ~@[...~]
-
-  ;{||}[T:TYPE+](t:T) : Lisp[T] = to_lisp(t)
 
   unwind_protect_lift[T:TYPE+](ft:[Dummy->T],fcu:[Dummy->void]) : T
 
@@ -117,6 +100,22 @@ END stdpvs
 
 stdprog[T:TYPE+] : THEORY
 BEGIN
+
+  %% From untyped lisp
+  from_lisp_(t:Lisp_) : T
+
+  %% To untyped lisp
+  to_lisp_(t:T) : Lisp_
+
+  %% {| e |} makes a lisp representation of the PVS expression e suitable as
+  %% input to format's directives.
+  %% {| a1,..,an |} becomes a1 ... an parameters to format
+  %% {| (: a1,..,an :) |} becomes a list to format's iterative directive ~{...~}
+  %% If e is a boolean, a string, a Mutable, or a Maybe, {| e |} becomes NIL if
+  %% e is, respectively, FALSE, the empty string, undef, or None. Otherwise,
+  %% it returns its value. So, this makes {| e |} suitable as input to the
+  %% fomat's conditional directive ~@[...~]
+  {||}(t:T) : Lisp[T] = to_lisp(t)
 
   %% Mutable data
   Mutable : TYPE+
