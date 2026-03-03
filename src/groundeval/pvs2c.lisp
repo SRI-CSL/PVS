@@ -715,7 +715,7 @@
 		     (loop for x in *preceding-mono-theories*
 			   collect (id x)))))
       (format output "{\"theory\" : \"~a\", ~% \"importings\" : [~a], ~% \"prelude-importings\"
- : [~a] ~% \"monoTheories\" : [~a]~%}"
+ : [~a], ~% \"monoTheories\" : [~a]~%}"
 	      theory-id importings-string prelude-importings-string mono-theories-string)))
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede :if-does-not-exist :create)
