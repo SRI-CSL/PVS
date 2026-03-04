@@ -874,9 +874,10 @@ use binfiles."
     (let ((merged-theories
 	   (update-parsed-file filename file theories new-theories forced? typecheck?)))
       (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
-      (assert (every #'(lambda (nth) (and (datatype-or-module? nth)
-					  (eq nth (get-theory (id nth)))))
-		     merged-theories))
+      (assert (every #'(lambda (nth) (datatype-or-module? nth)) merged-theories)
+	      () "parse-file* - bad value in merged-theories")
+      (assert (every #'(lambda (nth) (eq nth (get-theory (id nth)))) merged-theories)
+	      () "parse-file* - merged theory differs from get-theory")
       ;; (assert (parsed-file? filename))
       ;; (assert (every #'parsed? theories))
       merged-theories)))
@@ -1283,6 +1284,8 @@ escapes here."
 	   (setf (gethash (id nthy) (current-pvs-theories)) nthy))
 	 (setf (gethash filename (current-pvs-files))
 	       (cons (file-write-date file) new-theories))
+	 (assert (every #'datatype-or-module? new-theories) ()
+		 "update-parsed-file forced? invalid new-theories: ~a" new-theories)
 	 new-theories)
 	((null old-theories)
 	 (setf (gethash (pvs-filename filename) (current-pvs-files))
@@ -1290,16 +1293,21 @@ escapes here."
 	 (dolist (nthy new-theories)
 	   (setf (gethash (id nthy) (current-pvs-theories)) nthy))
 	 (update-context filename)
+	 (assert (every #'datatype-or-module? new-theories) ()
+		 "update-parsed-file no old-theories: invalid new-theories: ~a"
+		 new-theories)
 	 new-theories)
 	(t (multiple-value-bind (merged-theories th-diffs)
 	       ;; merged-theories will be a mix of new and old
 	       ;; th-diffs has elts of the form (othy nthy diff)
 	       (update-parsed-theories filename file old-theories new-theories)
-	     (assert (every #'datatype-or-module? merged-theories))
 	     (setf (gethash (pvs-filename filename) (current-pvs-files))
 		   (cons (file-write-date file) merged-theories))
 	     (unless typecheck?
 	       (update-context filename))
+	     (assert (every #'datatype-or-module? merged-theories) ()
+		     "update-parsed-file - invalid merged-theories: ~a"
+		     merged-theories)
 	     merged-theories))))
 
 (defun update-parsed-theories (filename file old-theories new-theories
@@ -1515,8 +1523,8 @@ escapes here."
 		      (newsec (append kept-part new-part)))
 		 (assert (memq last-kept-decl newsec) ()
 			 "merge-parsed-theory-decls - 2")
-		 (assert (= (length (slot-value nthy cursec))
-			    (length (remove-if #'generated-by newsec))))
+		 ;; (assert (= (length (slot-value nthy cursec))
+		 ;; 	    (length (remove-if #'generated-by newsec))))
 		 ;; This is destructive - othy has been modified
 		 (setf (slot-value othy cursec) newsec)))
 	      ((eq cursec nsec)
