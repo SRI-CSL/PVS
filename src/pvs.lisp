@@ -3833,7 +3833,7 @@ nil is returned in that case."
 		  (pvs-filename (filename mod)))))
     (when (and mod fname
 	       (gethash fname (current-pvs-files))
-	       (not (file-exists-p (make-specpath (filename mod)))))
+	       (not (uiop:file-exists-p (make-specpath (filename mod)))))
       (pvs-message "File ~a.pvs has disappeared!" (filename mod))
       (remhash fname (current-pvs-files))
       (remhash (id mod) (current-pvs-theories))
@@ -3874,9 +3874,9 @@ nil is returned in that case."
 	     (assert (eq (get-theory theoryref) th))
 	     th))
 	  (t (let ((filename (context-file-of theoryref)))
-	       (if (and filename (file-exists-p (make-specpath filename)))
+	       (if (and filename (uiop:file-exists-p (make-specpath filename)))
 		   (parse-file filename nil quiet? typecheck?)
-		   (if (file-exists-p (make-specpath theoryref))
+		   (if (uiop:file-exists-p (make-specpath theoryref))
 		       (parse-file theoryref nil quiet? typecheck?)
 		       (let ((file
 			      (look-for-theory-in-directory-files theoryref)))
@@ -4910,7 +4910,7 @@ specified pvs-file, and its associated .prf file.  "
 
 (defun rename-in-prf-file (old new file-ref)
   (let ((prf-file (make-prf-pathname file-ref)))
-    (when (file-exists-p prf-file)
+    (when (uiop:file-exists-p prf-file)
       (with-open-file (input prf-file :direction :input)
 	(let ((proofs (rename-in-proof-file-stream old new input)))
 	  (break "rename-in-prf-file")

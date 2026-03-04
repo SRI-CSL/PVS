@@ -154,7 +154,7 @@
       (format t "~%Done typechecking the core prelude")
       (restore-prelude-proofs)
       ;;(initialize-prelude-attachments)
-      (ignore-errors (pvs2c-prelude))
+      (pvs2c-prelude)
       (ignore-errors (uiop:run-program (format nil "~a/lib/pvs2c/src/make" *pvs-path*)))
       (register-manip-type *number_field* 'pvs-type-real))))
 
