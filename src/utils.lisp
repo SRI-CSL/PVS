@@ -1023,7 +1023,7 @@ is replaced with replacement."
     (make-specpath (id th))))
 
 (defmethod make-specpath ((name pathname) &optional (ext "pvs"))
-  (make-specpath (namestring name)))
+  (make-specpath (namestring name) ext))
 
 (defmethod make-specpath ((name symbol) &optional (ext "pvs"))
   (make-pathname :defaults *default-pathname-defaults* :name (string name) :type ext))
@@ -5326,10 +5326,10 @@ we can get this method using
 	(pc-typecheck term))))
 
 (defun tc-decl (decl)
-  (with-context (background-context)
-    (let ((tdecls (tc-term decl :nt 'theory-elt)))
-      (dolist (tdecl tdecls)
-	(add-decl tdecl)))
+  (assert *current-context*)
+  (let ((tdecls (tc-term decl :nt 'theory-elt)))
+    (dolist (tdecl tdecls)
+      (put-decl tdecl))
     (if (cdr tdecls) tdecls (car tdecls))))
 
 (defun tc-modname (ex)
@@ -6127,7 +6127,7 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 (defun dbg ()
   "Sets optimization for debugging, giving more visibility to subsequently
 loaded files and defuns."
-  (declaim (optimize (safety 3) (speed 0) (cl:debug 3))))
+  (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
 
 #+sbcl
 (defun control-stack-size ()
