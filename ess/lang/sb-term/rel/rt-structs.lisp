@@ -189,9 +189,7 @@
 (defun lexical-make-escape (self char)
   (setf (elt (lexical-stream-readtable self) (char-code char)) :escape))
 (defun is-lexical-escape? (self char)
-  ;; SO - added test for #\\ since readtable returns #<FUNCTION |LEX-\\|>,
-  (or (char= char #\\)
-      (eq :escape (elt (lexical-stream-readtable self) (char-code char)))))
+  (eq :escape (elt (lexical-stream-readtable self) (char-code char))))
 
 ;;; A place in a line.
 (defstruct (place (:print-function place-printer))
