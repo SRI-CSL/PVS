@@ -1417,6 +1417,7 @@ which is the transitive closure of the immediate assuming instances."
     (mapcar #'(lambda (ax) (collect-mapping-axiom ax thinst theory)) axioms)))
 
 (defun collect-mapping-axiom (axiom thinst theory)
+  (ensure-closed-definition axiom)
   (multiple-value-bind (dfmls dacts)
       (new-decl-formals axiom)
     (let* ((id (make-tcc-name nil (id axiom)))
