@@ -104,6 +104,17 @@ print object produces an error, and won't allow inspection of the object.")
       (let ((*no-comments* t))
 	(unparse c :stream stream))))
 
+(defmethod print-object ((decl adt-def-decl) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<~a ~a~a~@[.~a~].~a>"
+	(type-of decl)
+	(if (module decl) (if (filename (module decl)) "" ":detached ") ":nopath ")
+	(when (module decl) (id (module decl)))
+	(unless (generated-by (module decl))
+	  (generated-by decl))
+	(id decl))))
+
 (defmethod print-object ((sel selection) stream)
   (if *debugging-print-object*
       (call-next-method)
@@ -275,7 +286,7 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((strat strategy) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<strat: ~s>" (rule-input (topstep strat)) stream)))
+      (format stream "#<strat: ~s>" (rule-input (topstep strat)))))
 
 (defmethod print-object ((rule rule-instance) stream)
   (if *debugging-print-object*
@@ -387,3 +398,8 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod kind-of ((decl conversion-decl)) 'conversion)
 (defmethod kind-of ((decl auto-rewrite-decl)) 'auto-rewrite)
 (defmethod kind-of ((decl mapped-type-decl)) 'type)
+
+;; (defmethod describe-object ((obj syntax) stream)
+;;   (format stream "~%class: ~a" (class-name (class-of obj)))
+;;   (dolist (slot (describe-slots obj))
+;;     (format stream "~%  ~a = ~s" slot (slot-value slot obj))))
