@@ -446,6 +446,9 @@ current declaration."
   (dolist (k (sort (get-hash-keys pvs-theories) #'string-lessp))
     (funcall fn (gethash k pvs-theories))))
 
+(defun do-workspace-theories (fn &optional (ws (current-workspace)))
+  (maphash #'(lambda (id th) (declare (ignore id)) (funcall fn th)) (pvs-theories ws)))
+
 (defun do-all-theories (fn &optional no-prelude?)
   "Goes through all known (e.g., parsed) theories of the current context,
 and all *all-workspace-sessions* applying fn to each theory."
