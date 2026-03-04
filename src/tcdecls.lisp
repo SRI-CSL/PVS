@@ -368,9 +368,9 @@
 
 (defmethod typecheck* ((decl formal-const-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let ((*generate-tccs* 'none))
-    (setf (type decl)
-	  (typecheck* (declared-type decl) nil nil nil)))
+  (let* ((*generate-tccs* 'none)
+	 (ftype (typecheck* (declared-type decl) nil nil nil)))
+    (setf (type decl) ftype))
   (set-type (declared-type decl) nil)
   (assert (fully-instantiated? (type decl)))
   (assert (or (null (print-type (type decl)))
@@ -803,7 +803,7 @@ typecheck-inlined-theory* with theory and full-thname."
 		      (if (typep (cdr elt) '(or type-def-decl const-decl theory-reference))
 			  (let* ((res (make-resolution (cdr elt) cthname))
 				 (nm (mk-name-expr (id (cdr elt)) nil nil res))
-				 (act (make-instance 'actual :expr nm)))
+				 (act (mk-actual nm)))
 			    (cons (car elt) act))
 			  elt))
 	    (theory-mappings stheory)))
@@ -935,24 +935,22 @@ bindings."
   ;; (when (formals decl)
   ;;   (type-error decl "Uninterpreted types may not have parameters"))
   (check-duplication decl)
-  (setf (type-value decl)
-	(let* ((dacts (mk-dactuals (decl-formals decl)))
-	       (tn (if *generating-adt*
-		       (mk-adt-type-name (id decl) nil nil nil
-					 *generating-adt* dacts)
-		       (mk-type-name (id decl) nil nil nil :dactuals dacts))))
-	  ;; ;; If there are decl-formals, the dactuals need to be typechecked
-	  ;; (when (dactuals tn)
-	  ;;   (typecheck* (dactuals tn) nil nil nil))
-	  (let ((thinst (if dacts ; Slight optimization
-			    (copy (current-theory-name))
-			    (current-theory-name))))
-	    (when dacts
-	      (change-class thinst 'declparam-modname
-		:dactuals (dactuals tn)
-		:from-decl decl))
-	    (setf (resolutions tn) (list (mk-resolution decl thinst tn))))
-	  tn))
+  (let* ((dacts (mk-dactuals (decl-formals decl)))
+	 (tn (if *generating-adt*
+		 (mk-adt-type-name (id decl) nil nil nil
+				   *generating-adt* dacts)
+		 (mk-type-name (id decl) nil nil nil :dactuals dacts))))
+    ;; ;; If there are decl-formals, the dactuals need to be typechecked
+    ;; (when (dactuals tn)
+    ;;   (typecheck* (dactuals tn) nil nil nil))
+    (let* ((thinst (if dacts		; Slight optimization
+		      (change-class (copy (current-theory-name)) 'declparam-modname
+			:dactuals (dactuals tn)
+			:from-decl decl)
+		      (current-theory-name)))
+	   (res (mk-resolution decl thinst tn)))
+      (setf (resolutions tn) (list res)))
+    (setf (type-value decl) tn))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))
   decl)
