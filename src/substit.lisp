@@ -404,7 +404,7 @@ it is nil in the substituted binding")
 			      sexpr)))
 		       ((and (not (compatible? (dep-binding-type (domain stype))
 					       (type (argument nex))))
-			     (tcc? (current-declaration))
+			     (assuming-tcc? (current-declaration))
 			     (theory-instance (current-declaration))
 			     (mappings (theory-instance (current-declaration))))
 			(let ((sexpr (subst-mod-params nex
