@@ -49,13 +49,6 @@
 ;;;   reduce_ordinal definition
 ;;;   REDUCE_ordinal definition
 
-(defvar *adt* nil
-  "The datatype declaration being processed")
-
-(defvar *adt-vars* nil
-  "A hashtable that holds the variable names used for the adt, constructors,
-and accessors")
-
 (defvar *last-adt-decl* nil)
 
 (defvar *generate-all-adt-axioms* t
@@ -127,7 +120,8 @@ generated")
   (declare (ignore context))
   (let ((*subtype-of-hash* (make-hash-table :test #'equal)))
     (unwind-protect (typecheck* adt expected nil nil)
-      (unless (typechecked? adt)
+      (unless (or (generated-by adt)
+		  (typechecked? adt))
 	(untypecheck-theory adt)))))
 
 (defmethod typecheck* ((adt recursive-type) expected kind arguments)
@@ -170,6 +164,9 @@ generated")
 	(generate-adt-reduce adt '|range|)
 	(generate-adt-coreduce-inline adt))))
 
+(defun generate-adt-coreduce-inline (adt)
+  (break "generate-adt-coreduce-inline - ~a" adt))
+
 (defun typecheck-top-level-adt (adt)
   (tcdebug "~%Typecheck (CO)DATATYPE ~a" (id adt))
   (setf (formals-sans-usings adt)
@@ -182,15 +179,16 @@ generated")
 			   (generate-adt-reduce-theory adt)
 			   (generate-codt-coreduce-theory adt))))
     (setf (adt-reduce-theory adt) reduce-theory))
-  (save-adt-file adt)
-  (let* ((adt-file (concatenate 'string (string (id adt))
-				(if (datatype? adt) "_adt" "_codt")))
-	 (proofs (read-pvs-file-proofs adt-file)))
-    (restore-from-context adt-file (adt-theory adt) proofs)
-    (when (adt-map-theory adt)
-      (restore-from-context adt-file (adt-map-theory adt) proofs))
-    (when (adt-reduce-theory adt)
-      (restore-from-context adt-file (adt-reduce-theory adt) proofs)))
+  (when *save-adt-files*
+    (save-adt-file adt)
+    (let* ((adt-file (concatenate 'string (string (id adt))
+				  (if (datatype? adt) "_adt" "_codt")))
+	   (proofs (read-pvs-file-proofs adt-file)))
+      (restore-from-context adt-file (adt-theory adt) proofs)
+      (when (adt-map-theory adt)
+	(restore-from-context adt-file (adt-map-theory adt) proofs))
+      (when (adt-reduce-theory adt)
+	(restore-from-context adt-file (adt-reduce-theory adt) proofs))))
   adt)
 
 
@@ -205,86 +203,87 @@ generated")
 ;;; invalid.
 
 (defun save-adt-file (adt)
-  (let* ((adt-file (pvs-filename
-		    (concatenate 'string (string (id adt))
-				 (if (datatype? adt) "_adt" "_codt"))))
-	 (adt-path (make-specpath adt-file))
-	 (file-exists? (uiop:file-exists-p adt-path))
-	 (adt-theories (adt-generated-theories adt))
-	 (mods (make-instance 'modules :modules adt-theories))
-	 (ce (unless *loading-prelude*
-	       (get-context-file-entry (filename adt))))
-	 (adt-ce (get-context-file-entry adt-file))
-	 (checksum-ok? (and adt-ce
-			    file-exists?
-			    (equal #+allegro (excl:md5-file adt-path)
-				   #+sbcl (sb-md5:md5sum-file adt-path)
-				   #-(or allegro sbcl) (md5:md5sum-file adt-path) 
-				   (ce-md5sum adt-ce)))))
-    (unless (and file-exists?
-		 ce
-		 checksum-ok?
-		 (equal (ce-write-date ce)
-			(file-write-date (make-specpath (filename adt)))))
-      (when file-exists?
-	(ignore-errors
-	  (chmod "a+w" (namestring adt-path)))
-	(ignore-file-errors
-	 (delete-file (namestring adt-path))))
-      (let* ((adtmod (let ((*unparse-expanded* t))
-		       (unparse mods :string t)))
-	     (condition (nth-value 1
-			  (ignore-file-errors
-			   (with-open-file (str adt-path :direction :output
-						:if-exists :supersede)
-			     (format str "~a~a~2%"
-			       *adt-generated-string*
-			       *current-file*)
-			     (princ adtmod str))))))
-	(if condition
-	    (pvs-message "Error in writing out ~a: ~a"
-	      (namestring adt-path) condition)
-	    (pvs-message "Wrote pvs file ~a" adt-file)))
-      (chmod "a-w" (namestring adt-path)))
-    ;; (assert (and #+allegro (file-exists-p adt-path)
-    ;; 		 #-allegro (probe-file adt-path)
-    ;; 		 (get-context-file-entry (filename adt))
-    ;; 		 (equal (ce-write-date (get-context-file-entry (filename adt)))
-    ;; 			(file-write-time (make-specpath (filename adt))))))
-    (let ((ntheories (parse :file adt-path)))
-      (copy-lex adt-theories ntheories t)
-      (assert (every #'place (theory (car adt-theories)))))
-    (dolist (th adt-theories)
-      (multiple-value-bind (tot prv unprv sub simp)
-	  (numbers-of-tccs th)
-	(if (zerop tot)
-	    (pvs-message "In ~aDATATYPE theory ~a: No TCCs generated~
+  (when *save-adt-files*
+    (let* ((adt-file (pvs-filename
+		      (concatenate 'string (string (id adt))
+				   (if (datatype? adt) "_adt" "_codt"))))
+	   (adt-path (make-specpath adt-file))
+	   (file-exists? (uiop:file-exists-p adt-path))
+	   (adt-theories (adt-generated-theories adt))
+	   (mods (make-instance 'modules :modules adt-theories))
+	   (ce (unless *loading-prelude*
+		 (get-context-file-entry (filename adt))))
+	   (adt-ce (get-context-file-entry adt-file))
+	   (checksum-ok? (and adt-ce
+			      file-exists?
+			      (equal #+allegro (excl:md5-file adt-path)
+				     #+sbcl (sb-md5:md5sum-file adt-path)
+				     #-(or allegro sbcl) (md5:md5sum-file adt-path) 
+				     (ce-md5sum adt-ce)))))
+      (unless (and file-exists?
+		   ce
+		   checksum-ok?
+		   (equal (ce-write-date ce)
+			  (file-write-date (make-specpath (filename adt)))))
+	(when file-exists?
+	  (ignore-errors
+	    (chmod "a+w" (namestring adt-path)))
+	  (ignore-file-errors
+	   (delete-file (namestring adt-path))))
+	(let* ((adtmod (let ((*unparse-expanded* t))
+			 (unparse mods :string t)))
+	       (condition (nth-value 1
+			    (ignore-file-errors
+			     (with-open-file (str adt-path :direction :output
+						  :if-exists :supersede)
+			       (format str "~a~a~2%"
+				 *adt-generated-string*
+				 *current-file*)
+			       (princ adtmod str))))))
+	  (if condition
+	      (pvs-message "Error in writing out ~a: ~a"
+		(namestring adt-path) condition)
+	      (pvs-message "Wrote pvs file ~a" adt-file)))
+	(chmod "a-w" (namestring adt-path)))
+      ;; (assert (and #+allegro (file-exists-p adt-path)
+      ;; 		 #-allegro (probe-file adt-path)
+      ;; 		 (get-context-file-entry (filename adt))
+      ;; 		 (equal (ce-write-date (get-context-file-entry (filename adt)))
+      ;; 			(file-write-time (make-specpath (filename adt))))))
+      (let ((ntheories (parse :file adt-path)))
+	(copy-lex adt-theories ntheories t)
+	(assert (every #'place (theory (car adt-theories)))))
+      (dolist (th adt-theories)
+	(multiple-value-bind (tot prv unprv sub simp)
+	    (numbers-of-tccs th)
+	  (if (zerop tot)
+	      (pvs-message "In ~aDATATYPE theory ~a: No TCCs generated~
                           ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-	      (if (codatatype? adt) "CO" "")
-	      (id th) (length (warnings th)) (length (info th)))
-	    (pvs-message
-		    "In ~aDATATYPE theory ~a: ~d TCC~:p, ~d proved, ~
+		(if (codatatype? adt) "CO" "")
+		(id th) (length (warnings th)) (length (info th)))
+	      (pvs-message
+		  "In ~aDATATYPE theory ~a: ~d TCC~:p, ~d proved, ~
                      ~d subsumed, ~d unproved, ~d trivial~
                      ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-	      (if (codatatype? adt) "CO" "")
-	      (id th) tot prv sub unprv simp
-	      (length (warnings th)) (length (info th))))))
-    (let ((fdate (file-write-date adt-path))
-	  (ce2 (get-context-file-entry adt-file)))
-      (setf (generated-file-date adt) fdate)
-      (push 'typechecked (status adt))
-      (dolist (th adt-theories)
-	(setf (filename th) adt-file))
-      (setf (gethash (pvs-filename (pathname-name adt-file)) (current-pvs-files))
-	    (cons fdate (adt-generated-theories adt)))
-      (cond (ce2
-	     (setf (ce-write-date ce2) fdate)
-	     (setf (pvs-context-changed *workspace-session*) t))
-	    (t (update-context adt-file))))
-    ;; (assert (let ((ce (get-context-file-entry adt-file)))
-    ;; 	      (and ce (ce-write-date ce) (= (ce-write-date ce)
-    ;; 					    (file-write-time adt-path)))))
-    ))
+		(if (codatatype? adt) "CO" "")
+		(id th) tot prv sub unprv simp
+		(length (warnings th)) (length (info th))))))
+      (let ((fdate (file-write-date adt-path))
+	    (ce2 (get-context-file-entry adt-file)))
+	(setf (generated-file-date adt) fdate)
+	(push 'typechecked (status adt))
+	(dolist (th adt-theories)
+	  (setf (filename th) adt-file))
+	(setf (gethash (pvs-filename (pathname-name adt-file)) (current-pvs-files))
+	      (cons fdate (adt-generated-theories adt)))
+	(cond (ce2
+	       (setf (ce-write-date ce2) fdate)
+	       (setf (pvs-context-changed *workspace-session*) t))
+	      (t (update-context adt-file))))
+      ;; (assert (let ((ce (get-context-file-entry adt-file)))
+      ;; 	      (and ce (ce-write-date ce) (= (ce-write-date ce)
+      ;; 					    (file-write-time adt-path)))))
+      )))
 		   
 
 
@@ -359,38 +358,44 @@ generated")
     ))
 
 (defun generate-bisimulation (adt)
-  (multiple-value-bind (dfmls dacts thinst tn)
+  (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals adt)
-    (declare (ignore dfmls dacts tn))
-    (let* ((rvid (make-new-variable 'R adt))
-	   (rtype (typecheck (mk-type-name 'PRED
-			       (list (make-instance 'actual
-				       :expr
-				       (mk-tupletype
-					(list (mk-type-name (id adt))
-					      (mk-type-name (id adt)))))))))
+    (declare (ignore dacts))
+    (let* ((*generate-tccs* 'none)
+	   ;; first generate bisimulation? predicate - need to generate
+	   ;; def-decl before adding the definition body to properly handle
+	   ;; dfmls
+	   (tn (adt-type-name adt))
+	   (cdecl (mk-adt-def-decl '|bisimulation?|
+		    :decl-formals dfmls
+		    :type *boolean*
+		    ;; :definition cform
+		    ))
+	   (rtype (with-current-decl cdecl
+		    (typecheck (mk-type-name 'PRED
+				 (list (make-instance 'actual
+					 :expr (mk-tupletype (list tn tn))))))))
+	   (rvid (make-new-variable 'R adt))
 	   (rbd (make-bind-decl rvid rtype))
 	   (rvar (make-variable-expr rbd))
 	   (avid (make-new-variable '|x| adt))
 	   (bvid (make-new-variable '|y| adt))
-	   (atype (typecheck (mk-type-name (id adt))))
-	   (btype (typecheck (mk-type-name (id adt))))
+	   (atype tn)
+	   (btype tn)
 	   (abd (make-bind-decl avid atype))
 	   (bbd (make-bind-decl bvid btype))
 	   (avar (make-variable-expr abd))
 	   (bvar (make-variable-expr bbd))
 	   (*bound-variables* (cons rbd (cons abd (cons bbd *bound-variables*))))
-	   (cform (mk-forall-expr (list abd bbd)
-		    (mk-implication
-		     (mk-application* rvar (list avar bvar))
-		     (mk-disjunction
-		      (mapcar #'(lambda (c)
-				  (bisimulation-case c avar bvar rvar thinst adt))
-			(constructors adt))))))
-	   (cdecl (mk-adt-def-decl '|bisimulation?|
-		    :type *boolean*
-		    :definition (parse-unparse cform)
-		    :formals (list (list rbd))))
+	   (cform (with-current-decl cdecl
+		    (mk-forall-expr (list abd bbd)
+		      (mk-implication
+		       (mk-application* rvar (list avar bvar))
+		       (mk-disjunction
+			(mapcar #'(lambda (c)
+				    (bisimulation-case c avar bvar rvar thinst adt))
+			  (constructors adt)))))))
+	   ;; now fdecl
 	   (bivid (make-new-variable 'B adt))
 	   (bitype (mk-expr-as-type (mk-name-expr '|bisimulation?|)))
 	   (bibd (mk-bind-decl bivid bitype))
@@ -400,7 +405,9 @@ generated")
 		      (mk-application '=>
 			(mk-application bivar avar bvar)
 			(mk-application '= avar bvar)))
-		    'AXIOM)))
+		    'AXIOM nil dfmls)))
+      (setf (formals cdecl) (list (list rbd))
+	    (definition cdecl) cform)
       (typecheck-adt-decl cdecl)
       (typecheck-adt-decl fdecl))))
 
@@ -2204,10 +2211,10 @@ generated")
 			(if (eq function-id '|every|)
 			    (mk-coinductive-decl
 			     function-id (copy *boolean*)
-			     nil fargs1)
+			     nil fargs1 nil dfmls1)
 			    (mk-inductive-decl
 			     function-id (copy *boolean*)
-			     nil fargs1))))
+			     nil fargs1 nil dfmls1))))
 	     (cases1 (with-current-decl decl1
 		       (mk-cases-expr avar
 			 (mapcar #'(lambda (c)
@@ -2234,11 +2241,13 @@ generated")
 			    (mk-coinductive-decl
 			     function-id (copy *boolean*)
 			     nil (append (apply #'append (butlast fargs2))
-					 (car (last fargs2))))
+					 (car (last fargs2)))
+			     nil dfmls2)
 			    (mk-inductive-decl
 			     function-id (copy *boolean*)
 			     nil (append (apply #'append (butlast fargs2))
-					 (car (last fargs2)))))))
+					 (car (last fargs2)))
+			     nil dfmls2))))
 	     (cases2 (with-current-decl decl2
 		       (mk-cases-expr avar
 			 (mapcar #'(lambda (c)
@@ -5079,6 +5088,7 @@ generated")
 ;   nil)
 
 (defun init-adt-decl (decl)
+  (assert *adt*)
   (setf (current-declaration) decl)
   (when (typep decl '(and declaration (not formal-decl)))
     (setf (generated-by decl) (id *adt*)))
@@ -5124,19 +5134,6 @@ generated")
     (t (break "typecheck-adt-decl")))
   ;;(setf (current-declaration) nil)
   )
-
-(defun add-adt-decl (decl)
-  (unless (and (typep decl 'type-def-decl)
-	       (typep (type-expr decl) 'enumtype))
-    (put-decl decl))
-  (setf (theory (current-theory))
-	  (if *last-adt-decl*
-	      (let* ((theory-part (theory (current-theory)))
-		     (rest (cdr (memq *last-adt-decl* theory-part))))
-		(nconc (ldiff theory-part rest) (cons decl rest)))
-	      (nconc (theory (current-theory)) (list decl))))
-  (when *last-adt-decl*
-    (setq *last-adt-decl* decl)))
 
 
 ;;; Returns true if the given type occurs positively in the datatype.  All
@@ -5786,8 +5783,8 @@ function, tuple, or record type")
   (generate-coreduce-funtype-selection-value*
    (type arg) (type sarg) var op codt struct type-alist))
 
-(defmethod generate-coreduce-funtype-selection-value* ((te type-name) ste var op codt struct type-alist)
-  (declare (ignore ste var op codt struct type-alist))
+(defmethod generate-coreduce-funtype-selection-value* ((te type-name) ste svar op codt struct type-alist)
+  (declare (ignore ste svar op codt struct type-alist))
   nil)
 
 (defmethod generate-coreduce-funtype-selection-value* ((te subtype) (ste type-name)
@@ -5811,14 +5808,18 @@ function, tuple, or record type")
 				     (resolution (or (print-type ste) ste)))))
 		  (vals (gen-coreduce-funtype-selection-value
 			 acts sacts formals op struct type-alist ptypes codt))
+		  (evry (unless (every #'everywhere-true? vals)
+			  (mk-application (mk-application* (mk-name-expr '|every|) vals)
+			    var)))
 		  (dvals (gen-coreduce-funtype-selection-value
 			  dacts sdacts (decl-formals (current-declaration))
-			  op struct type-alist ptypes codt)))
-	     (break)
-	     (unless (every #'everywhere-true? vals)
-	       (mk-application (mk-application* (mk-name-expr '|every|)
-				 vals)
-		 var))))))
+			  op struct type-alist ptypes codt))
+		  (devry (unless (every #'everywhere-true? dvals)
+			  (mk-application (mk-application* (mk-name-expr '|every|) dvals)
+			    var))))
+	     (if (and evry devry)
+		 (mk-conjunction (list evry devry))
+		 (or evry devry))))))
 
 (defun gen-coreduce-funtype-selection-value (acts sacts formals op
 						  struct type-alist ptypes codt)

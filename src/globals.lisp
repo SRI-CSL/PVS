@@ -86,7 +86,14 @@ in util.lisp")
 
 (defvar *pvs-global-tables* nil)
 
+(defvar *adt* nil
+  "The datatype declaration being processed")
+
 (defvar *adt-type-name-pending*)
+
+(defvar *adt-vars* nil
+  "A hashtable that holds the variable names used for the adt, constructors,
+and accessors")
 
 (defvar *pvs-initialized* nil)
 
@@ -512,6 +519,8 @@ current proof is suspect.")
 
 ;;; Set when typechecking for add- and mod- decl commands
 (defvar *tc-add-decl* nil)
+
+(defvar *save-adt-files* t)
 
 ;;; A list of (type . gensym) pairs, where type is a subtype.  Needed in
 ;;; order to ensure soundness of deBruijnized expressions.
