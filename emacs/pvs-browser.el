@@ -363,14 +363,28 @@ still complete, if it was in the full theory."
 		type-size (max type-size (length type))
 		thid-size (max thid-size (length theoryid))))))
     (when (> (+ decl-size type-size thid-size 3) win-width)
-      ;; Unlikely theoryid is the problem
-      ;; This is a quick-and-dirty heuristic
-      (cond ((< (* 2 decl-size) type-size)
-	     (setq type-size (- win-width (+ decl-size thid-size 3))))
-	    ((< (* 2 type-size) decl-size)
-	     (setq decl-size (- win-width (+ type-size thid-size 3))))
-	    (t (let ((size (floor (- win-width (+ thid-size 3)) 2)))
-		 (setq decl-size size type-size size)))))
+      (let ((win-thrd (/ (- win-width 3) 3))
+	    (min-width (min decl-size type-size thid-size)))
+	(cond ((>= min-width win-thrd)
+	       (setq decl-size win-thrd
+		     type-size win-thrd
+		     thid-size win-thrd))
+	      ((< thid-size win-thrd)
+	       (if (< decl-size win-thrd)
+		   (setq type-size (- win-width thid-size decl-size 3))
+		   (let ((half (/ (- win-width thid-size 3) 2)))
+		     (setq type-size half
+			   decl-size half))))
+	      ((< decl-size win-thrd)
+	       (if (< type-size win-thrd)
+		   (setq thid-size (- win-width type-size decl-size 3))
+		   (let ((half (/ (- win-width decl-size 3) 2)))
+		     (setq thid-size half
+			   decl-size half))))
+	      (t ;; (< type-size win-thrd), only one
+	       (let ((half (/ (- win-width type-size 3) 2)))
+		 (setq thid-size half
+		       decl-size half))))))
     (list decl-size type-size thid-size)))
 
 (defun pvs-browse-select ()
