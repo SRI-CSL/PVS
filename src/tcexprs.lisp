@@ -573,9 +573,8 @@
 (defun cartesian-product (list-of-lists &optional nil-is-unit?)
   (let ((size (reduce #'* list-of-lists :key #'length :initial-value 1)))
     (when (> size 100)
-      (pvs-message "Creating the cartesian product generates ~d elements for~%  ~a"
-	size list-of-lists)
-      (break "Too big - check this"))
+      (pvs-warning "Creating the cartesian product generates ~d elements for~%  ~a"
+	size list-of-lists))
     (cartesian-product* list-of-lists (list nil) nil-is-unit?)))
 
 (defun cartesian-product* (list-of-lists result nil-is-unit?)
