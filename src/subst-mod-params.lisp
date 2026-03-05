@@ -1241,7 +1241,7 @@
 			  (makesym "~a.~a"
 				   (id (current-theory))
 				   (id *subst-mod-params-declaration*))
-			  (id th))
+			  (or *subst-mod-params-id* (id th)))
 		  :context-path (context-path th)
 		  :generated-by th
 		  :immediate-usings 'unbound)))
@@ -1266,8 +1266,6 @@
 			   (lhash-table (current-using-hash)))
 		  imps))
 	  (assert (every #'cdr tbindings))
-	  (when (eq (id nth) '|bool_sttfa_pvs|)
-	    (break "subst-mod-params* module - setf theory-mappings for ~a" nth))
 	  (setf (theory-mappings nth) tbindings)
 	  (when (dependent-known-subtypes th)
 	    (setf (dependent-known-subtypes nth)
@@ -2090,10 +2088,9 @@ lift[T: TYPE]: DATATYPE BEGIN  | lift_nat: DATATYPE BEGIN
 	    declared-subtype ndsubtype
 	    subtype nsubtype))))
 
-(defmethod subst-mod-params* ((decl name-judgement) modinst bindings)
-  (with-slots (name) decl
-    (break "Fill this in")
-    (lcopy decl :name (subst-mod-params* name modinst bindings))))
+(defmethod subst-mod-params* ((ndecl name-judgement) modinst bindings)
+  (with-slots (name) ndecl
+    (setf name (subst-mod-params* name modinst bindings))))
 
 (defmethod subst-mod-params* ((ndecl application-judgement) modinst bindings)
   (with-slots (name declared-type type judgement-type formals) ndecl
