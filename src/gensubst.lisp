@@ -710,7 +710,7 @@ behavior:
 
 (defmethod gensubst* ((res resolution) substfn testfn)
   (with-slots (declaration module-instance type) res
-    (let* ((mi (theory-instance-with-lib res))
+    (let* ((mi (or (theory-instance-with-lib res) (module-instance res)))
 	   (nmi (gensubst* mi substfn testfn)))
       (cond ((eq nmi mi)
 	     (if (and *gensubst-subst-types*
