@@ -45,8 +45,8 @@ in util.lisp")
   "Set to t by Websocket when a message is received")
 
 (defparameter *pvs-directories*
-  '("" "src" "src/prover" "src/decision-procedures" "src/interface"
-    "src/utils" "src/BDD" "src/interface" "src/ics-interface"
+  '("" "src" "src/prover" "src/interface"
+    "src/utils" "src/BDD" "src/ics-interface"
     "src/WS1S/lisp" "src/abstraction" "src/ground-prover" "src/groundeval"
     "src/PVSio" "src/inst-by-unif" "src/Field" "src/Manip" "src/ProofLite"
     "src/rahd" "src/cl-json/src"))
@@ -74,7 +74,7 @@ in util.lisp")
 
 (defvar *pvs-git-describe*)
 
-(defparameter *binfile-version* 39)
+(defparameter *binfile-version* 40)
 
 (defvar *ignore-binfile-errors* t)
 
