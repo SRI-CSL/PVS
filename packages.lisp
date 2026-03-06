@@ -887,6 +887,10 @@
   (:shadow :class :condition :debug :declaration :keyword :name :number
 	   :parse-error :type :type-error :memq :var)
   (:import-from :file-utils)
+  (:import-from :pvs-ws)
+  (:import-from :pvs-jsonrpc
+		:defrequest
+		:send-client-request)
   (:import-from :lparallel.queue
 		:make-queue
 		:peek-queue
@@ -904,8 +908,7 @@
 		:queue-full-p/no-lock
 		:try-pop-queue
 		:try-pop-queue/no-lock
-		:with-locked-queue
-		)
+		:with-locked-queue)
   (:export
    #:*boolean*
    #:*bound-variables*
@@ -1395,19 +1398,22 @@
 (defpackage #:pvs-jsonrpc
   (:use #:cl-user #:json #:common-lisp)
   (:export #:*interrupted-rpc*
+	   #:defrequest
 	   #:finish-proofstate-rpc-hook
 	   #:process-jsonrpc
 	   #:pvs-message-hook
 	   #:pvs-y-or-n-hook
 	   #:pvs2json-response
 	   #:rpc-output-notify-proof-success
+	   #:send-client-request
 	   #:send-response
 	   ))
 
 (defpackage #:pvs-websocket
   (:use #:cl-user #:common-lisp)
   (:nicknames #:pvs-ws)
-  (:export #:start-pvs-server
+  (:export #:*ws*
+	   #:start-pvs-server
 	   ;;#:start-proof-server
 	   #:stop-pvs-server
 	   #:ws-current-connection
