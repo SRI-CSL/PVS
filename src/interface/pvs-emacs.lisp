@@ -174,21 +174,21 @@
 
 (defun pvs-message (ctl &rest args)
   (let ((str (format nil "~?" ctl args)))
-    (if *pvs-message-hook*
-	;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
-	;; Note that hooks are mostly for display, so we call them all.
-	(if (listp *pvs-message-hook*)
-	    (dolist (hook *pvs-message-hook*)
-	      (funcall hook str))
-	    (funcall *pvs-message-hook* str))
-	(unless *suppress-msg*
-	  (if *to-emacs*
-	      (let* ((*print-pretty* nil)
-		     (*output-to-emacs*
-		      (protect-emacs-output
-		       (format nil ":pvs-msg ~a :end-pvs-msg" str))))
-		(to-emacs))
-	      (format t "~%~a" str)))))
+    (when *pvs-message-hook*
+      ;;(format t "~%Calling message hook ~a" *pvs-message-hook*)
+      ;; Note that hooks are mostly for display, so we call them all.
+      (if (listp *pvs-message-hook*)
+	  (dolist (hook *pvs-message-hook*)
+	    (funcall hook str))
+	  (funcall *pvs-message-hook* str)))
+    (unless *suppress-msg*
+      (if *to-emacs*
+	  (let* ((*print-pretty* nil)
+		 (*output-to-emacs*
+		  (protect-emacs-output
+		   (format nil ":pvs-msg ~a :end-pvs-msg" str))))
+	    (to-emacs))
+	  (format t "~%~a" str))))
   nil)
 
 (defun pvs-message-with-context (obj ctl &rest args)
