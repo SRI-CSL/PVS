@@ -763,6 +763,7 @@ the possible types of name."
     (setf (types nexpr) nil)
     (setf (operator ex)
 	  (raise-actuals (copy (expr (from-conversion ctype))) 1))
+    (setf (place (operator ex)) (place ex))
     (when (and (zerop (parens (operator ex)))
 	       (< (precedence (operator ex) 'left)
 		  (precedence (car (arguments ex)) 'right)))
