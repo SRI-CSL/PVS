@@ -611,7 +611,7 @@ obj may be of type:
     `(let ((,eobj ,obj))
        (with-workspace ,eobj
 	 (let* ((*current-context* (cond ((eq ,eobj :prelude)
-					  *prelude-context*)
+					  (copy-context *prelude-context*))
 					 ((context? ,eobj) ,eobj)
 					 (t (context ,eobj))))
 		(*default-pathname-defaults* (if (theory *current-context*)
