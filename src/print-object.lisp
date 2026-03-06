@@ -47,12 +47,14 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((dt datatype) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Datatype ~a>" (id dt))))
+      (let ((det (if (filename dt) "" ":detached ")))
+	(format stream "#<Datatype ~a~a>" det (id dt)))))
 
 (defmethod print-object ((dt codatatype) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<CoDatatype ~a>" (id dt))))
+      (let ((det (if (filename dt) "" ":detached ")))
+	(format stream "#<CoDatatype ~a~a>" det (id dt)))))
 
 (defmethod print-object ((decl declaration) stream)
   (if *debugging-print-object*
