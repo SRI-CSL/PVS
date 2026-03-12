@@ -627,7 +627,7 @@
     uint32_t size = s.st_size;
     uint32_t capacity = 4096 * (size/4096 + 1);
     char * contents = (char *) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    file_t ff = (file_t) safe_malloc(sizeof(file_s));
+    file_t ff = (file_t) safe_malloc(sizeof(struct file_s));
     ff->count = 1;
     ff->fd = fd;
     ff->size = size;
@@ -653,7 +653,7 @@
     uint32_t size = s.st_size;
     uint32_t capacity = 4096 * (size/4096 + 1);
     char * contents = (char *) mmap(NULL, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    file_t ff = (file_t) safe_malloc(sizeof(file_s));
+    file_t ff = (file_t) safe_malloc(sizeof(struct file_s));
     ff->count = 1;
     ff->fd = fd;
     ff->size = size;
