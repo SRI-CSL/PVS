@@ -638,6 +638,11 @@ BEGIN
     ELSE emptystr
     ENDIF
 
+  % Return substring S[i..j]
+  % substring(s,i,j) is the same as substr(s,i,j+1)
+  substring(s:string,i:below(length(s)),j:subrange(i,length(s)-1)) : string =
+    strextract(s,i,j)
+
   %% Reverse string
   strreverse(s:string) : string =
     IF length(s) = 0 THEN s
