@@ -173,9 +173,10 @@ representation is finite. Otherwise, it prints its rational form."
   "Index of rightmost occurrence of S1 in S2 or -1 if S1 doesn't occur in S2"
   (or (search s1 s2 :from-end t :test #'char=) -1))
 
-(defattach |substring_lisp| (s i j)
-  "If i <= j returns substring S[i..j]. Otherwise, returns substring S[j..i].
-NOTE: When 0 <= i < j < length(s), substring(s,i,j) is the same as charstrings.substr(s,i,j+1)"
+(defattach |strextract_lisp| (s i j)
+  "If i <= j returns string S[i..j]. If j <= i, Otherwise, return string S[j..i].
+Return empty string if i or j are out of bound.
+NOTE: When 0 <= i < j < length(s), strextract(s,i,j) is the same substr(s,i,j+1)."
   (cond ((and (<= 0 i) (<= i j) (< j (length s)))
 	 (subseq s i (+ j 1)))
 	((and (<= 0 j) (<= j i) (< i (length s)))
@@ -187,9 +188,9 @@ NOTE: When 0 <= i < j < length(s), substring(s,i,j) is the same as charstrings.s
 is replaced with replacement."
   (replace-string s part replacement))
 
-(defattach |strsplit| (str separator)
+(defattach |strsplit| (str (separator |char|))
   "Splits the string STR using SEPARATOR as separator."
-  (split str (char separator 0)))
+  (split str separator))
 
 (defattach |rat2decstr_with_zeros| (r precision rounding zeros)
   "Converts rational number to string decimal representation using given precision, i.e., natural number n

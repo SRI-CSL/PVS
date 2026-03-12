@@ -615,9 +615,9 @@ BEGIN
 
   strfind_from_end(s1,s2:string): MACRO int = strfind_from_end_lisp(s1,s2)
 
-  %% If i <= j returns substring s[i..j]. Otherwise, returns substring s[j..i].
-  %% When 0 <= i < j < length(s), substring(s,i,j) is the same as gen_strings.substr(s,i,j+1)
-  substring_lisp(s:string,i,j:below(length(s))) :
+  %% If i <= j returns string S[i..j]. If j <= i, Otherwise, return string S[j..i].
+  %% NOTE: When i <= j, strextract(s,i,j) is the same substr(s,i,j+1).
+  strextract_lisp(s:string,i,j:below(length(s))) :
     {str:string | length(str) = max(i,j)-min(i,j)+1 AND
 		  IF i <= j THEN
 		    FORALL (k:below(length(str))): get(str,k) = get(s,i+k)
@@ -625,14 +625,16 @@ BEGIN
 		    FORALL (k:below(length(str))): get(str,k) = get(s,i-k)
 		  ENDIF}
 
-  substring_lisp_j : JUDGEMENT
-    substring_lisp(s:string,i,j:below(length(s))) HAS_TYPE
+  strextract_lisp_j : JUDGEMENT
+    strextract_lisp(s:string,i,j:below(length(s))) HAS_TYPE
       {str : string | length(str) > 0}
 
-  %% Returns empty string if i and j are out of range
-  substring(s:string,i,j:int) : string =
+  %% If i <= j returns string S[i..j]. If j <= i, Otherwise, return string S[j..i].
+  %% Return empty string if i or j are out of bound.
+  %% NOTE: When 0 <= i <= j < length(s), strextract(s,i,j) is the same substr(s,i,j+1).
+  strextract(s:string,i,j:int) : string =
     IF 0 <= i < length(s) AND 0 <= j < length(s) THEN
-      substring_lisp(s,i,j)
+      strextract_lisp(s,i,j)
     ELSE emptystr
     ENDIF
 
@@ -640,7 +642,7 @@ BEGIN
   strreverse(s:string) : string =
     IF length(s) = 0 THEN s
     ELSE
-      substring(s,length(s)-1,0)
+      strextract(s,length(s)-1,0)
     ENDIF
 
   strreverse_j : JUDGEMENT
@@ -653,7 +655,10 @@ BEGIN
   strreplace(s,part,replacement:string): string
 
   %% Split str using separator
-  strsplit(str: string, separator: StringChar): list[string]
+  strsplit(str: string, separator: char): list[string]
+
+  strsplit(str: string, separator: StringChar): MACRO list[string] =
+    strsplit(str,get(separator,0))
 
   %% Convert real number to string decimal representation using given precision,
   %% i.e., natural number n denoting 10^(-n), rounding mode, i.e, TowardsZero,
@@ -1165,9 +1170,12 @@ BEGIN
       IF pos <= 0 OR pos+1 = length(name) THEN
         (name,"")
       ELSE
-        (substring(name,0,pos-1),
-	 substring(name,pos+1,length(name)-1))
+        (strextract(name,0,pos-1),
+	 strextract(name,pos+1,length(name)-1))
       ENDIF
+
+  split_filename(name:string,separator:char) : MACRO [string,string] =
+    split_filename(name,char2string(separator))
 
   %% Filename without extension
   filename_without_extension(name:string) : string =

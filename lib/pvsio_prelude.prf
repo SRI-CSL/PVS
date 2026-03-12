@@ -327,8 +327,8 @@
    (|strfind_lisp| EXISTENCE ""
     "[d: [string, string] -> {i: integers.int | booleans.IMPLIES(reals.>=(i, 0), (booleans.AND(reals.<=(i, (number_fields.-)(length(d`2), length(d`1))), FORALL (k: naturalnumbers.below(length(d`1))): gen_strings.get(d`1, k) = gen_strings.get(d`2, (number_fields.+)(i, k)))))}]"
     (603 2 606 23))))
- (|substring_lisp_TCC1| 0
-  (|substring_lisp_TCC1-1| NIL 3968939468 ("" (GRIND) NIL NIL)
+ (|strextract_lisp_TCC1| 0
+  (|strextract_lisp_TCC1-1| NIL 3968939468 ("" (GRIND) NIL NIL)
    ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
@@ -362,10 +362,10 @@
     (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
     (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL))
    SHOSTAK
-   (|substring_lisp| SUBTYPE "(number_fields.+)(stdstr.i, stdstr.k)"
+   (|strextract_lisp| SUBTYPE "(number_fields.+)(stdstr.i, stdstr.k)"
     "below(length(stdstr.s))" (623 56 623 59))))
- (|substring_lisp_TCC2| 0
-  (|substring_lisp_TCC2-1| NIL 3968939477 ("" (GRIND) NIL NIL)
+ (|strextract_lisp_TCC2| 0
+  (|strextract_lisp_TCC2-1| NIL 3968939477 ("" (GRIND) NIL NIL)
    ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
@@ -402,10 +402,10 @@
     (|max| CONST-DECL "{p: real | p >= m AND p >= n}" |real_defs| NIL)
     (|min| CONST-DECL "{p: real | p <= m AND p <= n}" |real_defs| NIL))
    SHOSTAK
-   (|substring_lisp| SUBTYPE "(number_fields.-)(stdstr.i, stdstr.k)"
+   (|strextract_lisp| SUBTYPE "(number_fields.-)(stdstr.i, stdstr.k)"
     "below(length(stdstr.s))" (625 56 625 59))))
- (|substring_lisp_TCC3| 0
-  (|substring_lisp_TCC3-1| NIL 3968948385
+ (|strextract_lisp_TCC3| 0
+  (|strextract_lisp_TCC3-1| NIL 3968948385
    (""
     (INST 1
      "LAMBDA(s:string,i:below(length(s)),j:below(length(s))): IF i <= j THEN (# length := j-i+1, seq:= LAMBDA(
@@ -473,13 +473,13 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
      NIL)
     (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
    SHOSTAK
-   (|substring_lisp| EXISTENCE ""
+   (|strextract_lisp| EXISTENCE ""
     "[d: [s: string, below(length(s)), below(length(s))] -> {str: strings.string | booleans.AND(length(str) = (number_fields.-)((number_fields.+)(1, real_defs.max(d`2, d`3)), real_defs.min(d`2, d`3)), IF reals.<=(d`2, d`3) THEN FORALL (k: naturalnumbers.below(length(str))): gen_strings.get(str, k) = gen_strings.get(d`1, (number_fields.+)(d`2, k)) ELSE FORALL (k: naturalnumbers.below(length(str))): gen_strings.get(str, k) = gen_strings.get(d`1, (number_fields.-)(d`2, k)) ENDIF)}]"
     (620 2 626 10))))
- (|substring_lisp_j| 0
-  (|substring_lisp_j-1| NIL 3968939303
+ (|strextract_lisp_j| 0
+  (|strextract_lisp_j-1| NIL 3968939303
    ("" (SKEEP)
-    (("" (TYPEPRED "substring_lisp(s,i,j)")
+    (("" (TYPEPRED "strextract_lisp(s,i,j)")
       (("" (HIDE-ALL-BUT (-1 1))
         (("" (REPLACES -1) (("" (GRIND) NIL NIL)) NIL)) NIL))
       NIL))
@@ -518,7 +518,7 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
         |if_def|
         NIL)
     (|get| CONST-DECL "char" |gen_strings| NIL)
-    (|substring_lisp| CONST-DECL "{str: string |
+    (|strextract_lisp| CONST-DECL "{str: string |
    length(str) = max(i, j) - min(i, j) + 1 AND
     IF i <= j
       THEN FORALL (k: below(length(str))): get(str, k) = get(s, i + k)
@@ -542,11 +542,11 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
     (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
      NIL))
    SHOSTAK
-   (|substring_lisp_j| SUBTYPE
-    "stdstr.substring_lisp(stdstr.s, stdstr.i, stdstr.j)"
+   (|strextract_lisp_j| SUBTYPE
+    "stdstr.strextract_lisp(stdstr.s, stdstr.i, stdstr.j)"
     "{str: strings.string | reals.>(length(str), 0)}" (629 4 629 18))))
- (|substring_TCC1| 0
-  (|substring_TCC1-1| NIL 3972489077 ("" (SUBTYPE-TCC) NIL NIL)
+ (|strextract_TCC1| 0
+  (|strextract_TCC1-1| NIL 3972489077 ("" (SUBTYPE-TCC) NIL NIL)
    ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
      |real_props| NIL)
     (|real_lt_is_strict_total_order| NAME-JUDGEMENT
@@ -566,9 +566,9 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
    SHOSTAK
-   (|substring| SUBTYPE "stdstr.i" "below(length(stdstr.s))" (635 23 635 24))))
- (|substring_TCC2| 0
-  (|substring_TCC2-1| NIL 3972489091 ("" (SUBTYPE-TCC) NIL NIL)
+   (|strextract| SUBTYPE "stdstr.i" "below(length(stdstr.s))" (635 23 635 24))))
+ (|strextract_TCC2| 0
+  (|strextract_TCC2-1| NIL 3972489091 ("" (SUBTYPE-TCC) NIL NIL)
    ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
      |real_props| NIL)
     (|real_lt_is_strict_total_order| NAME-JUDGEMENT
@@ -588,7 +588,7 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
     (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
     (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL))
    SHOSTAK
-   (|substring| SUBTYPE "stdstr.j" "below(length(stdstr.s))" (635 25 635 26))))
+   (|strextract| SUBTYPE "stdstr.j" "below(length(stdstr.s))" (635 25 635 26))))
  (|strreverse_j_TCC1| 0
   (|strreverse_j_TCC1-1| NIL 3968948705 ("" (SUBTYPE-TCC) NIL NIL)
    ((|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
@@ -631,10 +631,10 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
             (("" (SPLIT -1)
               (("1" (FLATTEN) (("1" (ASSERT) (("1" (SKEEP) NIL NIL)) NIL)) NIL)
                ("2" (FLATTEN)
-                (("2" (EXPAND "substring")
+                (("2" (EXPAND "strextract")
                   (("2" (LIFT-IF)
                     (("2" (ASSERT)
-                      (("2" (TYPEPRED "substring_lisp(s,length(s)-1,0)")
+                      (("2" (TYPEPRED "strextract_lisp(s,length(s)-1,0)")
                         (("2" (REPLACE -5 :ACTUALS? T)
                           (("2" (CASE-REPLACE "length(s) = 1")
                             (("1" (ASSERT)
@@ -697,8 +697,8 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
      NIL)
     (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
      NIL)
-    (|substring| CONST-DECL "string" |stdstr| NIL)
-    (|substring_lisp_j| APPLICATION-JUDGEMENT "{str: string | length(str) > 0}"
+    (|strextract| CONST-DECL "string" |stdstr| NIL)
+    (|strextract_lisp_j| APPLICATION-JUDGEMENT "{str: string | length(str) > 0}"
      |stdstr| NIL)
     (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
      |real_props| NIL)
@@ -746,7 +746,7 @@ k:upto(j-i)): get(s,i+k) #) ELSE (# length := i-j+1, seq:= LAMBDA(k:upto(i-j)): 
         |if_def|
         NIL)
     (|get| CONST-DECL "char" |gen_strings| NIL)
-    (|substring_lisp| CONST-DECL "{str: string |
+    (|strextract_lisp| CONST-DECL "{str: string |
    length(str) = max(i, j) - min(i, j) + 1 AND
     IF i <= j
       THEN FORALL (k: below(length(str))): get(str, k) = get(s, i + k)
