@@ -3363,7 +3363,7 @@ Note that the all? arument is only used in the type-constraints* (subtype) metho
     (multiple-value-bind (jtypes jdecls)
 	(judgement-types expr)
       (when jtypes
-	(let ((jthash (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
+	(let ((jthash (make-pvs-hash-table)))
 	  (setf (gethash name jthash)
 		;; This doesn't work
 		;;(remove-judgement-types-of-name-type (type name) jtypes jdecls)
