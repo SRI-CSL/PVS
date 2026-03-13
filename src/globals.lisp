@@ -242,6 +242,8 @@ These are not associated with a workspace, and usually done through
 (defvar *parse-error-catch* nil
   "Set to a value to throw to when trying to control parsing.")
 
+(defvar *last-escaped-quote-place* nil)
+
 (defvar *coercion-var-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 
 (defvar *type-error-catch* nil
