@@ -315,6 +315,7 @@ ess-files = ess/dist-ess.lisp \
 pvs-parser-in = src/make-pvs-parser.lisp \
              src/pvs-gr.txt \
              src/ergo-runtime-fixes.lisp \
+             src/pvs-parser-runtime-fixes.lisp \
              src/ergo-gen-fixes.lisp \
              src/pvs-lang-def.lisp \
              src/pvs-parse-fixes.lisp
