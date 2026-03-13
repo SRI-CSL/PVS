@@ -1085,11 +1085,11 @@ type-decls in classes-decl.lisp."
       (setf (current-judgements)
 	    (copy (judgements *prelude-context*)
 	      'judgement-types-hash
-	      (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
+	      (make-pvs-hash-table)))
       (let ((pjudgements (judgements *prelude-context*)))
 	(unless (judgement-types-hash (current-judgements))
 	  (setf (judgement-types-hash (current-judgements))
-		(make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
+		(make-pvs-hash-table)))
 	(unless (eq judgements 'prelude-judgements)
 	  ;; (prerestore-number-judgements-alist
 	  ;;  (number-judgements-alist judgements)
@@ -1174,10 +1174,9 @@ type-decls in classes-decl.lisp."
 		 *restore-objects-seen*)
 	   (copy pjudgements
 	     'judgement-types-hash
-	     (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
+	     (make-pvs-hash-table)))
 	  (t
-	   (setf (judgement-types-hash judgements) (make-pvs-hash-table
-						    #-cmu :weak-keys? #-cmu t))
+	   (setf (judgement-types-hash judgements) (make-pvs-hash-table))
 	   (setf (number-judgements-alist judgements)
 		 (restore-number-judgements-alist
 		  (number-judgements-alist judgements)
