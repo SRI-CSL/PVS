@@ -50,7 +50,8 @@
   (let* ((*current-file* (or (cadr (member :file keys))
 			     *current-file*))
 	 (start-time (when *current-file* (get-internal-real-time)))
-	 (*newline-comments* nil))
+	 (*newline-comments* nil)
+	 (*last-escaped-quote-place* nil))
     (init-parser)
     (multiple-value-bind (term error? place msg args)
 	(handler-case 
@@ -106,7 +107,8 @@
 	(format nil "Found '~A' when expecting '~A'~
                      ~:[~;~%  Note: May need a ';' before declaring an infix operator~]~
                      ~@[~%  Note: '~a' is now a keyword~]~
-                     ~@[~%  Note: '~a' is only allowed in theory declarations (not importings)~]"
+                     ~@[~%  Note: '~a' is only allowed in theory declarations (not importings)~]~
+                     ~@[~%  Note: This may be due to a string that maybe should have ended around ~a~]"
 	  found expected
 	  (string= found ":")
 	  (when (string= found "AS") found)
@@ -114,7 +116,11 @@
 		     ;; Check that ':=' is expected
 		     (>= (length (string (cadr args))) 2)
 		     (string= (cadr args) ":=" :end1 2))
-	    found))
+	    found)
+	  (when *last-escaped-quote-place*
+	    (let ((line (sbrt::place-linenumber *last-escaped-quote-place*))
+		  (col (sbrt::place-charnumber *last-escaped-quote-place*)))
+	      (format nil "(line ~a, col ~a)" line col))))
 	(format nil "~?" message args))))
 
 (defun initial-error? (message)
@@ -249,9 +255,9 @@
 	(formal-nonempty-subtype-decl 'decl-formal-nonempty-subtype)
 	(formal-subtype-decl 'decl-formal-subtype)
 	(formal-nonempty-type-decl 'decl-formal-nonempty-type)
-	(formal-type-decl 'decl-formal-type)
 	(formal-nonempty-type-appl-decl 'decl-formal-nonempty-type-appl)
 	(formal-type-appl-decl 'decl-formal-type-appl)
+	(formal-type-decl 'decl-formal-type)
 	(formal-const-decl 'decl-formal-const-decl)
 	(formal-theory-decl 'decl-formal-theory-decl))))
 
@@ -1882,34 +1888,36 @@ char-exprs"
 (defun xt-list-char-exprs (char-exprs list-expr nstring spos lrow lcol)
   (if (null char-exprs)
       (values list-expr nstring)
-      (place-bind (srow scol erow ecol) (place (car char-exprs))
-	(let* ((lplace (vector srow scol lrow lcol))
-	       (nlist-expr (mk-list-expr (car char-exprs) list-expr lplace)))
-	  (setf (char nstring spos) (code-char (code (car char-exprs))))
-	  (xt-list-char-exprs (cdr char-exprs) nlist-expr nstring (- spos 1) lrow lcol)))))
+      (let* ((splace (place (car char-exprs)))
+	     (srow (elt splace 0))
+	     (scol (elt splace 1))
+	     (lplace (vector srow scol lrow lcol))
+	     (nlist-expr (mk-list-expr (car char-exprs) list-expr lplace)))
+	(setf (char nstring spos) (code-char (code (car char-exprs))))
+	(xt-list-char-exprs (cdr char-exprs) nlist-expr nstring (- spos 1) lrow lcol))))
 
 (defun backslash-translation (string bs-pos)
   (let ((echar (char string (1+ bs-pos))))
     (case echar
-      (#\\ (values 92 (+ bs-pos 1) t)) ; #\\
-      (#\a (values 7 (+ bs-pos 2))) ; #\Bel
-      (#\b (values 8 (+ bs-pos 2))) ; #\Backspace
-      (#\e (values 27 (+ bs-pos 2))) ; #\Escape
-      (#\f (values 12 (+ bs-pos 2))) ; #\Page
-      (#\n (values 10 (+ bs-pos 2))) ; #\Newline
-      (#\r (values 13 (+ bs-pos 2))) ; #\Return
-      (#\t (values 9 (+ bs-pos 2))) ; #\Tab
-      (#\v (values 11 (+ bs-pos 2))) ; #\VT
-      ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7)
-       (multiple-value-bind (code npos)
-	   (parse-integer string :radix 8
-			  :start (+ bs-pos 1)
-			  :end (min (+ bs-pos 4) (length string))
-			  :junk-allowed t)
-	 (if (and code
-		  (< code 256))
-	     (values code npos)
-	     (error "octal number must be < 256"))))
+      ;;(#\\ (values 92 (+ bs-pos 1) t)) ; #\\
+      ;;(#\a (values 7 (+ bs-pos 2))) ; #\Bel
+      ;;(#\b (values 8 (+ bs-pos 2))) ; #\Backspace
+      ;;(#\e (values 27 (+ bs-pos 2))) ; #\Escape
+      ;;(#\f (values 12 (+ bs-pos 2))) ; #\Page
+      ;;(#\n (values 10 (+ bs-pos 2))) ; #\Newline
+      ;;(#\r (values 13 (+ bs-pos 2))) ; #\Return
+      ;;(#\t (values 9 (+ bs-pos 2))) ; #\Tab
+      ;;(#\v (values 11 (+ bs-pos 2))) ; #\VT
+      ;; ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7)
+      ;;  (multiple-value-bind (code npos)
+      ;; 	   (parse-integer string :radix 8
+      ;; 			  :start (+ bs-pos 1)
+      ;; 			  :end (min (+ bs-pos 4) (length string))
+      ;; 			  :junk-allowed t)
+      ;; 	 (if (and code
+      ;; 		  (< code 256))
+      ;; 	     (values code npos)
+      ;; 	     (error "octal number must be < 256"))))
       (#\x
        (multiple-value-bind (code npos)
 	   (parse-integer string :radix 16
@@ -1995,17 +2003,6 @@ char-exprs"
 	  :id op
 	  :place (term-place expr)))))
 
-(defvar *escaped-chars*
-  '((#\0 . 0)
-    (#\a . 7)
-    (#\b . 8)
-    (#\t . 9)
-    (#\n . 10)
-    (#\v . 11)
-    (#\f . 12)
-    (#\r . 13)
-    (#\\ . 92)))
-
 (defun xt-char-expr (expr)
   ;; keyword is any character between single quotes
   ;; this is was unused before PVS 7.2, but is now used for char
@@ -2014,22 +2011,36 @@ char-exprs"
       (parse-error expr "Character not provided."))
     (let ((char (char char-str 0))
 	  (place (term-place expr)))
-      (if (= (length char-str) 1)
-	  (mk-char-expr (char-code char) place)
-	  (let* ((char2 (char char-str 1))
-		 (ecode (cdr (assoc char2 *escaped-chars* :test #'char=))))
-	    (if ecode
-		(if (= (length char-str) 2)
-		    (mk-char-expr ecode place)
-		    (parse-error expr "Only one char allowed in char literal"))
-		(if (char= char2 #\u)
-		    (multiple-value-bind (code err)
-			(ignore-errors (parse-integer char-str :start 2 :radix 16))
-		      (cond ((null code)
-			     (parse-error expr "char literal error: ~a" err))
-			    ((> code #x10FFFF)
-			     (parse-error expr "char literal is too large, must be <= 10FFFF"))
-			    (t (mk-char-expr code place)))))))))))
+      (cond ((= (length char-str) 1)
+	     (mk-char-expr (char-code char) place))
+	    ((char= (char char-str 0) #\\)
+	     (cond ((char= (char char-str 1) #\')
+		    (if (= (length char-str) 2)
+			(mk-char-expr (char-code #\') place)
+			(parse-error expr "too many characters after \\")))
+		   ((char= (char char-str 1) #\x)
+		    (when (< (length char-str) 3)
+		      (parse-error expr "No hex digits after \\x"))
+		    (when (> (length char-str) 4)
+		      (parse-error expr "too many characters after \\x"))
+		    (let ((code (ignore-errors
+				  (parse-integer char-str :radix 16
+						 :start 2 :end (length char-str)))))
+		      (if code
+			  (mk-char-expr code place)
+			  (parse-error "\\x must be followed by 1 or 2 hex digits"))))
+		   ((char= (char char-str 1) #\u)
+		    (unless (= (length char-str) 6)
+		      (parse-error expr "\\u takes 4 hex digits"))
+		    (let ((code (ignore-errors
+				  (parse-integer char-str :radix 16
+						 :start 2 :end 6))))
+		      (if code
+			  (mk-char-expr code place)
+			  (parse-error "\\u must be followed by 4 hex digits"))))
+		   (t (parse-error
+			  "Illegal character after \\, only \\', \\x, or \\u allowed"))))
+	    (t (parse-error expr "Too many characters"))))))
 
 (defun xt-arg-expr (args)
   (if (cdr args)

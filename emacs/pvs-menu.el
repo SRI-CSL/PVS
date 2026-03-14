@@ -296,7 +296,8 @@
      ["pvs-status" pvs-status t]
      ["remove-popup-buffer" remove-popup-buffer t]
      ["pvs" pvs t]
-     ["pvs-server" pvs-server t]
+     ["start-pvs-server" start-pvs-server t]
+     ["stop-pvs-server" stop-pvs-server t]
      ["pvs-load-patches" pvs-load-patches t]
      ["pvs-interrupt-subjob" pvs-interrupt-subjob t]
      ["reset-pvs" reset-pvs t])

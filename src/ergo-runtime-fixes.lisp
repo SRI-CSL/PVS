@@ -1,16 +1,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ergo-runtime-fixes.lisp -- 
+;; pvs-parser-runtime-fixes.lisp --
+;;   changes to core ESS functions needed at runtime,
+;;   primarily to keep track of places and comments
 ;; Author          : Sam Owre
-;; Created On      : Sat May 27 18:20:25 1995
-;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Apr  5 00:43:24 1998
-;; Update Count    : 2
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2026, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -53,211 +50,6 @@
 
 (setq sbrt::indent-unit 0)
 
-
-;;; PARSE: From here until UNPARSE: the functions are for parsing
-
-
-;;; The following probably belongs in a different file, but must be compiled
-;;; and loaded before the pvs-parser.lisp file, otherwise the built-in macro
-;;; will be used instead.
-
-(in-package :pvs)
-
-(defvar *newline-comments*)
-
-(defvar *elsif-places* nil)
-
-;;; An association list of operators and their places.  The problem is
-;;; that operators are thrown away, and later make-sb-term is called with
-;;; just an id.  We thus keep all possible places associated with an id,
-;;; and in make-sb-term set the place attribute if there is a unique one,
-;;; otherwise we set a places attribute, and wait for parse to determine
-;;; the right place from the argument places.
-
-(defvar *operator-places* nil)
-
-;;; Shadows a macro in rt-parse-mac.lisp, in dir ess/lang/sb-term/rel.  It
-;;; took 2 args before, now third one is lexical position at start of
-;;; non-terminal, given to mk-sim-term Operator-place is special for now,
-;;; doesn't need to be if this function is a macro.  Operator-place saves the
-;;; place of the operator to be saved as place information in the application
-;;; that is constructed from a term-expr.  Similarly for operator-place-end.
-;;; This function is invoked by the generated parser.
-
-(defun make-sb-term (sim-op args &optional splace comment)
-  (declare (ignore comment))
-  ;;(assert splace)
-  (let* ((result (term:mk-sim-term sim-op args))
-	 (eplace (get-end-place sim-op args splace nil)))
-    (when (and (eq sim-op 'ELSIF)
-	       *elsif-places*)
-      (setq splace (pop *elsif-places*)))
-    (sbrt::save-place-and-comment-info result splace eplace)
-    (case sim-op
-      (TERM-EXPR (reset-operator-place args))
-      (UNARY-TERM-EXPR (reset-unary-operator-place args)))
-    ;;(assert (type-of result))
-    result))
-
-(defvar *last-end-place* nil)
-(defvar *last-end-value* nil)
-
-;;; Makes extensive use of the following functions from ERGO:
-;;;	sim-term-op - returns the symbol which is the operator of a term
-;;;	is-sop	    - checks whether a given symbol is the operator of a term
-;;;	term-args   - returns the list of arguments of a term
-;;;	ds-id       - returns the symbol of an id term
-
-(defun term-place (absyn)
-  (getf (term:term-attr absyn) :place))
-
-(defsetf term-place (absyn) (place)
-  `(setf (getf (term:term-attr ,absyn) :place) ,place))
-
-(defun term-comment (absyn)
-  (getf (term:term-attr absyn) :comment))
-
-(defsetf term-comment (absyn) (comment)
-  `(setf (getf (term:term-attr ,absyn) :comment) ,comment))
-
-(defun get-end-place (sim-op args splace token?)
-  (cond ((eq *last-end-place* sbrt::*end-place*)
-	 *last-end-value*)
-	(sbrt::*end-place*
-	 (let ((eplace (caddr sbrt::*end-place*))
-	       (token (if (eq (cadr sbrt::*end-place*) :keyword-internal-flag)
-			  (car sbrt::*end-place*)
-			  (cadr sbrt::*end-place*))))
-	   (setq *last-end-place* sbrt::*end-place*)
-	   (setq *last-end-value*
-		 (sbrt::make-place
-		  :linenumber (sbrt::place-linenumber eplace)
-		  :charnumber (+ (the fixnum (sbrt::place-charnumber eplace))
-				 (the fixnum (length (princ-to-string token))))))))
-	(args
-	 (let ((maxplace (maximal-endplace args)))
-	   (sbrt::make-place
-	    :linenumber (svref maxplace 2)
-	    :charnumber (svref maxplace 3))))
-	(t (sbrt::make-place
-	    :linenumber (sbrt::place-linenumber splace)
-	    :charnumber (+ (the fixnum (sbrt::place-charnumber splace))
-			   (if token?
-			       (the fixnum (length (princ-to-string sim-op)))
-			       1))))))
-
-(defun maximal-endplace (args &optional place)
-  (cond ((null args)
-	 place)
-	((null place)
-	 (maximal-endplace (cdr args) (term-place (car args))))
-	(t (let ((aplace (term-place (car args))))
-	     (maximal-endplace
-	      (cdr args)
-	      (if (or (< (the fixnum (svref place 2))
-			 (the fixnum (svref aplace 2)))
-		      (and (= (svref place 2) (svref aplace 2))
-			   (< (svref place 3) (svref aplace 3))))
-		  aplace
-		  place))))))
-		     
-(defun reset-operator-place (args)
-  (let* ((arg1 (term-arg0 (cadr args)))
-	 (arg1-place (term-place arg1))
-	 (arg2 (term-arg1 (cadr args)))
-	 (arg2-place (term-place arg2))
-	 (op (sim-term-op (car args)))
-	 (oplace (find-if #'(lambda (oplace)
-			      (and (eq (car oplace) op)
-				   (place< arg1-place (cdr oplace))
-				   (or (null arg2-place)
-				       (place< (cdr oplace) arg2-place))))
-		   *operator-places*)))
-    (assert oplace)
-    (setq *operator-places* (delete oplace *operator-places*))
-    (setf (getf (term:term-attr (car args)) :place) (cdr oplace))))
-
-(defun reset-unary-operator-place (args)
-  (let ((op (sim-term-op (car args)))
-	(oplace (getf (term:term-attr (car args)) :place)))
-    (setf (svref oplace 2) (svref oplace 0))
-    (setf (svref oplace 3) (+ (svref oplace 1) (length (string op))))))
-
-(defun place< (place1 place2)
-  (or (< (svref place1 2) (svref place2 0))
-      (and (= (svref place1 2) (svref place2 0))
-	   (<= (svref place1 3) (svref place2 1)))))
-
-(defun white-space (c)
-  (member c '(#\Space #\Tab)))
-       
-    
-(defun reader ()
-  (multiple-value-bind (token place comment)
-      (lexical-read *lexical-stream* :eof)
-    ;; (format t "~%reader: token = ~s, place = ~s, comment = ~s"
-    ;;   token place comment)
-    (cond ((consp token)
-	   (case (car token)
-	     (:literal
-	      (values 'sbst::!literal!
-		      (let ((name (if (symbolp (cdr token))
-				      (if sbrt:*case-sensitive*
-					  (symbol-name (cdr token))
-					  (string-upcase
-					   (symbol-name (cdr token))))
-				      (cdr token))))
-			(intern name (or *abs-syn-package* :pvs)))
-		      place comment))
-	     (:string
-	      (values 'sbst::!string!
-		      (cdr token)
-		      place comment))
-	     (:keyword
-	      (values 'sbst::!keyword!
-		      (coerce (cdr token) 'string)
-					; string. can't intern until we know
-					; case sensitivity. 
-		      place comment))
-	     (t (error "Internal Error -- ~
-			   SB lexer confused by its own literal types -- ~S"
-		       token))))
-	  ((numberp token)
-	   (values 'sbst::!number! token place comment))
-	  ((stringp token)
-	   (values 'sbst::!string! token place comment))
-	  ;; SO - don't care about case for keywords
-	  ;; At some point should add another case-sensitivity option.
-	  ((or (gethash (intern (string-upcase token) :sbst) *keyword-table*)
-	       (string= token "λ"))
-	   (let* ((upstr (if (member token '(|λ|) :test #'string=)
-			     (string token)
-			     (string-upcase token)))
-		  (pvs-sym (intern upstr :pvs)))
-	     (when (member pvs-sym pvs::*infix-operators* :test #'eq)
-	       (let ((oplace (vector (sbrt::place-linenumber place)
-				     (sbrt::place-charnumber place)
-				     (sbrt::place-linenumber place)
-				     (+ (the fixnum
-					  (sbrt::place-charnumber place))
-					(the fixnum
-					  (length (string token)))))))
-		 (push (cons pvs-sym oplace) pvs::*operator-places*)))
-	     (values (intern upstr :sbst)
-		     :keyword-internal-flag place comment)))
-	  ((eq token :eof) (values :eof nil place comment))
-	  ((or (eq token :illegal-token)
-	       (and (not (eq token 'sbst::_))
-		    (char= (char (symbol-name token) 0) #\_)))
-	   (values :illegal-token :illegal-token place))
-	  (t (let ((id (intern (if (or *case-sensitive*
-				       (member token '(λ) :test #'string=))
-				   (symbol-name token)
-				   (string-upcase (symbol-name token)))
-			       (or *abs-syn-package* :pvs))))
-	       (values 'sbst::!id! id place comment))))))
-
-(in-package :sbrt)
 
 ;;; Sets *end-of-last-token* to the place in the lexical stream before
 ;;; stripping off white space. 
@@ -412,10 +204,8 @@
    (setq place (curplace (lexical-stream-stream self))
 	 char (multiple-value-list
 	       (cond ((equal char :eof) eofval)
-		     ((or (char= char #\_)
-			  (equal (elt readtable (char-code char)) :alphabetic))
-		      (let ((a (alpha-lexer self
-					    (lexical-read-char self nil))))
+		     ((eq (elt readtable (char-code char)) :alphabetic)
+		      (let ((a (alpha-lexer self (lexical-read-char self nil))))
 			(if (and (symbolp a)
 				 (member (intern (string-upcase a) :sbst)
 					 '(sbst::TYPE
@@ -439,18 +229,19 @@
 				    (t (lexical-unread-char self)
 				       a)))
 			    a)))
-		     ((is-lexical-escape? self char)
+		     ((is-lexical-escape? self char) ;; Currently no char satisfies this
 		      (lexical-read-char self nil)
 		      (let ((char (lexical-read-char self :eof)))
 			(if (equal char :eof)
 			    eofval
 			    (alpha-lexer self char))))
-		     (t (funcall (elt readtable (char-code char))
-				 self
-				 (if *holding-char*
-				     (prog1 *holding-char*
-				       (setq *holding-char* nil))
-				     (lexical-read-char self nil)))))))
+		     (t (let ((rtfun (elt readtable (char-code char))))
+			  (funcall rtfun
+				   self
+				   (if *holding-char*
+				       (prog1 *holding-char*
+					 (setq *holding-char* nil))
+				       (lexical-read-char self nil))))))))
    (when char (return)))
   (values (car char) place))
 
@@ -462,7 +253,7 @@
    (setq char (lexical-read-char stream :eof))
    (cond ((equal char :eof)
 	  (return))
-	 ((is-lexical-escape? stream char)
+	 ((is-lexical-escape? stream char) ;; Never true in PVS
 	  (setq char (lexical-read-char stream :eof)))
 	 ((not (member (elt (lexical-stream-readtable stream)
 			    (char-code char)) '(:alphabetic :number)))
@@ -710,25 +501,35 @@
 			      (cons '|unaryop| nlist))
 			     (t nlist))))))
 
-(defun string-lexer (stream char &aux (buffer (lexical-stream-stringbuffer
-					       stream))
-				   newchar)
-  (setf (fill-pointer buffer) 0)
-  (let ((place (curplace (lexical-stream-stream stream))))
-    (loop
-     (setq newchar (lexical-read-char stream :eof))
-     (cond ((equal newchar :eof)
-	    (return))
-	   ((is-lexical-escape? stream newchar)
-	    (setq newchar (lexical-read-char stream :eof)))
-	   ((or (equal newchar :eof)
-		(equal newchar char))
-	    (return)))
-     (vector-push-extend newchar buffer))
+(defun string-lexer (stream char)
+  ;; Simple rule - char is #\" or #\', keep all chars until another same one found,
+  ;; unless preceded by a #\\
+  (let ((place (curplace (lexical-stream-stream stream)))
+	(buffer (lexical-stream-stringbuffer stream))
+	(newchar (lexical-read-char stream :eof)))
+    (setf (fill-pointer buffer) 0)
+    (loop while (not (or (eql newchar char) (eql newchar :eof)))
+	  do (cond ((eql newchar #\\)
+		    (let ((nextchar (lexical-read-char stream :eof)))
+		      (cond ((eql nextchar char)
+			     (vector-push-extend char buffer)
+			     (setq pvs:*last-escaped-quote-place*
+				   (curplace (lexical-stream-stream stream)))
+			     (setq newchar (lexical-read-char stream :eof)))
+			    ((eql nextchar #\\)
+			     (vector-push-extend #\\ buffer)
+			     (if (char= char #\')
+				 (setq newchar (lexical-read-char stream :eof))
+				 (setq newchar nextchar)))
+			    (t
+			     (vector-push-extend #\\ buffer)
+			     (vector-push-extend nextchar buffer)
+			     (setq newchar (lexical-read-char stream :eof))))))
+		   (t (vector-push-extend newchar buffer)
+		      (setq newchar (lexical-read-char stream :eof)))))
     (when (equal newchar :eof)
       (decf (place-charnumber place))
       (do-syntax-error
 	  "There is no ending quote for this string"
 	place))
-    #+lucid (coerce (copy-seq buffer) 'simple-string)
-    #-lucid (copy-seq buffer)))
+    (copy-seq buffer)))

@@ -1,5 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-parse-fixes.lisp -- Modifications to functions produced by Ergo
+;;    NOTE: Must be loaded after pvs-parser
 ;; Author          : Sam Owre
 ;; Created On      : Sat May 27 18:11:09 1995
 ;; Last Modified By: Sam Owre
@@ -213,3 +214,13 @@
 	   (decf *double-braces-counter*)
 	   'sbst::}})
           (t (lexical-unread-char stream) 'sbst::}))))
+
+(defun |LEX-\\| (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and pvs-escape-char (eql holdchar pvs-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((eql holdchar #\/) 'sbst::|\\/|)
+          (t (lexical-unread-char stream) (illegal-token-error "\\")
+             :illegal-token))))

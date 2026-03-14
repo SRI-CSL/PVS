@@ -249,6 +249,7 @@
    (:module :language
      :pathname "src/"
      :components ((:file "ergo-runtime-fixes")
+		  (:file "pvs-parser-runtime-fixes")
 		  ;;(:file "ergo-tex-fixes")
 		  (:file "pvs-lang-def")
 		  (:file "pvs-lexer")

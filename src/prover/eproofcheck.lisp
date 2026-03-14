@@ -216,7 +216,8 @@
       (with-timeout (*noninteractive-timeout*
 		     (progn
 		       (setf (proof-status decl) 'timeout)
-		       (pvs-message "Interrupted: ~a sec timeout" timeout)))
+		       (pvs-message "Interrupted: ~a sec timeout"
+			 *noninteractive-timeout*)))
 	(call-next-method))
       (call-next-method)))
 
@@ -3515,6 +3516,7 @@
        (nth num (arguments expr)))
 
 (defvar *show-skolem-constants* nil)
+(defvar *show-parent-rule* t)
 
 (defmethod print-object ((ps proofstate) stream)
   (let* ((*ps* ps)
@@ -3538,8 +3540,13 @@
 		   (label ps)
 		   (comment ps)
 		   (current-goal ps))
-		 (format stream "~%~a :  ~%~a"  (label ps) 
-			 (current-goal ps)))))))
+		 (if (or *noninteractive* (null *show-parent-rule*))
+		     (format stream "~%~a :  ~%~a" (label ps) (current-goal ps))
+		     (format stream "~%~a : ~:[Top: no parent rule~;~:*~s~] ~%~a"
+		       (label ps)
+ 		       (when (parent-proofstate ps)
+			 (current-rule (parent-proofstate ps)))
+		       (current-goal ps))))))))
 
 (defmethod print-object ((ps tcc-proofstate) stream)
   (let* ((*ps* ps)
@@ -3549,8 +3556,13 @@
 	 (*pp-print-parens* *show-parens-in-proof*))
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "~%~a (TCC):   ~%~a"  (label ps)
-	      (current-goal ps)))))
+      (format stream "~%~a (TCC): ~@[~s~] ~%~a"
+	(label ps)
+	(when (and *show-parent-rule*
+		   (not *noninteractive*)
+		   (parent-proofstate ps))
+	  (current-rule (parent-proofstate ps)))
+	(current-goal ps)))))
 
 (defun pos-s-forms (s-forms)
   (pos-s-forms* s-forms))

@@ -268,6 +268,11 @@ returning the unique id (within a PVS session)."
   "Gets help for the given cmd"
   (pvs:prover-help cmd))
 
+(defrequest add-prover-hook (hook-fun)
+  "Provides a hook for PVS to call whenever the prover is waiting for input."
+  (pushnew hook-fun *proofstate-hooks*)
+  nil)
+
 (defun pvs2json-response (prv-result)
   "prv-result is an alist of the form
  ((\"proofstate\" ...) (\"commentary\" ...) (\"id\" ...) (\"status\" ...))"
