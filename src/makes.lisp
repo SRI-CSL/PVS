@@ -2320,6 +2320,12 @@
 	 *false*)
 	((tc-eq ex1 ex2)
 	 ex1)
+	((and (conjunction? ex1)
+	      (conjunction? ex2))
+	 (let* ((conj1 (conjuncts ex1))
+		(conj2 (remove-if #'(lambda (conj) (member conj conj1 :test #'tc-eq))
+			 (conjuncts ex2))))
+	   (make!-conjunction* (append conj1 conj2))))
 	(t (make-instance 'infix-conjunction
 	     :operator (and-operator)
 	     :argument (make!-arg-tuple-expr ex1 ex2)
