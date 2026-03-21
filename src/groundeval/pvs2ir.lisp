@@ -1499,8 +1499,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		      (thclone (and monoclones (gethash  intern-theory-id monoclones)))
 		      (theory-instance
 		       (or thclone
-			   (let ((new-instance (subst-mod-params theory thinst)))
-			     (setf (id new-instance) *theory-id*)
+			   (let ((new-instance (subst-mod-params theory thinst nil nil *theory-id*)))
+			     ;handled by new subst-mod-params (setf (id new-instance) *theory-id*)
 			     new-instance)))
 		      (dummy2 (when thclone (format t "~%Found thclone")))
 		      (instdecl (find  decl (theory theory-instance) :key #'generated-by))
@@ -3791,7 +3791,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	   (last-expr-freevars (set-difference expr-freevars livevars :test #'eq))
 		       ;;last-expr-freevars preserve refcount when closure is created
 		       ;;other expr-freevars have their refcounts incremented by one.
-	   (other-livevars (append ir-mpq-vartypes livevars)) ;(union last-expr-freevars livevars :test #'eq)
+	   (other-livevars livevars) ; (append ir-mpq-vartypes livevars) ;(union last-expr-freevars livevars :test #'eq)
 		       ;;(body-freevars (pvs2ir-freevars* ir-body))
 					;(irrelevant-args (set-difference ir-vartypes body-freevars :test #'eq))
 	   (preprocessed-body (preprocess-ir* ir-body other-livevars bindings))
@@ -4292,7 +4292,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	     (c-return-type (add-c-type-definition ir2c-return-type))
 	     (ir2c-rhs-type  (ir2c-type ir-vtype))
 	     (c-rhs-type (add-c-type-definition ir2c-rhs-type))
-	     (c-assignments (copy-type ir2c-return-type ir2c-rhs-type return-var ir-name)))
+	     (c-assignments (copy-type ir2c-return-type ir2c-rhs-type return-var ir-name))) 
 					;(mk-c-assignment return-var c-return-type ir-name c-rhs-type)
 					;(format t "~% last: ~a, return-var: ~a, c-return-type:~a, c-rhs-type: ~a" (print-ir ir-var)(print-ir return-var) c-return-type c-rhs-type)
 	(case c-return-type
@@ -4303,7 +4303,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 ;; 	    (format nil "~a_init(~a)" c-return-type return-var))
 		 )
 	     (case c-rhs-type
-	       ((|mpq| |mpz|)
+	       ((|mpq| |mpz|) 
 		(append return-init-instrs
 			(if nil		;(member ir-var *mpvar-parameters*)
 			    c-assignments
@@ -4348,16 +4348,19 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 
 (defmethod ir2c* ((ir-expr ir-type-actual) return-var return-type)
   (with-slots (ir-actual-type) ir-expr
-;;    (break "ir2c*(ir-type-actual)")
+    ;(break "ir2c*(ir-type-actual)")
     (let ((ir2c-return-type (ir2c-type return-type))
 	  (ir2c-type (ir2c-type ir-actual-type))) 
       (if (ir-actualparameter-type? ir2c-type)
-	  (let ((c-return-type (add-c-type-definition ir2c-return-type))
-		(c-type (add-c-type-definition ir2c-type)))
+	  (let* ((c-return-type (add-c-type-definition ir2c-return-type))
+		 (c-type (add-c-type-definition ir2c-type))
+		 (c-rhs (if (ir-formal-typename? ir-actual-type)
+			   (ir-type-id ir-actual-type)
+			   (format nil "actual_~a(~{~a~^,~})" c-type
+				   (loop for ir-formal in *ir-theory-formals* collect (ir-name ir-formal))))))
 	    (mk-c-assignment-with-count
 	     return-var c-return-type
-	     (format nil "actual_~a(~{~a~^,~})" c-type
-		     (loop for ir-formal in *ir-theory-formals* collect (ir-name ir-formal)))
+	     c-rhs
 	     c-type))
 	  (progn (break "actual")
 		 (pvs2c-err "actual type must be a reference" ir-actual-type))))))
@@ -4545,9 +4548,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 				   collect (ir-name ir-var)))
 	   (ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))))
       (if (ir-primitive-function? ir-function);;primitives don't consume or create references
-	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names)))
+	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names))
+		(mp-clear-instrs (loop for ir-var in ir-arg-vars ;clears all bignum vars
+				       when (mpnumber-type? (ir2c-type (ir-vtype ir-var)))
+				       collect (format nil "~a_clear(~a)" (ir2c-type (ir-vtype ir-var)) (ir-name ir-var)))))
 					;(format t "~%~a" instrs)
-	    instrs
+	    (nconc instrs mp-clear-instrs)
 	    ;; (if (mpnumber-type? return-type)
 	    ;; 	(cons (format nil "~a = safe_malloc(sizeof(~a_t))" return-var  return-type)
 	    ;; 	      (cons (format nil "~a_init(~a)" return-type return-var) instrs))
@@ -6231,14 +6237,30 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		    ;(break "ir-apply")
 		    (cons assign-instr (append refcount-lookup-instr release-array-instr)))
 		;;otherwise, it's a function call
-		(let* ((ir-params-args (append ir-params ir-args))
+		(let* ((last-mp-newvars-alist ;create new ownership target vars for non-last mpvars
+			(loop for ir-var in ir-args
+			      when (and (not (ir-last? ir-var))
+					(mpnumber-type? (ir2c-type (ir-vtype ir-var))))
+			      collect (cons ir-var (mk-ir-variable (new-irvar) (ir-vtype ir-var)))))
+		       (new-ir-args (loop for ir-var in ir-args
+					  collect (let ((pair (assq ir-var last-mp-newvars-alist)))
+						    (if pair (cdr pair) ir-var))))
+		       (ir-params-args (append ir-params new-ir-args))
 		       (invoke-instrs (ir2c-function-apply return-var return-type ir-func ir-params-args
 							   ))
+		       (mp-own-transfer-instrs
+			(loop for pair in last-mp-newvars-alist
+			      collect (let ((ir-ctype (ir2c-type (ir-vtype (car pair)))))
+					(format nil "~a_ptr_t ~a; ~a_mk_set(~a, ~a)"
+						ir-ctype (ir-name (cdr pair))
+						ir-ctype (ir-name (cdr pair)) (ir-name (car pair)))
+					)))
 		     ;; (rhs-string (format nil "~a(~{~a~^, ~})" ir-func-var ir-arg-vars))
 		     ;; (invoke-instr (format nil "~a = ~a" return-var rhs-string))
-		     (release-instrs (loop for ir-var in ir-params-args ;;bump the counts of non-last references by one
-					   when (and (not (ir-last? ir-var))(ir-reference-type? (ir-vtype (get-ir-last-var ir-var))))
-					   collect (format nil "~a->count++" (ir-name ir-var))))
+		       
+		       (release-instrs (loop for ir-var in ir-params-args ;;bump the counts of non-last references by one
+					     when (and (not (ir-last? ir-var))(ir-reference-type? (ir-vtype (get-ir-last-var ir-var))))
+					     collect (format nil "~a->count++" (ir-name ir-var))))
 		     ;; (mp-release-instrs (loop for ir-var in ir-params-args
 		     ;; 			      when (and (ir-last? ir-var)
 		     ;; 					;(not (member (get-ir-last-var ir-var) *mpvar-parameters*))
@@ -6249,7 +6271,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		     )
 		  ;(format t "~%*mpvar-parameters* = ~{~a, ~}" (print-ir *mpvar-parameters*))
 		;(break "ir-apply")
-		  (nconc release-instrs invoke-instrs) ;nconc invoke-instrs mp-release-instrs
+		  (nconc mp-own-transfer-instrs release-instrs invoke-instrs) ;nconc invoke-instrs mp-release-instrs
 					       )))))
 
 (defun mppointer-type (type)
@@ -6643,9 +6665,9 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		(ctype (add-c-type-definition ir-vtype))
 		(release-cdr (release-instrs (cdr ir-varlist))))
 	   (declare (ignore ctype))
-	   (if (ir-reference-type? ir-vtype)
+	   (if (or (ir-reference-type? ir-vtype)(mpnumber-type? ir-vtype))
 	       (cons (release-last-var (car ir-varlist)) release-cdr)
-	     release-cdr)))
+	       release-cdr)))
 	(t nil)))
 
 (defmethod ir2c* ((ir-expr ir-release) return-var return-type)

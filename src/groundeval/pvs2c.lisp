@@ -97,7 +97,7 @@
     |gen_strings| |identity| |integer_bv_ops| |integertypes| |lex2|
     |lift| |lift_adt| |lift_adt_map|
     |file|
-    |list| |list_adt| ;;|list_adt_map| |list_props|
+    |list| |list_adt| |list_adt_map| |list_props|
     |min_nat| |modulo_arithmetic| |finite_sequences| |more_finseq| |array_sequences|
     |ordinals| |ordstruct| |real_defs| |sequences| |sets| |strings|
     |transpose| |xor_def|))
@@ -589,9 +589,10 @@
 			  c-body ;;NSH(2-11-25): added static-result-var for mpz/mpq
 			  (if static-result-var
 			      (format nil "~a_mk_set(result, ~a);" c-result-type static-result-var)
-			      (if (ir-reference-type? ir-result-type)
-				  "result->count++;"
-				  ""))
+			      "")
+			      ;; (if (ir-reference-type? ir-result-type)
+			      ;; 	  "result->count++;"
+			      ;; 	  "")
 			  ))
 	       ;; (case c-result-type
 	       ;; 	       ((|mpq| |mpz|)
