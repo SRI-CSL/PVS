@@ -307,13 +307,10 @@
     (union (free-parameters expr) frees :test #'eq)))
 
 (defmethod free-params* ((list list) frees)
-  (free-params-list list frees))
-
-(defun free-params-list (list frees)
   (if (null list)
       frees
       (let ((car-frees (free-params* (car list) frees)))
-	(free-params-list (cdr list) car-frees))))
+	(free-params* (cdr list) car-frees))))
 
 (defmethod free-params* ((expr bind-decl) frees)
   (let ((tfrees (free-params* (type expr) nil)))
