@@ -4584,7 +4584,7 @@ nil is returned in that case."
   (prover-command-entry name))
 
 (defun prover-help (name)
-  (nth-value (funcall (help-rule-fun name) nil) 0))
+  (with-output-to-string (*standard-output*) (funcall (help-rule-fun name) nil)))
 
 (defun all-proof-commands-json ()
   (let* ((rule-deps (collect-rule-dependencies))
