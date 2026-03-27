@@ -1450,7 +1450,7 @@ which is the transitive closure of the immediate assuming instances."
 		   :id (id axiom)
 		   :spelling 'AXIOM
 		   :kind nil)
-		 (if (importing? (current-declaration))
+		 (if (importing-entity? (current-declaration))
 		     (add-decl naxiom)
 		     (break "collect-mapping-axiom needs interp")))
 		(t (insert-tcc-decl 'mapped-axiom thinst axiom naxiom))))
