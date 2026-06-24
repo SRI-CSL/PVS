@@ -2827,6 +2827,7 @@ Note that even proved ones get overwritten"
 		   (terpri out) (terpri out)))))
 	 (theory-decl (format nil "~a.~a" (id theory) (decl-to-declname decl)))
 	 (buffer (format nil "~a.~a.tccs" (id theory) (decl-to-declname decl))))
+    (declare (ignorable unparsed-a-tcc?))
     (cond ((not (string= str ""))
 	   (let ((*valid-id-check* nil))
 	     (setf (tcc-form decl)
@@ -2836,7 +2837,7 @@ Note that even proved ones get overwritten"
 	   (pvs-buffer buffer str t t)
 	   theory-decl)
 	  (t (pvs-message "Declaration ~a.~a has no TCCs"
-	       (id theory) (decl-to-declname decl))))))
+			  (id theory) (decl-to-declname decl))))))
 
 ;;; Given a declaration, returns a declname, used to create the
 ;;; show-declaration-tccs buffer.  For a declaration with an id, this is
