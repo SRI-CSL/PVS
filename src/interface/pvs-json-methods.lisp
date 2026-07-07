@@ -26,6 +26,10 @@
   "List methods clients need to support"
   (list "info" "warning" "debug" "buffer" "yes-no" "dialog"))
 
+(defrequest pvs-meta-info ()
+  "Get PVS setup/configuration/installation information"
+  (pvs:pvs-meta-info))
+
 (defrequest help (methodname)
   "Get help for the specified methodname -
    provides the docstring and the argument spec"

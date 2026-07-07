@@ -5434,7 +5434,15 @@ we can get this method using
 							    (string var))))
 						  (when val
 						    (list (cons var val)))))
-				      *pvs-environment-variables*)))
+				      *pvs-environment-variables*)
+	 :version-control (when (and (git-available-p) (in-git-repo-p *pvs-path*))
+			    (multiple-value-bind (short-commit long-commit) (git-current-commit)
+			      (let ((git-description (pvs-git-description))
+				    (branch-description (git-current-branch)))
+				`((:git/short-hash . ,short-commit)
+				  (:git/long-hash . ,long-commit)
+				  (:git/description . ,git-description)
+				  (:git/branch-info . ,branch-description)))))))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
