@@ -44,14 +44,6 @@
 
 (defvar *parsed-theories-seen* nil)
 
-(defstruct pvs-meta-info
-  version
-  environment
-  patch-files
-  strategy-files
-  lisp-files
-  libfiles)
-
 ;; M3: This debugger is used when running the rpc server to automatically abort
 ;; to top-level on any signal, so they don't affect the server responsiveness [Sept 2020].
 ;; (defun rpc-mode-debugger (condition me-or-my-encapsulation)

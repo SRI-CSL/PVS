@@ -5421,28 +5421,28 @@ we can get this method using
 ;; }
 
 (defun pvs-meta-info ()
-  (lcons :pvs-version *pvs-version*
-	 :pvs-path *pvs-path*
-	 :lisp-version (lisp-implementation-version)
-	 :emacs-version (pvs-emacs-eval "(emacs-version)")
-	 :pvs-executable (get-file-ref (car (uiop:raw-command-line-arguments)))
-	 :lisp-patches (get-patches-info)
-	 :strategies-files (mapcar #'get-file-ref
+  (lcons "pvs-version" *pvs-version*
+	 "pvs-path" *pvs-path*
+	 "lisp-version" (lisp-implementation-version)
+	 "emacs-version" (pvs-emacs-eval "(emacs-version)")
+	 "pvs-executable" (get-file-ref (car (uiop:raw-command-line-arguments)))
+	 "lisp-patches" (get-patches-info)
+	 "strategies-files" (mapcar #'get-file-ref
 			     (cdr (assq :strategies *files-loaded*)))
-	 :pvs-environment-variables (mapcan #'(lambda (var)
+	 "pvs-environment-variables" (mapcan #'(lambda (var)
 						(let ((val (environment-variable
 							    (string var))))
 						  (when val
 						    (list (cons var val)))))
 				      *pvs-environment-variables*)
-	 :version-control (when (and (git-available-p) (in-git-repo-p *pvs-path*))
+	 "version-control" (when (and (git-available-p) (in-git-repo-p *pvs-path*))
 			    (multiple-value-bind (short-commit long-commit) (git-current-commit)
 			      (let ((git-description (pvs-git-description))
 				    (branch-description (git-current-branch)))
-				`((:git/short-hash . ,short-commit)
-				  (:git/long-hash . ,long-commit)
-				  (:git/description . ,git-description)
-				  (:git/branch-info . ,branch-description)))))))
+				`(("short-hash" . ,short-commit)
+				  ("long-hash" . ,long-commit)
+				  ("description" . ,git-description)
+				  ("branch-info" . ,branch-description)))))))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
