@@ -2394,16 +2394,16 @@ then uses unpindent* to add the indent to each line"
 	       (write op)
 	       (write " ")))))))
 
-(defgeneric collect-infix-conjuncts (ex &optional conjs))
+(defgeneric collect-infix-conjuncts (ex))
 
-(defmethod collect-infix-conjuncts ((ex infix-conjunction) &optional conjs)
+(defmethod collect-infix-conjuncts ((ex infix-conjunction))
   (if (= (parens ex) 0)
-      (collect-infix-conjuncts (args2 ex)
-			       (collect-infix-conjuncts (args1 ex) conjs))
-      (reverse (cons ex conjs))))
+      (nconc (collect-infix-conjuncts (args1 ex))
+	     (collect-infix-conjuncts (args2 ex)))
+      (list ex)))
 
-(defmethod collect-infix-conjuncts (ex &optional conjs)
-  (reverse (cons ex conjs)))
+(defmethod collect-infix-conjuncts (ex)
+  (list ex))
 
 (defmethod collect-infix-disjuncts ((ex infix-disjunction))
   (if (= (parens ex) 0)
