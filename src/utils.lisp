@@ -5428,23 +5428,37 @@ we can get this method using
 	 "pvs-executable" (get-file-ref (car (uiop:raw-command-line-arguments)))
 	 "lisp-patches" (get-patches-info)
 	 "strategies-files" (mapcar #'get-file-ref
-			     (cdr (assq :strategies *files-loaded*)))
+			            (cdr (assq :strategies *files-loaded*)))
 	 "pvs-environment-variables" (mapcan #'(lambda (var)
-						(let ((val (environment-variable
-							    (string var))))
-						  (when val
-						    (list (cons var val)))))
-				      *pvs-environment-variables*)
+						 (let ((val (environment-variable
+							     (string var))))
+						   (when val
+						     (list (cons var val)))))
+				             *pvs-environment-variables*)
 	 "version-control" (when (and (git-available-p) (in-git-repo-p *pvs-path*))
-			    (multiple-value-bind (short-commit long-commit) (git-current-commit)
-			      (let ((git-description (pvs-git-description))
-				    (branch-description (git-current-branch))
-				    (commit-date (git-current-commit-date)))
-				`(("short-hash" . ,short-commit)
-				  ("long-hash" . ,long-commit)
-				  ("description" . ,(pvs-git-description))
-				  ("branch-info" . ,(git-current-branch))
-				  ("commit-date" . ,(git-current-commit-date))))))))
+			     (multiple-value-bind (short-commit long-commit) (git-current-commit)
+			       (let ((git-description (pvs-git-description))
+				     (branch-description (git-current-branch))
+				     (commit-date (git-current-commit-date)))
+				 `(("short-hash" . ,short-commit)
+				   ("long-hash" . ,long-commit)
+				   ("description" . ,(pvs-git-description))
+				   ("branch-info" . ,(git-current-branch))
+				   ("commit-date" . ,(git-current-commit-date))))))
+         "build-date" (when *pvs-build-time*
+                        (handler-case
+                            (multiple-value-bind (second minute hour date month year day-of-week dst-p tz)
+                                (decode-universal-time *pvs-build-time*)
+                              (declare (ignore day-of-week dst-p))
+                              ;; Convert Lisp timezone (hours west) to standard ISO offset (hours/mins east/west)
+                              (multiple-value-bind (tz-hours tz-mins) (truncate (* tz 60))
+                                (let ((sign (if (<= tz-hours 0) "+" "-"))
+                                      (abs-hours (abs (truncate tz-hours 60)))
+                                      (abs-mins (abs tz-mins)))
+                                  (format nil "~4,'0D-~2,'0D-~2,'0D ~2,'0D:~2,'0D:~2,'0D ~A~2,'0D~2,'0D"
+                                          year month date hour minute second 
+                                          sign abs-hours abs-mins))))
+                          (error () nil)))))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
