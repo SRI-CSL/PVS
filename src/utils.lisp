@@ -5438,11 +5438,13 @@ we can get this method using
 	 "version-control" (when (and (git-available-p) (in-git-repo-p *pvs-path*))
 			    (multiple-value-bind (short-commit long-commit) (git-current-commit)
 			      (let ((git-description (pvs-git-description))
-				    (branch-description (git-current-branch)))
+				    (branch-description (git-current-branch))
+				    (commit-date (git-current-commit-date)))
 				`(("short-hash" . ,short-commit)
 				  ("long-hash" . ,long-commit)
-				  ("description" . ,git-description)
-				  ("branch-info" . ,branch-description)))))))
+				  ("description" . ,(pvs-git-description))
+				  ("branch-info" . ,(git-current-branch))
+				  ("commit-date" . ,(git-current-commit-date))))))))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
@@ -5817,6 +5819,13 @@ and the next method is called with this. Only \formula\" is required."
 	  :output '(:string :stripped t))
 	#\:))
       (error "*pvs-path* has no .git directory")))
+
+(defun git-current-commit-date ()
+    (when (in-git-repo-p *pvs-path*)
+      (uiop:run-program (format nil "git -C ~a log -1 --format=%cd --date=iso" *pvs-path*)
+			:input "//dev//null"
+			:output '(:string :stripped t))))
+
 
 (defun in-git-repo-p (path)
   "Check if the given PATH is inside a Git repository."
