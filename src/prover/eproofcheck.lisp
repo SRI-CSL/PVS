@@ -2782,7 +2782,7 @@
 ;;; ++ here means two or more.
 
 (defun editable-justification (justif &optional
-				      label xflag full-label no-escape?)
+				      label xflag full-label (no-escape? t))
   ;;NSH(1.3.98) if full-label is given, then the full label is
   ;;printed rather than just the branch numbers.
   (unless (null justif)
