@@ -43,15 +43,27 @@
 
 #+sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (fboundp 'orig-format)
-    (setf (symbol-function 'orig-format) (symbol-function 'format))))
+  (unless (fboundp '%orig-string)
+    (setf (symbol-function '%orig-string) (symbol-function 'string))))
+
+#+sbcl
+(sb-ext:without-package-locks
+    (defun string (obj)
+      "Redefinition of string to return (vector charater).
+The original definition is in 'orig-string."
+      (coerce (funcall #'%orig-string obj) '(vector character))))
+
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (fboundp '%orig-format)
+    (setf (symbol-function '%orig-format) (symbol-function 'format))))
 
 #+sbcl
 (sb-ext:without-package-locks
     (defun format (destination control-string &rest format-arguments)
       "Redefinition of format to return (vector charater) when a string is returned.
 The original definition is in 'orig-format."
-      (let ((result (apply #'orig-format destination control-string format-arguments)))
+      (let ((result (apply #'%orig-format destination control-string format-arguments)))
    	(if (typep result 'base-string) (coerce result '(vector character)) result))))
 
 (defmacro tcdebug (ctl &rest args)
