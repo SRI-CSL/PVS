@@ -594,7 +594,8 @@
 		   context proveitarg pvsfile import scripts write-scripts
 		   traces force autotop typecheckonly txtproofs texproofs preludext
 		   disabled-oracles enabled-oracles auto-fix? default-proof thfs theories
-		   dependencies alternative-summary-modes debug-mode-on? outdir outbasename)
+		   dependencies alternative-summary-modes debug-mode-on? outdir outbasename
+		   purge?)
   (let* ((*print-readably* nil)
 	 (*noninteractive* t)
 	 (*pvs-verbose* (if traces 3 2))
@@ -750,7 +751,10 @@
 				;; if auto-fix?, save proofs
 				auto-fix?)
 	      (setq proveit-return-value
-		    (proveit-status-proof-theories pvstheories thfs))))
+		    (proveit-status-proof-theories pvstheories thfs))
+	      (when purge?
+		(dolist (theory pvstheories)
+		  (purge-proved-formulas-file (filename theory))))))
 	  (save-context)
 	  (when write-scripts
 	    (dolist (theory pvstheories)
@@ -799,11 +803,13 @@
 	 (outdir (let ((name (environment-variable "PROVEITLISPOUTDIR")))
 		   (when (and name (string/= name "")) name)))
 	 (outbasename (let ((name (environment-variable "PROVEITLISPOUTBASENAME")))
-			(when (and name (string/= name "")) name))))
+			(when (and name (string/= name "")) name)))
+	 (purge? (read-from-environment-variable "PROVEITLISPPURGE")))
     (proveit-on proveitversion context proveitarg pvsfile import scripts write-scripts
 		traces force autotop typecheckonly txtproofs texproofs preludext
 		disabled-oracles enabled-oracles auto-fix? default-proof thfs theories
-		dependencies alternative-summary-modes debug-mode-on? outdir outbasename))) 
+		dependencies alternative-summary-modes debug-mode-on? outdir outbasename
+		purge?)))
 
 (defun collect-top-theories ()
   (let ((files-in-dir
