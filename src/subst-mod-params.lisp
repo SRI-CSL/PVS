@@ -3141,6 +3141,14 @@ lift[T: TYPE]: DATATYPE BEGIN  | lift_nat: DATATYPE BEGIN
 	 (cdr obindings) modinst bindings (cons nbinding nbindings)))
       (nreverse nbindings)))
 
+(defmethod subst-mod-params* ((expr array-expr) modinst bindings)
+  (let ((nexpr (call-next-method))
+	(nexprs (subst-mod-params* (exprs expr) modinst bindings)))
+    (cond ((eq nexpr expr)
+	   (lcopy nexpr :exprs nexprs))
+	  (t (setf (exprs nexpr) nexprs)
+	     nexpr))))
+
 (defmethod subst-mod-params* ((expr update-expr) modinst bindings)
   (with-slots (expression assignments type) expr
     (let ((nexpr (subst-mod-params* expression modinst bindings))
