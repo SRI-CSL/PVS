@@ -554,17 +554,35 @@ to the associated declaration."
       (declare (ignore containing-terms)) ; might be useful later
       (json-term term))))
 
-(defun pvs2alist-proof (proof)
+(defun print-timestamp-as-iso (timestamp)
+  (when timestamp
+    (multiple-value-bind
+          (second minute hour date month year day-of-week dst-p tz)
+        (decode-universal-time timestamp)
+      (declare (ignore day-of-week dst-p))
+      ;; Convert Lisp timezone (hours west) to standard ISO offset (hours/mins east/west)
+      (multiple-value-bind (tz-hours tz-mins) (truncate (* tz 60))
+        (let ((sign (if (<= tz-hours 0) "+" "-"))
+              (abs-hours (abs (truncate tz-hours 60)))
+              (abs-mins (abs tz-mins)))
+          (format nil "~4,'0D-~2,'0D-~2,'0D ~2,'0D:~2,'0D:~2,'0D ~A~2,'0D~2,'0D"
+                  year month date hour minute second 
+                  sign abs-hours abs-mins))))))
+
+(defun pvs2alist-proof (proof &optional default-proof)
   `(("id" . ,(string (pvs:id proof)))
     ("description" . ,(pvs:description proof))
     ("script" . ,(pvs:script proof))
-    ("status" . ,(pvs:status proof))))
+    ("status" . ,(pvs:status proof))
+    ("is-default" . ,(if (eq default-proof proof) "yes" "no"))
+    ("create-date" . ,(print-timestamp-as-iso (pvs::create-date proof)))
+    ("run-date" . ,(print-timestamp-as-iso (pvs::run-date proof)))))
 
 (defrequest all-proofs-of-formula (form-ref)
   "Returns all the proofs associated with the given formula."
   (let* ((fdecl (pvs:get-formula-decl form-ref))
 	 (proofs (pvs:proofs fdecl)))
-    (mapcar #'pvs2alist-proof proofs)))
+    (mapcar (lambda (p) (pvs2alist-proof p (pvs:default-proof fdecl))) proofs)))
 
 (defrequest delete-proof-of-formula (form-ref proof-id)
   "Deletes the proof-id of the formula."
