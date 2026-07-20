@@ -14,7 +14,7 @@
 #
 # Mariano Moscato (12/07/2023)
 #
-# Script for batch proving several libraries in PVS 
+# Script for batch proving several libraries in PVS
 #
 
 use Getopt::Long qw(GetOptionsFromString);
@@ -71,7 +71,7 @@ sub readVersion(){
 
 sub usage() {
   readVersion();
-  
+
   print <<EOF;
 provethem $VERSION -- runs proveit on a collection of libraries
 
@@ -84,28 +84,28 @@ $usageln
   --from=<dir>            prove all libraries from <dir>, inclusive
   --to=<dir>              prove all libraries to <dir>, inclusive
 
-  --top <th>              use <th>.pvs instead of top.pvs as top theory  
+  --top <th>              use <th>.pvs instead of top.pvs as top theory
 
   --force                 force provethem to go even if there is a proveit error
 
   --lisp <lisp>           lisp image to be used; <lisp> can be allegro, cmulisp, or sbcl
-			  
+
   --out <outfile>         save output to <outfile>
-  
+
   --no-color              do not use colors
 
   --dry-run               process <file> but do not call proveit
 
   --verbose               print summary information for all theories
   --version               print version information and exit
-  
-  --addpath               add current directory to PVS_LIBRARY_PATH (default when --clearpath)
-  --clearpath             clear PVS_LIBRARY_PATH 
+
+  --clearpath             clear PVS_LIBRARY_PATH
+  --addpath [<path>]      add <path> to PVS_LIBRARY_PATH. If <path> is empty, add current directory
 
   --clean-only            remove .pvscontext and binary files in the pvsbin folder, and quit
   --clean-all             remove .pvscontext, orphaned-proofs.prf, and all files in pvsbin, and quit
   --typecheck-only        typecheck but do not prove the libraries
-  --execute <command>     execute Unix <command> on all libraries; Command 
+  --execute <command>     execute Unix <command> on all libraries; Command
                           may refer to \%DIR\% and \%FILE\%
 
   --disable <o1,...on>    disable external oracles o1,...,on
@@ -137,7 +137,7 @@ EOF
 $ret_val_labels{'127'}="CMD-NOT-FOUND";
 $ret_val_labels{'0'}="OK";
 
-GetOptions('addpath'=>\$addpath2,
+GetOptions('addpath:s'=>\$addpath2,
            'clean-only'=>\$clean2,
 	   'clean-all'=>\$cleanall2,
 	   'clearpath'=>\$clearpath2,
@@ -204,11 +204,11 @@ if (!$file) {
     $file = 'all-theories';
   } else {
     $file = 'all-libraries';
-    
+
     print "*** Warning: input file not found. Files $file and top.pvs will be generated.\n";
 
     $overopts .= " --generate-top";
-      
+
     opendir(current_directory, ".");
     my @files = readdir(current_directory);
     closedir(current_directory);
@@ -227,8 +227,9 @@ if (!$file) {
 	if ( scalar @files_in_subdir > 0) {
 	  push(@all_libraries,$file_in_dir);
 
-	  # look into the pvsbin/top.dep file to check dependencies
-	  $depfile = "$file_in_dir/pvsbin/$top.dep";
+	  # look into the dep file to check dependencies
+	  $depfile = $dir ? "$dir/$file_in_dir.dep" : "$file_in_dir/$file_in_dir.dep";
+	  print "DEPFILE (1): $depfile~%";
 	  if (-f $depfile) {
 	    open (DEPFILE,"$depfile");
 	    while (<DEPFILE>) {
@@ -247,7 +248,7 @@ if (!$file) {
 	    close (DEPFILE);
 	  } else {
 	    print "*** Warning: File $depfile not found.\n";
-	  } 
+	  }
 	}
       }
     }
@@ -262,7 +263,7 @@ if (!$file) {
 	$result=1;
       } elsif (exists $lib_deps{$b} && grep { $a eq $_ } @{$lib_deps{$b}}){
 	$result=-1;
-      } 
+      }
       return $result;
     };
     @all_libraries = sort {$lib_cmp->($a,$b)} @all_libraries;
@@ -280,7 +281,7 @@ if (!$file) {
 
 $column_width=`sed -E "s/^([^ ]*) .*\$/\\1/g" $file  | awk "length > max_length { max_length = length; longest_line = \$0 } END { print max_length }"`+3;
 
-die "$usageln\n" if shift; 
+die "$usageln\n" if shift;
 
 my $can_accept_in_file_global_options=1;
 
@@ -296,7 +297,7 @@ while (<all_theories_file>) {
       "(line ",${\*all_theories_file}->input_line_number,
       " in $file)" unless ($can_accept_in_file_global_options);
     GetOptionsFromString($line,
-			 'addpath'=>\$addpath,
+			 'addpath:s'=>\$addpath,
 			 'clean-only'=>\$clean,
 			 'clean-all'=>\$cleanall,
 			 'clearpath'=>\$clearpath,
@@ -487,14 +488,14 @@ sub iteratelibs(){
 	$go = "ok" if ($from eq $lib);
 	last if $before eq $lib;
 
-	if (($go || grep { "$_" eq $lib } @dolist) && 
+	if (($go || grep { "$_" eq $lib } @dolist) &&
 	    !(grep { "$_" eq $lib } @butlist)) {
 	  $libs += 1;
 	  if (-d $lib) {
 	    $pathlib = $lib;
 	    $baselib = "";
-	  } elsif (-f $lib) { 
-	    ($baselib,$pathlib,$typelib) = fileparse($lib,qr{\..*});  
+	  } elsif (-f $lib) {
+	    ($baselib,$pathlib,$typelib) = fileparse($lib,qr{\..*});
 	    $baselib .= $typelib;
 	  } else {
 	    die "$lib is neither a file nor a directory\n";
@@ -505,7 +506,7 @@ sub iteratelibs(){
 	  $exe =~ s/\%OPTS\%/$opts/g;
 	  $command="";
 	  $command .= "$exe";
-	
+
 	  if ($command) {
 	    if ($dryrun) {
 	      print "DRY-RUN: $command\n";
@@ -534,12 +535,12 @@ sub iteratelibs(){
 		}
 
 		print OUTFILE "$proveout\n" if $out;
-		
+
 		my @warnings = ($proveout =~ m/(Warning[:]? .*)/g);
 		if (@warnings) {
 		  $warn_msg = join("\n*** ",@warnings);
 		}
-	      
+
 		my @errors = ($proveout =~ m/(Error[:]? .*)/g);
 		if (@errors) {
 		  $fail_msg = join("\n*** ",@errors);
@@ -554,7 +555,7 @@ sub iteratelibs(){
 		if ($no_color) {
 		  print $status;
 		} else {
-		  print DARK RED $status; 
+		  print DARK RED $status;
 		}
 		$fail_msg .= " (return value: $fail)" if $verbose;
 		if ($fail_msg) {
@@ -567,7 +568,7 @@ sub iteratelibs(){
 		# Update my return value
 		$return_value=$fail if ($fail > $return_value);
 	      }
-	    
+
 	      if ($fail == 0) {
 		$status = $ret_val_labels{0};
 		$status = "OK" if ! $status;
@@ -576,7 +577,7 @@ sub iteratelibs(){
 		if ($no_color) {
 		  print $status;
 		} else {
-		  print DARK GREEN $status; 
+		  print DARK GREEN $status;
 		}
 		$endln = "]\n";
 		print $endln;
@@ -587,7 +588,8 @@ sub iteratelibs(){
 	      # since warnings are already there.
 	      print "*** $warn_msg\n" if $warn_msg && $no_printout;
 
-	      $depfile = "$lib/pvsbin/$top.dep";
+	      $depfile = $dir ? "$dir/$lib.dep" : "$lib/$lib.dep";
+	      print "DEPFILE (2): $depfile~%";
 	      if (-f $depfile) {
 		open (DEPFILE,"$depfile");
 		while (<DEPFILE>) {
@@ -601,7 +603,7 @@ sub iteratelibs(){
 			  !(grep {$_ eq $deplib} @libraries) &&
 			  -d $deplib && -f "$deplib/$top.pvs") {
 			print "*** Warning: Library $deplib is out of order. It should appear before $lib in $file\n";
-		      } 
+		      }
 		    } else {
 		      print "*** Warning: Cannot check library order. Obsolete dep file for library $lib? Try regenerating it.\n";
 		    }
@@ -624,7 +626,7 @@ sub iteratelibs(){
     }
   }
   my $mssg = "\n";
-  $mssg .= "*** Number of libraries: $libs\n"; 
+  $mssg .= "*** Number of libraries: $libs\n";
   print $mssg;
   $summary .= $mssg;
 
@@ -637,9 +639,9 @@ sub iteratelibs(){
   return($return_value);
 }
 
-# ad-hoc version of iteratelibs to apply proveit on each library in the scope 
+# ad-hoc version of iteratelibs to apply proveit on each library in the scope
 sub iterate_proveit_on_libs(){
-  $execute="$PROVEIT %OVEROPTS% %OPTS% %DIR%";
+  $execute="$PROVEIT --dependencies %OVEROPTS% %OPTS% %DIR%";
 
   if(!$out){
     $out="provethem.out";
@@ -651,9 +653,9 @@ sub iterate_proveit_on_libs(){
   $ret_val_labels{'15'}="FAIL - terminated";
 
   $no_printout="t";
-  
+
   #
-  
+
   print "Executing shell command \"$execute\" on each library.\n" if $verbose;
   print "With overopts: $overopts.\n" if $verbose && $execute=~/\%OVEROPTS\%/;
   print "\n";
@@ -663,7 +665,7 @@ sub iterate_proveit_on_libs(){
   my $totalproofs = 0;
   my $libs = 0;
   #>
-  
+
   my $return_value=0;
   while (<INFILE>) {
     $line = $_;
@@ -680,14 +682,14 @@ sub iterate_proveit_on_libs(){
 	$go = "ok" if ($from eq $lib);
 	last if $before eq $lib;
 
-	if (($go || grep { "$_" eq $lib } @dolist) && 
+	if (($go || grep { "$_" eq $lib } @dolist) &&
 	    !(grep { "$_" eq $lib } @butlist)) {
 	  $libs += 1;
 	  if (-d $lib) {
 	    $pathlib = $lib;
 	    $baselib = "";
-	  } elsif (-f $lib) { 
-	    ($baselib,$pathlib,$typelib) = fileparse($lib,qr{\..*});  
+	  } elsif (-f $lib) {
+	    ($baselib,$pathlib,$typelib) = fileparse($lib,qr{\..*});
 	    $baselib .= $typelib;
 	  } else {
 	    die "$lib is neither a file nor a directory\n";
@@ -698,7 +700,7 @@ sub iterate_proveit_on_libs(){
 	  $exe =~ s/\%OPTS\%/$opts/g;
 	  $command="";
 	  $command .= "$exe";
-	
+
 	  if ($command) {
 	    if ($dryrun) {
 	      print "DRY-RUN: $command\n";
@@ -727,7 +729,7 @@ sub iterate_proveit_on_libs(){
 		}
 
 		print OUTFILE "$proveout\n" if $out;
-		
+
 		my @warnings = ($proveout =~ m/(Warning[:]? .*)/g);
 		if (@warnings) {
 		  #<
@@ -737,7 +739,7 @@ sub iterate_proveit_on_libs(){
 		  }
 		  #>
 		}
-	      
+
 		my @errors = ($proveout =~ m/(Error[:]? .*)/g);
 		if (@errors) {
 		  $fail_msg = join("\n*** ",@errors);
@@ -748,7 +750,7 @@ sub iterate_proveit_on_libs(){
 		  $current_formulas = $1;
 		  $current_attempted = $2;
 		  $current_proofs = $3;
-		  
+
 		  $totalformulas += $current_formulas;
 		  $totalproofs += $current_proofs;
 		} else {
@@ -765,11 +767,11 @@ sub iterate_proveit_on_libs(){
 		if ($no_color) {
 		  print $status;
 		} else {
-		  print DARK RED $status; 
+		  print DARK RED $status;
 		}
 		#<
 		my $status_message = "";
-		if ( $current_formulas >= 0 ) { 
+		if ( $current_formulas >= 0 ) {
 		  my $miss   = $current_formulas-$current_attempted;
 		  my $unsucc = $current_formulas-$current_proofs;
 		  my $comma  = "";
@@ -799,7 +801,7 @@ sub iterate_proveit_on_libs(){
 		# Update my return value
 		$return_value=$fail if ($fail > $return_value);
 	      }
-	    
+
 	      if ($fail == 0) {
 		$status = $ret_val_labels{0};
 		$status = "OK" if ! $status;
@@ -808,7 +810,7 @@ sub iterate_proveit_on_libs(){
 		if ($no_color) {
 		  print $status;
 		} else {
-		  print DARK GREEN $status; 
+		  print DARK GREEN $status;
 		}
 		#<
 		$endln = "]\n";
@@ -822,7 +824,7 @@ sub iterate_proveit_on_libs(){
 	      # since warnings are already there.
 	      print "*** $warn_msg\n" if $warn_msg && $no_printout;
 
-	      $depfile = "$lib/pvsbin/$top.dep";
+	      $depfile = $dir ? "$dir/$lib.dep" : "$lib/$lib.dep";
 	      if (-f $depfile) {
 		open (DEPFILE,"$depfile");
 		while (<DEPFILE>) {
@@ -836,7 +838,7 @@ sub iterate_proveit_on_libs(){
 			  !(grep {$_ eq $deplib} @libraries) &&
 			  -d $deplib && -f "$deplib/$top.pvs") {
 			print "*** Warning: Library $deplib is out of order. It should appear before $lib in $file\n";
-		      } 
+		      }
 		    } else {
 		      print "*** Warning: Cannot check library order. Obsolete dep file for library $lib? Try regenerating it.\n";
 		    }
@@ -864,7 +866,7 @@ sub iterate_proveit_on_libs(){
     my $missed = $totalformulas-$totalproofs;
     $mssg .= "*** Grand Totals: $totalproofs proofs / $totalformulas formulas. Missed: $missed formulas.\n";
   }
-  $mssg .= "*** Number of libraries: $libs\n"; 
+  $mssg .= "*** Number of libraries: $libs\n";
   print $mssg;
   $summary .= $mssg;
   #>
@@ -904,17 +906,17 @@ die "$file is a directory\n" if -d $file;
 open (INFILE,$file) || die "File $file not found\n";
 
 if (!$out && !$cleanall && !$clean && !$execute && !$dryrun) {
-  my ($base,$path,$type) = fileparse($file,qr{\..*});  
+  my ($base,$path,$type) = fileparse($file,qr{\..*});
   $out  = "$path$base";
-  
+
   my $dol = join('_',@dolist);
-  $dol =~ s/\//-/g;  
+  $dol =~ s/\//-/g;
   $out .= "-$dol" if $dol;
-  
+
   my $butl = join('_',@butlist);
-  $butl =~ s/\//-/;  
+  $butl =~ s/\//-/;
   $out .= "-but_$butl" if $butl;
-  
+
   $out .= "-from_$from" if $from;
   $out .= "-to_$to" if $to;
   $out .= "-after_$after" if $after;
@@ -925,7 +927,7 @@ if (!$out && !$cleanall && !$clean && !$execute && !$dryrun) {
 
 print "PID: $$\n" if ($pid);
 
-if ($out) { 
+if ($out) {
   open (OUTFILE,">$out") or print "*** Warnining: cannot create output file $out.\n";
 }
 
@@ -955,17 +957,18 @@ $go = "ok" if !($from || $after || @dolist);
 if ($clearpath) {
   print "Cleaning PVS_LIBRARY_PATH variable.\n";
   $ENV{'PVS_LIBRARY_PATH'}="";
-  $addpath=1;
+  $addpath="" unless defined $addpath;
 }
 
-if ($addpath) {
-    $pwd=Cwd::getcwd();
-    print "Adding $pwd to PVS_LIBRARY_PATH.\n";
+if (defined $addpath) {
+    # Empty path means current directory
+    my $pathto_add = $addpath eq "" ? Cwd::getcwd() : $addpath;
+    print "Adding $pathto_add to PVS_LIBRARY_PATH.\n";
     $pvslibrarypath = $ENV{'PVS_LIBRARY_PATH'};
     if ($pvslibrarypath) {
-	$ENV{'PVS_LIBRARY_PATH'}="$pwd:$pvslibrarypath";
+	$ENV{'PVS_LIBRARY_PATH'}="$pathto_add:$pvslibrarypath";
     } else {
-	$ENV{'PVS_LIBRARY_PATH'}="$pwd";
+	$ENV{'PVS_LIBRARY_PATH'}="$pathto_add";
     }
 }
 
