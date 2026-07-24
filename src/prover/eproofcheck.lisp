@@ -292,7 +292,7 @@
 	       (*top-proofstate*
 		(make-instance 'top-proofstate
 		  :current-goal sequent
-		  :label (string (id decl))
+		  :label (coerce (string (id decl)) '(vector character))
 		  :strategy (if strategy
 				strategy
 				(query*-step))
@@ -837,10 +837,10 @@
 		   (setf (status-flag proofstate) '!      
 			 (current-rule proofstate) '(propax)
 			 (printout proofstate)
-			 (format nil "~%which is trivially true.")
+			 (sformat "~%which is trivially true.")
 			 (justification proofstate)
 			 (make-instance 'justification
-			   :label (label-suffix (label proofstate))
+			   :label (coerce (label-suffix (label proofstate)) '(vector character))
 			   :rule '(propax)))
 		   proofstate)	    ;;else display goal, 
 		  ;;eval strategy, invoke rule-apply
@@ -897,7 +897,7 @@
 				(integerp *rerunning-proof-message-time*)
 				(> (realtime-since *rerunning-proof-message-time*)
 				   3000)) ;;print mini-buffer msg
-		       (setq *rerunning-proof* (format nil "~a." *rerunning-proof*))
+		       (setq *rerunning-proof* (sformat "~a." *rerunning-proof*))
 		       (setq *rerunning-proof-message-time*
 			     (get-internal-real-time))
 		       (pvs-message *rerunning-proof*))
@@ -977,7 +977,7 @@
 
 (defun write-prover-log ()
   (when nil ;;*prover-log*
-    (let* ((logfile (format nil "~a/prooflog-~a.json"
+    (let* ((logfile (sformat "~a/prooflog-~a.json"
 		      *pvs-log-directory* (subseq (iso8601-date) 0 10)))
 	   (prlog (jsonify-prover-log)))
       (with-open-file (out logfile :direction :output
@@ -1034,7 +1034,7 @@
     (when (and pp
 	       (or quiet-flag (not *suppress-printing*)))
       (let ((pp (if (consp pp)
-		    (apply #'format nil
+		    (apply #'sformat
 			   (car pp)
 			   (mapcar #'(lambda (x)
 				       (if (stringp x)
@@ -1550,7 +1550,7 @@
 	  (if (char= (char suffix lcpos) #\T)
 	      (setq suffix (subseq suffix 0 lcpos)))
 	  (if (every #'digit-char-p suffix)
-	      suffix
+	      (coerce suffix '(vector character))
 	      ""))
 	"")))
 
@@ -2522,7 +2522,7 @@
 		    :label
 		    (if (= (length allsubgoals) 1)
 			(label proofstate)
-			(format nil "~a.~a~@[T~]" (label proofstate)
+			(sformat "~a.~a~@[T~]" (label proofstate)
 				goalnum (memq goal tcc-subgoals)))
 		    :subgoalnum (1- goalnum)
 		    :proof-dependent-decls proof-dependent-decls
@@ -2613,10 +2613,10 @@
     x))
 
 (defmethod pc-parse (input nt)
-  (parse :string (format nil "~a" input) :nt nt))
+  (parse :string (sformat "~a" input) :nt nt))
 
 (defmethod pc-parse ((input integer) nt)
-  (parse :string (format nil "~a" input) :nt nt))
+  (parse :string (sformat "~a" input) :nt nt))
 
 (defmethod pc-parse ((input syntax) nt)
   (declare (ignore nt))
@@ -2746,7 +2746,9 @@
 (defun sexp-unparse (form)
   (cond ((consp form)(cons (sexp-unparse (car form))
 			   (sexp-unparse (cdr form))))
-	((or (null form)(symbolp form)(numberp form) (stringp form))
+	((stringp form)
+	 (coerce form '(vector character))) ;; 
+	((or (null form) (symbolp form) (numberp form))
 	 form)
 	((typep form 'justification)
 	 (copy form 'label (sexp-unparse (label form))
@@ -2765,7 +2767,7 @@
 				  (declared-type form))
 			     (type form)))
 			:string t)))
-	(t (format nil "~a" form))))
+	(t (sformat "~a" form))))
 
 (defmethod extract-justification-sexp ((list list))
   (cond ((null list) nil)
@@ -2797,7 +2799,7 @@
 		 (full-label (if (and full-label
 				      (not (equal jlabel label))
 				      (> (length jlabel) 0))
-				     (format nil "~a.~a" full-label jlabel)
+				     (sformat "~a.~a" full-label jlabel)
 				 full-label))
 		 (ejustif (cons top-step
 				(editable-justification* (subgoals justif)
@@ -3522,7 +3524,7 @@
 		 (when skoconsts
 		   (format stream "~%Skolem-constants:")
 		   (dolist (sc skoconsts)
-		     (let* ((decl (format nil "~a: ~a" (id sc) (type sc)))
+		     (let* ((decl (sformat "~a: ~a" (id sc) (type sc)))
 			    (def (when (definition sc)
 				   (unpindent (definition sc) 5 :string t))))
 		       (format stream "~%  ~a~@[ = ~a~]" decl def))))))
@@ -3951,10 +3953,10 @@
     (if newline-position
 	(let ((preline (subseq comment-string 0 newline-position))
 	      (postline (subseq comment-string (1+ newline-position))))
-	  (format nil ";;; ~a~%~a"
+	  (sformat ";;; ~a~%~a"
 	    preline
 	    (semi-colonize postline)))
-	(format nil ";;; ~a" comment-string))))
+	(sformat ";;; ~a" comment-string))))
 
 (defun comment-step (string)
   #'(lambda (ps)
@@ -4058,5 +4060,5 @@
 (defun unique-ps-id (ps &optional (label (label ps)) (num 0))
   (let ((par-ps (parent-proofstate ps)))
     (if (or (null par-ps) (not (string= (label par-ps) label)))
-	(format nil "~a-~d" label num)
+	(sformat "~a-~d" label num)
 	(unique-ps-id par-ps label (1+ num)))))

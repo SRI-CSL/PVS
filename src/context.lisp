@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; context.lisp -- Context structures and accessors
 ;; Author          : Sam Owre
-;; Created On      : Fri Oct 29 19:09:32 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Sun May 28 19:14:47 1995
-;; Update Count    : 69
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -1752,7 +1747,7 @@ Note that this doesn't check if the .pvs file is the matches as well."
   `(("proof-id" . ,(string (car prf)))
     ("description" . ,(cadr prf))
     ("create-date" . ,(caddr prf))
-    ("script" . ,(format nil "~s" (cadddr prf)))
+    ("script" . ,(sformat "~s" (cadddr prf)))
     ("refers-to" . ,(mapcar #'proof-decl-ref-alist (car (cddddr prf))))))
 
 (defun proof-decl-ref-alist (decl-ref)

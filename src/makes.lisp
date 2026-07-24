@@ -1077,13 +1077,14 @@
   (assert (symbolp id))
   (assert (or (null description) (stringp description)))
   (assert (typep script '(or list justification)))
+  (let ((nscript (if (= (length script) 3)
+		     (append script (list nil))
+		     script)))
   (make-instance 'tcc-proof-info
     :id id
     :description description
     :create-date create-date
-    :script (if (= (length script) 3)
-		(append script (list nil))
-		script)
+    :script (sexp-unparse nscript) ;; make sure labels are all (vector character)
     :refers-to (typecase (car refers-to)
 		 (declaration refers-to)
 		 (declaration-entry
@@ -1091,20 +1092,21 @@
 		 (t (mapcar #'get-referenced-declaration
 		      (remove-if #'null refers-to))))
     :origin (make-tcc-origin origin)
-    :decision-procedure-used decision-procedure))
+    :decision-procedure-used decision-procedure)))
 
 (defun make-proof-info (script &optional id description)
   (assert (symbolp id))
   (assert (or (null description) (stringp description)))
   (assert (typep script '(or list justification)))
   ;;(assert (not (null script)))
-  (make-instance 'proof-info
-    :id id
-    :description description
-    :script (if (= (length script) 3)
-		(append script (list nil))
-		script)
-    :create-date (get-universal-time)))
+  (let ((nscript (if (= (length script) 3)
+		     (append script (list nil))
+		     script)))
+    (make-instance 'proof-info
+      :id id
+      :description description
+      :script (sexp-unparse nscript) ;; make sure labels are all (vector character)
+      :create-date (get-universal-time))))
 
 (defun make-tcc-proof-info (script &optional id description origin)
   (assert (symbolp id))
