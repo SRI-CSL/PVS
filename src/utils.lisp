@@ -6168,10 +6168,12 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 	  (t (flatten-proof-script-list (break "flatten-proof-script-list"))))))
 
 #+sbcl
-(defun dbg ()
+(defun dbg (&optional (on t))
   "Sets optimization for debugging, giving more visibility to subsequently
 loaded files and defuns."
-  (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
+  (if on
+      (proclaim '(optimize (speed 0) (safety 3) (cl:debug 3)))
+      (proclaim '(optimize (speed 3) (safety 1) (cl:debug 0)))))
 
 #+sbcl
 (defun control-stack-size ()
