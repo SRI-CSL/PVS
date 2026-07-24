@@ -1063,7 +1063,10 @@ is multiple lines and let the user decide what to do."
 			     message "\n" output "\n" prompt))
 		    (if noninteractive
 			(if pvs-validating
-			    (progn (pvs-message "ERROR: %s" output) t)
+			    (progn (if (string-match "IGNORE-ERR" output)
+				       (pvs-message output)
+				       (pvs-message "ERROR: %s" output))
+				   t)
 			    (error output))
 			(message "Preserve break")
 			(pvs-bury-output)
