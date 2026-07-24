@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-emacs.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Thu Dec 16 02:42:01 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Mon Dec 17 01:30:40 2012
-;; Update Count    : 23
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -74,6 +69,15 @@
 	   (if *in-checker*
 	       (restore)
 	       (pvs-abort)))))))
+
+(defun break-but-ignore-as-error ()
+  "Used by Emacs validate to purposely cause a break, but not treat it as an error
+Needed when we want to test how things work in a break."
+  (handler-case (error "Breaking on purpose for the test")
+    (error (cnd)
+      ;; Make sure IGNORE-ERR is printed befoe the break
+      (format t "IGNORE-ERR")
+      (break (format nil "~a" cnd)))))
 
 #+(or akcl harlequin-common-lisp)
 (defmacro pvs-errors (form)
