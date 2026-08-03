@@ -807,12 +807,13 @@ use binfiles."
 				  new-theories))
 		   (setq *context-modified* t))
 		 (dolist (sess *all-sessions*)
-		   (let ((sess-th (module (formula-decl sess))))
-		     (when (some #'(lambda (cth)
-				     (or (eq cth sess-th)
-					 (memq cth (all-importings sess-th))))
-				 new-theories)
-		       (prover-step (id sess) "(lisp (setq *context-modified* t))"))))
+		   (when (proof-session? sess) 
+		     (let ((sess-th (module (formula-decl sess))))
+		       (when (some #'(lambda (cth)
+				       (or (eq cth sess-th)
+					   (memq cth (all-importings sess-th))))
+				   new-theories)
+		         (prover-step (id sess) "(lisp (setq *context-modified* t))")))))
 		 (values new-theories nil t)))))))
 
 (defun parse-all-pvs-files (dir)
@@ -1378,19 +1379,19 @@ escapes here."
 			  (module? othy)
 			  (car diff))
 		     (assert (memq (car diff) (all-decls othy)))
-		     (let* ((odecl (or (car (last (generated (car diff))))
+		     (let* ((odecl (or (car (generated (car diff)); (last)
+					    )
 				       (car diff)))
 			    (otail (memq odecl (all-decls othy)))
 			    (last-kept-decl (unless (or (formal-decl? odecl)
-							(generated-by odecl))
+							(and (generated-by odecl)
+							     (not (nonempty-type-decl? odecl))))
 					      ;;NSH(5-27-26): moved remove-if out of ldiff
 					      ;;otherwise the null-compare assert in merged-parsed-theory-decls fails
-					      (car (last (remove-if #'(lambda (d)
-									 (or (formal-decl? d)
-									     (generated-by d)))
-							    (ldiff
-							     (all-decls othy)
-							     otail)))))))
+					      (car (last (remove-if #'formal-decl?
+								    (ldiff
+									 (all-decls othy)
+									 otail)))))))
 		       (cond (last-kept-decl
 			      ;; Copies lexical info from new to old, up to diff.
 			      ;; This is info that can't change the semantcs, like
