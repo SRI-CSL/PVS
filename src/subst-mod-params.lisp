@@ -1250,7 +1250,7 @@
 	  (dolist (decl (all-decls nth))
 	    (when (declaration? decl)
 	      (setf (module decl) nth)
-	      (setf (refers-to decl) (regenerate-xref decl))))
+	      (regenerate-xref decl)))
 	  (setf (all-usings nth)
 		(let ((imps nil))
 		  (maphash #'(lambda (th thinsts)
