@@ -1379,19 +1379,18 @@ escapes here."
 			  (module? othy)
 			  (car diff))
 		     (assert (memq (car diff) (all-decls othy)))
-		     (let* ((odecl (or (car (generated (car diff)); (last)
-					    )
+		     (let* ((odecl (or (car (last (generated (car diff))))
 				       (car diff)))
 			    (otail (memq odecl (all-decls othy)))
 			    (last-kept-decl (unless (or (formal-decl? odecl)
-							(and (generated-by odecl)
-							     (not (nonempty-type-decl? odecl))))
-					      ;;NSH(5-27-26): moved remove-if out of ldiff
-					      ;;otherwise the null-compare assert in merged-parsed-theory-decls fails
-					      (car (last (remove-if #'formal-decl?
-								    (ldiff
-									 (all-decls othy)
-									 otail)))))))
+							(generated-by odecl))
+					      (car (last (remove-if #'(lambda (d)
+									 (or (formal-decl? d)
+									     (and (generated-by d)
+										  (tcc? d))))
+							    (ldiff
+							     (all-decls othy)
+							     otail)))))))
 		       (cond (last-kept-decl
 			      ;; Copies lexical info from new to old, up to diff.
 			      ;; This is info that can't change the semantcs, like
