@@ -255,7 +255,8 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream
-	  "#<Resolution ~@<~a~:_:~a~:>>"
+	  "#<~(~a~) ~@<~a~:_:~a~:>>"
+	(class-name (class-of res))
 	(resolution-string res)
 	(when (declaration res)
 	  (if (eq (kind-of (declaration res)) 'expr)
