@@ -66,6 +66,8 @@ QUICKLISP_HOME ?= $(HOME)/quicklisp
 QUICKLISP_SETUP ?= $(QUICKLISP_HOME)/setup.lisp
 PVS_BUILD_CACHE ?= $(abspath .build/cache)
 PVS_BUILD_LOGDIR ?= $(abspath .build/log)
+PYTHON3 ?= python3
+GENERATE_BUILD_METADATA = $(PYTHON3) "$(PVSPATH).github/scripts/generate-build-metadata.py" --version "$(VERSION)" --platform "$(PLATFORM)" --toolchain "sbcl=$(SBCL_VERSION)" --toolchain "allegro=$(ALLEGRO_VERSION)"
 
 # If SBCL_HOME is set, it is preferred over SBCL; useful when testing
 # PVS in different SBCL versions
@@ -535,6 +537,11 @@ devel : $(allegro-devel)
 
 runtime : $(sbcl-rt) # $(allegro-rt)
 
+all devel runtime :
+	@$(GENERATE_BUILD_METADATA) --output metadata.json --artifact-root . \
+		--artifact pvs.asd \
+		--artifact "$(bindir)" --artifact "yices/$(PLATFORM)"
+
 # Quicklisp is a package manager for lisp; see src/quicklisp.lisp for details.
 # The install location is configurable so CI/release builds can avoid mutating
 # the builder's home-directory init files.
@@ -721,6 +728,7 @@ platforms = ix86_64-Linux,ix86-MacOSX,arm-MacOSX
 comma:= ,
 
 clean :
+	-rm -f metadata.json
 	-rm $(pvs-parser-out)
 	-for d in $(subst $(comma), ,$(fasldirs)) ; do \
 		rm -rf $$d; \
@@ -735,6 +743,7 @@ clean :
 	done
 
 distclean :
+	rm -f metadata.json
 	for e in $(subst $(comma), ,$(faslexts)) ; do \
 		find . -type f -name \*.$$e -exec rm \{\} \; ; \
 	done
@@ -784,6 +793,9 @@ define create-distdir
 	    || exit 1; \
 	  fi; \
 	done
+	@$(GENERATE_BUILD_METADATA) --output "$(DISTDIR)/metadata.json" --artifact-root "$(DISTDIR)" \
+		--artifact pvs.asd --artifact "bin/$(PLATFORM)" --artifact "yices/$(PLATFORM)"
+	@cp -f "$(DISTDIR)/metadata.json" metadata.json
 endef
 
 allegro-distdir: $(ALLEGRO_DISTFILES)
@@ -803,6 +815,9 @@ sbclisp-distdir: $(SBCLISP_DISTFILES)
 	  *) : ;; \
 	esac
 	@"./.github/scripts/strip-runtime-debug-info.sh" --runtime-dir "$(DISTDIR)/bin/$(PLATFORM)/runtime"
+	@$(GENERATE_BUILD_METADATA) --output "$(DISTDIR)/metadata.json" --artifact-root "$(DISTDIR)" \
+		--artifact pvs.asd --artifact "bin/$(PLATFORM)" --artifact "yices/$(PLATFORM)"
+	@cp -f "$(DISTDIR)/metadata.json" metadata.json
 
 dist-gzip: dist-allegro-gzip dist-sbclisp-gzip
 

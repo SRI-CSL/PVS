@@ -639,7 +639,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(if buff
 	    (with-current-buffer buff
 	      (save-buffer)
-	      (setq buffer-modified nil))
+	      (set-buffer-modified-p nil))
 	    (save-buffer))
 	buff)
       (save-buffer)))

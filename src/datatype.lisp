@@ -235,7 +235,7 @@ generated")
 	      (pvs-message "Error in writing out ~a: ~a"
 		(namestring adt-path) condition)
 	      (pvs-message "Wrote pvs file ~a" adt-file)))
-	(chmod "a-w" (namestring adt-path)))
+	(ignore-errors (chmod "a-w" (namestring adt-path))))
       ;; (assert (and #+allegro (file-exists-p adt-path)
       ;; 		 #-allegro (probe-file adt-path)
       ;; 		 (get-context-file-entry (filename adt))

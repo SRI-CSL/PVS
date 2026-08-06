@@ -44,14 +44,6 @@
 
 (defvar *parsed-theories-seen* nil)
 
-(defstruct pvs-meta-info
-  version
-  environment
-  patch-files
-  strategy-files
-  lisp-files
-  libfiles)
-
 ;; M3: This debugger is used when running the rpc server to automatically abort
 ;; to top-level on any signal, so they don't affect the server responsiveness [Sept 2020].
 ;; (defun rpc-mode-debugger (condition me-or-my-encapsulation)
@@ -815,12 +807,13 @@ use binfiles."
 				  new-theories))
 		   (setq *context-modified* t))
 		 (dolist (sess *all-sessions*)
-		   (let ((sess-th (module (formula-decl sess))))
-		     (when (some #'(lambda (cth)
-				     (or (eq cth sess-th)
-					 (memq cth (all-importings sess-th))))
-				 new-theories)
-		       (prover-step (id sess) "(lisp (setq *context-modified* t))"))))
+		   (when (proof-session? sess) 
+		     (let ((sess-th (module (formula-decl sess))))
+		       (when (some #'(lambda (cth)
+				       (or (eq cth sess-th)
+					   (memq cth (all-importings sess-th))))
+				   new-theories)
+		         (prover-step (id sess) "(lisp (setq *context-modified* t))")))))
 		 (values new-theories nil t)))))))
 
 (defun parse-all-pvs-files (dir)
@@ -1391,11 +1384,10 @@ escapes here."
 			    (otail (memq odecl (all-decls othy)))
 			    (last-kept-decl (unless (or (formal-decl? odecl)
 							(generated-by odecl))
-					      ;;NSH(5-27-26): moved remove-if out of ldiff
-					      ;;otherwise the null-compare assert in merged-parsed-theory-decls fails
 					      (car (last (remove-if #'(lambda (d)
 									 (or (formal-decl? d)
-									     (generated-by d)))
+									     (and (generated-by d)
+										  (tcc? d))))
 							    (ldiff
 							     (all-decls othy)
 							     otail)))))))
@@ -2827,6 +2819,7 @@ Note that even proved ones get overwritten"
 		   (terpri out) (terpri out)))))
 	 (theory-decl (format nil "~a.~a" (id theory) (decl-to-declname decl)))
 	 (buffer (format nil "~a.~a.tccs" (id theory) (decl-to-declname decl))))
+    (declare (ignorable unparsed-a-tcc?))
     (cond ((not (string= str ""))
 	   (let ((*valid-id-check* nil))
 	     (setf (tcc-form decl)
@@ -2836,7 +2829,7 @@ Note that even proved ones get overwritten"
 	   (pvs-buffer buffer str t t)
 	   theory-decl)
 	  (t (pvs-message "Declaration ~a.~a has no TCCs"
-	       (id theory) (decl-to-declname decl))))))
+			  (id theory) (decl-to-declname decl))))))
 
 ;;; Given a declaration, returns a declname, used to create the
 ;;; show-declaration-tccs buffer.  For a declaration with an id, this is

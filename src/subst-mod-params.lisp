@@ -1250,7 +1250,7 @@
 	  (dolist (decl (all-decls nth))
 	    (when (declaration? decl)
 	      (setf (module decl) nth)
-	      (setf (refers-to decl) (regenerate-xref decl))))
+	      (regenerate-xref decl)))
 	  (setf (all-usings nth)
 		(let ((imps nil))
 		  (maphash #'(lambda (th thinsts)
@@ -1329,7 +1329,7 @@
 					   (id decl))))
 	       (setf (generated ndecl) (remove-if #'tcc? (generated ndecl)))
 	       ;; (when (generated ndecl) (break "subst-mod-params-decls with generated"))
-	       (when bval
+	       (when (and bval (not (var-decl? ndecl)))
 		 (if (actual? bval)
 		     (cond ((type-value bval)
 			    (let* ((tval (type-value bval))
@@ -2655,8 +2655,10 @@ lift[T: TYPE]: DATATYPE BEGIN  | lift_nat: DATATYPE BEGIN
     (cond ((declaration? bdg)
 	   (let* ((ndacts (when dacts (subst-mod-params* dacts modinst bindings)))
 		  (mi (if (eq (id (module-instance expr)) (id modinst))
-			  (lcopy modinst :dactuals ndacts)
-			  (progn (when (formals (module bdg))
+			  (lcopy modinst :dactuals ndacts
+				 :actuals (unless (var-decl? bdg) (actuals modinst)))
+			  (progn (when (and (formals (module bdg))
+					    (not (var-decl? decl)))
 				   (break "name-expr no actuals available"))
 				 (make-theoryname (module bdg)))))
 		  ;;(alist (mapcar #'cons (decl-formals decl) (decl-formals bdg)))
@@ -2670,20 +2672,17 @@ lift[T: TYPE]: DATATYPE BEGIN  | lift_nat: DATATYPE BEGIN
 	  ((actual? bdg)
 	   (if dacts
 	       (let* ((ex (expr bdg))
-		      (nex (subst-acts-in-form ex bindings))
+		      (nex1 (subst-acts-in-form ex bindings))
 		      (adecl (when dacts
 			       (if (name-expr? ex)
 				   (declaration ex)
 				   (break "dacts1a"))))
 		      (dfmls (when dacts (decl-formals adecl)))
 		      (sdacts (when dacts (subst-mod-params* dacts modinst bindings)))
-		      (nex (if dacts
-			       (subst-for-formals
-				nex
-				(mapcar #'(lambda (x y) (cons x (type-value y)))
-				  dfmls sdacts))
-			       nex))
-		      )
+		      (nex (subst-for-formals
+			    nex1
+			    (mapcar #'(lambda (x y) (cons x (type-value y)))
+			      dfmls sdacts))))
 		 #+badassert
 		 (assert (every #'(lambda (fp)
 				    (or (memq fp (decl-formals (current-declaration)))
@@ -3141,6 +3140,14 @@ lift[T: TYPE]: DATATYPE BEGIN  | lift_nat: DATATYPE BEGIN
 		      (acons (car obindings) nbinding nil))))
 	 (cdr obindings) modinst bindings (cons nbinding nbindings)))
       (nreverse nbindings)))
+
+(defmethod subst-mod-params* ((expr array-expr) modinst bindings)
+  (let ((nexpr (call-next-method))
+	(nexprs (subst-mod-params* (exprs expr) modinst bindings)))
+    (cond ((eq nexpr expr)
+	   (lcopy nexpr :exprs nexprs))
+	  (t (setf (exprs nexpr) nexprs)
+	     nexpr))))
 
 (defmethod subst-mod-params* ((expr update-expr) modinst bindings)
   (with-slots (expression assignments type) expr

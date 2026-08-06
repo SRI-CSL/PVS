@@ -20,7 +20,7 @@
 		(car thf))))
 
 ;; Split string given a character
-(defun split (str char) 
+(defun split (str char)
   (when str
     (let ((pos (position char str)))
       (if pos
@@ -30,7 +30,7 @@
 	(list str)))))
 
 ;; Converts a string "th.f1:..:fn into a list ("th" "f1" ... "fn"),
-(defun thf2list (thf) 
+(defun thf2list (thf)
   (let* ((l (split thf #\.)))
     (cons (car l) (split (cadr l) #\:))))
 
@@ -51,7 +51,7 @@
 ;; that is alpabethically ordered and where formulas of the same theory are
 ;; put together (theories without formulas are removed)
 (defun thfs2list (thsf)
-  (let* ((l (sort (remove-if-not 
+  (let* ((l (sort (remove-if-not
 		   #'cdr
 		   (mapcar #'thf2list thsf))
 		  #'string<= :key #'car)))
@@ -137,7 +137,7 @@
 	    (idlength reporter)
 	    decl-id
 	    proof-status
-	    decision-procedure 
+	    decision-procedure
 	    (if time
 		(format nil "~v,2f" (timelength reporter) time)
 	      (format nil "~v<n/a~>" (timelength reporter))))))
@@ -190,11 +190,11 @@
 
 (defun get-obfuscated-path (pathname)
   "To address security concerns, a pathname gets obfuscated by replacing
-   know library paths by collection Ids, the home path by '$HOME', and 
+   know library paths by collection Ids, the home path by '$HOME', and
    the pvs path by '$PVS_DIR'."
   (let*((dir-names (cdr (pathname-directory pathname)))
 	(collection-id
-	 (when (fboundp 'extra-get-pvslib-id-from-dir) 
+	 (when (fboundp 'extra-get-pvslib-id-from-dir)
 	   (extra-get-pvslib-id-from-dir
 	    (format nil "~{/~a~}/" (subseq dir-names 0 (max 0 (- (length dir-names) 1))))))))
     (if collection-id
@@ -204,7 +204,7 @@
 		(substitute #\- #\/ collection-id)
 		(last dir-names))
       (let ((collection-id
-	     (when (fboundp 'extra-get-pvslib-id-from-dir) 
+	     (when (fboundp 'extra-get-pvslib-id-from-dir)
 	       (extra-get-pvslib-id-from-dir (directory-namestring pathname)))))
 	(if collection-id
 	    (format nil "~a/~a" (substitute #\- #\/ collection-id) (file-namestring pathname))
@@ -238,7 +238,7 @@
    (format stream "~%## Platform information ~%")
    (format stream "~&|  |  |~%|---|---|~%" )
    (format stream "~&| Machine Info | **~a** (~a - ~a - ~a ~a) |~%" (machine-instance) (machine-type) (machine-version) (software-type) (software-version))
-   (format stream "~&| PVS | ~a (~a) |~%" 
+   (format stream "~&| PVS | ~a (~a) |~%"
            (get-pvs-version)
 	   (let ((git-info (when (git-available-p) (git-current-branch))))
 	     (or git-info  "no git info available")))
@@ -283,7 +283,7 @@
 		 ((string= proof-status "untried") "✴")
 		 ((prefix? "proved" proof-status) "✅"))
 	   proof-status
-	   decision-procedure 
+	   decision-procedure
 	   (if time
 	       (secs->ddhhmmss time)
 	     "n/a"))))
@@ -342,7 +342,7 @@
    (format stream "Run started at ~a.~%~%" (starting-time reporter))
    (format stream "~& PVS Version ,  ~a  ~%" (get-pvs-version))
    (format stream "~& Lisp,  ~a ~a ~%" (lisp-implementation-type) (lisp-implementation-version))
-   (format stream "~& Patch Version,  ~a ~%" (or (get-patch-version) "n/a"))   
+   (format stream "~& Patch Version,  ~a ~%" (or (get-patch-version) "n/a"))
    (format stream "~& Library Path ~{, \"~a\"~^, ~%~} ~%" *pvs-library-path*)
    (format stream "~& Loaded Patches~{, \"~a\"~^, ~%~} ~%" *pvs-patches-loaded*))
   (with-open-file
@@ -354,7 +354,7 @@
 	   tot attempted proved missing (secs->ddhhmmss time)))
    (loop for cont in (grand-table reporter) when cont do (format stream cont)))
   (with-open-file
-   (stream (format nil "~a/~a" (dir reporter) (detailed-filename reporter)) :direction :output :if-exists :supersede)   
+   (stream (format nil "~a/~a" (dir reporter) (detailed-filename reporter)) :direction :output :if-exists :supersede)
    (loop for cont in (content reporter) when cont do (format stream cont))
    ;;
    ))
@@ -383,7 +383,7 @@
 	   "~&~a, ~a, ~a, ~a~%"
 	   decl-id
 	   proof-status
-	   decision-procedure 
+	   decision-procedure
 	   (if time
 	       (secs->ddhhmmss time)
 	     "n/a"))))
@@ -421,13 +421,13 @@
   "Proof-status reporters (by default, the classic mode is on)")
 
 (defun proveit-status-proof-theories (theories thfs)
-  #+pvsdebug (format t "~%[proveit-init.proveit-status-proof-theories] theories ~a thfs ~a ~%" theories thfs) 
+  #+pvsdebug (format t "~%[proveit-init.proveit-status-proof-theories] theories ~a thfs ~a ~%" theories thfs)
   (let ((return-value 0))
     (if theories
 	(let ((*disable-gc-printout* t))
 	  (pvs-buffer "PVS Status"
 		      (with-output-to-string
-			(*standard-output*)                                     
+			(*standard-output*)
 			(multiple-value-bind
 			    (tot proved unfin untried time)
 			    (proveit-proof-summaries theories thfs)
@@ -439,7 +439,7 @@
     return-value))
 
 (defun proveit-proof-summaries (theory-ids thfs
-				&optional filename)                            
+				&optional filename)
   (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
     #+pvsdebug (format t "~&[proveit-init.proveit-proof-summaries]   ~%")
     (dolist (reporter *proof-status-reporters*)
@@ -466,14 +466,14 @@
 	     (typechecked? theory))
 	(let* ((fdecls (provable-formulas theory)))
 	  (dolist (decl fdecls)
-	    (let ((dof (member (format nil "~a" (id decl)) (cdr thf) 
+	    (let ((dof (member (format nil "~a" (id decl)) (cdr thf)
 			       :test #'string=)))
 	       (when (or (null thf) dof)
 		 (let ((tm (if (run-proof-time decl)
 			       (/ (run-proof-time decl)
-				  internal-time-units-per-second 1.0)       
+				  internal-time-units-per-second 1.0)
 			     0)))
-		   (incf tot)                 
+		   (incf tot)
 		   (cond ((proved? decl)
 			  (incf proved))
 			 ((justification decl) (incf unfin))
@@ -511,7 +511,7 @@
 ;;
 ;;
 
-(defun proveit-theories (theories retry? thfs 
+(defun proveit-theories (theories retry? thfs
 			 &optional txtproofs texproofs use-default-dp? save-proofs?)
   (let ((*use-default-dp?* use-default-dp?))
     (read-strategies-files)
@@ -519,23 +519,23 @@
       (with-context theory
 	(let ((thf (car (member theory thfs :test #'eq-thf)))
 	      (main-filename (format nil "~a.proofs" (id theory))))
-	  (if (null thf)   
+	  (if (null thf)
 	      (pvs-message "Proving theory ~a" (id theory))
-	      (pvs-message "Proving formulas ~a in theory ~a" 
+	      (pvs-message "Proving formulas ~a in theory ~a"
 		(cdr thf) (id theory)))
 	  (when texproofs
 	    (let ((main-filename (format nil "pvstex/~a.tex" main-filename)))
 	      (when (probe-file main-filename) (delete-file main-filename))))
 	  (let ((*justifications-changed?* nil))
 	    (dolist (decl (provable-formulas theory))
-	      (let ((dof (member (format nil "~a" (id decl)) (cdr thf) 
+	      (let ((dof (member (format nil "~a" (id decl)) (cdr thf)
 				 :test #'string=)))
 		(when (or (null thf) dof)
 		  (setq *last-proof* (pvs-prove-decl decl retry?))
 		  (when txtproofs
-		    (with-open-file 
+		    (with-open-file
 			(*standard-output*
-			 (ensure-directories-exist 
+			 (ensure-directories-exist
 			  (pathname (format nil "pvstxt/~a.txt" (id decl))))
 			 :direction :output
 			 :if-does-not-exist :create
@@ -551,7 +551,7 @@
 ;;
 
 (defun now-today ()
-  (multiple-value-bind (s mi h d mo y dow dst tz) 
+  (multiple-value-bind (s mi h d mo y dow dst tz)
 		       (get-decoded-time)
 		       (declare (ignore tz dst dow))
 		       (format nil "~a:~a:~a ~a/~a/~a" h mi s mo d y)))
@@ -563,7 +563,7 @@
    no id can be found for the directory ''/Users/username/pvs/nasalib/'."
   (let*((dir-names (cdr (pathname-directory pathname)))
 	(collection-id
-	 (when (fboundp 'extra-get-pvslib-id-from-dir) 
+	 (when (fboundp 'extra-get-pvslib-id-from-dir)
 	   (extra-get-pvslib-id-from-dir
 	    (format nil "~{/~a~}/" (subseq dir-names 0 (max 0 (- (length dir-names) 1))))))))
     (if collection-id
@@ -594,7 +594,8 @@
 		   context proveitarg pvsfile import scripts write-scripts
 		   traces force autotop typecheckonly txtproofs texproofs preludext
 		   disabled-oracles enabled-oracles auto-fix? default-proof thfs theories
-		   dependencies alternative-summary-modes debug-mode-on? outdir outbasename)
+		   dependencies depfile alternative-summary-modes debug-mode-on? outdir outbasename
+		   purge?)
   (let* ((*print-readably* nil)
 	 (*noninteractive* t)
 	 (*pvs-verbose* (if traces 3 2))
@@ -637,7 +638,7 @@
 		  (grand-totals-filename md-reporter)
 		  (detailed-filename md-reporter)
 		  (run-report-filename md-reporter))))
-      (format t "~%*** ~%*** Processing ~a (~a)~%*** Generated by ~a~%" 
+      (format t "~%*** ~%*** Processing ~a (~a)~%*** Generated by ~a~%"
 	proveitarg current-timestamp proveitversion)
       ;; auto-fix
       (when (and auto-fix? (numberp auto-fix?))
@@ -649,7 +650,7 @@
 	(format  t "*** Using default proof for open branches: ~a~%" default-proof))
       (extra-disable-oracles disabled-oracles enabled-oracles)
       (let ((orcls (extra-list-oracles)))
-	(when orcls 
+	(when orcls
 	  (format  t "*** Trusted Oracles~%")
 	  (loop for orcl in orcls
 	     do (format t "***   ~a: ~a~%"
@@ -665,7 +666,7 @@
 	  (top-already-exists (cnd)
 	   (format t "~%*** Warning: ~a. Omitting generation.~%" (format nil "~a" cnd)))))
       #+pvsdebug (format t "~&[proveit-init.proveit] after autotop checkpoint~%")
-      (when pvsfile 
+      (when pvsfile
 	(let ((*pvs-error-hook*
 	       (lambda (msg err buff place)
 		 (declare (ignore buff place))
@@ -675,10 +676,9 @@
       #+pvsdebug (format t "~&[proveit-init.proveit] after typecheck checkpoint~%")
       (save-context)
       (let* ((theory-names (or theories (and pvsfile (theories-in-file pvsfile))))
-	     (pvstheories 
+	     (pvstheories
 	      (if import (imported-theories-in-theories theory-names)
-		  (mapcar #'get-typechecked-theory theory-names)))
-	     (depfile (pathname (format nil "pvsbin/~a.dep" (or pvsfile "bot")))))
+		  (mapcar #'get-typechecked-theory theory-names))))
 	;; check unreachable theories
 	#+pvsdebug (format t "~%[proveit-init.proveit] pvsfile ~a import ~a~%" pvsfile import)
 	(when (and (string= pvsfile "top") import)
@@ -688,22 +688,22 @@
 		 (loop for th being the hash-values
 		       of (pvs-theories (current-workspace)) collect (filename th)))
 		(missing-files (set-difference files-in-dir reachable-files :test #'string=)))
-	    #+pvsdebug (format t "~%[proveit-init.proveit] files-in-dir ~{~a ~}~%" files-in-dir) 
-	    #+pvsdebug (format t "~%[proveit-init.proveit] reachable-files ~{~a ~}~%" reachable-files) 
-	    #+pvsdebug (format t "~%[proveit-init.proveit] missing-files ~{~a ~}~%" missing-files) 
+	    #+pvsdebug (format t "~%[proveit-init.proveit] files-in-dir ~{~a ~}~%" files-in-dir)
+	    #+pvsdebug (format t "~%[proveit-init.proveit] reachable-files ~{~a ~}~%" reachable-files)
+	    #+pvsdebug (format t "~%[proveit-init.proveit] missing-files ~{~a ~}~%" missing-files)
 	    (when missing-files
 	      (let ((*disable-gc-printout* t))
 		(let ((plural? (< 1 (length missing-files))))
 		  (format t "~&*** Warning: file~:[~;s~] ~{~#[~;~a.pvs~;~a.pvs and ~a.pvs~:;~@{~a.pvs~#[~;, and ~:;, ~]~}~]~} ~:[is~;are~] not reachable from top.pvs~%" plural? missing-files plural?))))))
 	;; dependencies
-	(unless (equal dependencies "nil") 
-	  (let((relative-path-lib-names? (equal dependencies "relative")))
-	    (with-open-file 
-	      (stream (ensure-directories-exist depfile) 
+	(unless (string= dependencies "")
+	  (let((relative-path-lib-names? (string= dependencies "relative")))
+	    (with-open-file
+	      (stream (ensure-directories-exist depfile)
 		      :direction :output
 		      :if-exists :supersede
 		      :if-does-not-exist :create)
-	      (format stream 
+	      (format stream
 		      "~{~a~^,~}~%"
 		      (mapcar #'(lambda (th)
 				  (qualified-th-name th relative-path-lib-names?))
@@ -721,13 +721,13 @@
 	       for idth = (id th)
 	       do (format stream "~a:~{~a~^,~}~%" (qualified-th-name th relative-path-lib-names?)
 			  (mapcar
-			      #'(lambda(x) 
+			      #'(lambda(x)
 				  (if (lib-datatype-or-theory? x)
 				      (format nil
 					      "~a" (qualified-th-name x relative-path-lib-names?))
 				    (qualified-th-name x relative-path-lib-names?)))
 			      (immediate-theories-in-theory idth)))))))
-	(let ((pvstheories 
+	(let ((pvstheories
 	       (remove-if #'(lambda (th) (typep th '(or datatype codatatype)))
 			  pvstheories)))
 	  (if typecheckonly
@@ -745,26 +745,35 @@
 				   prl-filename (id theory))
 		      (install-prooflite-scripts-from-prl-file theory prlfile force))
 		    (install-prooflite-scripts (filename theory) (id theory) 0 force))))
-	      #+pvsdebug (format t "~%[proveit-init.proveit] before proveit-theories~%") 
+	      #+pvsdebug (format t "~%[proveit-init.proveit] before proveit-theories~%")
 	      (proveit-theories pvstheories force thfs txtproofs texproofs nil
 				;; if auto-fix?, save proofs
 				auto-fix?)
 	      (setq proveit-return-value
-		    (proveit-status-proof-theories pvstheories thfs))))
+		    (proveit-status-proof-theories pvstheories thfs))
+	      (when purge?
+		(dolist (theory pvstheories)
+		  (purge-proved-formulas-file (filename theory))))))
 	  (save-context)
 	  (when write-scripts
 	    (dolist (theory pvstheories)
 	      (write-all-prooflite-scripts-to-file (format nil "~a" (id theory)))))))
       #+pvsdebug (format t "~&[proveit-init.proveit] proveit-return-value ~a~%" proveit-return-value)
-      (bye proveit-return-value)))) 
+      (bye proveit-return-value))))
 
 (defun proveit ()
-  (let* ((proveitversion 
+  (let* ((proveitversion
 		    (or (environment-variable "PROVEITVERSION") (format nil "proveit ~a" *prooflite-version*)))
 	 (context (environment-variable "PROVEITPVSCONTEXT"))
 	 (proveitarg (environment-variable "PROVEITARG"))
-	 (pvsfile (let ((name (environment-variable "PROVEITPVSFILE")))
+	 (pvsfile (let ((name (environment-variable "PROVEITPVSFILENAME")))
 		    (when (and name (string/= name "")) name)))
+	 (outdir (let ((name (environment-variable "PROVEITOUTDIR")))
+		   (when (and name (string/= name "")) name)))
+	 (outbasename (let ((name (environment-variable "PROVEITOUTBASENAME")))
+			(when (and name (string/= name "")) name)))
+	 (dependencies (environment-variable "PROVEITDEPENDENCIES"))
+	 (depfile (environment-variable "PROVEITDEPFILE"))
 	 (import (read-from-environment-variable "PROVEITLISPIMPORT"))
 	 (scripts (read-from-environment-variable "PROVEITLISPSCRIPTS"))
 	 (write-scripts (read-from-environment-variable "PROVEITLISPWRITESCRIPTS"))
@@ -777,7 +786,7 @@
 	 (preludext (remove-duplicates
 			(read-from-environment-variable "PROVEITLISPPRELUDEXT")
 		      :test #'string=))
-	 (disabled-oracles (remove-duplicates 
+	 (disabled-oracles (remove-duplicates
 		      (read-from-environment-variable "PROVEITLISPDISABLE")
 		    :test #'string=))
 	 (enabled-oracles (remove-duplicates
@@ -785,25 +794,22 @@
 		     :test #'string=))
 	 (auto-fix? (read-from-environment-variable "PROVEITLISPAUTOFIX"))
 	 (default-proof (let ((envstr (environment-variable
-				       "PROVEITLISPDEFAULTPROOFSCRIPT")))
+				       "PROVEITLISPDEFAULTPROOFSTEP")))
 			  (when envstr (read-from-string envstr))))
 	 (thfs (thfs2list (read-from-environment-variable "PROVEITLISPTHFS")))
 	 (theories (remove-duplicates
 		       (read-from-environment-variable "PROVEITLISPTHEORIES")
 		     :test #'string=))
-	 (dependencies (environment-variable "PROVEITLISPDEPENDENCIES"))
 	 (alternative-summary-modes (remove-duplicates
 				    (read-from-environment-variable "PROVEITLISPALTSUMMARIESMODE")
 				    :test #'string=))
 	 (debug-mode-on? (environment-variable "DEBUG"))
-	 (outdir (let ((name (environment-variable "PROVEITLISPOUTDIR")))
-		   (when (and name (string/= name "")) name)))
-	 (outbasename (let ((name (environment-variable "PROVEITLISPOUTBASENAME")))
-			(when (and name (string/= name "")) name))))
+	 (purge? (read-from-environment-variable "PROVEITLISPPURGE")))
     (proveit-on proveitversion context proveitarg pvsfile import scripts write-scripts
 		traces force autotop typecheckonly txtproofs texproofs preludext
 		disabled-oracles enabled-oracles auto-fix? default-proof thfs theories
-		dependencies alternative-summary-modes debug-mode-on? outdir outbasename))) 
+		dependencies depfile alternative-summary-modes debug-mode-on? outdir outbasename
+		purge?)))
 
 (defun collect-top-theories ()
   (let ((files-in-dir
@@ -819,7 +825,7 @@
 				 do (loop for th in theories-in-file
 					  do (module-hierarchy* th nil))
 				 append (delete-if #'generated-by theories-in-file))))
-      (loop for th being the hash-keys of *modules-visited* 
+      (loop for th being the hash-keys of *modules-visited*
 	    for used-ths = (gethash th *modules-visited*)
 	    unless (generated-by th)
 	    do (setq theories-in-dir (set-difference theories-in-dir used-ths)))

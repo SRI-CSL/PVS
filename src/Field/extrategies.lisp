@@ -491,13 +491,13 @@ T, returns NIL when theory is not imported in current theory."
 	  theory))))
 
 (defun extra-imported-theory? (theory)
-  "Find if THEORY is an imported thoery in the current theory.
-Return NIL if not."
+  "Find if THEORY is an imported theory in the current theory (it is assummed that current theory
+is always imported in itself). Return NIL if not."
   (when theory
     (let ((current-th (current-theory))
 	  (qid        (extra-qid-theory theory)))
       (when current-th
-	(find qid (all-imported-theories current-th)
+	(find qid (cons current-th (all-imported-theories current-th))
 	      :test (lambda (qid th) (string= qid (extra-qid-theory th))))))))
 
 (defun extra-qid-theory (theory)
@@ -3574,7 +3574,8 @@ when the list of FNUMS is over. Options are as in eval-formula."
 		   (unbound-variable
 		    (c)
 		    (when *extra-debug-verbose*
-		      (format t "[suppress-when] Variable ~a is unbound in ~a. Expression assumed not to hold~%" (cell-error-name c) expr))))))))
+		      (format t "[suppress-when] Variable ~a is unbound in ~a. Expression assumed not to hold~%"
+			      (cell-error-name c) expr))))))))
     (setf (documentation fun 'function)
 	  (format nil "when expression ~a holds" expr))
     fun))
@@ -3591,7 +3592,8 @@ when the list of FNUMS is over. Options are as in eval-formula."
 		    (c)
 		    (not
 		     (when *extra-debug-verbose*
-		       (format t "[suppress-unless] Variable ~a is unbound in ~a. Expression assummed not to hold~%" (cell-error-name c) expr)))))))))
+		       (format t "[suppress-unless] Variable ~a is unbound in ~a. Expression assummed not to hold~%"
+			       (cell-error-name c) expr)))))))))
     (setf (documentation fun 'function)
 	  (format nil "unless expression ~a holds" expr))
     fun))
@@ -3700,9 +3702,8 @@ string, it prints the the string resulting from evaluating (format nil <FMSTRING
 when the i-th data input is a Lisp expression EXPR, it prints the line <expr> = <va>, where <val>
 is the evaluation of <expr>. In addition, this function will print backtrace frames (according to
 global variable *extra-debug-frame-count* and status of strategies stack at the point where the functions is
-called. Compiling a call of this function through (extra-set-debug-mode ...) without enabling debug mode
-results in a compilation error. This compilation error could be avoided by adding the compilation
-directive #+extra-debug before the call to the function."
+called. Compiling a call of this function without enabling debug mode results in a compilation error.
+This compilation error could be avoided by adding the compilation directive #+extra-debug before the call to the function."
   `(extra-debug-aux "*extra-debug-print*" ,data))
 
 (defmacro extra-debug-break (&rest data)
@@ -3716,15 +3717,15 @@ extra-debug-print. Data is a list of either a string, a formatted string of the 
 If the i-th data input is a string, it prints the string.If the i-th data input is formatted string,
 it prints the the string resulting from evaluating (format nil <FMSTRING> <e1> ... <en>). Otherwise,
 when the i-th data input is a Lisp expression EXPR, it prints the line <expr> = <va>, where <val>
-is the evaluation of <expr>. Compiling a call of this function without enabling debug mode through
-(extra-set-debug-mode ...) results in a compilation error. This compilation error could be avoided by adding
-the compilation directive #+extra-debug before the call to the function."
+is the evaluation of <expr>. Compiling a call of this function without enabling debug mode results
+in a compilation error. This compilation error could be avoided by adding the compilation
+directive #+extra-debug before the call to the function."
   (unless (member :extra-debug *features*)
     (error *debug-fail-msg*))
   `(format t "~%[*extra-debug-println*] ~{~a~@[ = ~{~s~}~]~^, ~}~%"
 	   (extra-debug-data ,data)))
 
-(defun extra-show-debug-mode (&optional msgs)
+(defun extra-show-debug-mode__ (&optional msgs)
    (format nil "~&*extra-debug-frame-count*: ~a~
                 ~%*extra-debug-files*: ~a~
                 ~%*extra-debug-verbose*: ~a~
@@ -3735,8 +3736,12 @@ the compilation directive #+extra-debug before the call to the function."
 	   (documentation *extra-debug-suppress* 'function)
 	   (member :extra-debug *features*) msgs))
 
+(defun extra-show-debug-mode ()
+  "[Extrategies] Show current debug mode."
+  (format t (extra-show-debug-mode__)))
+
 (defstrat show-debug-mode ()
-  (let ((msg (extra-show-debug-mode)))
+  (let ((msg (extra-show-debug-mode__)))
     (printf "~a" msg))
   "[Extrategies] Show current debug mode.")
 
@@ -3802,10 +3807,38 @@ previously in *extra-debug-files*. When :LIB is t, it treats the file names in F
 PVS home directory or to any directory in the PVS Library Path."
   (let ((loaded-notfound (extra-load-files__ files reset lib)))
     (when loaded-notfound
-      (format t "~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~a~^, ~}~]"
+      (format t "~%~@[~%Loaded files: ~{~a~^, ~}~]~@[~%Files not found: ~{~a~^, ~}~]"
 	      (car loaded-notfound) (cdr loaded-notfound)))))
 
 ;; See set-debug mode
+(defun extra-set-debug-mode__ (mode &key files frames (verbose 'none) suppress)
+  (let ((msgs))
+    (unless (equal verbose 'none)
+      (setq *extra-debug-verbose* (when verbose t)))
+    (cond ((eq mode 'toggle)
+	   (if (member :extra-debug *features*)
+	       (setq *features* (delete :extra-debug *features*))
+	       (pushnew :extra-debug *features*)))
+	  ((eq mode 'enable)
+	   (pushnew :extra-debug *features*))
+	  ((eq mode 'disable)
+	   (setq *features* (delete :extra-debug *features*)))
+	  (mode (push "MODE should be one of toggle, enable, or disable" msgs)))
+    (when frames
+      (if (numberp frames)
+	  (setq *extra-debug-frame-count* frames)
+	(push (format nil "FRAMES (~a) must be a number" frames) msgs)))
+    (when suppress
+      (let ((fsuppress (eval suppress)))
+	(if (typep fsuppress 'function)
+	    (setq *extra-debug-suppress* fsuppress)
+	  (push (format nil "SUPPRESS (~a) must be a function" suppress) msgs))))
+    (when files
+      (let ((notfound (cdr (extra-load-files__ files t nil))))
+	(when notfound (format nil "Files not found: ~{~s~^, ~}" notfound))))
+    (extra-show-debug-mode__ msgs)))
+
+
 (defun extra-set-debug-mode (&optional mode &key files frames (verbose 'none) suppress)
   "[Extrategies] Load files or directories specified in FILES afer enabling/disabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
@@ -3854,33 +3887,10 @@ TECHNICAL NOTES:
  - EXPR in (suppress-when EXPR) and (suppress-unless EXPR) can be an arbitrary Lisp code including
    global variables, variables that are printed by extra-debug-print and extra-debug-break, and tags
    that are specified by those functions."
-  (let ((msgs))
-    (unless (equal verbose 'none)
-      (setq *extra-debug-verbose* (when verbose t)))
-    (cond ((eq mode 'toggle)
-	   (extra-set-debug-mode
-	    (if (member :extra-debug *features*) 'disable 'enable) :files files :frames frames :verbose verbose))
-	  ((eq mode 'enable)
-	   (pushnew :extra-debug *features*))
-	  ((eq mode 'disable)
-	   (setq *features* (delete :extra-debug *features*)))
-	  (mode (push "MODE should be one of toggle, enable, or disable" msgs)))
-    (when frames
-      (if (numberp frames)
-	  (setq *extra-debug-frame-count* frames)
-	(push (format nil "FRAMES (~a) must be a number" frames) msgs)))
-    (when suppress
-      (let ((fsuppress (eval suppress)))
-	(if (typep fsuppress 'function)
-	    (setq *extra-debug-suppress* fsuppress)
-	  (push (format nil "SUPPRESS (~a) must be a function" suppress) msgs))))
-    (when files
-      (let ((notfound (cdr (extra-load-files__ files t nil))))
-	(when notfound (format nil "Files not found: ~{~s~^, ~}" notfound))))
-    (extra-show-debug-mode msgs)))
+  (format t (extra-set-debug-mode__ mode :files files :frames frames :verbose verbose :suppress suppress)))
 
 (defstrat set-debug-mode (&key mode frames (verbose none) suppress &rest files)
-  (let ((msg (extra-set-debug-mode mode :files files :frames frames :verbose verbose :suppress suppress)))
+  (let ((msg (extra-set-debug-mode__ mode :files files :frames frames :verbose verbose :suppress suppress)))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer enabling/disabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
@@ -3932,14 +3942,14 @@ TECHNICAL NOTES:
 ")
 
 (defstrat enable-debug-mode (&rest files)
-  (let ((msg (extra-set-debug-mode 'enable :files (or files *extra-debug-files*))))
+  (let ((msg (extra-set-debug-mode__ 'enable :files (or files *extra-debug-files*))))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer enabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.
 If FILES is null, load files in *extra-debug-files*.")
 
 (defstrat disable-debug-mode (&rest files)
-  (let ((msg (extra-set-debug-mode 'disable :files (or files *extra-debug-files*))))
+  (let ((msg (extra-set-debug-mode__ 'disable :files (or files *extra-debug-files*))))
     (printf "~a" msg))
   "[Extrategies] Load files or directories specified in FILES afer disabling debug mode.
 In the case of directories, load all files *.pvs, pvs-attachments, and pvs-strategies in the directory.

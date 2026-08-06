@@ -102,7 +102,7 @@ Assume loadedfile is not null and there is not theory with theoryid in current c
 
 (defun load-pvs-attachment (file &optional force (verbose t))
   "Load file containing PVS attachment. FILE is provided as an absolute path, e.g.,
-using make-pathname or merge-pathnames."
+using probe-file, make-pathname or merge-pathnames."
   (let ((source (probe-file file)))
     (when source
       (let ((outdated-src (outdated-sourcefile source)))

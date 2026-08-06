@@ -56,7 +56,7 @@ echo "Cloning release source $source_sha to $source_tree"
 git clone --no-local --quiet "$repo_dir" "$source_tree"
 git -C "$source_tree" checkout --quiet --detach "$source_sha"
 
-for required in configure Makefile.in .github/scripts/audit-release-artifact.sh .github/scripts/strip-runtime-debug-info.sh; do
+for required in configure Makefile.in .github/scripts/audit-release-artifact.sh .github/scripts/generate-build-metadata.py .github/scripts/strip-runtime-debug-info.sh; do
   [[ -e $source_tree/$required ]] || fail "prepared source tree is missing $required"
 done
 

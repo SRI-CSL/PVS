@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; context.lisp -- Context structures and accessors
 ;; Author          : Sam Owre
-;; Created On      : Fri Oct 29 19:09:32 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Sun May 28 19:14:47 1995
-;; Update Count    : 69
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -1752,7 +1747,7 @@ Note that this doesn't check if the .pvs file is the matches as well."
   `(("proof-id" . ,(string (car prf)))
     ("description" . ,(cadr prf))
     ("create-date" . ,(caddr prf))
-    ("script" . ,(format nil "~s" (cadddr prf)))
+    ("script" . ,(sformat "~s" (cadddr prf)))
     ("refers-to" . ,(mapcar #'proof-decl-ref-alist (car (cddddr prf))))))
 
 (defun proof-decl-ref-alist (decl-ref)
@@ -3374,36 +3369,154 @@ each context, the theories are in alphabetic order."
 	      (t (format t "~%Theory ~a not found, ignoring" theoryid)))
 	(restore-proofs-from-split-file* input prfpath)))))
 
+;; Begin fix for cleanup-proofs-pvs-file
+
+;;; Fix for cleanup-proofs-pvs-file
+;;;
+;;; The original implementation has a bug: read-pvs-file-proofs converts the
+;;; file format (11-element proofs) to an internal format (6-element proofs),
+;;; but cleanup-proofs-pvs-file then writes this internal format back to the file.
+;;; This creates malformed .prf files that fail with "(SYMBOLP ID) failed".
+;;;
+;;; The fix is to read the raw file format without conversion, then filter it.
+
+(defun read-raw-pvs-file-proofs (filename &optional (dir *default-pathname-defaults*))
+  "Read proof file without converting to internal format"
+  (let ((prf-file (make-prf-pathname filename dir)))
+    (if (uiop:file-exists-p prf-file)
+        (handler-case
+            (with-open-file (input prf-file :direction :input)
+              (read-proof-file-stream input))
+          (error (condition)
+            (pvs-message "Error reading proof file ~a:~%  ~a"
+                         (namestring prf-file) condition)
+            nil))
+        (pvs-message "Proof file ~a does not exist" prf-file))))
+
 (defun cleanup-proofs-pvs-file (file)
-  (let* ((aproofs (read-pvs-file-proofs file))
-	 (dproofs (collect-default-proofs aproofs)))
+  "Remove non-default proofs from a .prf file"
+  (let* ((aproofs (read-raw-pvs-file-proofs file))
+         (dproofs (collect-default-proofs-raw aproofs)))
     (if (equalp aproofs dproofs)
-	(pvs-message "Proof file is already cleaned up")
-	(let* ((prf-file (make-prf-pathname file))
-	       (prf-fstr (namestring prf-file))
-	       (prf-bak (concatenate 'string prf-fstr ".bak")))
-	  (pvs-message "Moving ~a to ~a" prf-file prf-bak)
-	  (rename-file prf-file prf-bak)
-	  (pvs-message "Writing cleaned up proof file ~a" prf-file) 
-	  (multiple-value-bind (value condition)
-	      (ignore-file-errors
-	       (with-open-file (out prf-file :direction :output
-				    :if-exists :supersede)
-		 (mapc #'(lambda (prf)
-			   (write prf :length nil :level nil :escape t
-				  :pretty *save-proofs-pretty*
-				  :stream out)
-			   (when *save-proofs-pretty* (terpri out)))
-		       dproofs)
-		 (terpri out)))
-	    (declare (ignore value))
-	    (if (or condition
-		    (setq condition
-			  (and *validate-saved-proofs*
-			       (invalid-proof-file prf-file dproofs))))
-		(pvs-message "Error writing out proof file:~%  ~a"
-		  condition)
-		(pvs-message "Proof file ~a written" prf-file)))))))
+        (pvs-message "Proof file is already cleaned up")
+        (let* ((prf-file (make-prf-pathname file))
+               (prf-fstr (namestring prf-file))
+               (prf-bak (concatenate 'string prf-fstr ".bak")))
+          (pvs-message "Moving ~a to ~a" prf-file prf-bak)
+          (rename-file prf-file prf-bak)
+          (pvs-message "Writing cleaned up proof file ~a" prf-file)
+          (multiple-value-bind (value condition)
+              (ignore-file-errors
+               (with-open-file (out prf-file :direction :output
+                                    :if-exists :supersede)
+                 (mapc #'(lambda (prf)
+                           (write prf :length nil :level nil :escape t
+                                  :pretty *save-proofs-pretty*
+                                  :stream out)
+                           (when *save-proofs-pretty* (terpri out)))
+                       dproofs)
+                 (terpri out)))
+            (declare (ignore value))
+            (if (or condition
+                    (setq condition
+                          (and *validate-saved-proofs*
+                               (invalid-proof-file prf-file dproofs))))
+                (pvs-message "Error writing out proof file:~%  ~a"
+                  condition)
+                (pvs-message "Proof file ~a written" prf-file)))))))
+
+(defun collect-default-proofs-raw (proofs)
+  "Collect only default proofs from raw proof structure"
+  (mapcar #'collect-theory-default-proofs-raw proofs))
+
+(defun collect-theory-default-proofs-raw (proofs)
+  "Process one theory's proofs"
+  (cons (car proofs) ;; theory id
+        (mapcar #'collect-formula-default-proofs-raw (cdr proofs))))
+
+(defun collect-formula-default-proofs-raw (proofs)
+  "Keep only the default proof for a formula.
+   Input format: (formula-id index proof1 proof2 ...)
+   Output format: (formula-id 0 default-proof)"
+  (let* ((index (cadr proofs))
+         (all-proofs (cddr proofs))
+         (default-proof (nth index all-proofs)))
+    (list (car proofs)              ;; formula id
+          0                         ;; new index (always 0 now)
+          default-proof)))
+
+;; End fix cleanup-proofs-pvs-file
+
+;;; ============================================================================
+;;; Purge non-default proofs for a single formula (if default is proved)
+;;; ============================================================================
+
+(defun purge-formula-proofs (theoryref formularef &optional (save? t))
+  "Remove non-default proofs from a formula if its default proof status is 'proved'.
+   THEORYREF: theory name (string)
+   FORMULAREF: formula name (string)
+   SAVE?: if T, save the proof file after purging (default T)
+   Returns T if proofs were purged, NIL otherwise.
+   Uses find-formula from prooflite.lisp"
+  (let ((formula (find-formula theoryref formularef)))
+    (cond
+      ((null formula)
+       (pvs-message "Formula ~a not found in theory ~a" formularef theoryref)
+       nil)
+      ((not (eq (proof-status formula) 'proved))
+       (pvs-message "Formula ~a is not proved (status: ~a)"
+                    formularef (proof-status formula))
+       nil)
+      ((<= (length (proofs formula)) 1)
+       (pvs-message "Formula ~a has only ~a proof(s), nothing to purge"
+                    formularef (length (proofs formula)))
+       nil)
+      (t
+       (purge-formula-proofs* formula save?)))))
+
+(defun purge-formula-proofs* (formula &optional save?)
+  "Actually purge the non-default proofs from FORMULA.
+   SAVE?: if T, save the proof file after purging"
+  (let* ((default (default-proof formula))
+         (num-before (length (proofs formula))))
+    ;; Keep only the default proof
+    (setf (proofs formula) (list default))
+    ;; Update the proof file if requested
+    (when save?
+      (let ((file (filename (module formula))))
+        (save-pvs-file-proofs file t)))  ;; force save
+    (pvs-message "Purged ~a non-default proof(s) from ~a (kept: ~a)"
+                 (1- num-before) (id formula) (id default))
+    t))
+
+(defun purge-proved-formulas-file (filename &optional (dir *default-pathname-defaults*))
+  "Purge non-default proofs from all proved formulas in a file.
+   FILENAME: pvs/prf file name
+   Returns the number of formulas purged."
+  (let ((prf-file (make-prf-pathname filename dir)))
+    (unless (uiop:file-exists-p prf-file)
+      (pvs-message "Proof file ~a does not exist" prf-file)
+      (return-from purge-proved-formulas-file nil))
+    (with-pvs-file
+	(file) prf-file
+	(let ((theories (cdr (gethash file (current-pvs-files))))
+	      (count 0))
+	  (dolist (th theories)
+	    (let ((theory (get-theory th)))
+	      (when theory
+		(dolist (decl (append (assuming theory)
+				      (when (module? theory) (theory theory))))
+		  (when (and (formula-decl? decl)
+                             (eq (proof-status decl) 'proved)
+                             (> (length (proofs decl)) 1))
+                    (purge-formula-proofs* decl nil)  ;; don't save yet
+                    (incf count))))))
+	  (when (> count 0)
+            (save-pvs-file-proofs file t))  ;; save once at the end
+	  (if (zerop count)
+              (pvs-message "No formulas needed purging in ~a" file)
+              (pvs-message "Purged proofs from ~a formula(s) in ~a" count file))
+	  count))))
 
 (defun collect-default-proofs (proofs)
   (mapcar #'collect-theory-default-proofs proofs))

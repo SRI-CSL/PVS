@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; macros.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Sun Jan  9 18:44:56 1994
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Dec 14 13:20:02 2012
-;; Update Count    : 16
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -41,18 +36,43 @@
 ;;; Note that there may be other ways to generate base-strings, but these are
 ;;; the two most common uses in PVS.
 
+;; #+sbcl
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (pushnew '(sb-ext:*print-vector-length* . nil)
+;; 	   sb-ext:*debug-print-variable-alist*
+;; 	   :test #'equal))
+
 #+sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (fboundp 'orig-format)
-    (setf (symbol-function 'orig-format) (symbol-function 'format))))
+  (unless (fboundp '%orig-string)
+    (setf (symbol-function '%orig-string) (symbol-function 'string))))
+
+#+sbcl
+(sb-ext:without-package-locks
+    (defun string (obj)
+      "Redefinition of string to return (vector charater).
+The original definition is in 'orig-string."
+      (coerce (funcall #'%orig-string obj) '(vector character))))
+
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (fboundp '%orig-format)
+    (setf (symbol-function '%orig-format) (symbol-function 'format))))
 
 #+sbcl
 (sb-ext:without-package-locks
     (defun format (destination control-string &rest format-arguments)
       "Redefinition of format to return (vector charater) when a string is returned.
 The original definition is in 'orig-format."
-      (let ((result (apply #'orig-format destination control-string format-arguments)))
+      (let ((result (apply #'%orig-format destination control-string format-arguments)))
    	(if (typep result 'base-string) (coerce result '(vector character)) result))))
+
+;; The above doesn't work in when compiled for optimization - seems to bring
+;; in the original format
+(defun sformat (control-string &rest format-arguments)
+  "Replaces format nil, as otherwise it returns a simple-base-string,
+which prints as, e.g., #A((1) BASE-CHAR . \"1\") instead of \"1\""
+  (coerce (apply #'format nil control-string format-arguments) '(vector character)))
 
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*

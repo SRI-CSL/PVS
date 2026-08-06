@@ -115,6 +115,7 @@ emacsargs=
 getversion=
 loadafter=
 nobg=
+noinform=
 noinit=
 nowin=
 opsys=`uname -s`
@@ -350,10 +351,12 @@ case $PVSLISP in
 	ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys/home
 	noinit="-qq"
 	evalflag="-e"
+	noinform=
 	;;
     sbclisp)
 	noinit="--no-userinit"
 	evalflag="--eval"
+	noinform="--noinform"
 	;;
 esac
 
@@ -389,7 +392,7 @@ if [ -n "${getversion}" ]
 then
   export PVSEMACS=
   export PVS_LIBRARY_PATH=
-  echo `"${pvsimagepath}" ${noinit} ${evalflag} "(progn(pvs::pvs-version)(terpri)(pvs::exit-pvs))"`
+  echo `"${pvsimagepath}" ${noinform} ${noinit} ${evalflag} "(progn(pvs::pvs-version)(terpri)(pvs::exit-pvs))"`
   exit 0
 fi
 
@@ -411,7 +414,7 @@ fi
 # Now run pvs, either through Emacs or the raw PVS image
 # emacsargs is the arguments not otherwise hendled while processing the command line args
 if [ -n "${rawmode}" ] # No Emacs involved - PVSEMACS is not set
-then "${pvsimagepath}" ${noinit} ${otherargs}
+then "${pvsimagepath}" ${noinform} ${noinit} ${otherargs}
 elif [ -n "${batch}" ] # Emacs, but no windows
 then ${PVSEMACS} ${batch} ${dotemacs} ${pvsemacsinit} ${emacsargs} ${otherargs} 2>&1
 elif [ -n "${nowin}" ]

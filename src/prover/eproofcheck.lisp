@@ -292,7 +292,7 @@
 	       (*top-proofstate*
 		(make-instance 'top-proofstate
 		  :current-goal sequent
-		  :label (string (id decl))
+		  :label (coerce (string (id decl)) '(vector character))
 		  :strategy (if strategy
 				strategy
 				(query*-step))
@@ -496,94 +496,93 @@
 			    (not (listp (car step)))))
 		   (cdr scr-new)))))
 
-;; Modified by MM to inclue auto-fix [February 19, 2020]
+;; Modified by M3 to inclue auto-fix [February 19, 2020]
 (defun save-proof-info (decl init-real-time init-run-time)
-  (unless (and (current-session))
-    (let* ((prinfo (let ((sess (current-session)))
-		     (if sess
-			 (make-prf-info decl nil (id sess) "")
-			 (default-proof decl))))
-	   (script (extract-justification-sexp
-		    (collect-justification *top-proofstate*)))
-	   (auto-fixed-prf
-	    ;; if the prf was rerun in *auto-fix-on-rerun* mode and it ended proved, save it.
-	    (and *auto-fix-on-rerun*
-		 (eq (status-flag *top-proofstate*) '!)
-		 (not *context-modified*))))
-      (cond ((or (null (script prinfo))
-		 (equal (script prinfo) '("" (postpone) nil nil))
-		 (and (tcc-decl? decl)
-		      (equal (script prinfo) (tcc-strategy decl))
-		      (not (or (equal script (tcc-strategy decl))
-			       (equal script (append (tcc-strategy decl) '(nil nil))))))
-		 (and (eq (status prinfo) 'proved)
-		      (eq (status-flag *top-proofstate*) '!)
-		      (or
-		       ;; next check is added to avoid crashing on malformed prf files.
-		       ;; should be handled another way (TODO)
-		       (not (or (equalp (car (script prinfo)) "")  
-				(and (stringp (car (script prinfo)))
-				     (char= (char (car (script prinfo)) 0) #\;))))
-		       (script-structure-changed? prinfo script))))
-	     (setf (script prinfo) script))
-	    ((and (or (not *proving-tcc*) auto-fixed-prf)
-		  (or (not *noninteractive*) auto-fixed-prf)
-		  script
-		  (not (equal script '("" (postpone) nil nil)))
-		  (not (equal (script prinfo) script))
-		  (or (pvs-noquestions *proof-prompt-behavior*)
-		      auto-fixed-prf
-		      (let ((ids (mapcar #'id
-				   (remove-if-not
-				       #'(lambda (prinfo)
-					   (equal (script prinfo) script))
-				     (proofs decl)))))
-			(pvs-yes-or-no-p
-			 "~@[This proof is already associated with this formula ~
+  (let* ((prinfo (let ((sess (current-session)))
+		   (if sess
+		       (make-prf-info decl nil (id sess) "")
+		       (default-proof decl))))
+	 (script (extract-justification-sexp
+		  (collect-justification *top-proofstate*)))
+	 (auto-fixed-prf
+	  ;; if the prf was rerun in *auto-fix-on-rerun* mode and it ended proved, save it.
+	  (and *auto-fix-on-rerun*
+	       (eq (status-flag *top-proofstate*) '!)
+	       (not *context-modified*))))
+    (cond ((or (null (script prinfo))
+	       (equal (script prinfo) '("" (postpone) nil nil))
+	       (and (tcc-decl? decl)
+		    (equal (script prinfo) (tcc-strategy decl))
+		    (not (or (equal script (tcc-strategy decl))
+			     (equal script (append (tcc-strategy decl) '(nil nil))))))
+	       (and (eq (status prinfo) 'proved)
+		    (eq (status-flag *top-proofstate*) '!)
+		    (or
+		     ;; next check is added to avoid crashing on malformed prf files.
+		     ;; should be handled another way (TODO)
+		     (not (or (equalp (car (script prinfo)) "")  
+			      (and (stringp (car (script prinfo)))
+				   (char= (char (car (script prinfo)) 0) #\;))))
+		     (script-structure-changed? prinfo script))))
+	   (setf (script prinfo) script))
+	  ((and (or (not *proving-tcc*) auto-fixed-prf)
+		(or (not *noninteractive*) auto-fixed-prf)
+		script
+		(not (equal script '("" (postpone) nil nil)))
+		(not (equal (script prinfo) script))
+		(or (pvs-noquestions *proof-prompt-behavior*)
+		    auto-fixed-prf
+		    (let ((ids (mapcar #'id
+				       (remove-if-not
+				        #'(lambda (prinfo)
+					    (equal (script prinfo) script))
+				        (proofs decl)))))
+		      (pvs-yes-or-no-p
+		       "~@[This proof is already associated with this formula ~
                        as ~{~a~^, ~}~%~]~
                     Would you like the proof to be saved~@[ anyway~]? "
-			 ids ids))))
-	     (cond ((and (not auto-fixed-prf)
-			 (or (pvs-noquestions *proof-prompt-behavior*)
-			     (pvs-yes-or-no-p
-			      "Would you like to overwrite the current proof (named ~a)? "
-			      (id prinfo))))
-		    (when (pvs-dont-ask *proof-prompt-behavior*)
-		      (format t "Overwriting proof named ~a" (id prinfo)))
-		    (setf (script prinfo) script))
-		   ((let ((sess (current-session)))
-		      (when sess
-			;; Note that it isn't made the default
-			(setf (script prinfo) script))))
-		   (t (let ((id (read-proof-id (next-proof-id decl)))
-			    (description (read-proof-description)))
-			(setq prinfo
-			      (make-default-proof decl script id
-						  description)))))))
-      (setf (real-time prinfo) (realtime-since init-real-time))
-      (setf (run-time prinfo) (runtime-since init-run-time))
-      (setf (run-date prinfo) (get-universal-time))
-      (when *use-default-dp?*
-	(setf (decision-procedure-used prinfo) *default-decision-procedure*))
-      (setf (proof-status decl)
-	    (if (eq (status-flag *top-proofstate*) '!)
-		(cond (*context-modified*
-		       (pvs-message "~a proved with modified context, so marked unchecked"
-			 (id decl))
-		       'unchecked)
-		      (t 'proved))
-		'unfinished))
-      (format-nif "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
-      (format-nif "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
-      (when (and *context-modified*
-		 (eq (proof-status decl) 'proved))
-	(setf (proof-status decl) 'unfinished)
-	(when (and (not *proving-tcc*)
-		   (pvs-yes-or-no-p
-		    "~%Context was modified in mid-proof.  ~
+		       ids ids))))
+	   (cond ((and (not auto-fixed-prf)
+		       (or (pvs-noquestions *proof-prompt-behavior*)
+			   (pvs-yes-or-no-p
+			    "Would you like to overwrite the current proof (named ~a)? "
+			    (id prinfo))))
+		  (when (pvs-dont-ask *proof-prompt-behavior*)
+		    (format t "Overwriting proof named ~a" (id prinfo)))
+		  (setf (script prinfo) script))
+		 ((let ((sess (current-session)))
+		    (when sess
+		      ;; Note that it isn't made the default
+		      (setf (script prinfo) script))))
+		 (t (let ((id (read-proof-id (next-proof-id decl)))
+			  (description (read-proof-description)))
+		      (setq prinfo
+			    (make-default-proof decl script id
+						description)))))))
+    (setf (real-time prinfo) (realtime-since init-real-time))
+    (setf (run-time prinfo) (runtime-since init-run-time))
+    (setf (run-date prinfo) (get-universal-time))
+    (when *use-default-dp?*
+      (setf (decision-procedure-used prinfo) *default-decision-procedure*))
+    (setf (proof-status decl)
+	  (if (eq (status-flag *top-proofstate*) '!)
+	      (cond (*context-modified*
+		     (pvs-message "~a proved with modified context, so marked unchecked"
+			          (id decl))
+		     'unchecked)
+		    (t 'proved))
+	      'unfinished))
+    (format-nif "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
+    (format-nif "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
+    (when (and *context-modified*
+	       (eq (proof-status decl) 'proved))
+      (setf (proof-status decl) 'unfinished)
+      (when (and (not *proving-tcc*)
+		 (pvs-yes-or-no-p
+		  "~%Context was modified in mid-proof.  ~
                      Would you like to rerun the proof?~%"))
-	  (let ((*in-checker* nil))
-	    (prove-decl decl :strategy '(then (rerun) (query*)))))))))
+	(let ((*in-checker* nil))
+	  (prove-decl decl :strategy '(then (rerun) (query*))))))))
 
 ;; Modified by MM to inclue auto-fix [February 19, 2020]
 (defun read-proof-id (default)
@@ -838,10 +837,10 @@
 		   (setf (status-flag proofstate) '!      
 			 (current-rule proofstate) '(propax)
 			 (printout proofstate)
-			 (format nil "~%which is trivially true.")
+			 (sformat "~%which is trivially true.")
 			 (justification proofstate)
 			 (make-instance 'justification
-			   :label (label-suffix (label proofstate))
+			   :label (coerce (label-suffix (label proofstate)) '(vector character))
 			   :rule '(propax)))
 		   proofstate)	    ;;else display goal, 
 		  ;;eval strategy, invoke rule-apply
@@ -898,7 +897,7 @@
 				(integerp *rerunning-proof-message-time*)
 				(> (realtime-since *rerunning-proof-message-time*)
 				   3000)) ;;print mini-buffer msg
-		       (setq *rerunning-proof* (format nil "~a." *rerunning-proof*))
+		       (setq *rerunning-proof* (sformat "~a." *rerunning-proof*))
 		       (setq *rerunning-proof-message-time*
 			     (get-internal-real-time))
 		       (pvs-message *rerunning-proof*))
@@ -978,7 +977,7 @@
 
 (defun write-prover-log ()
   (when nil ;;*prover-log*
-    (let* ((logfile (format nil "~a/prooflog-~a.json"
+    (let* ((logfile (sformat "~a/prooflog-~a.json"
 		      *pvs-log-directory* (subseq (iso8601-date) 0 10)))
 	   (prlog (jsonify-prover-log)))
       (with-open-file (out logfile :direction :output
@@ -1035,7 +1034,7 @@
     (when (and pp
 	       (or quiet-flag (not *suppress-printing*)))
       (let ((pp (if (consp pp)
-		    (apply #'format nil
+		    (apply #'sformat
 			   (car pp)
 			   (mapcar #'(lambda (x)
 				       (if (stringp x)
@@ -1551,7 +1550,7 @@
 	  (if (char= (char suffix lcpos) #\T)
 	      (setq suffix (subseq suffix 0 lcpos)))
 	  (if (every #'digit-char-p suffix)
-	      suffix
+	      (coerce suffix '(vector character))
 	      ""))
 	"")))
 
@@ -2523,7 +2522,7 @@
 		    :label
 		    (if (= (length allsubgoals) 1)
 			(label proofstate)
-			(format nil "~a.~a~@[T~]" (label proofstate)
+			(sformat "~a.~a~@[T~]" (label proofstate)
 				goalnum (memq goal tcc-subgoals)))
 		    :subgoalnum (1- goalnum)
 		    :proof-dependent-decls proof-dependent-decls
@@ -2614,10 +2613,10 @@
     x))
 
 (defmethod pc-parse (input nt)
-  (parse :string (format nil "~a" input) :nt nt))
+  (parse :string (sformat "~a" input) :nt nt))
 
 (defmethod pc-parse ((input integer) nt)
-  (parse :string (format nil "~a" input) :nt nt))
+  (parse :string (sformat "~a" input) :nt nt))
 
 (defmethod pc-parse ((input syntax) nt)
   (declare (ignore nt))
@@ -2747,7 +2746,9 @@
 (defun sexp-unparse (form)
   (cond ((consp form)(cons (sexp-unparse (car form))
 			   (sexp-unparse (cdr form))))
-	((or (null form)(symbolp form)(numberp form) (stringp form))
+	((stringp form)
+	 (coerce form '(vector character))) ;; 
+	((or (null form) (symbolp form) (numberp form))
 	 form)
 	((typep form 'justification)
 	 (copy form 'label (sexp-unparse (label form))
@@ -2766,7 +2767,7 @@
 				  (declared-type form))
 			     (type form)))
 			:string t)))
-	(t (format nil "~a" form))))
+	(t (sformat "~a" form))))
 
 (defmethod extract-justification-sexp ((list list))
   (cond ((null list) nil)
@@ -2782,7 +2783,7 @@
 ;;; ++ here means two or more.
 
 (defun editable-justification (justif &optional
-				      label xflag full-label no-escape?)
+				      label xflag full-label (no-escape? t))
   ;;NSH(1.3.98) if full-label is given, then the full label is
   ;;printed rather than just the branch numbers.
   (unless (null justif)
@@ -2798,7 +2799,7 @@
 		 (full-label (if (and full-label
 				      (not (equal jlabel label))
 				      (> (length jlabel) 0))
-				     (format nil "~a.~a" full-label jlabel)
+				     (sformat "~a.~a" full-label jlabel)
 				 full-label))
 		 (ejustif (cons top-step
 				(editable-justification* (subgoals justif)
@@ -3523,7 +3524,7 @@
 		 (when skoconsts
 		   (format stream "~%Skolem-constants:")
 		   (dolist (sc skoconsts)
-		     (let* ((decl (format nil "~a: ~a" (id sc) (type sc)))
+		     (let* ((decl (sformat "~a: ~a" (id sc) (type sc)))
 			    (def (when (definition sc)
 				   (unpindent (definition sc) 5 :string t))))
 		       (format stream "~%  ~a~@[ = ~a~]" decl def))))))
@@ -3952,10 +3953,10 @@
     (if newline-position
 	(let ((preline (subseq comment-string 0 newline-position))
 	      (postline (subseq comment-string (1+ newline-position))))
-	  (format nil ";;; ~a~%~a"
+	  (sformat ";;; ~a~%~a"
 	    preline
 	    (semi-colonize postline)))
-	(format nil ";;; ~a" comment-string))))
+	(sformat ";;; ~a" comment-string))))
 
 (defun comment-step (string)
   #'(lambda (ps)
@@ -4059,5 +4060,5 @@
 (defun unique-ps-id (ps &optional (label (label ps)) (num 0))
   (let ((par-ps (parent-proofstate ps)))
     (if (or (null par-ps) (not (string= (label par-ps) label)))
-	(format nil "~a-~d" label num)
+	(sformat "~a-~d" label num)
 	(unique-ps-id par-ps label (1+ num)))))

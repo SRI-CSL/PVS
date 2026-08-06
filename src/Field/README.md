@@ -42,15 +42,25 @@ such as [SLIME](https://slime.common-lisp.dev/) and [SLY](https://joaotavora.git
 
 The library includes the following strategy commands, which should be
 called within the interactive read-eval-loop of the PVS theorem prover.
--`(enable-debug-mode [<files>])` and `(disable-debug-mode [<files>])`:
-These commands enable/disable, respectively, debug mode, on a list of
+
+- `(set-debug-mode [<files>] :frames [<n>] :verbose [ none | nil | t ] :mode [ toggle | enable | disable ] :suppress [<suppress-function>])`: Configure debug mode.
+- `(enable-debug-mode [<files>])` and `(disable-debug-mode [<files>])`:
+These commands enable/disable, respectively. Optionally, load a list of
 Lisp files or directories containing Lisp files.
--`(set-debug-mode [<files>] :frames [<n>] :verbose [ none | nil | t ] :mode
-[ toggle | enable | disable ] :suppress [<suppress-function>])`:
-Configure debug mode.
-- `(show-debug-mode)`: Print current configuration of debug mode.
+- `(show-debug-mode)`: Print current configuration of debug mode. This strategy command
+uses the lisp function .
+- `(load-files [files] :reset [ nil | t ] :lib [ nil | t ])`: Load files and automatically load them next time this command is used.
+Reset memory when `:reset` is `t`. Load them from PVS directory when `:lib` is `t`.
 
 ### Lisp Functions
+The strategy commands listed above are provided for convience. However,
+their are built on the following Lisp functions, which can be directly executed using, for example, the `*pvs*`
+interactive buffer.
+- `(extra-set-debug-mode ['enable | 'disable] [:files <files>] [:suppres <suppress-function>])`: Configure debug mode.
+- `(extra-show-debug-mode)`: Print current configuration of debug mode.
+- `(extra-load-files [FILES | (FILE1 ... FILEn)] [:reset t] [:lib t])`: Load files.
+
+### Lisp Debugging Functions
 
 The Lisp functions
 `(extra-debug-println ...)`, `(extra-debug-print ...)`,
@@ -148,7 +158,7 @@ To print a message "**HERE**", the value of `fnum`, whether `fnum` is positive, 
 
 ```
 (let ((expr  (extra-get-formula fnum))
-      (dummy (extra-debug-println "**HERE**" 
+      (dummy (extra-debug-println "**HERE**"
               fnum (> fnum 0) expr (exists-expr? expr))
 ...)
 ```
@@ -347,7 +357,7 @@ ff
 gg
 ```
 
-The command `set-debug-mode` also accepts 
+The command `set-debug-mode` also accepts
 the option `:suppress <supp>`, where `<supp>` is a suppress function.
 The suppress function is used by
 by `(extra-debug-print ...)` and `(extra-debug-break ...)` to decide
@@ -489,7 +499,7 @@ Loading code instrumented with `extra-debug-print` or `extra-debug-println` with
 Rule? (mystrat 1)
 ...
 %%%
-%%% This code requires the feature :extra-debug. To avoid this error at compile time, 
+%%% This code requires the feature :extra-debug. To avoid this error at compile time,
 %%% use the conditional compilation directive #+extra-debug before (extra-debug-println ...)
 %%% (extra-debug-print ...), and (extra-debug-break ...).
 %%%

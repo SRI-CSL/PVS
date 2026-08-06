@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; substit.lisp -- 
 ;; Author          : N. Shankar
-;; Created On      : Thu Oct 27 00:15:26 1994
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 16:54:32 1998
-;; Update Count    : 6
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -206,16 +201,24 @@ it is nil in the substituted binding")
 	    ((typep (cdr binding) 'binding)
 	     (if (eq (car binding) (cdr binding))
 		 expr
-		 (let ((nex (if (typep (cdr binding) 'field-decl)
-				(change-class (copy (cdr binding))
-				    'field-name-expr)
-				(change-class (copy (cdr binding))
-				    'name-expr))))
+		 (let* ((nex (if (typep (cdr binding) 'field-decl)
+				 (change-class (copy (cdr binding))
+				     'field-name-expr)
+				 (change-class (copy (cdr binding))
+				     'name-expr)))
+			(eres (resolution expr))
+			(nres (if (conversion-resolution? eres)
+				  (make-instance 'conversion-resolution
+				    :module-instance (substit* (module-instance expr) alist)
+				    :declaration (cdr binding)
+				    :type (substit* (type eres) alist)
+				    :conversion (conversion eres))
+				  (mk-resolution (cdr binding)
+				    (current-theory-name)
+				    (type (cdr binding))))))
 		   (setf (parens nex) 0)
-		   (setf (resolutions nex)
-			 (list (mk-resolution (cdr binding)
-				 (current-theory-name)
-				 (type (cdr binding)))))
+		   (setf (resolutions nex) (list nres))
+		   (setf (type nex) (type nres))
 		   #+pvsdebug
 		   (assert (or (eq nex expr) (not (tc-eq nex expr))))
 		   nex)))
@@ -379,34 +382,39 @@ it is nil in the substituted binding")
 		(make!-injection?-application (index op) arg (actuals op)))
 	       (extraction-expr
 		(make!-extraction-application (index op) arg (actuals op)))))
-	    (t (let* ((stype (find-supertype (type op)))
-		      (nex (simplify-or-copy-app
-			    expr op arg
-			    (if (typep (domain stype) 'dep-binding)
-				(new-substit-hash
-				 (substit* (range stype)
-					   (acons (domain stype)
-						  arg nil)))
-				(range stype)))))
-		 (cond ((not (application? nex))
-			(if (compatible? (type expr) (type nex))
-			    nex
-			    (let ((sexpr (subst-mod-params nex
-					 (theory-instance (current-declaration)))))
-			      sexpr)))
-		       ((and (not (compatible? (dep-binding-type (domain stype))
-					       (type (argument nex))))
-			     (assuming-tcc? (current-declaration))
-			     (theory-instance (current-declaration))
-			     (mappings (theory-instance (current-declaration))))
-			(let ((sexpr (subst-mod-params nex
-					 (theory-instance (current-declaration)))))
-			  sexpr))
-		       (t ;; Note: the copy :around (application) method takes care of
-			;; changing the class if it is needed.
-			(if (strong-tc-eq nex expr)
-			    expr
-			    nex)))))))))
+	    (t (let ((stype (find-supertype (type op))))
+		 (if (funtype? stype)
+		     (let ((nex (simplify-or-copy-app
+				 expr op arg
+				 (if (typep (domain stype) 'dep-binding)
+				     (new-substit-hash
+				      (substit* (range stype)
+						(acons (domain stype)
+						       arg nil)))
+				     (range stype)))))
+		       (cond ((not (application? nex))
+			      (if (compatible? (type expr) (type nex))
+				  nex
+				  (let ((sexpr (subst-mod-params nex
+						   (theory-instance (current-declaration)))))
+				    sexpr)))
+			     ((and (not (compatible? (dep-binding-type (domain stype))
+						     (type (argument nex))))
+				   (assuming-tcc? (current-declaration))
+				   (theory-instance (current-declaration))
+				   (mappings (theory-instance (current-declaration))))
+			      (let ((sexpr (subst-mod-params nex
+					       (theory-instance (current-declaration)))))
+				sexpr))
+			     (t ;; Note: the copy :around (application) method takes care of
+			      ;; changing the class if it is needed.
+			      (if (strong-tc-eq nex expr)
+				  expr
+				  nex))))
+		     (let ((*no-conversions-allowed* nil)
+			   (app (mk-application op arg)))
+		       ;;(set-type* app (substit* (type expr) alist))
+		       (tc-expr (str app) :expected (substit* (type expr) alist))))))))))
 
 (defmethod substit* :around ((expr let-expr) alist)
   (declare (ignore alist))

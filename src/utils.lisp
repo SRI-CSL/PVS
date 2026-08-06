@@ -5421,20 +5421,44 @@ we can get this method using
 ;; }
 
 (defun pvs-meta-info ()
-  (lcons :pvs-version *pvs-version*
-	 :pvs-path *pvs-path*
-	 :lisp-version (lisp-implementation-version)
-	 :emacs-version (pvs-emacs-eval "(emacs-version)")
-	 :pvs-executable (get-file-ref (car (uiop:raw-command-line-arguments)))
-	 :lisp-patches (get-patches-info)
-	 :strategies-files (mapcar #'get-file-ref
-			     (cdr (assq :strategies *files-loaded*)))
-	 :pvs-environment-variables (mapcan #'(lambda (var)
-						(let ((val (environment-variable
-							    (string var))))
-						  (when val
-						    (list (cons var val)))))
-				      *pvs-environment-variables*)))
+  (lcons "pvs-version" *pvs-version*
+	 "pvs-path" *pvs-path*
+	 "lisp-version" (lisp-implementation-version)
+	 "emacs-version" (pvs-emacs-eval "(emacs-version)")
+	 "pvs-executable" (get-file-ref (car (uiop:raw-command-line-arguments)))
+	 "lisp-patches" (get-patches-info)
+	 "strategies-files" (mapcar #'get-file-ref
+			            (cdr (assq :strategies *files-loaded*)))
+	 "pvs-environment-variables" (mapcan #'(lambda (var)
+						 (let ((val (environment-variable
+							     (string var))))
+						   (when val
+						     (list (cons var val)))))
+				             *pvs-environment-variables*)
+	 "version-control" (when (and (git-available-p) (in-git-repo-p *pvs-path*))
+			     (multiple-value-bind (short-commit long-commit) (git-current-commit)
+			       (let ((git-description (pvs-git-description))
+				     (branch-description (git-current-branch))
+				     (commit-date (git-current-commit-date)))
+				 `(("short-hash" . ,short-commit)
+				   ("long-hash" . ,long-commit)
+				   ("description" . ,(pvs-git-description))
+				   ("branch-info" . ,(git-current-branch))
+				   ("commit-date" . ,(git-current-commit-date))))))
+         "build-date" (when *pvs-build-time*
+                        (handler-case
+                            (multiple-value-bind (second minute hour date month year day-of-week dst-p tz)
+                                (decode-universal-time *pvs-build-time*)
+                              (declare (ignore day-of-week dst-p))
+                              ;; Convert Lisp timezone (hours west) to standard ISO offset (hours/mins east/west)
+                              (multiple-value-bind (tz-hours tz-mins) (truncate (* tz 60))
+                                (let ((sign (if (<= tz-hours 0) "+" "-"))
+                                      (abs-hours (abs (truncate tz-hours 60)))
+                                      (abs-mins (abs tz-mins)))
+                                  (format nil "~4,'0D-~2,'0D-~2,'0D ~2,'0D:~2,'0D:~2,'0D ~A~2,'0D~2,'0D"
+                                          year month date hour minute second 
+                                          sign abs-hours abs-mins))))
+                          (error () nil)))))
 
 (defun get-lisp-exec-info ()
   (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
@@ -5810,6 +5834,13 @@ and the next method is called with this. Only \formula\" is required."
 	#\:))
       (error "*pvs-path* has no .git directory")))
 
+(defun git-current-commit-date ()
+    (when (in-git-repo-p *pvs-path*)
+      (uiop:run-program (format nil "git -C ~a log -1 --format=%cd --date=iso" *pvs-path*)
+			:input "//dev//null"
+			:output '(:string :stripped t))))
+
+
 (defun in-git-repo-p (path)
   "Check if the given PATH is inside a Git repository."
   (let ((result (ignore-errors
@@ -6137,10 +6168,12 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 	  (t (flatten-proof-script-list (break "flatten-proof-script-list"))))))
 
 #+sbcl
-(defun dbg ()
+(defun dbg (&optional (on t))
   "Sets optimization for debugging, giving more visibility to subsequently
 loaded files and defuns."
-  (proclaim '(optimize (safety 3) (speed 0) (cl:debug 3))))
+  (if on
+      (proclaim '(optimize (speed 0) (safety 3) (cl:debug 3)))
+      (proclaim '(optimize (speed 3) (safety 1) (cl:debug 0)))))
 
 #+sbcl
 (defun control-stack-size ()
