@@ -9,6 +9,7 @@
 /doc/language/pvs-doc.el
 /pvs
 /pvsio
+metadata.json
 /TAGS
 pvs-patches/patch*
 autom4te.cache
@@ -86,3 +87,8 @@ python/.settings/org.eclipse.core.resources.prefs
 
 .project
 .vagrant
+
+lib/pvs2c
+lib/Makefile
+lib/Makefile.bak
+nasalib/
