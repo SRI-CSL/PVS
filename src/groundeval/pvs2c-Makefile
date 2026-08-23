@@ -3,17 +3,17 @@
 # ==========================================
 CC       := cc
 PVSPATH  := <pvspath>
-CFLAGS   := -w -O2 -foptimize-sibling-calls -fPIC -I$(PVSPATH)/lib/pvs2c/include -I pvs2c/include
+CFLAGS   := -w -O2 -foptimize-sibling-calls -fPIC -I$(PVSPATH)/lib/pvs2c/include -I include
 LDFLAGS  := -L$(PVSPATH)/lib/pvs2c/lib
 LDLIBS   := -lgmp -lpvs-prelude
-BINDIR   := pvs2c/bin
-LIBDIR   := pvs2c/lib
-SRCDIR   := pvs2c/src
+BINDIR   := bin
+LIBDIR   := lib
+SRCDIR   := src
 
 # ==========================================
 # 2. INCLUDE DYNAMIC FRAGMENTS
 # ==========================================
--include pvs2c/include/*.mk
+-include include/*.mk
 
 # ==========================================
 # 3. GENERIC RULES
