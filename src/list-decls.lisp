@@ -68,15 +68,19 @@
 	  (get-id-object-at oname origin pos t)
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
-	      (let ((thname (format nil "~@[~a@~]~a"
-			      (when (lib-datatype-or-theory? theory)
-				(get-library-id (context-path theory)))
-			      (id theory))))
+	      (let (;; (thname (format nil "~@[~a@~]~a"
+		    ;; 	      (when (lib-datatype-or-theory? theory)
+		    ;; 		(get-library-id (context-path theory)))
+		    ;; 	      (id theory)))
+		    (thname (format nil "~a" (id (module decl))))
+		    (thname-src (format nil "~a/~a.pvs" (context-path (module decl))
+					 (filename (module decl))))
+		    )
 		(multiple-value-bind (declstr place-hash)
 		    (pp-string-with-view
 		     decl
 		     :precomments
-		     (format nil "% From theory ~a:" thname)
+		     (format nil "% From theory ~a @ ~a:" thname thname-src)
 		     :postcomments
 		     (if *containing-type*
 			 (let ((kind (typecase decl
