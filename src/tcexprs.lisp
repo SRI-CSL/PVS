@@ -1670,23 +1670,34 @@ field-decls, etc."
   (call-next-method))
 
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
-  (declare (ignore kind arguments))
-  (if (and expected (list-type? expected)) ;; could be waiting for conversion
-      (let* ((elt-type (type-value
-			(car (actuals (find-adt-supertype expected)))))
-	     ;;(cons-type (when elt-type (make-cons-type elt-type)))
-	     ;;(null-type (when elt-type (make-null-type elt-type)))
-	     (cons-ex (make-cons-name-expr elt-type))
-	     (null-ex (make-null-name-expr elt-type)))
-	(typecheck-list-elt expr elt-type cons-ex null-ex)
-	expr)
+  (declare (ignore kind arguments)) 
+  ;; (if (and expected (list-type? expected))
+  ;; 	 ;; could be waiting for conversion)
+      (let* ((elt-type (or (when expected
+			     (type-value
+			      (car (actuals (find-adt-supertype expected)))))
+			   ;;(NSH: 9/1/26): Added this disjunction to handle long literal lists 
+			   ;;without expected the singleton ptypes of the first element 
+			   ;;can be used to create cons-ex and null-ex
+			   (let ((elt-tc (typecheck* (args1 expr) nil nil nil)))
+			     (when (eql (length (ptypes elt-tc)) 1)
+			     (find-supertype (car (ptypes elt-tc))))))))
+	(if elt-type
+	    (let (
+		  ;;(cons-type (when elt-type (make-cons-type elt-type)))
+		  ;;(null-type (when elt-type (make-null-type elt-type)))
+		  (cons-ex (make-cons-name-expr elt-type))
+		  (null-ex (make-null-name-expr elt-type)))
+	      (typecheck-list-elt expr elt-type cons-ex null-ex)
+	      expr)
       ;; Not in a nice situation, treat as a simple application
-      (let ((len (list-expr-length expr)))
-	(when (> len 50)
-	  (let ((*print-length* 5))
-	    (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
-	      expr len)))
-	(call-next-method))))
+	    (let ((len (list-expr-length expr)))
+	      (when (> len 50)
+	        (let ((*print-length* 5))
+	          (when (eql (rem len 100) 0)
+		    (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
+	            expr len))))
+	      (call-next-method)))))
 
 (defun typecheck-list-elt (ex elt-type cons-ex null-ex)
   (assert (eq (id (operator ex)) '|cons|))
@@ -1712,7 +1723,7 @@ field-decls, etc."
 						(if (null-expr? (args2 list-ex))
 						    (type null-ex)
 						    (range (type cons-ex)))))))
-		     (t (break "no expected")))
+		     (t (break "No expected type")))
 		    (setq list-ex (args2 list-ex))))
     (cond (null-ex
 	   (setf (type list-ex) (type null-ex))

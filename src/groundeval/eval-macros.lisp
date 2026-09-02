@@ -249,6 +249,7 @@
 (defun |pvs_char| (x) (code-char x))
 (defun |pvs_char?| (x) (characterp x))
 (defun |pvs_code| (x) (char-code x))
+(defun |pvs__nat2bv| (nx) (bv2un (un2bv (svref nx 0) (svref nx 1))))
 (defun |pvs_u8xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
 (defun |pvs_u16xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
 (defun |pvs_u32xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
@@ -337,7 +338,7 @@
 (defun bv2un (bv n); bv has length at least n
   (do ((i  n (1- i))(x 0 (+ (bit bv (1- i)) (* x 2))))((= i 0) x)))
   
-
+(defmacro |pvs__nat2bv| (n x) `(bv2un (un2bv ,x ,n)))
 (defmacro |pvs__u8xor| (x y) `(bv2un (bit-xor (un2bv ,x 8)(un2bv ,y 8)) 8))
 (defmacro |pvs__u16xor| (x y) `(bv2un (bit-xor (un2bv ,x 16)(un2bv ,y 16)) 16))
 (defmacro |pvs__u32xor| (x y) `(bv2un (bit-xor (un2bv ,x 32)(un2bv ,y 32)) 32))
