@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; judgements.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Thu Oct 29 22:40:53 1998
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Sep  3 04:19:25 2004
-;; Update Count    : 11
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -3592,6 +3587,11 @@ Note that the all? arument is only used in the type-constraints* (subtype) metho
 (defun simple-match (ex inst)
   (simple-match* ex inst nil nil))
 
+(defmethod simple-match* :around (ex inst bindings subst)
+  (if (tc-eq-with-bindings ex inst bindings)
+      subst
+      (call-next-method)))
+
 (defmethod simple-match* ((ex type-name) (inst type-name) bindings subst)
   (if (tc-eq-with-bindings ex inst bindings)
       subst
@@ -3674,22 +3674,21 @@ Note that the all? arument is only used in the type-constraints* (subtype) metho
 		  (if (tc-eq (cdr sub) inst)
 		      subst
 		      'fail)
-		  (if (assq (declaration ex) bindings)
-		      subst
-		      (let* ((etype (type (declaration ex)))
-			     (msubst (simple-match* etype (type inst) bindings subst))
-			     (stype (if (eq msubst 'fail)
-					(substit etype subst)
-					(substit etype msubst))))
-			(if (some #'(lambda (jty)
-				      (subtype-of? jty stype))
-				  (judgement-types+ inst))
-			    (acons (declaration ex) inst (if (eq msubst 'fail) subst msubst))
-			    'fail)))))))
+		  (let* ((etype (type (declaration ex)))
+			 (msubst (if (freevars etype)
+				     (simple-match* etype (type inst) bindings subst)
+				     (acons (declaration ex) inst subst)))
+			 (stype (if (eq msubst 'fail)
+				    (substit etype subst)
+				    (substit etype msubst))))
+		    (if (some #'(lambda (jty)
+				  (subtype-of? jty stype))
+			      (judgement-types+ inst))
+			(acons (declaration ex) inst (if (eq msubst 'fail) subst msubst))
+			(if (eq msubst 'fail) subst msubst)))))))
       (if (and (typep inst 'name-expr)
 	       (eq (declaration ex) (declaration inst)))
-	  (simple-match* (module-instance ex) (module-instance inst)
-			 bindings subst)
+	  (simple-match* (module-instance ex) (module-instance inst) bindings subst)
 	  'fail)))
 
 (defmethod simple-match* ((ex field-application) (inst field-application)
