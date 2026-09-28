@@ -1,1 +1,956 @@
-(bv_caret_concat_rules (bv_concat_bottom_TCC1 0 (bv_concat_bottom_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) nil nil)) (bv_concat_bottom_TCC2 0 (bv_concat_bottom_TCC2-1 nil 3341619264 ("" (subtype-tcc) nil nil) nil nil)) (bv_concat_bottom 0 (bv_concat_bottom-1 nil 3341619297 ("" (skolem!) (("" (rewrite "concat_bottom") nil nil)) nil) ((concat_bottom formula-decl nil bv_caret_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (int_minus_int_is_int application-judgement "int" integers nil)) shostak)) (bv_concat_top_TCC1 0 (bv_concat_top_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_concat_top_TCC2 0 (bv_concat_top_TCC2-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_concat_top 0 (bv_concat_top-1 nil 3341619314 ("" (skolem!) (("" (rewrite "concat_top") nil nil)) nil) ((concat_top formula-decl nil bv_caret_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (int_minus_int_is_int application-judgement "int" integers nil)) shostak)) (bv_caret_concat_low_TCC1 0 (bv_caret_concat_low_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil)) nil)) (bv_caret_concat_low 0 (bv_caret_concat_low-1 nil 3341619327 ("" (skosimp) (("" (rewrite "caret_concat_bot") nil nil)) nil) ((posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (caret_concat_bot formula-decl nil bv_caret_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (below type-eq-decl nil naturalnumbers nil) (<= const-decl "bool" reals nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_caret_concat_high_TCC1 0 (bv_caret_concat_high_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil)) nil)) (bv_caret_concat_high_TCC2 0 (bv_caret_concat_high_TCC2-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (bv_caret_concat_high_TCC3 0 (bv_caret_concat_high_TCC3-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (bv_caret_concat_high 0 (bv_caret_concat_high-1 nil 3341619351 ("" (skosimp) (("" (rewrite "caret_concat_top") nil nil)) nil) ((real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (caret_concat_top formula-decl nil bv_caret_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (below type-eq-decl nil naturalnumbers nil) (<= const-decl "bool" reals nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_caret_concat_split_TCC1 0 (bv_caret_concat_split_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil)) nil)) (bv_caret_concat_split_TCC2 0 (bv_caret_concat_split_TCC2-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (bv_caret_concat_split_TCC3 0 (bv_caret_concat_split_TCC3-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (bv_caret_concat_split_TCC4 0 (bv_caret_concat_split_TCC4-1 nil 3341619264 ("" (subtype-tcc) nil nil) nil nil)) (bv_caret_concat_split_TCC5 0 (bv_caret_concat_split_TCC5-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil)) nil)) (bv_caret_concat_split_TCC6 0 (bv_caret_concat_split_TCC6-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_caret_concat_split_TCC7 0 (bv_caret_concat_split_TCC7-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (bv_caret_concat_split 0 (bv_caret_concat_split-1 nil 3341619378 ("" (skosimp) (("" (rewrite "caret_concat_all") nil nil)) nil) ((posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (caret_concat_all formula-decl nil bv_caret_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (below type-eq-decl nil naturalnumbers nil) (<= const-decl "bool" reals nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_caret_recomp_TCC1 0 (bv_caret_recomp_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil nat_types nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil)) nil)) (bv_caret_recomp_TCC2 0 (bv_caret_recomp_TCC2-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil nat_types nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil)) nil)) (bv_caret_recomp_TCC3 0 (bv_caret_recomp_TCC3-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil nat_types nil) (odd_minus_odd_is_even application-judgement "even_int" integers nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_caret_recomp_TCC4 0 (bv_caret_recomp_TCC4-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil nat_types nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_caret_recomp_TCC5 0 (bv_caret_recomp_TCC5-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil nat_types nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil)) nil)) (bv_caret_recomp_TCC6 0 (bv_caret_recomp_TCC6-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil nat_types nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_caret_recomp 0 (bv_caret_recomp-1 nil 3341619406 ("" (skosimp) (("" (rewrite "caret_concat_join") nil nil)) nil) ((real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_le_is_total_order name-judgement "(total_order?[real])" real_props nil) (caret_concat_join formula-decl nil bv_caret_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (below type-eq-decl nil nat_types nil) (<= const-decl "bool" reals nil) (upto nonempty-type-eq-decl nil nat_types nil) (int_plus_int_is_int application-judgement "int" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_ucaret_concat_1_TCC1 0 (bv_ucaret_concat_1_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil)) nil)) (bv_ucaret_concat_1 0 (bv_ucaret_concat_1-1 nil 3341619423 ("" (grind) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (^ const-decl "bit" bv nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (int_minus_int_is_int application-judgement "int" integers nil)) shostak)) (bv_ucaret_concat_2_TCC1 0 (bv_ucaret_concat_2_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil)) nil)) (bv_ucaret_concat_2_TCC2 0 (bv_ucaret_concat_2_TCC2-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (bv_ucaret_concat_2 0 (bv_ucaret_concat_2-1 nil 3341619427 ("" (grind) nil nil) ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (>= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (real_gt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (^ const-decl "bit" bv nil) (minus_odd_is_odd application-judgement "odd_int" integers nil) (int_minus_int_is_int application-judgement "int" integers nil)) shostak)) (bv_caret_fill_TCC1 0 (bv_caret_fill_TCC1-1 nil 3341619264 ("" (subtype-tcc) nil nil) ((minus_odd_is_odd application-judgement "odd_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_caret_fill 0 (bv_caret_fill-1 nil 3341619437 ("" (grind-with-ext) nil nil) ((int_minus_int_is_int application-judgement "int" integers nil) (boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (> const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (posnat nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (below type-eq-decl nil naturalnumbers nil) (<= const-decl "bool" reals nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (fill const-decl "bit" bv nil) (below type-eq-decl nil nat_types nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (int_plus_int_is_int application-judgement "int" integers nil) (real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)))
+(|bv_caret_concat_rules|
+ (|bv_concat_bottom_TCC1| 0
+  (|bv_concat_bottom_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv_concat_bottom| SUBTYPE
+    "((number_fields.-)(bv_caret_concat_rules.m, 1))"
+    "below((number_fields.+)(bv_caret_concat_rules.m, bv_caret_concat_rules.n))"
+    (11 46 11 49))))
+ (|bv_concat_bottom_TCC2| 0
+  (|bv_concat_bottom_TCC2-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv_concat_bottom| SUBTYPE "0"
+    "upto(((number_fields.-)(bv_caret_concat_rules.m, 1)))" (11 52 11 53))))
+ (|bv_concat_bottom| 0
+  (|bv_concat_bottom-1| |nil| 3341619297
+   ("" (SKOLEM!) (("" (REWRITE "concat_bottom") NIL NIL)) NIL)
+   ((|concat_bottom| FORMULA-DECL NIL |bv_caret_concat| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bit| TYPE-EQ-DECL NIL |bit| NIL) (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK))
+ (|bv_concat_top_TCC1| 0
+  (|bv_concat_top_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_concat_top| SUBTYPE
+    "((number_fields.-)((number_fields.+)(bv_caret_concat_rules.n, bv_caret_concat_rules.m), 1))"
+    "below((number_fields.+)(bv_caret_concat_rules.m, bv_caret_concat_rules.n))"
+    (14 47 14 52))))
+ (|bv_concat_top_TCC2| 0
+  (|bv_concat_top_TCC2-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_concat_top| SUBTYPE "bv_caret_concat_rules.m"
+    "upto(((number_fields.-)((number_fields.+)(bv_caret_concat_rules.m, bv_caret_concat_rules.n), 1)))"
+    (14 55 14 56))))
+ (|bv_concat_top| 0
+  (|bv_concat_top-1| |nil| 3341619314
+   ("" (SKOLEM!) (("" (REWRITE "concat_top") NIL NIL)) NIL)
+   ((|concat_top| FORMULA-DECL NIL |bv_caret_concat| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bit| TYPE-EQ-DECL NIL |bit| NIL) (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK))
+ (|bv_caret_concat_low_TCC1| 0
+  (|bv_caret_concat_low_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL))
+   NIL
+   (|bv_caret_concat_low| SUBTYPE "bv_caret_concat_rules.i"
+    "below((number_fields.+)(bv_caret_concat_rules.m, bv_caret_concat_rules.n))"
+    (18 48 18 49))))
+ (|bv_caret_concat_low| 0
+  (|bv_caret_concat_low-1| |nil| 3341619327
+   ("" (SKOSIMP) (("" (REWRITE "caret_concat_bot") NIL NIL)) NIL)
+   ((|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|caret_concat_bot| FORMULA-DECL NIL |bv_caret_concat| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bit| TYPE-EQ-DECL NIL |bit| NIL) (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_caret_concat_high_TCC1| 0
+  (|bv_caret_concat_high_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL))
+   NIL
+   (|bv_caret_concat_high| SUBTYPE "bv_caret_concat_rules.i"
+    "below((number_fields.+)(bv_caret_concat_rules.m, bv_caret_concat_rules.n))"
+    (22 29 22 30))))
+ (|bv_caret_concat_high_TCC2| 0
+  (|bv_caret_concat_high_TCC2-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   NIL
+   (|bv_caret_concat_high| SUBTYPE
+    "(number_fields.-)(bv_caret_concat_rules.i, bv_caret_concat_rules.m)"
+    "below(bv_caret_concat_rules.n)" (22 41 22 44))))
+ (|bv_caret_concat_high_TCC3| 0
+  (|bv_caret_concat_high_TCC3-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   NIL
+   (|bv_caret_concat_high| SUBTYPE
+    "(number_fields.-)(bv_caret_concat_rules.j, bv_caret_concat_rules.m)"
+    "upto((number_fields.-)(bv_caret_concat_rules.i, bv_caret_concat_rules.m))"
+    (22 46 22 49))))
+ (|bv_caret_concat_high| 0
+  (|bv_caret_concat_high-1| |nil| 3341619351
+   ("" (SKOSIMP) (("" (REWRITE "caret_concat_top") NIL NIL)) NIL)
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|caret_concat_top| FORMULA-DECL NIL |bv_caret_concat| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bit| TYPE-EQ-DECL NIL |bit| NIL) (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_caret_concat_split_TCC1| 0
+  (|bv_caret_concat_split_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL))
+   NIL
+   (|bv_caret_concat_split| SUBTYPE "bv_caret_concat_rules.i"
+    "below((number_fields.+)(bv_caret_concat_rules.m, bv_caret_concat_rules.n))"
+    (28 42 28 43))))
+ (|bv_caret_concat_split_TCC2| 0
+  (|bv_caret_concat_split_TCC2-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   NIL
+   (|bv_caret_concat_split| SUBTYPE
+    "(number_fields.-)(bv_caret_concat_rules.i, bv_caret_concat_rules.m)"
+    "below(bv_caret_concat_rules.n)" (28 54 28 57))))
+ (|bv_caret_concat_split_TCC3| 0
+  (|bv_caret_concat_split_TCC3-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   NIL
+   (|bv_caret_concat_split| SUBTYPE "0"
+    "upto((number_fields.-)(bv_caret_concat_rules.i, bv_caret_concat_rules.m))"
+    (28 59 28 60))))
+ (|bv_caret_concat_split_TCC4| 0
+  (|bv_caret_concat_split_TCC4-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL) NIL
+   NIL
+   (|bv_caret_concat_split| SUBTYPE
+    "(number_fields.-)(bv_caret_concat_rules.m, 1)"
+    "below(bv_caret_concat_rules.m)" (28 69 28 72))))
+ (|bv_caret_concat_split_TCC5| 0
+  (|bv_caret_concat_split_TCC5-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL))
+   NIL
+   (|bv_caret_concat_split| SUBTYPE "bv_caret_concat_rules.j"
+    "upto((number_fields.-)(bv_caret_concat_rules.m, 1))" (28 73 28 74))))
+ (|bv_caret_concat_split_TCC6| 0
+  (|bv_caret_concat_split_TCC6-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_caret_concat_split| SUBTYPE
+    "(number_fields.-)((number_fields.+)(1, bv_caret_concat_rules.i), bv_caret_concat_rules.m)"
+    "nat" (28 62 28 63))))
+ (|bv_caret_concat_split_TCC7| 0
+  (|bv_caret_concat_split_TCC7-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   NIL
+   (|bv_caret_concat_split| SUBTYPE
+    "(number_fields.-)(bv_caret_concat_rules.m, bv_caret_concat_rules.j)" "nat"
+    (28 62 28 63))))
+ (|bv_caret_concat_split| 0
+  (|bv_caret_concat_split-1| |nil| 3341619378
+   ("" (SKOSIMP) (("" (REWRITE "caret_concat_all") NIL NIL)) NIL)
+   ((|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|caret_concat_all| FORMULA-DECL NIL |bv_caret_concat| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bit| TYPE-EQ-DECL NIL |bit| NIL) (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_caret_recomp_TCC1| 0
+  (|bv_caret_recomp_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL))
+   NIL
+   (|bv_caret_recomp| SUBTYPE "bv_caret_concat_rules.j1"
+    "upto(bv_caret_concat_rules.i1)" (34 41 34 43))))
+ (|bv_caret_recomp_TCC2| 0
+  (|bv_caret_recomp_TCC2-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL))
+   NIL
+   (|bv_caret_recomp| SUBTYPE "bv_caret_concat_rules.j2"
+    "upto(bv_caret_concat_rules.i2)" (34 55 34 57))))
+ (|bv_caret_recomp_TCC3| 0
+  (|bv_caret_recomp_TCC3-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|odd_minus_odd_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_caret_recomp| SUBTYPE
+    "(number_fields.-)((number_fields.+)(1, bv_caret_concat_rules.i1), bv_caret_concat_rules.j1)"
+    "nat" (34 45 34 46))))
+ (|bv_caret_recomp_TCC4| 0
+  (|bv_caret_recomp_TCC4-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_caret_recomp| SUBTYPE
+    "(number_fields.-)((number_fields.+)(1, bv_caret_concat_rules.i2), bv_caret_concat_rules.j2)"
+    "nat" (34 45 34 46))))
+ (|bv_caret_recomp_TCC5| 0
+  (|bv_caret_recomp_TCC5-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL))
+   NIL
+   (|bv_caret_recomp| SUBTYPE "bv_caret_concat_rules.j2"
+    "upto(bv_caret_concat_rules.i1)" (34 70 34 72))))
+ (|bv_caret_recomp_TCC6| 0
+  (|bv_caret_recomp_TCC6-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_caret_recomp| SUBTYPE
+    "bv_caret[bv_caret_concat_rules.n].^(bv_caret_concat_rules.bvn, (bv_caret_concat_rules.i1, bv_caret_concat_rules.j2))"
+    "bvec[2 + i1 + i2 - j1 - j2]" (34 62 34 73))))
+ (|bv_caret_recomp| 0
+  (|bv_caret_recomp-1| |nil| 3341619406
+   ("" (SKOSIMP) (("" (REWRITE "caret_concat_join") NIL NIL)) NIL)
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|caret_concat_join| FORMULA-DECL NIL |bv_caret_concat| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bit| TYPE-EQ-DECL NIL |bit| NIL) (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |nat_types| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_ucaret_concat_1_TCC1| 0
+  (|bv_ucaret_concat_1_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL))
+   NIL
+   (|bv_ucaret_concat_1| SUBTYPE "bv_caret_concat_rules.i" "below[m + n]"
+    (37 55 37 56))))
+ (|bv_ucaret_concat_1| 0
+  (|bv_ucaret_concat_1-1| |nil| 3341619423 ("" (GRIND) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (O CONST-DECL "[[bvec[n], bvec[m]] -> bvec[n + m]]" |bv_concat_def| NIL)
+    (^ CONST-DECL "[[bvec, below[N]] -> bit]" |bv| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK))
+ (|bv_ucaret_concat_2_TCC1| 0
+  (|bv_ucaret_concat_2_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL))
+   NIL
+   (|bv_ucaret_concat_2| SUBTYPE "bv_caret_concat_rules.i" "below[m + n]"
+    (41 48 41 49))))
+ (|bv_ucaret_concat_2_TCC2| 0
+  (|bv_ucaret_concat_2_TCC2-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   NIL
+   (|bv_ucaret_concat_2| SUBTYPE
+    "((number_fields.-)(bv_caret_concat_rules.i, bv_caret_concat_rules.m))"
+    "below[n]" (41 57 41 60))))
+ (|bv_ucaret_concat_2| 0
+  (|bv_ucaret_concat_2-1| |nil| 3341619427 ("" (GRIND) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (O CONST-DECL "[[bvec[n], bvec[m]] -> bvec[n + m]]" |bv_concat_def| NIL)
+    (^ CONST-DECL "[[bvec, below[N]] -> bit]" |bv| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK))
+ (|bv_caret_fill_TCC1| 0
+  (|bv_caret_fill_TCC1-1| NIL 3341619264 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_caret_fill| SUBTYPE
+    "(number_fields.-)((number_fields.+)(1, bv_caret_concat_rules.i), bv_caret_concat_rules.j)"
+    "nat" (44 28 44 39))))
+ (|bv_caret_fill| 0
+  (|bv_caret_fill-1| |nil| 3341619437 ("" (GRIND-WITH-EXT) NIL NIL)
+   ((|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|bool| NONEMPTY-TYPE-EQ-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|fill| CONST-DECL "[bit -> [below[N] -> bit]]" |bv| NIL)
+    (|below| TYPE-EQ-DECL NIL |nat_types| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL) (|bit| TYPE-EQ-DECL NIL |bit| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK)))

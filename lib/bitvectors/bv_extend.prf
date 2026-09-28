@@ -1,1 +1,49 @@
-(bv_extend (zero_extend_def_TCC1 0 (zero_extend_def_TCC1-1 nil 3510509870 ("" (subtype-tcc) nil nil) ((minus_odd_is_odd application-judgement "odd_int" integers nil)) nil)) (zero_extend_def 0 (zero_extend_def-1 nil 3341451378 ("" (expand "zero_extend") (("" (propax) nil nil)) nil) ((zero_extend const-decl "[bvec[N] -> bvec[k]]" bv_extend_defs nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (sign_extend_def_TCC1 0 (sign_extend_def_TCC1-1 nil 3510509870 ("" (subtype-tcc) nil nil) ((real_ge_is_total_order name-judgement "(total_order?[real])" real_props nil) (int_minus_int_is_int application-judgement "int" integers nil) (real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil)) nil)) (sign_extend_def 0 (sign_extend_def-1 nil 3341451401 ("" (expand "sign_extend") (("" (propax) nil nil)) nil) ((sign_extend const-decl "[bvec[N] -> bvec[k]]" bv_extend_defs nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (zero_extend_lsend_def 0 (zero_extend_lsend_def-1 nil 3341451407 ("" (expand "zero_extend_lsend") (("" (propax) nil nil)) nil) ((zero_extend_lsend const-decl "[bvec[N] -> bvec[k]]" bv_extend_defs nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (lsb_extend__def_TCC1 0 (lsb_extend__def_TCC1-1 nil 3510509870 ("" (subtype-tcc) nil nil) ((real_lt_is_strict_total_order name-judgement "(strict_total_order?[real])" real_props nil)) nil)) (lsb_extend__def 0 (lsb_extend__def-1 nil 3341451420 ("" (expand "lsb_extend") (("" (propax) nil nil)) nil) ((lsb_extend const-decl "[bvec[N] -> bvec[k]]" bv_extend_defs nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)))
+(|bv_extend|
+ (|zero_extend_def_TCC1| 0
+  (|zero_extend_def_TCC1-1| NIL 3510509870 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)) NIL
+   (|zero_extend_def| SUBTYPE "(number_fields.-)(bv_extend.k, bv_extend.N)"
+    "nat" (55 54 55 63))))
+ (|zero_extend_def| 0
+  (|zero_extend_def-1| |nil| 3341451378
+   ("" (EXPAND "zero_extend") (("" (PROPAX) NIL NIL)) NIL)
+   ((|zero_extend| CONST-DECL "[k: above(N) -> [bvec[N] -> bvec[k]]]"
+     |bv_extend_defs| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|sign_extend_def_TCC1| 0
+  (|sign_extend_def_TCC1-1| NIL 3510509870 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL))
+   NIL
+   (|sign_extend_def| SUBTYPE "((number_fields.-)(bv_extend.N, 1))" "below[N]"
+    (57 68 57 71))))
+ (|sign_extend_def| 0
+  (|sign_extend_def-1| |nil| 3341451401
+   ("" (EXPAND "sign_extend") (("" (PROPAX) NIL NIL)) NIL)
+   ((|sign_extend| CONST-DECL "[k: above(N) -> [bvec[N] -> bvec[k]]]"
+     |bv_extend_defs| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|zero_extend_lsend_def| 0
+  (|zero_extend_lsend_def-1| |nil| 3341451407
+   ("" (EXPAND "zero_extend_lsend") (("" (PROPAX) NIL NIL)) NIL)
+   ((|zero_extend_lsend| CONST-DECL "[k: above(N) -> [bvec[N] -> bvec[k]]]"
+     |bv_extend_defs| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|lsb_extend__def_TCC1| 0
+  (|lsb_extend__def_TCC1-1| NIL 3510509870 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL))
+   NIL (|lsb_extend__def| SUBTYPE "0" "below[N]" (61 77 61 78))))
+ (|lsb_extend__def| 0
+  (|lsb_extend__def-1| |nil| 3341451420
+   ("" (EXPAND "lsb_extend") (("" (PROPAX) NIL NIL)) NIL)
+   ((|lsb_extend| CONST-DECL "[k: above(N) -> [bvec[N] -> bvec[k]]]"
+     |bv_extend_defs| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK)))
