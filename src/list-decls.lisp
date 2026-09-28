@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; list-decls.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Sun Dec 19 16:12:09 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Oct 29 22:43:06 1998
-;; Update Count    : 3
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -66,15 +61,16 @@
 	  (typechecked-origin? oname origin))
       (multiple-value-bind (object *containing-type* theory)
 	  (get-id-object-at oname origin pos t)
-	(let ((decl (get-decl-associated-with object)))
+	(let* ((decl (get-decl-associated-with object))
+	       (decl-th (or (module decl) theory)))
 	  (if decl
 	      (let (;; (thname (format nil "~@[~a@~]~a"
 		    ;; 	      (when (lib-datatype-or-theory? theory)
 		    ;; 		(get-library-id (context-path theory)))
 		    ;; 	      (id theory)))
-		    (thname (format nil "~a" (id (module decl))))
-		    (thname-src (format nil "~a/~a.pvs" (context-path (module decl))
-					 (filename (module decl))))
+		    (thname (format nil "~a" (id decl-th)))
+		    (thname-src (format nil "~a/~a.pvs" (context-path decl-th)
+					 (filename decl-th)))
 		    )
 		(multiple-value-bind (declstr place-hash)
 		    (pp-string-with-view
