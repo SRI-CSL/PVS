@@ -1800,11 +1800,11 @@ then uses unpindent* to add the indent to each line"
 (defmethod valid-list-expr? ((ex expr))
   nil)
 
-(defmethod list-arguments ((ex list-expr))
-  (cons (args1 ex) (list-arguments (args2 ex))))
+(defmethod list-arguments ((ex list-expr) &optional accum)
+  (list-arguments (args2 ex) (cons (args1 ex) accum)))
 
-(defmethod list-arguments ((ex null-expr))
-  nil)
+(defmethod list-arguments ((ex null-expr) &optional accum)
+  (nreverse accum))
 
 (defmethod pp* ((ex null-expr))
   (write "(: :)"))
@@ -3041,10 +3041,16 @@ then uses unpindent* to add the indent to each line"
 	(length str))))
 
 (defmethod exprs ((ex list-expr))
-  (cons (args1 ex) (exprs (args2 ex))))
+  (exprs* ex))
 
 (defmethod exprs ((ex null-expr))
   nil)
+
+(defmethod exprs* ((ex list-expr) &optional accum)
+ (exprs* (args2 ex)  (cons (args1 ex) accum)))
+
+(defmethod exprs* ((ex null-expr) &optional accum)
+  (nreverse accum))
 
 (defun pp-bindings (bindings)
   (pprint-logical-block (nil bindings)
