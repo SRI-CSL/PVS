@@ -1,11 +1,38 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tcc-gen.lisp -- Generates the TCCs
+
+;; The following lists the kinds of TCCs that can be generated; the strings
+;; representing the trigger and type are kept in the tcc-origin associated
+;; with TCC declarations. This information is also stored in .prf files,
+;; to make it easier to find the associated TCC when they get renumbered.
+;; A tcc-origin is a class, but kept as a list in .prf files of the form
+;;   (root kind trigger type place)
+;; where root is the declaration id translated to an id that allows the
+;; '_TCC#' suffix, and the others are shown in this table:
+
+;; |----------------------------+-----------+---------------------|
+;; | TCC kind                   | Trigger   | Type / Decl         |
+;; |----------------------------+-----------+---------------------|
+;; | subtype                    | expr      | type                |
+;; | actuals                    | act       | nil                 |
+;; | termination                | expr      | nil                 |
+;; | termination-subtype        | expr      | recursive-signature |
+;; | well-founded               | ordering  | nil                 |
+;; | existence                  | expr      | type                |
+;; | assuming                   | modinst   | assumimg            |
+;; | mapped-axiom               | thinst    | axiom               |
+;; | mapped-definition-equality | mapthinst | lhs                 |
+;; | cases                      | expr      | adt                 |
+;; | disjointness               | expr      | nil                 |
+;; | coverage                   | expr      | nil                 |
+;; | monotonicity               | expr      | nil                 |
+;; |----------------------------+-----------+---------------------|
+
+;; actuals TCCs are generated when two theory instances are expected to match.
+;; termination-subtype TCCs are subtype TCCs obtained while typechecking the
+;; signature of a recursive function.
+;;
 ;; Author          : Sam Owre
-;; Created On      : Wed Nov  3 00:32:38 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:16:57 1998
-;; Update Count    : 45
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -421,7 +448,7 @@ looking in bindings and substs."
 		   :expr (if (eq kind 'existence)
 			     ""
 			     (str (if (< (expr-size expr) 10000)
-				      (raise-actuals expr)
+				      (raise-actuals expr t :all)
 				      expr)
 				  :char-width nil))
 		   :type (str (raise-actuals type t :all) :char-width nil)
@@ -1725,8 +1752,8 @@ which is the transitive closure of the immediate assuming instances."
 
 ;;; The tcc-root-name is used to collect all TCCs associated with a given declaration
 ;;; and stored in the reason for tcc-decls and tcc-proof-info
-(defun tcc-root-name (expr)
-  (tcc-root-name* (current-declaration) expr))
+(defun tcc-root-name (expr &optional (decl (current-declaration)))
+  (tcc-root-name* decl expr))
 
 (defmethod tcc-root-name* ((decl declaration) expr)
   (declare (ignore expr))
