@@ -730,10 +730,13 @@ measure_induction [T: TYPE, M: TYPE, m: [T -> M], < : (well_founded?[M])]: THEOR
 % Note that the type parameter is given as nonempty, which means that
 % there is an nonempty ASSUMPTION automatically generated for this theory.
 
-epsilons [T: NONEMPTY_TYPE]: THEORY
+epsilons [T: TYPE+]: THEORY
  BEGIN
   p: VAR pred[T]
   x: VAR T
+
+  % chosen[T] returns an element of type T - an alternative to choose({x: T | true})
+  chosen: T
 
   epsilon(p): T
 
@@ -4182,7 +4185,6 @@ integertypes: THEORY
      odd_neg_int16_is_nzint:   JUDGEMENT odd_neg_int16 SUBTYPE_OF nzint
      odd_neg_int32_is_nzint:   JUDGEMENT odd_neg_int32 SUBTYPE_OF nzint
      odd_neg_int64_is_nzint:   JUDGEMENT odd_neg_int64 SUBTYPE_OF nzint
-
      mini8: int8 = -exp2(7)
      mini16: int16 = -exp2(15)
      mini32: int32 = -exp2(31)
