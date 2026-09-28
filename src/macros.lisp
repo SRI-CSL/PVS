@@ -273,52 +273,33 @@ which prints as, e.g., #A((1) BASE-CHAR . \"1\") instead of \"1\""
 
 (defmacro with-workspace (lib-ref &rest forms)
   "Given a library reference, i.e., a library id or pathname, temporarily
-makes lib-ref the current workspace (*workspace-session*).  Does nothing if
-lib-ref is the current-workspace.  If *workspace-session* is not what
-lib-ref refers to, then while executing forms:
- *workspace-session* will be found or created for lib-ref
- *current-context* will be nil
- *default-pathname-defaults* will be the path associated with lib-ref
- calls set-working-directory (like cd in shell, no global variable).
-After exiting, all of these are reverted to their previous values."
+makes lib-ref the current workspace (*workspace-session*).  Does nothing but
+execute forms if lib-ref is the current-workspace. Otherwise sets
+*default-pathname-defaults* and (working-directory) to the ws path,
+restoring them after executing forms."
   (let ((lref (gentemp))
-	(lib-path (gentemp))
-	(ws (gentemp))
-	(truedir (gentemp))
-	(orig-dir (gentemp)))
-    `(let* ((,lref (or ,lib-ref (current-context-path)))
-	    (,lib-path (typecase ,lref
-			 (workspace-session (path ,lref))
-			 (theory-element (context-path (module ,lref)))
-			 (t (get-library-path ,lref)))))
-       (cond ((null ,lib-path)
+	(ws (gentemp)))
+    `(let* ((,lref ,lib-ref)
+	    (,ws (get-workspace-session ,lref)))
+       (assert (memq ,ws *all-workspace-sessions*))
+       (cond ((eq ,ws *workspace-session*)
 	      ,@forms)
-	     ((uiop:directory-exists-p ,lib-path)
-	      (cond ((pathname-equal ,lib-path (current-context-path))
-		     ;; Already in workspace, just process forms
-		     (assert (pvs-context *workspace-session*))
-		     ,@forms)
-		    (t (let* ((,orig-dir (working-directory))
-			      (,truedir (truename ,lib-path))
-			      (*default-pathname-defaults* ,truedir)
-			      (*current-context* nil)
-			      (*workspace-session*
-			       (or (when (workspace-session? ,lref)
-				     ,lref)
-				   (get-workspace-session ,lib-path)
-				   (let ((,ws (make-instance 'workspace-session
-						:path ,lib-path)))
-				     (push ,ws *all-workspace-sessions*)
-				     ,ws))))
-			 (assert (pvs-context *workspace-session*)
-				 () "Bad pvs-context")
-			 (unwind-protect 
-			      (progn (set-working-directory ,truedir)
-				     ,@forms)
-			   (when (pvs-context-changed *workspace-session*)
-			     (save-context nil t))
-			   (set-working-directory ,orig-dir))))))
-	     (t (error "Library ~a does not exist" (or ,lib-path ,lref)))))))
+	     (t (unwind-protect
+		     (let ((*workspace-session* ,ws)
+			   (*current-context* nil))
+		       (unwind-protect
+			    (progn
+			      (set-pvs-paths-defaults (path ,ws))
+			      (unless (pvscontext ,ws)
+				(if *loading-prelude*
+				    (setf (pvscontext ,ws) (initial-context))
+				    (restore-context ,ws)))
+			      ,@forms)
+			 (when (pvs-context-changed *workspace-session*)
+			   (save-context nil t))))
+		  (if *workspace-session* ;; Should be set unless building images
+		      (set-pvs-paths-defaults)
+		      (set-pvs-paths-defaults *pvs-path*))))))))
 
 (defmacro with-pvs-file (vars pvs-file-ref &rest body)
   "pvs-file-ref is generally a string of the form 'dir/file.pvs' or
@@ -496,6 +477,7 @@ current declaration."
 (defun do-all-theories (fn &optional no-prelude?)
   "Goes through all known (e.g., parsed) theories of the current context,
 and all *all-workspace-sessions* applying fn to each theory."
+  (assert (memq *workspace-session* *all-workspace-sessions*))
   (do-theories fn)
   (dolist (ws *all-workspace-sessions*)
     (unless (eq ws *workspace-session*) ; Did this above
