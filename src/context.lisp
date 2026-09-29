@@ -446,7 +446,7 @@ theory-element level."
 			(file-write-time (make-specpath filename)))
 		 (ce-eq oce nce))
       ;; Make changes as needed
-      (when (and oce (ce-object-date oce))
+      (when (and oce (ce-object-date oce) (check-binfiles fname))
 	;; (format t "~%update-context: copy ~a to nce ~a"
 	;;   (ce-object-date oce) nce)
 	(setf (ce-object-date nce) (ce-object-date oce)))
@@ -455,8 +455,8 @@ theory-element level."
 	(assert (not (duplicates? rctx-entries :key #'ce-file)) ()
 		"update-context: duplicate context entries")
 	(setf (pvscontext-entries (current-pvs-context)) rctx-entries)
-	(write-context nil nil t)
-	(setf (current-pvs-context-changed) nil)))))
+	;; (write-context nil nil t)
+	(setf (current-pvs-context-changed) t)))))
 
 (defun remove-missing-file-references (ctx-entries &optional exist-entries)
   (if (null ctx-entries)
@@ -536,7 +536,8 @@ its dependencies."
 	     (proofs-write-date (when (uiop:file-exists-p prf-file)
 				  (file-write-date prf-file)))
 	     (fdeps (file-dependencies filename))
-	     (objdate (when file-entry (ce-object-date file-entry)))
+	     (objdate (when (and file-entry (check-binfiles filename))
+			(ce-object-date file-entry)))
 	     (md5sum (md5-file (make-specpath filename))))
 	(assert cur-theories)
 	(assert (plusp md5sum))
