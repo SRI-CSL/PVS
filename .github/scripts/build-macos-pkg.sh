@@ -171,17 +171,36 @@ cp -R "$bundle_dir" "$stage_root$install_base/"
 
 bundle_macos_runtime_deps "$stage_root$install_base/$(basename "$bundle_dir")"
 
+staged_bundle="$stage_root$install_base/$(basename "$bundle_dir")"
+metadata_generator="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/generate-build-metadata.py"
+metadata_file="$staged_bundle/metadata.json"
+[[ -f $metadata_generator ]] || fail "metadata generator not found: $metadata_generator"
+[[ -f $metadata_file ]] || fail "bundle metadata not found: $metadata_file"
+
 if [[ -n ${MACOS_APPLICATION_SIGN_IDENTITY:-} ]]; then
   echo "Signing staged Mach-O payload with $MACOS_APPLICATION_SIGN_IDENTITY"
   if [[ -n $application_sign_entitlements ]]; then
     [[ -f $application_sign_entitlements ]] || fail "MACOS_APPLICATION_SIGN_ENTITLEMENTS_FILE does not exist: $application_sign_entitlements"
   fi
   sign_macho_payload \
-    "$stage_root$install_base/$(basename "$bundle_dir")" \
+    "$staged_bundle" \
     "$MACOS_APPLICATION_SIGN_IDENTITY" \
     "$signing_keychain" \
     "$application_sign_entitlements"
 fi
+
+# Payload signing changes Mach-O bytes, so refresh the embedded manifest before
+# pkgbuild seals the installer payload.
+python3 "$metadata_generator" \
+  --refresh "$metadata_file" \
+  --artifact-root "$staged_bundle" \
+  --artifact pvs.asd \
+  --artifact bin \
+  --artifact yices \
+  --packaging-format macos-pkg
+python3 "$metadata_generator" \
+  --validate "$metadata_file" \
+  --verify-artifacts "$staged_bundle"
 
 pkg_stem=${pkg_name%.pkg}
 unsigned_pkg="$output_dir/$pkg_stem-unsigned.pkg"

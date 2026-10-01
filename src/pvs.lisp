@@ -4,11 +4,6 @@
 ;;             environment variables:
 ;;             PVSPATH, PVS_LIBRARY_PATH, PVSPATCHLEVEL, PVSMINUSQ
 ;; Author          : Sam Owre
-;; Created On      : Wed Dec  1 15:00:38 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri May 21 04:08:38 2004
-;; Update Count    : 96
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -169,6 +164,8 @@
 	  (and fd (intern fd :pvs))))
   (let ((dp (environment-variable "PVSDEFAULTDP")))
     (when dp (set-decision-procedure (intern dp :pvs))))
+  (unless *workspace-session*
+    (change-workspace *default-pathname-defaults* t t))
   (setq *pvs-library-path* (get-pvs-library-path))
   (unless dont-load-patches
     (load-pvs-patches))
@@ -183,8 +180,6 @@
   (unless *default-pathname-defaults*
     ;; Need to make sure this is set to something
     (setq *default-pathname-defaults* (truename (working-directory))))
-  (unless (current-context-path)
-    (change-workspace *default-pathname-defaults* t))
   ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
@@ -295,7 +290,7 @@ should be enough."
 
 (defun pvs-init-globals ()
   (reset-typecheck-caches)
-  (initialize-workspaces)
+  ;; (initialize-workspaces)
   (clrnumhash)
   ;; Prover hash tables
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
@@ -342,131 +337,6 @@ should be enough."
   (remove-store-object-caches)
   (setq *exprs-generating-actual-tccs* nil)
   (setq *store-object-hash* nil))
-
-(defun clear-theories (&key workspace ;; nil => *workspace-session*
-			 empty-pvs-context delete-binfiles dont-load-prelude-libraries)
-  (clear-workspace :workspace workspace
-		   :empty-pvs-context empty-pvs-context
-		   :delete-binfiles delete-binfiles
-		   :dont-load-prelude-libraries dont-load-prelude-libraries))
-
-(defun clear-all-workspaces (&key empty-pvs-context delete-binfiles)
-  (clear-workspace :workspace t
-		   :empty-pvs-context empty-pvs-context
-		   :delete-binfiles delete-binfiles))
-
-(defun clear-workspace (&key workspace empty-pvs-context delete-binfiles
-			  dont-load-prelude-libraries)
-  "Clears the given workspace, or the current workspace if nil, and all
-workspaces if t or 'all.  Roughly speaking, it's in the state of a workspace
-at the start of a PVS session.
-
-Clearing a workspace saves the .pvscontext file if needed, initializes the
-workspace-session instance, removes binfiles if delete-binfiles is not nil,
-loads .pvscontext, and any prelude library extensions in the .pvscontext
- (see load-prelude-libraries), unless dont-load-prelude-libraries is not
-nil."
-  (clear-background-context)
-  (let ((*dont-write-object-files* t))
-    (save-context empty-pvs-context))
-  (reset-typecheck-caches)
-  (let* ((*circular-file-dependencies* nil)
-	 (workspaces (cond ((member workspace '("all" "t") :test #'string-equal)
-			    *all-workspace-sessions*)
-			   ((typep workspace '(or string pathname))
-			    (list (get-workspace-session workspace)))
-			   ((null workspace)
-			    (list *workspace-session*))))
-	 ;; (ws-closure (if (eq workspaces *all-workspace-sessions*)
-	 ;; 		 workspaces
-	 ;; 		 ;;(close-workspace-dependencies workspaces)
-	 ;; 		 workspaces))
-	 )
-    (dolist (ws workspaces)
-      (cond ((uiop:directory-exists-p (path ws))
-	     (clrhash (pvs-files ws))
-	     (clrhash (pvs-theories ws))
-	     (clrhash (all-subst-mod-params-caches ws))
-	     (setf (last-kept-decls ws) nil)
-	     (if empty-pvs-context
-		 (setf (pvs-context ws) (make-pvs-context))
-		 (when (and (not dont-load-prelude-libraries)
-			    (listp (pvs-context-libraries))
-			    (every #'stringp (pvs-context-libraries)))
-		   ;; May need to make sure a later ws isn't a prelude-library
-		   (load-prelude-libraries (prelude-libs ws))))
-	     (when delete-binfiles
-	       (let ((bindir (format nil "~a~a/" (path ws) *pvsbin-string*)))
-		 (dolist (bf (uiop:directory-files bindir "*.bin"))
-		   (delete-file bf)))))
-	    (t (setq *all-workspace-sessions* (remove ws *all-workspace-sessions*))
-	       (pvs-message "Directory ~a has disappeared" (path ws)))))
-    t))
-
-(defvar *workspace-deps*)
-
-(defun workspace-depends-on (workspace)
-  (let ((*workspace-deps* nil))
-    (workspace-depends-on* workspace)
-    *workspace-deps*))
-
-(defun workspace-depends-on* (workspace)
-  (maphash #'(lambda (id th)
-	       (declare (ignore id))
-	       (unless (from-prelude? th)
-		 (dolist (imp (all-usings th))
-		   (unless (from-prelude? (car imp))
-		     (let* ((cp (context-path (car imp)))
-			    (ws (get-workspace-session cp)))
-		       (assert ws)
-		       (unless (or (eq ws workspace)
-				   (memq ws *workspace-deps*))
-			 (push ws *workspace-deps*)
-			 (workspace-depends-on* ws)))))))
-	   (pvs-theories workspace)))
-
-(defun workspace-dependencies-alist ()
-  (let ((deps-alist nil))
-    (dolist (ws *all-workspace-sessions*)
-      (let ((ws-deps (workspace-dependencies ws)))
-	(push ws-deps deps-alist)))
-    deps-alist))
-
-(defun workspace-dependencies (workspace)
-  (let ((deps nil))
-    (maphash #'(lambda (id th)
-		 (declare (ignore id))
-		 (unless (from-prelude? th)
-		   (dolist (imp-th (immediate-importings th))
-		     (unless (from-prelude? imp-th)
-		       (let* ((cp (context-path imp-th))
-			      (ws (get-workspace-session cp)))
-			 (assert ws)
-			 (unless (eq ws workspace)
-			   (pushnew ws deps)))))))
-	     (pvs-theories workspace))
-    (cons workspace deps)))
-
-;; workspaces is the list of workspaces to be cleared; need to also clear
-;; any workspace that has a theory referencing it.
-;; (defun workspace-upward-closure (workspaces)
-;;   ;; ws-alist is s.t. the cdr are all the workspaces directly referenced
-;;   ;; by any theory in the first workspace
-;;   (let ((ws-alist (workspace-dependencies-alist)))
-;;     (workspace-upward-closure* workspaces ws-alist nil)))
-
-;; (defun workspace-upward-closure* (workspaces ws-alist closure)
-;;   (let ((imm-workspaces (remove-if-not #'(lambda (ws-entry)
-;; 					   (some #'(lambda (ws) (memq ws (cdr ws-entry)))
-;; 						 workspaces))
-;; 			  ws-alist)))
-;;     (break)))
-				  
-
-(defun intialize-workspace-session (ws)
-  (with-workspace ws
-    (clrhash (current-pvs-files))
-    (clrhash (current-pvs-theories))))
 
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
@@ -681,7 +551,7 @@ nil."
 	 (pfile (make-pathname
 		 :defaults defaults
 		 :name (format nil "patch~d~@[-~a~]~@[~a~]"
-			 (major-version) ext (pvs-image-suffix))
+			 *pvs-version* ext (pvs-image-suffix))
 		 :type "lisp"))
 	 (bfile (make-fasl-file-name pfile)))
     (when (or (uiop:file-exists-p pfile)
@@ -754,6 +624,7 @@ pvs-context.  forced? t says to ignore this, and parse anyway.  no-message?
 t means don't give normal progress messages, and typecheck? says whether to
 use binfiles."
   (unless *workspace-session* (initialize-workspaces))
+  (assert (memq *workspace-session* *all-workspace-sessions*))
   (with-pvs-file (fname) fileref
     (assert (current-pvs-context))
     (let* ((filename (pvs-filename fname))
@@ -1751,6 +1622,16 @@ Needs to pay attention to sections."
 		    (and th-diffs t)
 		    (values theories th-diffs))))))))
 
+(defun typecheck-theory (str &optional dir)
+  (let* ((pdir (if dir (uiop:directory-exists-p dir) (current-context-path)))
+	 (pvs-file (if pdir
+		       (merge-pathnames (sformat "~a.pvs") pdir)
+		       (error "typecheck-theory: directory ~a does not exist" dir))))
+    (when (uiop:file-exists-p pvs-file)
+      (warn "Overwriting ~a" pvs-file))
+    (alexandria:write-string-into-file str pvs-file :if-exists :supersede)
+    (car (typecheck-file pvs-file))))
+
 (defun prelude-file-theories (fileref)
   (with-pvs-file (filename dirname) fileref
     (let* ((dir (or dirname (current-path)))
@@ -2025,41 +1906,17 @@ Needs to pay attention to sections."
   (let* ((specpath (make-specpath pathname))
 	 (filename (pvs-filename specpath))
 	 (sorted-theories (sort-theories theories)))
-    ;;(check-import-circularities sorted-theories)
+    ;; (check-import-circularities sorted-theories)
     (dolist (theory sorted-theories)
       (unless (typechecked? theory)
 	(let ((start-time (get-internal-real-time))
 	      (*current-context* (make-new-context theory))
 	      (*old-tcc-names* nil))
 	  (typecheck theory)
-	  ;; (unwind-protect (typecheck theory)
-	  ;;   (reset-subst-mod-params-cache))
+	  (typechecked-message theory (realtime-since start-time))
 	  (assert (saved-context theory))
-	  ;; (assert (typechecked? theory) nil
-	  ;; 	  "Theory ~a not typechecked?" (id theory))
-	  (restore-from-context filename theory)
-	  (set-default-proofs theory)
-	  ;;	(when (and *prove-tccs* (module? theory))
-	  ;;	  (prove-unproved-tccs (list theory))
-	  ;;	  (setf (tccs-tried? theory) t))
-	  (setf (filename theory) filename)
-	  (multiple-value-bind (tot prv unprv sub simp)
-	      (numbers-of-tccs theory)
-	    (let ((time (realtime-since start-time)))
-	      (if (zerop tot)
-		  (pvs-message "~a typechecked in ~,2,-3fs: No TCCs generated~
-                                ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		    (id theory) time
-		    (length (conversion-messages theory))
-		    (length (warnings theory))
-		    (length (info theory)))
-		  (pvs-message
-		      "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
-                       ~d proved, ~d subsumed, ~d unproved~[~:;, ~:*~d trivial~]~
-                       ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		    (id theory) time tot prv sub unprv simp
-		    (length (conversion-messages theory))
-		    (length (warnings theory)) (length (info theory))))))))))
+	  (setf (filename theory) filename))))
+    (restore-proofs filename :theories theories))
   (let* ((filename (pvs-filename pathname))
 	 (ctheory (car (last theories)))
 	 (*current-context* (saved-context ctheory)))
@@ -2067,8 +1924,7 @@ Needs to pay attention to sections."
       (when dep
 	(setq *circular-file-dependencies*
 	      (delete dep *circular-file-dependencies*))))
-    (let ((deplist (mapcar #'(lambda (d)
-			       (list (id d) (filename d)))
+    (let ((deplist (mapcar #'(lambda (d) (list (id d) (filename d)))
 		     (circular-file-dependencies filename))))
       (when deplist
 	(pvs-warning
@@ -2077,6 +1933,25 @@ Needs to pay attention to sections."
            bin files will not be generated for any of these pvs files."
 	  deplist))))
   theories)
+
+(defun typechecked-message (theory time)
+  (let ((*current-context* (saved-context theory)))
+    (multiple-value-bind (tot prv unprv sub simp)
+	(numbers-of-tccs theory)
+      (if (zerop tot)
+	  (pvs-message "~a typechecked in ~,2,-3fs: No TCCs generated~
+                                ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+	    (id theory) time
+	    (length (conversion-messages theory))
+	    (length (warnings theory))
+	    (length (info theory)))
+	  (pvs-message
+	      "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
+                       ~d proved, ~d subsumed, ~d unproved~[~:;, ~:*~d trivial~]~
+                       ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+	    (id theory) time tot prv sub unprv simp
+	    (length (conversion-messages theory))
+	    (length (warnings theory)) (length (info theory)))))))
 
 (defun set-default-proofs (theory)
   (dolist (d (all-decls theory))
@@ -2440,8 +2315,8 @@ Needs to pay attention to sections."
 		   (id fmla) just)
 		 (setq save-proofs t)
 		 (incf proved-proofs)
-		 ;; (copy-proofs-to-orphan-file
-		 ;;  (filename theory) (id theory) (list (cons (id theory) decl-proofs)))
+		 ;; (copy-proofs-to-orphan-file (filename theory)
+		 ;;      (list (cons (id theory) decl-proofs)))
 		 )
 		(orig-just
 		 (pvs-message "~a unproved - keeping original strategy"
@@ -2909,9 +2784,11 @@ Note that even proved ones get overwritten"
 				     ;;(break "(parsed?* ~a) failed" gth)
 				     ))))
 			 (t (and (filename mod)
-				 (eql (car (gethash (pvs-filename (filename mod))
-						    (current-pvs-files)))
-				      (file-write-date (make-specpath (filename mod)))))))))
+				 (let ((pvs-file (make-specpath (filename mod))))
+				   (and (file-exists-p pvs-file)
+					(eql (car (gethash (pvs-filename (filename mod))
+							   (current-pvs-files)))
+					     (file-write-date pvs-file)))))))))
 	(push mod *parsed-theories-seen*)
 	prsd?)))
 
@@ -3959,16 +3836,15 @@ If formname is nil, then formref should resolve to a unique formula name."
 ;;; Delete Theory
 
 (defun delete-pvs-file (filename &optional delete-file?)
-  (let ((theory-ids (get-context-theory-names filename)))
+  (let* ((theory-ids (get-context-theory-names filename))
+	 (theories (mapcar #'get-theory theory-ids)))
     (when delete-file?
-      (dolist (thid theory-ids)
-	(copy-proofs-to-orphan-file filename thid)))
-    (dolist (tid theory-ids)
-      (let ((theory (get-theory tid)))
+      (copy-proofs-to-orphan-file filename (read-pvs-file-proofs filename)))
+    (dolist (theory theories)
 	(when theory
 	  (when (typechecked? theory)
 	    (untypecheck-theory theory))
-	  (remhash tid (current-pvs-theories)))))
+	  (remhash (id theory) (current-pvs-theories))))
     (remhash (pvs-filename filename) (current-pvs-files))
     (delete-file-from-workspace filename))
   (when delete-file?
@@ -3978,14 +3854,20 @@ If formname is nil, then formref should resolve to a unique formula name."
       (pvs-message "~a has been removed from the workspace (the file is still there)" filename)))
 
 (defun delete-theory (theoryref)
-  (let ((theory (gethash (ref-to-id theoryref) (current-pvs-theories))))
-    (when theory
-      (copy-proofs-to-orphan-file (filename theory) (id theory))
-      (untypecheck-usedbys theory)
-      (remhash (id theory) (current-pvs-theories))
-      (let ((fname (pvs-filename (filename theory))))
-	(setf (gethash fname (current-pvs-files))
-	      (remove theory (gethash fname (current-pvs-files))))))))
+  (multiple-value-bind (dir file thname)
+      (get-theory-ref theoryref)
+    (with-workspace dir
+      (let* ((theory (get-theory thname))
+	     (tfile (or file (and theory (filename theory))))
+	     (th-proofs (read-theory-proofs tfile (id theory))))
+	(when th-proofs
+	  (copy-proofs-to-orphan-file tfile (list th-proofs)))
+	(when theory
+	  (untypecheck-usedbys theory)
+	  (remhash (id theory) (current-pvs-theories))
+	  (let ((fname (pvs-filename (filename theory))))
+	    (setf (gethash fname (current-pvs-files))
+		  (remove theory (gethash fname (current-pvs-files))))))))))
 
 
 ;;; List Theories
@@ -4236,7 +4118,7 @@ nil is returned in that case."
 
 (defmethod get-typechecked-theory ((thname modname) &optional theories quiet?)
   (if (library thname)
-      (let ((lib-path (get-library-path (library thname))))
+      (let ((lib-path (get-library-reference (library thname))))
 	(with-workspace lib-path
 	  (get-typechecked-theory (copy thname 'library nil) theories quiet?)))
       (if (and (resolution thname)

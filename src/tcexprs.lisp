@@ -1392,7 +1392,7 @@
 (defmethod typecheck-operator ((op expr) expr expected)
   (declare (ignore expected))
   (unless (ptypes op)
-    (typecheck* op nil nil (argument expr))))
+    (typecheck* op nil nil (arguments expr))));;NSH(9-2-26): was (argument expr) which isn't a list
 
 (defun set-possible-argument-types (op arg)
   (unless (ptypes arg)
@@ -1712,7 +1712,7 @@ field-decls, etc."
 						(if (null-expr? (args2 list-ex))
 						    (type null-ex)
 						    (range (type cons-ex)))))))
-		     (t (break "no expected")))
+		     (t (break "No expected type")))
 		    (setq list-ex (args2 list-ex))))
     (cond (null-ex
 	   (setf (type list-ex) (type null-ex))

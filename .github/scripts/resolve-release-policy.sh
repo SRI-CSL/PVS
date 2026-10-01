@@ -65,38 +65,39 @@ prerelease=false
 move_tag=false
 release_date=$(date -u +%Y%m%d)
 artifact_branch=$(sanitize_component "$GITHUB_REF_NAME")
+release_version_pattern=${release_version//./\\.}
+stable_tag_pattern="^pvs${release_version_pattern}\\.[1-9][0-9]*$"
 
 case ${GITHUB_REF_TYPE} in
   branch)
-    if [[ ${GITHUB_REF_NAME} == "$stable_branch" ]]; then
-      publish=true
-      channel=stable
-      release_tag="pvs${release_version}-${artifact_branch}-${release_date}"
-      release_title="PVS ${release_version} ${artifact_branch} ${release_date}"
-      prerelease=false
-      move_tag=true
-    elif [[ ${GITHUB_REF_NAME} == "$dev_branch" ]]; then
+    if [[ ${GITHUB_REF_NAME} == "$dev_branch" ]]; then
       publish=true
       channel=dev
-      release_tag="pvs${release_version}-${artifact_branch}-${release_date}"
-      release_title="PVS ${release_version} ${artifact_branch} ${release_date}"
+      release_tag="pvs${release_version}-${artifact_branch}"
+      release_title="PVS ${release_version} Development Snapshot"
       prerelease=true
       move_tag=true
     fi
     ;;
   tag)
-    git fetch --no-tags --depth=1 origin \
-      "refs/heads/${stable_branch}:refs/remotes/origin/${stable_branch}" >/dev/null 2>&1 || {
-      fail "unable to fetch stable branch origin/${stable_branch} for tag validation"
-    }
-    if git merge-base --is-ancestor "$GITHUB_SHA" "refs/remotes/origin/${stable_branch}"; then
-      publish=true
-      channel=stable
-      release_tag=${GITHUB_REF_NAME}
-      release_title=${GITHUB_REF_NAME}
-      prerelease=false
-      move_tag=false
-      artifact_branch=$(sanitize_component "$stable_branch")
+    if [[ ${GITHUB_REF_NAME} =~ $stable_tag_pattern ]]; then
+      fetch_args=(--no-tags)
+      if [[ $(git rev-parse --is-shallow-repository 2>/dev/null) == true ]]; then
+        fetch_args+=(--unshallow)
+      fi
+      git fetch "${fetch_args[@]}" origin \
+        "refs/heads/${stable_branch}:refs/remotes/origin/${stable_branch}" >/dev/null 2>&1 || {
+        fail "unable to fetch stable branch origin/${stable_branch} for tag validation"
+      }
+      if git merge-base --is-ancestor "$GITHUB_SHA" "refs/remotes/origin/${stable_branch}"; then
+        publish=true
+        channel=stable
+        release_tag=${GITHUB_REF_NAME}
+        release_title="PVS ${GITHUB_REF_NAME#pvs}"
+        prerelease=false
+        move_tag=false
+        artifact_branch=$(sanitize_component "$stable_branch")
+      fi
     fi
     ;;
 esac

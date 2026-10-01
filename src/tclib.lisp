@@ -29,23 +29,26 @@
 
 (defun load-prelude ()
   (assert *pvs-path*)
-  (let* ((pvs-lib (format nil "~alib" *pvs-path*))
-	 (pvs-ctx (format nil "~a/.pvscontext" pvs-lib))
-	 (*loading-prelude* t)
-	 (lib-ws (get-workspace-session pvs-lib)))
-    (when (uiop:file-exists-p pvs-ctx)
-      (delete-file pvs-ctx))
-    (setf (pvs-context lib-ws)
-	  (list *pvs-version* nil '(:default-decision-procedure shostak)))
-    (with-workspace lib-ws
-      (load-core-prelude)
-      (load-pvsio-prelude))
-    (initialize-workspaces)))
+  (let ((*loading-prelude* t))
+    (with-workspace :prelude
+      (dolist (ws *all-workspace-sessions*)
+	(clrhash (pvs-theories ws))
+	(clrhash (pvs-files ws))
+	(clrhash (all-subst-mod-params-caches ws)))
+      (setf (pvscontext *workspace-session*) (initial-context))
+      (let* ((*current-context* nil)
+	     (pvs-ctx (format nil "~a/.pvscontext" (path *workspace-session*))))
+	(when (uiop:file-exists-p pvs-ctx)
+	  (delete-file pvs-ctx))
+	(load-core-prelude)
+	(load-pvsio-prelude)))))
 
 (defun load-core-prelude ()
   (multiple-value-bind (theories time comments)
       (parse :file *prelude-filename*)
     (declare (ignore time))
+    (setf (gethash "prelude" (current-pvs-files))
+	  (cons (file-write-date *prelude-filename*) theories))
     (when (and *prelude-theories*
 	       (or ;;(not (length= *prelude-theories* theories))
 		(let ((*current-context* *prelude-context*))
@@ -104,7 +107,7 @@
     (makunbound '*manip-supported-types*)
     (when *pvs-initialized*
       (clear-theories :workspace :all))
-    (let ((*all-workspace-sessions* nil)
+    (let ((*all-workspace-sessions* (list *workspace-session*))
 	  (*generate-tccs* 'all))
       (reset-typecheck-caches)
       (dolist (fn *load-prelude-hook*)
@@ -146,7 +149,6 @@
       (format t "~%Done typechecking the core prelude")
       (restore-prelude-proofs)
       ;;(initialize-prelude-attachments)
-
       (handler-case (progn
 		      (format t "~%[PVS2C] Generating prelude...~%")
 		      (pvs2c-prelude)
@@ -159,7 +161,6 @@
 	  (format t "~%[PVS2C] Warning: ~a~%" w))
 	(error (e)
 	  (format t "~%[PVS2C] Error: ~a~%" e)))
-      
       (register-manip-type *number_field* 'pvs-type-real))))
 
 (defun load-pvsio-prelude ()
@@ -171,6 +172,8 @@
     (multiple-value-bind (theories time comments)
 	(parse :file *pvsio-filename*)
       (declare (ignore time))
+      (setf (gethash "pvsio_prelude" (current-pvs-files))
+	    (cons (file-write-date *pvsio-filename*) theories))
       (add-comments-to-theories theories comments)
       (reset-typecheck-caches)
       (dolist (th theories)
@@ -245,33 +248,14 @@
 	'using-hash pusing-hash))))
 
 (defun restore-prelude-proofs ()
-  (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
-				 "prelude.prf")))
-    (assert (uiop:file-exists-p prfile))
-    (format t "~%Restoring the prelude proofs from ~a" prfile)
-    (dolist (theory (core-prelude-theories))
-      ;; (format t "~%Restoring proofs for ~a" (id theory))
-      (restore-proofs prfile theory)
-      (mapc #'(lambda (decl)
-		(if (justification decl)
-		    (setf (proof-status decl) 'proved)
-		    ;;(break "No proof for ~a?" (id decl))
-		    ))
-	    (provable-formulas theory)))))
+  (assert (pathname-equal (current-context-path) (merge-pathnames "lib/" *pvs-path*)))
+  (format t "~%Restoring proofs from lib/prelude.prf")
+  (restore-proofs "prelude" :read-only t))
 
 (defun restore-pvsio-proofs ()
-  (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
-				 "pvsio_prelude.prf")))
-    (assert (uiop:file-exists-p prfile))
-    (format t "~%Restoring the prelude proofs from ~a" prfile)
-    (dolist (theory (pvsio-prelude-theories))
-      (restore-proofs prfile theory)
-      (mapc #'(lambda (decl)
-		(if (justification decl)
-		    (setf (proof-status decl) 'proved)
-		    ;;(break "No proof for ~a?" (id decl))
-		    ))
-	    (provable-formulas theory)))))
+  (assert (pathname-equal (current-context-path) (merge-pathnames "lib/" *pvs-path*)))
+  (format t "~%Restoring proofs from lib/pvsio_prelude.prf")
+  (restore-proofs "pvsio_prelude" :read-only t))
 
 ;;; This is invoked after adding some theories to the prelude Takes a file
 ;;; name (e.g., "~/widget/foo", and installs all proofs from
@@ -297,7 +281,7 @@
       (unless (every #'consp proofs)
 	(error "Proofs file ~a is corrupted" prfpath))
       (cond (theory
-	     (restore-theory-proofs theory proofs t)
+	     (restore-theory-proofs "prelude" theory proofs nil)
 	     (format t "~%Theory ~a proofs restored" newthid))
 	    (t (format t "~%Theory ~a not in prelude, ignoring" newthid))))))
 
@@ -427,10 +411,9 @@ in your PVS_LIBRARY_PATH."
 	       (if (or pvs-files-loaded
 		       lisp-files-loaded
 		       emacs-files-loaded)
-		   (unless (member lib-path (cadr (current-pvs-context)) :test #'file-equal)
-		     (if (cdr (current-pvs-context))
-			 (push lib-ref (cadr (current-pvs-context)))
-			 (nconc (current-pvs-context) (list (list lib-ref)))))
+		   (unless (member lib-path (pvscontext-prelude-libs (current-pvs-context))
+				   :test #'file-equal)
+		     (push lib-ref (pvscontext-prelude-libs (current-pvs-context))))
 		   (when (and (not quiet?)
 			      (not force?)
 			      (prelude-library-loaded? lib-path))
@@ -581,8 +564,8 @@ point."
 	  (prelude-ctx (prelude-context *workspace-session*)))
       (with-workspace lib-path
 	(pvs-message "Loading prelude library context from ~a..." lib-path)
-	(cond ((cddr (current-pvs-context))
-	       (dolist (ce (pvs-context-entries))
+	(cond ((pvscontext-entries (current-pvs-context))
+	       (dolist (ce (pvscontext-entries (current-pvs-context)))
 		 (unless (or force? (typechecked? (ce-file ce)))
 		   (typecheck-file (ce-file ce) force? nil nil t)
 		   (pushnew (ce-file ce) loaded-files :test #'string=)))
@@ -595,7 +578,7 @@ point."
 			"Error in loading prelude file ~a~a"
 			lib-path (filename th))))
 		(current-pvs-theories))
-	       (dolist (ce (pvs-context-entries))
+	       (dolist (ce (pvscontext-entries (current-pvs-context)))
 		 (dolist (te (ce-theories ce))
 		   (let* ((id (te-id te))
 			  (th (get-theory id)))
@@ -945,6 +928,8 @@ not a dir: if a valid id
 (defmethod get-library-path ((mn modname))
   (or (and (resolution mn)
 	   (get-library-path (declaration mn)))
+      (and (library mn)
+	   (get-library-reference (library mn)))
       (let ((th (get-theory mn)))
 	(and th (get-library-path th)))))
 
@@ -952,38 +937,35 @@ not a dir: if a valid id
   (get-library-path (theory ctx)))
 
 (defmethod get-library-path (libref)
+  "Takes a pathname, string, or symbol, and converts it to absolute directory path;
+Checks for existence."
   (assert (typep libref '(or pathname symbol string)))
-  (if (or (null libref) (equal libref "") (equal libref "."))
-      (current-context-path)
-      (if (eq libref :prelude)
-	  (context-path (theory *prelude-context*))
-	  (let* ((pstr (typecase libref
-			 (symbol (string libref))
-			 (pathname (namestring libref))
-			 (t libref)))
-		 (dstr (when (stringp pstr)
-			 (if (char= (char pstr (1- (length pstr))) #\/)
-			     pstr (format nil "~a/" pstr))))
-		 (estr (when (stringp dstr) (ignore-errors (uiop:native-namestring dstr))))
-		 (dirp (when (and estr (uiop:directory-exists-p estr)) (truename estr)))
-		 (lib-path (when dirp (merge-pathnames dirp))))
-	    ;; dirp works for both absolute and relative pathnames Note that a
-	    ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
-	    ;; same name.
-	    (or lib-path
-		(let* ((nstr (when (stringp pstr)
-			       (if (char= (char pstr (1- (length pstr))) #\/)
-				   (subseq pstr 0 (1- (length pstr)))
-				   pstr)))
-		       (lpos (when nstr (position #\/ nstr :from-end t)))
-		       (lstr (if lpos
-				 (subseq nstr (1+ lpos))
-				 nstr)))
-		  (when (and (stringp lstr)
-			     (valid-pvs-id* lstr))
-		    (let ((lib-id (intern lstr :pvs)))
-		      (or (visible-lib-decl-pathname lib-id)
-			  (cdr (assq lib-id (pvs-library-alist))))))))))))
+  (cond ((or (null libref) (equal libref "") (equal libref "."))
+	 (current-context-path))
+	((eq libref :prelude)
+	 (pathname (sformat "~alib/" *pvs-path*)))
+	(t (let* ((pstr (typecase libref
+			  (symbol (string libref))
+			  (pathname (namestring libref))
+			  (t libref)))
+		  (dstr (when (stringp pstr)
+			  (if (char= (char pstr (1- (length pstr))) #\/)
+			      pstr (format nil "~a/" pstr))))
+		  (estr (when (stringp dstr) (ignore-errors (uiop:native-namestring dstr))))
+		  (dirp (when (and estr (uiop:directory-exists-p estr)) (truename estr)))
+		  (lib-path (when dirp (merge-pathnames dirp))))
+	     ;; dirp works for both absolute and relative pathnames Note that a
+	     ;; local subdirectory shadows a PVS_LIBRARY_PATH subdirectory of the
+	     ;; same name.
+	     (or lib-path
+		 ;; Couldn't determine path, try looking for lib in current lib-decls
+		 ;; and then in pvs-library-alist
+		 (or (let ((lstr (car (last (pathname-directory pstr)))))
+		       (when (and (stringp lstr)
+				  (valid-pvs-id* lstr))
+			 (let ((lib-id (intern lstr :pvs)))
+			   (visible-lib-decl-pathname lib-id))))
+		     (cdr (assoc pstr (pvs-library-alist) :test #'string=))))))))
 
 (defmethod get-library-id ((mod datatype-or-module))
   (get-library-id (context-path mod)))

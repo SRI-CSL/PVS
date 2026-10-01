@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pp.lisp -- The PVS prettyprinter
 ;; Author          : Sam Owre
-;; Created On      : Thu Oct 29 23:19:42 1998
-;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Dec 18 20:56:23 2012
-;; Update Count    : 10
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -301,7 +296,7 @@ obj - roughly any Lisp entity that's printable, though this specializes to PVS i
   (if (syntax? obj)
       (let ((*unparse-expanded* t))
 	(unparse obj :string t :char-width char-width))
-      (format nil "~a" obj)))
+      (sformat "~a" obj)))
 
 (defun str= (obj string)
   (string= (str obj) string))
@@ -1800,11 +1795,11 @@ then uses unpindent* to add the indent to each line"
 (defmethod valid-list-expr? ((ex expr))
   nil)
 
-(defmethod list-arguments ((ex list-expr))
-  (cons (args1 ex) (list-arguments (args2 ex))))
+(defmethod list-arguments ((ex list-expr) &optional accum)
+  (list-arguments (args2 ex) (cons (args1 ex) accum)))
 
-(defmethod list-arguments ((ex null-expr))
-  nil)
+(defmethod list-arguments ((ex null-expr) &optional accum)
+  (nreverse accum))
 
 (defmethod pp* ((ex null-expr))
   (write "(: :)"))
@@ -3041,10 +3036,16 @@ then uses unpindent* to add the indent to each line"
 	(length str))))
 
 (defmethod exprs ((ex list-expr))
-  (cons (args1 ex) (exprs (args2 ex))))
+  (exprs* ex))
 
 (defmethod exprs ((ex null-expr))
   nil)
+
+(defmethod exprs* ((ex list-expr) &optional accum)
+ (exprs* (args2 ex)  (cons (args1 ex) accum)))
+
+(defmethod exprs* ((ex null-expr) &optional accum)
+  (nreverse accum))
 
 (defun pp-bindings (bindings)
   (pprint-logical-block (nil bindings)

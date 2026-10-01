@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tcdecls.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Mon Oct 18 22:45:21 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Nov  4 17:04:21 1998
-;; Update Count    : 90
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -1556,6 +1551,8 @@ bindings."
 				     dt))
 		       domtypes formals)
 		     domtypes))
+	 (*bound-variables* (append (remove-if-not #'dep-binding? dtypes)
+				    *bound-variables*))
 	 (ftype (make-formals-ftype dtypes range formals bound-formals)))
     ftype))
 
@@ -1598,7 +1595,8 @@ The dependent types are created only when needed."
 		     (substit (car dtypes) substs))))
 	(if (dep-binding? dtype)
 	    (let* ((fmls (car formals))
-		   (dname (mk-dep-binding-name dtype)))
+		   (dname (mk-dep-binding-name dtype))
+		   (*bound-variables* (cons dname *bound-variables*)))
 	      ;; update substs
 	      (if (cdr fmls)
 		  (dotimes (i (length fmls))

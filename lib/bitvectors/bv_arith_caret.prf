@@ -1,1178 +1,1108 @@
-(bv_arith_caret
- (bv_shift_TCC1 0
-  (bv_shift_TCC1-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil nil))
- (bv_shift_TCC2 0
-  (bv_shift_TCC2-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil nil))
- (bv_shift_TCC3 0
-  (bv_shift_TCC3-1 nil 3341454041 ("" (subtype-tcc) nil nil)
-   ((minus_odd_is_odd application-judgement "odd_int" integers nil))
-   nil))
- (bv_shift 0
-  (bv_shift-1 nil 3341454060
-   ("" (skolem!)
-    (("" (case "ss!1 = 0")
-      (("1" (replace -1)
-        (("1" (expand "exp2")
-          (("1" (rewrite "div_by_one")
-            (("1" (rewrite "bv_caret_all[N!1]")
-              (("1" (assert)
-                (("1" (same-name "bv2nat[N!1 - ss!1]" "bv2nat[N!1]")
-                  (("1" (assert) nil nil)) nil))
-                nil))
-              nil))
-            nil))
-          nil))
-        nil)
-       ("2" (expand "^")
-        (("2" (rewrite "bv2nat_as_sum[N!1]")
-          (("2" (assert)
-            (("2" (use "sigma_split" ("m" "ss!1 - 1"))
-              (("2" (assert)
-                (("2" (replace -1)
-                  (("2" (hide -1)
+(|bv_arith_caret|
+ (|bv_shift_TCC1| 0
+  (|bv_shift_TCC1-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv_shift| SUBTYPE "(number_fields.-)(bv_arith_caret.N, 1)"
+    "below(bv_arith_caret.N)" (16 34 16 37))))
+ (|bv_shift_TCC2| 0
+  (|bv_shift_TCC2-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv_shift| SUBTYPE "bv_arith_caret.ss"
+    "upto((number_fields.-)(bv_arith_caret.N, 1))" (16 38 16 40))))
+ (|bv_shift_TCC3| 0
+  (|bv_shift_TCC3-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)) NIL
+   (|bv_shift| SUBTYPE "(number_fields.-)(bv_arith_caret.N, bv_arith_caret.ss)"
+    "nat" (16 23 16 29))))
+ (|bv_shift| 0
+  (|bv_shift-1| |nil| 3341454060
+   ("" (SKOLEM!)
+    (("" (CASE "ss!1 = 0")
+      (("1" (REPLACE -1)
+        (("1" (EXPAND "exp2")
+          (("1" (REWRITE "div_by_one")
+            (("1" (REWRITE "bv_caret_all[N!1]")
+              (("1" (ASSERT)
+                (("1" (SAME-NAME "bv2nat[N!1 - ss!1]" "bv2nat[N!1]")
+                  (("1" (ASSERT) NIL NIL)) NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL)
+       ("2" (EXPAND "^")
+        (("2" (REWRITE "bv2nat_as_sum[N!1]")
+          (("2" (ASSERT)
+            (("2" (USE "sigma_split" ("m" "ss!1 - 1"))
+              (("2" (ASSERT)
+                (("2" (REPLACE -1)
+                  (("2" (HIDE -1)
                     (("2"
-                      (case "sigma(ss!1, N!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))) = exp2(ss!1) * sigma(0, N!1 - 1 - ss!1, extend(LAMBDA (ii: below(N!1 - ss!1)): exp2(ii) * b2n(bv!1(ii + ss!1))))")
-                      (("1" (replace -1)
-                        (("1" (hide -1)
-                          (("1" (lemma "div_sum_nat")
+                      (CASE
+                          "sigma(ss!1, N!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))) = exp2(ss!1) * sigma(0, N!1 - 1 - ss!1, extend(LAMBDA (ii: below(N!1 - ss!1)): exp2(ii) * b2n(bv!1(ii + ss!1))))")
+                      (("1" (REPLACE -1)
+                        (("1" (HIDE -1)
+                          (("1" (LEMMA "div_sum_nat")
                             (("1"
-                              (inst -
+                              (INST -
                                "sigma(0, N!1 - 1 - ss!1, extend(LAMBDA (ii: below(N!1 - ss!1)): exp2(ii) * b2n(bv!1(ii + ss!1))))"
                                "exp2(ss!1)"
                                "sigma(0, ss!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii))))")
-                              (("1"
-                                (replace -1)
-                                (("1"
-                                  (hide -1)
+                              (("1" (REPLACE -1)
+                                (("1" (HIDE -1)
                                   (("1"
-                                    (case
-                                     "div(sigma(0, ss!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))), exp2(ss!1)) = 0")
-                                    (("1"
-                                      (rewrite
-                                       "bv2nat_as_sum[N!1 - ss!1]")
-                                      (("1" (assert) nil nil))
-                                      nil)
-                                     ("2"
-                                      (hide 3)
-                                      (("2"
-                                        (use "div_lt_nat")
-                                        (("2"
-                                          (assert)
-                                          (("2"
-                                            (hide 2)
-                                            (("2"
-                                              (lemma
-                                               "bv2nat_as_sum[ss!1]")
+                                    (CASE
+                                        "div(sigma(0, ss!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))), exp2(ss!1)) = 0")
+                                    (("1" (REWRITE "bv2nat_as_sum[N!1 - ss!1]")
+                                      (("1" (ASSERT) NIL NIL)) NIL)
+                                     ("2" (HIDE 3)
+                                      (("2" (USE "div_lt_nat")
+                                        (("2" (ASSERT)
+                                          (("2" (HIDE 2)
+                                            (("2" (LEMMA "bv2nat_as_sum[ss!1]")
                                               (("2"
-                                                (inst
-                                                 -
+                                                (INST -
                                                  "LAMBDA (ii: below(ss!1)): bv!1(ii)")
                                                 (("2"
-                                                  (case
-                                                   "sigma(0, ss!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))) = bv2nat(LAMBDA (ii: below(ss!1)): bv!1(ii))")
-                                                  (("1"
-                                                    (assert)
-                                                    nil
-                                                    nil)
-                                                   ("2"
-                                                    (replace -1)
-                                                    (("2"
-                                                      (hide -1 2 3)
-                                                      (("2"
-                                                        (expand
-                                                         "extend")
-                                                        (("2"
-                                                          (assert)
+                                                  (CASE
+                                                      "sigma(0, ss!1 - 1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))) = bv2nat(LAMBDA (ii: below(ss!1)): bv!1(ii))")
+                                                  (("1" (ASSERT) NIL NIL)
+                                                   ("2" (REPLACE -1)
+                                                    (("2" (HIDE -1 2 3)
+                                                      (("2" (EXPAND "extend")
+                                                        (("2" (ASSERT)
                                                           (("2"
-                                                            (rewrite
+                                                            (REWRITE
                                                              "sigma_restrict_eq")
                                                             (("1"
-                                                              (expand
+                                                              (EXPAND
                                                                "restrict")
-                                                              (("1"
-                                                                (propax)
-                                                                nil
-                                                                nil))
-                                                              nil)
-                                                             ("2"
-                                                              (skosimp)
-                                                              (("2"
-                                                                (assert)
-                                                                nil
-                                                                nil))
-                                                              nil))
-                                                            nil))
-                                                          nil))
-                                                        nil))
-                                                      nil))
-                                                    nil))
-                                                  nil))
-                                                nil))
-                                              nil))
-                                            nil))
-                                          nil))
-                                        nil))
-                                      nil))
-                                    nil))
-                                  nil))
-                                nil))
-                              nil))
-                            nil))
-                          nil))
-                        nil)
-                       ("2" (assert)
-                        (("2" (hide 3)
-                          (("2" (lemma "sigma_shift")
+                                                              (("1" (PROPAX)
+                                                                NIL NIL))
+                                                              NIL)
+                                                             ("2" (SKOSIMP)
+                                                              (("2" (ASSERT)
+                                                                NIL NIL))
+                                                              NIL))
+                                                            NIL))
+                                                          NIL))
+                                                        NIL))
+                                                      NIL))
+                                                    NIL))
+                                                  NIL))
+                                                NIL))
+                                              NIL))
+                                            NIL))
+                                          NIL))
+                                        NIL))
+                                      NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL))
+                            NIL))
+                          NIL))
+                        NIL)
+                       ("2" (ASSERT)
+                        (("2" (HIDE 3)
+                          (("2" (LEMMA "sigma_shift")
                             (("2"
-                              (inst -
+                              (INST -
                                "extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))"
                                "N!1 - 1 - ss!1" 0 "ss!1")
-                              (("2"
-                                (assert)
-                                (("2"
-                                  (replace -1)
-                                  (("2"
-                                    (hide -1)
-                                    (("2"
-                                      (use "sigma_mult")
-                                      (("2"
-                                        (assert)
-                                        (("2"
-                                          (replace -1 1 rl)
-                                          (("2"
-                                            (hide -1)
-                                            (("2"
-                                              (rewrite
-                                               "sigma_restrict_eq")
-                                              (("2"
-                                                (hide 2)
+                              (("2" (ASSERT)
+                                (("2" (REPLACE -1)
+                                  (("2" (HIDE -1)
+                                    (("2" (USE "sigma_mult")
+                                      (("2" (ASSERT)
+                                        (("2" (REPLACE -1 1 RL)
+                                          (("2" (HIDE -1)
+                                            (("2" (REWRITE "sigma_restrict_eq")
+                                              (("2" (HIDE 2)
                                                 (("2"
-                                                  (apply-extensionality
-                                                   :hide?
-                                                   t)
+                                                  (APPLY-EXTENSIONALITY :HIDE?
+                                                   T)
                                                   (("2"
-                                                    (expand*
-                                                     "restrict"
+                                                    (EXPAND* "restrict"
                                                      "extend")
-                                                    (("2"
-                                                      (lift-if)
-                                                      (("2"
-                                                        (use
-                                                         "exp2_sum")
-                                                        (("2"
-                                                          (expand
-                                                           "b2n")
-                                                          (("2"
-                                                            (lift-if)
-                                                            (("2"
-                                                              (ground)
-                                                              nil
-                                                              nil))
-                                                            nil))
-                                                          nil))
-                                                        nil))
-                                                      nil))
-                                                    nil))
-                                                  nil))
-                                                nil))
-                                              nil))
-                                            nil))
-                                          nil))
-                                        nil))
-                                      nil))
-                                    nil))
-                                  nil))
-                                nil))
-                              nil))
-                            nil))
-                          nil))
-                        nil))
-                      nil))
-                    nil))
-                  nil))
-                nil))
-              nil))
-            nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   ((below type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (bv_caret_all formula-decl nil bv_caret nil)
-    (real_gt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (bvec type-eq-decl nil bv nil)
-    (div_by_one formula-decl nil div nil)
-    (bv2nat_as_sum formula-decl nil bv_sum nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (sigma_split formula-decl nil sums nil)
-    (extend const-decl "[nat -> nat]" bv_sum nil)
-    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (nbit type-eq-decl nil bit nil) (b2n const-decl "nbit" bit nil)
-    (sigma def-decl "nat" sums nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (restrict const-decl "[nat -> nat]" sums nil)
-    (sigma_restrict_eq formula-decl nil sums nil)
-    (IF const-decl "[boolean, T, T -> T]" if_def nil)
-    (div_lt_nat formula-decl nil div nil)
-    (div const-decl "integer" div nil)
-    (integer nonempty-type-from-decl nil integers nil)
-    (div_sum_nat formula-decl nil div nil)
-    (sigma_mult formula-decl nil sums nil)
-    (int_times_even_is_even application-judgement "even_int" integers
-     nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
-    (exp2_sum formula-decl nil exp2 nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
-    (sigma_shift formula-decl nil sums nil)
-    (nil application-judgement "nat" div nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil))
-   shostak))
- (bv_bottom_TCC1 0
-  (bv_bottom_TCC1-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil nil))
- (bv_bottom 0
-  (bv_bottom-1 nil 3341455388
-   ("" (skolem!)
-    (("" (case "ss!1 = N!1 - 1")
-      (("1" (replace -1)
-        (("1" (rewrite "mod_lt_nat")
-          (("1" (rewrite "bv_caret_all[N!1]")
-            (("1" (assert)
-              (("1" (same-name "bv2nat[ss!1 + 1]" "bv2nat[N!1]")
-                (("1" (assert) nil nil)) nil))
-              nil))
-            nil))
-          nil))
-        nil)
-       ("2" (rewrite "bv2nat_as_sum[N!1]")
-        (("2" (lemma "sigma_split")
+                                                    (("2" (LIFT-IF)
+                                                      (("2" (USE "exp2_sum")
+                                                        (("2" (EXPAND "b2n")
+                                                          (("2" (LIFT-IF)
+                                                            (("2" (GROUND) NIL
+                                                              NIL))
+                                                            NIL))
+                                                          NIL))
+                                                        NIL))
+                                                      NIL))
+                                                    NIL))
+                                                  NIL))
+                                                NIL))
+                                              NIL))
+                                            NIL))
+                                          NIL))
+                                        NIL))
+                                      NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL))
+                            NIL))
+                          NIL))
+                        NIL))
+                      NIL))
+                    NIL))
+                  NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (= CONST-DECL "[[T, T] -> boolean]" |equalities| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|bv_caret_all| FORMULA-DECL NIL |bv_caret| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|div_by_one| FORMULA-DECL NIL |div| NIL)
+    (|bv2nat_as_sum| FORMULA-DECL NIL |bv_sum| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|mult_divides2| APPLICATION-JUDGEMENT "(divides(m))" |divides| NIL)
+    (|mult_divides1| APPLICATION-JUDGEMENT "(divides(n))" |divides| NIL)
+    (|nnint_times_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|sigma_split| FORMULA-DECL NIL |sums| NIL)
+    (|extend| CONST-DECL "[FUNCTION[below(N) -> nat] -> FUNCTION[nat -> nat]]"
+     |bv_sum| NIL)
+    (* CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|nbit| TYPE-EQ-DECL NIL |bit| NIL)
+    (|b2n| CONST-DECL "[bool -> nbit]" |bit| NIL)
+    (|sigma| DEF-DECL "[[nat, nat, FUNCTION[nat -> nat]] -> nat]" |sums| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|restrict| CONST-DECL
+     "[[FUNCTION[nat -> nat], nat, nat] -> FUNCTION[nat -> nat]]" |sums| NIL)
+    (|sigma_restrict_eq| FORMULA-DECL NIL |sums| NIL)
+    (IF CONST-DECL
+        "[[boolean, T, T] -> T]"
+        |if_def|
+        NIL)
+    (|div_lt_nat| FORMULA-DECL NIL |div| NIL)
+    (|div| CONST-DECL "[[int, posnat] -> integer]" |div| NIL)
+    (|integer| NONEMPTY-TYPE-FROM-DECL NIL |integers| NIL)
+    (|div_sum_nat| FORMULA-DECL NIL |div| NIL)
+    (|sigma_mult| FORMULA-DECL NIL |sums| NIL)
+    (|int_times_even_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|posint_times_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|exp2_sum| FORMULA-DECL NIL |exp2| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|sigma_shift| FORMULA-DECL NIL |sums| NIL)
+    (NIL APPLICATION-JUDGEMENT "nat" |div| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK))
+ (|bv_bottom_TCC1| 0
+  (|bv_bottom_TCC1-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv_bottom| SUBTYPE "0" "upto(bv_arith_caret.ss)" (19 40 19 41))))
+ (|bv_bottom| 0
+  (|bv_bottom-1| |nil| 3341455388
+   ("" (SKOLEM!)
+    (("" (CASE "ss!1 = N!1 - 1")
+      (("1" (REPLACE -1)
+        (("1" (REWRITE "mod_lt_nat")
+          (("1" (REWRITE "bv_caret_all[N!1]")
+            (("1" (ASSERT)
+              (("1" (SAME-NAME "bv2nat[ss!1 + 1]" "bv2nat[N!1]")
+                (("1" (ASSERT) NIL NIL)) NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL)
+       ("2" (REWRITE "bv2nat_as_sum[N!1]")
+        (("2" (LEMMA "sigma_split")
           (("2"
-            (inst -
-             "extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))"
+            (INST - "extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))"
              "N!1 - 1" 0 "ss!1")
-            (("2" (assert)
-              (("2" (replace -1)
-                (("2" (hide -1)
-                  (("2" (lemma "sigma_shift")
+            (("2" (ASSERT)
+              (("2" (REPLACE -1)
+                (("2" (HIDE -1)
+                  (("2" (LEMMA "sigma_shift")
                     (("2"
-                      (inst -
+                      (INST -
                        "extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))"
                        "N!1 - ss!1 - 2" 0 "ss!1 + 1")
-                      (("2" (assert)
-                        (("2" (replace -1)
-                          (("2" (hide -1)
-                            (("2" (expand "extend" 2 2)
+                      (("2" (ASSERT)
+                        (("2" (REPLACE -1)
+                          (("2" (HIDE -1)
+                            (("2" (EXPAND "extend" 2 2)
                               (("2"
-                                (case
-                                 "sigma(0, N!1 - 2 - ss!1, LAMBDA (n: nat): IF 1 + n + ss!1 < N!1 THEN exp2(1 + n + ss!1) * b2n(bv!1(1 + n + ss!1)) ELSE 0 ENDIF) = exp2(ss!1 + 1) * sigma(0, N!1 - ss!1 - 2, LAMBDA (n: nat): IF n + ss!1 + 1 < N!1 THEN exp2(n) * b2n(bv!1(n + ss!1 + 1)) ELSE 0 ENDIF)")
-                                (("1"
-                                  (replace -1)
-                                  (("1"
-                                    (hide -1)
-                                    (("1"
-                                      (lemma "mod_sum")
+                                (CASE
+                                    "sigma(0, N!1 - 2 - ss!1, LAMBDA (n: nat): IF 1 + n + ss!1 < N!1 THEN exp2(1 + n + ss!1) * b2n(bv!1(1 + n + ss!1)) ELSE 0 ENDIF) = exp2(ss!1 + 1) * sigma(0, N!1 - ss!1 - 2, LAMBDA (n: nat): IF n + ss!1 + 1 < N!1 THEN exp2(n) * b2n(bv!1(n + ss!1 + 1)) ELSE 0 ENDIF)")
+                                (("1" (REPLACE -1)
+                                  (("1" (HIDE -1)
+                                    (("1" (LEMMA "mod_sum")
                                       (("1"
-                                        (inst
-                                         -
+                                        (INST -
                                          "sigma(0, ss!1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii))))"
                                          "exp2(ss!1 + 1)"
                                          "sigma(0, N!1 - ss!1 - 2, LAMBDA (n: nat): IF n + ss!1 + 1 < N!1 THEN exp2(n) * b2n(bv!1(n + ss!1 + 1)) ELSE 0 ENDIF)")
-                                        (("1"
-                                          (replace -1)
-                                          (("1"
-                                            (hide -1)
-                                            (("1"
-                                              (rewrite "mod_lt_nat")
+                                        (("1" (REPLACE -1)
+                                          (("1" (HIDE -1)
+                                            (("1" (REWRITE "mod_lt_nat")
                                               (("1"
-                                                (rewrite
+                                                (REWRITE
                                                  "bv2nat_as_sum[ss!1 + 1]")
                                                 (("1"
-                                                  (rewrite
-                                                   "sigma_restrict_eq")
-                                                  (("1"
-                                                    (hide 2 3)
+                                                  (REWRITE "sigma_restrict_eq")
+                                                  (("1" (HIDE 2 3)
                                                     (("1"
-                                                      (apply-extensionality
-                                                       :hide?
-                                                       t)
+                                                      (APPLY-EXTENSIONALITY
+                                                       :HIDE? T)
                                                       (("1"
-                                                        (expand*
-                                                         "restrict"
-                                                         "extend"
-                                                         "^")
-                                                        nil
-                                                        nil))
-                                                      nil))
-                                                    nil))
-                                                  nil))
-                                                nil)
-                                               ("2"
-                                                (hide 2 3)
+                                                        (EXPAND* "restrict"
+                                                         "extend" "^")
+                                                        NIL NIL))
+                                                      NIL))
+                                                    NIL))
+                                                  NIL))
+                                                NIL)
+                                               ("2" (HIDE 2 3)
                                                 (("2"
-                                                  (lemma
+                                                  (LEMMA
                                                    "bv2nat_as_sum[ss!1 + 1]")
                                                   (("2"
-                                                    (inst
-                                                     -
+                                                    (INST -
                                                      "LAMBDA (ii: below(ss!1 + 1)): bv!1(ii)")
-                                                    (("2"
-                                                      (assert)
+                                                    (("2" (ASSERT)
                                                       (("2"
-                                                        (case
-                                                         "sigma(0, ss!1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))) = sigma(0, ss!1, extend(LAMBDA(ii: below(ss!1 + 1)): exp2(ii) * b2n(bv!1(ii))))")
-                                                        (("1"
-                                                          (replace -1)
-                                                          (("1"
-                                                            (hide -1)
+                                                        (CASE
+                                                            "sigma(0, ss!1, extend(LAMBDA (ii: below(N!1)): exp2(ii) * b2n(bv!1(ii)))) = sigma(0, ss!1, extend(LAMBDA(ii: below(ss!1 + 1)): exp2(ii) * b2n(bv!1(ii))))")
+                                                        (("1" (REPLACE -1)
+                                                          (("1" (HIDE -1)
                                                             (("1"
-                                                              (replace
-                                                               -1
-                                                               +
-                                                               rl)
-                                                              (("1"
-                                                                (assert)
-                                                                nil
-                                                                nil))
-                                                              nil))
-                                                            nil))
-                                                          nil)
-                                                         ("2"
-                                                          (hide -1 2)
+                                                              (REPLACE -1 + RL)
+                                                              (("1" (ASSERT)
+                                                                NIL NIL))
+                                                              NIL))
+                                                            NIL))
+                                                          NIL)
+                                                         ("2" (HIDE -1 2)
                                                           (("2"
-                                                            (rewrite
+                                                            (REWRITE
                                                              "sigma_restrict_eq")
                                                             (("2"
-                                                              (expand*
+                                                              (EXPAND*
                                                                "restrict"
                                                                "extend")
-                                                              nil
-                                                              nil))
-                                                            nil))
-                                                          nil))
-                                                        nil))
-                                                      nil))
-                                                    nil))
-                                                  nil))
-                                                nil))
-                                              nil))
-                                            nil))
-                                          nil))
-                                        nil))
-                                      nil))
-                                    nil))
-                                  nil)
-                                 ("2"
-                                  (hide 2 3)
-                                  (("2"
-                                    (use "sigma_mult")
-                                    (("2"
-                                      (replace -1 + rl)
-                                      (("2"
-                                        (hide -1)
-                                        (("2"
-                                          (assert)
-                                          (("2"
-                                            (rewrite
-                                             "sigma_restrict_eq")
-                                            (("2"
-                                              (hide 2)
+                                                              NIL NIL))
+                                                            NIL))
+                                                          NIL))
+                                                        NIL))
+                                                      NIL))
+                                                    NIL))
+                                                  NIL))
+                                                NIL))
+                                              NIL))
+                                            NIL))
+                                          NIL))
+                                        NIL))
+                                      NIL))
+                                    NIL))
+                                  NIL)
+                                 ("2" (HIDE 2 3)
+                                  (("2" (USE "sigma_mult")
+                                    (("2" (REPLACE -1 + RL)
+                                      (("2" (HIDE -1)
+                                        (("2" (ASSERT)
+                                          (("2" (REWRITE "sigma_restrict_eq")
+                                            (("2" (HIDE 2)
                                               (("2"
-                                                (apply-extensionality
-                                                 :hide?
-                                                 t)
-                                                (("2"
-                                                  (expand "restrict")
-                                                  (("2"
-                                                    (lemma "exp2_sum")
+                                                (APPLY-EXTENSIONALITY :HIDE? T)
+                                                (("2" (EXPAND "restrict")
+                                                  (("2" (LEMMA "exp2_sum")
                                                     (("2"
-                                                      (inst
-                                                       -
-                                                       "x!1"
-                                                       "ss!1 + 1")
-                                                      (("2"
-                                                        (lift-if)
-                                                        (("2"
-                                                          (ground)
-                                                          nil
-                                                          nil))
-                                                        nil))
-                                                      nil))
-                                                    nil))
-                                                  nil))
-                                                nil))
-                                              nil))
-                                            nil))
-                                          nil))
-                                        nil))
-                                      nil))
-                                    nil))
-                                  nil))
-                                nil))
-                              nil))
-                            nil))
-                          nil))
-                        nil))
-                      nil))
-                    nil))
-                  nil))
-                nil))
-              nil))
-            nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   ((- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (bvec type-eq-decl nil bv nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (mod_lt_nat formula-decl nil mod nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (nnint_plus_posint_is_posint application-judgement "posint"
-     integers nil)
-    (real_gt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (bv_caret_all formula-decl nil bv_caret nil)
-    (sigma_split formula-decl nil sums nil)
-    (nil application-judgement "below(m)" mod nil)
-    (even_minus_odd_is_odd application-judgement "odd_int" integers
-     nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
-    (exp2_sum formula-decl nil exp2 nil)
-    (sigma_mult formula-decl nil sums nil)
-    (mod_sum formula-decl nil mod nil)
-    (sigma_restrict_eq formula-decl nil sums nil)
-    (restrict const-decl "[nat -> nat]" sums nil)
-    (<= const-decl "bool" reals nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (/= const-decl "boolean" notequal nil)
-    (nonzero_integer nonempty-type-eq-decl nil integers nil)
-    (IF const-decl "[boolean, T, T -> T]" if_def nil)
-    (sigma def-decl "nat" sums nil)
-    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (sigma_shift formula-decl nil sums nil)
-    (extend const-decl "[nat -> nat]" bv_sum nil)
-    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (nbit type-eq-decl nil bit nil) (b2n const-decl "nbit" bit nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (bv2nat_as_sum formula-decl nil bv_sum nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil))
-   shostak))
- (bv_top_TCC1 0
-  (bv_top_TCC1-1 nil 3341454041
-   ("" (skolem!)
-    (("" (typepred "bv2nat[N!1](bv!1)")
-      (("" (expand "div")
-        (("" (use "both_sides_div_pos_lt1" ("y" "exp2(N!1)"))
-          (("" (assert)
-            (("" (rewrite "exp2_minus" :dir rl) (("" (assert) nil nil))
-              nil))
-            nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   ((bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (exp2 def-decl "posnat" exp2 nil) (bvec type-eq-decl nil bv nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (< const-decl "bool" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number nonempty-type-decl nil numbers nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (both_sides_div_pos_lt1 formula-decl nil real_props nil)
-    (nonneg_real nonempty-type-eq-decl nil real_types nil)
-    (posreal nonempty-type-eq-decl nil real_types nil)
-    (real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (<= const-decl "bool" reals nil)
-    (exp2_minus formula-decl nil exp2 nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (posrat_div_posrat_is_posrat application-judgement "posrat"
-     rationals nil)
-    (nonneg_floor_is_nat application-judgement "nat" floor_ceil nil)
-    (nonneg_ceiling_is_nat application-judgement "nat" floor_ceil nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (div const-decl "integer" div nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (nnrat_div_posrat_is_nnrat application-judgement "nonneg_rat"
-     rationals nil)
-    (nil application-judgement "above(n)" exp2 nil))
-   nil))
- (bv_top 0
-  (bv_top-1 nil 3341456143
-   ("" (skolem!)
-    (("" (use "bv_shift")
-      (("" (replace -1 1 rl)
-        (("" (rewrite "nat2bv_inv[N!1 - ss!1]") nil nil)) nil))
-      nil))
-    nil)
-   ((bv_shift formula-decl nil bv_arith_caret nil)
-    (bvec type-eq-decl nil bv nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (nat2bv_inv formula-decl nil bv_nat nil)
-    (<= const-decl "bool" reals nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil))
-   shostak))
- (bv_bot_TCC1 0
-  (bv_bot_TCC1-1 nil 3552271108 ("" (same-name-tcc) nil nil) nil nil))
- (bv_bot 0
-  (bv_bot-1 nil 3341456190
-   ("" (skolem!)
-    (("" (use "bv_bottom")
-      (("" (replace -1 1 rl)
-        (("" (rewrite "nat2bv_inv[nn!1 + 1]") nil nil)) nil))
-      nil))
-    nil)
-   ((bv_bottom formula-decl nil bv_arith_caret nil)
-    (bvec type-eq-decl nil bv nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (nnint_plus_posint_is_posint application-judgement "posint"
-     integers nil)
-    (nat2bv_inv formula-decl nil bv_nat nil)
-    (<= const-decl "bool" reals nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil))
-   shostak))
- (bv_add_subrange 0
-  (bv_add_subrange-1 nil 3341456357
-   ("" (skolem!)
-    (("" (rewrite "bv2nat_inj")
-      (("" (hide 2)
-        (("" (rewrite "bv_add_mod[nn!1 + 1]")
-          (("" (rewrite "bv_bottom")
-            (("" (rewrite "bv_add_mod[N!1]")
-              (("" (rewrite "bv_bottom")
-                (("" (rewrite "bv_bottom")
-                  (("" (rewrite "mod_of_mod")
-                    (("" (rewrite "mod_of_mod")
-                      ((""
-                        (case "bv2nat(bv1!1) + bv2nat(bv2!1) < exp2(N!1)")
-                        (("1" (rewrite "mod_lt_nat") nil nil)
-                         ("2" (rewrite "mod_gt")
-                          (("2" (lemma "exp2_sum")
-                            (("2" (inst - "N!1 - nn!1 - 1" "1 + nn!1")
-                              (("2"
-                                (assert)
-                                (("2"
-                                  (replace -1)
-                                  (("2"
-                                    (hide -1)
-                                    (("2"
-                                      (lemma "mod_sum_pos")
+                                                      (INST - "x!1" "ss!1 + 1")
+                                                      (("2" (LIFT-IF)
+                                                        (("2" (GROUND) NIL
+                                                          NIL))
+                                                        NIL))
+                                                      NIL))
+                                                    NIL))
+                                                  NIL))
+                                                NIL))
+                                              NIL))
+                                            NIL))
+                                          NIL))
+                                        NIL))
+                                      NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL))
+                            NIL))
+                          NIL))
+                        NIL))
+                      NIL))
+                    NIL))
+                  NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (= CONST-DECL "[[T, T] -> boolean]" |equalities| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|mod_lt_nat| FORMULA-DECL NIL |mod| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|bv_caret_all| FORMULA-DECL NIL |bv_caret| NIL)
+    (|sigma_split| FORMULA-DECL NIL |sums| NIL)
+    (NIL APPLICATION-JUDGEMENT "below(m)" |mod| NIL)
+    (|even_minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_times_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|exp2_sum| FORMULA-DECL NIL |exp2| NIL)
+    (|sigma_mult| FORMULA-DECL NIL |sums| NIL)
+    (|mod_sum| FORMULA-DECL NIL |mod| NIL)
+    (|sigma_restrict_eq| FORMULA-DECL NIL |sums| NIL)
+    (|restrict| CONST-DECL
+     "[[FUNCTION[nat -> nat], nat, nat] -> FUNCTION[nat -> nat]]" |sums| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (/= CONST-DECL "[[T, T] -> boolean]" |notequal| NIL)
+    (|nonzero_integer| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (IF CONST-DECL
+        "[[boolean, T, T] -> T]"
+        |if_def|
+        NIL)
+    (|sigma| DEF-DECL "[[nat, nat, FUNCTION[nat -> nat]] -> nat]" |sums| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|sigma_shift| FORMULA-DECL NIL |sums| NIL)
+    (|extend| CONST-DECL "[FUNCTION[below(N) -> nat] -> FUNCTION[nat -> nat]]"
+     |bv_sum| NIL)
+    (* CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|nbit| TYPE-EQ-DECL NIL |bit| NIL)
+    (|b2n| CONST-DECL "[bool -> nbit]" |bit| NIL)
+    (|nnint_times_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|mult_divides1| APPLICATION-JUDGEMENT "(divides(n))" |divides| NIL)
+    (|mult_divides2| APPLICATION-JUDGEMENT "(divides(m))" |divides| NIL)
+    (|bv2nat_as_sum| FORMULA-DECL NIL |bv_sum| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   SHOSTAK))
+ (|bv_top_TCC1| 0
+  (|bv_top_TCC1-1| NIL 3341454041
+   ("" (SKOLEM!)
+    (("" (TYPEPRED "bv2nat[N!1](bv!1)")
+      (("" (EXPAND "div")
+        (("" (USE "both_sides_div_pos_lt1" ("y" "exp2(N!1)"))
+          (("" (ASSERT)
+            (("" (REWRITE "exp2_minus" :DIR RL) (("" (ASSERT) NIL NIL)) NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|both_sides_div_pos_lt1| FORMULA-DECL NIL |real_props| NIL)
+    (|nonneg_real| NONEMPTY-TYPE-EQ-DECL NIL |real_types| NIL)
+    (|posreal| NONEMPTY-TYPE-EQ-DECL NIL |real_types| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|exp2_minus| FORMULA-DECL NIL |exp2| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|posrat_div_posrat_is_posrat| APPLICATION-JUDGEMENT "posrat" |rationals|
+     NIL)
+    (|nonneg_floor_is_nat| APPLICATION-JUDGEMENT "nat" |floor_ceil| NIL)
+    (|nonneg_ceiling_is_nat| APPLICATION-JUDGEMENT "nat" |floor_ceil| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|div| CONST-DECL "[[int, posnat] -> integer]" |div| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|nnrat_div_posrat_is_nnrat| APPLICATION-JUDGEMENT "nonneg_rat" |rationals|
+     NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL))
+   NIL
+   (|bv_top| SUBTYPE
+    "div.div(bv_nat[bv_arith_caret.N].bv2nat(bv_arith_caret.bv), exp2.exp2(bv_arith_caret.ss))"
+    "below(exp2.exp2((number_fields.-)(bv_arith_caret.N, bv_arith_caret.ss)))"
+    (22 52 22 77))))
+ (|bv_top| 0
+  (|bv_top-1| |nil| 3341456143
+   ("" (SKOLEM!)
+    (("" (USE "bv_shift")
+      (("" (REPLACE -1 1 RL) (("" (REWRITE "nat2bv_inv[N!1 - ss!1]") NIL NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|bv_shift| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (AND CONST-DECL "[[bool, bool] -> bool]" |booleans| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|nat2bv_inv| FORMULA-DECL NIL |bv_nat| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK))
+ (|bv_bot| 0
+  (|bv_bot-1| |nil| 3341456190
+   ("" (SKOLEM!)
+    (("" (USE "bv_bottom")
+      (("" (REPLACE -1 1 RL) (("" (REWRITE "nat2bv_inv[nn!1 + 1]") NIL NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|bv_bottom| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|nat2bv_inv| FORMULA-DECL NIL |bv_nat| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   SHOSTAK))
+ (|bv_add_subrange| 0
+  (|bv_add_subrange-1| |nil| 3341456357
+   ("" (SKOLEM!)
+    (("" (REWRITE "bv2nat_inj")
+      (("" (HIDE 2)
+        (("" (REWRITE "bv_add_mod[nn!1 + 1]")
+          (("" (REWRITE "bv_bottom")
+            (("" (REWRITE "bv_add_mod[N!1]")
+              (("" (REWRITE "bv_bottom")
+                (("" (REWRITE "bv_bottom")
+                  (("" (REWRITE "mod_of_mod")
+                    (("" (REWRITE "mod_of_mod")
+                      (("" (CASE "bv2nat(bv1!1) + bv2nat(bv2!1) < exp2(N!1)")
+                        (("1" (REWRITE "mod_lt_nat") NIL NIL)
+                         ("2" (REWRITE "mod_gt")
+                          (("2" (LEMMA "exp2_sum")
+                            (("2" (INST - "N!1 - nn!1 - 1" "1 + nn!1")
+                              (("2" (ASSERT)
+                                (("2" (REPLACE -1)
+                                  (("2" (HIDE -1)
+                                    (("2" (LEMMA "mod_sum_pos")
                                       (("2"
-                                        (inst
-                                         -
-                                         "bv2nat(bv1!1) + bv2nat(bv2!1)"
+                                        (INST - "bv2nat(bv1!1) + bv2nat(bv2!1)"
                                          "-exp2(N!1 - 1 - nn!1)"
                                          "exp2(1 + nn!1)")
-                                        (("2" (assert) nil nil))
-                                        nil))
-                                      nil))
-                                    nil))
-                                  nil))
-                                nil))
-                              nil))
-                            nil))
-                          nil))
-                        nil))
-                      nil))
-                    nil))
-                  nil))
-                nil))
-              nil))
-            nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   ((real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (bv2nat_inj formula-decl nil bv_nat nil)
-    (bvec type-eq-decl nil bv nil) (<= const-decl "bool" reals nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (IF const-decl "[boolean, T, T -> T]" if_def nil)
-    (+ const-decl "{bv: bvec[N] |
-         bv2nat(bv) =
-          IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
-            THEN bv2nat(bv1) + bv2nat(bv2)
-          ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N)
-          ENDIF}" bv_arith_nat_defs nil)
-    (number nonempty-type-decl nil numbers nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (bv_add_mod formula-decl nil bv_arith_nat nil)
-    (nnint_plus_posint_is_posint application-judgement "posint"
-     integers nil)
-    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (nil application-judgement "below(m)" mod nil)
-    (mod_gt formula-decl nil mod nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
-    (mod_sum_pos formula-decl nil mod nil)
-    (minus_int_is_int application-judgement "int" integers nil)
-    (exp2_sum formula-decl nil exp2 nil)
-    (mod_lt_nat formula-decl nil mod nil)
-    (mod_of_mod formula-decl nil mod nil)
-    (/= const-decl "boolean" notequal nil)
-    (nonzero_integer nonempty-type-eq-decl nil integers nil)
-    (nonneg_real nonempty-type-eq-decl nil real_types nil)
-    (- const-decl "[numfield -> numfield]" number_fields nil)
-    (abs const-decl "{n: nonneg_real | n >= m AND n >= -m}" real_defs
-         nil)
-    (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (bv_bottom formula-decl nil bv_arith_caret nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil))
-   shostak))
- (bv_plus_caret 0
-  (bv_plus_caret-1 nil 3341456558
-   ("" (skolem!)
-    (("" (rewrite "bv2nat_inj")
-      (("" (hide 2)
-        (("" (rewrite "bv_bottom")
-          (("" (rewrite "bv_plus")
-            (("" (rewrite "bv_plus[nn!1 + 1]")
-              (("" (rewrite "bv_bottom")
-                (("" (lemma "mod_of_mod")
-                  (("" (inst - "i!1" "bv2nat(bv1!1)" "exp2(1 + nn!1)")
-                    (("" (replace -1)
-                      (("" (hide -1)
-                        (("" (lemma "exp2_sum")
-                          (("" (inst - "N!1 - nn!1 - 1" "nn!1 + 1")
-                            (("" (assert)
-                              ((""
-                                (replace -1)
-                                ((""
-                                  (hide -1)
-                                  ((""
-                                    (lemma "mod_mult")
+                                        (("2" (ASSERT) NIL NIL)) NIL))
+                                      NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL))
+                            NIL))
+                          NIL))
+                        NIL))
+                      NIL))
+                    NIL))
+                  NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|bv2nat_inj| FORMULA-DECL NIL |bv_nat| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (= CONST-DECL "[[T, T] -> boolean]" |equalities| NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (IF CONST-DECL
+        "[[boolean, T, T] -> T]"
+        |if_def|
+        NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bv_add_mod| FORMULA-DECL NIL |bv_arith_nat| NIL)
+    (|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (NIL APPLICATION-JUDGEMENT "below(m)" |mod| NIL)
+    (|mod_gt| FORMULA-DECL NIL |mod| NIL)
+    (|mult_divides2| APPLICATION-JUDGEMENT "(divides(m))" |divides| NIL)
+    (|mult_divides1| APPLICATION-JUDGEMENT "(divides(n))" |divides| NIL)
+    (|even_times_int_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|posint_times_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|mod_sum_pos| FORMULA-DECL NIL |mod| NIL)
+    (|minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|exp2_sum| FORMULA-DECL NIL |exp2| NIL)
+    (|mod_lt_nat| FORMULA-DECL NIL |mod| NIL)
+    (|mod_of_mod| FORMULA-DECL NIL |mod| NIL)
+    (/= CONST-DECL "[[T, T] -> boolean]" |notequal| NIL)
+    (|nonzero_integer| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nonneg_real| NONEMPTY-TYPE-EQ-DECL NIL |real_types| NIL)
+    (- CONST-DECL "[numfield -> numfield]" |number_fields| NIL)
+    (|abs| CONST-DECL "[m: real -> {n: nonneg_real | n >= m AND n >= -m}]"
+     |real_defs| NIL)
+    (|mod| CONST-DECL
+     "[d: [int, nonzero_integer] -> {k: int | abs(k) < abs(d`2)}]" |mod| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (AND CONST-DECL "[[bool, bool] -> bool]" |booleans| NIL)
+    (|bv_bottom| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   SHOSTAK))
+ (|bv_plus_caret| 0
+  (|bv_plus_caret-1| |nil| 3341456558
+   ("" (SKOLEM!)
+    (("" (REWRITE "bv2nat_inj")
+      (("" (HIDE 2)
+        (("" (REWRITE "bv_bottom")
+          (("" (REWRITE "bv_plus")
+            (("" (REWRITE "bv_plus[nn!1 + 1]")
+              (("" (REWRITE "bv_bottom")
+                (("" (LEMMA "mod_of_mod")
+                  (("" (INST - "i!1" "bv2nat(bv1!1)" "exp2(1 + nn!1)")
+                    (("" (REPLACE -1)
+                      (("" (HIDE -1)
+                        (("" (LEMMA "exp2_sum")
+                          (("" (INST - "N!1 - nn!1 - 1" "nn!1 + 1")
+                            (("" (ASSERT)
+                              (("" (REPLACE -1)
+                                (("" (HIDE -1)
+                                  (("" (LEMMA "mod_mult")
                                     ((""
-                                      (inst
-                                       -
-                                       "bv2nat(bv1!1) + i!1"
-                                       "exp2(1 + nn!1)"
-                                       "exp2(N!1 - 1 - nn!1)")
-                                      (("" (assert) nil nil))
-                                      nil))
-                                    nil))
-                                  nil))
-                                nil))
-                              nil))
-                            nil))
-                          nil))
-                        nil))
-                      nil))
-                    nil))
-                  nil))
-                nil))
-              nil))
-            nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   ((real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (bv2nat_inj formula-decl nil bv_nat nil)
-    (bvec type-eq-decl nil bv nil) (<= const-decl "bool" reals nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (/= const-decl "boolean" notequal nil)
-    (nonzero_integer nonempty-type-eq-decl nil integers nil)
-    (nonneg_real nonempty-type-eq-decl nil real_types nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (- const-decl "[numfield -> numfield]" number_fields nil)
-    (abs const-decl "{n: nonneg_real | n >= m AND n >= -m}" real_defs
-         nil)
-    (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
-    (+ const-decl
-       "{bvn: bvec[N] | bv2nat(bvn) = mod(bv2nat(bv) + i, exp2(N))}"
-       bv_arith_nat_defs nil)
-    (number nonempty-type-decl nil numbers nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (bv_bottom formula-decl nil bv_arith_caret nil)
-    (nnint_plus_posint_is_posint application-judgement "posint"
-     integers nil)
-    (nil application-judgement "below(m)" mod nil)
-    (mod_of_mod formula-decl nil mod nil)
-    (exp2_sum formula-decl nil exp2 nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mod_mult formula-decl nil mod nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
-    (bv_plus formula-decl nil bv_arith_nat_defs nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil))
-   shostak))
- (bv_middle_TCC1 0
-  (bv_middle_TCC1-1 nil 3341454041 ("" (subtype-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (> const-decl "bool" reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (real_gt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil))
-   nil))
- (bv_middle_TCC2 0
-  (bv_middle_TCC2-1 nil 3341454041 ("" (subtype-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (> const-decl "bool" reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (real_gt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil))
-   nil))
- (bv_middle_TCC3 0
-  (bv_middle_TCC3-1 nil 3341454041 ("" (subtype-tcc) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (> const-decl "bool" reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (real_gt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil))
-   nil))
- (bv_middle 0
-  (bv_middle-1 nil 3341456694
-   ("" (skosimp)
-    (("" (assert)
-      ((""
-        (case "bv!1 ^ (i!1, j!1) = bv!1 ^ (n!1 - 1, j!1) ^ (i!1 - j!1, 0)")
-        (("1" (replace -1)
-          (("1" (hide -1)
-            (("1" (rewrite "bv_bottom")
-              (("1" (rewrite "bv_shift") nil nil)) nil))
-            nil))
-          nil)
-         ("2" (grind-with-ext) nil nil))
-        nil))
-      nil))
-    nil)
-   ((nil application-judgement "nat" div nil)
-    (real_ge_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (^ const-decl "bit" bv nil) (b2n const-decl "nbit" bit nil)
-    (bv2nat_rec def-decl "nat" bv_nat nil)
-    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (div const-decl "integer" div nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
-    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (real_gt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (bv_bottom formula-decl nil bv_arith_caret nil)
-    (bv_shift formula-decl nil bv_arith_caret nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (real_le_is_total_order name-judgement "(total_order?[real])"
-     real_props nil)
-    (number nonempty-type-decl nil numbers nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (bvec type-eq-decl nil bv nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (<= const-decl "bool" reals nil)
-    (upto nonempty-type-eq-decl nil naturalnumbers nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil))
-   shostak))
- (bv2nat_caret_00_TCC1 0
-  (bv2nat_caret_00_TCC1-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil
-   nil))
- (bv2nat_caret_00 0
-  (bv2nat_caret_00-1 nil 3341456806 ("" (grind) nil nil)
-   ((exp2 def-decl "posnat" exp2 nil)
-    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
-    (^ const-decl "bit" bv nil) (b2n const-decl "nbit" bit nil)
-    (bv2nat_rec def-decl "nat" bv_nat nil)
-    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil))
-   shostak))
- (bv2nat_lem_TCC1 0
-  (bv2nat_lem_TCC1-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil
-   nil))
- (bv2nat_lem_TCC2 0
-  (bv2nat_lem_TCC2-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil
-   nil))
- (bv2nat_lem_TCC3 0
-  (bv2nat_lem_TCC3-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil
-   nil))
- (bv2nat_lem_TCC4 0
-  (bv2nat_lem_TCC4-1 nil 3341454041 ("" (subtype-tcc) nil nil) nil
-   nil))
- (bv2nat_lem 0
-  (bv2nat_lem-1 nil 3341456827
-   ("" (skolem!)
-    (("" (rewrite "bv_shift")
-      (("" (expand* "exp2" "exp2")
-        (("" (lemma "bv_bottom")
-          (("" (inst?)
-            (("" (inst - 0)
-              (("" (rewrite "bv2nat_caret_00")
-                (("" (expand* "exp2" "exp2" "div" "mod")
-                  (("" (assert) nil nil)) nil))
-                nil))
-              nil))
-            nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   ((real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (bv_shift formula-decl nil bv_arith_caret nil)
-    (number nonempty-type-decl nil numbers nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (above nonempty-type-eq-decl nil integers nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (bvec type-eq-decl nil bv nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (nil application-judgement "nat" div nil)
-    (bv_bottom formula-decl nil bv_arith_caret nil)
-    (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
-    (minus_even_is_even application-judgement "even_int" integers nil)
-    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
-    (nnrat_div_posrat_is_nnrat application-judgement "nonneg_rat"
-     rationals nil)
-    (nonneg_floor_is_nat application-judgement "nat" floor_ceil nil)
-    (div const-decl "integer" div nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
-    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (bv2nat_caret_00 formula-decl nil bv_arith_caret nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (minus_odd_is_odd application-judgement "odd_int" integers nil)
-    (int_minus_int_is_int application-judgement "int" integers nil))
-   shostak)))
-
+                                      (INST - "bv2nat(bv1!1) + i!1"
+                                       "exp2(1 + nn!1)" "exp2(N!1 - 1 - nn!1)")
+                                      (("" (ASSERT) NIL NIL)) NIL))
+                                    NIL))
+                                  NIL))
+                                NIL))
+                              NIL))
+                            NIL))
+                          NIL))
+                        NIL))
+                      NIL))
+                    NIL))
+                  NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|bv2nat_inj| FORMULA-DECL NIL |bv_nat| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (= CONST-DECL "[[T, T] -> boolean]" |equalities| NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (/= CONST-DECL "[[T, T] -> boolean]" |notequal| NIL)
+    (|nonzero_integer| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nonneg_real| NONEMPTY-TYPE-EQ-DECL NIL |real_types| NIL)
+    (AND CONST-DECL "[[bool, bool] -> bool]" |booleans| NIL)
+    (- CONST-DECL "[numfield -> numfield]" |number_fields| NIL)
+    (|abs| CONST-DECL "[m: real -> {n: nonneg_real | n >= m AND n >= -m}]"
+     |real_defs| NIL)
+    (|mod| CONST-DECL
+     "[d: [int, nonzero_integer] -> {k: int | abs(k) < abs(d`2)}]" |mod| NIL)
+    (+ CONST-DECL
+       "[d: [bvec[N], int] -> {bvn: bvec[N] | bv2nat(bvn) = mod(d`2 + bv2nat(d`1), exp2(N))}]"
+       |bv_arith_nat_defs| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bv_bottom| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|nnint_plus_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (NIL APPLICATION-JUDGEMENT "below(m)" |mod| NIL)
+    (|mod_of_mod| FORMULA-DECL NIL |mod| NIL)
+    (|exp2_sum| FORMULA-DECL NIL |exp2| NIL)
+    (|mult_divides2| APPLICATION-JUDGEMENT "(divides(m))" |divides| NIL)
+    (|mult_divides1| APPLICATION-JUDGEMENT "(divides(n))" |divides| NIL)
+    (|mod_mult| FORMULA-DECL NIL |mod| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|bv_plus| FORMULA-DECL NIL |bv_arith_nat_defs| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   SHOSTAK))
+ (|bv_middle_TCC1| 0
+  (|bv_middle_TCC1-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL))
+   NIL
+   (|bv_middle| SUBTYPE "bv_arith_caret.j" "upto(bv_arith_caret.i)"
+    (35 33 35 34))))
+ (|bv_middle_TCC2| 0
+  (|bv_middle_TCC2-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_middle| SUBTYPE
+    "(number_fields.-)((number_fields.+)(1, bv_arith_caret.i), bv_arith_caret.j)"
+    "nat" (35 20 35 26))))
+ (|bv_middle_TCC3| 0
+  (|bv_middle_TCC3-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (NOT CONST-DECL "[bool -> bool]" |booleans| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_middle| SUBTYPE
+    "(number_fields.+)((number_fields.-)(bv_arith_caret.i, bv_arith_caret.j), 1)"
+    "nat" (35 73 35 78))))
+ (|bv_middle| 0
+  (|bv_middle-1| |nil| 3341456694
+   ("" (SKOSIMP)
+    (("" (ASSERT)
+      (("" (CASE "bv!1 ^ (i!1, j!1) = bv!1 ^ (n!1 - 1, j!1) ^ (i!1 - j!1, 0)")
+        (("1" (REPLACE -1)
+          (("1" (HIDE -1)
+            (("1" (REWRITE "bv_bottom") (("1" (REWRITE "bv_shift") NIL NIL))
+              NIL))
+            NIL))
+          NIL)
+         ("2" (GRIND-WITH-EXT) NIL NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((NIL APPLICATION-JUDGEMENT "nat" |div| NIL)
+    (|real_ge_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|rat_div_nzrat_is_rat| APPLICATION-JUDGEMENT "rat" |rationals| NIL)
+    (|even_times_int_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|mult_divides2| APPLICATION-JUDGEMENT "(divides(m))" |divides| NIL)
+    (|mult_divides1| APPLICATION-JUDGEMENT "(divides(n))" |divides| NIL)
+    (^ CONST-DECL "[[bvec, below[N]] -> bit]" |bv| NIL)
+    (|b2n| CONST-DECL "[bool -> nbit]" |bit| NIL)
+    (|bv2nat_rec| DEF-DECL "[[upto(N), bvec[N]] -> nat]" |bv_nat| NIL)
+    (|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (|div| CONST-DECL "[[int, posnat] -> integer]" |div| NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|mod| CONST-DECL
+     "[d: [int, nonzero_integer] -> {k: int | abs(k) < abs(d`2)}]" |mod| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|real_gt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|bv_bottom| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|bv_shift| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (AND CONST-DECL "[[bool, bool] -> bool]" |booleans| NIL)
+    (|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|real_le_is_total_order| NAME-JUDGEMENT "(total_order?[real])"
+     |real_props| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|numfield| NONEMPTY-TYPE-EQ-DECL NIL |number_fields| NIL)
+    (+ CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (- CONST-DECL "[[numfield, numfield] -> numfield]" |number_fields| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (= CONST-DECL "[[T, T] -> boolean]" |equalities| NIL)
+    (<= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|upto| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|int_plus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv2nat_caret_00_TCC1| 0
+  (|bv2nat_caret_00_TCC1-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv2nat_caret_00| SUBTYPE "0" "below(bv_arith_caret.n)" (39 41 39 42))))
+ (|bv2nat_caret_00| 0
+  (|bv2nat_caret_00-1| |nil| 3341456806 ("" (GRIND) NIL NIL)
+   ((|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (^ CONST-DECL "[[bvec, below[N]] -> bit]" |bv| NIL)
+    (|b2n| CONST-DECL "[bool -> nbit]" |bit| NIL)
+    (|bv2nat_rec| DEF-DECL "[[upto(N), bvec[N]] -> nat]" |bv_nat| NIL)
+    (|bv2nat| CONST-DECL "[bvec[N] -> below(exp2(N))]" |bv_nat| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv2nat_lem_TCC1| 0
+  (|bv2nat_lem_TCC1-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv2nat_lem| SUBTYPE "(number_fields.-)(bv_arith_caret.n, 1)"
+    "below(bv_arith_caret.n)" (42 61 42 66))))
+ (|bv2nat_lem_TCC2| 0
+  (|bv2nat_lem_TCC2-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv2nat_lem| SUBTYPE "1" "upto((number_fields.-)(bv_arith_caret.n, 1))"
+    (42 68 42 69))))
+ (|bv2nat_lem_TCC3| 0
+  (|bv2nat_lem_TCC3-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv2nat_lem| SUBTYPE "(number_fields.-)(bv_arith_caret.n, 1)" "nat"
+    (42 48 42 54))))
+ (|bv2nat_lem_TCC4| 0
+  (|bv2nat_lem_TCC4-1| NIL 3341454041 ("" (SUBTYPE-TCC) NIL NIL) NIL NIL
+   (|bv2nat_lem| SUBTYPE "0" "below[n]" (42 79 42 80))))
+ (|bv2nat_lem| 0
+  (|bv2nat_lem-1| |nil| 3341456827
+   ("" (SKOLEM!)
+    (("" (REWRITE "bv_shift")
+      (("" (EXPAND* "exp2" "exp2")
+        (("" (LEMMA "bv_bottom")
+          (("" (INST?)
+            (("" (INST - 0)
+              (("" (REWRITE "bv2nat_caret_00")
+                (("" (EXPAND* "exp2" "exp2" "div" "mod")
+                  (("" (ASSERT) NIL NIL)) NIL))
+                NIL))
+              NIL))
+            NIL))
+          NIL))
+        NIL))
+      NIL))
+    NIL)
+   ((|real_lt_is_strict_total_order| NAME-JUDGEMENT
+     "(strict_total_order?[real])" |real_props| NIL)
+    (|bv_shift| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|number| NONEMPTY-TYPE-DECL NIL |numbers| NIL)
+    (|boolean| NONEMPTY-TYPE-DECL NIL |booleans| NIL)
+    (|number_field_pred| CONST-DECL "[number -> boolean]" |number_fields| NIL)
+    (|number_field| NONEMPTY-TYPE-FROM-DECL NIL |number_fields| NIL)
+    (|real_pred| CONST-DECL "[number_field -> boolean]" |reals| NIL)
+    (|real| NONEMPTY-TYPE-FROM-DECL NIL |reals| NIL)
+    (|rational_pred| CONST-DECL "[real -> boolean]" |rationals| NIL)
+    (|rational| NONEMPTY-TYPE-FROM-DECL NIL |rationals| NIL)
+    (|integer_pred| CONST-DECL "[rational -> boolean]" |integers| NIL)
+    (|int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (>= CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|nonneg_int| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (> CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|posnat| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|above| NONEMPTY-TYPE-EQ-DECL NIL |integers| NIL)
+    (|nat| NONEMPTY-TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (< CONST-DECL "[[real, real] -> bool]" |reals| NIL)
+    (|below| TYPE-EQ-DECL NIL |naturalnumbers| NIL)
+    (|bvec| TYPE-EQ-DECL NIL |bv| NIL)
+    (|nnint_times_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|even_times_int_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|mult_divides1| APPLICATION-JUDGEMENT "(divides(n))" |divides| NIL)
+    (|mult_divides2| APPLICATION-JUDGEMENT "(divides(m))" |divides| NIL)
+    (NIL APPLICATION-JUDGEMENT "above(n)" |exp2| NIL)
+    (NIL APPLICATION-JUDGEMENT "nat" |div| NIL)
+    (|bv_bottom| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|mod| CONST-DECL
+     "[d: [int, nonzero_integer] -> {k: int | abs(k) < abs(d`2)}]" |mod| NIL)
+    (|minus_even_is_even| APPLICATION-JUDGEMENT "even_int" |integers| NIL)
+    (|minus_nzint_is_nzint| APPLICATION-JUDGEMENT "nzint" |integers| NIL)
+    (|nnrat_div_posrat_is_nnrat| APPLICATION-JUDGEMENT "nonneg_rat" |rationals|
+     NIL)
+    (|nonneg_floor_is_nat| APPLICATION-JUDGEMENT "nat" |floor_ceil| NIL)
+    (|div| CONST-DECL "[[int, posnat] -> integer]" |div| NIL)
+    (|posint_times_posint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|bv2nat_caret_00| FORMULA-DECL NIL |bv_arith_caret| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|exp2| DEF-DECL "[nat -> posnat]" |exp2| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL))
+   SHOSTAK)))

@@ -6,9 +6,10 @@ usage() {
   cat <<'EOF'
 Usage: audit-release-artifact.sh --artifact FILE [--path PATH ...] [--foreign-build-root PATH ...]
 
-Extracts a release archive and fails if any forbidden build-machine path appears
-in the payload. If --path is omitted, paths are read from
-PVS_RELEASE_FORBIDDEN_PATHS, one per line.
+Extracts a release archive, validates its metadata.json and SHA-256 artifact
+manifest, and fails if any forbidden build-machine path appears in the payload.
+If --path is omitted, paths are read from PVS_RELEASE_FORBIDDEN_PATHS, one per
+line.
 
 If --foreign-build-root is provided, only absolute references to the PVS
 runtime foreign libraries under that root are rejected. This catches SBCL saved
@@ -77,6 +78,17 @@ case $artifact in
     fail "unsupported artifact format: $artifact"
     ;;
 esac
+
+metadata_generator="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/generate-build-metadata.py"
+[[ -f $metadata_generator ]] || fail "metadata validator not found: $metadata_generator"
+metadata_files=()
+while IFS= read -r -d '' metadata_file; do
+  metadata_files+=("$metadata_file")
+done < <(find "$tmpdir" -type f -name metadata.json -print0)
+[[ ${#metadata_files[@]} -eq 1 ]] || fail "release artifact must contain exactly one metadata.json; found ${#metadata_files[@]}"
+python3 "$metadata_generator" \
+  --validate "${metadata_files[0]}" \
+  --verify-artifacts "$(dirname "${metadata_files[0]}")"
 
 clean=true
 matches_file="$tmpdir/matches"

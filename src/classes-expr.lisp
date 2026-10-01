@@ -653,6 +653,12 @@
   (generic-judgements :initform nil)
   (judgements-graph :initform nil))
 
+(defstruct (pvscontext)
+  pvs-version
+  prelude-libs
+  parameters
+  entries)
+
 ;; Structures primarily for .pvscontext and used in context.lisp
 (defstruct (context-entry (:conc-name ce-))
   file

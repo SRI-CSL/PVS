@@ -2213,6 +2213,7 @@ theory formals."
 	(mk-name '|char| nil '|character_adt|)
 	(mk-name '|code| nil '|character_adt|)
 	(mk-name '|char?| nil '|character_adt|)
+	(mk-name '|nat2bv| nil '|bv_nat|)
 	(mk-name '|u8xor| nil '|integer_bv_ops|)
 	(mk-name '|u16xor| nil '|integer_bv_ops|)
 	(mk-name '|u32xor| nil '|integer_bv_ops|)
