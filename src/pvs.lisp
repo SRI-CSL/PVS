@@ -417,8 +417,10 @@ should be enough."
 
 (defun load-pvs-patches ()
   (let ((*loading-files* :patches))
-    (dolist (pfile (append (collect-pvs-patch-files)
-			   (collect-pvs-lisp-files)))
+    ;; Muffle redefinition warnings when loading patches
+    (handler-bind (#+sbcl (sb-kernel:redefinition-warning #'muffle-warning))
+      (dolist (pfile (append (collect-pvs-patch-files)
+			     (collect-pvs-lisp-files)))
       (let* ((bfile (make-fasl-file-name pfile :ensure-dir? nil))
 	     (compile? (and (uiop:file-exists-p pfile)
 			    (or (not (uiop:file-exists-p bfile))
@@ -490,7 +492,7 @@ should be enough."
 		(pvs-message "Error in loading ~a:~%  ~a"
 		  (shortname pfile) error)
 		(pushnew pfile *pvs-patches-loaded*
-			 :test #'equalp))))))))
+			 :test #'equalp)))))))))
 
 (defun collect-pvs-patch-files ()
   (let ((pl (ignore-errors (parse-integer
