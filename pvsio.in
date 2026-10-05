@@ -12,7 +12,7 @@
 # is claimed in the United States under Title 17, U.S.Code. All Other
 # Rights Reserved.
 #
-# Script for batch proving several libraries in PVS 
+# Script for batch proving several libraries in PVS
 #
 
 normalize_dir() {
@@ -52,17 +52,68 @@ fi
 #-------------------------------------------------
 # Nothing below this line should need modification
 
-export PVSIOTCCS=nil
-export PVSIOVERB=nil
-export PVSIOTIME=nil
-export PVSIOPROMPTIN="<PVSio> "
-export PVSIOPROMPTOUT="==>~%"
-
-PACK=
+PROMPTIN="<PVSio> "
+PROMPTOUT="==>~%"
+PRELUDEXTS=
 DEBUG=
+DRYRUN=
+VERBOSE=
+TCCS=
+TIMING=
+PVSOPTS=
+
+bool_to_lisp() {
+  if [ -z "$1" ]; then
+    echo "nil"
+  else
+    echo "t"
+  fi
+}
+
+# Translate a list l1,...,ln into (l1 .. ln)
+list_to_lisp() {
+  if [ -z "$1" ]
+  then
+      echo "nil"
+  else
+      echo "(\"$1\")" | sed -e "s/,/\" \"/g"
+  fi
+}
+
+add_prelude_lib() {
+    local lib=$1
+    lib=$(cd $lib && pwd -P)
+    if [ -z "$lib" ]; then
+	echo "Error (pvsio): Prelude directory $1 not found"
+	exit 1
+    fi
+    if [ -z "$PRELUDEXTS" ]; then
+	PRELUDEXTS=$lib
+    else
+	PRELUDEXTS="$PRELUDEXTS,$lib"
+    fi
+}
+
+add_lib_path() {
+    local path=$1
+    if [ -z "$path" ]; then
+	path=`pwd -P`
+    else
+	path=$(cd $path && pwd -P)
+    fi
+    if [ -z "$path" ]; then
+	echo "Error (pvsio): Path $1 is not a directory"
+	exit 1
+    fi
+    if [ -z "$PVS_LIBRARY_PATH" ]; then
+	PVS_LIBRARY_PATH=$path
+    else
+	PVS_LIBRARY_PATH="$PVS_LIBRARY_PATH:$path"
+    fi
+}
 
 readVersion() {
-    if [ ! -x "$PVSPATH/pvs" ] || ! VERSION=$("$PVSPATH/pvs" -raw -E '(format t "~&~%PVSIOVERSION ~a~%~%" *pvsio-version*)(bye)' | grep PVSIOVERSION | sed 's/^.*PVSIOVERSION \(.*\)$/\1/g') ; then
+    if [ ! -x "$PVSPATH/pvs" ] || ! VERSION=$("$PVSPATH/pvs" -raw -E '(format t "~&~%PVSIOVERSION ~a~%~%" *pvsio-version*)(bye)' 2> /dev/null | grep PVSIOVERSION | sed 's/^.*PVSIOVERSION \(.*\)$/\1/g') ; then
 	printf "PVS could not be located. Please double check PVS installation.\n"
 	exit 1;
     fi
@@ -70,195 +121,343 @@ readVersion() {
 
 usage() {
     readVersion
-    echo "PVSio $VERSION -- pvsio is a command-line utility to run the PVSio ground evaluator.
+    echo "NAME
+  pvsio -- run the PVS ground evaluator
 
-Usage: pvsio <option>* [<pvsfile>][@<theory>[:[<main>]]]
-where <option> can be
-  -h|--help                
-   Print this message
-  -p|--packages <P1>,..,<Pn>   
-   Load packages (prelude libraries) <P1>,..,<Pn>
-  -promptin <string>
-   Change prompt \"$PVSIOPROMPTIN\" to <string>
-  -promptout <string>
-   Change prompt \"$PVSIOPROMPTOUT\" to <string>
-  -t|--tccs                
-   Generate TCCs     
-  -T|--timing              
-   Print timing information for each evaluation
-  -v|--version             
-   Print PVSio version
-  -V|--verbose             
-   Print typechecking information
-  -l|--lisp allegro|cmulisp,sbclisp 
-   Specify a particular PVS binary to execute PVSio. Use this option only 
-   if you know what you are doing.
+SYNOPSIS
+  pvsio <option>* [ <file.pvs> | [<ctx>]@<theory>[:[<pvs-function>]] [<pvs-arguments>] ]
 
-One-letter options can be combined.
+OPTIONS
+  Options are processed in the order they appear. Options marked [+] can be
+  used multiple times and are cumulative. One letter options can be combined.
 
-Typical use:
-  * pvsio <pvsfile.pvs>
-    Load PVS file pvsfile.pvs and start PVSio read-and-eval loop
-  * pvsio @<theory>
-    Load PVS theory <theory> from file <theory>.pvs and start PVSio 
+[*]--add-path <path>
+     Add <path>, which is a list of directories of the form <dir1>:..:<dirn>, to PVS_LIBRARY_PATH
+   --clear-path
+     Clear PVS_LIBRARY_PATH
+   --dry-run
+     Print commands but don't execute them
+   -h|--help
+     Print this message
+[+]--prelude-ext <p1,..,pn>
+     Load prelude extensions <p1>,..,<pn>
+   --prompt-in <prompt>
+     Change input prompt to <prompt>
+   --prompt-out <prompt>
+     Change output prompt to <prompt>
+[*]--pvs-option <opt>
+     Pass <opt> to PVS. Option <opt> must not have a leading '-'), e.g.,
+     pvsio --pvs-option 'image <name>'
+   -t|--tccs
+     Generate TCCs
+   -T|--timing
+     Print timing information for each evaluation
+   -v|--version
+     Print PVSio version
+   -V|--verbose
+     Print typechecking information
+
+EXAMPLES
+  * pvsio <file.pvs>
+    Load PVS file file.pvs and start PVSio read-and-eval loop
+
+  * pvsio <ctx>@<theory>
+    Load PVS theory <theory> from directory <ctx> and start PVSio
     read-and-eval loop
+
+  * pvsio @<theory>
+    Load PVS theory <theory> from current directory and start PVSio
+    read-and-eval loop
+
   * pvsio @<theory>:
-    Load PVS theory <theory> from file <theory>.pvs and ground evaluate 
-    function \"main\".
-  * pvsio @<theory>:<f> <a1> ... <an>
-    Load PVS theory <theory> from file <theory>.pvs and ground evaluate
-    function f(a1,...,an) 
-  * pvsio <file>@<theory>:<f> <a1> ... <an>
-    Load PVS thoery <theory> from file <file>.pvs and ground evaluate
-    function f(a1,...,an)
-"  
+    Load PVS theory <theory> from current directory and ground evaluate
+    the PVS function \"main\".
+
+  * pvsio <ctx>@<theory>:<f> <a1> ... <an>
+    Load PVS theory <theory> from directory <ctx> and ground evaluate
+    the PVS expressions \"f(a1,..,an)\"
+
+  * pvsio <ctx>@<theory>: <a1> ... <an>
+    Load PVS theory <theory> from directory <ctx> and ground evaluate
+    the PVS expression \"main(a1,..,an)\"
+
+VERSION
+  $VERSION
+"
+}
+
+PVSCONTEXT=
+PVSTHEORY=
+PVSMAIN=
+PVSNAME=
+
+# $1 has the form [<dir>]@<th>
+split_arg() {
+  local arg=$1
+  local predir="${arg%%@*}"  # empty if str starts with @
+  local theomain="${arg#*@}"
+  local theo=
+  local main=
+  if [ -z "$predir" ]; then
+    predir="."
+  fi
+  if [ -d "$predir" ]; then
+    PVSCONTEXT=$(cd $predir && pwd -P)
+  else
+    echo "Error (pvsio): $predir is not a directory"
+    exit 1
+  fi
+  case "$theomain" in
+    *:*:*)
+      echo "Error (pvsio): $theomain doesn't have the form <theory>:<pvs-function>"
+      exit 1;;
+    *:*)
+      theo="${theomain%%:*}"  # empty if str starts with :
+      main="${theomain#*:}"
+      if [ -z "$main" ]; then
+	main="main"
+      fi;;
+    *)
+      theo=$theomain
+  esac
+  if [ -z "$theo" ]; then
+    echo "Error (pvsio): $1 doesn't have the form [<dir>]@<theory>[:<pvs-function>]"
+    exit 1
+  else
+    PVSTHEORY=$theo
+    PVSMAIN=$main
+  fi
+}
+
+# Return dir name without expanding links
+path_name() {
+  local dir=$(dirname "$1")
+  local path=$(cd $dir && pwd -P)
+  echo "$path"
+}
+
+# $1 may be a filename
+file_arg() {
+  local base=$(basename $1 .pvs)
+  local path=$(path_name $1)
+
+  if [ -f $path/$base.pvs ]; then
+    PVSNAME=$base
+    PVSTHEORY=$base
+    PVSCONTEXT=$path
+  else
+    echo "Error (pvsio): $path/$base.pvs not found"
+    exit 1
+  fi
 }
 
 while [ $# -gt 0 ]
 do
   case $1 in
-      -debug|--debug)
-        DEBUG=yes;;
-      -h|-help|--help)     
+      --add-path)
+	shift
+	  case "$1" in
+	      ""|-*)
+		  echo "Error (pvsio): Expected --add-path <path>"
+		  exit 1;;
+	      *)
+		  dir=$1
+		  for path in ${dir//:/ }
+		  do
+		      add_lib_path $path
+		  done
+	  esac;;
+      --clear-path)
+	PVS_LIBRARY_PATH=;;
+      --debug)
+        DEBUG=y;;
+      --dry-run)
+	VERBOSE=y
+	DRYRUN=y;;
+      -h|--help)
 	  usage
 	  exit 0;;
-      -l|-lisp|--lisp)    
-	  case $2 in
-	      allegro) PVSLISP='-lisp allegro';;
-	      cmulisp) PVSLISP='-lisp cmulisp';;
-	      sbclisp) PVSLISP='-lisp sbclisp';;
-	      *) echo "Only allegro, cmulisp, and sbclisp are currently available"
+      --pvs-option)
+	  shift
+	  case "$1" in
+	      ""|-*)
+		  echo "Error (pvsio): Expected --pvs-option <option>"
 		  exit 1;;
-	  esac
-	  shift;;
-      -p|-packages|--packages) 
-	  if [ "$PACK" ]; then
-  	    PACK="$PACK,$2"
-          else
-            PACK=$2
-          fi
-	  shift;;
-      -promptin)
-          PVSIOPROMPTIN="$2"
-          shift;;
-      -promptout)
-          PVSIOPROMPTOUT="$2"
-          shift;;
-      -tccs|--tccs)        
-	  PVSIOTCCS=t;;
-      -timing|--timing) 
-	  PVSIOTIME=t;;
-      -verbose|--verbose)
-	  PVSIOVERB=t;;
-      -v|-version|--version)  
+	      *)
+		  PVSOPTS="$PVSOPTS -$1"
+	  esac;;
+      --packages|--prelude-ext)
+	  if [ "$1" = "--packages" ]; then
+	      echo "Warning (pvsio): --packages is DEPRECATED. Use --prelude-ext instead"
+	  fi
+	  shift
+	  case "$1" in
+	      -*|"")
+		  echo "Error (pvsio): Expected --prelude-ext <p1,..,pn>"
+		  exit 1;;
+	      *)
+		  dir=$1
+		  for lib in ${dir//,/ }
+		  do
+		      add_prelude_lib $lib
+		  done
+	  esac;;
+      --promptin|--prompt-in)
+	  if [ "$1" = "--promptin" ]; then
+	      echo "Warning (pvsio): --promptin is DEPRECATED. Use --prompt-in instead"
+	  fi
+	  shift
+	  case "$1" in
+	      ""|-*)
+		  echo "Error (pvsio): Expected --prompt-in <prompt>"
+		  exit 1;;
+	      *)
+		  PROMPTIN="$1"
+	  esac;;
+      --promptout|--prompt-out)
+	  if [ "$1" = "--promptout" ]; then
+	      echo "Warning (pvsio): --promptout is DEPRECATED. Use --prompt-out instead"
+	  fi
+	  shift
+	  case "$1" in
+	      ""|-*)
+		  echo "Error (pvsio): Expected --prompt-out <prompt>"
+		  exit 1;;
+	      *)
+		  PROMPTOUT="$1"
+	  esac;;
+      -t|--tccs)
+	  TCCS=y;;
+      -T|--timing)
+	  TIMING=y;;
+      -V|--verbose)
+	  VERBOSE=y;;
+      -v|--version)
 	  readVersion
 	  printf "$VERSION\n"
 	  exit 0;;
-      -*)           
+      --*)
+	echo "Error (pvsio): $1 is not a valid option"
+	exit 1;;
+      -)
+	  echo "Error (pvsio): - is not a valid option"
+	  exit 1;;
+      -*)
 	  OPTS=`echo "$1" | sed -e s/-//g -e "s/\(.\)/\1 /g"`
 	  for opt in $OPTS
 	    do
 	    case $opt in
-		t)     
-		    PVSIOTCCS=t;;
-		T)   
-		    PVSIOTIME=t;;
-		V)   
-		    PVSIOVERB=t;;
-		*) 
-		    usage
-		    echo "Error: -$opt is not a valid option"
+		t)
+		    TCCS=y;;
+		T)
+		    TIMING=y;;
+		V)
+		    VERBOSE=y;;
+		*)
+		    echo "Error (pvsio): -$opt is not a valid option"
 		    exit 1;;
 	    esac
-	  done;;  
-      *)            
+	  done;;
+      *)
 	  ARG="$1"
-	  shift
-	  if [ "$1" ]; then
-            PARAM="$1"
-	    shift
-          fi
-          while [ $# -gt 0 ]
-          do
-            PARAM="$PARAM,$1"
-            shift
-          done
 	  break
   esac
   shift
 done
 
-if [ "$PACK" ]; then
-    PACK=`echo "(\"$PACK\")" | sed -e "s/,/\" \"/g"`
-else
-    PACK=nil
+shift
+
+if [ -z "$ARG" -a "$1" ]; then
+    echo "Error (pvsio): Expected [ <pvs-file> | [<ctx>]@<theory>[:[<pvs-function>]] [<pvs-arguments>] ]"
+    exit 1
 fi
 
 if [ -z "$ARG" ]; then
-  echo "pvsio__ : THEORY BEGIN pvsio__ : void = TRUE END pvsio__" > /tmp/pvsio__.pvs
-  ARG="/tmp/pvsio__"
+  tmppvsfile=$(mktemp /tmp/pvsio_XXXXXX)
+  mv $tmppvsfile $tmppvsfile.pvs
+  trap 'rm -f "$tmppvsfile.pvs" "$tmppvsfile.log"' EXIT INT TERM
+  tmppvstheo=`basename $tmppvsfile`
+  echo "$tmppvstheo : THEORY BEGIN pvsio__tmp : string = \"$tmppvstheo\" END $tmppvstheo" > $tmppvsfile.pvs
+  ARG=$tmppvsfile
 fi
 
-MAIN=
+# $ARG should have the general form
+# <file.pvs> | [<ctx>]@<theory>[:[<pvs-function>]] [<pvs-arguments>]
 
 case $ARG in
-  *@*) FILE=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
-       THMA=`echo $ARG | sed -e "s/[^@]*@//"`;;
-  *)   FILE=$ARG
+  *@*@*)
+    echo "Error (pvsio): $ARG doesn't have the form [<ctx>]@<theory>"
+    exit 1;;
+  *@*)
+    split_arg $ARG;;
+  *)
+    file_arg $ARG
 esac
 
-case $THMA in
-  *:*) THEORY=`echo $THMA | sed -e "s/\([^:]\):.*$/\1/"`
-       MAIN=`echo $THMA | sed -e "s/[^:]*://"`
-       if [ -z "$MAIN" ]; then
-         MAIN="main"
-       fi
-       if [ "$PARAM" ]; then
-         MAIN="$MAIN($PARAM)"
-       fi;;
-  *)   THEORY=$THMA
-esac
-
-if [ "$THMA" -a -z "$FILE" ]; then
-  FILE=$THEORY
+if [ "$PVSMAIN" ]; then
+  param=
+  if [ "$1" ]; then
+    param="$1"
+    shift
+  fi
+  while [ $# -gt 0 ]
+  do
+    param="$param,$1"
+    shift
+  done
+  if [ "$param" ]; then
+    PVSMAIN="$PVSMAIN($param)"
+  fi
+elif [ "$1" ]; then
+  echo "Error (pvsio): $ARG doesn't have the form [<ctx>]@<theory>:[<pvs-function>] <pvs-arguments>"
+  exit 1
 fi
 
-DIR=`dirname $FILE`
-if [ "$DIR" = "." ]; then
-    DIR=`pwd -P`
-fi
-NAME=`basename $FILE .pvs`
-FILE="$DIR/$NAME"
-
-if [ ! -f "$FILE.pvs" ]; then
-  echo Error: "File $FILE.pvs doesn't exist"
-  exit 0
-fi
-
-if [ -z "$THEORY" ]; then
-  THEORY=$NAME
-fi
-
-export PVSIOFILE=$FILE
-export PVSIOTHEORY=$THEORY
-export PVSIOPACK=$PACK
-export PVSIOMAIN=$MAIN
+export PVS_LIBRARY_PATH
+export PVSIOCONTEXT=$PVSCONTEXT
+export PVSIONAME=$PVSNAME
+export PVSIOTHEORY=$PVSTHEORY
+export PVSIOMAIN=$PVSMAIN
+export PVSIOLISPPRELUDEXTS="`list_to_lisp $PRELUDEXTS`"
+export PVSIOLISPTCCS="`bool_to_lisp $TCCS`"
+export PVSIOLISPDEBUG="`bool_to_lisp $DEBUG`"
+export PVSIOLISPTIMING="`bool_to_lisp $TIMING`"
+export PVSIOPROMPTIN=$PROMPTIN
+export PVSIOPROMPTOUT=$PROMPTOUT
 
 if [ "$DEBUG" ]; then
-  echo "*** PVSio Environment Variables"
-  echo "\$PVSIOFILE=$PVSIOFILE"
-  echo "\$PVSIOTHOERY=$PVSIOTHEORY"
-  echo "\$PVSIOPACK=$PVSIOPACK"
-  echo "\$PVSIOMAIN=$PVSIOMAIN"
+  readVersion
+  echo "pvsio-$VERSION"
+  echo "export PVS_LIBRARY_PATH=$PVS_LIBRARY_PATH"
+  echo "export PVSIOCONTEXT=$PVSIOCONTEXT"
+  echo "export PVSIONAME=$PVSIONAME"
+  echo "export PVSIOTHEORY=$PVSIOTHEORY"
+  echo "export PVSIOMAIN=$PVSIOMAIN"
+  echo "export PVSIOLISPPRELUDEXTS=$PVSIOLISPPRELUDEXTS"
+  echo "export PVSIOLISPTCCS=$PVSIOLISPTCCS"
+  echo "export PVSIOLISPTIMING=$PVSIOLISPTIMING"
+  echo "export PVSIOLISPDEBUG=$PVSIOLISPDEBUG"
+  echo "export PVSIOPROMPTIN=$PVSIOPROMPTIN"
+  echo "export PVSIOPROMPTOUT=$PVSIOPROMPTOUT"
 fi
 
-if [ "$PVSIOMAIN" -a "$PVSIOVERB" = nil ]; then
-    "$PVSPATH/pvs" -raw $PVSLISP -E "(run-pvsio)" | awk '
+if [ "$DEBUG" -o "$DRYRUN" ]; then
+  echo "About to run: ${PVSPATH}pvs -raw $PVSOPTS -E '(run-pvsio)'"
+fi
+if [ "$VERBOSE" ]; then
+  echo "Log file: $PVSCONTEXT/$PVSTHEORY.log"
+fi
+if [ "$DRYRUN" ]; then
+  exit 0
+elif [ "$PVSIOMAIN" -a -z "$VERBOSE" ]; then
+    ${PVSPATH}pvs -raw $PVSOPTS -E "(run-pvsio)" | awk '
 BEGIN { beginpvsio = 0 }
 /Starting pvsio script/ { beginpvsio = 1; getline }
-beginpvsio == 1 { print }
+/Error:/ { beginpvsio = 1 }
+beginpvsio == 1 && /^[[:space:]]*$/ { next }
+beginpvsio >= 1 { beginpvsio = 2; print }
 END { }
 '
-else 
-    "$PVSPATH/pvs" -raw $PVSLISP -E "(run-pvsio)"
+else
+    ${PVSPATH}pvs -raw $PVSOPTS -E "(run-pvsio)"
 fi
