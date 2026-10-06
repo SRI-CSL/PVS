@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; context.lisp -- Context structures and accessors
+;; context.lisp -- PVS context, proof file, and binfile handling
 ;; Author          : Sam Owre
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -3617,42 +3617,50 @@ If there is no error, but the ls-files is empty"
 		    (git-init)
 		    t))))))
 
-(defun save-context-to-json (&optional (ws (current-workspace)))
+(defun pvs-context-to-json (&optional (ws (current-workspace)))
+  (pvs-context-to-json* ws))
+
+(defun pvs-context-to-json-file (&optional (file ".pvscontext.json")
+				   (ws (current-workspace)))
+  (pvs-context-to-json* ws file))
+  
+(defun pvs-context-to-json* (workspace &optional file)
+  "First saves the .pvscontext file if needed, then generates the JSON
+representation. If file is nil, the JSON string is returned, else if file is
+'t', .pvscontext.json is used, else the file provided will be written to."
   (with-workspace ws
-    (let* ((ctx-file ".pvscontext.json")
-	   (ctx-alist (ctx-alist ws)))
-      (with-open-file (ctx-fd ctx-file
-			      :direction :output :if-exists :supersede
-			      :if-does-not-exist :create)
-	(json:encode-json ctx-alist ctx-fd))
-      ctx-alist)))
+    (save-context)
+    (let* ((ctx-alist (ctx-alist ws)))
+      (if file
+	  (with-open-file (ctx-fd json-file
+				  :direction :output :if-exists :supersede
+				  :if-does-not-exist :create)
+	    (json:encode-json ctx-alist ctx-fd))
+	  (json:encode-json-to-string ctx-alist)))))
 
 (defun ctx-alist (&optional (ws (current-workspace)))
   (with-workspace ws
     (let ((ctx (pvs-context ws)))
-      `(("tag" . "pvs-context")
-	("version" . ,*pvs-version*)
-	("prelude-libraries" . ,(cadr ctx))
-	;; ("decision-procedure" . ,(caddr ctx))
-	("pvs-files" . ,(mapcar #'ce-alist (cdddr ctx)))))))
+      `(("version" . ,(pvs-context-version ctx))
+	("prelude-libraries" . ,(pvscontext-prelude-libs ctx))
+	("pvs-files" . ,(mapcar #'ce-alist (pvscontext-entries ctx)))))))
 
 (defun ce-alist (ce)
   (let* ((fname (ce-file ce))
 	 (file (make-specpath fname))
 	 (sha1 (get-file-git-sha1 file)))
-    `(("tag" . "file-entry")
-      ("pvs-file" . ,fname)
-      ("write-date" . ,(ce-write-date ce))
-      ("proofs-date" . ,(ce-proofs-date ce))
-      ("object-date" . ,(ce-object-date ce))
+    `(("pvs-file" . ,fname)
+      ("write-date" . ,(when (ce-write-date ce) (iso8601-date (ce-write-date ce))))
+      ("proofs-date" . ,(when (ce-proofs-date ce) (iso8601-date (ce-proofs-date ce))))
+      ("object-date" . ,(mapcar #'(lambda (obd)
+				    (cons (car obd) (iso8601-date (cdr obd))))
+			  (ce-object-date ce)))
       ("dependencies" . ,(ce-dependencies ce))
       ("theories" . ,(mapcar #'te-alist (ce-theories ce)))
-      ;; ("extension" . ,(ce-extension ce))
-      ("sha1-hash" . ,sha1))))
+      ("SHA1" . ,sha1))))
 
 (defun te-alist (te)
-  `(("tag" . "theory-entry")
-    ("id" . ,(te-id te))
+  `(("theory-id" . ,(te-id te))
     ("status" . ,(te-status te))
     ("dependencies" . ,(mapcar #'te-dependency (te-dependencies te)))
     ("formula-info" . ,(mapcar #'te-formula (te-formula-info te)))))
@@ -3664,21 +3672,16 @@ If there is no error, but the ls-files is empty"
       ("dep-theories" . ,dep-theories))))
 
 (defun te-formula (fe)
-  `(("id" . ,(fe-id fe))
+  `(("formula-id" . ,(fe-id fe))
     ("status" . ,(string (fe-status fe)))
-    ("proof-refers-to" . ,(mapcar #'decl-entry (fe-proof-refers-to fe)))
-    ;; ("decision-procedure-used" . ,(fe-decision-procedure-used fe))
-    ;; ("proof-time" . ,(fe-proof-time fe))
-    ))
+    ("proof-refers-to" . ,(mapcar #'decl-entry (fe-proof-refers-to fe)))))
 
 (defun decl-entry (de)
-  ;; `(("id" . ,(de-id de))
-  ;;   ("class" . ,(de-class de))
-  ;;   ("type" . ,(de-type de))
-  ;;   ("theory-id" . ,(de-theory-id de))
-  ;;   ("library" . ,(de-library de)))
-  ;; For efficiency, we just create a list
-  (list (de-id de) (de-class de) (de-type de) (de-theory-id de) (de-library de)))
+  `(("decl-id" . ,(de-id de))
+    ("class" . ,(de-class de))
+    ("type" . ,(de-type de))
+    ("theory-id" . ,(de-theory-id de))
+    ("library" . ,(de-library de))))
 
 (defun consistent-fe-entries-and-proofs (thname)
   (let ((all-good t))
