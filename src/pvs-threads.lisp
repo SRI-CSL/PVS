@@ -232,9 +232,14 @@ Sends a quit, waits half a sec, then kills the thread, and moves the session to 
 otherwise returns nil."
   (let ((sess (current-session)))
     (when sess
-      (let ((outp (if (stringp output)
-		      (string-trim '(#\Space #\Tab #\Newline) output)
-		      output)))
+      (let ((outp (typecase output
+		    (string (string-trim '(#\Space #\Tab #\Newline) output))
+		    ;; e.g., a type-error caught by ignore-errors in prove*
+		    ((and cl:condition (not simple-condition))
+		     (make-condition 'simple-error
+		       :format-control "~a"
+		       :format-arguments (list (princ-to-string output))))
+		    (t output))))
 	(unless (typep outp '(or string proofstate simple-condition))
 	  (break "Strange output: ~a" outp))
 	(push outp (outputs sess))))))

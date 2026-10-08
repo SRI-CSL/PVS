@@ -568,8 +568,14 @@
 		;; This gets expr-judgements
 		(expr-judgement-types ex njtypes)
 	      #+pvsdebug (assert (length= ejtypes ejdecls))
-	      (let ((jtypes (if ejtypes (append njtypes ejtypes) njtypes))
-		    (jdecls (if ejdecls (append njdecls ejdecls) njdecls)))
+	      ;; njtypes is a vector of component types for tuple/record exprs;
+	      ;; whole-expr judgement types can't be appended to it
+	      (let ((jtypes (if (and ejtypes (listp njtypes))
+				(append njtypes ejtypes)
+				njtypes))
+		    (jdecls (if (and ejdecls (listp njtypes))
+				(append njdecls ejdecls)
+				njdecls)))
 		#+pvsdebug (assert (length= jtypes jdecls))
 		#+pvsdebug (assert (or (and (name-expr? ex)
 					    (skolem-const-decl? (declaration ex)))
@@ -3685,7 +3691,8 @@ Note that the all? arument is only used in the type-constraints* (subtype) metho
 				  (subtype-of? jty stype))
 			      (judgement-types+ inst))
 			(acons (declaration ex) inst (if (eq msubst 'fail) subst msubst))
-			(if (eq msubst 'fail) subst msubst)))))))
+			;; inst is not known to be of the variable's type
+			'fail))))))
       (if (and (typep inst 'name-expr)
 	       (eq (declaration ex) (declaration inst)))
 	  (simple-match* (module-instance ex) (module-instance inst) bindings subst)

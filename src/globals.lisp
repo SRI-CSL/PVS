@@ -66,7 +66,7 @@ in util.lisp")
 
 (defvar *pvs-git-describe*)
 
-(defparameter *binfile-version* 40)
+(defparameter *binfile-version* 41)
 
 (defvar *ignore-binfile-errors* t)
 
