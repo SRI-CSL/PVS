@@ -293,7 +293,7 @@
       (let ((*disable-gc-printout* t))
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories unproved? tccs-only?))
+	    (proof-summaries theories nil unproved? tccs-only?))
 	  t))
       (pvs-message "No theories given")))
 
@@ -316,7 +316,10 @@
 	    (pvs-message "Theory ~a is not found" theoryref))))))
 
 
-(defun proof-summaries (theory-ids &optional filename unproved? tccs-only?)
+(defun proof-summaries (theory-ids &optional filename unproved? tccs-only? kind)
+  "Prints the proof summaries of theory-ids. kind tells what filename is: nil
+for a PVS file, :prelude-file for a prelude file such as prelude, or
+:prelude-library for a prelude library such as finite_sets."
   (unless (and unproved?
 	       (every #'(lambda (thid)
 			  (let* ((th (get-theory thid))
@@ -326,16 +329,22 @@
 					       (provable-formulas th)))))
 			    (and th (every #'proved? fdecls))))
 		      theory-ids))
-    (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
+    (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
+	  (source (when filename
+		    (case kind
+		      (:prelude-file (format nil "prelude file ~a.pvs" filename))
+		      (:prelude-library (format nil "prelude library ~a" filename))
+		      (t (format nil "~a.pvs" filename))))))
       (when filename
-	(format t "~2%~@[TCC ~*~]Proof summary for file ~a.pvs" tccs-only? filename))
+	(format t "~2%~@[TCC ~*~]Proof summary for ~:[file ~;~]~a"
+	  tccs-only? kind source))
       (dolist (theory theory-ids)
 	(multiple-value-bind (to pr uf ut tm)
 	    (proof-summary theory (when filename 2) unproved? tccs-only?)
 	  (incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
 	  (incf time tm)))
       (if filename
-	  (format t "~2%  Totals for ~a.pvs: " filename)
+	  (format t "~2%  Totals for ~a: " source)
 	  (format t "~2%Grand Totals: "))
       (format t "~d proofs, ~d attempted, ~d succeeded (~,2f s)"
 	tot (+ proved unfin) proved time)

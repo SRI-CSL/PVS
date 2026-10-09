@@ -305,12 +305,42 @@
 	(theories (pvsio-prelude-theories)))
     (save-proofs prfile theories)))
 
+(defparameter *distributed-prelude-libraries* '("finite_sets" "bitvectors")
+  "The libraries in <pvs-path>/lib/ that prove-prelude proves and
+prelude-summary reports, in addition to the core and PVSio preludes.")
+
 (defun prove-prelude (&optional retry? use-default-dp?)
-  (let ((theories *prelude-theories*)
-	(*loading-prelude* t)
+  "Proves the core prelude, the PVSio prelude, and the libraries in
+*distributed-prelude-libraries*, then shows prelude-summary. PVS trusts the
+proofs of the core prelude and marks them as proved when it loads them. Thus,
+only retry? reruns them."
+  (let ((*loading-prelude* t)
 	(*proving-tcc* t))
-    (prove-theories "prelude" theories retry? use-default-dp?)
-    (prelude-summary)))
+    (prove-theories "prelude" *prelude-theories* retry? use-default-dp?))
+  (prove-prelude-libraries retry? use-default-dp?)
+  (prelude-summary))
+
+(defun call-with-prelude-library-theories (lib fn)
+  "Enters the workspace of library lib in <pvs-path>/lib/, typechecks the
+import chain of its top.pvs, and calls fn with the theories of that chain that
+are in the library. Returns the value of fn."
+  (let ((lib-path (merge-pathnames (format nil "lib/~a/" lib) *pvs-path*)))
+    (with-workspace lib-path
+      (typecheck-file "top" nil nil t)
+      (let* ((top (get-typechecked-theory "top"))
+	     (theories (remove-if-not
+			   #'(lambda (th)
+			       (file-equal (context-path th) (context-path top)))
+			 (collect-theory-usings top nil))))
+	(funcall fn theories)))))
+
+(defun prove-prelude-libraries (&optional retry? use-default-dp?)
+  "Proves the libraries in *distributed-prelude-libraries*, each one in its own
+workspace."
+  (dolist (lib *distributed-prelude-libraries*)
+    (call-with-prelude-library-theories lib
+      #'(lambda (theories)
+	  (prove-theories lib theories retry? use-default-dp?)))))
 
 (defun prove-pvsio-prelude (&optional retry? use-default-dp?)
   (let ((theories (pvsio-prelude-theories))
@@ -323,15 +353,35 @@
   (let ((theories (pvsio-prelude-theories)))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
-	(proof-summaries theories "pvsio_prelude"))
+	(proof-summaries theories "pvsio_prelude" nil nil :prelude-file))
       t)))
 
 (defun prelude-summary (&optional unproved?)
-  (let ((theories *prelude-theories*))
+  "Shows the proof summaries of the core prelude, the PVSio prelude, and the
+libraries in *distributed-prelude-libraries*."
+  (let ((lib-summaries (prelude-libraries-summaries unproved?)))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
-	(proof-summaries theories "prelude" unproved?))
+	(proof-summaries (core-prelude-theories) "prelude" unproved? nil
+			 :prelude-file)
+	(proof-summaries (pvsio-prelude-theories) "pvsio_prelude" unproved? nil
+			 :prelude-file)
+	(dolist (summary lib-summaries)
+	  (write-string summary)))
       t)))
+
+(defun prelude-libraries-summaries (&optional unproved?)
+  "Returns the proof summaries of the libraries in
+*distributed-prelude-libraries*, one string for each library. PVS makes each
+summary in the workspace of the library. Thus, a summary shows the real proof
+status, not the trusted status."
+  (mapcar #'(lambda (lib)
+	      (call-with-prelude-library-theories lib
+		#'(lambda (theories)
+		    (with-output-to-string (*standard-output*)
+		      (proof-summaries theories lib unproved? nil
+				       :prelude-library)))))
+    *distributed-prelude-libraries*))
 
 (defun prelude-proofchain ()
   (let ((theories *prelude-theories*))
