@@ -225,7 +225,7 @@ sub generate_all_libraries($) {
 	# Only take into considerations folders that have at least one pvs file
 	if ( scalar @files_in_subdir > 0) {
 	  # look into the dep file to check dependencies
-	  my $depfile = "$depdir/$libdir.dep";
+	  my $depfile = depfile_name($depdir,$libdir);
 	  my $topfile = "$libdir/$topname.pvs";
 	  if (! -f $topfile && ! $force2) {
 	      print "File $topfile not found. It could be generated, but it takes time\n";
@@ -668,6 +668,16 @@ sub iterate_command_libs($){
 
 my %lib_order;   # library name -> position in the input file
 
+# Name of the .dep file of library $lib in directory $depdir. The .dep file of
+# a sub-library <lib>/<sublib> is <depdir>/<lib>-<sublib>.dep.
+sub depfile_name {
+  my ($depdir,$lib) = @_;
+  (my $name = $lib) =~ s/\/+$//;
+  $name =~ s/^(?:\.\/+)+//;
+  $name =~ s/\/+/-/g;
+  return "$depdir/$name.dep";
+}
+
 sub load_lib_order {
   my $pos = 0;
   open(my $fh, '<', $file) or return;
@@ -685,7 +695,7 @@ sub load_lib_order {
 
 sub check_dependencies {
   my ($depdir,$deplib) = @_;
-  my $depfile = "$depdir/$deplib.dep";
+  my $depfile = depfile_name($depdir,$deplib);
   my $localws;
   my $localbase;
 
