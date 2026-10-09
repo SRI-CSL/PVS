@@ -285,7 +285,8 @@ restoring them after executing forms."
        (cond ((eq ,ws *workspace-session*)
 	      ,@forms)
 	     (t (unwind-protect
-		     (let ((*workspace-session* ,ws)
+		     (let ((*loading-library* (path ,ws))
+			   (*workspace-session* ,ws)
 			   (*current-context* nil))
 		       (unwind-protect
 			    (progn

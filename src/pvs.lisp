@@ -2043,7 +2043,8 @@ Needs to pay attention to sections."
 		   :test #'string-equal)
 	   t)
       (when (mapped-formula-decl? fdecl)
-	(proved? (generated-by fdecl)))))
+	(proved? (generated-by fdecl)))
+      (trusted-library-decl? fdecl)))
 
 (defmethod unproved? ((fdecl formula-decl))
   (not (proved? fdecl)))

@@ -1730,6 +1730,52 @@ The tcc-origin is only for TCCs, and has the form
 
 (defvar *valid-proofs-file*)
 
+;;; Libraries in <pvs-path>/lib/, for example finite_sets and bitvectors, are
+;;; trusted, as the core prelude is. When the current workspace is not the
+;;; library, proved? is true for each formula of the library that has a
+;;; proof, and PVS does not change the proof files of the library. The
+;;; stored proof status does not change, thus .bin and .pvscontext files
+;;; keep the real status. In the workspace of the library itself, PVS
+;;; behaves as usual.
+
+(defvar *pvs-lib-truename* nil)
+
+(defvar *pvs-lib-paths* (make-hash-table :test #'equal)
+  "Caches pvs-lib-path?, from the namestring of a path to t or nil.")
+
+(defun pvs-lib-path? (path)
+  "True when path is <pvs-path>/lib/ or a directory in it."
+  (let ((key (namestring path)))
+    (multiple-value-bind (value found?)
+	(gethash key *pvs-lib-paths*)
+      (if found?
+	  value
+	  (setf (gethash key *pvs-lib-paths*)
+		(let ((lib-path (or *pvs-lib-truename*
+				    (setq *pvs-lib-truename*
+					  (uiop:truename*
+					   (merge-pathnames "lib/" *pvs-path*)))))
+		      (truepath (uiop:truename* path)))
+		  (and lib-path truepath
+		       (uiop:subpathp truepath lib-path)
+		       t)))))))
+
+(defun trusted-library-decl? (decl)
+  "True when decl has a proof, decl is in a library in <pvs-path>/lib/, and
+the current workspace is not that library."
+  (and *workspace-session*
+       (proofs decl)
+       (let ((path (and (module decl) (context-path (module decl)))))
+	 (and path
+	      (pvs-lib-path? path)
+	      (not (file-equal path (current-context-path)))))))
+
+(defun trusted-library-workspace? ()
+  "True when the current workspace is a library in <pvs-path>/lib/ and
+with-workspace entered it from another workspace, see *loading-library*."
+  (and *loading-library*
+       (pvs-lib-path? (current-context-path))))
+
 (defun restore-proofs (filename &key read-only theories file-proofs)
   "Restore proofs from the corresponding .prf file - looks in
 orphaned-proofs.prf for any formula that has no proofs in the prf file.  An
@@ -1744,6 +1790,7 @@ Note that the proof status is set from the .pvscontext, since it also keeps the
 date of the .prf file for validation."
   (let* ((ftheories (or theories (get-theories filename)))
 	 (*valid-proofs-file* (valid-proofs-file filename))
+	 (read-only (or read-only (trusted-library-workspace?)))
 	 (fproofs (or file-proofs (read-pvs-file-proofs filename))))
     (when fproofs
       (let* ((orphs (get-orphaned-proofs))
