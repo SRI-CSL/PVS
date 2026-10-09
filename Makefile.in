@@ -581,7 +581,8 @@ ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 image-deps = $(pvs-make-files) \
              $(ess-files) $(lisp-files) \
-             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf \
+             $(PVSPATH)lib/pvsio_prelude.pvs $(PVSPATH)lib/pvsio_prelude.prf
 
 # Set the yices downlowd URLs
 yices1-version = 1.0.40
