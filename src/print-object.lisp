@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; print-object.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Thu Dec  2 13:42:15 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jan 22 15:56:53 1999
-;; Update Count    : 14
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -255,7 +250,8 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream
-	  "#<Resolution ~@<~a~:_:~a~:>>"
+	  "#<~(~a~) ~@<~a~:_:~a~:>>"
+	(class-name (class-of res))
 	(resolution-string res)
 	(when (declaration res)
 	  (if (eq (kind-of (declaration res)) 'expr)
@@ -328,12 +324,14 @@ print object produces an error, and won't allow inspection of the object.")
                       ~%              judgement-declarations: ~d,~
                       ~%              number-judgements-alist: ~d,~
                       ~%              name-judgements-alist: ~d,~
-                      ~%              application-judgements-alist: ~d>"
+                      ~%              application-judgements-alist: ~d,~
+                      ~%              expr-judgements-alist: ~d>"
 	(hash-table-count (judgement-types-hash jdgmts))
 	(length (judgement-declarations jdgmts))
 	(length (number-judgements-alist jdgmts))
 	(length (name-judgements-alist jdgmts))
-	(length (application-judgements-alist jdgmts)))))
+	(length (application-judgements-alist jdgmts))
+	(length (expr-judgements-alist jdgmts)))))
 
 (defmethod print-object ((jdgs application-judgements) stream)
   (if *debugging-print-object*

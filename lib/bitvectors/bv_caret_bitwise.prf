@@ -1,1 +1,75 @@
-(bv_caret_bitwise (bv_OR_caret_TCC1 0 (bv_OR_caret_TCC1-1 nil 3341451894 ("" (subtype-tcc) nil nil) ((minus_odd_is_odd application-judgement "odd_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil)) nil)) (bv_OR_caret 0 (bv_OR_caret-1 nil 3341451901 ("" (expand* "^" "OR") nil nil) ((OR const-decl "bvec[N]" bv_bitwise nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_AND_caret 0 (bv_AND_caret-1 nil 3341451916 ("" (expand* "^" "AND") nil nil) ((AND const-decl "bvec[N]" bv_bitwise nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_IFF_caret 0 (bv_IFF_caret-1 nil 3341451924 ("" (expand* "^" "IFF") nil nil) ((IFF const-decl "bvec[N]" bv_bitwise nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_XOR_caret 0 (bv_XOR_caret-1 nil 3341451929 ("" (expand* "^" "XOR") nil nil) ((XOR const-decl "bvec[N]" bv_bitwise nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)) (bv_NOT_caret 0 (bv_NOT_caret-1 nil 3341451935 ("" (expand* "^" "NOT") nil nil) ((NOT const-decl "bvec[N]" bv_bitwise nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (nnint_plus_nnint_is_nnint application-judgement "nonneg_int" integers nil) (posint_plus_nnint_is_posint application-judgement "posint" integers nil) (int_minus_int_is_int application-judgement "int" integers nil) (minus_odd_is_odd application-judgement "odd_int" integers nil)) shostak)))
+(|bv_caret_bitwise|
+ (|bv_OR_caret_TCC1| 0
+  (|bv_OR_caret_TCC1-1| NIL 3341451894 ("" (SUBTYPE-TCC) NIL NIL)
+   ((|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL))
+   NIL
+   (|bv_OR_caret| SUBTYPE
+    "(number_fields.-)((number_fields.+)(1, bv_caret_bitwise.i), bv_caret_bitwise.j)"
+    "nat" (9 55 9 57))))
+ (|bv_OR_caret| 0
+  (|bv_OR_caret-1| |nil| 3341451901 ("" (EXPAND* "^" "OR") NIL NIL)
+   ((OR CONST-DECL "[[bvec[N], bvec[N]] -> bvec[N]]" |bv_bitwise| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_AND_caret| 0
+  (|bv_AND_caret-1| |nil| 3341451916 ("" (EXPAND* "^" "AND") NIL NIL)
+   ((AND CONST-DECL "[[bvec[N], bvec[N]] -> bvec[N]]" |bv_bitwise| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_IFF_caret| 0
+  (|bv_IFF_caret-1| |nil| 3341451924 ("" (EXPAND* "^" "IFF") NIL NIL)
+   ((IFF CONST-DECL "[[bvec[N], bvec[N]] -> bvec[N]]" |bv_bitwise| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_XOR_caret| 0
+  (|bv_XOR_caret-1| |nil| 3341451929 ("" (EXPAND* "^" "XOR") NIL NIL)
+   ((XOR CONST-DECL "[[bvec[N], bvec[N]] -> bvec[N]]" |bv_bitwise| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK))
+ (|bv_NOT_caret| 0
+  (|bv_NOT_caret-1| |nil| 3341451935 ("" (EXPAND* "^" "NOT") NIL NIL)
+   ((NOT CONST-DECL "[bvec[N] -> bvec[N]]" |bv_bitwise| NIL)
+    (^ CONST-DECL
+     "[d: [bvec[N], [i1: below(N), upto(i1)]] -> bvec[PROJ_1(d`2) - PROJ_2(d`2) + 1]]"
+     |bv_caret| NIL)
+    (|nnint_plus_nnint_is_nnint| APPLICATION-JUDGEMENT "nonneg_int" |integers|
+     NIL)
+    (|posint_plus_nnint_is_posint| APPLICATION-JUDGEMENT "posint" |integers|
+     NIL)
+    (|int_minus_int_is_int| APPLICATION-JUDGEMENT "int" |integers| NIL)
+    (|minus_odd_is_odd| APPLICATION-JUDGEMENT "odd_int" |integers| NIL))
+   SHOSTAK)))

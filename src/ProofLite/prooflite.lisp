@@ -1,6 +1,6 @@
 ;;
 ;; prooflite.lisp
-;; Release: ProofLite-8.0 (10/13/2023)
+;; Release: ProofLite-8.1-20260706
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -14,7 +14,7 @@
 
 (in-package :pvs)
 
-(defparameter *prooflite-version* "7.1.0 (Nov 05, 2020)")
+(defparameter *prooflite-version* "8.1-20260706")
 
 (defun associate-proof-with-formulas (theory-name formula-name strategy force
 						  &optional
@@ -37,14 +37,14 @@
 					      (pregexp-match regexp idstr)))))
 			      (all-decls theory))))
 		(if fdecls
-		    (associate-proof-with-formula 
-		     theory regexp (instantiate-script strategy args 1 "#") 
+		    (associate-proof-with-formula
+		     theory regexp (instantiate-script strategy args 1 "#")
 		     fdecls
 		     overwrite-default-proof?
 		     save-prf-file?)
-		  (pvs-message 
+		  (pvs-message
 		   "\"~a\" does not match any ~aformula" name str)))
-	    (pvs-message 
+	    (pvs-message
 	     "\"~a\" is not a valid proof script header" formula-name)))
       (pvs-message "Theory ~a not found" theory-name))))
 
@@ -70,7 +70,7 @@
 			  (revert-justification (list "" strat))
 			  strat))))
 	  (unless just
-	    (type-error script 
+	    (type-error script
 			"Bad form for script~%  ~s" script))
 
 	  (if overwrite-default-proof?
@@ -90,11 +90,11 @@
   ;; time the file was parsed.
   (cdr (gethash file (current-pvs-files))))
 
-;; Returns a list of theories imported in theory-names  
-(defun imported-theories-in-theories (theory-names)
-  (remove-duplicates 
-   (mapcan #'(lambda (theo) (imported-theories-in-theory theo))
-	   theory-names)))
+;; Returns a list of theories imported in theories, which can be names
+(defun imported-theories-in-theories (theories)
+  (remove-duplicates
+   (mapcan #'(lambda (theory) (imported-theories-in-theory theory))
+	   theories)))
 
 (defun my-collect-theory-usings (theory)
   (unless (or (memq theory *modules-visited*)
@@ -104,30 +104,30 @@
     (dolist (use (get-immediate-usings theory))
       (let ((th (get-theory use)))
 	(when th
-	  (my-collect-theory-usings 
+	  (my-collect-theory-usings
 	   (if (typep th 'rectype-theory)
 	       (get-typechecked-theory (generated-by th))
 	       th)))))))
 
-;; Returns a list of immediately imported theories in the theory-name
-(defun immediate-theories-in-theory (theory-name)
-  (let ((theory (get-typechecked-theory theory-name)))
+;; Returns a list of immediately imported theories in the theory, which can be a name
+(defun immediate-theories-in-theory (theory)
+  (let ((theory (get-typechecked-theory theory)))
     (when theory
-      (remove-duplicates 
+      (remove-duplicates
        (loop for use in (get-immediate-usings theory)
 	     for th = (get-theory use)
 	     when th
 	     unless (from-prelude? th)
 	     collect (if (typep th 'rectype-theory)
 			 (get-typechecked-theory (generated-by th))
-		       th))))))
+			 th))))))
 
-;; Returns a list of theories imported in the theory-name
-(defun imported-theories-in-theory (theory-name)
-  (let ((theory (get-typechecked-theory theory-name)))
-    (when theory
+;; Returns a list of theories imported in the theory, which can be a name
+(defun imported-theories-in-theory (theory)
+  (let ((theory-tc (get-typechecked-theory theory)))
+    (when theory-tc
       (let* ((*modules-visited* nil))
-	(my-collect-theory-usings theory)
+	(my-collect-theory-usings theory-tc)
 	(nreverse *modules-visited*)))))
 
 (defun trim-left (str)
@@ -146,7 +146,7 @@
 (defun greedyspaces () "(?<!\\s\\t)[\\s\\t]*(?!\\s\\t)")
 
 (defun replace-all-str (string part replacement &key (test #'char=))
-  "Returns a new string in which all the occurences of the part 
+  "Returns a new string in which all the occurences of the part
 is replaced with replacement."
   (with-output-to-string (out)
     (loop with part-length = (length part)
@@ -166,14 +166,14 @@ is replaced with replacement."
 (defun read-one-line (file)
   (let* ((str   (read-line file nil nil))
 	 (strim (when str (trim str))))
-    (cond ((and (> (length strim) 3) (string= strim "%|-" :end1 3)) 
+    (cond ((and (> (length strim) 3) (string= strim "%|-" :end1 3))
 	   strim)
 	  ((and (> (length strim) 0) (char= (elt strim 0) #\%))
 	   "%")
 	  (strim ""))))
 
 (defun match-formula-name (str)
-  (let ((match (cdr (pregexp-match 
+  (let ((match (cdr (pregexp-match
 		     (format nil "^~a(?:$|~a\\[(.*)\\]$)"
 			     (ident) (greedyspaces))
 		     str))))
@@ -193,7 +193,7 @@ is replaced with replacement."
   (let ((match (pregexp-match-positions
 		(format nil "^(.+):~a(?i:proof)\\b" (spaces))
 		str)))
-    (when match 
+    (when match
       (cons (trim-right (subseq str (caadr match) (cdadr match)))
 	    (trim (subseq str (cdar match) (length str)))))))
 
@@ -219,10 +219,10 @@ is replaced with replacement."
 		       formulas
 		       (or msg "Proof syntax error")
 		       subjust))
-	    (when formulas 
+	    (when formulas
 	      (associate-proof-with-formulas
 	       theory
-	       (car formulas) 
+	       (car formulas)
 	       strategy
 	       force
 	       overwrite-default-proof?
@@ -244,16 +244,16 @@ is replaced with replacement."
     script))
 
 (defun install-prooflite-scripts (filename theory line force)
-  (with-open-file 
+  (with-open-file
    (file (make-specpath filename) :direction :input)
    (let* ((loc        (place (get-theory theory)))
 	  (lfrom      (aref loc 0))
 	  (lto        (aref loc 2)))
      (loop repeat (- lfrom 1) do (read-line file nil nil))
      (if (= line 0)
-	 (pvs-message "Installing inlined proof scripts into theory ~a." 
+	 (pvs-message "Installing inlined proof scripts into theory ~a."
 		      theory)
-       (pvs-message "Installing proof script at line ~a of file ~a." 
+       (pvs-message "Installing proof script at line ~a of file ~a."
 		    line filename))
      (do ((str (read-one-line file))
 	  (n   lfrom)
@@ -265,30 +265,30 @@ is replaced with replacement."
 		  (let* ((proof     (match-proof proofcomment))
 			 (formula   (car proof))
 			 (qed       (match-qed proofcomment)))
-		    (cond 
+		    (cond
 		     (formula
 		      (when (and script (< line n))
-			(pvs-message 
+			(pvs-message
 			 "QED is missing in proof script(s) ~a [Theory: ~a]"
 			 formulas theory))
 		      (setq str (format nil "%|-~a" (cdr proof)))
-		      (setq formulas (cons formula 
+		      (setq formulas (cons formula
 					   (when (not script) formulas)))
 		      (setq script nil))
 		     (qed
-		      (let ((newscript (new-script script qed))) 
+		      (let ((newscript (new-script script qed)))
 			(when (and newscript formulas (<= line n))
-			  (install-script theory newscript 
-					  (reverse formulas) 
+			  (install-script theory newscript
+					  (reverse formulas)
 					  force))
 			(cond ((or (= line 0) (< n line))
 			       (setq str (read-one-line file))
 			       (setq n   (+ n 1))
 			       (setq formulas nil)
 			       (setq script nil))
-			      ((not formulas) 
-			       (pvs-message 
-				"No script was installed [Theory: ~a]" 
+			      ((not formulas)
+			       (pvs-message
+				"No script was installed [Theory: ~a]"
 				theory)
 			       (setq str nil))
 			      (t (setq str nil)))))
@@ -298,7 +298,7 @@ is replaced with replacement."
 		 ((is-comment str)
 		  (setq str (read-one-line file))
 		  (setq n   (+ n 1)))
-		 (t 
+		 (t
 		  (when (and formulas (< line n))
 		    (pvs-error
 		     "Prooflite script error"
@@ -313,7 +313,7 @@ is replaced with replacement."
 			 (setq formulas nil)
 			 (setq script nil))
 			((and (< 0 line) (or (not formulas) (= line n)))
-			 (pvs-message "No script was installed [Theory: ~a]" 
+			 (pvs-message "No script was installed [Theory: ~a]"
 				      theory)
 			 (setq str nil))
 			(t (setq str nil))))))))))
@@ -322,7 +322,7 @@ is replaced with replacement."
   "Installs all the prooflite scripts from a file called PRL-FILENAME into the theory THEORY.
   It assumes that the prl file exists and that theory is not nil."
   (let((at-least-one-script-saved? nil))
-    (with-open-file 
+    (with-open-file
      (file prl-filename :direction :input)
      (do ((str (read-line file nil))
 	  (formulas)
@@ -335,7 +335,7 @@ is replaced with replacement."
 		(let* ((proof     (match-proof proofcomment))
 		       (formula   (car proof))
 		       (qed       (match-qed proofcomment)))
-		  (cond 
+		  (cond
 		   (formula
 		    (when script
 		      (pvs-error
@@ -346,21 +346,21 @@ is replaced with replacement."
 			(cadr formulas)
 			formulas theory)))
 		    (setq str (format nil "~a" (cdr proof)))
-		    (setq formulas (cons formula 
+		    (setq formulas (cons formula
 					 (when (not script) formulas)))
 		    (setq script nil))
 		   (qed
-		    (let ((newscript (new-script script qed))) 
+		    (let ((newscript (new-script script qed)))
 		      (when (and newscript formulas)
-			(install-script theory newscript 
-					(reverse formulas) 
+			(install-script theory newscript
+					(reverse formulas)
 					force
 					t
 					nil)
 			(setq at-least-one-script-saved? t))
-		      (cond ((not formulas) 
-			     (pvs-message 
-			      "No script was installed [Theory: ~a]" 
+		      (cond ((not formulas)
+			     (pvs-message
+			      "No script was installed [Theory: ~a]"
 			      theory)
 			     (setq str nil))
 			    (t
@@ -371,7 +371,7 @@ is replaced with replacement."
 		      (setq script (new-script script proofcomment))))))
 	       ((is-comment str)
 		(setq str (read-line file nil)))
-	       (t 
+	       (t
 		(when formulas
 		  (pvs-error
 		   "Prooflite script error"
@@ -412,7 +412,7 @@ is replaced with replacement."
 	(to-prooflite (cdr (editable-justification
 				    (justification fdecl))))
       (list 'postpone))))
-			
+
 (defun proof-to-prooflite-script (name line)
   (let* ((fdecl (formula-decl-to-prove name nil line "pvs")))
     (when fdecl
@@ -437,7 +437,7 @@ is replaced with replacement."
       (mapcar #'(lambda (d) (format nil "~a" (id d)))
 	      (remove-if-not #'(lambda (d) (formula-decl? d))
 			     (all-decls theory))))))
-  
+
 (defun display-prooflite-script (theory formula)
   (let* ((fdecl (find-formula theory formula)))
     (when fdecl

@@ -37,12 +37,12 @@
 (defvar *eval-untranslatable* nil)
 
 (defun help-pvsio ()
-  (format 
-   t 
+  (format
+   t
    "~%Enter a PVS ground expression followed by ';' at the prompt '~a'" *pvsio-promptin*)
   (format t "~%  OR ")
-  (format 
-   t 
+  (format
+   t
    "~%Enter a Lisp expression followed by '!' at the prompt '~a'~%" *pvsio-promptin*)
   (format t "~%The following special commands can be followed by either ';' or '!':
   help                 : Print this message
@@ -52,10 +52,10 @@
   nodebug              : Turn off printing of debugging information
   timing               : Turn on timing information per evaluation
   notiming             : Turn off timing information
-  tccs                 : Turn on TCCs generation per evaluation 
+  tccs                 : Turn on TCCs generation per evaluation
   notccs               : Turn off TCCs generation
   load_pvs_attachments : Force a reload .pvs-attachments and pvs-attachments
-  list_pvs_attachments : List semantic attachments loaded in the current 
+  list_pvs_attachments : List semantic attachments loaded in the current
                          context
   pvsio_version        : Show current version of PVSio
 
@@ -74,10 +74,10 @@ To change output prompt '~a':
 
 (defun evaluation-mode-pvsio (theoryref &optional input tccs? (banner? t))
   (let ((theory (get-typechecked-theory theoryref)))
-    (with-open-file 
+    (with-open-file
 	(*error-output*
 	 (merge-pathnames (format nil "~a.log" (id theory)))
-	 :direction :output 
+	 :direction :output
 	 :if-does-not-exist :create
 	 :if-exists (if *pvs-emacs-interface* :supersede :append))
       (let ((*pvstrace-wrappers* nil))
@@ -99,7 +99,7 @@ To change output prompt '~a':
 		 (load-pvs-attachments)
 		 (if banner?
 		     (format t "
-+---- 
++----
 | PVSio ~a
 |
 | Enter a PVS ground expression followed by ';' at the prompt '~a'.
@@ -108,8 +108,8 @@ To change output prompt '~a':
 | Enter 'help' for help and 'exit' to exit the evaluator. Follow
 | these commands with either ';' or '!'.
 |
-| *CAVEAT*: evaluation of expressions which depend on unproven TCCs may be 
-| unsound, and result in the evaluator crashing into Lisp, running out of 
+| *CAVEAT*: evaluation of expressions which depend on unproven TCCs may be
+| unsound, and result in the evaluator crashing into Lisp, running out of
 | stack, or worse. If you crash into Lisp, type (restore) to resume.
 |
 +----~%" *pvsio-version* *pvsio-promptin* *pvsio-promptin*)
@@ -159,7 +159,7 @@ To change output prompt '~a':
 	       (= parens 0))
       (clear-input)
       (return
-	(read-from-string 
+	(read-from-string
 	 (get-output-stream-string fstr))))
     (if have-real-char
 	(write-char c fstr)
@@ -201,11 +201,11 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	 (*tccforms* nil)
 	 (tc-input   (pc-typecheck pr-input))
 	 (quiet      nil)
-	 (isvoid     (and tc-input 
+	 (isvoid     (and tc-input
 			  (type-name? (type tc-input))
-			  (string= "void" 
-				   (format 
-				    nil "~a" 
+			  (string= "void"
+				   (format
+				    nil "~a"
 				    (print-type (type tc-input)))))))
     (when *evaluator-debug*
       (format debug-stream "~%Expression ~a typechecks to: ~%" pr-input)
@@ -215,8 +215,8 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
       (format tcc-stream "~%Typechecking ~a produced the following TCCs:~%" pr-input)
       (let ((*standard-output* tcc-stream))
 	(evaluator-print-tccs *tccforms*))
-      (format 
-	  tcc-stream 
+      (format
+	  tcc-stream
 	  "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
       (clear-input)
       (if interactive?
@@ -226,9 +226,9 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	  (format tcc-stream "Warning: proceeding with evaluation~%")))
     (let ((cl-input (pvs2cl tc-input)))
       (when *evaluator-debug*
-	(format debug-stream "~%PVS expression ~a translates to the Common Lisp expression:~%~a~%" 
+	(format debug-stream "~%PVS expression ~a translates to the Common Lisp expression:~%~a~%"
 		tc-input cl-input))
-      
+
 	  (handler-case-pvsio-eval
 	   quiet
 	   (let ((cl-eval
@@ -309,7 +309,7 @@ and loops.  If there's an error, it it printed and otherwise ignored, unless
 	   (load-pvs-attachments t)
 	   (read-pvsio input-stream))
 	  (t input))
-	(multiple-value-bind 
+	(multiple-value-bind
 	    (val err)
 	    (progn			;ignore-errors
 	      (eval input))
@@ -555,44 +555,48 @@ strings. "
 	  (push (cons (destructive (external (eval-info decl))) :e!) info-defs))))
     info-defs))
 
+(defun run-pvsio-on (context pvsname theory preludexts tccs main)
+  (when *evaluator-debug*
+    (pvs-message "*evaluator-debug* is set to T")
+    #+sbcl (sb-debug:print-backtrace :count 1)
+    #+allegro (tpl:do-command "args" :save t))
+  (let ((file (merge-pathnames (format nil "~a.log" theory) (uiop:ensure-directory-pathname context))))
+    (multiple-value-bind (val err)
+	(ignore-errors
+	  (let ((th
+		 (with-open-file
+		     (*standard-output*
+		      file
+		      :direction :output
+		      :if-does-not-exist :create
+		      :if-exists :supersede)
+		   (change-workspace context t)
+		   (load-prelude-libraries preludexts)
+		   (when pvsname
+		     (typecheck-file pvsname nil nil nil t))
+		   (get-typechecked-theory theory))))
+	    (if th
+		(evaluation-mode-pvsio th main tccs (null main))
+		(error "Theory ~a doesn't exist in PVS context ~a" theory context))))
+      (declare (ignore val))
+      (when err (pvs-message "Error: ~a~%Log file: ~a" err file)))
+    (fresh-line)
+    (bye 0)))
 
 (defun run-pvsio ()
-  (let* ((file (environment-variable "PVSIOFILE"))
-	 (time (read-from-string (environment-variable "PVSIOTIME")))
+  (let* ((context (environment-variable "PVSIOCONTEXT"))
+	 (pvsname (let ((name (environment-variable "PVSIONAME")))
+		    (when (and name (string/= name "")) name)))
 	 (theory (environment-variable "PVSIOTHEORY"))
-	 (packlist (read-from-string (environment-variable "PVSIOPACK")))
-	 ;;(verb (read-from-string (environment-variable "PVSIOVERB")))
-	 (tccs (read-from-string (environment-variable "PVSIOTCCS")))
+	 (preludexts (read-from-string (environment-variable "PVSIOLISPPRELUDEXTS")))
+	 (tccs (read-from-string (environment-variable "PVSIOLISPTCCS")))
 	 (pvsio-main (environment-variable "PVSIOMAIN"))
 	 (main (unless (string= pvsio-main "") (format nil "~a;" pvsio-main)))
 	 (*pvsio-promptin* (environment-variable "PVSIOPROMPTIN"))
 	 (*pvsio-promptout* (environment-variable "PVSIOPROMPTOUT"))
-	 (*pvsio-version* (or (environment-variable "PVSIOVERSION") *pvsio-version*)))
-    (when time (setq *pvs-eval-do-timing* t))
-    (multiple-value-bind (val err)
-	(ignore-errors
-	  (unless main
-	    (format t "~%Generating ~a.log~%" theory))
-	  (with-open-file 
-	      (*standard-output*
-	       (merge-pathnames (directory-namestring file) (format nil "~a.log"  theory))
-	       :direction :output
-	       :if-does-not-exist :create
-	       :if-exists :supersede)
-	    (change-workspace (directory-namestring file) t)
-	    (dolist (pack packlist) (load-prelude-library pack))
-	    (unwind-protect
-		 (typecheck-file (file-namestring file) nil nil nil t)
-	      (fresh-line)
-	      (finish-output)))
-	  (evaluation-mode-pvsio theory main tccs (null main))
-	  t)
-      (declare (ignore val))
-      (when err (format t "~%~a (~a.pvs). See ~a~a.log~%"
-		  err file (directory-namestring file) theory)))
-    (fresh-line)
-    (bye 0)))
-
+	 (*evaluator-debug* (read-from-string (environment-variable "PVSIOLISPDEBUG")))
+	 (*pvs-eval-do-timing* (read-from-string (environment-variable "PVSIOLISPTIMING"))))
+    (run-pvsio-on context pvsname theory preludexts tccs main)))
 
 ;;; --------- pvs-threads
 

@@ -1099,7 +1099,7 @@ restored, the TCCs are checked")
   (subdir-alist :initform :unbound
 		:documentation "alist of subdirectories of this workspace to ids,
                                 to cache the information for speed.")
-  (pvs-context :initform nil :documentation "the contents of .pvscontext")
+  (pvscontext :initform nil :documentation "the contents of .pvscontext")
   (pvs-context-date :initform 0)
   (pvs-context-changed :initform nil
 		       :documentation "if t, .pvscontext needs to be saved")

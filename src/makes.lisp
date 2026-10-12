@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; makes.lisp -- 
 ;; Author          : Sam Owre
-;; Created On      : Tue Jan  4 23:17:39 1994
-;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:11:36 1998
-;; Update Count    : 27
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -1066,8 +1061,9 @@
 		 (declaration refers-to)
 		 (declaration-entry
 		  (mapcar #'get-declaration-entry-decl refers-to))
-		 (t (mapcar #'get-referenced-declaration
-		      (remove-if #'null refers-to))))
+		 (t (remove-if #'null
+		      (mapcar #'get-referenced-declaration
+			(remove-if #'null refers-to)))))
     :decision-procedure-used decision-procedure))
 
 (defun mk-tcc-proof-info (id description create-date script refers-to
@@ -1080,19 +1076,22 @@
   (let ((nscript (if (= (length script) 3)
 		     (append script (list nil))
 		     script)))
-  (make-instance 'tcc-proof-info
-    :id id
-    :description description
-    :create-date create-date
-    :script (sexp-unparse nscript) ;; make sure labels are all (vector character)
-    :refers-to (typecase (car refers-to)
-		 (declaration refers-to)
-		 (declaration-entry
-		  (mapcar #'get-declaration-entry-decl refers-to))
-		 (t (mapcar #'get-referenced-declaration
-		      (remove-if #'null refers-to))))
-    :origin (make-tcc-origin origin)
-    :decision-procedure-used decision-procedure)))
+    (make-instance 'tcc-proof-info
+      :id id
+      :description description
+      :create-date create-date
+      :script (sexp-unparse nscript) ;; make sure labels are all (vector character)
+      :refers-to (typecase (car refers-to)
+		   (declaration refers-to)
+		   (declaration-entry
+		    (mapcar #'get-declaration-entry-decl refers-to))
+		   (t (mapcar #'get-referenced-declaration
+			(remove-if #'(lambda (ref)
+				       (or (null ref)
+					   (string-equal (cadr ref) "skolem-const-decl")))
+			  refers-to))))
+      :origin (make-tcc-origin origin)
+      :decision-procedure-used decision-procedure)))
 
 (defun make-proof-info (script &optional id description)
   (assert (symbolp id))

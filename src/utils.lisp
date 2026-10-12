@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; utils.lisp -- 
 ;; Author          : Sam Owre and N. Shankar
-;; Created On      : Thu Dec  2 13:31:00 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Dec 18 03:35:31 2012
-;; Update Count    : 94
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -48,6 +43,13 @@ is replaced with replacement."
 	  when pos do (progn (write-string replacement out) (incf n))
 	  while pos))
      n)))
+
+(defun string-equalp (obj1 obj2 &key (start1 0) end1 (start2 0) end2)
+  "Like string-equal, but returns nil if either object cannot be treated as
+a string"
+  (when (and (typep obj1 '(or string symbol character))
+	     (typep obj2 '(or string symbol character)))
+    (string-equal obj1 obj2 :start1 start1 :end1 end1 :start2 start2 :end2 end2)))
 
 (defun pvs-file (theoryname)
   "Returns the filename (without extension) containing the given theoryname."
@@ -103,41 +105,6 @@ is replaced with replacement."
 	     (uiop:subdirectories (path *workspace-session*)))))
       (setf (subdir-alist *workspace-session*) alist)))
   (subdir-alist *workspace-session*))
-
-(defun current-pvs-context ()
-  (unless *workspace-session*
-    (setq *workspace-session* (get-workspace-session *default-pathname-defaults*)))
-  (pvs-context *workspace-session*))
-
-(defmethod pvs-context :around ((ws workspace-session))
-  (let* ((ctx-file (merge-pathnames ".pvscontext" (path ws)))
-	 (fdate (when (uiop:file-exists-p ctx-file)
-		  (file-write-date ctx-file))))
-    (when (and fdate
-	       (pvs-context-date ws)
-	       (< (pvs-context-date ws) fdate))
-      ;; Context was changed after being read
-      (setf (pvs-context ws) (read-context-file ctx-file))
-      (setf (pvs-context-date ws) fdate)))
-  (call-next-method))
-
-(defsetf current-pvs-context () (pvsctx)
-  `(setf (pvs-context *workspace-session*) ,pvsctx))
-
-(defun current-pvs-context-changed ()
-  (pvs-context-changed *workspace-session*))
-
-(defsetf current-pvs-context-changed () (cc)
-  `(setf (pvs-context-changed *workspace-session*) ,cc))
-
-(defun current-context ()
-  *current-context*)
-
-(defmethod context-path ((ctx context))
-  (context-path (theory ctx)))
-
-(defmethod context-path ((decl declaration))
-  (context-path (module decl)))
 
 (defun current-pvs-file ()
   (when *current-context*
@@ -4848,7 +4815,7 @@ space")
       prinfo
     (list id description create-date ;;run-date
 	  script ;;status
-	  (sexp refers-to) ;;real-time run-time interactive?
+	  (remove-if #'null (sexp refers-to)) ;;real-time run-time interactive?
 	  decision-procedure-used
 	  (sexp origin))))
 
@@ -4867,17 +4834,16 @@ space")
     (list id class type theory-id library)))
 
 (defmethod sexp ((decl declaration))
-  (list (id decl)
-	(type-of decl)
-	(when (and (typed-declaration? decl)
-		   (not (typep decl 'formal-type-decl)))
-	  (or (declared-type-string decl)
-	      (setf (declared-type-string decl)
-		    (unparse (or (declared-type decl)
-				 (type decl)) :string t))))
-	(when (module decl) (id (module decl)))
-	(when (lib-datatype-or-theory? (module decl))
-	  (get-library-id (context-path (module decl))))))
+  (unless (typep decl 'skolem-const-decl)
+    (list (id decl)
+	  (type-of decl)
+	  (when (and (typed-declaration? decl)
+		     (not (typep decl 'formal-type-decl)))
+	    (or (declared-type-string decl)
+		(setf (declared-type-string decl) (str (type decl)))))
+	  (when (module decl) (id (module decl)))
+	  (when (lib-datatype-or-theory? (module decl))
+	    (get-library-id (context-path (module decl)))))))
 
 (defmethod sexp ((theory module))
   (list (id theory)
@@ -5442,9 +5408,9 @@ we can get this method using
 				     (commit-date (git-current-commit-date)))
 				 `(("short-hash" . ,short-commit)
 				   ("long-hash" . ,long-commit)
-				   ("description" . ,(pvs-git-description))
-				   ("branch-info" . ,(git-current-branch))
-				   ("commit-date" . ,(git-current-commit-date))))))
+				   ("description" . ,git-description)
+				   ("branch-info" . ,branch-description)
+				   ("commit-date" . ,commit-date)))))
          "build-date" (when *pvs-build-time*
                         (handler-case
                             (multiple-value-bind (second minute hour date month year day-of-week dst-p tz)
@@ -6173,7 +6139,20 @@ Walks through each script, collecting ngrams for each strategy name. 1-grams are
 loaded files and defuns."
   (if on
       (proclaim '(optimize (speed 0) (safety 3) (cl:debug 3)))
-      (proclaim '(optimize (speed 3) (safety 1) (cl:debug 0)))))
+      (proclaim '(optimize (speed 3) (safety 1) (cl:debug 0))))
+  (uiop:get-optimization-settings))
+
+#+sbcl
+(defun dbg-concise (&optional (on t))
+  (declare (special *cur-dbg-print-alist*))
+  (unless (boundp '*cur-dbg-print-alist*)
+    (setq *cur-dbg-print-alist* sb-ext:*debug-print-variable-alist*))
+  (if on
+      (setq sb-ext:*debug-print-variable-alist*
+	    '((*print-pretty* . nil)
+	      (*print-right-margin* . 999999)
+	      (sbrt:*default-char-width* . 999999)))
+      (setq sb-ext:*debug-print-variable-alist* *cur-dbg-print-alist*)))
 
 #+sbcl
 (defun control-stack-size ()
