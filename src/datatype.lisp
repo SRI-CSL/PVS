@@ -1332,12 +1332,15 @@ generated")
 	(let* (;;(adtype ;;(get-accessor-domain-type (list (car entry)) adt)
 		;;(cadr (caar entry)))
 	       ;;(dtype (if (dep-binding? adtype) (type adtype) adtype))
-	       (pred ;;(predicate dtype)
-		     (typecheck (mk-name-expr (rec-decl (fifth (caar entry))))))
-	       (cond (make!-application pred dvar))
+	       (conditions ;;Modified this to collect all recognizers for the given accessor subtype
+		(loop for rec-entry in (nthcdr 4 (caar entry))
+		      collect
+		      (let ((pred (typecheck (mk-name-expr (rec-decl rec-entry)))))
+			(make!-application pred dvar))))
+	       (condition (make!-disjunction* conditions))
 	       (else (get-accessor-range-type-pred
 		      (cdr entry) dvar tvar adt)))
-	  (make!-if-expr cond tpred else)))))
+	  (make!-if-expr condition tpred else)))))
   
 
 ;;; The common-accessors list consists of entries of the form
@@ -1376,9 +1379,10 @@ generated")
 		    (if entry
 			(let ((subentry (assoc accinfo entry
 					       :test #'same-accinfo)))
-			  (if subentry
-			      (nconc subentry (list a))
-			      (nconc entry (list (list accinfo a)))))
+			  (cond (subentry;;Modified this to accumulate constructors in (car subentry)
+				 (nconc (car subentry) (list c))
+				 (nconc subentry (list a)))
+				(t (nconc entry (list (list accinfo a))))))
 			(setq common-accessors
 			      (nconc common-accessors
 				     (list (list (list accinfo a))))))))))))))
