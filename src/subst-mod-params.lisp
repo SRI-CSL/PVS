@@ -2,11 +2,6 @@
 ;; subst-mod-params.lisp -- performs substitution of actual parameters for
 ;;                          formals 
 ;; Author          : Sam Owre
-;; Created On      : Thu Dec  9 13:10:41 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Dec 18 03:38:55 2012
-;; Update Count    : 76
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -1239,37 +1234,38 @@
 		  :context-path (context-path th)
 		  :generated-by th
 		  :immediate-usings 'unbound)))
-      (multiple-value-bind (nass abindings)
-	  (subst-mod-params-decls assuming modinst bindings nth)
-	(multiple-value-bind (rtheory tbindings)
-	    (subst-mod-params-decls theory modinst abindings nth)
-	  (setf (assuming nth) nass
-		(theory nth) (append (create-importings-for-bindings bindings)
-				     (remove-if #'null rtheory))
-		(exporting nth) (subst-mod-params* exporting modinst bindings))
-	  (dolist (decl (all-decls nth))
-	    (when (declaration? decl)
-	      (setf (module decl) nth)
-	      (regenerate-xref decl)))
-	  (setf (all-usings nth)
-		(let ((imps nil))
-		  (maphash #'(lambda (th thinsts)
-			       (unless (and (from-prelude? th)
-					    (singleton? thinsts))
-				 (push (cons th thinsts) imps)))
-			   (lhash-table (current-using-hash)))
-		  imps))
-	  (assert (every #'cdr tbindings))
-	  (setf (theory-mappings nth) tbindings)
-	  (when (dependent-known-subtypes th)
-	    (setf (dependent-known-subtypes nth)
-		  (subst-mod-params* (dependent-known-subtypes th) modinst bindings)))
-	  (when (macro-expressions th)
-	    (setf (macro-expressions nth)
-		  (subst-mod-params-alist* (macro-expressions th) modinst bindings)))
-	  (when (macro-subtype-tcc-args-alist th)
-	    (break "subst-mod-params* module"))
-	  (values nth tbindings))))))
+      (with-context nth
+	(multiple-value-bind (nass abindings)
+	    (subst-mod-params-decls assuming modinst bindings nth)
+	  (multiple-value-bind (rtheory tbindings)
+	      (subst-mod-params-decls theory modinst abindings nth)
+	    (setf (assuming nth) nass
+		  (theory nth) (append (create-importings-for-bindings bindings)
+				       (remove-if #'null rtheory))
+		  (exporting nth) (subst-mod-params* exporting modinst bindings))
+	    (dolist (decl (all-decls nth))
+	      (when (declaration? decl)
+		(setf (module decl) nth)
+		(regenerate-xref decl)))
+	    (setf (all-usings nth)
+		  (let ((imps nil))
+		    (maphash #'(lambda (th thinsts)
+				 (unless (and (from-prelude? th)
+					      (singleton? thinsts))
+				   (push (cons th thinsts) imps)))
+			     (lhash-table (current-using-hash)))
+		    imps))
+	    (assert (every #'cdr tbindings))
+	    (setf (theory-mappings nth) tbindings)
+	    (when (dependent-known-subtypes th)
+	      (setf (dependent-known-subtypes nth)
+		    (subst-mod-params* (dependent-known-subtypes th) modinst bindings)))
+	    (when (macro-expressions th)
+	      (setf (macro-expressions nth)
+		    (subst-mod-params-alist* (macro-expressions th) modinst bindings)))
+	    (when (macro-subtype-tcc-args-alist th)
+	      (break "subst-mod-params* module"))
+	    (values nth tbindings)))))))
 
 (defun subst-mod-params-decls (decls modinst bindings nth &optional ndecls)
   (cond ((null decls)
@@ -1526,7 +1522,6 @@ with decl-formals and module already updated, the rest are updated here."
       (let ((*adt* nadt)
 	    (*adt-vars* (make-hash-table :test #'eq))
 	    (*generating-adt* nadt))
-	;; (break "subst-mod-params* inline-recursive-type")
 	(generate-inline-adt nadt))))
   nadt)
 
