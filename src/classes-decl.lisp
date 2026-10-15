@@ -209,7 +209,8 @@
   (semi :parse t :restore-as nil))
 
 (defcl recursive-type-with-subtypes (recursive-type)
-  subtypes)
+  subtypes
+  subtype-pred-decls)
 
 (defcl inline-recursive-type (recursive-type theory-element)
   (decl-formals :parse t)

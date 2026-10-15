@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; datatype.lisp -- Generation and typechecking of datatypes
 ;; Author          : Sam Owre
-;; Created On      : Sun Dec 12 01:18:46 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jul  2 18:51:55 1999
-;; Update Count    : 125
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -838,6 +833,7 @@ generated")
 		     subtype (mk-adt-subtype subtype (constructors adt))))
 	     (*adt-decl* sdecl))
 	(typecheck-adt-decl sdecl)
+	(setf (subtype-pred-decls adt) (nconc (subtype-pred-decls adt) (list pred-decl)))
 	(put-decl sdecl)
 	(typecheck* subtype nil nil nil))))
   (let* ((*generate-tccs* 'none)
@@ -1235,7 +1231,7 @@ generated")
 					 (mk-application p
 					   (mk-name-expr var))))
 			   preds))
-		(pred (mk-lambda-expr (list bd) (mk-disjunction appreds)))
+		(pred (mk-lambda-expr (list bd) (mk-disjunction (nreverse appreds))))
 		(subtype (mk-setsubtype (adt-type-name *adt*) pred)))
 	   (typecheck* subtype nil nil nil)))))
 
@@ -1317,17 +1313,17 @@ generated")
       (cadaar entry)))
 
 (defun get-accessor-range-type-pred (entry dvar tvar adt)
-  (let* ((vars (caddr (caar entry)))
-	 (subst-alist
-	      (pairlis
-	       (mapcar #'declaration vars)
-	       (mapcar #'(lambda (dep)
-			   (typecheck* (mk-application (id dep) dvar)
-				       (type dep) nil nil))
-		 vars)))
-	 (epred (subtype-pred (substit (cadaar entry) subst-alist)
-			      (type tvar)))
-	 (tpred (make!-application epred tvar)))
+  (let* ((evars (caddr (caar entry)))
+	 (tvars (sort-freevars (freevars (type tvar))))
+	 (dapps (mapcar #'(lambda (dep)
+			    (typecheck* (mk-application (id dep) dvar)
+					(type dep) nil nil))
+		  evars))
+	 (esubst-alist (pairlis (mapcar #'declaration evars) dapps))
+	 (tsubst-alist (pairlis (mapcar #'declaration tvars) dapps))
+	 (stvar (substit tvar tsubst-alist))
+	 (epred (subtype-pred (substit (cadaar entry) esubst-alist) (type stvar)))
+	 (tpred (make!-application epred stvar)))
     (if (null (cdr entry))
 	tpred
 	(let* (;;(adtype ;;(get-accessor-domain-type (list (car entry)) adt)
