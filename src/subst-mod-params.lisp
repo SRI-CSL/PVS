@@ -1234,7 +1234,9 @@
 		  :context-path (context-path th)
 		  :generated-by th
 		  :immediate-usings 'unbound)))
-      (with-context nth
+      (with-context (if (mod-decl? *subst-mod-params-cur-decl*)
+			(current-context)
+			nth)
 	(multiple-value-bind (nass abindings)
 	    (subst-mod-params-decls assuming modinst bindings nth)
 	  (multiple-value-bind (rtheory tbindings)
