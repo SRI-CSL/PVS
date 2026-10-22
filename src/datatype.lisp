@@ -1231,7 +1231,7 @@ generated")
 					 (mk-application p
 					   (mk-name-expr var))))
 			   preds))
-		(pred (mk-lambda-expr (list bd) (mk-disjunction (nreverse appreds))))
+		(pred (mk-lambda-expr (list bd) (mk-disjunction appreds)))
 		(subtype (mk-setsubtype (adt-type-name *adt*) pred)))
 	   (typecheck* subtype nil nil nil)))))
 
