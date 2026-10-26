@@ -2591,10 +2591,13 @@ Note that even proved ones get overwritten"
 ;;; View Theory
 
 (defun prettyprint-expanded (theoryref)
-  (let ((theory (get-typechecked-theory theoryref))
-	(*no-comments* nil)
-	(*unparse-expanded* t)
-	(*xt-periods-allowed* t))
+  (let* ((ath (get-typechecked-theory theoryref))
+	 (theory (if (recursive-type? ath)
+		     (adt-theory ath)
+		     ath))
+	 (*no-comments* nil)
+	 (*unparse-expanded* t)
+	 (*xt-periods-allowed* t))
     (pvs-buffer (format nil "~a.ppe" (id theory))
       (let ((thstring (unparse theory
 			:string t
@@ -2609,7 +2612,10 @@ Note that even proved ones get overwritten"
 
 
 (defun show-tccs (theoryref &optional arg)
-  (let* ((theory (get-typechecked-theory theoryref))
+  (let* ((ath (get-typechecked-theory theoryref))
+	 (theory (if (recursive-type? ath)
+		     (adt-theory ath)
+		     theory))
 	 (unproved-only? (and arg (not (minusp arg))))
 	 (include-trivial? (and arg (minusp arg)))
 	 (*xt-periods-allowed* t)
