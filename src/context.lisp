@@ -1382,8 +1382,10 @@ valid."
 					       (get-declarations id))))
 				 (if (singleton? jdecls)
 				     (car jdecls)
-				     (unless (null id)
-				       (break "get-referenced-declaration* - no judgement"))))))))))))))
+				     ;; The judgement no longer exists (for example, it was removed
+				     ;; from its theory). Return nil: the callers drop missing
+				     ;; references, and a rerun of the proof recomputes them.
+				     nil))))))))))))
 				
 				
 

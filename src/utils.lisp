@@ -4803,7 +4803,8 @@ space")
       prinfo
     (list id description create-date ;;run-date
 	  script ;;status
-	  (sexp refers-to) ;;real-time run-time interactive?
+	  ;; sexp of a skolem-const-decl is nil
+	  (remove-if #'null (sexp refers-to)) ;;real-time run-time interactive?
 	  decision-procedure-used)))
 
 (defmethod sexp ((prinfo tcc-proof-info))
