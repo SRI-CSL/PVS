@@ -8,7 +8,7 @@ Usage: install-patched-sbcl-source.sh --prefix DIR [options]
 
 Options:
   --prefix DIR        Installation prefix for the built SBCL
-  --version VERSION   SBCL source version to build. Default: 2.6.3
+  --version VERSION   SBCL source version to build. Default: 2.6.9
   --xc-host CMD       Bootstrap Lisp command to use for --xc-host
   --host-home DIR     Optional SBCL_HOME for the bootstrap host
   --github-env FILE   Append built SBCL exports to this env file
@@ -17,7 +17,7 @@ EOF
 }
 
 prefix=""
-version="2.6.3"
+version="2.6.9"
 xc_host=""
 host_home=""
 github_env=""
