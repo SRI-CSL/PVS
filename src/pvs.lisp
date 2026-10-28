@@ -1561,68 +1561,73 @@ Needs to pay attention to sections."
 ;(defun ps (theoryname &optional forced?)
 ;  (parse-file theoryname forced? no-message?))
 
+(defvar *force-typecheck* nil)
+
+(defun force-typecheck (&optional (force? t))
+  (setq *force-typecheck* force?))
 
 ;;; Typechecking files.
 
-(defun typecheck-file (fileref &optional forced? prove-tccs? importchain?
+(defun typecheck-file (fileref &optional force? prove-tccs? importchain?
 				 nomsg? outside-call?)
-    (or (prelude-file-theories fileref)
-	(with-pvs-file (filename) fileref
-	  (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
-	    (multiple-value-bind (theories restored? th-diffs)
-		(parse-file filename forced? nomsg? t)
-	      (declare (ignore restored?))
-	      (let ((*current-file* filename)
-		    (*typechecking-module* nil))
-		(unless theories
-		  (let ((err (format nil "~a not found" filename)))
-		    (pvs-error "Typecheck error" err)))
-		(cond ((and (not forced?)
-			    theories
-			    (every #'(lambda (th)
-				       (let ((*current-context* (saved-context th)))
-					 (typechecked? th)))
-				   theories))
-		       (unless nomsg?
-			 (pvs-message
-			     "~a ~:[is already typechecked~;is typechecked~]~a"
-			   filename
-			   th-diffs
-			   (if (and prove-tccs? (not *in-checker*))
-			       " - attempting proofs of TCCs" ""))))
-		      (t (pvs-message "Typechecking ~a" filename)
-			 (when forced?
-			   (delete-generated-adt-files theories))
-			 (typecheck-theories filename theories)
-			 #+pvsdebug (assert (every #'typechecked? theories))
-			 (dolist (th theories)
-			   (let ((last-kept-entry
-				  (assq (id th) (last-kept-decls *workspace-session*))))
-			     (when last-kept-entry
-			       (unless forced?
-				 (let ((rem-decls (or (cdr (memq (cdr last-kept-entry)
-								 (all-decls th)))
-						      (all-decls th))))
-				   (dolist (thelt rem-decls)
-				     (when (formula-decl? thelt)
-				       (setf (proof-status thelt) 'unchecked)))))
-			       (setf (last-kept-decls *workspace-session*)
-				     (delete last-kept-entry
-					     (last-kept-decls *workspace-session*))))))
-			 ;; .pvscontext
-			 (update-context filename)
-			 ;;(update-info-file filename theories)
-			 ))
-		(when prove-tccs?
-		  (if *in-checker*
-		      (pvs-message
-			  "Must exit the prover before running typecheck-prove")
-		      (let ((*noninteractive* t))
-			(prove-tccs* theories importchain?))))
-		(if outside-call?
-		    ;; Emacs expects t or nil - error will not get here
-		    (and th-diffs t)
-		    (values theories th-diffs))))))))
+  (or (prelude-file-theories fileref)
+      (with-pvs-file (filename) fileref
+	(let ((forced? (or force? *force-typecheck*))
+	      (*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
+	  (multiple-value-bind (theories restored? th-diffs)
+	      (parse-file filename forced? nomsg? t)
+	    (declare (ignore restored?))
+	    (let ((*current-file* filename)
+		  (*typechecking-module* nil))
+	      (unless theories
+		(let ((err (format nil "~a not found" filename)))
+		  (pvs-error "Typecheck error" err)))
+	      (cond ((and (not forced?)
+			  theories
+			  (every #'(lambda (th)
+				     (let ((*current-context* (saved-context th)))
+				       (typechecked? th)))
+				 theories))
+		     (unless nomsg?
+		       (pvs-message
+			   "~a ~:[is already typechecked~;is typechecked~]~a"
+			 filename
+			 th-diffs
+			 (if (and prove-tccs? (not *in-checker*))
+			     " - attempting proofs of TCCs" ""))))
+		    (t (pvs-message "Typechecking ~a" filename)
+		       (when forced?
+			 (delete-generated-adt-files theories))
+		       (typecheck-theories filename theories)
+		       #+pvsdebug (assert (every #'typechecked? theories))
+		       (dolist (th theories)
+			 (let ((last-kept-entry
+				(assq (id th) (last-kept-decls *workspace-session*))))
+			   (when last-kept-entry
+			     (unless forced?
+			       (let ((rem-decls (or (cdr (memq (cdr last-kept-entry)
+							       (all-decls th)))
+						    (all-decls th))))
+				 (dolist (thelt rem-decls)
+				   (when (formula-decl? thelt)
+				     (setf (proof-status thelt) 'unchecked)))))
+			     (setf (last-kept-decls *workspace-session*)
+				   (delete last-kept-entry
+					   (last-kept-decls *workspace-session*))))))
+		       ;; .pvscontext
+		       (update-context filename)
+		       ;;(update-info-file filename theories)
+		       ))
+	      (when prove-tccs?
+		(if *in-checker*
+		    (pvs-message
+			"Must exit the prover before running typecheck-prove")
+		    (let ((*noninteractive* t))
+		      (prove-tccs* theories importchain?))))
+	      (if outside-call?
+		  ;; Emacs expects t or nil - error will not get here
+		  (and th-diffs t)
+		  (values theories th-diffs))))))))
 
 (defun typecheck-theory (str &optional dir)
   (let* ((pdir (if dir (uiop:directory-exists-p dir) (current-context-path)))
@@ -2620,7 +2625,7 @@ Note that even proved ones get overwritten"
   (let* ((ath (get-typechecked-theory theoryref))
 	 (theory (if (recursive-type? ath)
 		     (adt-theory ath)
-		     theory))
+		     ath))
 	 (unproved-only? (and arg (not (minusp arg))))
 	 (include-trivial? (and arg (minusp arg)))
 	 (*xt-periods-allowed* t)
