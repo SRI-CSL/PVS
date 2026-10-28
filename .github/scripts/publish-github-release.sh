@@ -19,7 +19,9 @@ Usage: publish-github-release.sh \
   [--move-tag]
 
 Publishes or updates a GitHub Release and uploads a single asset with a stable
-display name. When --move-tag is supplied, the tag is force-moved to --target.
+display name. Asset pruning is restricted to the Release identified by --tag;
+other Releases, their tags, and their assets are never removed. When --move-tag
+is supplied, the tag is force-moved to --target.
 EOF
 }
 
