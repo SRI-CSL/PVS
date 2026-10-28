@@ -675,8 +675,11 @@
 	   (cond ((eq (status-flag proofstate) '!)
 		  (when (typep proofstate 'top-proofstate)
 		    (let ((decl (declaration proofstate)))
+		      ;; Skolem constants are local to the proof, not
+		      ;; dependencies: sexp writes them as nil
 		      (setf (proof-refers-to decl)
-			    (dependent-decls proofstate)
+			    (remove-if #'skolem-const-decl?
+			      (dependent-decls proofstate))
 			    (proof-status decl) 'proved)) 
 		    (format-if "~%Q.E.D.~%"))
 		  proofstate)

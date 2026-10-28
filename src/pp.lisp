@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pp.lisp -- The PVS prettyprinter
 ;; Author          : Sam Owre
-;; Created On      : Thu Oct 29 23:19:42 1998
-;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Dec 18 20:56:23 2012
-;; Update Count    : 10
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -301,7 +296,7 @@ obj - roughly any Lisp entity that's printable, though this specializes to PVS i
   (if (syntax? obj)
       (let ((*unparse-expanded* t))
 	(unparse obj :string t :char-width char-width))
-      (format nil "~a" obj)))
+      (sformat "~a" obj)))
 
 (defun str= (obj string)
   (string= (str obj) string))

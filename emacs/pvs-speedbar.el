@@ -47,7 +47,7 @@
 
 (defun pvs-install-speedbar-variables ()
   "Install those variables used by speedbar for PVS support."
-  (speedbar-disable-update)
+  (ignore-errors (speedbar-disable-update))
   (if pvs-speedbar-key-map
       nil
       (setq pvs-speedbar-key-map (speedbar-make-specialized-keymap))

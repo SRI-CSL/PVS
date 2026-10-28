@@ -66,7 +66,7 @@ in util.lisp")
 
 (defvar *pvs-git-describe*)
 
-(defparameter *binfile-version* 40)
+(defparameter *binfile-version* 41)
 
 (defvar *ignore-binfile-errors* t)
 
@@ -216,7 +216,8 @@ These are not associated with a workspace, and usually done through
 (defvar *loading-prelude* nil "A flag indicating the obvious")
 
 (defvar *loading-library* nil
-  "A flag indicating that a library is being loaded.")
+  "The path of the workspace that with-workspace entered from another
+workspace, for example to load a library, or nil.")
 
 (defvar *tc-theories* nil "Used to check for IMPORT circularities.")
 

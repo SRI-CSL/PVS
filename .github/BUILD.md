@@ -14,11 +14,13 @@ It has two jobs:
 
 1. `build-macos-arm64`
    This job always runs. It builds the standalone Apple Silicon bundle, smoke-tests it, and uploads:
-   - `pvs-<branch>-<date>-macos-arm64.tgz`
+   - `pvs8.1-dev-<date>-macos-arm64.tgz` for development builds
+   - `pvs8.1.N-<date>-macos-arm64.tgz` for stable builds
 
 2. `package-macos-arm64`
    This job runs automatically whenever all required signing and notarization secrets are present. It downloads the standalone tarball from the first job, rebuilds a macOS installer package from it, signs the package, notarizes it, staples the notarization ticket, and uploads:
-   - `pvs-<branch>-<date>-macos-arm64.pkg`
+   - `pvs8.1-dev-<date>-macos-arm64.pkg` for development builds
+   - `pvs8.1.N-<date>-macos-arm64.pkg` for stable builds
 
 The split is intentional: the signed and notarized package path should not block the plain standalone tarball and bundle build.
 
@@ -73,16 +75,24 @@ git switch dev
 
 If the goal is to minimize Gatekeeper friction for end users, distribute the notarized `.pkg` artifact when one is available. The standalone platform tarballs are also published on the GitHub Releases page for successful builds.
 
-Internal GitHub Actions artifacts remain date-stamped as
-`pvs-<branch>-<date>-<os>-<arch>.tgz` or `.pkg` so concurrent CI runs cannot
-collide. The final GitHub Release assets use stable names:
+Internal GitHub Actions artifacts and final GitHub Release assets use the same
+date-stamped names. Development assets retain the PVS version and dev channel:
 
-- `pvs-linux-x86_64.tgz`
-- `pvs-linux-aarch64.tgz`
-- `pvs-macos-arm64.tgz`
-- `pvs-macos-x86_64.tgz`
-- `pvs-macos-arm64.pkg`, when signing and notarization are enabled
-- `pvs-macos-x86_64.pkg`, when signing and notarization are enabled
+- `pvs8.1-dev-YYYYMMDD-linux-x86_64.tgz`
+- `pvs8.1-dev-YYYYMMDD-linux-aarch64.tgz`
+- `pvs8.1-dev-YYYYMMDD-macos-arm64.tgz`
+- `pvs8.1-dev-YYYYMMDD-macos-x86_64.tgz`
+- `pvs8.1-dev-YYYYMMDD-macos-arm64.pkg`, when signing and notarization are enabled
+- `pvs8.1-dev-YYYYMMDD-macos-x86_64.pkg`, when signing and notarization are enabled
+
+Stable assets use the exact stable release tag as their prefix:
+
+- `pvs8.1.N-YYYYMMDD-linux-x86_64.tgz`
+- `pvs8.1.N-YYYYMMDD-linux-aarch64.tgz`
+- `pvs8.1.N-YYYYMMDD-macos-arm64.tgz`
+- `pvs8.1.N-YYYYMMDD-macos-x86_64.tgz`
+- `pvs8.1.N-YYYYMMDD-macos-arm64.pkg`, when signing and notarization are enabled
+- `pvs8.1.N-YYYYMMDD-macos-x86_64.pkg`, when signing and notarization are enabled
 
 The current release flow vendors any non-system dylib dependencies discovered
 in the packaged runtime directory so the shipped bundle does not reach back
@@ -90,10 +100,11 @@ into Homebrew on an end user's machine. The `.pkg` path then signs those Mach-O
 payload files, signs the installer package, and notarizes that packaged
 distribution.
 
-The stable names provide durable download URLs. For example:
+Release downloads are tag- and date-specific. For example, for a build made on
+October 12, 2026:
 
-- latest official Linux x86_64: `https://github.com/SRI-CSL/PVS/releases/latest/download/pvs-linux-x86_64.tgz`
-- rolling dev Linux x86_64: `https://github.com/SRI-CSL/PVS/releases/download/pvs8.1-dev/pvs-linux-x86_64.tgz`
+- stable `pvs8.1.2` Linux x86_64: `https://github.com/SRI-CSL/PVS/releases/download/pvs8.1.2/pvs8.1.2-20261012-linux-x86_64.tgz`
+- rolling dev Linux x86_64: `https://github.com/SRI-CSL/PVS/releases/download/pvs8.1-dev/pvs8.1-dev-20261012-linux-x86_64.tgz`
 
 Every build writes an ignored `metadata.json` at the source-tree root. Release
 bundles contain their own `metadata.json` with the PVS version and target,
@@ -109,8 +120,9 @@ the `.pkg`.
 
 - Stable releases use explicit, permanent tags in the `pvs8.1.N` series, and the tagged commit must be contained in `master`.
 - Dev builds update the single moving prerelease tag `pvs8.1-dev` and replace its assets in place.
-- The UTC build date remains in internal Actions artifact filenames; published GitHub Release assets use stable names.
-- Asset cleanup is centralized in the final publish job so old Linux/macOS tarballs and notarized macOS packages are pruned in one pass instead of by the individual builders.
+- Both internal Actions artifacts and published release assets use `<release-tag>-YYYYMMDD-<os>-<arch>` names.
+- Dev asset names begin with `pvs8.1-dev`; stable asset names begin with their exact `pvs8.1.N` tag.
+- Asset cleanup is centralized in the final publish job. It prunes stale Linux/macOS tarballs and notarized macOS packages only from the Release currently being published. Historical Releases, tags, and assets—including `pvs8.0`, `pvs7.1`, and all earlier versions—are never removed or modified.
 
 For the SBCL runtime, the packaged bundle now uses:
 
@@ -285,7 +297,7 @@ Once all nine secrets are present:
    - builds a signed installer package
    - submits the package to Apple's notarization service
    - staples the notarization ticket
-   - uploads the final `pvs-<branch>-<date>-macos-arm64.pkg` artifact
+   - uploads the final `<release-tag>-<date>-macos-arm64.pkg` artifact
 
 ## Current Authentication Choice
 
@@ -338,7 +350,7 @@ If `notarytool` exits with an error like `must be a valid UUID` for `--issuer`:
 Once the pkg is built and downloaded onto a machine, run
 
 ```
-installer -pkg ./pvs-master-<date>-macos-arm64.pkg -target CurrentUserHomeDirectory
+installer -pkg ./pvs8.1.2-<date>-macos-arm64.pkg -target CurrentUserHomeDirectory
 ```
 
 to have PVS installed at ~/PVS.

@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; datatype.lisp -- Generation and typechecking of datatypes
 ;; Author          : Sam Owre
-;; Created On      : Sun Dec 12 01:18:46 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jul  2 18:51:55 1999
-;; Update Count    : 125
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -173,13 +168,14 @@ generated")
     (setf (adt-reduce-theory adt) reduce-theory))
   (when *save-adt-files*
     (save-adt-file adt)
-    (let ((adt-file (concatenate 'string (string (id adt))
-				 (if (datatype? adt) "_adt" "_codt"))))
-      (restore-from-context adt-file (adt-theory adt))
-      (when (adt-map-theory adt)
-	(restore-from-context adt-file (adt-map-theory adt)))
-      (when (adt-reduce-theory adt)
-	(restore-from-context adt-file (adt-reduce-theory adt)))))
+    (let* ((adt-file (concatenate 'string (string (id adt))
+				  (if (datatype? adt) "_adt" "_codt")))
+	   (adt-theories (append (list (adt-theory adt))
+				 (when (adt-map-theory adt)
+				   (list (adt-map-theory adt)))
+				 (when (adt-reduce-theory adt)
+				   (list (adt-reduce-theory adt))))))
+	(restore-proofs adt-file :theories adt-theories)))
   adt)
 
 
@@ -837,6 +833,7 @@ generated")
 		     subtype (mk-adt-subtype subtype (constructors adt))))
 	     (*adt-decl* sdecl))
 	(typecheck-adt-decl sdecl)
+	(setf (subtype-pred-decls adt) (nconc (subtype-pred-decls adt) (list pred-decl)))
 	(put-decl sdecl)
 	(typecheck* subtype nil nil nil))))
   (let* ((*generate-tccs* 'none)
@@ -1316,28 +1313,31 @@ generated")
       (cadaar entry)))
 
 (defun get-accessor-range-type-pred (entry dvar tvar adt)
-  (let* ((vars (caddr (caar entry)))
-	 (subst-alist
-	      (pairlis
-	       (mapcar #'declaration vars)
-	       (mapcar #'(lambda (dep)
-			   (typecheck* (mk-application (id dep) dvar)
-				       (type dep) nil nil))
-		 vars)))
-	 (epred (subtype-pred (substit (cadaar entry) subst-alist)
-			      (type tvar)))
-	 (tpred (make!-application epred tvar)))
+  (let* ((evars (caddr (caar entry)))
+	 (tvars (sort-freevars (freevars (type tvar))))
+	 (dapps (mapcar #'(lambda (dep)
+			    (typecheck* (mk-application (id dep) dvar)
+					(type dep) nil nil))
+		  evars))
+	 (esubst-alist (pairlis (mapcar #'declaration evars) dapps))
+	 (tsubst-alist (pairlis (mapcar #'declaration tvars) dapps))
+	 (stvar (substit tvar tsubst-alist))
+	 (epred (subtype-pred (substit (cadaar entry) esubst-alist) (type stvar)))
+	 (tpred (make!-application epred stvar)))
     (if (null (cdr entry))
 	tpred
 	(let* (;;(adtype ;;(get-accessor-domain-type (list (car entry)) adt)
 		;;(cadr (caar entry)))
 	       ;;(dtype (if (dep-binding? adtype) (type adtype) adtype))
-	       (pred ;;(predicate dtype)
-		     (typecheck (mk-name-expr (rec-decl (fifth (caar entry))))))
-	       (cond (make!-application pred dvar))
+	       (conditions ;;Modified this to collect all recognizers for the given accessor subtype
+		(loop for rec-entry in (nthcdr 4 (caar entry))
+		      collect
+		      (let ((pred (typecheck (mk-name-expr (rec-decl rec-entry)))))
+			(make!-application pred dvar))))
+	       (condition (make!-disjunction* conditions))
 	       (else (get-accessor-range-type-pred
 		      (cdr entry) dvar tvar adt)))
-	  (make!-if-expr cond tpred else)))))
+	  (make!-if-expr condition tpred else)))))
   
 
 ;;; The common-accessors list consists of entries of the form
@@ -1376,9 +1376,10 @@ generated")
 		    (if entry
 			(let ((subentry (assoc accinfo entry
 					       :test #'same-accinfo)))
-			  (if subentry
-			      (nconc subentry (list a))
-			      (nconc entry (list (list accinfo a)))))
+			  (cond (subentry;;Modified this to accumulate constructors in (car subentry)
+				 (nconc (car subentry) (list c))
+				 (nconc subentry (list a)))
+				(t (nconc entry (list (list accinfo a))))))
 			(setq common-accessors
 			      (nconc common-accessors
 				     (list (list (list accinfo a))))))))))))))

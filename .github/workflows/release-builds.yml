@@ -20,7 +20,7 @@ jobs:
     name: Resolve release policy
     runs-on: ubuntu-24.04
     outputs:
-      artifact_branch: ${{ steps.policy.outputs.artifact_branch }}
+      artifact_label: ${{ steps.policy.outputs.artifact_label }}
       artifact_date: ${{ steps.policy.outputs.artifact_date }}
       channel: ${{ steps.policy.outputs.channel }}
       move_tag: ${{ steps.policy.outputs.move_tag }}
@@ -43,7 +43,7 @@ jobs:
     if: ${{ needs.release-policy.outputs.publish == 'true' }}
     uses: ./.github/workflows/linux-x86-build.yml
     with:
-      artifact_branch: ${{ needs.release-policy.outputs.artifact_branch }}
+      artifact_label: ${{ needs.release-policy.outputs.artifact_label }}
       artifact_date: ${{ needs.release-policy.outputs.artifact_date }}
 
   linux-arm:
@@ -52,7 +52,7 @@ jobs:
     if: ${{ needs.release-policy.outputs.publish == 'true' }}
     uses: ./.github/workflows/linux-arm-build.yml
     with:
-      artifact_branch: ${{ needs.release-policy.outputs.artifact_branch }}
+      artifact_label: ${{ needs.release-policy.outputs.artifact_label }}
       artifact_date: ${{ needs.release-policy.outputs.artifact_date }}
 
   macos-arm:
@@ -61,7 +61,7 @@ jobs:
     if: ${{ needs.release-policy.outputs.publish == 'true' }}
     uses: ./.github/workflows/apple-silicon-build.yml
     with:
-      artifact_branch: ${{ needs.release-policy.outputs.artifact_branch }}
+      artifact_label: ${{ needs.release-policy.outputs.artifact_label }}
       artifact_date: ${{ needs.release-policy.outputs.artifact_date }}
     secrets: inherit
 
@@ -71,7 +71,7 @@ jobs:
     if: ${{ needs.release-policy.outputs.publish == 'true' }}
     uses: ./.github/workflows/apple-x86-build.yml
     with:
-      artifact_branch: ${{ needs.release-policy.outputs.artifact_branch }}
+      artifact_label: ${{ needs.release-policy.outputs.artifact_label }}
       artifact_date: ${{ needs.release-policy.outputs.artifact_date }}
     secrets: inherit
 
@@ -92,7 +92,7 @@ jobs:
         shell: bash
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_ARTIFACT_BRANCH: ${{ needs.release-policy.outputs.artifact_branch }}
+      RELEASE_ARTIFACT_LABEL: ${{ needs.release-policy.outputs.artifact_label }}
       RELEASE_ARTIFACT_DATE: ${{ needs.release-policy.outputs.artifact_date }}
       RELEASE_CHANNEL: ${{ needs.release-policy.outputs.channel }}
       RELEASE_MOVE_TAG: ${{ needs.release-policy.outputs.move_tag }}
@@ -182,7 +182,7 @@ jobs:
             first_publish=false
           }
 
-          artifact_prefix="pvs-${RELEASE_ARTIFACT_BRANCH}-${RELEASE_ARTIFACT_DATE}"
+          artifact_prefix="${RELEASE_ARTIFACT_LABEL}-${RELEASE_ARTIFACT_DATE}"
           linux_x86_tgz_name="${artifact_prefix}-linux-x86_64.tgz"
           linux_arm_tgz_name="${artifact_prefix}-linux-aarch64.tgz"
           macos_arm_tgz_name="${artifact_prefix}-macos-arm64.tgz"
@@ -197,32 +197,44 @@ jobs:
           macos_arm_pkg=$(find_one_optional "$artifact_root" "$macos_arm_pkg_name")
           macos_x86_pkg=$(find_one_optional "$artifact_root" "$macos_x86_pkg_name")
 
-          publish_asset "$linux_x86_tgz" 'pvs-linux-x86_64.tgz' \
+          publish_asset "$linux_x86_tgz" "${artifact_prefix}-linux-x86_64.tgz" \
+            'pvs8.1-*-linux-x86_64.tgz' \
+            'pvs8.1.*-*-linux-x86_64.tgz' \
             'pvs-*-*-linux-x86_64.tgz' \
             'pvs*-ix86_64-Linux-sbclisp.tgz' \
             'pvs-linux-x86_64.tgz'
-          publish_asset "$linux_arm_tgz" 'pvs-linux-aarch64.tgz' \
+          publish_asset "$linux_arm_tgz" "${artifact_prefix}-linux-aarch64.tgz" \
+            'pvs8.1-*-linux-aarch64.tgz' \
+            'pvs8.1.*-*-linux-aarch64.tgz' \
             'pvs-*-*-linux-aarch64.tgz' \
             'pvs*-aarch64-Linux-sbclisp.tgz' \
             'pvs-linux-aarch64.tgz'
-          publish_asset "$macos_arm_tgz" 'pvs-macos-arm64.tgz' \
+          publish_asset "$macos_arm_tgz" "${artifact_prefix}-macos-arm64.tgz" \
+            'pvs8.1-*-macos-arm64.tgz' \
+            'pvs8.1.*-*-macos-arm64.tgz' \
             'pvs-*-*-macos-arm64.tgz' \
             'pvs*-arm-MacOSX-sbclisp.tgz' \
             'pvs-macos-arm64.tgz'
-          publish_asset "$macos_x86_tgz" 'pvs-macos-x86_64.tgz' \
+          publish_asset "$macos_x86_tgz" "${artifact_prefix}-macos-x86_64.tgz" \
+            'pvs8.1-*-macos-x86_64.tgz' \
+            'pvs8.1.*-*-macos-x86_64.tgz' \
             'pvs-*-*-macos-x86_64.tgz' \
             'pvs*-ix86-MacOSX-sbclisp.tgz' \
             'pvs-macos-x86_64.tgz'
 
           if [[ -n $macos_arm_pkg ]]; then
-            publish_asset "$macos_arm_pkg" 'pvs-macos-arm64.pkg' \
+            publish_asset "$macos_arm_pkg" "${artifact_prefix}-macos-arm64.pkg" \
+              'pvs8.1-*-macos-arm64.pkg' \
+              'pvs8.1.*-*-macos-arm64.pkg' \
               'pvs-*-*-macos-arm64.pkg' \
               'pvs*-arm-MacOSX-sbclisp.pkg' \
               'pvs-macos-arm64.pkg'
           fi
 
           if [[ -n $macos_x86_pkg ]]; then
-            publish_asset "$macos_x86_pkg" 'pvs-macos-x86_64.pkg' \
+            publish_asset "$macos_x86_pkg" "${artifact_prefix}-macos-x86_64.pkg" \
+              'pvs8.1-*-macos-x86_64.pkg' \
+              'pvs8.1.*-*-macos-x86_64.pkg' \
               'pvs-*-*-macos-x86_64.pkg' \
               'pvs*-ix86-MacOSX-sbclisp.pkg' \
               'pvs-macos-x86_64.pkg'
@@ -236,15 +248,15 @@ jobs:
             echo "- GitHub release: \`$RELEASE_TAG\`"
             echo "- Release channel: \`${{ needs.release-policy.outputs.channel }}\`"
             echo "- Uploaded assets:"
-            artifact_prefix="pvs-${RELEASE_ARTIFACT_BRANCH}-${RELEASE_ARTIFACT_DATE}"
-            echo "  - \`pvs-linux-aarch64.tgz\`"
-            echo "  - \`pvs-linux-x86_64.tgz\`"
-            echo "  - \`pvs-macos-arm64.tgz\`"
-            echo "  - \`pvs-macos-x86_64.tgz\`"
+            artifact_prefix="${RELEASE_ARTIFACT_LABEL}-${RELEASE_ARTIFACT_DATE}"
+            echo "  - \`${artifact_prefix}-linux-aarch64.tgz\`"
+            echo "  - \`${artifact_prefix}-linux-x86_64.tgz\`"
+            echo "  - \`${artifact_prefix}-macos-arm64.tgz\`"
+            echo "  - \`${artifact_prefix}-macos-x86_64.tgz\`"
             if find "$RUNNER_TEMP/release-artifacts" -type f -name "${artifact_prefix}-macos-arm64.pkg" -print -quit | grep -q .; then
-              echo "  - \`pvs-macos-arm64.pkg\`"
+              echo "  - \`${artifact_prefix}-macos-arm64.pkg\`"
             fi
             if find "$RUNNER_TEMP/release-artifacts" -type f -name "${artifact_prefix}-macos-x86_64.pkg" -print -quit | grep -q .; then
-              echo "  - \`pvs-macos-x86_64.pkg\`"
+              echo "  - \`${artifact_prefix}-macos-x86_64.pkg\`"
             fi
           } >> "$GITHUB_STEP_SUMMARY"

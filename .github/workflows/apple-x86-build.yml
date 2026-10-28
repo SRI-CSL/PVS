@@ -3,7 +3,7 @@ name: Apple x86 Build
 on:
   workflow_call:
     inputs:
-      artifact_branch:
+      artifact_label:
         required: false
         type: string
       artifact_date:
@@ -98,7 +98,7 @@ jobs:
             exit 1
           fi
 
-          artifact_base="pvs-${PVS_ARTIFACT_BRANCH}-${PVS_ARTIFACT_DATE}-${PVS_RELEASE_OS}-${PVS_RELEASE_ARCH}"
+          artifact_base="${PVS_ARTIFACT_LABEL}-${PVS_ARTIFACT_DATE}-${PVS_RELEASE_OS}-${PVS_RELEASE_ARCH}"
           tgz_name="${artifact_base}.tgz"
           tgz_path="$RUNNER_TEMP/$tgz_name"
           pkg_name="${artifact_base}.pkg"
@@ -114,7 +114,7 @@ jobs:
           echo "pkg_name=$pkg_name" >> "$GITHUB_OUTPUT"
           echo "pkg_version=$pkg_version" >> "$GITHUB_OUTPUT"
         env:
-          PVS_ARTIFACT_BRANCH: ${{ inputs.artifact_branch || steps.release_policy.outputs.artifact_branch }}
+          PVS_ARTIFACT_LABEL: ${{ inputs.artifact_label || steps.release_policy.outputs.artifact_label }}
           PVS_ARTIFACT_DATE: ${{ inputs.artifact_date || steps.release_policy.outputs.artifact_date }}
 
       - name: Check whether notarized packaging is enabled

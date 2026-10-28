@@ -64,7 +64,8 @@ release_title=
 prerelease=false
 move_tag=false
 release_date=$(date -u +%Y%m%d)
-artifact_branch=$(sanitize_component "$GITHUB_REF_NAME")
+artifact_ref=$(sanitize_component "$GITHUB_REF_NAME")
+artifact_label="pvs${release_version}-${artifact_ref}"
 release_version_pattern=${release_version//./\\.}
 stable_tag_pattern="^pvs${release_version_pattern}\\.[1-9][0-9]*$"
 
@@ -73,10 +74,11 @@ case ${GITHUB_REF_TYPE} in
     if [[ ${GITHUB_REF_NAME} == "$dev_branch" ]]; then
       publish=true
       channel=dev
-      release_tag="pvs${release_version}-${artifact_branch}"
+      release_tag="pvs${release_version}-${artifact_ref}"
       release_title="PVS ${release_version} Development Snapshot"
       prerelease=true
       move_tag=true
+      artifact_label=$release_tag
     fi
     ;;
   tag)
@@ -96,7 +98,7 @@ case ${GITHUB_REF_TYPE} in
         release_title="PVS ${GITHUB_REF_NAME#pvs}"
         prerelease=false
         move_tag=false
-        artifact_branch=$(sanitize_component "$stable_branch")
+        artifact_label=$release_tag
       fi
     fi
     ;;
@@ -107,7 +109,7 @@ if [[ -n ${GITHUB_OUTPUT:-} ]]; then
     echo "stable_branch=$stable_branch"
     echo "dev_branch=$dev_branch"
     echo "release_version=$release_version"
-    echo "artifact_branch=$artifact_branch"
+    echo "artifact_label=$artifact_label"
     echo "artifact_date=$release_date"
     echo "publish=$publish"
     echo "channel=$channel"
@@ -121,7 +123,7 @@ else
   printf 'stable_branch=%s\n' "$stable_branch"
   printf 'dev_branch=%s\n' "$dev_branch"
   printf 'release_version=%s\n' "$release_version"
-  printf 'artifact_branch=%s\n' "$artifact_branch"
+  printf 'artifact_label=%s\n' "$artifact_label"
   printf 'artifact_date=%s\n' "$release_date"
   printf 'publish=%s\n' "$publish"
   printf 'channel=%s\n' "$channel"

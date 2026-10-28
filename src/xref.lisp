@@ -40,6 +40,10 @@
 (defmethod collect-references ((ex declaration))
   ex)
 
+(defmethod collect-references ((ex judgement))
+  (or (generated-by ex)
+      ex))
+
 (defmethod regenerate-xref ((decl declaration))
   (let ((*generate-xref-declaration* decl)
 	(*xref-names-seen* nil)

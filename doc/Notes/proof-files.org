@@ -1,0 +1,189 @@
+* PVS Proof-Related Files
+
+This describes the files related to PVS proofs, as well as how they are
+created and maintained. The =.pvscontext= and =orphaned-proofs.prf= files
+are both used in restoring proofs, and they are described in more detail
+below. This document is mostly about PVS internals, so many of the
+functions and variables described below are only available in PVS Lisp,
+most easily accessed through the =*pvs*= buffer in Emacs, or running =pvs
+-raw=.
+
+** Proof Files
+
+Each PVS specification file (with extension =.pvs=) may have an associated
+proof file of the same name but with extension =.prf=. Proof files do not
+store the entire proof tree, only the script that recreates the proof tree
+when rerun in the prover. This is saved as a =proof-info= instance in the
+=default-proof= and =proofs= slots of the formula declaration, and an
+sexpr form of this is saved in the =.prf= file, which is restored to the
+slots above when the PVS file is retypechecked.
+
+This makes no assumptions about the =.pvs= or =.prf= files, which may have
+been altered between sessions. This is detected by means of the
+=.pvscontext= file, which records the dates of these files along with the
+proof statuses; which are all marked =unchecked= if there is a
+discrepancy.
+
+TCCs are treated specially, because the identifier is not reliable as a
+way to restore proofs. Thus each TCC has an /origin/, which includes the
+parameters involved in generating the TCC. This is then used to match with
+TCCs proofs, rather than the TCC id.
+
+Sometimes changes are made so that some proofs in the =.prf= file have no
+associated formula, these are sent to the =orphaned-proofs.prf= file. This
+works in both directions; if the proof of a formula isn't in the =.prf=
+file, a match is looked for in the orphans. In principle, this means that
+deleting and then restoring a formula will get the proof from the orphan
+file. This also helps in refactoring, at least withing a single workspace.
+Renaming theories or moving formulas from one theory to another should get
+the proofs moved automatically.
+
+Proof statuses are kept in the =.pvscontext= file, There are two reasons
+for this:
+
+- proofs may or may not be /complete/, meaning that all the formulas and
+  TCCs that it relies on have been proved, all the way to axioms. Note
+  that this is not possible when a proof is saved, as proofs can be run in
+  any order.
+- the proof status of a PVS file can be obtained without retypechecking,
+  which can be time-consuming.
+
+*** Proof File Format
+
+Proof files are lisp forms. They do not actually contain a full proof, but
+simply the script used to recreate the proof. They are readable, and can
+be edited - which is often useful for refactoring, e.g., changing the name
+of a lemma in a =.pvs= file, then editing the proof file(s) to change
+references to the lemma.
+
+Here is the EBNF of a proof file, where '%' is a comment indicating the
+type of the corresponding element. =universal time= is the number of
+seconds since 00:00:00 1/1/1900 GMT.
+
+#+begin_src ebnf
+  proof_file = {"(" theoryid
+                    {"(" declid index proof_info+ ")"} + ")"}+.
+
+  proof_info = "(" proofid      ;; symbol - default declid-#
+                   description  ;; string
+                   create_date  ;; universal time
+                   script       ;; sexpr
+                   refers_to    ;; list of declaration refs
+                   decision_procedure_used ;; symbol
+    	         [tcc_origin]
+                ")".
+#+end_src
+The proof file roughly follows the structure of the =.pvs= file, including
+an entry for each theory, then for each formula. Because formulas may have
+multiple proofs (indicated by proof+), there is an index indicating which
+is the default proof. The =proofid= and =description= can be provided by
+the user, and default to =declid-#= and the empty string. The
+=create-date= is the universal time 
+
+*** TCC Proofs
+
+TCCs have a tcc-origin, this is because TCC names are generated, and if a
+formula is modified, the TCC names cannot easily be maintained. Thus they
+have an /origin/, which shows what caused the TCC to be generated.
+#+begin_src ebnf
+tcc-origin := '(' root    % string
+                  kind    % string
+		  trigger % string
+		  type    % string
+		  place   % list of ints
+	      ')'	 
+#+end_src
+The /root/ name is usually the name of the declaration causing the TCC,
+but can be different if appending =_TCC= and a number leads to an invalid
+formula name. For example, if the declaration is for an overloading of
+'+', any TCCs have ids of the form =plus_TCC#=, and =plus= is the
+root. There are many different /kind/s of TCCs; the following table shows
+for each kind what the /trigger/ and /type/ is. The most common is the
+subtype TCC, where the trigger is the expression and the type is the
+expected type, e.g., in =x/y= the trigger could be =y= and the type would
+be =nzreal=. Note that the full TCC is not kept, as it includes context
+that may change when the formula is modified. In fact many TCCs are quite
+large, even though the trigger is simple.
+
+|----------------------------+-----------+----------------|
+| TCC kind                   | trigger   | type           |
+|----------------------------+-----------+----------------|
+| subtype                    | expr      | expected       |
+| termination-subtype        | expr      | recursive type |
+| termination                | expr      |                |
+| well-founded               | ordering  |                |
+| existence                  | expr      | type           |
+| assuming                   | modinst   | assuming       |
+| mapped-definition-equality | mapthinst | lhs            |
+| mapped-axiom               | thinst    | axiom          |
+| cases                      | expr      | (co)datatype   |
+| actuals                    | act       |                |
+| disjointness               | expr      |                |
+| coverage                   | expr      |                |
+|----------------------------+-----------+----------------|
+
+When TCC proofs are restored, the kind, trigger, and type are used rather
+than the name. However, the origin is relatively new, and older proof
+files do not have this, in which case the TCC id is used. Note that older
+proofs may be overwritten even when the files have not been changed.
+
+** Orphaned Proofs
+
+Orphaned proofs are in the =orphaned-proofs.prf= file, the format is
+almost the same as the proof files, but each formula is listed separately,
+along with the filename and theoryid:
+#+begin_src ebnf
+orphaned_proofs_file = {"(" filename theoryid declid
+                            index proof_info+ ")"} + ")"}+.
+#+end_src
+Note that this is a relatively new format; any existing entries of an
+existing =orphaned-proofs.prf= file thatdon't fit this format are moved to
+an =orphaned-proofs.old= file in case they are useful - this file is not
+used by PVS, and can safely be deleted.
+
+** PVS Context File
+
+The =.pvscontext= file resides in the workspace, and is loaded into the
+corresponding workspace class instance as soon as PVS is requested to do
+something there. The file is in binary format, and it is loaded into the
+structures defined below.
+
+Note that the context may change often; PVS does not write out the
+=.pvscontext= file each time, but only when =save-context= is called,
+e.g., when quitting PVS. If a JSON form of the =.pvscontext= is desired,
+run =pvs-context-to-json= for a string, or =pvs-context-to-json-file= to
+generate a file (default =.pvscontext.json=).
+
+#+begin_src lisp
+(defstruct (pvscontext)
+  pvs-version  ;; e.g., "8.1"
+  prelude-libs ;; list of library references
+  parameters   ;; e.g., (("default-decision-procedure" . "shostak"))
+  entries)     ;; list of context-entries
+
+(defstruct (context-entry)
+  file             ;; PVS file name (without directory or extension)
+  write-date       ;; write-date of file in universal time
+  proofs-date      ;; write-date of .prf file in universal time
+  object-date      ;; alist of (theory . object-dates) for each pvsbin/ file
+  dependencies     ;; list of PVS file names this file depends on
+  theories)        ;; list of theory-entry elements
+
+(defstruct (theory-entry)
+  id               ;; Theory id
+  status           ;; Usually 'typechecked
+  dependencies     ;; An alist ((lib-ref theory-id ...) ... (nil theory-id ...))
+  formula-info)    ;; list of formula-entry elements
+
+(defstruct (formula-entry)
+  id               ;; formula id
+  status           ;; proved-complete, proved-incomplete, unchecked, unfinished, untried
+  proof-refers-to) ;; list of declaration-entry elements
+
+(defstruct (declaration-entry)
+  id               ;; Decl id
+  class            ;; CLOS class
+  type             ;; The type, if applicable for this class (string)
+  theory-id        ;; Theory id of the containing theory (string
+  library)         ;; Library of the theory
+#+end_src

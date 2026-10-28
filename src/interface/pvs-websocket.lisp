@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-websocket.lisp -- makes pvs a websocket over json-rpc server/client
 ;; Author          : Sam Owre
-;; Created On      : Fri Feb  8 13:03:25 2013
-;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Feb 12 22:40:02 2013
-;; Update Count    : 3
-;; Status          : Unknown, Use with caution!;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Defines a websocket over json-rpc server for PVS.  The websocket protocol
@@ -106,6 +101,7 @@
       (:available
        ;; Clack's default server is still :HUNCHENTOOT, but newer releases load
        ;; handlers from separate systems, so keep the intended backend explicit.
+       (setq hunchentoot:*default-connection-timeout* 18000) ;; default 20
        (setq *websocket-server*
 	     (clack:clackup #'websocket-pvs-server :server :hunchentoot :port port)))
       (:in-use

@@ -487,7 +487,8 @@ proof scripts, including those already proved."
 		     (setf fref nil)
 		     (error "Not in a Proof summary - run one of the status-proof- commands")))))
 	  ((equal ext "tccs")
-	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
+	   (cond ((equal pvs-theory-modtime (when from-pvs-theory
+					      (get-theory-modtime from-pvs-theory)))
 		  (setf (pvs-fref-kind fref) 'tccs)
 		  (let ((dotpos (cl-position ?. fname)))
 		    (when dotpos
@@ -502,7 +503,8 @@ proof scripts, including those already proved."
 			(setf fref nil)
 			(error "TCC buffer is stale (PVS file was modified)")))))
 	  ((equal ext "ppe")
-	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
+	   (cond ((equal pvs-theory-modtime (when from-pvs-theory
+					      (get-theory-modtime from-pvs-theory)))
 		  (setf (pvs-fref-kind fref) 'ppe))
 		 ((yes-or-no-p "PPE buffer is stale (PVS file was modified) regenerate?")
 		  (prettyprint-expanded from-pvs-theory)
