@@ -46,7 +46,7 @@ jobs:
       PVS_PKG_INSTALL_BASE: /PVS
       PVS_RELEASE_ARCH: arm64
       PVS_RELEASE_OS: macos
-      PVS_SBCL_SOURCE_VERSION: 2.6.3
+      PVS_SBCL_SOURCE_VERSION: 2.6.9
 
     steps:
       - name: Check out sources
