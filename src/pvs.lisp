@@ -1561,7 +1561,7 @@ Needs to pay attention to sections."
 ;(defun ps (theoryname &optional forced?)
 ;  (parse-file theoryname forced? no-message?))
 
-(defvar *force-typecheck* nil)
+(defvar *force-typecheck* t)
 
 (defun force-typecheck (&optional (force? t))
   (setq *force-typecheck* force?))
