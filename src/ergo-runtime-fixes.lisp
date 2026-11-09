@@ -189,14 +189,14 @@
 	(setq char *holding-char*)
 	(setq char (lexical-read-char self :eof)))
     (when (or (equal char :eof)
-	      (not (null (elt readtable (char-code char)))))
+	      (not (null (lexical-character-syntax readtable char))))
       (return)))
    (unless *holding-char*
      (lexical-unread-char self))
    (setq place (curplace (lexical-stream-stream self))
 	 char (multiple-value-list
 	       (cond ((equal char :eof) eofval)
-		     ((eq (elt readtable (char-code char)) :alphabetic)
+		     ((eq (lexical-character-syntax readtable char) :alphabetic)
 		      (let ((a (alpha-lexer self (lexical-read-char self nil))))
 			(if (and (symbolp a)
 				 (member (intern (string-upcase a) :sbst)
@@ -227,7 +227,7 @@
 			(if (equal char :eof)
 			    eofval
 			    (alpha-lexer self char))))
-		     (t (let ((rtfun (elt readtable (char-code char))))
+		     (t (let ((rtfun (lexical-character-syntax readtable char)))
 			  (funcall rtfun
 				   self
 				   (if *holding-char*
@@ -247,8 +247,8 @@
 	  (return))
 	 ((is-lexical-escape? stream char) ;; Never true in PVS
 	  (setq char (lexical-read-char stream :eof)))
-	 ((not (member (elt (lexical-stream-readtable stream)
-			    (char-code char)) '(:alphabetic :number)))
+	 ((not (member (lexical-character-syntax (lexical-stream-readtable stream) char)
+		       '(:alphabetic :number)))
 	  (return)))
    (if (not (equal char :eof))
        (vector-push-extend char buffer)))
@@ -293,14 +293,12 @@
 
 (defun open-lexical-stream (stream &aux result)
   (setq result (make-lexical-stream :stream stream))
-  (setf (lexical-stream-readtable result) (make-array `(,char-code-limit)
-						    :initial-element :alphabetic)
-	(lexical-stream-stringbuffer result)
+  (setf (lexical-stream-stringbuffer result)
 	(make-array '(20) :element-type 'character
 		    :adjustable t
 		    :fill-pointer t))
   (dolist (xa '(#\space #\tab #\newline #\page #\return #\^z))
-    (setf (elt (lexical-stream-readtable result) (char-code xa)) nil))
+    (setf (gethash xa (lexical-stream-readtable result)) nil))
   (lexical-make-macro result #\" #'string-lexer)
   result)
 
