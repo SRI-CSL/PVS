@@ -574,6 +574,8 @@
 	      'unfinished))
     (format-nif "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
     (format-nif "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
+    ;; Keep pvscontext in sync
+    (update-context-formula-entry decl)
     (when (and *context-modified*
 	       (eq (proof-status decl) 'proved))
       (setf (proof-status decl) 'unfinished)

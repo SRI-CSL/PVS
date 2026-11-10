@@ -353,7 +353,7 @@ workspace."
   (let ((theories (pvsio-prelude-theories)))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
-	(proof-summaries theories "pvsio_prelude" nil nil :prelude-file))
+	(proof-summaries theories nil nil))
       t)))
 
 (defun prelude-summary (&optional unproved?)
@@ -362,10 +362,8 @@ libraries in *distributed-prelude-libraries*."
   (let ((lib-summaries (prelude-libraries-summaries unproved?)))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
-	(proof-summaries (core-prelude-theories) "prelude" unproved? nil
-			 :prelude-file)
-	(proof-summaries (pvsio-prelude-theories) "pvsio_prelude" unproved? nil
-			 :prelude-file)
+	(proof-summaries (core-prelude-theories) unproved? nil)
+	(proof-summaries (pvsio-prelude-theories) unproved? nil)
 	(dolist (summary lib-summaries)
 	  (write-string summary)))
       t)))
@@ -379,8 +377,7 @@ status, not the trusted status."
 	      (call-with-prelude-library-theories lib
 		#'(lambda (theories)
 		    (with-output-to-string (*standard-output*)
-		      (proof-summaries theories lib unproved? nil
-				       :prelude-library)))))
+		      (proof-summaries theories unproved? nil)))))
     *distributed-prelude-libraries*))
 
 (defun prelude-proofchain ()

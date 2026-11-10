@@ -1,11 +1,6 @@
 ;; -*- Mode: Emacs-Lisp; lexical-binding: t -*- ;;
 ;; pvs-prover.el -- 
 ;; Author          : Sam Owre
-;; Created On      : Fri Nov 12 11:49:20 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Oct 15 02:33:07 1995
-;; Update Count    : 21
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -920,13 +915,11 @@ As of PVS 3.0, formulas may have multiple proofs attached, and one of them
 is always the default.  The show-proofs-importchain command displays all
 the default proof scripts of all the formulas of the importchain with the
 specified theory at the root.  See also display-proofs-pvs-file, which
-allows access to all the proofs, not just the defaults.  With an argument,
-shows proofs of all formulas and theories of the .prf files, even those that
-are (no longer) part of the corresponding .pvs files."
+allows access to all the proofs, not just the defaults."
   (interactive (complete-theory-name
 		"Show proofs of importchain of theory named: "))
-  (when (pvs-send-and-wait (format "(show-proofs-importchain \"%s\" %s)"
-			       theoryname (and current-prefix-arg t))
+  (when (pvs-send-and-wait (format "(show-proofs-importchain \"%s\")"
+			       theoryname)
 			   nil nil 'bool)
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
@@ -954,12 +947,9 @@ As of PVS 3.0, formulas may have multiple proofs attached, and one of them
 is always the default.  The show-proofs-theory command displays all the
 default proof scripts of all the formulas of the specified theory.  See
 also display-proofs-theory, which allows access to all the proofs, not
-just the defaults.  With an argument, shows proofs of all associated formulas
-of the .prf file, even those that are (no longer) part of the corresponding
-theory."
+just the default ones."
   (interactive (complete-theory-name "Show proofs of theory named: "))
-  (when (pvs-send-and-wait (format "(show-proofs-theory \"%s\" %s)"
-			       theoryname (and current-prefix-arg t))
+  (when (pvs-send-and-wait (format "(show-proofs-theory \"%s\")" theoryname)
 			   nil nil 'bool)
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))

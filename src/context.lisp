@@ -47,6 +47,9 @@
   (assert (memq *workspace-session* *all-workspace-sessions*))
   (pvscontext *workspace-session*))
 
+(defun current-context-file-entries ()
+  (pvscontext-entries (current-pvs-context)))
+
 (defun pvs-context-version (&optional (ctx (current-pvs-context)))
   (pvscontext-pvs-version ctx))
 
@@ -68,17 +71,18 @@
   (getf (pvscontext-parameters ctx) :yices2-executable))
 
 (defmethod pvs-context ((ws workspace-session))
-  (let* ((ctx-file (merge-pathnames ".pvscontext" (path ws)))
-	 (fdate (when (uiop:file-exists-p ctx-file)
-		  (file-write-date ctx-file))))
-    (when (and fdate
-	       (pvs-context-date ws)
-	       (< (pvs-context-date ws) fdate))
-      ;; Context was changed after being read
-      (with-workspace ws
-	(setf (pvscontext ws) (read-context-file ctx-file)))
-      (setf (pvs-context-date ws) fdate)))
-  (pvscontext ws))
+  (or (pvscontext ws)
+      (let* ((ctx-file (merge-pathnames ".pvscontext" (path ws)))
+	     (fdate (when (uiop:file-exists-p ctx-file)
+		      (file-write-date ctx-file))))
+	(when (and fdate
+		   (pvs-context-date ws)
+		   (< (pvs-context-date ws) fdate))
+	  ;; Context was changed after being read
+	  (with-workspace ws
+	    (setf (pvscontext ws) (read-context-file ctx-file)))
+	  (setf (pvs-context-date ws) fdate))
+	(pvscontext ws))))
 
 (defsetf current-pvs-context () (pvsctx)
   `(setf (pvscontext *workspace-session*) ,pvsctx))
@@ -221,15 +225,10 @@ pvs-strategies files.")
 					   ,(pvs-context-libraries context)
 					   ,(pvscontext-parameters context)
 					   ,@(pvscontext-entries context))))
-		     (let ((ce (find-if-not #'(lambda (ce)
-						(file-exists-p
-						 (make-specpath (ce-file ce))))
-				 (pvscontext-entries context))))
-		       (assert (null ce)))
 		     (handler-case
 			 (store-object-to-file context-sexp (context-pathname))
 		       (error (condition) (pvs-message "~a" condition)))
-		     (setf (pvscontext ws) context)
+		     ;; (setf (pvscontext ws) context)
 		     (setf (pvs-context-changed ws) nil)
 		     (unless quiet?
 		       (pvs-message "Context file ~a written~%"
@@ -497,6 +496,24 @@ its dependencies."
       (when (some #'(lambda (dep) (string= dep (ce-file ce))) (ce-dependencies ce2))
 	(remove-context-entry-deps ce2)))))
 
+(defun update-context-formula-entry (fdecl)
+  (unless (from-prelude? fdecl)
+    (let ((fe (get-context-formula-entry fdecl))
+	  (prinfo (default-proof fdecl)))
+      (when (eq (id fdecl) '|only_subtype_elements|)
+	(setq fff fe))
+      (setf (fe-status fe) (status prinfo))
+      (setf (fe-proof-time fe)
+	    (list (run-time prinfo) (real-time prinfo) (interactive? prinfo)))
+      (setf (fe-proof-refers-to fe)
+	    (mapcar #'create-declaration-entry
+	      (remove-if-not
+		  #'(lambda (d)
+		      (typep d '(and declaration (not skolem-const-decl))))
+		(refers-to prinfo))))
+      (setf (current-pvs-context-changed) t))))
+  
+
 (defun update-context-proof-status (fdecl)
   (unless (or (from-prelude? fdecl)
 	      (from-library? fdecl))
@@ -558,7 +575,14 @@ its dependencies."
     (loop for x across digest
 	  do (setq sum (+ (* sum 256) x)))
     sum))
-  
+
+(defun ce-file-of-thid (thid)
+  (dolist (ce (pvscontext-entries (current-pvs-context)))
+    (when (member thid (ce-theories ce) :test #'string= :key #'te-id)
+      (return (ce-file ce)))))
+
+(defmethod filename ((te theory-entry))
+  (ce-file-of-thid (te-id te)))
 
 (defun create-theory-entry (theory th-entry valid?)
   ;; Note that theory is the just parsed theory
@@ -707,7 +731,14 @@ its dependencies."
 				  ((string-equal (fe-status fentry) "unfinished")
 				   "unfinished")
 				  (t "untried"))))
-		       (t "untried"))))
+		       (t "untried")))
+	 (times (cond ((typechecked? decl)
+		       (let ((dpr (default-proof decl)))
+			 (when dpr
+			   (list (run-time dpr)
+				 (real-time dpr)
+				 (interactive? dpr)))))
+		      (fentry (fe-proof-time fentry)))))
     (make-formula-entry
      :id (string (id decl))
      :status status
@@ -715,13 +746,7 @@ its dependencies."
 				     (format nil "~(~a~)" (decision-procedure-used decl)))
 				    (fentry
 				     (fe-decision-procedure-used fentry)))
-     :proof-time (cond ((typechecked? decl)
-			(let ((dpr (default-proof decl)))
-			  (when dpr
-			    (list (run-time dpr)
-				  (real-time dpr)
-				  (interactive? dpr)))))
-		       (fentry (fe-proof-time fentry)))
+     :proof-time times
      :proof-refers-to (if (proof-refers-to decl)
 			  (mapcar #'create-declaration-entry
 			    (remove-if-not
@@ -2022,14 +2047,6 @@ First we collect all orphs that have origins with the same kind and expr."
       (if (integerp (cadr prf-entry))
 	(cddr prf-entry)
 	(cddddr prf-entry)))))
-
-;; (defun convert-proof-form-to-lowercase (proof-form)
-;;   (cond ((and proof-form (symbolp proof-form))
-;; 	 (intern (string-downcase proof-form) (symbol-package proof-form)))
-;; 	((consp proof-form)
-;; 	 (cons (convert-proof-form-to-lowercase (car proof-form))
-;; 	       (convert-proof-form-to-lowercase (cdr proof-form))))
-;; 	(t proof-form)))
 
 (defvar *pvs-class-names* nil)
 
@@ -3677,11 +3694,11 @@ If there is no error, but the ls-files is empty"
   "First saves the .pvscontext file if needed, then generates the JSON
 representation. If file is nil, the JSON string is returned, else if file is
 't', .pvscontext.json is used, else the file provided will be written to."
-  (with-workspace ws
+  (with-workspace workspace
     (save-context)
-    (let* ((ctx-alist (ctx-alist ws)))
+    (let* ((ctx-alist (ctx-alist workspace)))
       (if file
-	  (with-open-file (ctx-fd json-file
+	  (with-open-file (ctx-fd file
 				  :direction :output :if-exists :supersede
 				  :if-does-not-exist :create)
 	    (json:encode-json ctx-alist ctx-fd))

@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; status-cmds.lisp -- support for the various status commands
 ;; Author          : Sam Owre
-;; Created On      : Sat Feb 19 21:23:43 1994
-;; Last Modified By: Sam Owre
-;; Last Modified On: Fri May 21 04:10:26 2004
-;; Update Count    : 13
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -161,18 +156,18 @@
 
 (defun brief-status-importchain (theory-ref &optional (indent 0))
   (multiple-value-bind (dir file thname)
-      (get-theory-ref theoryref)
+      (get-theory-ref theory-ref)
     (declare (ignore file))
     (unless thname
-      (error "No theory name found in ~s" theoryref))
+      (error "No theory name found in ~s" theory-ref))
     (with-workspace dir
-      (let* ((th (get-theory tname)))
+      (let* ((th (get-theory thname)))
 	(cond ((null th)
-	       (format t "~%~a is not parsed" tname))
-	      ((member tname *modules-visited* :test #'same-id)
-	       (format t "~%~vT~a ... shown above" indent (id tname)))
+	       (format t "~%~a is not parsed" thname))
+	      ((member thname *modules-visited* :test #'same-id)
+	       (format t "~%~vT~a ... shown above" indent (id thname)))
 	      (t (let ((usings (when th (get-immediate-usings th))))
-		   (when (and th usings) (push tname *modules-visited*))
+		   (when (and th usings) (push thname *modules-visited*))
 		   (format t "~%~vT~a" indent (id th))
 		   (mapc #'(lambda (m) (brief-status-importchain m (+ indent 2)))
 			 usings))))))))
@@ -258,19 +253,19 @@
 ;;; Status Proof Theory
 ;;; Called from Emacs
 (defun status-proof-theory (theoryref &optional unproved? tccs-only?)
-  (multiple-value-bind (dir file thname)
+  (multiple-value-bind (dir fname thname)
       (get-theory-ref theoryref)
-    (declare (ignore file))
+    (declare (ignore fname))
     (unless thname
       (error "No theory name found in ~s" theoryref))
     (with-workspace dir
-      (let* ((theory (or (get-theory thname)
-			 (get-context-theory-entry thname)))
+      (let* ((theory (get-theory thname))
+	     (th-entry (or theory (get-context-theory-entry thname)))
 	     (*disable-gc-printout* t))
-	(if theory
-	    (pvs-buffer "PVS Status"
+	(if th-entry
+	    (pvs-buffer "Proofs Status"
 	      (with-output-to-string (*standard-output*)
-		(proof-summary (id theory) unproved? nil tccs-only?))
+		(proof-summaries (list th-entry) unproved? tccs-only?))
 	      t)
 	    (pvs-message "Theory ~a is not found" theoryref))))))
 
@@ -279,21 +274,26 @@
 ;;; Called from Emacs
 (defun status-proof-pvs-file (filename &optional unproved? tccs-only?)
   (with-pvs-file (fname) filename
-    (let ((theories (get-context-theory-names fname))
-	  (*disable-gc-printout* t))
-      (if theories
-	  (pvs-buffer "PVS Status"
+    (let* ((theories (cdr (gethash fname (current-pvs-files))))
+	   (th-entries (or theories
+			   (let ((fe (get-context-file-entry fname)))
+			     (when fe (ce-theories fe)))))
+	   (*disable-gc-printout* t))
+      (if th-entries
+	  (pvs-buffer "Proofs Status"
 	    (with-output-to-string (*standard-output*)
-	      (proof-summaries theories fname unproved? tccs-only?))
+	      (proof-summaries th-entries unproved? tccs-only?))
 	    t)
 	  (pvs-message "PVS file ~a not found" filename)))))
 
+;; Called from prove-pvs-file and prove-pvs-theories
 (defun status-proof-theories (theories &optional unproved? tccs-only?)
+  (assert (every #'datatype-or-module? theories))
   (if theories
       (let ((*disable-gc-printout* t))
-	(pvs-buffer "PVS Status"
+	(pvs-buffer "Proofs Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories nil unproved? tccs-only?))
+	    (proof-summaries theories unproved? tccs-only?))
 	  t))
       (pvs-message "No theories given")))
 
@@ -306,143 +306,151 @@
     (unless thname
       (error "No theory name found in ~s" theoryref))
     (with-workspace dir
-      (let ((theories (context-usingchain thname))
-	    (*disable-gc-printout* t))
+      (let* ((theory (get-theory thname))
+	     (theories (if theory
+			   (reverse (local-importingchain theory))
+			   (context-usingchain thname)))
+	     (*disable-gc-printout* t))
 	(if theories
-	    (pvs-buffer "PVS Status"
+	    (pvs-buffer "Proofs Status"
 	      (with-output-to-string (*standard-output*)
-		(proof-summaries theories nil unproved? tccs-only?))
+		(proof-summaries theories unproved? tccs-only?))
 	      t)
 	    (pvs-message "Theory ~a is not found" theoryref))))))
 
+(defun local-importingchain (theory)
+  (let* ((cp (context-path theory))
+	 (imps (remove-if-not #'(lambda (th)
+				  (pathname-equal (context-path th) cp))
+		 (all-importings theory))))
+    (cons theory imps)))
+    
 
-(defun proof-summaries (theory-ids &optional filename unproved? tccs-only? kind)
-  "Prints the proof summaries of theory-ids. kind tells what filename is: nil
-for a PVS file, :prelude-file for a prelude file such as prelude, or
-:prelude-library for a prelude library such as finite_sets."
-  (unless (and unproved?
-	       (every #'(lambda (thid)
-			  (let* ((th (get-theory thid))
-				 (fdecls (when th
-					   (if tccs-only?
-					       (collect-tccs th)
-					       (provable-formulas th)))))
-			    (and th (every #'proved? fdecls))))
-		      theory-ids))
-    (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
-	  (source (when filename
-		    (case kind
-		      (:prelude-file (format nil "prelude file ~a.pvs" filename))
-		      (:prelude-library (format nil "prelude library ~a" filename))
-		      (t (format nil "~a.pvs" filename))))))
-      (when filename
-	(format t "~2%~@[TCC ~*~]Proof summary for ~:[file ~;~]~a"
-	  tccs-only? kind source))
-      (dolist (theory theory-ids)
-	(multiple-value-bind (to pr uf ut tm)
-	    (proof-summary theory (when filename 2) unproved? tccs-only?)
-	  (incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
-	  (incf time tm)))
-      (if filename
-	  (format t "~2%  Totals for ~a: " source)
-	  (format t "~2%Grand Totals: "))
-      (format t "~d proofs, ~d attempted, ~d succeeded (~,2f s)"
-	tot (+ proved unfin) proved time)
-      (values tot proved unfin untried time))))
-
-(defun proof-summary (theory-id &optional (indent 0) unproved? tccs-only?)
+(defun proof-summaries (theories unproved? tccs-only?)
+  "Prints proof-summary for each theory, and prints the running total if
+more than one theory."
   (let* ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
-	 (theory (get-theory theory-id)))
-    (if (and theory
-	     (typechecked? theory))
-	(let* ((fdecls (if tccs-only? (collect-tccs theory) (provable-formulas theory)))
-	       (maxtime (/ (reduce #'max fdecls
-				   :key #'(lambda (d)
-					    (or (run-proof-time d) 0))
-				   :initial-value 0)
-			   internal-time-units-per-second))
-	       (statuslength 20) ; "proved - incomplete "
-	       (dplength (+ (apply #'max
-			      (mapcar #'(lambda (x) (length (string x)))
-				*decision-procedures*))
-			    2))
-	       (timelength (length (format nil "~,2f" maxtime)))
-	       (idlength (- 79 4 statuslength dplength timelength 4 3)))
-	  (unless (and unproved? (every #'proved? fdecls))
-	    (format t "~2%~vT~@[TCC ~*~]Proof summary for theory ~a"
-	      indent tccs-only? (ref-to-id theory-id))
-	    (dolist (decl fdecls)
-	      (let ((tm (if (run-proof-time decl)
-			    (/ (run-proof-time decl)
-			       internal-time-units-per-second 1.0)
-			    0)))
-		(incf tot)
-		(cond ((proved? decl)
-		       (incf proved))
-		      ((justification decl) (incf unfin))
-		      (t (incf untried)))
-		(incf time tm)
-		(when (or (null unproved?) (unproved? decl))
-		  (format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
-		    idlength
-		    (id decl)
-		    (proof-status-string decl)
-		    (if (justification decl)
-			(decision-procedure-used decl)
-			"Untried")
-		    (if (run-proof-time decl)
-			(format nil "~v,2f" timelength tm)
-			(format nil "~v<n/a~>" timelength))))))
-	    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
-               (~,2f s)"
-	      (ref-to-id theory-id) tot (+ proved unfin) proved
-	      (/ (reduce #'+ (provable-formulas theory)
-			 :key #'(lambda (d) (or (run-proof-time d) 0))
-			 :initial-value 0)
-		 internal-time-units-per-second))))
-	(let* ((te (get-context-theory-entry theory-id))
-	       (fe-list (te-formula-info te))
-	       (valid? (or (and theory
-				(from-prelude? theory))
-			   (valid-proofs-file (context-entry-of theory-id)))))
-	  (unless (and unproved? (every #'proved? fe-list))
-	    (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
-	    (dolist (fe fe-list)
-	      (let ((status (fe-status fe)))
-		(incf tot)
-		(when (or (null unproved?) (unproved? fe))
-		  (format t "~%    ~52,1,0,'.a...~(~10a~)"
-		    (fe-id fe)
-		    (fe-proof-status-string fe valid?)))
-		(cond ((member status '("proved-complete" "proved-incomplete")
-			       :test #'string=)
-		       (if valid?
-			   (incf proved)
-			   (incf unfin)))
-		      ((member status '("unchecked" "unfinished") :test #'string=)
-		       (incf unfin))
-		      (t (incf untried)))))
-	    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
-               (~,2f s)"
-	      (ref-to-id theory-id) tot (+ proved unfin) proved
-	      (/ (reduce #'+ (provable-formulas theory)
-			 :key #'(lambda (d) (or (run-proof-time d) 0))
-			 :initial-value 0)
-		 internal-time-units-per-second)))))
+	 (ath? (datatype-or-module? (car theories)))
+	 (atheories (if ath?
+			(add-rec-type-theories theories)
+			(add-rec-type-te-entries theories))))
+    (dolist (theory atheories)
+      (multiple-value-bind (to pr uf ut tm)
+	  (proof-summary theory unproved? tccs-only?)
+	(incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
+	(incf time tm)))
+    (when (cdr theories)
+      (format t "~2%Grand Totals: ")
+      (format t "~d proofs, ~d attempted, ~d succeeded (~,2,-3f s)"
+	tot (+ proved unfin) proved time))
     (values tot proved unfin untried time)))
 
-(defun run-proof-time (decl)
+(defun add-rec-type-te-entries (te-entries &optional ate-entries)
+  (if (null te-entries)
+      (nreverse (remove-duplicates ate-entries))
+      (add-rec-type-te-entries
+       (cdr te-entries)
+       (let* ((te-id (te-id (car te-entries)))
+	      (adeps (mapcan #'(lambda (dep)
+				 (when (and (< (length te-id) (length dep))
+					    (string= te-id dep :end2 (length te-id))
+					    (member (subseq dep (length te-id))
+						    '("_adt" "_adt_map" "_adt_reduce"
+						      "_codt")
+						    :test #'string=))
+				   (list (get-context-theory-entry dep))))
+		       (cdr (assq nil (te-dependencies (car te-entries)))))))
+       (if adeps
+	   (nconc (nreverse adeps)
+		  (cons (car te-entries) ate-entries))
+	   (cons (car te-entries) ate-entries))))))
+
+(defun proof-summary (theory &optional unproved? tccs-only?)
+  "Prints, e.g,
+ Proof summary for theory finite_sets_product
+    mult_one_right........................proved - complete  (0.00 s)
+    ...
+    Theory finite_sets_product totals: 21 formulas, 21 attempted, 21 succeeded (0.00 s)
+"
+  (assert (if (datatype-or-module? theory)
+	      (typechecked? theory)
+	      (theory-entry-p theory)))
+  (let* ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
+	 (ath? (datatype-or-module? theory))
+	 (thid (if ath? (id theory) (te-id theory)))
+	 (fdecls (if ath? (provable-formulas theory) (te-formula-info theory)))
+	 (maxtime (/ (reduce #'max fdecls
+			     :key #'(lambda (d) (or (run-proof-time d) 0))
+			     :initial-value 0)
+		     internal-time-units-per-second))
+	 (statuslength 20)		; "proved - incomplete "
+	 (timelength (length (format nil "~,2f" maxtime)))
+	 (idlength (- 79 4 statuslength timelength 4 3))
+	 (kind (typecase theory
+		 (datatype "datatype")
+		 (codatatype "codatatype")
+		 (t "theory")))
+	 (ldir (multiple-value-bind (path lib-id)
+		   (get-library-reference (context-path theory))
+		 (if lib-id
+		     (sformat "~a@" lib-id)
+		     (namestring path)))))
+    (format t "~2%~@[TCC ~*~]Proof summary for ~a ~a (~@[~a~]~a.pvs)~@[ unproved~]"
+      tccs-only? kind (ref-to-id thid) ldir (filename theory) unproved?)
+    (dolist (decl fdecls)
+      (unless (or (and tccs-only? (not (tcc? decl)))
+		  (and unproved? (proved? decl)))
+	(let ((fid (if ath? (id decl) (fe-id decl)))
+	      (tm (or (run-proof-time decl) 0)))
+	  (incf tot)
+	  (cond ((proved? decl)
+		 (incf proved))
+		((formula-entry-p decl)
+		 (if (string= (fe-status decl) "unfinished")
+		     (incf unfin)
+		     (incf untried)))
+		((justification decl) (incf unfin))
+		(t (incf untried)))
+	  (incf time tm)
+	  (format t "~%  ~v,1,0,'.a...~19a(~a s)"
+	    idlength
+	    fid
+	    (proof-status-string decl)
+	    (if (run-proof-time decl)
+		(format nil "~v,2,-3F" timelength tm)
+		(format nil "~v<n/a~>" timelength))))))
+      (format t "~%~a ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
+               (~,2,-3F s)"
+	(typecase theory
+	  (datatype "Datatype")
+	  (codatatype "Codatatype")
+	  (t "Theory"))
+	(ref-to-id thid) tot (+ proved unfin) proved
+	(reduce #'+ fdecls
+		   :key #'(lambda (d) (or (run-proof-time d) 0))
+		   :initial-value 0))
+      (values tot proved unfin untried time)))
+
+
+(defmethod run-proof-time ((decl formula-decl))
   (let ((dpr (default-proof decl)))
     (when dpr (run-time dpr))))
 
-(defun real-proof-time (decl)
+(defmethod real-proof-time ((decl formula-decl))
   (let ((dpr (default-proof decl)))
-    (when dpr (run-time dpr))))
+    (when dpr (real-time dpr))))
+
+(defmethod run-proof-time ((decl formula-entry))
+  (car (fe-proof-time decl)))
+
+(defmethod real-proof-time ((decl formula-entry))
+  (cadr (fe-proof-time decl)))
 
 (defmethod provable-formulas ((theory module))
   (provable-formulas (append (assuming theory) (theory theory))))
 
 (defmethod provable-formulas ((adt recursive-type))
+  ;;(mapcan #'provable-formulas (adt-generated-theories adt))
   nil)
 
 (defmethod provable-formulas ((decls list))
@@ -605,7 +613,7 @@ for a PVS file, :prelude-file for a prelude file such as prelude, or
 	((justification decl) 'unfinished)
 	(t 'untried)))
 
-(defun proof-status-string (decl)
+(defmethod proof-status-string ((decl formula-decl))
   (cond ((and (eq (proof-status decl) 'unchecked))
 	 (not (and (mapped-formula-decl? decl)
 		   (proved? decl)))
@@ -619,6 +627,9 @@ for a PVS file, :prelude-file for a prelude file such as prelude, or
 		   "proved - incomplete"))))
 	((justification decl) "unfinished")
 	(t "untried")))
+
+(defmethod proof-status-string ((fe formula-entry))
+  (fe-status fe))
 
 (defun pc-complete (decl)
   (let* ((*dependings* nil)
@@ -702,7 +713,7 @@ for a PVS file, :prelude-file for a prelude file such as prelude, or
 			     (mapcar #'fe-id (te-formula-info te))))
 	     (ce-theories ce))))))
 
-(defun show-proofs-theory (theoryref &optional all?)
+(defun show-proofs-theory (theoryref)
   (multiple-value-bind (dir file thname)
       (get-theory-ref theoryref)
     (unless thname
@@ -1136,18 +1147,17 @@ for a PVS file, :prelude-file for a prelude file such as prelude, or
 	fdecl-string)
       (pvs-message "~a has not been typechecked" oname)))
 
-(defun all-usedby-proofs (oname origin)
-  (if (typechecked-origin? oname origin)
-
-      (let* ((udecl (get-decl-at-origin oname origin line))
-	     (decls (declaration-used-by-proofs-of udecl))
-	     (flist (mapcar #'(lambda (d)
-				(json-decl-list d (ptype-of d) (module d)))
-		      decls))
-	     (json:*lisp-identifier-name-to-json* 'identity)
-	     (fdecl-string (json:encode-json-to-string (or flist #()))))
-	fdecl-string)
-      (pvs-message "~a has not been typechecked" oname)))
+;; (defun all-usedby-proofs (oname origin)
+;;   (if (typechecked-origin? oname origin)
+;;       (let* ((udecl (get-decl-at-origin oname origin line))
+;; 	     (decls (declaration-used-by-proofs-of udecl))
+;; 	     (flist (mapcar #'(lambda (d)
+;; 				(json-decl-list d (ptype-of d) (module d)))
+;; 		      decls))
+;; 	     (json:*lisp-identifier-name-to-json* 'identity)
+;; 	     (fdecl-string (json:encode-json-to-string (or flist #()))))
+;; 	fdecl-string)
+;;       (pvs-message "~a has not been typechecked" oname)))
 
 (defun get-origin-root-theory-name (bufname origin)
   (let* ((namestr (string bufname))
@@ -1242,10 +1252,10 @@ for a PVS file, :prelude-file for a prelude file such as prelude, or
     (proofs decl)))
 
 (defun display-proofs-theory (theoryref)
-  (multiple-value-bind (dir file thname)
+  (multiple-value-bind (dir file theoryname)
       (get-theory-ref theoryref)
     (declare (ignore file))
-    (unless thname
+    (unless theoryname
       (error "No theory name found in ~s" theoryref))
     (with-workspace dir
       (let ((theory (get-theory theoryname)))
@@ -1714,6 +1724,13 @@ for a PVS file, :prelude-file for a prelude file such as prelude, or
    :formula-script (get-editable-justification
 		    (convert-proof-form-to-lowercase formula-script))))
 
+(defun convert-proof-form-to-lowercase (proof-form)
+  (cond ((and proof-form (symbolp proof-form))
+	 (intern (string-downcase proof-form) (symbol-package proof-form)))
+	((consp proof-form)
+	 (cons (convert-proof-form-to-lowercase (car proof-form))
+	       (convert-proof-form-to-lowercase (cdr proof-form))))
+	(t proof-form)))
 
 (defmethod json:encode-json ((ps proof-scripts) &optional (stream json:*json-output*))
   (json:with-object (stream)

@@ -108,6 +108,14 @@
   #+allegro (setq excl:*enclose-printer-errors* nil)
   ;; The uiop:*temporary-directory* can be set wrong on the Mac
   ;; Possible we want to use TMPDIR value regardless
+  #+sbcl
+  (let* ((size-str (sb-posix:getenv "PVS_SBCL_NURSERY_SIZE"))
+	 (size (when size-str (ignore-errors (parse-integer size-str)))))
+    (when size-str
+      (if (and (integerp size) (plusp size))
+	  (setf (sb-ext:bytes-consed-between-gcs) (* size 1024 1024))
+	  (pvs-message "PVS_SBCL_NURSERY_SIZE = ~a should be set to a positive integer"
+	    size-str))))
   (let ((tmpdir (environment-variable "TMPDIR")))
     (when tmpdir
       (unless (and (uiop:directory-exists-p tmpdir)
@@ -2769,10 +2777,14 @@ Note that even proved ones get overwritten"
 			(all-decls theory))))
 	  (nth pos decls)))))
 
-(defun tcc? (decl)
-  (and (formula-decl? decl)
-       (eq (kind decl) 'tcc)))
+(defmethod tcc? ((decl formula-decl))
+  (eq (kind decl) 'tcc))
 
+(defmethod tcc? ((fe formula-entry))
+  (cl-ppcre:scan "_TCC[0-9]+$" (string (fe-id fe))))
+
+(defmethod tcc? (obj)
+  nil)
 
 (defun parsed-file? (filename)
   (let* ((file (if (pathnamep filename)
@@ -3401,10 +3413,11 @@ If formname is nil, then formref should resolve to a unique formula name."
 
 (defun prove-pvs-file (fileref retry? &optional use-default-dp? save-proofs?)
   (with-pvs-file (fname) fileref
-    (let ((theories (typecheck-file fname))
-	  (*use-default-dp?* use-default-dp?))
+    (let* ((theories (typecheck-file fname))
+	   (atheories (add-rec-type-theories theories))
+	   (*use-default-dp?* use-default-dp?))
       (prove-theories fname theories retry? use-default-dp? save-proofs?)
-      (status-proof-pvs-file fname))))
+      (status-proof-theories atheories))))
 
 (defun prove-pvs-theories (theory-names retry? &optional use-default-dp? save-proofs?)
   (when theory-names
@@ -3585,6 +3598,16 @@ If formname is nil, then formref should resolve to a unique formula name."
     (pvs-message
 	"~a: ~d proofs attempted, ~d proved in ~,2,-3f real, ~,2,-3f cpu seconds"
       name total proved realtime runtime)))
+
+(defun add-rec-type-theories (theories &optional atheories)
+  (if (null theories)
+      (nreverse atheories)
+      (add-rec-type-theories
+       (cdr theories)
+       (if (recursive-type? (car theories))
+	   (append (reverse (adt-generated-theories (car theories)))
+		   (cons (car theories) atheories))
+	   (cons (car theories) atheories)))))
 
 
 ;;; Editing proofs
