@@ -1227,8 +1227,9 @@ escapes here."
 	     (othy (find nthy old-theories :test #'same-id))
 	     (replace? nil)) ;; Whether to replace instead of modify old-theory
 	(if othy
-	    (let* ((*current-context* (saved-context othy))
+	    (let* ((*current-context* (or (saved-context othy) (context othy)))
 		   (diff (compare othy nthy)))
+	      (assert *current-context* () "update-parsed-theories no *current-context*")
 	      ;; diff is nil - lexical changes only
 	      ;;         (odecl . ndecl) - first place where othy and nthy differ
 	      ;;         (odecl . nil) - odecl on was removed from end
@@ -1336,19 +1337,16 @@ escapes here."
 ;; between othy and nthy. ndecl might be a change to odecl, or a newly
 ;; inserted decl, or an indication that the odecl has been deleted, or even
 ;; simply a reordering of decls at that point.
-(defun merge-parsed-theory (odecl ndecl othy nthy)
-  ;; odecl is the last kept theory
+(defun merge-parsed-theory (last-kept-decl ndecl othy nthy)
   (let* ((odecls (all-decls othy))
-	 ;;(ndecls (all-decls nthy))
-	 (replaced (when odecl (cdr (memq odecl odecls))))
-	 ;;(ohead (ldiff odecls replaced))
-	 ;;(ntail (memq ndecl ndecls))
-	 )
+	 (replaced (when last-kept-decl (cdr (memq last-kept-decl odecls)))))
+    (assert *current-context* () "merge-parsed-theory no *current-context*?")
     ;; Can only keep assuming instances for importings before odecl
-    (assert (memq odecl (all-decls othy)) ()
+    (assert (memq last-kept-decl (all-decls othy)) ()
 	    "merge-parsed-theory - decl missing from all-decls")
-    (when (and odecl (assuming-instances othy))
-      (let ((pdecls (memq odecl (reverse odecls))))
+    ;; Reset assuming-instances
+    (when (and last-kept-decl (assuming-instances othy))
+      (let ((pdecls (memq last-kept-decl (reverse odecls))))
 	(assert pdecls)
 	(if (cdr pdecls)
 	    (let ((vis-instances (assuming-instances (cadr pdecls))))
@@ -1361,16 +1359,13 @@ escapes here."
     (remove-from-theory-attributes replaced othy)
     ;; Now apply the diffs - modifies the old theory,
     ;; keeping everything above odecl
-    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 2")
-    (merge-parsed-theory-decls odecl ndecl othy nthy)
-    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 3")
+    (merge-parsed-theory-decls last-kept-decl ndecl othy nthy)
     ;; formals-sans-usings
     (setf (formals-sans-usings othy) (remove-if #'importing-param? (formals othy)))
     (reset-typecheck-caches)
     (when (recursive-type? othy)
       (break "recursive-type"))
     (untypecheck-usedbys othy)
-    (assert (memq odecl (all-decls othy)) () "merge-parsed-theory - 4")
     replaced))
 
 (defun remove-from-theory-attributes (replaced othy)
@@ -1433,16 +1428,15 @@ escapes here."
     (dolist (cursec '(formals theory-formal-decls assuming theory))
       (let ((section (slot-value othy cursec)))
 	(setq found-diff (or found-diff (eq cursec (or osec nsec))))
-	(assert (memq last-kept-decl (all-decls othy)) () "merge-parsed-theory-decls - 1")
 	(cond ((eq cursec osec)
-	       (let* ((kept-part (ldiff section (cdr (memq last-kept-decl section))))
-		      (new-part (when ndecl (memq ndecl (slot-value nthy cursec))))
+	       (let* ((nlkd (find last-kept-decl (all-decls nthy) :test #'compare-decl))
+			;; (find (str last-kept-decl) (all-decls nthy)
+			;; 	  :key #'str :test #'string=))
+		      (kept-part (ldiff section (cdr (memq last-kept-decl section))))
+		      (new-part (when nlkd (cdr (memq nlkd (slot-value nthy cursec)))))
 		      (newsec (append kept-part new-part)))
-		 (assert (memq last-kept-decl newsec) ()
-			 "merge-parsed-theory-decls - 2")
-		 ;; (assert (= (length (slot-value nthy cursec))
-		 ;; 	    (length (remove-if #'generated-by newsec))))
-		 ;; This is destructive - othy has been modified
+		 (assert (memq last-kept-decl newsec) () "merge-parsed-theory-decls - 2")
+		 ;; This is destructive - modifies othy
 		 (setf (slot-value othy cursec) newsec)))
 	      ((eq cursec nsec)
 	       (setf (slot-value othy cursec)
@@ -1452,7 +1446,6 @@ escapes here."
 	       (setf (slot-value othy cursec) (slot-value nthy cursec)))
 	      ;; No need for else - othy is fine to keep
 	      )))
-    (assert (memq last-kept-decl (all-decls othy)) () "merge-parsed-theory-decls - 3")
     (assert (null (compare othy nthy)))
     ))
 
@@ -1569,7 +1562,7 @@ Needs to pay attention to sections."
 ;(defun ps (theoryname &optional forced?)
 ;  (parse-file theoryname forced? no-message?))
 
-(defvar *force-typecheck* t)
+(defvar *force-typecheck* nil)
 
 (defun force-typecheck (&optional (force? t))
   (setq *force-typecheck* force?))
