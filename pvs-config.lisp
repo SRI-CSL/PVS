@@ -44,13 +44,6 @@
   ;; Can't directly reference pvs::pvs-init here
   (apply (find-symbol (string :pvs-init) :pvs) nil))
 
-#+cmu
-(defun startup-pvs ()
-  (in-package :pvs)
-  ;; Can't directly reference pvs::pvs-init here
-  (apply (find-symbol (string :pvs-init) :pvs) nil)
-  (lisp::%top-level))
-
 #+sbcl
 (defun startup-pvs ()
   (in-package :pvs)
@@ -221,36 +214,6 @@
 
 #+allegro
 (setq *cltl1-in-package-compatibility-p* t)
-
-#+allegro
-(defun startup-pvs ()
-  (tpl:setq-default *package* (find-package :pvs))
-  (rplacd (assoc 'tpl::*saved-package*
-		 tpl:*default-lisp-listener-bindings*)
-	  'common-lisp:*package*)
-  ;; Can't directly reference pvs::pvs-init here
-  (apply (find-symbol (string :pvs-init) :pvs) nil))
-
-#+cmu
-(defun startup-pvs ()
-  (in-package :pvs)
-  ;; Can't directly reference pvs::pvs-init here
-  (apply (find-symbol (string :pvs-init) :pvs) nil)
-  (lisp::%top-level))
-
-#+sbcl
-(defun startup-pvs ()
-  (in-package :pvs)
-  ;; Turn off compiler warnings
-  (handler-bind ((sb-ext:compiler-note #'muffle-warning))
-    ;; Can't directly call (pvs::pvs-init)
-    (apply (find-symbol (string :pvs-init) :pvs) nil)
-    (sb-impl::toplevel-init)))
-
-#+lucid
-(unless (fboundp 'bye)
-  (defun bye (&optional (exit-status 0))
-    (quit exit-status)))
 
 #+allegro
 (defun bye (&optional (exit-status 0))
