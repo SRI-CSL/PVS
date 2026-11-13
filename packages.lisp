@@ -1,5 +1,5 @@
 (in-package :cl-user)
-(export '(*ess-path*))
+(export '(*ess-path* startup-pvs))
 
 #+:allegro
 (require :loop)
