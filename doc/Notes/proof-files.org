@@ -144,46 +144,62 @@ used by PVS, and can safely be deleted.
 ** PVS Context File
 
 The =.pvscontext= file resides in the workspace, and is loaded into the
-corresponding workspace class instance as soon as PVS is requested to do
-something there. The file is in binary format, and it is loaded into the
-structures defined below.
+corresponding workspace class instance by =restore-context=. This is
+called when PVS starts, or when a library or directory is referenced
+through =with-workspace=, Which temporarily changes workspaces. The file
+is in binary format, and it is loaded into the structures defined
+below. Given a workspace =ws= (e.g., =\*workspace-session\*=) =(pvscontext
+ws)= returns the =pvscontext= defined below.
 
 Note that the context may change often; PVS does not write out the
 =.pvscontext= file each time, but only when =save-context= is called,
-e.g., when quitting PVS. If a JSON form of the =.pvscontext= is desired,
-run =pvs-context-to-json= for a string, or =pvs-context-to-json-file= to
-generate a file (default =.pvscontext.json=).
+e.g., when quitting PVS, or after =with-workspace= is called. If a JSON
+form of the =.pvscontext= is desired, run =pvs-context-to-json= for a
+string, or =pvs-context-to-json-file= to generate a file (default
+=.pvscontext.json=).
 
 #+begin_src lisp
-(defstruct (pvscontext)
-  pvs-version  ;; e.g., "8.1"
-  prelude-libs ;; list of library references
-  parameters   ;; e.g., (("default-decision-procedure" . "shostak"))
-  entries)     ;; list of context-entries
+  (defstruct (pvscontext)
+    pvs-version  ;; e.g., "8.1"
+    prelude-libs ;; list of library references
+    parameters   ;; e.g., (("default-decision-procedure" . "shostak"))
+    entries)     ;; list of context-entries
 
-(defstruct (context-entry)
-  file             ;; PVS file name (without directory or extension)
-  write-date       ;; write-date of file in universal time
-  proofs-date      ;; write-date of .prf file in universal time
-  object-date      ;; alist of (theory . object-dates) for each pvsbin/ file
-  dependencies     ;; list of PVS file names this file depends on
-  theories)        ;; list of theory-entry elements
+  (defstruct (context-entry)
+    file             ;; PVS file name (without directory or extension)
+    write-date       ;; write-date of file in universal time
+    proofs-date      ;; write-date of .prf file in universal time
+    object-date      ;; alist of (theory . object-dates) for each pvsbin/ file
+    dependencies     ;; list of PVS file names this file depends on
+    theories)        ;; list of theory-entry elements
 
-(defstruct (theory-entry)
-  id               ;; Theory id
-  status           ;; Usually 'typechecked
-  dependencies     ;; An alist ((lib-ref theory-id ...) ... (nil theory-id ...))
-  formula-info)    ;; list of formula-entry elements
+  (defstruct (theory-entry)
+    id               ;; Theory id
+    status           ;; Usually 'typechecked
+    dependencies     ;; An alist ((lib-ref theory-id ...) ... (nil theory-id ...))
+    formula-info)    ;; list of formula-entry elements
 
-(defstruct (formula-entry)
-  id               ;; formula id
-  status           ;; proved-complete, proved-incomplete, unchecked, unfinished, untried
-  proof-refers-to) ;; list of declaration-entry elements
+  (defstruct (formula-entry)
+    id               ;; formula id
+    status           ;; proved-complete, proved-incomplete, unchecked, unfinished, untried
+    proof-time       ;; list of (run-time real-time interactive?)
+    proof-refers-to) ;; list of declaration-entry elements
 
-(defstruct (declaration-entry)
-  id               ;; Decl id
-  class            ;; CLOS class
-  type             ;; The type, if applicable for this class (string)
-  theory-id        ;; Theory id of the containing theory (string
-  library)         ;; Library of the theory
+  (defstruct (declaration-entry)
+    id               ;; Decl id
+    class            ;; CLOS class
+    type             ;; The type, if applicable for this class (string)
+    theory-id        ;; Theory id of the containing theory (string
+    library)         ;; Library of the theory
 #+end_src
+
+=restore-context= is called frequently; basically whenever accessing the
+=pvscontext= slot of a workspace - ensuring the slot is set when needed.
+
+=save-context= is called whenever =with-workspace= is used to temporarily
+change workspaces, e.g., through references to PVS libraries:
+#+begin_src lisp
+(with-workspace "finite_sets" (current-pvs-context))
+#+end_src
+Before returning, =with-workspace= saves the =.pvscontext= file, if
+something relevant changed. 
