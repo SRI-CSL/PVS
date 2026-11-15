@@ -4022,12 +4022,13 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	     (mapcar #'(lambda (type)
 			 (declare (ignore type))
 			 (incf index)
-			 (apply #'make-conjunction
-			   (make!-injection?-application index lhs)
-			   (make!-injection?-application index rhs)
-			   (make-equality
-			    (make!-extraction-application index lhs)
-			    (make!-extraction-application index rhs))))
+			 (make-conjunction
+			   (list
+			    (make!-injection?-application index lhs)
+			    (make!-injection?-application index rhs)
+			    (make-equality
+			     (make!-extraction-application index lhs)
+			     (make!-extraction-application index rhs)))))
 	       (types te)))))))
 
 (defmethod component-equalities (lhs rhs (te funtype))

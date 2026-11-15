@@ -88,8 +88,9 @@
 	     (let* ((remaining-sforms (delete-seq sforms fnums))
 		    (conjuncts (bddsimp-conjuncts selected-sforms
 						  irredundant?))
-		    (labels (reduce #'intersection
-				    (mapcar #'label selected-sforms))))
+		    ;; (labels (reduce #'intersection
+		    ;; 		    (mapcar #'label selected-sforms)))
+		    )
 	       (cond ((bdd-interrupted?)
 		      (format t "~%BDD Simplifier interrupted")
 		      (values 'X nil))

@@ -438,7 +438,7 @@
 	   thname)
 	  (t (let ((typename (pvs2ir-decl* decl)))
 	       (if (adt (type-value decl))
-		   (add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
+		   (add-c-type-definition (ir2c-type-id (ir-type-defn typename))(ir-type-id typename))
 		 (let* ((ir-type-id (ir-type-id typename))
 			(c-type-info (mk-simple-c-type-info nil ir-type-id
 							    (format nil "//uninterpreted type~%typedef void * ~a_t;" ir-type-id) nil (format nil "~s" (id *pvs2c-current-decl*)))))
@@ -484,7 +484,7 @@
 
 (defun c-args-string (ir-vars)
   (let* ((c-arg-types (loop for arg in ir-vars
-			    collect (add-c-type-definition (ir2c-type (ir-vtype arg)))))
+			    collect (add-c-type-definition (ir2c-type-id (ir-vtype arg)))))
 	 (c-args (loop for arg in ir-vars
 		       as c-arg-type in c-arg-types
 		       collect (format nil "~a_t ~a"
@@ -550,9 +550,9 @@
 	       (ir-result-type (if (ir-lambda? post-ir)
 				   (ir-rangetype post-ir) ;(pvs2ir-type (range (find-supertype (type decl))))
 				   (pvs2ir-type pvs-return-type)))
-	       (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	       (c-result-type (add-c-type-definition (ir2c-type-id ir-result-type)))
 	       (c-arg-types (loop for arg in ir-args
-			       collect (mppointer-type (add-c-type-definition (ir2c-type (ir-vtype arg))))))
+			       collect (mppointer-type (add-c-type-definition (ir2c-type-id (ir-vtype arg))))))
 	       (*mpvar-parameters*  (loop for arg in ir-args
 				       as c-arg-type in c-arg-types
 				       when (mpnumber-type? c-arg-type)
@@ -620,15 +620,15 @@
 ;  (declare (ignore c-param-decl-string))
   (let* ((ir-args (ir-vartypes ir-lambda-expr))
 	 (ir-result-type  (ir-rangetype ir-lambda-expr)) ;(pvs2ir-type (range (find-supertype (type decl))))
-	 (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	 (c-result-type (add-c-type-definition (ir2c-type-id ir-result-type)))
 	 (fvars (pvs2ir-freevars* ir-lambda-expr)) ;;remove formals since they are added by default
 	 (fvars (loop for fv in fvars when (not (ir-const-formal? fv)) collect fv))
 	 (args-fvarargs (append ir-args fvars))
 	 (c-arg-types (loop for arg in args-fvarargs
-		       collect (add-c-type-definition (ir2c-type (freevar-type arg)))))
+		       collect (add-c-type-definition (ir2c-type-id (freevar-type arg)))))
 	 (c-args (loop for arg in args-fvarargs
 		       collect (format nil "~a_t ~a"
-				       (mppointer-type (add-c-type-definition (ir2c-type (freevar-type arg))))
+				       (mppointer-type (add-c-type-definition (ir2c-type-id (freevar-type arg))))
 				       (freevar-name arg))))
 	 (c-args-string (if (consp c-args)
 			    (format nil "~{~a~^, ~}" c-args)
@@ -819,8 +819,8 @@
 	  (tdefn type-info)))
 
 (defmethod print-type-defn-headers ((type-info closure-c-type-info) output)
-  (with-slots (tdecl tdefn ftable-type-defn release-info hash-entry-type-defn hash-type-defn
-		     copy-info lookup-info dupdate-info update-info equal-info json-info comment-string)
+  (with-slots (tdecl tdefn ftable-type-defn act-defn release-info release-ptr-info hash-entry-type-defn hash-type-defn
+		     copy-info lookup-info dupdate-info update-info equal-info equal-ptr-info json-info json-ptr-info comment-string)
       type-info
     (when comment-string (format output "~%//~a" comment-string))
     (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
@@ -830,13 +830,18 @@
     (when lookup-info (format output "~a~%~%" (op-header lookup-info)))
     (when dupdate-info (format output "~a~%~%" (op-header dupdate-info)))
     (when update-info (format output "~a~%~%" (op-header update-info)))
+    (when act-defn (format output "~a~%~%" (ir-actual-type-defn act-defn)))
+    (when act-defn (format output "~a~%~%" (ir-actual-fun-header act-defn)))
     (when equal-info (format output "~a~%~%" (op-header equal-info)))
     (when json-info (format output  "~a~%~%" (op-header json-info)))
+    (when release-ptr-info (format output  "~a~%~%" (op-header release-ptr-info)))
+    (when equal-ptr-info (format output  "~a~%~%" (op-header equal-ptr-info)))
+    (when json-ptr-info (format output  "~a~%~%" (op-header json-ptr-info)))
     ))
 
 (defmethod print-type-defn-headers ((type-info c-type-info) output)
   (when (comment-string type-info) (format output "~%//~a" (comment-string type-info)))
-  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~a~%~%~a~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~a~%~%~a~%~a~%~%~a~%~%~a~%~%~a~%~%"
 	  (tdefn type-info)
 	  (op-header (new-info type-info))
 	  (op-header (release-info type-info))
@@ -844,10 +849,11 @@
 	  (op-header (equal-info type-info))
 	  (if (json-info type-info)(op-header (json-info type-info))(format nil " "))
 	  (if (act-defn type-info)(ir-actual-type-defn (act-defn type-info))(format nil " "))
+	  (if (act-defn type-info)(ir-actual-fun-header (act-defn type-info))(format nil " "))
 	  (if (release-ptr-info type-info)(op-header (release-ptr-info type-info)) (format nil " "))
 	  (if (equal-ptr-info type-info)(op-header (equal-ptr-info type-info)) (format nil " "))
-	  (if (json-ptr-info type-info)(op-header (json-ptr-info type-info)) (format nil " "))	  
-	  (if (act-defn type-info)(ir-actual-fun-header (act-defn type-info)))(format nil " ")) 
+	  (if (json-ptr-info type-info)(op-header (json-ptr-info type-info)) (format nil " "))
+	  )
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-header t-info)))
   (loop for t-info in (upgrade-info type-info)
@@ -876,14 +882,18 @@
   nil); do nothing
 
 (defmethod print-type-defns ((type-info closure-c-type-info) output)
-  (with-slots (release-info copy-info lookup-info dupdate-info update-info equal-info json-info) type-info
+  (with-slots (act-defn release-info release-ptr-info copy-info lookup-info dupdate-info update-info equal-info equal-ptr-info json-info json-ptr-info) type-info
 	      (format output "~%~%~a" (op-defn release-info))
 	      (format output "~%~%~a" (op-defn copy-info))
 	      (when lookup-info (format output "~%~%~a" (op-defn lookup-info)))
 	      (when dupdate-info (format output "~%~%~a" (op-defn dupdate-info)))
 	      (when update-info (format output "~%~%~a" (op-defn update-info)))
 	      (when equal-info (format output "~%~%~a" (op-defn equal-info)))
-	      (when json-info (format output "~%~%~a" (op-defn json-info)))))
+	      (when json-info (format output "~%~%~a" (op-defn json-info)))
+	      (when release-ptr-info (format output "~%~%~a" (op-defn release-ptr-info)))
+	      (when equal-ptr-info (format output "~%~%~a" (op-defn equal-ptr-info)))
+	      (when json-ptr-info (format output "~%~%~a" (op-defn json-ptr-info)))
+	      (when act-defn (format output "~%~%~a" (ir-actual-fun-defn act-defn)))))
 
 
 (defmethod print-type-defns ((type-info c-type-info) output)

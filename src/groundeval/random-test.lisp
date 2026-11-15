@@ -249,11 +249,11 @@
 	(t (let ((pairs (random-funtype-values (supertype dom) ran i d)))
 	     (remove-if #'(lambda (elt)
 			    (let* ((pred (make!-application (predicate dom)
-					   (car elt)))
+							    (car elt)))
 				   (stval (pvs2cl pred))
 				   (pval (eval stval)))
 			      (not pval)))
-	       pairs)))))
+			pairs)))))
 
 ;; (defmethod random-funtype-values ((dom dep-binding) ran i d)
 ;;   (break "dep-binding"))
@@ -322,6 +322,7 @@
 	       (return stran))))))
 
 (defun available-random-generator (subtype i d)
+  (declare (ignore subtype i d))
   ;; Hook for specific random generators to be provided for subtypes.
   nil)
 		     

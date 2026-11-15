@@ -271,7 +271,10 @@
   dupdate-info
   update-info
   equal-info
-  json-info)
+  json-info
+  release-ptr-info
+  equal-ptr-info
+  json-ptr-info)
 
 
 (defcl c-type-info (simple-c-type-info)

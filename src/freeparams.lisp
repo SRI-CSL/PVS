@@ -488,8 +488,8 @@
   (free-params* type frees))
 
 (defmethod free-params-res ((decl type-decl) (mi modname) type frees)
+  (declare (ignore type)) ;; Can't go down type - recurses
   (with-slots (actuals dactuals) mi
-    (declare (ignore type)) ;; Can't go down type - recurses
     (if (or actuals dactuals)
 	(let* ((afrees (free-params-acts actuals mi))
 	       (dafrees (free-params-dacts dactuals))

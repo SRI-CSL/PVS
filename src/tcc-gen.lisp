@@ -1659,7 +1659,7 @@ which is the transitive closure of the immediate assuming instances."
 	  :test #'tc-eq))
 
 (defun find-needs-interpretation (expr thinst theory mappings-alist)
-  (declare (ignore thinst theory))
+  (declare (ignore thinst))
   (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
 		   (or (member ex needs-interp :test #'tc-eq)

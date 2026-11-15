@@ -372,9 +372,6 @@
 ;; 	jexpr-alist
 ;; 	(nconc jexpr-alist `(("place" . ,(place expr)))))))
 
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (defcl int-expr (rational-expr)))
-
 (defmethod pp-json-ml* ((expr int-expr))
   (with-slots (number) expr
     `(("tag" . "integer")

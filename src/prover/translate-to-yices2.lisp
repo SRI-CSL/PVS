@@ -23,9 +23,9 @@
 
 ;;NSH(12/5/10): Adapting translate-to-prove-yices to yices2 output. 
 
-(defvar *y2bindings* nil)
-(defvar *y2embeddedf* nil)
-(defvar *y2defns* nil)
+(defvar *y2bindings*)
+(defvar *y2embeddedf*)
+(defvar *y2defns*)
 ;;(defvar *y2datatype-warning* nil)
 (defvar *y2name-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices2-hash* (make-pvs-hash-table))
@@ -333,7 +333,7 @@
   (with-slots (domain range) ty ; (break "tty2(funtype)")
 	      (let* ((sdom (if (dep-binding? domain)  ;;NSH(4-16-11)
 			      (find-supertype (type domain))
-			     (find-supertype domain))) %was bypassing int for real on the domain
+			     (find-supertype domain))) ;;was bypassing int for real on the domain
 		     (sdom-types (types sdom)));NSH(4-23-25)
 	      (format nil "(->~{ ~a~})"
 		      (translate-to-yices2-list sdom-types nil
@@ -452,15 +452,15 @@
 (defmethod translate-to-yices2* ((expr cases-expr) bindings)
   (translate-to-yices2* (translate-cases-to-if expr) bindings))
 
-;; can't translate standalone projection-exprs
+;; PROJ_i is translated to (lambda (id : tuptype)(select id i))
 (defmethod translate-to-yices2* ((expr projection-expr) bindings)
   (let* ((id (make-new-variable '|x| expr))
 	 (yid (yices-id-name id))
 	 (ytype (translate-to-yices2*
 		(domain (find-supertype (type expr)))
 		bindings)))
-  (format nil "(select ~a ~a)"
-    yid ytype yid (1+ (index expr)))))
+      (format nil "(lambda (~a::~a) (select ~a ~a))"
+	      yid ytype yid (index expr))))
 
 
 (defmethod translate-to-yices2* ((expr projection-application) bindings)
@@ -644,7 +644,7 @@
 		(belowval (when below (pvseval-integer below)))
 		(upto (simple-upto? fsttype))
 		(uptoval (when upto (pvseval-integer upto)))
-		(bnd (or (and belowval (1- belowval)) uptoval)))
+		(bnd (or (and belowval (1- belowval)) uptoval))
 		(rst (cdr expr-bindings)))
 	   (cond (bnd
 		  (and (< bnd *yices-quant-expand-limit*)
@@ -655,7 +655,7 @@
 								(cons (cons fst i) bindings)))))
 			 (format nil "(or ~{ ~a~})" translate-rst-list))))
 		 (t nil))))
-	 (t (translate-to-yices2* expression bindings)))
+	 (t (translate-to-yices2* expression bindings))))
 							   
 	       
 
@@ -872,7 +872,7 @@
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*y2defns* nil)
-	     (*y2datatype-warning* nil)
+	     ;;(*y2datatype-warning* nil)
 	     (*yices2-conditions* nil)
 	     (*yices2-subtype-constraints* nil))
 	(find-yices2-executable)
@@ -928,12 +928,6 @@
 		  :output '(:string :stripped t)
 		  :error-output '(:string :stripped t)
 		  :ignore-error-status t)
-	      (when *y2datatype-warning*
-		(format t "~70,,,'*A" "")
-		(format t "~%Warning: The Yices datatype theory is not currently trustworthy.
-Please check your results with a proof that does not rely on Yices. ~%")
-		(format t "~70,,,'*A" ""))
-	      ;;(break "~%status = ~a" status)
 	      (cond ((zerop status)
 		     (format-if "~%Result = ~a" output)
 		     (cond ((search "unsat"  output :from-end t)

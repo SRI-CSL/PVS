@@ -29,6 +29,24 @@
 (defvar *strategy* nil)
 (defvar *abs-verbose* nil)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;partition-amap returns a list of list of fields .  It might be
+;;;worth implementing sets of fields as bit-vectors.
+(defstruct amap-entry map fieldnames)
+
+(defun amap-with-fields (amap)
+  (loop for (x . y) in amap
+	collect (cons x (make-amap-entry :map y
+					 :fieldnames
+					 (lambda-free-fields y)))))
+
+(defun partition-amap (amap)
+  (if (consp amap)
+      (merge-partition (amap-entry-fieldnames (cdar amap))
+		       (partition-amap (cdr amap)))
+      nil))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defstep abstract-and-mc
   (cstate astate amap &optional theories rewrites exclude
 	  (strategy '(assert)) feasible verbose?)
@@ -763,22 +781,6 @@ to be used for discharging the abstraction proof obligations."
   (declare (ignore state))
   accum)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;partition-amap returns a list of list of fields .  It might be
-;;;worth implementing sets of fields as bit-vectors.
-(defstruct amap-entry map fieldnames)
-
-(defun amap-with-fields (amap)
-  (loop for (x . y) in amap
-	collect (cons x (make-amap-entry :map y
-					 :fieldnames
-					 (lambda-free-fields y)))))
-
-(defun partition-amap (amap)
-  (if (consp amap)
-      (merge-partition (amap-entry-fieldnames (cdar amap))
-		       (partition-amap (cdr amap)))
-      nil))
 
 (defun merge-partition (fields partition)
   (let* ((overlaps (loop for set in partition

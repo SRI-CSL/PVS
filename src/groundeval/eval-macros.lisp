@@ -249,7 +249,7 @@
 (defun |pvs_char| (x) (code-char x))
 (defun |pvs_char?| (x) (characterp x))
 (defun |pvs_code| (x) (char-code x))
-(defun |pvs__nat2bv| (nx) (bv2un (un2bv (svref nx 0) (svref nx 1))))
+(defun |pvs_nat2bv| (nx) (bv2un (un2bv (svref nx 0) (svref nx 1))))
 (defun |pvs_u8xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 8)(un2bv (svref x 1) 8)) 8))
 (defun |pvs_u16xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 16)(un2bv (svref x 1) 16)) 16))
 (defun |pvs_u32xor| (x) (bv2un (bit-xor (un2bv (svref x 0) 32)(un2bv (svref x 1) 32)) 32))
