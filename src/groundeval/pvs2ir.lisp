@@ -8590,12 +8590,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
   )
 
 (defun  make-c-equality-check (ir-type result-var lhs rhs c-param-arg-string)
-  (if (ir-formal-typename? ir-type)
-      (format nil "~a = ~a->equal_ptr(~a, ~a, ~a)"
-	      result-var lhs rhs (add-c-type-definition ir-type))
-      (if (ir-reference-type? ir-type)
-	  (format nil "~a = equal_~a(~a, ~a~a)" result-var lhs rhs c-param-arg-string)
-	  (let ((ir2c-type (ir2c-type ir-type)))
+  (let ((ir2c-type (add-c-type-definition ir-type)))
+    (if (ir-formal-typename? ir-type)
+	(format nil "~a = ~a->equal_ptr(~a, ~a, ~a)"
+		result-var ir2c-type lhs rhs ir2c-type)
+	(if (ir-reference-type? ir-type)
+	    (format nil "~a = equal_~a(~a, ~a~a)" result-var ir2c-type lhs rhs c-param-arg-string)
 	    (if (eq ir2c-type '|mpz|)
 		(format nil "~a = (mpz_cmp(~a, ~a) == 0)" result-var lhs rhs)
 		(if (eq ir2c-type '|mpq|)
