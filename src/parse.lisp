@@ -1,11 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; parse.lisp -- 
+;; parse.lisp -- Converts from Ergo AST to PVS classes
 ;; Author          : Sam Owre
-;; Created On      : Thu Oct 21 19:36:29 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Nov  4 18:13:31 1998
-;; Update Count    : 54
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
@@ -650,7 +645,7 @@
 					   (ending-col it-place))))
 		       (if (is-sop 'THEORY-ABBREVIATION-DECL item)
 			   (make-instance 'theory-abbreviation-decl
-			     :id (ds-id (term-arg1 item))
+			     :id (xt-idop (xt-pidop (term-arg1 item)))
 			     :theory-name (xt-modname (term-arg0 item))
 			     :place place
 			     :chain? t)
