@@ -2094,6 +2094,17 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		      (mk-ir-ift arg-var-type1
 				 (cadr args-ir)
 				 (mk-ir-bool t))))
+	  ((= /=) (let* ((arg-vartypes (loop for ir-var in arg-names
+					     as ir-typ in op-arg-types
+					     collect (mk-ir-variable ir-var ir-typ)))
+			 (cast-arg-vartype (mk-ir-variable (new-irvar)(car op-arg-types)))
+			 (new-equality-args (list (car arg-vartypes) cast-arg-vartype)));(break "primeq")
+		    (mk-ir-let* arg-vartypes args-ir ;;equality needs to cast 2nd arg to the type of 1st
+				(mk-ir-let cast-arg-vartype (cadr arg-vartypes)
+					   (mk-ir-release nil new-equality-args
+							  (mk-ir-apply ir-op
+								       new-equality-args
+								       nil ir-expr-type))))))
 	  ((restrict) (car args-ir))
 	(t (let ((arg-vartypes (loop for ir-var in arg-names
 				     as ir-typ in op-arg-types
@@ -3310,6 +3321,38 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 (defmethod intersect-subrange* ((sub1 t) (sub2 t))
   (mk-ir-subrange '* '*))
 
+;;union subrange is currently not used anywhere. 
+(defun union-subrange (sub1 sub2)
+  (union-subrange* sub1 sub2))
+
+(defmethod union-subrange* ((sub1 ir-subrange) (sub2 ir-subrange));;prefers ir-low/high-expr from sub1
+  (with-slots ((low1 ir-low) (high1 ir-high) ir-low-expr ir-high-expr) sub1
+	      (with-slots ((low2 ir-low) (high2 ir-high)) sub2
+			  (let ((new-low (if (eq low1 '*) low1
+					   (if (eq low2 '*) low2
+					     (if (< low1 low2) low1 low2))))
+				(new-high (if (eq high1 '*) high1
+					    (if (eq high2 '*) high2
+					      (if (< high1 high2) high2 high1)))))
+			    (mk-ir-subrange new-low new-high ir-low-expr ir-high-expr)))))
+
+(defmethod union-subrange* ((sub1 ir-subrange) (sub2 ir-typename))
+  (with-slots (ir-type-defn) sub2
+    (union-subrange* sub1 ir-type-defn)))
+
+(defmethod union-subrange* ((sub1 ir-typename) (sub2 ir-subrange))
+  (with-slots (ir-type-defn) sub1
+    (union-subrange*  ir-type-defn sub2)))
+
+(defmethod union-subrange* ((sub1 ir-subrange) (sub2 t))
+  sub1)
+
+(defmethod union-subrange* ((sub1 t) (sub2 ir-subrange))
+  sub2)
+
+(defmethod union-subrange* ((sub1 t) (sub2 t))
+  (mk-ir-subrange '* '*))
+
 
 (defun pvseval-integer (expr)
   (unless (freevars expr)
@@ -3583,8 +3626,8 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(t nil)))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-release))
-  (with-slots (ir-body) ir-expr
-    (pvs2ir-freevars* ir-body)))
+  (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
+    (union (pvs2ir-freevars* pre-ir-vars) (union (pvs2ir-freevars* ir-body) (pvs2ir-freevars* post-ir-vars) :test #'eq) :test #'eq)))
 
 (defmethod pvs2ir-freevars* ((ir-expr ir-typename))
   (declare (ignore ir-expr))
@@ -3967,7 +4010,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 		 (new-ir-bind-expr
 		  (let ((*array-expected* (ir-array? (ir-vtype ir-vartype))))
 		    (preprocess-ir* ir-bind-expr livevars-with-body
-				    bindings))))
+				    bindings))));(break "pp-ir")
 	    (if (and (eq ir-vartype ir-body)
 		     (not (ir-arraytype? (ir-vtype ir-vartype))))
 		new-ir-bind-expr;;for let x = a in b, if x ~ b, then simplify to a
@@ -4214,6 +4257,12 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	       (preprocess-ir* (cdr ir-expr)
 			       livevars bindings)))
 	(t nil)))
+
+(defmethod preprocess-ir* ((ir-expr ir-release) livevars bindings)
+  (with-slots (pre-ir-vars post-ir-vars ir-body) ir-expr
+    (mk-ir-release (apply-bindings bindings pre-ir-vars)
+		   (apply-bindings bindings post-ir-vars)
+		   (preprocess-ir* ir-body (union post-ir-vars livevars :test #'eq) bindings))))
 
 (defmethod preprocess-ir* ((ir-expr t) livevars bindings)
   (declare (ignore livevars bindings))
@@ -7511,7 +7560,7 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 	(domain-assignments (make-nested-assignment "new_data[j].key"  ir2c-domaintype
 						   "x->htbl->data[j].key"  ir2c-domaintype))
 	(elem-assignments (make-nested-assignment "new_data[j].value" ir2c-rangetype
-						 "x->htbl->data[j].value" ir2c-rangetype)))
+						 "x->htbl->data[j].value" ir2c-rangetype)));(break "htbl-copy")
     (mk-for-instr "uint32_t j = 0; j < new_htbl->size; j++"
 		  (cons keyhash-assignments (nconc domain-assignments elem-assignments)))))
 
@@ -8620,12 +8669,10 @@ PVS identifiers allow UTF-8, but C generally disallows them. Any char "
 			     (make-c-equality-check elemtype "tmp" "x->elems[i]" "y->elems[i]" c-param-arg-string))))
 ;;    (if (or (ir-formal-typename? elemtype)(ir-reference-type? elemtype))
     (format nil "bool_t ~a(~a_t x, ~a_t y~a){~%~8Tbool_t tmp = true;~%~8Tuint32_t i = 0;~
-	       ~%~8T~a;~%~8T~a;~%~8T~a;~%~8Treturn tmp;}"   
+	       ~%~8T~a;~%~8Treturn tmp;}"   
 	    equal-name type-name-root type-name-root
 	    c-param-decl-string
 	    equal-instr
-	    (format nil "release_~a((~a_t)x~a)"  type-name-root type-name-root  c-param-arg-string)
-	    (format nil "release_~a((~a_t)y~a)"  type-name-root type-name-root  c-param-arg-string)
 	      ))
 	;; (format nil "bool_t ~a(~a_t x, ~a_t y){~%~8Tbool_t tmp = true;~%~8Tuint32_t i = 0;~
 	;;        ~%~8T~a;~%~8Treturn tmp;}"   

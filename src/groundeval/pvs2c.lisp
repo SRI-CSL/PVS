@@ -606,7 +606,7 @@
 	       ;; 		     c-header 
 	       ;; 		     (mppointer-type c-result-type)
 	       ;; 		     c-body)))
-	       )
+	       );(break "make-c-def")
 	  (unless *suppress-output* ;*to-emacs* ;; causes problems
 	    (format t "~%Function ~a"  ir-function-name)
 	    ;(format t "~%MPvars ~{~a, ~}" (print-ir *mpvar-parameters*))
