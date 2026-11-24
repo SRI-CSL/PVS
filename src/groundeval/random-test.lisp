@@ -125,9 +125,41 @@
 	  (if (compatible? (domain te) *integer*)
 	      (make-random-subrange-if-expr pairs var)
 	      (make-random-datatype-cases-expr pairs var)))
-	(if (tc-eq (range te) *boolean*)
-	    (make-random-set-expr (domain te) i d)
-	    (make-lazy-random-function te i d)))))
+	(cond ((empty-finite-domain? (domain te))
+	       ;; The domain has no elements, so the body is never applied.
+	       ;; Any value of the range gives a ground function.
+	       (make!-lambda-expr (list bd) (random-generator* ran i d)))
+	      ((tc-eq (range te) *boolean*)
+	       (make-random-set-expr (domain te) i d))
+	      (t (make-lazy-random-function te i d))))))
+
+(defmethod empty-finite-domain? ((dom subtype))
+  ;; True when DOM is below(0), or subrange(a, b) with numeral bounds and a > b.
+  ;; below? does not match below(0), so the print type is checked instead.
+  (cond ((below-zero-print-type? (print-type dom)) t)
+	((subrange? dom)
+	 (let ((bds (subrange? dom)))
+	   (and (ground-number-expr? (car bds))
+		(ground-number-expr? (cdr bds))
+		(> (ground-number (car bds)) (ground-number (cdr bds))))))
+	(t nil)))
+
+(defmethod empty-finite-domain? (dom)
+  (declare (ignore dom))
+  nil)
+
+(defun below-zero-print-type? (ptype)
+  ;; below(0) is a type application, and below[0] a type name with one actual
+  (let ((bound (cond ((and (type-application? ptype)
+			   (eq (id (type ptype)) '|below|)
+			   (singleton? (parameters ptype)))
+		      (car (parameters ptype)))
+		     ((and (type-name? ptype)
+			   (eq (id ptype) '|below|)
+			   (singleton? (actuals ptype)))
+		      (expr (car (actuals ptype)))))))
+    (and (number-expr? bound)
+	 (zerop (number bound)))))
 
 (defmethod random-generator* ((te recordtype) i d)
   (make-record-expr
@@ -319,7 +351,7 @@
 		    (pred (make!-application (predicate te) stran))
 		    (stval (pvs2cl pred))
 		    (pval (eval stval)))
-	       (return stran))))))
+	       (when pval (return stran)))))))
 
 (defun available-random-generator (subtype i d)
   (declare (ignore subtype i d))
