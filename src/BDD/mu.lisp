@@ -26,17 +26,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Global variables     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defvar *build-mu-term*) ;; t when converting a term and nil when converting a formula
-(defvar *build-rel-var*) ;; t when mu_mk_rel_var and nil when mu_mk_bool_var
-(defvar *build-arguments*)
-(defvar *build-access-var*) ;; t when mu_check_bool_var and nil otherwise.
+(defvar *build-mu-term* nil) ;; t when converting a term and nil when converting a formula
+(defvar *build-rel-var* nil) ;; t when mu_mk_rel_var and nil when mu_mk_bool_var
+(defvar *build-arguments* nil)
+(defvar *build-access-var* nil) ;; t when mu_check_bool_var and nil otherwise.
 
-(defvar *expand-term*) ;; t when a term should be fully expanded
+(defvar *expand-term* nil) ;; t when a term should be fully expanded
 
-(defvar *convert-list*)
 (defvar *list-of-relational-vars*) ;; list of expressions
 (defvar *incl-excl-var-id-indx-pairs*) ;; (bddvarid . index)
-(defvar *mu-verbose*)
+(defvar *mu-verbose* nil)
 (defvar *mu-nu-lambda-bindings-list*)
 
 (addrule 'musimp () ((fnums *) dynamic-ordering? irredundant? verbose?)
